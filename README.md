@@ -13,7 +13,7 @@ English README is [here](en).
 最も基本的な使い方は、以下のデモを見てください。
 高度な使い方やプラグインパラメータの詳細は[wiki](https://github.com/yktsr/Text2Frame-MV/wiki)を参照してください。
 
-*** デモ/Quick Start ***
+***デモ/Quick Start***
 1. シナリオファイルを作成します
 1. text/message.txtとして保存します
 1. イベントコマンド（メッセージをイベントへインポート）を作成します
