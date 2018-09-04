@@ -4,6 +4,8 @@ English README is [here](en).
 
 テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、開発支援プラグイン
 
+![./introduce_Text2Frame.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Text2Frame.png)
+
 ## 説明
 会話などをツクールMV**以外**のエディタで編集して、あとでイベントコマンドとして組み込みたい人をサポートします。
 
@@ -32,17 +34,17 @@ English README is [here](en).
 #### 顔の指定 <顔: 顔の指定>
 ウインドウに表示される顔を指定することができます。
 
-![./face_sample.gif](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/face_sample.gif)
+![./introduce_Face.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Face.png)
 
 #### 背景の変更 <背景: 背景の指定>
 ウインドウの背景を変更することができます。
 
-![./background_sample.gif](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/background_sample.gif)
+![./introduce_Background.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Background.png)
 
 #### 位置の変更 <位置: 位置の指定>
 ウインドウの位置を変更することができます。
 
-![./position_sample.gif](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/position_sample.gif)
+![./introduce_WindowPosition.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_WindowPosition.png)
 
 ### コメントアウト
 文章の先頭に「%」を記載すると、それはコメントと見なされ、取り込まれません。
