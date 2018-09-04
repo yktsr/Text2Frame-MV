@@ -24,6 +24,8 @@ English README is [here](en).
 1. イベントのタイルを踏み、実行します
 1. プロジェクトを開き直します
 
+より詳細な手順は[wiki](https://github.com/yktsr/Text2Frame-MV/wiki/%E5%9F%BA%E6%9C%AC%E7%9A%84%E3%81%AA%E4%BD%BF%E3%81%84%E6%96%B9)を参照してください。
+
 ![./basic_sample.gif](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/basic_sample.gif)
 
 ## 特徴
