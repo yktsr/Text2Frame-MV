@@ -624,7 +624,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
 
     var event_command_list = [];
     var scenario_text = readText(Laurus.Text2Frame.FileFolder,Laurus.Text2Frame.FileName);
-    var text_lines = scenario_text.split('\n');
+    var text_lines = scenario_text.replace(/\r/g,'').split('\n')
     var frame_param = JSON.parse(JSON.stringify(pretext));
     printLog("Default", frame_param.parameters);
     for(var i=0; i < text_lines.length; i++){
