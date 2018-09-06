@@ -490,7 +490,9 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
 
 (function() {
   'use strict';
-  const fs = require('fs');
+  const fs   = require('fs');
+  const path = require('path');
+  const base = path.dirname(process.mainModule.filename);
 
   //=============================================================================
   // Game_Interpreter
@@ -574,21 +576,20 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
     };
 
     const readText = function(folderName, fileName){
-      var input_path = folderName + "/" + fileName;
+      var input_path = base + "/" + folderName + "/" + fileName;
       try{
         return fs.readFileSync(input_path, 'utf8');
       }catch(e){
         throw new Error('File not found. / ファイルが見つかりません。\n' + input_path);
-        console.error(e);
       }
     };
-    
+
     const readMapData = function(mapid){
       //if(! $dataMapInfos[Number(mapid)]){
       //  throw new Error('Map not found. / マップが見つかりません。\n' + "MAP" + mapid);
       //}
       try{
-        return JSON.parse(fs.readFileSync('data/Map' + mapid + ".json", {encoding: 'utf8'}));
+        return JSON.parse(fs.readFileSync(base + '/data/Map' + mapid + ".json", {encoding: 'utf8'}));
       }catch(e){
         throw new Error('Map not found. / マップが見つかりません。\n' + "MAP " + mapid);
       }
@@ -596,7 +597,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
 
     const readCommonEventData = function(){
       try{
-        return JSON.parse(fs.readFileSync("data/CommonEvents.json", 'utf8'));
+        return JSON.parse(fs.readFileSync(base + "/data/CommonEvents.json", 'utf8'));
       }catch(e){
         throw new Error('File not found. / ファイルが見つかりません。\n' + "data/CommonEvents.json");
         console.error(e);
@@ -753,7 +754,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         }
         map_events.pop();
         map_events = map_events.concat(event_command_list);
-        var filepath = 'data/Map' + ('000' + Laurus.Text2Frame.MapID).slice(-3) + ".json";
+        var filepath = base + '/data/Map' + ('000' + Laurus.Text2Frame.MapID).slice(-3) + ".json";
         map_data.events[Laurus.Text2Frame.EventID].pages[0].list = map_events;
         writeData(filepath, map_data);
         $gameMessage.add('Success / 書き出し成功！\n' 
@@ -773,7 +774,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         }
         ce_events.pop();
         ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list);
-        var filepath = 'data/CommonEvents.json';
+        var filepath = base + '/data/CommonEvents.json';
         writeData(filepath, ce_data);
         $gameMessage.add('Success / 書き出し成功！\n' 
           + "=====> Common EventID :" + Laurus.Text2Frame.CommonEventID);
