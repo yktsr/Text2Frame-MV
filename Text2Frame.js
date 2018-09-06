@@ -93,6 +93,13 @@
  * @default false
  * @type boolean 
  *
+ * @help
+ * Update Soon.
+ * Please see wiki.
+ * https://github.com/yktsr/Text2Frame-MV/wiki
+ */
+
+ /*:ja
  * @plugindesc テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、開発支援プラグインです。
  * @author Yuki Katsura, えーしゅん(仕様・ヘルプ文章)
  *
@@ -451,7 +458,7 @@
  * --------------------------------------
  * このプラグインに関し、バグ・疑問・追加要望を発見した場合は、
  * 以下の連絡先まで連絡してください。
- * [Twitter]: https://twitter.com/kryptos_nv/
+ * [Twitter]: https://twitter.com/Asyun3i9t/
  * [GitHub] : https://github.com/yktsr/
  */
 
