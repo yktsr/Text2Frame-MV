@@ -6,7 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 1.0.2 2018/09/10 translate REAMDE to eng.
+// 1.0.3 2018/09/24 <script>タグ対応、draft.
+// 1.0.2 2018/09/10 translate REAMDE to eng(Partial).
 // 1.0.1 2018/09/06 bug fix オプションパラメータ重複、CRLFコード対応
 // 1.0.0 2018/09/02 Initial Version
 // 0.3.3 2018/08/28 コメントアウト記号の前、行頭に任意個の空白を認めるように変更
@@ -616,6 +617,17 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       }
     }
 
+    const insertScriptHead = function(text){
+      var script_head = {"code": 355, "indent": 0, "parameters": [""]}
+      script_head["parameters"][0] = text
+      return script_head;
+    }
+    const insertScriptBody = function(){
+      var script_body = {"code": 655, "indent": 0, "parameters": [""]}
+      script_body["parameters"][0] = text
+      return script_body;
+    }
+
     // Text Frame Template
     const pretext  = {"code": 101, "indent": 0, 
                       "parameters": ["", 0, 
@@ -627,8 +639,9 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
 
     var event_command_list = [];
     var scenario_text = readText(Laurus.Text2Frame.FileFolder,Laurus.Text2Frame.FileName);
-    var text_lines = scenario_text.replace(/\r/g,'').split('\n')
+    var text_lines = scenario_text.replace(/\r/g,'').split('\n');
     var frame_param = JSON.parse(JSON.stringify(pretext));
+    var script_mode = {"mode": false, "body": false};
     printLog("Default", frame_param.parameters);
     for(var i=0; i < text_lines.length; i++){
       var text = text_lines[i];
@@ -650,6 +663,11 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         var background = text.match(/<background *: *(.+?)>/i)
           || text.match(/<BG *: *(.+?)>/i)
           || text.match(/<背景 *: *(.+?)>/i);
+        var script_start = text.match(/<script>/i)
+          || text.match(/<SC>/i)
+        var script_end = text.match(/<\/script>/i)
+          || text.match(/<\/SC>/i)
+
 
         if(frame_param){
           printLog("  ", frame_param.parameters);
@@ -657,6 +675,27 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           printLog("  ", 'nil');
         }
 
+        if(script_start){
+          script_mode["mode"] = true;
+          printLog("script_mode = true;");
+          continue;
+        }
+        if(script_end){
+          script_mode["mode"] = false;
+          script_mode["body"] = false;
+          printLog("script_mode = false;");
+          continue;
+        }
+
+        if(script_mode["mode"]){
+          if(script_mode["body"]){
+            event_command_list.push(insertScriptBody(text));
+          }else{
+            event_command_list.push(insertScriptHead(text));
+            script_mode["body"] = true;
+          }
+          continue;
+        }
 
         // Face
         if(face){
