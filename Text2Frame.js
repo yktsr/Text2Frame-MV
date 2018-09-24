@@ -6,10 +6,10 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 1.0.3 2018/09/24 <script>タグ対応、Plugin Command対応、draft.
 // 1.0.2 2018/09/10 translate REAMDE to eng(Partial).
 // 1.0.1 2018/09/06 bug fix オプションパラメータ重複、CRLFコード対応
 // 1.0.0 2018/09/02 Initial Version
+// 0.4.0 2018/09/24 [draft] <script>タグ対応、Plugin Command対応、Common Event対応.
 // 0.3.3 2018/08/28 コメントアウト記号の前、行頭に任意個の空白を認めるように変更
 // 0.3.2 2018/08/28 MapIDをIntegerへ変更
 // 0.3.1 2018/08/27 CE書き出し追加
@@ -619,18 +619,23 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
 
     const getScriptHeadEvent = function(text){
       var script_head = {"code": 355, "indent": 0, "parameters": [""]}
-      script_head["parameters"][0] = text
+      script_head["parameters"][0] = text;
       return script_head;
     }
     const getScriptBodyEvent = function(text){
       var script_body = {"code": 655, "indent": 0, "parameters": [""]}
-      script_body["parameters"][0] = text
+      script_body["parameters"][0] = text;
       return script_body;
     }
     const getPluginCommandEvent = function(text){
-      var plugincommand = {"code": 356, "indent": 0, "parameters": [""]}
-      plugincommand["parameters"][0] = text
-      return plugincommand;
+      var plugin_command = {"code": 356, "indent": 0, "parameters": [""]}
+      plugin_command["parameters"][0] = text;
+      return plugin_command;
+    }
+    const getCommonEventEvent = function(num){
+      var common_event= {"code": 117, "indent": 0, "parameters": [""]}
+      common_event["parameters"][0] = num;
+      return common_event;
     }
 
     // Text Frame Template
@@ -671,6 +676,9 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         var plugin_command = text.match(/<plugincommand *: *(.+?)>/i)
           || text.match(/<PC *: *(.+?)>/i)
           || text.match(/<プラグインコマンド *: *(.+?)>/i);
+        var common_event = text.match(/<commonevent *: *(.+?)>/i)
+          || text.match(/<CE *: *(.+?)>/i)
+          || text.match(/<コモンイベント *: *(.+?)>/i);
         var script_start = text.match(/<script>/i)
           || text.match(/<SC>/i)
         var script_end = text.match(/<\/script>/i)
@@ -708,6 +716,19 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         // Plugin Command
         if(plugin_command){
           event_command_list.push(getPluginCommandEvent(plugin_command[1]));
+          continue;
+        }
+
+        // Common Event
+        if(common_event){
+          var event_num = Number(common_event[1]);
+          if(event_num){
+            event_command_list.push(getCommonEventEvent(event_num));
+          }else{
+            throw new Error('Syntax error. / 文法エラーです。' 
+              + common_event[1] + 'is not number. / '
+              + common_event[1] + 'は整数ではありません');
+          }
           continue;
         }
 
