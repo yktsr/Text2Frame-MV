@@ -6,7 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 1.0.3 2018/09/24 <script>タグ対応、Plugin Command対応、draft.
+// 1.0.3 2018/09/24 <script>タグ対応、draft.
 // 1.0.2 2018/09/10 translate REAMDE to eng(Partial).
 // 1.0.1 2018/09/06 bug fix オプションパラメータ重複、CRLFコード対応
 // 1.0.0 2018/09/02 Initial Version
@@ -622,22 +622,81 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       script_head["parameters"][0] = text
       return script_head;
     }
-    const getScriptBodyEvent = function(text){
+    const getScriptBodyEvent = function(){
       var script_body = {"code": 655, "indent": 0, "parameters": [""]}
       script_body["parameters"][0] = text
       return script_body;
     }
-    const getPluginCommandEvent = function(text){
-      var plugincommand = {"code": 356, "indent": 0, "parameters": [""]}
-      plugincommand["parameters"][0] = text
-      return plugincommand;
+
+    const getFaceEvent = function(face){
+      const pretext  = {"code": 101, "indent": 0, 
+                        "parameters": ["", 0, 
+                        getBackground(Laurus.Text2Frame.Background), 
+                        getWindowPosition(Laurus.Text2Frame.WindowPosition)]}
+      var frame_param = JSON.parse(JSON.stringify(pretext));
+      var actor_number = face[1].match(/(actor\d+)/i);
+      var face_number = face[1].match(/actor\d\((.+?)\)/i);
+
+      if(actor_number && face_number){
+        frame_param.parameters[0] = actor_number[1];
+        frame_param.parameters[1] = face_number[1];
+        text = text.replace(face[0], '');
+        printLog("  face set: " + frame_param.parameters[0] 
+          + " : " + frame_param.parameters[1]);
+        printLog("  [*]" + text);
+        return frame_param
+      }else{
+        console.error(text);
+        throw new Error('Syntax error. / 文法エラーです。' 
+          + 'Please check line ' + (i+1) + '. / '
+          + (i+1) + '行目付近を確認してください / '
+          + text.replace(/</g, '  ').replace(/>/g, '  '));
+      }
+    }
+
+    const getBackgroundEvent = function(background){
+      const pretext  = {"code": 101, "indent": 0, 
+                        "parameters": ["", 0, 
+                        getBackground(Laurus.Text2Frame.Background), 
+                        getWindowPosition(Laurus.Text2Frame.WindowPosition)]}
+      var frame_param = JSON.parse(JSON.stringify(pretext));
+      try{
+        frame_param.parameters[2] = getBackground(background[1]);
+      }catch(e){
+        console.error(text);
+        throw new Error('Syntax error. / 文法エラーです。'
+          + 'Please check line ' + (i+1) + '. / '
+          + (i+1) + '行目付近を確認してください / '
+          + text.replace(/</g, '  ').replace(/>/g, '  '));
+      }
+      text = text.replace(background[0], '');
+      printLog("  background set: " + frame_param.parameters[2]);
+      printLog("  [*]" + text);
+      return frame_param
+    }
+
+    const getWindowPositionEvent = function(window){
+      const pretext  = {"code": 101, "indent": 0, 
+                        "parameters": ["", 0, 
+                        getBackground(Laurus.Text2Frame.Background), 
+                        getWindowPosition(Laurus.Text2Frame.WindowPosition)]}
+      var frame_param = JSON.parse(JSON.stringify(pretext));
+      try{
+        frame_param.parameters[3] = getWindowPosition(window_position[1]);
+      }catch(e){
+        console.error(text);
+        throw new Error('Syntax error. / 文法エラーです。'
+          + 'Please check line ' + (i+1) + '. / '
+          + (i+1) + '行目付近を確認してください / '
+          + text.replace(/</g, '  ').replace(/>/g, '  '));
+      }
+      text = text.replace(window_position[0], '');
+      printLog("  window_position set: " + frame_param.parameters[3]);
+      printLog("  [*]" + text);
+      return frame_param
     }
 
     // Text Frame Template
-    const pretext  = {"code": 101, "indent": 0, 
-                      "parameters": ["", 0, 
-                      getBackground(Laurus.Text2Frame.Background), 
-                      getWindowPosition(Laurus.Text2Frame.WindowPosition)]}
     const textframe_template = {"code": 401, "indent": 0, "parameters": ["今日も一日がんばるぞい！"]}
     const command_bottom = {"code":0,"indent":0,"parameters":[]};
 
@@ -670,7 +729,6 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           || text.match(/<背景 *: *(.+?)>/i);
         var plugin_command = text.match(/<plugincommand *: *(.+?)>/i)
           || text.match(/<PC *: *(.+?)>/i)
-          || text.match(/<プラグインコマンド *: *(.+?)>/i);
         var script_start = text.match(/<script>/i)
           || text.match(/<SC>/i)
         var script_end = text.match(/<\/script>/i)
@@ -695,6 +753,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           continue;
         }
 
+        // Script
         if(script_mode["mode"]){
           if(script_mode["body"]){
             event_command_list.push(getScriptBodyEvent(text));
@@ -705,72 +764,22 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           continue;
         }
 
-        // Plugin Command
-        if(plugin_command){
-          event_command_list.push(getPluginCommandEvent(plugin_command[1]));
-          continue;
-        }
-
         // Face
         if(face){
-          if(!frame_param){
-            var frame_param = JSON.parse(JSON.stringify(pretext));
-          }
-          var actor_number = face[1].match(/(actor\d+)/i);
-          var face_number = face[1].match(/actor\d\((.+?)\)/i);
-
-          if(actor_number && face_number){
-            frame_param.parameters[0] = actor_number[1];
-            frame_param.parameters[1] = face_number[1];
-            text = text.replace(face[0], '');
-            printLog("  face set: " + frame_param.parameters[0] 
-              + " : " + frame_param.parameters[1]);
-            printLog("  [*]" + text);
-          }else{
-            console.error(text);
-            throw new Error('Syntax error. / 文法エラーです。' 
-              + 'Please check line ' + (i+1) + '. / '
-              + (i+1) + '行目付近を確認してください / '
-              + text.replace(/</g, '  ').replace(/>/g, '  '));
-          }
+          event_command_list.push(getFaceEvent(face));
+          continue;
         }
 
         // window backgound
         if(background){
-          if(!frame_param){
-            var frame_param = JSON.parse(JSON.stringify(pretext));
-          }
-          try{
-            frame_param.parameters[2] = getBackground(background[1]);
-          }catch(e){
-            console.error(text);
-            throw new Error('Syntax error. / 文法エラーです。'
-              + 'Please check line ' + (i+1) + '. / '
-              + (i+1) + '行目付近を確認してください / '
-              + text.replace(/</g, '  ').replace(/>/g, '  '));
-          }
-          text = text.replace(background[0], '');
-          printLog("  background set: " + frame_param.parameters[2]);
-          printLog("  [*]" + text);
+          event_command_list.push(getBackgroundEvent(background));
+          continue;
         }
 
         // window position
         if(window_position){
-          if(!frame_param){
-            var frame_param = JSON.parse(JSON.stringify(pretext));
-          }
-          try{
-            frame_param.parameters[3] = getWindowPosition(window_position[1]);
-          }catch(e){
-            console.error(text);
-            throw new Error('Syntax error. / 文法エラーです。'
-              + 'Please check line ' + (i+1) + '. / '
-              + (i+1) + '行目付近を確認してください / '
-              + text.replace(/</g, '  ').replace(/>/g, '  '));
-          }
-          text = text.replace(window_position[0], '');
-          printLog("  window_position set: " + frame_param.parameters[3]);
-          printLog("  [*]" + text);
+          event_command_list.push(getWindowPositionEvent(window_position));
+          continue;
         }
 
         if(Laurus.Text2Frame.IsDebug){
@@ -778,16 +787,10 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         }
 
         if(text){
-          if(frame_param){
-            event_command_list.push(frame_param);
-            frame_param = null;
-          }
           var copied_template = JSON.parse(JSON.stringify(textframe_template));
           copied_template.parameters[0] = text;
           event_command_list.push(copied_template);
         }
-      }else{
-        var frame_param = JSON.parse(JSON.stringify(pretext));
       }
     }
 
