@@ -727,7 +727,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
             event_command_list.push(getCommonEventEvent(event_num));
           }else{
             throw new Error('Syntax error. / 文法エラーです。' 
-              + common_event[1] + 'is not number. / '
+              + common_event[1] + ' is not number. / '
               + common_event[1] + 'は整数ではありません');
           }
           continue;
