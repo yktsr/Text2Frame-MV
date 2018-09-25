@@ -663,6 +663,34 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         continue;
       }
 
+      // Script
+      var script_start = text.match(/<script>/i)
+        || text.match(/<SC>/i)
+      var script_end = text.match(/<\/script>/i)
+        || text.match(/<\/SC>/i)
+
+      if(script_start){
+        script_mode["mode"] = true;
+        printLog("script_mode = true;");
+        continue;
+      }
+      if(script_end){
+        script_mode["mode"] = false;
+        script_mode["body"] = false;
+        printLog("script_mode = false;");
+        continue;
+      }
+
+      if(script_mode["mode"]){
+        if(script_mode["body"]){
+          event_command_list.push(getScriptBodyEvent(text));
+        }else{
+          event_command_list.push(getScriptHeadEvent(text));
+          script_mode["body"] = true;
+        }
+        continue;
+      }
+
       if(text){
         var face = text.match(/<face *: *(.+?)>/i) 
           || text.match(/<FC *: *(.+?)>/i)
@@ -679,38 +707,11 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         var common_event = text.match(/<commonevent *: *(.+?)>/i)
           || text.match(/<CE *: *(.+?)>/i)
           || text.match(/<コモンイベント *: *(.+?)>/i);
-        var script_start = text.match(/<script>/i)
-          || text.match(/<SC>/i)
-        var script_end = text.match(/<\/script>/i)
-          || text.match(/<\/SC>/i)
-
 
         if(frame_param){
           printLog("  ", frame_param.parameters);
         }else{
           printLog("  ", 'nil');
-        }
-
-        if(script_start){
-          script_mode["mode"] = true;
-          printLog("script_mode = true;");
-          continue;
-        }
-        if(script_end){
-          script_mode["mode"] = false;
-          script_mode["body"] = false;
-          printLog("script_mode = false;");
-          continue;
-        }
-
-        if(script_mode["mode"]){
-          if(script_mode["body"]){
-            event_command_list.push(getScriptBodyEvent(text));
-          }else{
-            event_command_list.push(getScriptHeadEvent(text));
-            script_mode["body"] = true;
-          }
-          continue;
         }
 
         // Plugin Command
