@@ -637,6 +637,11 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       common_event["parameters"][0] = num;
       return common_event;
     }
+    const getCommentOut = function(text){
+      var comment_out= {"code": 108, "indent": 0, "parameters": [""]}
+      comment_out["parameters"][0] = text;
+      return comment_out;
+    }
 
     // Text Frame Template
     const pretext  = {"code": 101, "indent": 0, 
@@ -707,6 +712,9 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         var common_event = text.match(/<commonevent *: *(.+?)>/i)
           || text.match(/<CE *: *(.+?)>/i)
           || text.match(/<コモンイベント *: *(.+?)>/i);
+        var comment_out = text.match(/<comment *: *(.+?)>/i)
+          || text.match(/<CO *: *(.+?)>/i)
+          || text.match(/<コメント *: *(.+?)>/i);
 
         if(frame_param){
           printLog("  ", frame_param.parameters);
@@ -730,6 +738,12 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
               + common_event[1] + ' is not number. / '
               + common_event[1] + 'は整数ではありません');
           }
+          continue;
+        }
+
+        // Comment out
+        if(comment_out){
+          event_command_list.push(getCommentOut(comment_out[1]));
           continue;
         }
 
