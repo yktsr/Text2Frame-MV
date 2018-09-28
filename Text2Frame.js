@@ -9,7 +9,9 @@
 // 1.0.2 2018/09/10 translate REAMDE to eng(Partial).
 // 1.0.1 2018/09/06 bug fix オプションパラメータ重複、CRLFコード対応
 // 1.0.0 2018/09/02 Initial Version
-// 0.4.0 2018/09/24 [draft] <script>タグ対応、Plugin Command対応、Common Event対応.
+// 0.4.2 2018/09/29 [draft] waitタグ対応、フェードイン、アウトタグ対応.
+// 0.4.1 2018/09/27 [draft] commentタグ対応.
+// 0.4.0 2018/09/24 [draft] scriptタグ対応、Plugin Command対応、Common Event対応.
 // 0.3.3 2018/08/28 コメントアウト記号の前、行頭に任意個の空白を認めるように変更
 // 0.3.2 2018/08/28 MapIDをIntegerへ変更
 // 0.3.1 2018/08/27 CE書き出し追加
@@ -637,12 +639,22 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       common_event["parameters"][0] = num;
       return common_event;
     }
-    const getCommentOut = function(text){
+    const getCommentOutEvent = function(text){
       var comment_out= {"code": 108, "indent": 0, "parameters": [""]}
       comment_out["parameters"][0] = text;
       return comment_out;
     }
-
+    const getWaitEvent = function(num){
+      var wait = {"code": 230, "indent": 0, "parameters": [""]}
+      wait["parameters"][0] = num;
+      return wait;
+    }
+    const getFadeinEvent = function(){
+      return {"code": 222, "indent": 0, "parameters": [""]};
+    }
+    const getFadeoutEvent = function(){
+      return {"code": 221, "indent": 0, "parameters": [""]};
+    }
     // Text Frame Template
     const pretext  = {"code": 101, "indent": 0, 
                       "parameters": ["", 0, 
@@ -715,6 +727,14 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         var comment_out = text.match(/<comment *: *(.+?)>/i)
           || text.match(/<CO *: *(.+?)>/i)
           || text.match(/<コメント *: *(.+?)>/i);
+        var wait = text.match(/<wait *: *(.+?)>/i)
+          || text.match(/<ウェイト *: *(.+?)>/i);
+        var fadein = text.match(/<fadein>/i)
+          || text.match(/<FI>/i)
+          || text.match(/<フェードイン>/i);
+        var fadeout = text.match(/<fadeout>/i)
+          || text.match(/<FO>/i)
+          || text.match(/<フェードアウト>/i);
 
         if(frame_param){
           printLog("  ", frame_param.parameters);
@@ -734,7 +754,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           if(event_num){
             event_command_list.push(getCommonEventEvent(event_num));
           }else{
-            throw new Error('Syntax error. / 文法エラーです。' 
+            throw new Error('Syntax error. / 文法エラーです。'
               + common_event[1] + ' is not number. / '
               + common_event[1] + 'は整数ではありません');
           }
@@ -743,7 +763,32 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
 
         // Comment out
         if(comment_out){
-          event_command_list.push(getCommentOut(comment_out[1]));
+          event_command_list.push(getCommentOutEvent(comment_out[1]));
+          continue;
+        }
+
+        // Wait
+        if(wait){
+          var wait_num = Number(wait[1]);
+          if(wait_num){
+            event_command_list.push(getWaitEvent(wait_num));
+          }else{
+            throw new Error('Syntax error. / 文法エラーです。'
+              + common_event[1] + ' is not number. / '
+              + common_event[1] + 'は整数ではありません');
+          }
+          continue;
+        }
+
+        // Fadein
+        if(fadein){
+          event_command_list.push(getFadeinEvent());
+          continue;
+        }
+
+        // Fadeout
+        if(fadeout){
+          event_command_list.push(getFadeoutEvent());
           continue;
         }
 
@@ -764,7 +809,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
             printLog("  [*]" + text);
           }else{
             console.error(text);
-            throw new Error('Syntax error. / 文法エラーです。' 
+            throw new Error('Syntax error. / 文法エラーです。'
               + 'Please check line ' + (i+1) + '. / '
               + (i+1) + '行目付近を確認してください / '
               + text.replace(/</g, '  ').replace(/>/g, '  '));
