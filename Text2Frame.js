@@ -669,6 +669,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
     var text_lines = scenario_text.replace(/\r/g,'').split('\n');
     var frame_param = JSON.parse(JSON.stringify(pretext));
     var script_mode = {"mode": false, "body": false};
+    var comment_mode = false;
     printLog("Default", frame_param.parameters);
     for(var i=0; i < text_lines.length; i++){
       var text = text_lines[i];
@@ -683,8 +684,10 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       // Script
       var script_start = text.match(/<script>/i)
         || text.match(/<SC>/i)
+        || text.match(/<スクリプト>/i)
       var script_end = text.match(/<\/script>/i)
         || text.match(/<\/SC>/i)
+        || text.match(/<\/スクリプト>/i)
 
       if(script_start){
         script_mode["mode"] = true;
@@ -708,6 +711,31 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         continue;
       }
 
+      // Comment out Event
+      var comment_start = text.match(/<comment>/i)
+        || text.match(/<CO>/i)
+        || text.match(/<注釈>/i);
+      var comment_end = text.match(/<\/comment>/i)
+        || text.match(/<\/CO>/i)
+        || text.match(/<\/注釈>/i);
+
+      if(comment_start){
+        comment_mode = true;
+        printLog("comment_mode = true;");
+        continue;
+      }
+      if(comment_end){
+        comment_mode = false;
+        printLog("comment_mode = false;");
+        continue;
+      }
+
+      if(comment_mode){
+        event_command_list.push(getCommentOutEvent(text));
+        continue;
+      }
+
+
       if(text){
         var face = text.match(/<face *: *(.+?)>/i) 
           || text.match(/<FC *: *(.+?)>/i)
@@ -724,9 +752,6 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         var common_event = text.match(/<commonevent *: *(.+?)>/i)
           || text.match(/<CE *: *(.+?)>/i)
           || text.match(/<コモンイベント *: *(.+?)>/i);
-        var comment_out = text.match(/<comment *: *(.+?)>/i)
-          || text.match(/<CO *: *(.+?)>/i)
-          || text.match(/<コメント *: *(.+?)>/i);
         var wait = text.match(/<wait *: *(.+?)>/i)
           || text.match(/<ウェイト *: *(.+?)>/i);
         var fadein = text.match(/<fadein>/i)
@@ -758,12 +783,6 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
               + common_event[1] + ' is not number. / '
               + common_event[1] + 'は整数ではありません');
           }
-          continue;
-        }
-
-        // Comment out
-        if(comment_out){
-          event_command_list.push(getCommentOutEvent(comment_out[1]));
           continue;
         }
 
