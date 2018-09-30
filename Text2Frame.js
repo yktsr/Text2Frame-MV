@@ -629,26 +629,36 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       script_body["parameters"][0] = text;
       return script_body;
     }
+    
     const getPluginCommandEvent = function(text){
       var plugin_command = {"code": 356, "indent": 0, "parameters": [""]}
       plugin_command["parameters"][0] = text;
       return plugin_command;
     }
+    
     const getCommonEventEvent = function(num){
       var common_event= {"code": 117, "indent": 0, "parameters": [""]}
       common_event["parameters"][0] = num;
       return common_event;
     }
-    const getCommentOutEvent = function(text){
+    
+    const getCommentOutHeadEvent = function(text){
       var comment_out= {"code": 108, "indent": 0, "parameters": [""]}
       comment_out["parameters"][0] = text;
       return comment_out;
     }
+    const getCommentOutBodyEvent = function(text){
+      var comment_out= {"code": 408, "indent": 0, "parameters": [""]}
+      comment_out["parameters"][0] = text;
+      return comment_out;
+    }
+    
     const getWaitEvent = function(num){
       var wait = {"code": 230, "indent": 0, "parameters": [""]}
       wait["parameters"][0] = num;
       return wait;
     }
+
     const getFadeinEvent = function(){
       return {"code": 222, "indent": 0, "parameters": [""]};
     }
@@ -669,7 +679,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
     var text_lines = scenario_text.replace(/\r/g,'').split('\n');
     var frame_param = JSON.parse(JSON.stringify(pretext));
     var script_mode = {"mode": false, "body": false};
-    var comment_mode = false;
+    var comment_mode = {"mode": false, "body": false};
     printLog("Default", frame_param.parameters);
     for(var i=0; i < text_lines.length; i++){
       var text = text_lines[i];
@@ -720,18 +730,24 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         || text.match(/<\/注釈>/i);
 
       if(comment_start){
-        comment_mode = true;
+        comment_mode["mode"] = true;
         printLog("comment_mode = true;");
         continue;
       }
       if(comment_end){
-        comment_mode = false;
+        comment_mode["mode"] = false;
+        comment_mode["body"] = false;
         printLog("comment_mode = false;");
         continue;
       }
 
-      if(comment_mode){
-        event_command_list.push(getCommentOutEvent(text));
+      if(comment_mode["mode"]){
+        if(comment_mode["body"]){
+          event_command_list.push(getCommentOutBodyEvent(text));
+        }else{
+          event_command_list.push(getCommentOutHeadEvent(text));
+          comment_mode["body"] = true;
+        }
         continue;
       }
 
