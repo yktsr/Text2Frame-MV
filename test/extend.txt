@@ -1,0 +1,58 @@
+<PluginCommand: import_message_to_event text basic.txt 1 8 true>
+<プラグインコマンド: import_message_to_event text basic.txt 1 8 true>
+<PC: import_message_to_event text basic.txt 1 8 true>
+
+<CommonEvent: 2>
+<コモンイベント: 2>
+<CE: 2>
+
+<FadeOut>
+<フェードアウト>
+<FO>
+
+<FadeIn>
+<フェードイン>
+<FI>
+
+<wait: 60>
+<ウェイト: 60>
+
+<script>
+var i = 0;
+for(i=0;i<10;i++){
+  console.log("今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑");
+}
+</script>
+
+<スクリプト>
+var i = 0;
+for(i=0;i<10;i++){
+  console.log("今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑");
+}
+</スクリプト>
+
+
+<SC>
+var i = 0;
+for(i=0;i<10;i++){
+  console.log("今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑");
+}
+
+var i = 0;
+for(i=0;i<10;i++){
+  console.log(i);
+}
+
+</SC>
+
+<注釈>
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+</注釈>
+
+<CO>
+ぞいってなにｗｗｗ
+</CO>
+

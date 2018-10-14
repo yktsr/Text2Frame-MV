@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.0 2018/10/15 script,wait,fadein,fadeout,comment,PluginCommand,CommonEventタグ追加.
 // 1.0.2 2018/09/10 translate REAMDE to eng(Partial).
 // 1.0.1 2018/09/06 bug fix オプションパラメータ重複、CRLFコード対応
 // 1.0.0 2018/09/02 Initial Version
