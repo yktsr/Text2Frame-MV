@@ -6,8 +6,13 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.0 2018/10/15 script,wait,fadein,fadeout,comment,PluginCommand,CommonEventタグ追加.
+// 1.0.2 2018/09/10 translate REAMDE to eng(Partial).
 // 1.0.1 2018/09/06 bug fix オプションパラメータ重複、CRLFコード対応
 // 1.0.0 2018/09/02 Initial Version
+// 0.4.2 2018/09/29 [draft] waitタグ対応、フェードイン、アウトタグ対応.
+// 0.4.1 2018/09/27 [draft] commentタグ対応.
+// 0.4.0 2018/09/24 [draft] scriptタグ対応、Plugin Command対応、Common Event対応.
 // 0.3.3 2018/08/28 コメントアウト記号の前、行頭に任意個の空白を認めるように変更
 // 0.3.2 2018/08/28 MapIDをIntegerへ変更
 // 0.3.1 2018/08/27 CE書き出し追加
@@ -21,12 +26,12 @@
 
 
 /*:
- * @plugindesc Text file to text frame of RPG Maker MV Plugin
+ * @plugindesc Simple compiler to convert text to event command.
  * @author Yuki Katsura, えーしゅん(仕様・ヘルプ文章)
  *
  * @param Default Window Position
- * @text Default Window Position
- * @desc テキストフレームの表示位置デフォルト値を設定します。デフォルトはBottomです。個別に指定した場合は上書きされます。
+ * @text Window Position
+ * @desc Default setting of window position. Default is "Bottom". Command line mode can overwrite this option.
  * @type select
  * @option Top
  * @option Middle
@@ -34,8 +39,8 @@
  * @default Bottom
  *
  * @param Default Background
- * @text Default Background
- * @desc テキストフレームの背景デフォルト値を設定します。デフォルトはWindowです。個別に指定した場合は上書きされます。
+ * @text Background
+ * @desc Default setting of background. Default is "Window". Command line mode can overweite this option.
  * @type select
  * @option Window
  * @option Dim
@@ -43,54 +48,54 @@
  * @default Window
  *
  * @param Default Scenario Folder
- * @text Default Scenario Folder
- * @desc 読み込むシナリオフォルダのデフォルト値を設定します。デフォルトはtextです。
+ * @text Scenario Folder Name
+ * @desc Default setting of the folder name which the text file is stored. Default is "text".
  * @default text
  * @require 1
  * @dir text
  * @type string
  *
  * @param Default Scenario File
- * @text Default Scenario File
- * @desc 読み込むシナリオファイルのデフォルト値を設定します。デフォルトはmessage.txtです。
+ * @text Scenario File Name
+ * @desc Default setting of text file name. Default is "message.txt". 
  * @default message.txt
  * @require 1
  * @dir text
  * @type string
  *
  * @param Default Common Event ID
- * @text Default Common Event ID
- * @desc 出力先のコモンイベントIDデフォルト値を設定します。デフォルト値は1です。
+ * @text Common Event ID
+ * @desc Default setting of the common event ID of the output destination. Default is "1". It means that it is taken in the common event 1.
  * @default 1
  * @type common_event
  *
  * @param Default MapID
- * @text Default MapID
- * @desc 出力先のMapIDデフォルト値を設定します。デフォルト値は1です。
+ * @text MapID
+ * @desc Default setting of the map ID of the output destination. Default is "1". It means that it is taken in the map ID 1.
  * @default 1
  * @type number
  *
  * @param Default EventID
- * @text Default EventID
- * @desc 出力先のEventIDデフォルト値を設定します。デフォルト値は2です。
+ * @text EventID
+ * @desc Default setting os the eventID of the output destination. Default is "2". It means that it is taken in the event ID 2.
  * @default 2
  * @type number
  *
  * @param IsOverwrite
  * @text IsOverwrite
- * @desc 通常イベントの末尾に追加しますが、上書きに変更できます。trueのとき上書きです。デフォルト値はfalseです。
+ * @desc In the default case, text is added to the end of event, this param can change it to overwrite. Default is false.
  * @default false
  * @type boolean 
  * 
  * @param Comment Out Char
  * @text Comment Out Char
- * @desc テキストファイルの冒頭に置いた場合、その行をコメントとして処理する記号を定義します。デフォルト値は「%」（半角パーセント）です。
+ * @desc If this charactor is placed at the beginning of a line, this line is not taken. Default is %.
  * @default %
  * @type string
  *
  * @param IsDebug
  * @text IsDebug
- * @desc F8のコンソールログにこのプラグインの詳細ログが出力されます。デフォルト値はfalseです。
+ * @desc Detail log is outputted to console log (F8). Default is false.
  * @default false
  * @type boolean 
  *
@@ -186,6 +191,10 @@
  *
  * テストプレイおよびイベントテスト（イベントエディタ上で右クリック→テスト）
  * から実行することを想定しています。
+ *
+ * また、追加機能としてスクリプトコマンドやプラグインコマンドも組み込むことが
+ * できます。追加機能の詳細はこのREADMEの下部に記載していますので、そちらをご
+ * 覧ください
  *
  * --------------------------------------
  * 実行方法
@@ -378,6 +387,86 @@
  *
  *
  * --------------------------------------
+ * 追加機能について
+ * --------------------------------------
+ * メッセージだけでなく、指定の記法を用いることでいくつかのイベントコマンドを
+ * 組み込むこともできます。
+ * 現状対応しているコマンドは
+ * - スクリプト
+ * - プラグインコマンド
+ * - 注釈
+ * - ウェイト
+ * - フェードアウト
+ * - フェードイン
+ * の6つです。
+ * ○「スクリプト」の組み込み方法
+ *  スクリプトのイベントコマンドは、以下のように<script>と</script>で挟み込む
+ *  記法で指定します。
+ *  <script>
+ *   処理させたいスクリプト
+ *  </script>
+ *
+ *  例えば以下のとおりです。
+ *  <script>
+ *  console.log("今日も一日がんばるぞい！(و ･ㅂ･)و");
+ *  </script>
+ *
+ *  このようにテキストファイル中に記載することで、
+ *  console.log("今日も一日がんばるぞい！(و ･ㅂ･)و"); という内容のスクリプト
+ *  のイベントコマンドが組み込まれます。
+ *  ツクールMVのエディタ上からは12行を超えるスクリプトは記述出来ませんが、
+ *  本プラグインの機能では13行以上のスクリプトも組み込めます。
+ *  ただし、ツクールMV上から一度開いて保存してしまうと、13行目以降はロストし
+ *  てしまいます。
+ *  また、別記法として<SC>か、<スクリプト>としても記述できます。
+ *
+ * ○「プラグインコマンド」の組み込み方法
+ *  プラグインコマンドのイベントコマンドは、以下のいずれかの方法で指定します。
+ *  <plugincommand: プラグインコマンドの内容>
+ *  <PC: プラグインコマンドの内容>
+ *  <プラグインコマンド: プラグインコマンドの内容>
+ *
+ *  例えば以下のように記述すると、ItemBook openと入ったプラグインコマンドが
+ *  組み込まれます。
+ *  <plugincommand: ItemBook open>
+ *
+ * ○ 注釈の組み込み方法
+ *  注釈のイベントコマンドは、以下のように<comment>と</comment>で挟み込む
+ *  記法で指定します。
+ *  <comment>
+ *   注釈の内容
+ *  </comment>
+ *
+ *  例えば以下のとおりです。
+ *  <comment>
+ *  この辺からいい感じのBGMを再生する。
+ *  選曲しないと・・・。
+ *  </comment>
+ *
+ *  また、別記法として<CO>か、<注釈>としても記述できます。
+ *
+ * ○ ウェイトの組み込み方法
+ *  ウェイトのイベントコマンドは、以下のいずれかの方法でしていします。
+ *  <wait: フレーム数(1/60秒)>
+ *  <ウェイト: フレーム数(1/60秒)>
+ *
+ *  例えば以下のように記述すると60フレーム(1秒)のウェイトが組み込まれます。
+ *  <wait: 60>
+ *
+ * ○ フェードアウトの組み込み方法
+ *  フェードアウトは以下のいずれかの方法で組み込めます。
+ *  <fadeout>
+ *  <FO>
+ *  <フェードアウト>
+ *
+ * ○ フェードインの組み込み方法
+ *  フェードインは以下のいずれかの方法で組み込めます。
+ *  <fadein>
+ *  <FI>
+ *  <フェードイン>
+ *
+ *
+ * --------------------------------------
  * 付録：動作確認テキスト
  * --------------------------------------
  * タグ指定やコメントアウトなどの一通り機能を確認できるテキストを記載しています。
@@ -442,6 +531,23 @@
  * \N[1]
  * もう少し役に立てたらって。
  * 村人以外のキャラもたくさん作らせていただけたらと思います
+ *
+ * <script>
+ * for(var i = 0; i < 10; i++) {
+ *   console.log("今日も一日がんばるぞい！(و ･ㅂ･)و");
+ * }
+ * </script>
+ *
+ * <plugincommand: ItemBook open>
+ *
+ * <comment>
+ * この辺からいい感じのBGMを再生する。
+ * 選曲しないと・・・。
+ * </comment>
+ *
+ * <fadeout>
+ * <wait: 120>
+ * <fadein>
  * ↑↑↑↑↑ここまで動作確認テキスト↑↑↑↑↑
  *
  *
@@ -615,6 +721,52 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       }
     }
 
+    const getScriptHeadEvent = function(text){
+      var script_head = {"code": 355, "indent": 0, "parameters": [""]}
+      script_head["parameters"][0] = text;
+      return script_head;
+    }
+    const getScriptBodyEvent = function(text){
+      var script_body = {"code": 655, "indent": 0, "parameters": [""]}
+      script_body["parameters"][0] = text;
+      return script_body;
+    }
+    
+    const getPluginCommandEvent = function(text){
+      var plugin_command = {"code": 356, "indent": 0, "parameters": [""]}
+      plugin_command["parameters"][0] = text;
+      return plugin_command;
+    }
+    
+    const getCommonEventEvent = function(num){
+      var common_event= {"code": 117, "indent": 0, "parameters": [""]}
+      common_event["parameters"][0] = num;
+      return common_event;
+    }
+    
+    const getCommentOutHeadEvent = function(text){
+      var comment_out= {"code": 108, "indent": 0, "parameters": [""]}
+      comment_out["parameters"][0] = text;
+      return comment_out;
+    }
+    const getCommentOutBodyEvent = function(text){
+      var comment_out= {"code": 408, "indent": 0, "parameters": [""]}
+      comment_out["parameters"][0] = text;
+      return comment_out;
+    }
+    
+    const getWaitEvent = function(num){
+      var wait = {"code": 230, "indent": 0, "parameters": [""]}
+      wait["parameters"][0] = num;
+      return wait;
+    }
+
+    const getFadeinEvent = function(){
+      return {"code": 222, "indent": 0, "parameters": [""]};
+    }
+    const getFadeoutEvent = function(){
+      return {"code": 221, "indent": 0, "parameters": [""]};
+    }
     // Text Frame Template
     const pretext  = {"code": 101, "indent": 0, 
                       "parameters": ["", 0, 
@@ -626,8 +778,10 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
 
     var event_command_list = [];
     var scenario_text = readText(Laurus.Text2Frame.FileFolder,Laurus.Text2Frame.FileName);
-    var text_lines = scenario_text.replace(/\r/g,'').split('\n')
+    var text_lines = scenario_text.replace(/\r/g,'').split('\n');
     var frame_param = JSON.parse(JSON.stringify(pretext));
+    var script_mode = {"mode": false, "body": false};
+    var comment_mode = {"mode": false, "body": false};
     printLog("Default", frame_param.parameters);
     for(var i=0; i < text_lines.length; i++){
       var text = text_lines[i];
@@ -639,6 +793,67 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         continue;
       }
 
+      // Script
+      var script_start = text.match(/<script>/i)
+        || text.match(/<SC>/i)
+        || text.match(/<スクリプト>/i)
+      var script_end = text.match(/<\/script>/i)
+        || text.match(/<\/SC>/i)
+        || text.match(/<\/スクリプト>/i)
+
+      if(script_start){
+        script_mode["mode"] = true;
+        printLog("script_mode = true;");
+        continue;
+      }
+      if(script_end){
+        script_mode["mode"] = false;
+        script_mode["body"] = false;
+        printLog("script_mode = false;");
+        continue;
+      }
+
+      if(script_mode["mode"]){
+        if(script_mode["body"]){
+          event_command_list.push(getScriptBodyEvent(text));
+        }else{
+          event_command_list.push(getScriptHeadEvent(text));
+          script_mode["body"] = true;
+        }
+        continue;
+      }
+
+      // Comment out Event
+      var comment_start = text.match(/<comment>/i)
+        || text.match(/<CO>/i)
+        || text.match(/<注釈>/i);
+      var comment_end = text.match(/<\/comment>/i)
+        || text.match(/<\/CO>/i)
+        || text.match(/<\/注釈>/i);
+
+      if(comment_start){
+        comment_mode["mode"] = true;
+        printLog("comment_mode = true;");
+        continue;
+      }
+      if(comment_end){
+        comment_mode["mode"] = false;
+        comment_mode["body"] = false;
+        printLog("comment_mode = false;");
+        continue;
+      }
+
+      if(comment_mode["mode"]){
+        if(comment_mode["body"]){
+          event_command_list.push(getCommentOutBodyEvent(text));
+        }else{
+          event_command_list.push(getCommentOutHeadEvent(text));
+          comment_mode["body"] = true;
+        }
+        continue;
+      }
+
+
       if(text){
         var face = text.match(/<face *: *(.+?)>/i) 
           || text.match(/<FC *: *(.+?)>/i)
@@ -649,6 +864,20 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         var background = text.match(/<background *: *(.+?)>/i)
           || text.match(/<BG *: *(.+?)>/i)
           || text.match(/<背景 *: *(.+?)>/i);
+        var plugin_command = text.match(/<plugincommand *: *(.+?)>/i)
+          || text.match(/<PC *: *(.+?)>/i)
+          || text.match(/<プラグインコマンド *: *(.+?)>/i);
+        var common_event = text.match(/<commonevent *: *(.+?)>/i)
+          || text.match(/<CE *: *(.+?)>/i)
+          || text.match(/<コモンイベント *: *(.+?)>/i);
+        var wait = text.match(/<wait *: *(.+?)>/i)
+          || text.match(/<ウェイト *: *(.+?)>/i);
+        var fadein = text.match(/<fadein>/i)
+          || text.match(/<FI>/i)
+          || text.match(/<フェードイン>/i);
+        var fadeout = text.match(/<fadeout>/i)
+          || text.match(/<FO>/i)
+          || text.match(/<フェードアウト>/i);
 
         if(frame_param){
           printLog("  ", frame_param.parameters);
@@ -656,6 +885,49 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           printLog("  ", 'nil');
         }
 
+        // Plugin Command
+        if(plugin_command){
+          event_command_list.push(getPluginCommandEvent(plugin_command[1]));
+          continue;
+        }
+
+        // Common Event
+        if(common_event){
+          var event_num = Number(common_event[1]);
+          if(event_num){
+            event_command_list.push(getCommonEventEvent(event_num));
+          }else{
+            throw new Error('Syntax error. / 文法エラーです。'
+              + common_event[1] + ' is not number. / '
+              + common_event[1] + 'は整数ではありません');
+          }
+          continue;
+        }
+
+        // Wait
+        if(wait){
+          var wait_num = Number(wait[1]);
+          if(wait_num){
+            event_command_list.push(getWaitEvent(wait_num));
+          }else{
+            throw new Error('Syntax error. / 文法エラーです。'
+              + common_event[1] + ' is not number. / '
+              + common_event[1] + 'は整数ではありません');
+          }
+          continue;
+        }
+
+        // Fadein
+        if(fadein){
+          event_command_list.push(getFadeinEvent());
+          continue;
+        }
+
+        // Fadeout
+        if(fadeout){
+          event_command_list.push(getFadeoutEvent());
+          continue;
+        }
 
         // Face
         if(face){
@@ -674,7 +946,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
             printLog("  [*]" + text);
           }else{
             console.error(text);
-            throw new Error('Syntax error. / 文法エラーです。' 
+            throw new Error('Syntax error. / 文法エラーです。'
               + 'Please check line ' + (i+1) + '. / '
               + (i+1) + '行目付近を確認してください / '
               + text.replace(/</g, '  ').replace(/>/g, '  '));
