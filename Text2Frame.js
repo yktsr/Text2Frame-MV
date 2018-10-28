@@ -6,15 +6,16 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 1.1.0 2018/10/15 script,wait,fadein,fadeout,comment,PluginCommand,CommonEventタグ追加.
-// 1.0.2 2018/09/10 translate REAMDE to eng(Partial).
+// 1.1.0 2018/10/15 script,wait,fadein,fadeout,comment,PluginCommand,CommonEventタグ追加
+// 1.0.2 2018/09/10 translate REAMDE to eng(Partial)
 // 1.0.1 2018/09/06 bug fix オプションパラメータ重複、CRLFコード対応
 // 1.0.0 2018/09/02 Initial Version
-// 0.5.1 2018/10/28 [draft] refactor pretext, text_frame, command_bottom
-// 0.5.1 2018/10/28 [draft] PlayBGM, FadeoutBGM, SaveBGM, ReplayBGMタグ対応。
-// 0.4.2 2018/09/29 [draft] waitタグ対応、フェードイン、アウトタグ対応。
-// 0.4.1 2018/09/27 [draft] commentタグ対応.
-// 0.4.0 2018/09/24 [draft] scriptタグ対応、Plugin Command対応、Common Event対応.
+// 0.5.3 2018/10/28 [draft] PlayBGS, FadeoutBGSタグ対応
+// 0.5.2 2018/10/28 [draft] refactor pretext, text_frame, command_bottom
+// 0.5.1 2018/10/28 [draft] PlayBGM, FadeoutBGM, SaveBGM, ReplayBGMタグ対応
+// 0.4.2 2018/09/29 [draft] waitタグ対応、フェードイン、アウトタグ対応
+// 0.4.1 2018/09/27 [draft] commentタグ対応
+// 0.4.0 2018/09/24 [draft] scriptタグ対応、Plugin Command対応、Common Event対応
 // 0.3.3 2018/08/28 コメントアウト記号の前、行頭に任意個の空白を認めるように変更
 // 0.3.2 2018/08/28 MapIDをIntegerへ変更
 // 0.3.1 2018/08/27 CE書き出し追加
@@ -816,6 +817,34 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       return {"code": 244, "indent": 0, "parameters": []};
     }
 
+    const getPlayBgsEvent = function(name, volume, pitch, pan){
+      var param_volume = 90;
+      var param_pitch = 100;
+      var param_pan = 0;
+
+      if(typeof(volume) == "number"){
+        param_volume = volume;
+      }
+
+      if(typeof(pitch) == "number"){
+        param_pitch = pitch;
+      }
+
+      if(typeof(pan) == "number"){
+        param_pan = pan;
+      }
+
+      return {"code": 245, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
+    }
+
+    const getFadeoutBgsEvent = function(duration){
+      var param_duration = 10;
+      if(typeof(duration) == "number"){
+        param_duration = duration;
+      }
+      return {"code": 246, "indent": 0, "parameters": [param_duration]};
+    }
+
     var event_command_list = [];
     var scenario_text = readText(Laurus.Text2Frame.FileFolder,Laurus.Text2Frame.FileName);
     var text_lines = scenario_text.replace(/\r/g,'').split('\n');
@@ -926,6 +955,10 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           || text.match(/<BGMの保存>/);
         var replay_bgm = text.match(/<replaybgm>/i)
           || text.match(/<BGMの再開>/);
+        var play_bgs = text.match(/<playbgs *: *([^ ].+)>/i)
+          || text.match(/<BGSの演奏 *: *([^ ].+)>/);
+        var fadeout_bgs = text.match(/<fadeoutbgs *: *(.+?)>/i)
+          || text.match(/<BGSのフェードアウト *: *(.+?)>/);
 
         if(frame_param){
           printLog("  ", frame_param.parameters);
@@ -1024,6 +1057,44 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         // Replay BGM
         if(replay_bgm){
           event_command_list.push(getReplayBgmEvent());
+          continue;
+        }
+
+        // Play BGS
+        if(play_bgs){
+          if(play_bgs[1]){
+            var params = play_bgs[1].replace(/ /g, '').split(',');
+            var name = "Battle1";
+            var volume = 90;
+            var pitch = 100;
+            var pan = 0;
+            if(params[0]){
+              name = params[0];
+            }
+            if(Number(params[1]) || Number(params[1]) == 0){
+              volume = Number(params[1]);
+            }
+            if(Number(params[2]) || Number(params[2]) == 0){
+              pitch = Number(params[2]);
+            }
+            if(Number(params[3]) || Number(params[3]) == 0){
+              pan = Number(params[3]);
+            }
+            event_command_list.push(getPlayBgsEvent(name, volume, pitch, pan));
+          }
+          continue;
+        }
+
+        // Fadeout BGS
+        if(fadeout_bgs){
+          if(fadeout_bgs[1]){
+            var duration = 10;
+            var d = fadeout_bgs[1].replace(/ /g, '');
+            if(Number(d) || Number(d) == 0){
+              duration = Number(d);
+            }
+            event_command_list.push(getFadeoutBgsEvent(duration));
+          }
           continue;
         }
 
