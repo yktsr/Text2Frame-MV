@@ -10,6 +10,7 @@
 // 1.0.2 2018/09/10 translate REAMDE to eng(Partial).
 // 1.0.1 2018/09/06 bug fix オプションパラメータ重複、CRLFコード対応
 // 1.0.0 2018/09/02 Initial Version
+// 0.5.1 2018/10/28 [draft] refactor pretext, text_frame, command_bottom
 // 0.5.1 2018/10/28 [draft] PlayBGM, FadeoutBGM, SaveBGM, ReplayBGMタグ対応。
 // 0.4.2 2018/09/29 [draft] waitタグ対応、フェードイン、アウトタグ対応。
 // 0.4.1 2018/09/27 [draft] commentタグ対応.
@@ -649,6 +650,42 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       console.error(message);
     }
 
+    const readText = function(folderName, fileName){
+      var input_path = base + "/" + folderName + "/" + fileName;
+      try{
+        return fs.readFileSync(input_path, 'utf8');
+      }catch(e){
+        throw new Error('File not found. / ファイルが見つかりません。\n' + input_path);
+      }
+    };
+
+    const readMapData = function(mapid){
+      try{
+        return JSON.parse(fs.readFileSync(base + '/data/Map' + mapid + ".json", {encoding: 'utf8'}));
+      }catch(e){
+        throw new Error('Map not found. / マップが見つかりません。\n' + "MAP " + mapid);
+      }
+    };
+
+    const readCommonEventData = function(){
+      try{
+        return JSON.parse(fs.readFileSync(base + "/data/CommonEvents.json", 'utf8'));
+      }catch(e){
+        throw new Error('File not found. / ファイルが見つかりません。\n' + "data/CommonEvents.json");
+        console.error(e);
+      }
+    };
+
+    const writeData = function(filepath, jsonData){
+      try{
+        fs.writeFileSync(filepath, JSON.stringify(jsonData), {encoding: 'utf8'});
+      }catch(e){
+        throw new Error('Fail to save / 保存に失敗しました。\n' 
+          + 'ファイルが開いていないか確認してください。\n' + filepath);
+        console.error(e);
+      }
+    }
+
     const getBackground = function(background) {
       switch(background.toUpperCase()){
         case 'WINDOW':
@@ -682,44 +719,18 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       }
     };
 
-    const readText = function(folderName, fileName){
-      var input_path = base + "/" + folderName + "/" + fileName;
-      try{
-        return fs.readFileSync(input_path, 'utf8');
-      }catch(e){
-        throw new Error('File not found. / ファイルが見つかりません。\n' + input_path);
-      }
-    };
+    const getPretextEvent = function(){
+      return {"code": 101, "indent": 0, "parameters": ["", 0, 
+              getBackground(Laurus.Text2Frame.Background), 
+              getWindowPosition(Laurus.Text2Frame.WindowPosition)]}
+    }
 
-    const readMapData = function(mapid){
-      //if(! $dataMapInfos[Number(mapid)]){
-      //  throw new Error('Map not found. / マップが見つかりません。\n' + "MAP" + mapid);
-      //}
-      try{
-        return JSON.parse(fs.readFileSync(base + '/data/Map' + mapid + ".json", {encoding: 'utf8'}));
-      }catch(e){
-        throw new Error('Map not found. / マップが見つかりません。\n' + "MAP " + mapid);
-      }
-    };
+    const getTextFrameEvent = function(text){
+      return {"code": 401, "indent": 0, "parameters": [text]}
+    }
 
-    const readCommonEventData = function(){
-      try{
-        return JSON.parse(fs.readFileSync(base + "/data/CommonEvents.json", 'utf8'));
-      }catch(e){
-        throw new Error('File not found. / ファイルが見つかりません。\n' + "data/CommonEvents.json");
-        console.error(e);
-      }
-    };
-
-    const writeData = function(filepath, jsonData){
-      // write to file
-      try{
-        fs.writeFileSync(filepath, JSON.stringify(jsonData), {encoding: 'utf8'});
-      }catch(e){
-        throw new Error('Fail to save / 保存に失敗しました。\n' 
-          + 'ファイルが開いていないか確認してください。\n' + filepath);
-        console.error(e);
-      }
+    const getCommandBottomEvent = function(){
+      return {"code":0,"indent":0,"parameters":[]};
     }
 
     const getScriptHeadEvent = function(text){
@@ -805,19 +816,10 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       return {"code": 244, "indent": 0, "parameters": []};
     }
 
-    // Text Frame Template
-    const pretext  = {"code": 101, "indent": 0, 
-                      "parameters": ["", 0, 
-                      getBackground(Laurus.Text2Frame.Background), 
-                      getWindowPosition(Laurus.Text2Frame.WindowPosition)]}
-    const textframe_template = {"code": 401, "indent": 0, "parameters": ["今日も一日がんばるぞい！"]}
-    const command_bottom = {"code":0,"indent":0,"parameters":[]};
-
-
     var event_command_list = [];
     var scenario_text = readText(Laurus.Text2Frame.FileFolder,Laurus.Text2Frame.FileName);
     var text_lines = scenario_text.replace(/\r/g,'').split('\n');
-    var frame_param = JSON.parse(JSON.stringify(pretext));
+    var frame_param = getPretextEvent();
     var script_mode = {"mode": false, "body": false};
     var comment_mode = {"mode": false, "body": false};
     printLog("Default", frame_param.parameters);
@@ -1028,7 +1030,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         // Face
         if(face){
           if(!frame_param){
-            var frame_param = JSON.parse(JSON.stringify(pretext));
+            var frame_param = getPretextEvent();
           }
           var actor_number = face[1].match(/(actor\d+)/i);
           var face_number = face[1].match(/actor\d\((.+?)\)/i);
@@ -1052,7 +1054,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         // window backgound
         if(background){
           if(!frame_param){
-            var frame_param = JSON.parse(JSON.stringify(pretext));
+            var frame_param = getPretextEvent();
           }
           try{
             frame_param.parameters[2] = getBackground(background[1]);
@@ -1071,7 +1073,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         // window position
         if(window_position){
           if(!frame_param){
-            var frame_param = JSON.parse(JSON.stringify(pretext));
+            var frame_param = getPretextEvent();
           }
           try{
             frame_param.parameters[3] = getWindowPosition(window_position[1]);
@@ -1096,16 +1098,14 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
             event_command_list.push(frame_param);
             frame_param = null;
           }
-          var copied_template = JSON.parse(JSON.stringify(textframe_template));
-          copied_template.parameters[0] = text;
-          event_command_list.push(copied_template);
+          event_command_list.push(getTextFrameEvent(text));
         }
       }else{
-        var frame_param = JSON.parse(JSON.stringify(pretext));
+        var frame_param = getPretextEvent();
       }
     }
 
-    event_command_list.push(command_bottom);
+    event_command_list.push(getCommandBottomEvent());
 
     switch (command.toUpperCase()) {
       case 'IMPORT_MESSAGE_TO_EVENT' :
