@@ -11,7 +11,7 @@ English README is [here](en).
 
 プラグインコマンドを実行すると、テキストファイルを読み込み、ツクールMVのマップイベントまたはコモンイベントにイベントコマンドとして取り込むことができます。
 
-これによりツクール上でセリフやウインドウの表示方法（表示位置、背景など）の編集をする必要がなくなります。
+これによりツクール上でセリフ、ウインドウの表示方法（表示位置、背景）、BGMの編集などをする必要がなくなります。
 
 最も基本的な使い方は、以下のデモを見てください。
 高度な使い方やプラグインパラメータの詳細は[wiki](https://github.com/yktsr/Text2Frame-MV/wiki)を参照してください。
@@ -28,10 +28,26 @@ English README is [here](en).
 
 ![./basic_sample.gif](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/basic_sample.gif)
 
+### 機能の一例
+#### 顔の指定 <顔: 顔の指定>
+ウインドウに表示される顔を指定することができます。
+
+![./introduce_Face.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Face.png)
+
+#### 背景の変更 <背景: 背景の指定>
+ウインドウの背景を変更することができます。
+
+![./introduce_Background.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Background.png)
+
+#### 位置の変更 <位置: 位置の指定>
+ウインドウの位置を変更することができます。
+
+![./introduce_WindowPosition.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_WindowPosition.png)
+
+
 ## 特徴
-### タグを使ったウインドウの変更
-文章の先頭にメタタグを挿入すると、その文章の塊に限りウインドウの状態を変更することができます。
-詳細は[wikiの文法ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E6%96%87%E6%B3%95)を参照してください。
+タグの詳細は[wikiの文法ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E6%96%87%E6%B3%95)や
+[wikiの動作確認サンプルページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E5%8B%95%E4%BD%9C%E7%A2%BA%E8%AA%8D%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB)を参照してください。
 
 ### 利用できるタグ一覧
 |タグ|省略形|効果|
@@ -51,23 +67,9 @@ English README is [here](en).
 |&lt;BGMの保存>|&lt;SaveBGM>|BGMの保存イベントを挿入する|
 |&lt;BGMの再開>|&lt;ReplayBGM>|BGMの再開イベントを挿入する|
 
-#### 顔の指定 <顔: 顔の指定>
-ウインドウに表示される顔を指定することができます。
-
-![./introduce_Face.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Face.png)
-
-#### 背景の変更 <背景: 背景の指定>
-ウインドウの背景を変更することができます。
-
-![./introduce_Background.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Background.png)
-
-#### 位置の変更 <位置: 位置の指定>
-ウインドウの位置を変更することができます。
-
-![./introduce_WindowPosition.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_WindowPosition.png)
-
+## その他の機能
 ### コメントアウト
-文章の先頭に「%」を記載すると、それはコメントと見なされ、取り込まれません。
+取り込みたい文章の行の先頭に「%」を記載すると、それはコメントと見なされ、取り込まれません。
 このコメントアウト記号はプラグインパラメータで変更することができます。
 動作例は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%82%B3%E3%83%A1%E3%83%B3%E3%83%88%E3%82%A2%E3%82%A6%E3%83%88%E3%81%AE%E5%8B%95%E4%BD%9C%E4%BE%8B)を参照してください。
 
@@ -79,9 +81,6 @@ English README is [here](en).
 読み込みたいファイルが複数あるときやファイルごとに異なるオプションを適用したいときなどに、プラグインコマンド引数を使うことでより高度な制御が行えます。
 
 詳細は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E5%BC%95%E6%95%B0)を参照してください。
-
-
-
 
 ## 導入方法
 1. [ここ](https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Text2Frame.js)からプラグイン本体をダウンロードします。
