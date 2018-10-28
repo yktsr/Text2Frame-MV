@@ -10,7 +10,8 @@
 // 1.0.2 2018/09/10 translate REAMDE to eng(Partial).
 // 1.0.1 2018/09/06 bug fix オプションパラメータ重複、CRLFコード対応
 // 1.0.0 2018/09/02 Initial Version
-// 0.4.2 2018/09/29 [draft] waitタグ対応、フェードイン、アウトタグ対応.
+// 0.5.1 2018/10/28 [draft] PlayBGM, FadeoutBGM, SaveBGM, ReplayBGMタグ対応。
+// 0.4.2 2018/09/29 [draft] waitタグ対応、フェードイン、アウトタグ対応。
 // 0.4.1 2018/09/27 [draft] commentタグ対応.
 // 0.4.0 2018/09/24 [draft] scriptタグ対応、Plugin Command対応、Common Event対応.
 // 0.3.3 2018/08/28 コメントアウト記号の前、行頭に任意個の空白を認めるように変更
@@ -767,6 +768,43 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
     const getFadeoutEvent = function(){
       return {"code": 221, "indent": 0, "parameters": [""]};
     }
+
+    const getPlayBgmEvent = function(name, volume, pitch, pan){
+      var param_volume = 90;
+      var param_pitch = 100;
+      var param_pan = 0;
+
+      if(typeof(volume) == "number"){
+        param_volume = volume;
+      }
+
+      if(typeof(pitch) == "number"){
+        param_pitch = pitch;
+      }
+
+      if(typeof(pan) == "number"){
+        param_pan = pan;
+      }
+
+      return {"code": 241, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
+    }
+
+    const getFadeoutBgmEvent = function(duration){
+      var param_duration = 10;
+      if(typeof(duration) == "number"){
+        param_duration = duration;
+      }
+      return {"code": 242, "indent": 0, "parameters": [param_duration]};
+    }
+
+    const getSaveBgmEvent = function(){
+      return {"code": 243, "indent": 0, "parameters": []};
+    }
+
+    const getReplayBgmEvent = function(){
+      return {"code": 244, "indent": 0, "parameters": []};
+    }
+
     // Text Frame Template
     const pretext  = {"code": 101, "indent": 0, 
                       "parameters": ["", 0, 
@@ -878,6 +916,14 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         var fadeout = text.match(/<fadeout>/i)
           || text.match(/<FO>/i)
           || text.match(/<フェードアウト>/i);
+        var play_bgm = text.match(/<playbgm *: *([^ ].+)>/i)
+          || text.match(/<BGMの演奏 *: *([^ ].+)>/);
+        var fadeout_bgm = text.match(/<fadeoutbgm *: *(.+?)>/i)
+          || text.match(/<BGMのフェードアウト *: *(.+?)>/);
+        var save_bgm = text.match(/<savebgm>/i)
+          || text.match(/<BGMの保存>/);
+        var replay_bgm = text.match(/<replaybgm>/i)
+          || text.match(/<BGMの再開>/);
 
         if(frame_param){
           printLog("  ", frame_param.parameters);
@@ -926,6 +972,56 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         // Fadeout
         if(fadeout){
           event_command_list.push(getFadeoutEvent());
+          continue;
+        }
+
+        // Play BGM
+        if(play_bgm){
+          if(play_bgm[1]){
+            var params = play_bgm[1].replace(/ /g, '').split(',');
+            var name = "Battle1";
+            var volume = 90;
+            var pitch = 100;
+            var pan = 0;
+            if(params[0]){
+              name = params[0];
+            }
+            if(Number(params[1]) || Number(params[1]) == 0){
+              volume = Number(params[1]);
+            }
+            if(Number(params[2]) || Number(params[2]) == 0){
+              pitch = Number(params[2]);
+            }
+            if(Number(params[3]) || Number(params[3]) == 0){
+              pan = Number(params[3]);
+            }
+            event_command_list.push(getPlayBgmEvent(name, volume, pitch, pan));
+          }
+          continue;
+        }
+
+        // Fadeout BGM
+        if(fadeout_bgm){
+          if(fadeout_bgm[1]){
+            var duration = 10;
+            var d = fadeout_bgm[1].replace(/ /g, '');
+            if(Number(d) || Number(d) == 0){
+              duration = Number(d);
+            }
+            event_command_list.push(getFadeoutBgmEvent(duration));
+          }
+          continue;
+        }
+
+        // Save BGM
+        if(save_bgm){
+          event_command_list.push(getSaveBgmEvent());
+          continue;
+        }
+
+        // Replay BGM
+        if(replay_bgm){
+          event_command_list.push(getReplayBgmEvent());
           continue;
         }
 

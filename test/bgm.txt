@@ -1,0 +1,11 @@
+<PlayBGM : Battle1, 91, 99, 1>
+<FadeoutBGM : 5>
+
+<BGMの演奏 : Battle2, 91, 99, 1>
+<BGMのフェードアウト : 20>
+
+<saveBGM>
+<BGMの保存>
+
+<replaybgm>
+<BGMの再開>
