@@ -10,6 +10,7 @@
 // 1.0.2 2018/09/10 translate REAMDE to eng(Partial)
 // 1.0.1 2018/09/06 bug fix オプションパラメータ重複、CRLFコード対応
 // 1.0.0 2018/09/02 Initial Version
+// 0.5.4 2018/10/28 [draft] ChangeBattleBGMタグ対応
 // 0.5.3 2018/10/28 [draft] PlayBGS, FadeoutBGSタグ対応
 // 0.5.2 2018/10/28 [draft] refactor pretext, text_frame, command_bottom
 // 0.5.1 2018/10/28 [draft] PlayBGM, FadeoutBGM, SaveBGM, ReplayBGMタグ対応
@@ -817,6 +818,26 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       return {"code": 244, "indent": 0, "parameters": []};
     }
 
+    const getChangeBattleBgmEvent = function(name, volume, pitch, pan){
+      var param_volume = 90;
+      var param_pitch = 100;
+      var param_pan = 0;
+
+      if(typeof(volume) == "number"){
+        param_volume = volume;
+      }
+
+      if(typeof(pitch) == "number"){
+        param_pitch = pitch;
+      }
+
+      if(typeof(pan) == "number"){
+        param_pan = pan;
+      }
+
+      return {"code": 132, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
+    }
+
     const getPlayBgsEvent = function(name, volume, pitch, pan){
       var param_volume = 90;
       var param_pitch = 100;
@@ -955,6 +976,8 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           || text.match(/<BGMの保存>/);
         var replay_bgm = text.match(/<replaybgm>/i)
           || text.match(/<BGMの再開>/);
+        var change_battle_bgm = text.match(/<changebattlebgm *: *([^ ].+)>/i)
+          || text.match(/<戦闘曲の変更 *: *([^ ].+)>/);
         var play_bgs = text.match(/<playbgs *: *([^ ].+)>/i)
           || text.match(/<BGSの演奏 *: *([^ ].+)>/);
         var fadeout_bgs = text.match(/<fadeoutbgs *: *(.+?)>/i)
@@ -1057,6 +1080,31 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         // Replay BGM
         if(replay_bgm){
           event_command_list.push(getReplayBgmEvent());
+          continue;
+        }
+
+        // Change Battle BGM
+        if(change_battle_bgm){
+          if(change_battle_bgm[1]){
+            var params = change_battle_bgm[1].replace(/ /g, '').split(',');
+            var name = "Battle1";
+            var volume = 90;
+            var pitch = 100;
+            var pan = 0;
+            if(params[0]){
+              name = params[0];
+            }
+            if(Number(params[1]) || Number(params[1]) == 0){
+              volume = Number(params[1]);
+            }
+            if(Number(params[2]) || Number(params[2]) == 0){
+              pitch = Number(params[2]);
+            }
+            if(Number(params[3]) || Number(params[3]) == 0){
+              pan = Number(params[3]);
+            }
+            event_command_list.push(getChangeBattleBgmEvent(name, volume, pitch, pan));
+          }
           continue;
         }
 

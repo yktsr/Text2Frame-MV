@@ -9,3 +9,6 @@
 
 <replaybgm>
 <BGMの再開>
+
+<ChangeBattleBGM : Battle2, 91, 99, 1>
+<戦闘曲の変更 : Battle1>
