@@ -10,6 +10,7 @@
 // 1.0.2 2018/09/10 translate REAMDE to eng(Partial)
 // 1.0.1 2018/09/06 bug fix オプションパラメータ重複、CRLFコード対応
 // 1.0.0 2018/09/02 Initial Version
+// 0.5.5 2018/11/18 [draft] PlaySE、StopSEタグ対応
 // 0.5.4 2018/10/28 [draft] ChangeBattleBGMタグ対応
 // 0.5.3 2018/10/28 [draft] PlayBGS, FadeoutBGSタグ対応
 // 0.5.2 2018/10/28 [draft] refactor pretext, text_frame, command_bottom
@@ -866,6 +867,29 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       return {"code": 246, "indent": 0, "parameters": [param_duration]};
     }
 
+    const getPlaySeEvent = function(name, volume, pitch, pan){
+      var param_volume = 90;
+      var param_pitch = 100;
+      var param_pan = 0;
+
+      if(typeof(volume) == "number"){
+        param_volume = volume;
+      }
+
+      if(typeof(pitch) == "number"){
+        param_pitch = pitch;
+      }
+
+      if(typeof(pan) == "number"){
+        param_pan = pan;
+      }
+
+      return {"code": 250, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
+    }
+    const getStopSeEvent = function(){
+      return {"code": 251, "indent": 0, "parameters": [""]};
+    }
+
     var event_command_list = [];
     var scenario_text = readText(Laurus.Text2Frame.FileFolder,Laurus.Text2Frame.FileName);
     var text_lines = scenario_text.replace(/\r/g,'').split('\n');
@@ -982,6 +1006,10 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           || text.match(/<BGSの演奏 *: *([^ ].+)>/);
         var fadeout_bgs = text.match(/<fadeoutbgs *: *(.+?)>/i)
           || text.match(/<BGSのフェードアウト *: *(.+?)>/);
+        var play_se = text.match(/<playse *: *([^ ].+)>/i)
+          || text.match(/<SEの演奏 *: *([^ ].+)>/);
+        var stop_se = text.match(/<stopse>/i)
+          || text.match(/<SEの停止>/);
 
         if(frame_param){
           printLog("  ", frame_param.parameters);
@@ -1143,6 +1171,37 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
             }
             event_command_list.push(getFadeoutBgsEvent(duration));
           }
+          continue;
+        }
+
+        // Play SE
+        if(play_se){
+          if(play_se[1]){
+            var params = play_se[1].replace(/ /g, '').split(',');
+            var name = "Attack1";
+            var volume = 90;
+            var pitch = 100;
+            var pan = 0;
+            if(params[0]){
+              name = params[0];
+            }
+            if(Number(params[1]) || Number(params[1]) == 0){
+              volume = Number(params[1]);
+            }
+            if(Number(params[2]) || Number(params[2]) == 0){
+              pitch = Number(params[2]);
+            }
+            if(Number(params[3]) || Number(params[3]) == 0){
+              pan = Number(params[3]);
+            }
+            event_command_list.push(getPlaySeEvent(name, volume, pitch, pan));
+          }
+          continue;
+        }
+
+        // Fadeout
+        if(stop_se){
+          event_command_list.push(getStopSeEvent());
           continue;
         }
 
