@@ -66,9 +66,11 @@ English README is [here](en).
 |&lt;BGMのフェードアウト : 20>|&lt;FadeoutBGM : 20>|BGMのフェードアウトイベントを挿入する。引数はフェードアウトする秒数である。引数は省略できる|
 |&lt;BGMの保存>|&lt;SaveBGM>|BGMの保存イベントを挿入する|
 |&lt;BGMの再開>|&lt;ReplayBGM>|BGMの再開イベントを挿入する|
+|&lt;BGMの停止>|&lt;StopBGM>|BGMの停止イベントを挿入する|
 |&lt;戦闘曲の変更>|&lt;ChangeBattleBGM>|戦闘曲を変更する|
 |&lt;BGSの演奏 : Battle2, 90, 100, 0>|&lt;PlayBGS : City, 90, 100, 0>|BGSの再生イベントを挿入する。引数は順に、曲名、音量90、ピッチ100、位相0で組み込まれる。音量、ピッチ、位相は省略できる|
 |&lt;BGSのフェードアウト : 20>|&lt;FadeoutBGS : 20>|BGSのフェードアウトイベントを挿入する。引数はフェードアウトする秒数である。引数は省略できる|
+|&lt;BGSの停止>|&lt;StopBGS>|BGSの停止イベントを挿入する|
 |&lt;SEの演奏 : Attack1, 90, 100, 0>|&lt;PlaySE : Attack1, 90, 100, 0>|SEの再生イベントを挿入する。引数は順に、曲名、音量90、ピッチ100、位相0で組み込まれる。音量、ピッチ、位相は省略できる|
 |&lt;SEの停止>|&lt;StopSE>|SEの停止イベントを挿入する|
 
