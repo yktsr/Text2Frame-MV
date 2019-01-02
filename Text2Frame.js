@@ -1,11 +1,12 @@
 //=============================================================================
 // Text2Frame.js
 // ----------------------------------------------------------------------------
-// (C)2018 Yuki Katsura
+// (C)2018-2019 Yuki Katsura
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.2 2019/01/03 PlayME, StopMEタグ追加
 // 1.1.1 2019/01/02 StopBGM, StopBGSタグ追加
 // 1.1.0 2018/10/15 script,wait,fadein,fadeout,comment,PluginCommand,CommonEventタグ追加
 // 1.0.2 2018/09/10 translate REAMDE to eng(Partial)
@@ -931,6 +932,46 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       return {"code": 251, "indent": 0, "parameters": [""]};
     }
 
+    const getPlayMeEvent = function(name, volume, pitch, pan){
+      var param_volume = 90;
+      var param_pitch = 100;
+      var param_pan = 0;
+
+      if(typeof(volume) == "number"){
+        param_volume = volume;
+      }
+
+      if(typeof(pitch) == "number"){
+        param_pitch = pitch;
+      }
+
+      if(typeof(pan) == "number"){
+        param_pan = pan;
+      }
+
+      return {"code": 249, "indent": 0, "parameters": [{"name": name, "volume": param_volume, "pitch": param_pitch, "pan": param_pan}]};
+    }
+
+    const getStopMeEvent = function(volume, pitch, pan){
+      var param_volume = 90;
+      var param_pitch = 100;
+      var param_pan = 0;
+
+      if(typeof(volume) == "number"){
+        param_volume = volume;
+      }
+
+      if(typeof(pitch) == "number"){
+        param_pitch = pitch;
+      }
+
+      if(typeof(pan) == "number"){
+        param_pan = pan;
+      }
+
+      return {"code": 249, "indent": 0, "parameters": [{"name": "", "volume": param_volume, "pitch": param_pitch, "pan": param_pan}]};
+    }
+
     var event_command_list = [];
     var scenario_text = readText(Laurus.Text2Frame.FileFolder,Laurus.Text2Frame.FileName);
     var text_lines = scenario_text.replace(/\r/g,'').split('\n');
@@ -1057,6 +1098,11 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           || text.match(/<SEの演奏 *: *([^ ].+)>/);
         var stop_se = text.match(/<stopse>/i)
           || text.match(/<SEの停止>/);
+        var play_me = text.match(/<playme *: *([^ ].+)>/i)
+          || text.match(/<MEの演奏 *: *([^ ].+)>/);
+        var stop_me = text.match(/<stopme>/i)
+          || text.match(/<playme *: *none>/i)
+          || text.match(/<MEの停止>/);
 
         if(frame_param){
           printLog("  ", frame_param.parameters);
@@ -1258,9 +1304,40 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           continue;
         }
 
-        // Fadeout
+        // Stop SE
         if(stop_se){
           event_command_list.push(getStopSeEvent());
+          continue;
+        }
+
+        // Stop ME
+        if(stop_me){
+          event_command_list.push(getStopMeEvent(volume, pitch, pan));
+          continue;
+        }
+
+        // Play ME
+        if(play_me){
+          if(play_me[1]){
+            var params = play_me[1].replace(/ /g, '').split(',');
+            var name = "Curse1";
+            var volume = 90;
+            var pitch = 100;
+            var pan = 0;
+            if(params[0]){
+              name = params[0];
+            }
+            if(Number(params[1]) || Number(params[1]) == 0){
+              volume = Number(params[1]);
+            }
+            if(Number(params[2]) || Number(params[2]) == 0){
+              pitch = Number(params[2]);
+            }
+            if(Number(params[3]) || Number(params[3]) == 0){
+              pan = Number(params[3]);
+            }
+            event_command_list.push(getPlayMeEvent(name, volume, pitch, pan));
+          }
           continue;
         }
 
