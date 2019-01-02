@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.1 2019/01/02 StopBGM, StopBGSタグ追加
 // 1.1.0 2018/10/15 script,wait,fadein,fadeout,comment,PluginCommand,CommonEventタグ追加
 // 1.0.2 2018/09/10 translate REAMDE to eng(Partial)
 // 1.0.1 2018/09/06 bug fix オプションパラメータ重複、CRLFコード対応
@@ -803,6 +804,26 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       return {"code": 241, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
     }
 
+    const getStopBgmEvent = function(volume, pitch, pan){
+      var param_volume = 90;
+      var param_pitch = 100;
+      var param_pan = 0;
+
+      if(typeof(volume) == "number"){
+        param_volume = volume;
+      }
+
+      if(typeof(pitch) == "number"){
+        param_pitch = pitch;
+      }
+
+      if(typeof(pan) == "number"){
+        param_pan = pan;
+      }
+
+      return {"code": 241, "indent": 0, "parameters": [{"name": "", "volume": param_volume, "pitch": param_pitch, "pan": param_pan}]};
+    }
+
     const getFadeoutBgmEvent = function(duration){
       var param_duration = 10;
       if(typeof(duration) == "number"){
@@ -857,6 +878,26 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       }
 
       return {"code": 245, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
+    }
+
+    const getStopBgsEvent = function(volume, pitch, pan){
+      var param_volume = 90;
+      var param_pitch = 100;
+      var param_pan = 0;
+
+      if(typeof(volume) == "number"){
+        param_volume = volume;
+      }
+
+      if(typeof(pitch) == "number"){
+        param_pitch = pitch;
+      }
+
+      if(typeof(pan) == "number"){
+        param_pan = pan;
+      }
+
+      return {"code": 245, "indent": 0, "parameters": [{"name": "", "volume": param_volume, "pitch": param_pitch, "pan": param_pan}]};
     }
 
     const getFadeoutBgsEvent = function(duration){
@@ -994,6 +1035,9 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           || text.match(/<フェードアウト>/i);
         var play_bgm = text.match(/<playbgm *: *([^ ].+)>/i)
           || text.match(/<BGMの演奏 *: *([^ ].+)>/);
+        var stop_bgm = text.match(/<stopbgm>/i)
+          || text.match(/<playbgm *: *none>/i)
+          || text.match(/<BGMの停止>/);
         var fadeout_bgm = text.match(/<fadeoutbgm *: *(.+?)>/i)
           || text.match(/<BGMのフェードアウト *: *(.+?)>/);
         var save_bgm = text.match(/<savebgm>/i)
@@ -1004,6 +1048,9 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           || text.match(/<戦闘曲の変更 *: *([^ ].+)>/);
         var play_bgs = text.match(/<playbgs *: *([^ ].+)>/i)
           || text.match(/<BGSの演奏 *: *([^ ].+)>/);
+        var stop_bgs = text.match(/<stopbgs>/i)
+          || text.match(/<playbgs *: *none>/i)
+          || text.match(/<BGSの停止>/);
         var fadeout_bgs = text.match(/<fadeoutbgs *: *(.+?)>/i)
           || text.match(/<BGSのフェードアウト *: *(.+?)>/);
         var play_se = text.match(/<playse *: *([^ ].+)>/i)
@@ -1058,6 +1105,12 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         // Fadeout
         if(fadeout){
           event_command_list.push(getFadeoutEvent());
+          continue;
+        }
+
+        // Stop BGM
+        if(stop_bgm){
+          event_command_list.push(getStopBgmEvent(volume, pitch, pan));
           continue;
         }
 
@@ -1133,6 +1186,12 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
             }
             event_command_list.push(getChangeBattleBgmEvent(name, volume, pitch, pan));
           }
+          continue;
+        }
+
+        // Stop BGS
+        if(stop_bgs){
+          event_command_list.push(getStopBgsEvent(volume, pitch, pan));
           continue;
         }
 
