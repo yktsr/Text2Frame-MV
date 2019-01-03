@@ -1404,7 +1404,11 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
             if(Number(params[3]) || Number(params[3]) == 0){
               pan = Number(params[3]);
             }
-            event_command_list.push(getChangeBattleBgmEvent(name, volume, pitch, pan));
+            if(name.toUpperCase() === "NONE" || name === "なし"){
+              event_command_list.push(getChangeBattleBgmEvent("", volume, pitch, pan));
+            }else{
+              event_command_list.push(getChangeBattleBgmEvent(name, volume, pitch, pan));
+            }
           }
           continue;
         }
