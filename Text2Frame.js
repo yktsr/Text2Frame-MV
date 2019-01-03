@@ -1249,6 +1249,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           || text.match(/<BGMの演奏 *: *([^ ].+)>/);
         var stop_bgm = text.match(/<stopbgm>/i)
           || text.match(/<playbgm *: *none>/i)
+          || text.match(/<playbgm *: *なし>/i)
           || text.match(/<BGMの停止>/);
         var fadeout_bgm = text.match(/<fadeoutbgm *: *(.+?)>/i)
           || text.match(/<BGMのフェードアウト *: *(.+?)>/);
@@ -1262,6 +1263,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           || text.match(/<BGSの演奏 *: *([^ ].+)>/);
         var stop_bgs = text.match(/<stopbgs>/i)
           || text.match(/<playbgs *: *none>/i)
+          || text.match(/<playbgs *: *なし>/i)
           || text.match(/<BGSの停止>/);
         var fadeout_bgs = text.match(/<fadeoutbgs *: *(.+?)>/i)
           || text.match(/<BGSのフェードアウト *: *(.+?)>/);
@@ -1273,6 +1275,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           || text.match(/<MEの演奏 *: *([^ ].+)>/);
         var stop_me = text.match(/<stopme>/i)
           || text.match(/<playme *: *none>/i)
+          || text.match(/<playme *: *なし>/i)
           || text.match(/<MEの停止>/);
 
         if(frame_param){
