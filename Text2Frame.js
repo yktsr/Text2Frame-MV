@@ -977,23 +977,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
     }
 
     const getStopBgmEvent = function(volume, pitch, pan){
-      var param_volume = 90;
-      var param_pitch = 100;
-      var param_pan = 0;
-
-      if(typeof(volume) == "number"){
-        param_volume = volume;
-      }
-
-      if(typeof(pitch) == "number"){
-        param_pitch = pitch;
-      }
-
-      if(typeof(pan) == "number"){
-        param_pan = pan;
-      }
-
-      return {"code": 241, "indent": 0, "parameters": [{"name": "", "volume": param_volume, "pitch": param_pitch, "pan": param_pan}]};
+      return getPlayBgmEvent("", volume, pitch, pan);
     }
 
     const getFadeoutBgmEvent = function(duration){
@@ -1053,23 +1037,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
     }
 
     const getStopBgsEvent = function(volume, pitch, pan){
-      var param_volume = 90;
-      var param_pitch = 100;
-      var param_pan = 0;
-
-      if(typeof(volume) == "number"){
-        param_volume = volume;
-      }
-
-      if(typeof(pitch) == "number"){
-        param_pitch = pitch;
-      }
-
-      if(typeof(pan) == "number"){
-        param_pan = pan;
-      }
-
-      return {"code": 245, "indent": 0, "parameters": [{"name": "", "volume": param_volume, "pitch": param_pitch, "pan": param_pan}]};
+      return getPlayBgsEvent("", volume, pitch, pan);
     }
 
     const getFadeoutBgsEvent = function(duration){
@@ -1124,23 +1092,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
     }
 
     const getStopMeEvent = function(volume, pitch, pan){
-      var param_volume = 90;
-      var param_pitch = 100;
-      var param_pan = 0;
-
-      if(typeof(volume) == "number"){
-        param_volume = volume;
-      }
-
-      if(typeof(pitch) == "number"){
-        param_pitch = pitch;
-      }
-
-      if(typeof(pan) == "number"){
-        param_pan = pan;
-      }
-
-      return {"code": 249, "indent": 0, "parameters": [{"name": "", "volume": param_volume, "pitch": param_pitch, "pan": param_pan}]};
+      return getPlayMeEvent("", volume, pitch, pan);
     }
 
     var event_command_list = [];
@@ -1354,7 +1306,11 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
             if(Number(params[3]) || Number(params[3]) == 0){
               pan = Number(params[3]);
             }
-            event_command_list.push(getPlayBgmEvent(name, volume, pitch, pan));
+            if(name.toUpperCase() === "NONE" || name === "なし"){
+              event_command_list.push(getPlayBgmEvent("", volume, pitch, pan));
+            }else{
+              event_command_list.push(getPlayBgmEvent(name, volume, pitch, pan));
+            }
           }
           continue;
         }
@@ -1423,7 +1379,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         if(play_bgs){
           if(play_bgs[1]){
             var params = play_bgs[1].replace(/ /g, '').split(',');
-            var name = "Battle1";
+            var name = "City";
             var volume = 90;
             var pitch = 100;
             var pan = 0;
@@ -1439,7 +1395,11 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
             if(Number(params[3]) || Number(params[3]) == 0){
               pan = Number(params[3]);
             }
-            event_command_list.push(getPlayBgsEvent(name, volume, pitch, pan));
+            if(name.toUpperCase() === "NONE" || name === "なし"){
+              event_command_list.push(getPlayBgsEvent("", volume, pitch, pan));
+            }else{
+              event_command_list.push(getPlayBgsEvent(name, volume, pitch, pan));
+            }
           }
           continue;
         }
@@ -1518,7 +1478,11 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
             if(Number(params[3]) || Number(params[3]) == 0){
               pan = Number(params[3]);
             }
-            event_command_list.push(getPlayMeEvent(name, volume, pitch, pan));
+            if(name.toUpperCase() === "NONE" || name === "なし"){
+              event_command_list.push(getPlayMeEvent("", volume, pitch, pan));
+            }else{
+              event_command_list.push(getPlayMeEvent(name, volume, pitch, pan));
+            }
           }
           continue;
         }
