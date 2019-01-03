@@ -11,6 +11,7 @@
 <BGMの再開>
 
 <PlayBGM : None>
+<PlayBGM: なし>
 <StopBGM>
 <BGMの停止>
 
@@ -21,6 +22,7 @@
 <BGSのフェードアウト : 20>
 
 <PlayBGS: None>
+<PlayBGS: なし>
 <StopBGS>
 <BGSの停止>
 
@@ -34,8 +36,11 @@
 <MEの演奏 : Curse1>
 
 <PlayME: None>
+<PlayME: なし>
 <StopME>
 <MEの停止>
 
 <ChangeBattleBGM : Battle2, 91, 99, 1>
 <戦闘曲の変更 : Battle1>
+<ChangeBattleBGM: None>
+<ChangeBattleBGM: なし>
