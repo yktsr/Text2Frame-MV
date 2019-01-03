@@ -1330,7 +1330,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
 
         // Stop BGM
         if(stop_bgm){
-          event_command_list.push(getStopBgmEvent(volume, pitch, pan));
+          event_command_list.push(getStopBgmEvent(90, 100, 0));
           continue;
         }
 
@@ -1411,7 +1411,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
 
         // Stop BGS
         if(stop_bgs){
-          event_command_list.push(getStopBgsEvent(volume, pitch, pan));
+          event_command_list.push(getStopBgsEvent(90, 100, 0));
           continue;
         }
 
@@ -1486,7 +1486,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
 
         // Stop ME
         if(stop_me){
-          event_command_list.push(getStopMeEvent(volume, pitch, pan));
+          event_command_list.push(getStopMeEvent(90, 100, 0));
           continue;
         }
 
