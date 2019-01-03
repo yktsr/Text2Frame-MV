@@ -29,6 +29,8 @@
 <PlaySE: Attack1, 91, 99, 1>
 <SEの演奏 : Attack1>
 
+<PlaySE: None>
+<PlaySE: なし>
 <StopSE>
 <SEの停止>
 
