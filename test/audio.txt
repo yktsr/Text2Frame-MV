@@ -13,6 +13,8 @@
 <PlayBGM : None>
 <PlayBGM : None, 91, 99, 1>
 <PlayBGM: なし>
+<BGMの演奏: None>
+<BGMの演奏: なし>
 <StopBGM>
 <BGMの停止>
 
@@ -25,6 +27,8 @@
 <PlayBGS: None>
 <PlayBGS : None, 91, 99, 1>
 <PlayBGS: なし>
+<BGSの演奏: None>
+<BGSの演奏: なし>
 <StopBGS>
 <BGSの停止>
 
@@ -50,3 +54,5 @@
 <戦闘曲の変更 : Battle1>
 <ChangeBattleBGM: None>
 <ChangeBattleBGM: なし>
+<戦闘曲の変更: None>
+<戦闘曲の変更: なし>
