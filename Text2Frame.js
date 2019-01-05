@@ -1,18 +1,25 @@
 //=============================================================================
 // Text2Frame.js
 // ----------------------------------------------------------------------------
-// (C)2018 Yuki Katsura
+// (C)2018-2019 Yuki Katsura
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 1.1.0 2018/10/15 script,wait,fadein,fadeout,comment,PluginCommand,CommonEventタグ追加.
-// 1.0.2 2018/09/10 translate REAMDE to eng(Partial).
+// 1.1.2 2019/01/03 PlayME, StopMEタグ追加
+// 1.1.1 2019/01/02 StopBGM, StopBGSタグ追加
+// 1.1.0 2018/10/15 script,wait,fadein,fadeout,comment,PluginCommand,CommonEventタグ追加
+// 1.0.2 2018/09/10 translate REAMDE to eng(Partial)
 // 1.0.1 2018/09/06 bug fix オプションパラメータ重複、CRLFコード対応
 // 1.0.0 2018/09/02 Initial Version
-// 0.4.2 2018/09/29 [draft] waitタグ対応、フェードイン、アウトタグ対応.
-// 0.4.1 2018/09/27 [draft] commentタグ対応.
-// 0.4.0 2018/09/24 [draft] scriptタグ対応、Plugin Command対応、Common Event対応.
+// 0.5.5 2018/11/18 [draft] PlaySE、StopSEタグ対応
+// 0.5.4 2018/10/28 [draft] ChangeBattleBGMタグ対応
+// 0.5.3 2018/10/28 [draft] PlayBGS, FadeoutBGSタグ対応
+// 0.5.2 2018/10/28 [draft] refactor pretext, text_frame, command_bottom
+// 0.5.1 2018/10/28 [draft] PlayBGM, FadeoutBGM, SaveBGM, ReplayBGMタグ対応
+// 0.4.2 2018/09/29 [draft] waitタグ対応、フェードイン、アウトタグ対応
+// 0.4.1 2018/09/27 [draft] commentタグ対応
+// 0.4.0 2018/09/24 [draft] scriptタグ対応、Plugin Command対応、Common Event対応
 // 0.3.3 2018/08/28 コメントアウト記号の前、行頭に任意個の空白を認めるように変更
 // 0.3.2 2018/08/28 MapIDをIntegerへ変更
 // 0.3.1 2018/08/27 CE書き出し追加
@@ -192,9 +199,9 @@
  * テストプレイおよびイベントテスト（イベントエディタ上で右クリック→テスト）
  * から実行することを想定しています。
  *
- * また、追加機能としてスクリプトコマンドやプラグインコマンドも組み込むことが
- * できます。追加機能の詳細はこのREADMEの下部に記載していますので、そちらをご
- * 覧ください
+ * また、追加機能としてフェードインやBGM再生等のイベントコマンドも組み込むこ
+ * とができます。追加機能の詳細はこのREADMEの下部に記載していますので、そちら
+ * をご覧ください
  *
  * --------------------------------------
  * 実行方法
@@ -391,14 +398,23 @@
  * --------------------------------------
  * メッセージだけでなく、指定の記法を用いることでいくつかのイベントコマンドを
  * 組み込むこともできます。
- * 現状対応しているコマンドは
+ * 現状対応しているコマンドは以下のとおりです。
  * - スクリプト
  * - プラグインコマンド
  * - 注釈
  * - ウェイト
  * - フェードアウト
  * - フェードイン
- * の6つです。
+ * - BGMの演奏
+ * - BGMのフェードアウト
+ * - BGMの保存
+ * - BGMの再開
+ * - BGSの演奏
+ * - BGSのフェードアウト
+ * - MEの演奏
+ * - SEの演奏
+ * - SEの停止
+ *
  * ○「スクリプト」の組み込み方法
  *  スクリプトのイベントコマンドは、以下のように<script>と</script>で挟み込む
  *  記法で指定します。
@@ -465,6 +481,136 @@
  *  <FI>
  *  <フェードイン>
  *
+ * ○ BGMの演奏の組み込み方法
+ *  BGMの演奏は、以下のいずれかの方法で指定します。
+ *  <PlayBGM: ファイル名, 音量, ピッチ, 位相>
+ *  <BGMの演奏: ファイル名, 音量, ピッチ, 位相>
+ *
+ *  必須の引数はファイル名のみです。音量・ピッチ・位相は任意で指定します。
+ *  指定しない場合は音量は90, ピッチは100, 位相は0として組み込まれます。
+ *
+ *  例1: Castle1をデフォルト設定で組み込む
+ *   <PlayBGM: Castle1>
+ *  例2: Castle2を音量50, ピッチ80, 位相30で組み込む
+ *   <PlayBGM: Castle2, 50, 80, 30>
+ *
+ *  BGMを「なし」に設定したい場合は以下のいずれかの方法で指定してください。
+ *  <PlayBGM: None>
+ *  <PlayBGM: なし>
+ *  <StopBGM>
+ *
+ *  本プラグインを使用する場合は、「None」「なし」というファイル名のBGMは
+ *  ご利用できないことにご注意ください。
+ *
+ * ○ BGMのフェードアウトの組み込み方法
+ *  BGMのフェードアウトは以下のいずれかの方法で組み込みます。
+ *  <FadeoutBGM: 時間(秒)>
+ *  <BGMのフェードアウト: 時間(秒)>
+ *
+ *  例えば、以下のように記述すると3秒でBGMがフェードアウトします。
+ *  <FadeoutBGM: 3>
+ *
+ * ○ BGMの保存の組み込み方法
+ *  BGMの保存は以下のいずれかの方法で組み込みます。
+ *  <SaveBGM>
+ *  <BGMの保存>
+ *
+ * ○ BGMの再開
+ *  BGMの再開は以下のいずれかの方法で組み込みます。
+ *  <ReplayBGM>
+ *  <BGMの再開>
+ *
+ * ○ BGSの演奏の組み込み方法
+ *  BGSの演奏は、以下のいずれかの方法で指定します。
+ *  <PlayBGS: ファイル名, 音量, ピッチ, 位相>
+ *  <BGSの演奏: ファイル名, 音量, ピッチ, 位相>
+ *
+ *  必須の引数はファイル名のみです。音量・ピッチ・位相は任意で指定します。
+ *  指定しない場合は音量は90, ピッチは100, 位相は0として組み込まれます。
+ *
+ *  例1: Cityをデフォルト設定で組み込む
+ *   <PlayBGS: City>
+ *  例2: Darknessを音量50, ピッチ80, 位相30で組み込む
+ *   <PlayBGS: Darkness, 50, 80, 30>
+ *
+ *  BGSを「なし」に設定したい場合は以下のいずれかの方法で指定してください。
+ *  <PlayBGS: None>
+ *  <PlayBGS: なし>
+ *  <StopBGS>
+ *
+ *  本プラグインを使用する場合は、「None」「なし」というファイル名のBGSは
+ *  ご利用できないことにご注意ください。
+ *
+ * ○ BGSのフェードアウトの組み込み方法
+ *  BGSのフェードアウトは以下のいずれかの方法で組み込みます。
+ *  <FadeoutBGS: 時間(秒)>
+ *  <BGSのフェードアウト: 時間(秒)>
+ *
+ *  例えば、以下のように記述すると3秒でBGSがフェードアウトします。
+ *  <FadeoutBGS: 3>
+ *
+ * ○ MEの演奏の組み込み方法
+ *  MEの演奏は、以下のいずれかの方法で指定します。
+ *  <PlayME: ファイル名, 音量, ピッチ, 位相>
+ *  <MEの演奏: ファイル名, 音量, ピッチ, 位相>
+ *
+ *  必須の引数はファイル名のみです。音量・ピッチ・位相は任意で指定します。
+ *  指定しない場合は音量は90, ピッチは100, 位相は0として組み込まれます。
+ *
+ *  例1: Innをデフォルト設定で組み込む
+ *   <PlayME: Inn>
+ *  例2: Mysteryを音量50, ピッチ80, 位相30で組み込む
+ *   <PlayME: Mystery, 50, 80, 30>
+ *
+ *  MEを「なし」に設定したい場合は以下のいずれかの方法で指定してください。
+ *  <PlayME: None>
+ *  <PlayME: なし>
+ *  <StopME>
+ *
+ *  本プラグインを使用する場合は、「None」「なし」というファイル名のMEは
+ *  ご利用できないことにご注意ください。
+ *
+ * ○ SEの演奏の組み込み方法
+ *  SEの演奏は、以下のいずれかの方法で指定します。
+ *  <PlaySE: ファイル名, 音量, ピッチ, 位相>
+ *  <SEの演奏: ファイル名, 音量, ピッチ, 位相>
+ *
+ *  必須の引数はファイル名のみです。音量・ピッチ・位相は任意で指定します。
+ *  指定しない場合は音量は90, ピッチは100, 位相は0として組み込まれます。
+ *
+ *  例1: Attack1をデフォルト設定で組み込む
+ *   <PlaySE: Attack1>
+ *  例2: Attack2を音量50, ピッチ80, 位相30で組み込む
+ *   <PlaySE: Attack2, 50, 80, 30>
+ *
+ *  SEを「なし」に設定したい場合は以下のいずれかの方法で指定してください。
+ *  <PlaySE: None>
+ *  <PlaySE: なし>
+ *
+ *  本プラグインを使用する場合は、「None」「なし」というファイル名のSEは
+ *  ご利用できないことにご注意ください。
+ *
+ * ○ SEの停止の組み込み方法
+ *  SEの停止は以下のいずれかの方法で指定します。
+ *  <StopSE>
+ *  <SEの停止>
+ *
+ * ○ 戦闘BGMの変更の組み込み方法
+ *  戦闘BGMの変更は、以下のいずれかの方法で指定します。
+ *  <ChangeBattleBGM: ファイル名, 音量, ピッチ, 位相>
+ *  <戦闘曲の変更: ファイル名, 音量, ピッチ, 位相>
+ *
+ *  必須の引数はファイル名のみです。音量・ピッチ・位相は任意で指定します。
+ *  指定しない場合は音量は90, ピッチは100, 位相は0として組み込まれます。
+ *
+ *  例1: Battle1をデフォルト設定で組み込む
+ *   <ChangeBattleBGM: Battle1>
+ *  例2: Battle2を音量50, ピッチ80, 位相30で組み込む
+ *   <ChangeBattleBGM: Battle2, 50, 80, 30>
+ *
+ *  「なし」に設定したい場合は以下のいずれかの方法で指定してください。
+ *  <ChangeBattleBGM: None>
+ *  <ChangeBattleBGM: なし>
  *
  * --------------------------------------
  * 付録：動作確認テキスト
@@ -548,6 +694,38 @@
  * <fadeout>
  * <wait: 120>
  * <fadein>
+ * <PlayBGM: Castle1>
+ * <wait: 60>
+ * <PlayBGM: Castle2, 50, 80, 30>
+ * <SaveBGM>
+ * <FadeoutBGM: 2>
+ * <Wait: 60>
+ * <PlayBGM: None>
+ * <Wait: 60>
+ * <ReplayBGM>
+ * <Wait: 60>
+ * <StopBGM>
+ *
+ * <PlayBGS: City>
+ * <wait: 60>
+ * <PlayBGS: Darkness, 50, 80, 30>
+ * <FadeoutBGS: 2>
+ * <Wait: 60>
+ * <StopBGS>
+ *
+ * <PlayME: Inn>
+ * <wait: 60>
+ * <PlayME: Mystery, 50, 80, 30>
+ * <wait: 30>
+ * <PlayME: None>
+ *
+ * <PlaySE: Attack1>
+ * <wait:60>
+ * <PlaySE: Attack2, 50, 80, 30>
+ * <wait:15>
+ * <StopSE>
+ *
+ * <ChangeBattleBGM : Battle1, 80, 100, 0>
  * ↑↑↑↑↑ここまで動作確認テキスト↑↑↑↑↑
  *
  *
@@ -648,6 +826,42 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       console.error(message);
     }
 
+    const readText = function(folderName, fileName){
+      var input_path = base + "/" + folderName + "/" + fileName;
+      try{
+        return fs.readFileSync(input_path, 'utf8');
+      }catch(e){
+        throw new Error('File not found. / ファイルが見つかりません。\n' + input_path);
+      }
+    };
+
+    const readMapData = function(mapid){
+      try{
+        return JSON.parse(fs.readFileSync(base + '/data/Map' + mapid + ".json", {encoding: 'utf8'}));
+      }catch(e){
+        throw new Error('Map not found. / マップが見つかりません。\n' + "MAP " + mapid);
+      }
+    };
+
+    const readCommonEventData = function(){
+      try{
+        return JSON.parse(fs.readFileSync(base + "/data/CommonEvents.json", 'utf8'));
+      }catch(e){
+        throw new Error('File not found. / ファイルが見つかりません。\n' + "data/CommonEvents.json");
+        console.error(e);
+      }
+    };
+
+    const writeData = function(filepath, jsonData){
+      try{
+        fs.writeFileSync(filepath, JSON.stringify(jsonData), {encoding: 'utf8'});
+      }catch(e){
+        throw new Error('Fail to save / 保存に失敗しました。\n' 
+          + 'ファイルが開いていないか確認してください。\n' + filepath);
+        console.error(e);
+      }
+    }
+
     const getBackground = function(background) {
       switch(background.toUpperCase()){
         case 'WINDOW':
@@ -681,44 +895,18 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       }
     };
 
-    const readText = function(folderName, fileName){
-      var input_path = base + "/" + folderName + "/" + fileName;
-      try{
-        return fs.readFileSync(input_path, 'utf8');
-      }catch(e){
-        throw new Error('File not found. / ファイルが見つかりません。\n' + input_path);
-      }
-    };
+    const getPretextEvent = function(){
+      return {"code": 101, "indent": 0, "parameters": ["", 0, 
+              getBackground(Laurus.Text2Frame.Background), 
+              getWindowPosition(Laurus.Text2Frame.WindowPosition)]}
+    }
 
-    const readMapData = function(mapid){
-      //if(! $dataMapInfos[Number(mapid)]){
-      //  throw new Error('Map not found. / マップが見つかりません。\n' + "MAP" + mapid);
-      //}
-      try{
-        return JSON.parse(fs.readFileSync(base + '/data/Map' + mapid + ".json", {encoding: 'utf8'}));
-      }catch(e){
-        throw new Error('Map not found. / マップが見つかりません。\n' + "MAP " + mapid);
-      }
-    };
+    const getTextFrameEvent = function(text){
+      return {"code": 401, "indent": 0, "parameters": [text]}
+    }
 
-    const readCommonEventData = function(){
-      try{
-        return JSON.parse(fs.readFileSync(base + "/data/CommonEvents.json", 'utf8'));
-      }catch(e){
-        throw new Error('File not found. / ファイルが見つかりません。\n' + "data/CommonEvents.json");
-        console.error(e);
-      }
-    };
-
-    const writeData = function(filepath, jsonData){
-      // write to file
-      try{
-        fs.writeFileSync(filepath, JSON.stringify(jsonData), {encoding: 'utf8'});
-      }catch(e){
-        throw new Error('Fail to save / 保存に失敗しました。\n' 
-          + 'ファイルが開いていないか確認してください。\n' + filepath);
-        console.error(e);
-      }
+    const getCommandBottomEvent = function(){
+      return {"code":0,"indent":0,"parameters":[]};
     }
 
     const getScriptHeadEvent = function(text){
@@ -767,19 +955,150 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
     const getFadeoutEvent = function(){
       return {"code": 221, "indent": 0, "parameters": [""]};
     }
-    // Text Frame Template
-    const pretext  = {"code": 101, "indent": 0, 
-                      "parameters": ["", 0, 
-                      getBackground(Laurus.Text2Frame.Background), 
-                      getWindowPosition(Laurus.Text2Frame.WindowPosition)]}
-    const textframe_template = {"code": 401, "indent": 0, "parameters": ["今日も一日がんばるぞい！"]}
-    const command_bottom = {"code":0,"indent":0,"parameters":[]};
 
+    const getPlayBgmEvent = function(name, volume, pitch, pan){
+      var param_volume = 90;
+      var param_pitch = 100;
+      var param_pan = 0;
+
+      if(typeof(volume) == "number"){
+        param_volume = volume;
+      }
+
+      if(typeof(pitch) == "number"){
+        param_pitch = pitch;
+      }
+
+      if(typeof(pan) == "number"){
+        param_pan = pan;
+      }
+
+      return {"code": 241, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
+    }
+
+    const getStopBgmEvent = function(volume, pitch, pan){
+      return getPlayBgmEvent("", volume, pitch, pan);
+    }
+
+    const getFadeoutBgmEvent = function(duration){
+      var param_duration = 10;
+      if(typeof(duration) == "number"){
+        param_duration = duration;
+      }
+      return {"code": 242, "indent": 0, "parameters": [param_duration]};
+    }
+
+    const getSaveBgmEvent = function(){
+      return {"code": 243, "indent": 0, "parameters": []};
+    }
+
+    const getReplayBgmEvent = function(){
+      return {"code": 244, "indent": 0, "parameters": []};
+    }
+
+    const getChangeBattleBgmEvent = function(name, volume, pitch, pan){
+      var param_volume = 90;
+      var param_pitch = 100;
+      var param_pan = 0;
+
+      if(typeof(volume) == "number"){
+        param_volume = volume;
+      }
+
+      if(typeof(pitch) == "number"){
+        param_pitch = pitch;
+      }
+
+      if(typeof(pan) == "number"){
+        param_pan = pan;
+      }
+
+      return {"code": 132, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
+    }
+
+    const getPlayBgsEvent = function(name, volume, pitch, pan){
+      var param_volume = 90;
+      var param_pitch = 100;
+      var param_pan = 0;
+
+      if(typeof(volume) == "number"){
+        param_volume = volume;
+      }
+
+      if(typeof(pitch) == "number"){
+        param_pitch = pitch;
+      }
+
+      if(typeof(pan) == "number"){
+        param_pan = pan;
+      }
+
+      return {"code": 245, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
+    }
+
+    const getStopBgsEvent = function(volume, pitch, pan){
+      return getPlayBgsEvent("", volume, pitch, pan);
+    }
+
+    const getFadeoutBgsEvent = function(duration){
+      var param_duration = 10;
+      if(typeof(duration) == "number"){
+        param_duration = duration;
+      }
+      return {"code": 246, "indent": 0, "parameters": [param_duration]};
+    }
+
+    const getPlaySeEvent = function(name, volume, pitch, pan){
+      var param_volume = 90;
+      var param_pitch = 100;
+      var param_pan = 0;
+
+      if(typeof(volume) == "number"){
+        param_volume = volume;
+      }
+
+      if(typeof(pitch) == "number"){
+        param_pitch = pitch;
+      }
+
+      if(typeof(pan) == "number"){
+        param_pan = pan;
+      }
+
+      return {"code": 250, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
+    }
+    const getStopSeEvent = function(){
+      return {"code": 251, "indent": 0, "parameters": [""]};
+    }
+
+    const getPlayMeEvent = function(name, volume, pitch, pan){
+      var param_volume = 90;
+      var param_pitch = 100;
+      var param_pan = 0;
+
+      if(typeof(volume) == "number"){
+        param_volume = volume;
+      }
+
+      if(typeof(pitch) == "number"){
+        param_pitch = pitch;
+      }
+
+      if(typeof(pan) == "number"){
+        param_pan = pan;
+      }
+
+      return {"code": 249, "indent": 0, "parameters": [{"name": name, "volume": param_volume, "pitch": param_pitch, "pan": param_pan}]};
+    }
+
+    const getStopMeEvent = function(volume, pitch, pan){
+      return getPlayMeEvent("", volume, pitch, pan);
+    }
 
     var event_command_list = [];
     var scenario_text = readText(Laurus.Text2Frame.FileFolder,Laurus.Text2Frame.FileName);
     var text_lines = scenario_text.replace(/\r/g,'').split('\n');
-    var frame_param = JSON.parse(JSON.stringify(pretext));
+    var frame_param = getPretextEvent();
     var script_mode = {"mode": false, "body": false};
     var comment_mode = {"mode": false, "body": false};
     printLog("Default", frame_param.parameters);
@@ -878,6 +1197,38 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         var fadeout = text.match(/<fadeout>/i)
           || text.match(/<FO>/i)
           || text.match(/<フェードアウト>/i);
+        var play_bgm = text.match(/<playbgm *: *([^ ].+)>/i)
+          || text.match(/<BGMの演奏 *: *([^ ].+)>/);
+        var stop_bgm = text.match(/<stopbgm>/i)
+          || text.match(/<playbgm *: *none>/i)
+          || text.match(/<playbgm *: *なし>/i)
+          || text.match(/<BGMの停止>/);
+        var fadeout_bgm = text.match(/<fadeoutbgm *: *(.+?)>/i)
+          || text.match(/<BGMのフェードアウト *: *(.+?)>/);
+        var save_bgm = text.match(/<savebgm>/i)
+          || text.match(/<BGMの保存>/);
+        var replay_bgm = text.match(/<replaybgm>/i)
+          || text.match(/<BGMの再開>/);
+        var change_battle_bgm = text.match(/<changebattlebgm *: *([^ ].+)>/i)
+          || text.match(/<戦闘曲の変更 *: *([^ ].+)>/);
+        var play_bgs = text.match(/<playbgs *: *([^ ].+)>/i)
+          || text.match(/<BGSの演奏 *: *([^ ].+)>/);
+        var stop_bgs = text.match(/<stopbgs>/i)
+          || text.match(/<playbgs *: *none>/i)
+          || text.match(/<playbgs *: *なし>/i)
+          || text.match(/<BGSの停止>/);
+        var fadeout_bgs = text.match(/<fadeoutbgs *: *(.+?)>/i)
+          || text.match(/<BGSのフェードアウト *: *(.+?)>/);
+        var play_se = text.match(/<playse *: *([^ ].+)>/i)
+          || text.match(/<SEの演奏 *: *([^ ].+)>/);
+        var stop_se = text.match(/<stopse>/i)
+          || text.match(/<SEの停止>/);
+        var play_me = text.match(/<playme *: *([^ ].+)>/i)
+          || text.match(/<MEの演奏 *: *([^ ].+)>/);
+        var stop_me = text.match(/<stopme>/i)
+          || text.match(/<playme *: *none>/i)
+          || text.match(/<playme *: *なし>/i)
+          || text.match(/<MEの停止>/);
 
         if(frame_param){
           printLog("  ", frame_param.parameters);
@@ -929,10 +1280,217 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
           continue;
         }
 
+        // Stop BGM
+        if(stop_bgm){
+          event_command_list.push(getStopBgmEvent(90, 100, 0));
+          continue;
+        }
+
+        // Play BGM
+        if(play_bgm){
+          if(play_bgm[1]){
+            var params = play_bgm[1].replace(/ /g, '').split(',');
+            var name = "Battle1";
+            var volume = 90;
+            var pitch = 100;
+            var pan = 0;
+            if(params[0]){
+              name = params[0];
+            }
+            if(Number(params[1]) || Number(params[1]) == 0){
+              volume = Number(params[1]);
+            }
+            if(Number(params[2]) || Number(params[2]) == 0){
+              pitch = Number(params[2]);
+            }
+            if(Number(params[3]) || Number(params[3]) == 0){
+              pan = Number(params[3]);
+            }
+            if(name.toUpperCase() === "NONE" || name === "なし"){
+              event_command_list.push(getPlayBgmEvent("", volume, pitch, pan));
+            }else{
+              event_command_list.push(getPlayBgmEvent(name, volume, pitch, pan));
+            }
+          }
+          continue;
+        }
+
+        // Fadeout BGM
+        if(fadeout_bgm){
+          if(fadeout_bgm[1]){
+            var duration = 10;
+            var d = fadeout_bgm[1].replace(/ /g, '');
+            if(Number(d) || Number(d) == 0){
+              duration = Number(d);
+            }
+            event_command_list.push(getFadeoutBgmEvent(duration));
+          }
+          continue;
+        }
+
+        // Save BGM
+        if(save_bgm){
+          event_command_list.push(getSaveBgmEvent());
+          continue;
+        }
+
+        // Replay BGM
+        if(replay_bgm){
+          event_command_list.push(getReplayBgmEvent());
+          continue;
+        }
+
+        // Change Battle BGM
+        if(change_battle_bgm){
+          if(change_battle_bgm[1]){
+            var params = change_battle_bgm[1].replace(/ /g, '').split(',');
+            var name = "Battle1";
+            var volume = 90;
+            var pitch = 100;
+            var pan = 0;
+            if(params[0]){
+              name = params[0];
+            }
+            if(Number(params[1]) || Number(params[1]) == 0){
+              volume = Number(params[1]);
+            }
+            if(Number(params[2]) || Number(params[2]) == 0){
+              pitch = Number(params[2]);
+            }
+            if(Number(params[3]) || Number(params[3]) == 0){
+              pan = Number(params[3]);
+            }
+            if(name.toUpperCase() === "NONE" || name === "なし"){
+              event_command_list.push(getChangeBattleBgmEvent("", volume, pitch, pan));
+            }else{
+              event_command_list.push(getChangeBattleBgmEvent(name, volume, pitch, pan));
+            }
+          }
+          continue;
+        }
+
+        // Stop BGS
+        if(stop_bgs){
+          event_command_list.push(getStopBgsEvent(90, 100, 0));
+          continue;
+        }
+
+        // Play BGS
+        if(play_bgs){
+          if(play_bgs[1]){
+            var params = play_bgs[1].replace(/ /g, '').split(',');
+            var name = "City";
+            var volume = 90;
+            var pitch = 100;
+            var pan = 0;
+            if(params[0]){
+              name = params[0];
+            }
+            if(Number(params[1]) || Number(params[1]) == 0){
+              volume = Number(params[1]);
+            }
+            if(Number(params[2]) || Number(params[2]) == 0){
+              pitch = Number(params[2]);
+            }
+            if(Number(params[3]) || Number(params[3]) == 0){
+              pan = Number(params[3]);
+            }
+            if(name.toUpperCase() === "NONE" || name === "なし"){
+              event_command_list.push(getPlayBgsEvent("", volume, pitch, pan));
+            }else{
+              event_command_list.push(getPlayBgsEvent(name, volume, pitch, pan));
+            }
+          }
+          continue;
+        }
+
+        // Fadeout BGS
+        if(fadeout_bgs){
+          if(fadeout_bgs[1]){
+            var duration = 10;
+            var d = fadeout_bgs[1].replace(/ /g, '');
+            if(Number(d) || Number(d) == 0){
+              duration = Number(d);
+            }
+            event_command_list.push(getFadeoutBgsEvent(duration));
+          }
+          continue;
+        }
+
+        // Play SE
+        if(play_se){
+          if(play_se[1]){
+            var params = play_se[1].replace(/ /g, '').split(',');
+            var name = "Attack1";
+            var volume = 90;
+            var pitch = 100;
+            var pan = 0;
+            if(params[0]){
+              name = params[0];
+            }
+            if(Number(params[1]) || Number(params[1]) == 0){
+              volume = Number(params[1]);
+            }
+            if(Number(params[2]) || Number(params[2]) == 0){
+              pitch = Number(params[2]);
+            }
+            if(Number(params[3]) || Number(params[3]) == 0){
+              pan = Number(params[3]);
+            }
+            if(name.toUpperCase() === "NONE" || name === "なし"){
+              event_command_list.push(getPlaySeEvent("", volume, pitch, pan));
+            }else{
+              event_command_list.push(getPlaySeEvent(name, volume, pitch, pan));
+            }
+          }
+          continue;
+        }
+
+        // Stop SE
+        if(stop_se){
+          event_command_list.push(getStopSeEvent());
+          continue;
+        }
+
+        // Stop ME
+        if(stop_me){
+          event_command_list.push(getStopMeEvent(90, 100, 0));
+          continue;
+        }
+
+        // Play ME
+        if(play_me){
+          if(play_me[1]){
+            var params = play_me[1].replace(/ /g, '').split(',');
+            var name = "Curse1";
+            var volume = 90;
+            var pitch = 100;
+            var pan = 0;
+            if(params[0]){
+              name = params[0];
+            }
+            if(Number(params[1]) || Number(params[1]) == 0){
+              volume = Number(params[1]);
+            }
+            if(Number(params[2]) || Number(params[2]) == 0){
+              pitch = Number(params[2]);
+            }
+            if(Number(params[3]) || Number(params[3]) == 0){
+              pan = Number(params[3]);
+            }
+            if(name.toUpperCase() === "NONE" || name === "なし"){
+              event_command_list.push(getPlayMeEvent("", volume, pitch, pan));
+            }else{
+              event_command_list.push(getPlayMeEvent(name, volume, pitch, pan));
+            }
+          }
+          continue;
+        }
+
         // Face
         if(face){
           if(!frame_param){
-            var frame_param = JSON.parse(JSON.stringify(pretext));
+            var frame_param = getPretextEvent();
           }
           var actor_number = face[1].match(/(actor\d+)/i);
           var face_number = face[1].match(/actor\d\((.+?)\)/i);
@@ -956,7 +1514,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         // window backgound
         if(background){
           if(!frame_param){
-            var frame_param = JSON.parse(JSON.stringify(pretext));
+            var frame_param = getPretextEvent();
           }
           try{
             frame_param.parameters[2] = getBackground(background[1]);
@@ -975,7 +1533,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
         // window position
         if(window_position){
           if(!frame_param){
-            var frame_param = JSON.parse(JSON.stringify(pretext));
+            var frame_param = getPretextEvent();
           }
           try{
             frame_param.parameters[3] = getWindowPosition(window_position[1]);
@@ -1000,16 +1558,14 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
             event_command_list.push(frame_param);
             frame_param = null;
           }
-          var copied_template = JSON.parse(JSON.stringify(textframe_template));
-          copied_template.parameters[0] = text;
-          event_command_list.push(copied_template);
+          event_command_list.push(getTextFrameEvent(text));
         }
       }else{
-        var frame_param = JSON.parse(JSON.stringify(pretext));
+        var frame_param = getPretextEvent();
       }
     }
 
-    event_command_list.push(command_bottom);
+    event_command_list.push(getCommandBottomEvent());
 
     switch (command.toUpperCase()) {
       case 'IMPORT_MESSAGE_TO_EVENT' :
