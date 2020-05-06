@@ -758,19 +758,36 @@ function Text2Frame() {
 
 var Laurus = Laurus || {};
 Laurus.Text2Frame = {};
-Laurus.Text2Frame.Parameters = PluginManager.parameters('Text2Frame');
 
-Laurus.Text2Frame.WindowPosition = String(Laurus.Text2Frame.Parameters["Default Window Position"]);
-Laurus.Text2Frame.Background     = String(Laurus.Text2Frame.Parameters["Default Background"]);
-Laurus.Text2Frame.FileFolder     = String(Laurus.Text2Frame.Parameters["Default Scenario Folder"]);
-Laurus.Text2Frame.FileName       = String(Laurus.Text2Frame.Parameters["Default Scenario File"]);
-Laurus.Text2Frame.CommonEventID  = String(Laurus.Text2Frame.Parameters["Default Common Event ID"]);
-Laurus.Text2Frame.MapID          = String(Laurus.Text2Frame.Parameters["Default MapID"]);
-Laurus.Text2Frame.EventID        = String(Laurus.Text2Frame.Parameters["Default EventID"]);
-Laurus.Text2Frame.IsOverwrite    = (String(Laurus.Text2Frame.Parameters["IsOverwrite"]) == 'true') ? true : false;
-Laurus.Text2Frame.CommentOutChar = String(Laurus.Text2Frame.Parameters["Comment Out Char"]);
-Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug"]) == 'true') ? true : false;
+if(typeof PluginManager === 'undefined'){
+  Game_Interpreter = {};
+  Game_Interpreter.prototype = {};
+  $gameMessage = {};
+  $gameMessage.add = function(){};
 
+  Laurus.Text2Frame.WindowPosition = "Bottom";
+  Laurus.Text2Frame.Background     = "Window";
+  Laurus.Text2Frame.FileFolder     = "test";
+  Laurus.Text2Frame.FileName       = "basic.txt";
+  Laurus.Text2Frame.CommonEventID  = "1";
+  Laurus.Text2Frame.MapID          = "1";
+  Laurus.Text2Frame.EventID        = "1";
+  Laurus.Text2Frame.IsOverwrite    = true;
+  Laurus.Text2Frame.CommentOutChar = "%";
+  Laurus.Text2Frame.IsDebug        = true;
+}else{
+  Laurus.Text2Frame.Parameters = PluginManager.parameters('Text2Frame');
+  Laurus.Text2Frame.WindowPosition = String(Laurus.Text2Frame.Parameters["Default Window Position"]);
+  Laurus.Text2Frame.Background     = String(Laurus.Text2Frame.Parameters["Default Background"]);
+  Laurus.Text2Frame.FileFolder     = String(Laurus.Text2Frame.Parameters["Default Scenario Folder"]);
+  Laurus.Text2Frame.FileName       = String(Laurus.Text2Frame.Parameters["Default Scenario File"]);
+  Laurus.Text2Frame.CommonEventID  = String(Laurus.Text2Frame.Parameters["Default Common Event ID"]);
+  Laurus.Text2Frame.MapID          = String(Laurus.Text2Frame.Parameters["Default MapID"]);
+  Laurus.Text2Frame.EventID        = String(Laurus.Text2Frame.Parameters["Default EventID"]);
+  Laurus.Text2Frame.IsOverwrite    = (String(Laurus.Text2Frame.Parameters["IsOverwrite"]) == 'true') ? true : false;
+  Laurus.Text2Frame.CommentOutChar = String(Laurus.Text2Frame.Parameters["Comment Out Char"]);
+  Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug"]) == 'true') ? true : false;
+}
 
 (function() {
   'use strict';
@@ -856,7 +873,7 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
       try{
         fs.writeFileSync(filepath, JSON.stringify(jsonData), {encoding: 'utf8'});
       }catch(e){
-        throw new Error('Fail to save / 保存に失敗しました。\n' 
+        throw new Error('Save failed. / 保存に失敗しました。\n'
           + 'ファイルが開いていないか確認してください。\n' + filepath);
         console.error(e);
       }
@@ -1616,3 +1633,62 @@ Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug
   };
 })();
 
+
+// developer mode
+//
+// $ node Text2Frame.js
+if (require.main === module) {
+  let argv = process.argv;
+
+  if (argv.length >= 7){
+    let folder_name = argv[2];
+    let file_name   = argv[3];
+    let map_id      = argv[4];
+    let event_id    = argv[5];
+    let overwrite   = argv[6];
+    Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
+      [folder_name, file_name, map_id, event_id, overwrite]);
+  }else if (argv.length == 6){
+    let folder_name = argv[2];
+    let file_name   = argv[3];
+    let common_id   = argv[4];
+    let overwrite   = argv[5];
+    Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_CE',
+      [folder_name, file_name, common_id, overwrite]);
+  }else{
+    Laurus.Text2Frame.IsDebug = false;
+    let folder_name = 'test';
+    let file_name   = 'basic.txt';
+    let map_id      = '1';
+    let event_id    = '1';
+    let overwrite   = 'true';
+    console.log('=====Test mode.=====');
+    console.log(`
+    NAME
+       Text2Frame - Simple compiler to convert text to event command.
+    SYNOPSIS
+        node Text2Frame.js
+        node Text2Frame.js folder_name file_name map_id overwrite
+        node Text2Frame.js folder_name file_name common_event_id overwrite
+    DESCRIPTION
+        node Text2Frame.js
+          テストモードです。test/basic.txtを読み込み、Map001に出力します。
+        node Text2Frame.js folder_name file_name map_id overwrite
+          マップへのイベント出力モードです。
+          読み込むファイル、出力マップ、上書きの有無を引数で指定します。
+          data/basic.txtを読み込みMap001に上書きするコマンド例は以下です。
+
+          例：$ node Text2Frame.js test basic.txt 1 1 true
+
+        node Text2Frame.js folder_name file_name common_event_id overwrite
+          コモンイベントへのイベント出力モードです。
+          読み込むファイル、出力コモンイベント、上書きの有無を引数で指定します。
+          data/basic.txtを読み込みCommonEvent001に上書きするコマンド例は以下です。
+
+          例：$ node Text2Frame.js test basci.txt 1 true
+
+    `);
+    Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
+      [folder_name, file_name, map_id, event_id, overwrite]);
+  }
+}
