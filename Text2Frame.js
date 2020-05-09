@@ -679,7 +679,7 @@
  * 村人以外のキャラもたくさん作らせていただけたらと思います
  *
  * <script>
- * for(var i = 0; i < 10; i++) {
+ * for(let i = 0; i < 10; i++) {
  *   console.log("今日も一日がんばるぞい！(و ･ㅂ･)و");
  * }
  * </script>
@@ -747,23 +747,18 @@
  * [GitHub] : https://github.com/yktsr/
  */
 
-
-/**
- * Text2Frame
- * @constructor
- */
-function Text2Frame() {
-  this.initialize.apply(this, arguments);
-}
+/* global Game_Interpreter, $gameMessage, process, PluginManager */
 
 var Laurus = Laurus || {};
 Laurus.Text2Frame = {};
 
 if(typeof PluginManager === 'undefined'){
+  /* eslint-disable no-global-assign */
   Game_Interpreter = {};
   Game_Interpreter.prototype = {};
   $gameMessage = {};
   $gameMessage.add = function(){};
+  /* eslint-enable */
 
   Laurus.Text2Frame.WindowPosition = "Bottom";
   Laurus.Text2Frame.Background     = "Window";
@@ -788,7 +783,6 @@ if(typeof PluginManager === 'undefined'){
   Laurus.Text2Frame.CommentOutChar = String(Laurus.Text2Frame.Parameters["Comment Out Char"]);
   Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug"]) == 'true') ? true : false;
 }
-
 (function() {
   'use strict';
   const fs   = require('fs');
@@ -805,8 +799,6 @@ if(typeof PluginManager === 'undefined'){
   };
 
   Game_Interpreter.prototype.pluginCommandText2Frame = function(command, args) {
-    var command_text = command.toUpperCase();
-
     switch (command.toUpperCase()) {
       case 'IMPORT_MESSAGE_TO_EVENT' :
       case 'メッセージをイベントにインポート' :
@@ -833,18 +825,19 @@ if(typeof PluginManager === 'undefined'){
         return;
     }
 
-    const printLog = function(){
+    const logger = {};
+    logger.log = function(){
       if(Laurus.Text2Frame.IsDebug){
         console.log(Array.prototype.join.call(arguments));
       }
     }
-    const throwError = function(message){
-      throw new Error(message);
-      console.error(message);
+
+    logger.error = function(){
+      console.error(Array.prototype.join.call(arguments));
     }
 
     const readText = function(folderName, fileName){
-      var input_path = base + "/" + folderName + "/" + fileName;
+      const input_path = base + "/" + folderName + "/" + fileName;
       try{
         return fs.readFileSync(input_path, 'utf8');
       }catch(e){
@@ -865,7 +858,6 @@ if(typeof PluginManager === 'undefined'){
         return JSON.parse(fs.readFileSync(base + "/data/CommonEvents.json", 'utf8'));
       }catch(e){
         throw new Error('File not found. / ファイルが見つかりません。\n' + "data/CommonEvents.json");
-        console.error(e);
       }
     };
 
@@ -875,7 +867,6 @@ if(typeof PluginManager === 'undefined'){
       }catch(e){
         throw new Error('Save failed. / 保存に失敗しました。\n'
           + 'ファイルが開いていないか確認してください。\n' + filepath);
-        console.error(e);
       }
     }
 
@@ -927,41 +918,41 @@ if(typeof PluginManager === 'undefined'){
     }
 
     const getScriptHeadEvent = function(text){
-      var script_head = {"code": 355, "indent": 0, "parameters": [""]}
+      let script_head = {"code": 355, "indent": 0, "parameters": [""]}
       script_head["parameters"][0] = text;
       return script_head;
     }
     const getScriptBodyEvent = function(text){
-      var script_body = {"code": 655, "indent": 0, "parameters": [""]}
+      let script_body = {"code": 655, "indent": 0, "parameters": [""]}
       script_body["parameters"][0] = text;
       return script_body;
     }
     
     const getPluginCommandEvent = function(text){
-      var plugin_command = {"code": 356, "indent": 0, "parameters": [""]}
+      let plugin_command = {"code": 356, "indent": 0, "parameters": [""]}
       plugin_command["parameters"][0] = text;
       return plugin_command;
     }
     
     const getCommonEventEvent = function(num){
-      var common_event= {"code": 117, "indent": 0, "parameters": [""]}
+      let common_event= {"code": 117, "indent": 0, "parameters": [""]}
       common_event["parameters"][0] = num;
       return common_event;
     }
     
     const getCommentOutHeadEvent = function(text){
-      var comment_out= {"code": 108, "indent": 0, "parameters": [""]}
+      let comment_out= {"code": 108, "indent": 0, "parameters": [""]}
       comment_out["parameters"][0] = text;
       return comment_out;
     }
     const getCommentOutBodyEvent = function(text){
-      var comment_out= {"code": 408, "indent": 0, "parameters": [""]}
+      let comment_out= {"code": 408, "indent": 0, "parameters": [""]}
       comment_out["parameters"][0] = text;
       return comment_out;
     }
     
     const getWaitEvent = function(num){
-      var wait = {"code": 230, "indent": 0, "parameters": [""]}
+      let wait = {"code": 230, "indent": 0, "parameters": [""]}
       wait["parameters"][0] = num;
       return wait;
     }
@@ -974,9 +965,9 @@ if(typeof PluginManager === 'undefined'){
     }
 
     const getPlayBgmEvent = function(name, volume, pitch, pan){
-      var param_volume = 90;
-      var param_pitch = 100;
-      var param_pan = 0;
+      let param_volume = 90;
+      let param_pitch = 100;
+      let param_pan = 0;
 
       if(typeof(volume) == "number"){
         param_volume = volume;
@@ -998,7 +989,7 @@ if(typeof PluginManager === 'undefined'){
     }
 
     const getFadeoutBgmEvent = function(duration){
-      var param_duration = 10;
+      let param_duration = 10;
       if(typeof(duration) == "number"){
         param_duration = duration;
       }
@@ -1014,9 +1005,9 @@ if(typeof PluginManager === 'undefined'){
     }
 
     const getChangeBattleBgmEvent = function(name, volume, pitch, pan){
-      var param_volume = 90;
-      var param_pitch = 100;
-      var param_pan = 0;
+      let param_volume = 90;
+      let param_pitch = 100;
+      let param_pan = 0;
 
       if(typeof(volume) == "number"){
         param_volume = volume;
@@ -1034,9 +1025,9 @@ if(typeof PluginManager === 'undefined'){
     }
 
     const getPlayBgsEvent = function(name, volume, pitch, pan){
-      var param_volume = 90;
-      var param_pitch = 100;
-      var param_pan = 0;
+      let param_volume = 90;
+      let param_pitch = 100;
+      let param_pan = 0;
 
       if(typeof(volume) == "number"){
         param_volume = volume;
@@ -1058,7 +1049,7 @@ if(typeof PluginManager === 'undefined'){
     }
 
     const getFadeoutBgsEvent = function(duration){
-      var param_duration = 10;
+      let param_duration = 10;
       if(typeof(duration) == "number"){
         param_duration = duration;
       }
@@ -1066,9 +1057,9 @@ if(typeof PluginManager === 'undefined'){
     }
 
     const getPlaySeEvent = function(name, volume, pitch, pan){
-      var param_volume = 90;
-      var param_pitch = 100;
-      var param_pan = 0;
+      let param_volume = 90;
+      let param_pitch = 100;
+      let param_pan = 0;
 
       if(typeof(volume) == "number"){
         param_volume = volume;
@@ -1089,9 +1080,9 @@ if(typeof PluginManager === 'undefined'){
     }
 
     const getPlayMeEvent = function(name, volume, pitch, pan){
-      var param_volume = 90;
-      var param_pitch = 100;
-      var param_pan = 0;
+      let param_volume = 90;
+      let param_pitch = 100;
+      let param_pan = 0;
 
       if(typeof(volume) == "number"){
         param_volume = volume;
@@ -1112,17 +1103,17 @@ if(typeof PluginManager === 'undefined'){
       return getPlayMeEvent("", volume, pitch, pan);
     }
 
-    var event_command_list = [];
-    var scenario_text = readText(Laurus.Text2Frame.FileFolder,Laurus.Text2Frame.FileName);
-    var text_lines = scenario_text.replace(/\r/g,'').split('\n');
-    var frame_param = getPretextEvent();
-    var script_mode = {"mode": false, "body": false};
-    var comment_mode = {"mode": false, "body": false};
-    printLog("Default", frame_param.parameters);
-    for(var i=0; i < text_lines.length; i++){
-      var text = text_lines[i];
+    let event_command_list = [];
+    let scenario_text = readText(Laurus.Text2Frame.FileFolder,Laurus.Text2Frame.FileName);
+    let text_lines = scenario_text.replace(/\r/g,'').split('\n');
+    let frame_param = getPretextEvent();
+    let script_mode = {"mode": false, "body": false};
+    let comment_mode = {"mode": false, "body": false};
+    logger.log("Default", frame_param.parameters);
+    for(let i=0; i < text_lines.length; i++){
+      let text = text_lines[i];
 
-      printLog(i, text);
+      logger.log(i, text);
 
       // Comment out
       if(Laurus.Text2Frame.CommentOutChar && text.match('^ *' + Laurus.Text2Frame.CommentOutChar)){
@@ -1130,22 +1121,22 @@ if(typeof PluginManager === 'undefined'){
       }
 
       // Script
-      var script_start = text.match(/<script>/i)
+      let script_start = text.match(/<script>/i)
         || text.match(/<SC>/i)
         || text.match(/<スクリプト>/i)
-      var script_end = text.match(/<\/script>/i)
+      let script_end = text.match(/<\/script>/i)
         || text.match(/<\/SC>/i)
         || text.match(/<\/スクリプト>/i)
 
       if(script_start){
         script_mode["mode"] = true;
-        printLog("script_mode = true;");
+        logger.log("script_mode = true;");
         continue;
       }
       if(script_end){
         script_mode["mode"] = false;
         script_mode["body"] = false;
-        printLog("script_mode = false;");
+        logger.log("script_mode = false;");
         continue;
       }
 
@@ -1160,22 +1151,22 @@ if(typeof PluginManager === 'undefined'){
       }
 
       // Comment out Event
-      var comment_start = text.match(/<comment>/i)
+      let comment_start = text.match(/<comment>/i)
         || text.match(/<CO>/i)
         || text.match(/<注釈>/i);
-      var comment_end = text.match(/<\/comment>/i)
+      let comment_end = text.match(/<\/comment>/i)
         || text.match(/<\/CO>/i)
         || text.match(/<\/注釈>/i);
 
       if(comment_start){
         comment_mode["mode"] = true;
-        printLog("comment_mode = true;");
+        logger.log("comment_mode = true;");
         continue;
       }
       if(comment_end){
         comment_mode["mode"] = false;
         comment_mode["body"] = false;
-        printLog("comment_mode = false;");
+        logger.log("comment_mode = false;");
         continue;
       }
 
@@ -1191,66 +1182,66 @@ if(typeof PluginManager === 'undefined'){
 
 
       if(text){
-        var face = text.match(/<face *: *(.+?)>/i) 
+        let face = text.match(/<face *: *(.+?)>/i)
           || text.match(/<FC *: *(.+?)>/i)
           || text.match(/<顔 *: *(.+?)>/i);
-        var window_position = text.match(/<windowposition *: *(.+?)>/i) 
+        let window_position = text.match(/<windowposition *: *(.+?)>/i)
           || text.match(/<WP *: *(.+?)>/i)
           || text.match(/<位置 *: *(.+?)>/i);
-        var background = text.match(/<background *: *(.+?)>/i)
+        let background = text.match(/<background *: *(.+?)>/i)
           || text.match(/<BG *: *(.+?)>/i)
           || text.match(/<背景 *: *(.+?)>/i);
-        var plugin_command = text.match(/<plugincommand *: *(.+?)>/i)
+        let plugin_command = text.match(/<plugincommand *: *(.+?)>/i)
           || text.match(/<PC *: *(.+?)>/i)
           || text.match(/<プラグインコマンド *: *(.+?)>/i);
-        var common_event = text.match(/<commonevent *: *(.+?)>/i)
+        let common_event = text.match(/<commonevent *: *(.+?)>/i)
           || text.match(/<CE *: *(.+?)>/i)
           || text.match(/<コモンイベント *: *(.+?)>/i);
-        var wait = text.match(/<wait *: *(.+?)>/i)
+        let wait = text.match(/<wait *: *(.+?)>/i)
           || text.match(/<ウェイト *: *(.+?)>/i);
-        var fadein = text.match(/<fadein>/i)
+        let fadein = text.match(/<fadein>/i)
           || text.match(/<FI>/i)
           || text.match(/<フェードイン>/i);
-        var fadeout = text.match(/<fadeout>/i)
+        let fadeout = text.match(/<fadeout>/i)
           || text.match(/<FO>/i)
           || text.match(/<フェードアウト>/i);
-        var play_bgm = text.match(/<playbgm *: *([^ ].+)>/i)
+        let play_bgm = text.match(/<playbgm *: *([^ ].+)>/i)
           || text.match(/<BGMの演奏 *: *([^ ].+)>/);
-        var stop_bgm = text.match(/<stopbgm>/i)
+        let stop_bgm = text.match(/<stopbgm>/i)
           || text.match(/<playbgm *: *none>/i)
           || text.match(/<playbgm *: *なし>/i)
           || text.match(/<BGMの停止>/);
-        var fadeout_bgm = text.match(/<fadeoutbgm *: *(.+?)>/i)
+        let fadeout_bgm = text.match(/<fadeoutbgm *: *(.+?)>/i)
           || text.match(/<BGMのフェードアウト *: *(.+?)>/);
-        var save_bgm = text.match(/<savebgm>/i)
+        let save_bgm = text.match(/<savebgm>/i)
           || text.match(/<BGMの保存>/);
-        var replay_bgm = text.match(/<replaybgm>/i)
+        let replay_bgm = text.match(/<replaybgm>/i)
           || text.match(/<BGMの再開>/);
-        var change_battle_bgm = text.match(/<changebattlebgm *: *([^ ].+)>/i)
+        let change_battle_bgm = text.match(/<changebattlebgm *: *([^ ].+)>/i)
           || text.match(/<戦闘曲の変更 *: *([^ ].+)>/);
-        var play_bgs = text.match(/<playbgs *: *([^ ].+)>/i)
+        let play_bgs = text.match(/<playbgs *: *([^ ].+)>/i)
           || text.match(/<BGSの演奏 *: *([^ ].+)>/);
-        var stop_bgs = text.match(/<stopbgs>/i)
+        let stop_bgs = text.match(/<stopbgs>/i)
           || text.match(/<playbgs *: *none>/i)
           || text.match(/<playbgs *: *なし>/i)
           || text.match(/<BGSの停止>/);
-        var fadeout_bgs = text.match(/<fadeoutbgs *: *(.+?)>/i)
+        let fadeout_bgs = text.match(/<fadeoutbgs *: *(.+?)>/i)
           || text.match(/<BGSのフェードアウト *: *(.+?)>/);
-        var play_se = text.match(/<playse *: *([^ ].+)>/i)
+        let play_se = text.match(/<playse *: *([^ ].+)>/i)
           || text.match(/<SEの演奏 *: *([^ ].+)>/);
-        var stop_se = text.match(/<stopse>/i)
+        let stop_se = text.match(/<stopse>/i)
           || text.match(/<SEの停止>/);
-        var play_me = text.match(/<playme *: *([^ ].+)>/i)
+        let play_me = text.match(/<playme *: *([^ ].+)>/i)
           || text.match(/<MEの演奏 *: *([^ ].+)>/);
-        var stop_me = text.match(/<stopme>/i)
+        let stop_me = text.match(/<stopme>/i)
           || text.match(/<playme *: *none>/i)
           || text.match(/<playme *: *なし>/i)
           || text.match(/<MEの停止>/);
 
         if(frame_param){
-          printLog("  ", frame_param.parameters);
+          logger.log("  ", frame_param.parameters);
         }else{
-          printLog("  ", 'nil');
+          logger.log("  ", 'nil');
         }
 
         // Plugin Command
@@ -1261,7 +1252,7 @@ if(typeof PluginManager === 'undefined'){
 
         // Common Event
         if(common_event){
-          var event_num = Number(common_event[1]);
+          let event_num = Number(common_event[1]);
           if(event_num){
             event_command_list.push(getCommonEventEvent(event_num));
           }else{
@@ -1274,7 +1265,7 @@ if(typeof PluginManager === 'undefined'){
 
         // Wait
         if(wait){
-          var wait_num = Number(wait[1]);
+          let wait_num = Number(wait[1]);
           if(wait_num){
             event_command_list.push(getWaitEvent(wait_num));
           }else{
@@ -1306,11 +1297,11 @@ if(typeof PluginManager === 'undefined'){
         // Play BGM
         if(play_bgm){
           if(play_bgm[1]){
-            var params = play_bgm[1].replace(/ /g, '').split(',');
-            var name = "Battle1";
-            var volume = 90;
-            var pitch = 100;
-            var pan = 0;
+            let params = play_bgm[1].replace(/ /g, '').split(',');
+            let name = "Battle1";
+            let volume = 90;
+            let pitch = 100;
+            let pan = 0;
             if(params[0]){
               name = params[0];
             }
@@ -1335,8 +1326,8 @@ if(typeof PluginManager === 'undefined'){
         // Fadeout BGM
         if(fadeout_bgm){
           if(fadeout_bgm[1]){
-            var duration = 10;
-            var d = fadeout_bgm[1].replace(/ /g, '');
+            let duration = 10;
+            let d = fadeout_bgm[1].replace(/ /g, '');
             if(Number(d) || Number(d) == 0){
               duration = Number(d);
             }
@@ -1360,11 +1351,11 @@ if(typeof PluginManager === 'undefined'){
         // Change Battle BGM
         if(change_battle_bgm){
           if(change_battle_bgm[1]){
-            var params = change_battle_bgm[1].replace(/ /g, '').split(',');
-            var name = "Battle1";
-            var volume = 90;
-            var pitch = 100;
-            var pan = 0;
+            let params = change_battle_bgm[1].replace(/ /g, '').split(',');
+            let name = "Battle1";
+            let volume = 90;
+            let pitch = 100;
+            let pan = 0;
             if(params[0]){
               name = params[0];
             }
@@ -1395,11 +1386,11 @@ if(typeof PluginManager === 'undefined'){
         // Play BGS
         if(play_bgs){
           if(play_bgs[1]){
-            var params = play_bgs[1].replace(/ /g, '').split(',');
-            var name = "City";
-            var volume = 90;
-            var pitch = 100;
-            var pan = 0;
+            let params = play_bgs[1].replace(/ /g, '').split(',');
+            let name = "City";
+            let volume = 90;
+            let pitch = 100;
+            let pan = 0;
             if(params[0]){
               name = params[0];
             }
@@ -1424,8 +1415,8 @@ if(typeof PluginManager === 'undefined'){
         // Fadeout BGS
         if(fadeout_bgs){
           if(fadeout_bgs[1]){
-            var duration = 10;
-            var d = fadeout_bgs[1].replace(/ /g, '');
+            let duration = 10;
+            let d = fadeout_bgs[1].replace(/ /g, '');
             if(Number(d) || Number(d) == 0){
               duration = Number(d);
             }
@@ -1437,11 +1428,11 @@ if(typeof PluginManager === 'undefined'){
         // Play SE
         if(play_se){
           if(play_se[1]){
-            var params = play_se[1].replace(/ /g, '').split(',');
-            var name = "Attack1";
-            var volume = 90;
-            var pitch = 100;
-            var pan = 0;
+            let params = play_se[1].replace(/ /g, '').split(',');
+            let name = "Attack1";
+            let volume = 90;
+            let pitch = 100;
+            let pan = 0;
             if(params[0]){
               name = params[0];
             }
@@ -1478,11 +1469,11 @@ if(typeof PluginManager === 'undefined'){
         // Play ME
         if(play_me){
           if(play_me[1]){
-            var params = play_me[1].replace(/ /g, '').split(',');
-            var name = "Curse1";
-            var volume = 90;
-            var pitch = 100;
-            var pan = 0;
+            let params = play_me[1].replace(/ /g, '').split(',');
+            let name = "Curse1";
+            let volume = 90;
+            let pitch = 100;
+            let pan = 0;
             if(params[0]){
               name = params[0];
             }
@@ -1507,18 +1498,18 @@ if(typeof PluginManager === 'undefined'){
         // Face
         if(face){
           if(!frame_param){
-            var frame_param = getPretextEvent();
+            frame_param = getPretextEvent();
           }
-          var actor_number = face[1].match(/(actor\d+)/i);
-          var face_number = face[1].match(/actor\d\((.+?)\)/i);
+          let actor_number = face[1].match(/(actor\d+)/i);
+          let face_number = face[1].match(/actor\d\((.+?)\)/i);
 
           if(actor_number && face_number){
             frame_param.parameters[0] = actor_number[1];
             frame_param.parameters[1] = face_number[1];
             text = text.replace(face[0], '');
-            printLog("  face set: " + frame_param.parameters[0] 
+            logger.log("  face set: " + frame_param.parameters[0]
               + " : " + frame_param.parameters[1]);
-            printLog("  [*]" + text);
+            logger.log("  [*]" + text);
           }else{
             console.error(text);
             throw new Error('Syntax error. / 文法エラーです。'
@@ -1531,7 +1522,7 @@ if(typeof PluginManager === 'undefined'){
         // window backgound
         if(background){
           if(!frame_param){
-            var frame_param = getPretextEvent();
+            frame_param = getPretextEvent();
           }
           try{
             frame_param.parameters[2] = getBackground(background[1]);
@@ -1543,14 +1534,14 @@ if(typeof PluginManager === 'undefined'){
               + text.replace(/</g, '  ').replace(/>/g, '  '));
           }
           text = text.replace(background[0], '');
-          printLog("  background set: " + frame_param.parameters[2]);
-          printLog("  [*]" + text);
+          logger.log("  background set: " + frame_param.parameters[2]);
+          logger.log("  [*]" + text);
         }
 
         // window position
         if(window_position){
           if(!frame_param){
-            var frame_param = getPretextEvent();
+            frame_param = getPretextEvent();
           }
           try{
             frame_param.parameters[3] = getWindowPosition(window_position[1]);
@@ -1562,12 +1553,12 @@ if(typeof PluginManager === 'undefined'){
               + text.replace(/</g, '  ').replace(/>/g, '  '));
           }
           text = text.replace(window_position[0], '');
-          printLog("  window_position set: " + frame_param.parameters[3]);
-          printLog("  [*]" + text);
+          logger.log("  window_position set: " + frame_param.parameters[3]);
+          logger.log("  [*]" + text);
         }
 
         if(Laurus.Text2Frame.IsDebug){
-          printLog("  [!]" + text);
+          logger.log("  [!]" + text);
         }
 
         if(text){
@@ -1578,7 +1569,7 @@ if(typeof PluginManager === 'undefined'){
           event_command_list.push(getTextFrameEvent(text));
         }
       }else{
-        var frame_param = getPretextEvent();
+        frame_param = getPretextEvent();
       }
     }
 
@@ -1586,44 +1577,46 @@ if(typeof PluginManager === 'undefined'){
 
     switch (command.toUpperCase()) {
       case 'IMPORT_MESSAGE_TO_EVENT' :
-      case 'メッセージをイベントにインポート' :
-        var map_data = readMapData(('000' + Laurus.Text2Frame.MapID).slice(-3));
+      case 'メッセージをイベントにインポート' : {
+        let map_data = readMapData(('000' + Laurus.Text2Frame.MapID).slice(-3));
         if(! map_data.events[Laurus.Text2Frame.EventID]){
           throw new Error('EventID not found. / EventIDが見つかりません。\n' 
             + "Event ID: " + Laurus.Text2Frame.EventID);
         }
 
-        var map_events = map_data.events[Laurus.Text2Frame.EventID].pages[0].list;
+        let map_events = map_data.events[Laurus.Text2Frame.EventID].pages[0].list;
         if(Laurus.Text2Frame.IsOverwrite){
           map_events = [];
         }
         map_events.pop();
         map_events = map_events.concat(event_command_list);
-        var filepath = base + '/data/Map' + ('000' + Laurus.Text2Frame.MapID).slice(-3) + ".json";
+        let filepath = base + '/data/Map' + ('000' + Laurus.Text2Frame.MapID).slice(-3) + ".json";
         map_data.events[Laurus.Text2Frame.EventID].pages[0].list = map_events;
         writeData(filepath, map_data);
         $gameMessage.add('Success / 書き出し成功！\n' 
           + "======> MapID: " + Laurus.Text2Frame.MapID + " -> EventID: " + Laurus.Text2Frame.EventID);
         break;
+      }
       case 'IMPORT_MESSAGE_TO_CE' :
-      case 'メッセージをコモンイベントにインポート' :
-        var ce_data = readCommonEventData();
+      case 'メッセージをコモンイベントにインポート' : {
+        let ce_data = readCommonEventData();
         if(ce_data.length -1 < Laurus.Text2Frame.CommonEventID){
           throw new Error("Common Event not found. / コモンイベントが見つかりません。: " 
             + Laurus.Text2Frame.CommonEventID);
         }
 
-        var ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list;
+        let ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list;
         if(Laurus.Text2Frame.IsOverwrite){
           ce_events = [];
         }
         ce_events.pop();
         ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list);
-        var filepath = base + '/data/CommonEvents.json';
+        let filepath = base + '/data/CommonEvents.json';
         writeData(filepath, ce_data);
         $gameMessage.add('Success / 書き出し成功！\n' 
           + "=====> Common EventID :" + Laurus.Text2Frame.CommonEventID);
         break;
+      }
     }
     $gameMessage.add('\n');
     $gameMessage.add('Please restart RPG Maker MV(Editor) WITHOUT save. \n' + 
@@ -1637,7 +1630,7 @@ if(typeof PluginManager === 'undefined'){
 // developer mode
 //
 // $ node Text2Frame.js
-if (require.main === module) {
+if(typeof require.main !== 'undefined' && require.main === module) {
   let argv = process.argv;
 
   if (argv.length >= 7){
