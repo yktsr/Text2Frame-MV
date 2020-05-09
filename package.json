@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "mocha --inline-diffs test",
-    "lint": "eslint Text2Frame.js"
+    "lint": "eslint Text2Frame.js",
+    "debug": "node Text2Frame.js"
   },
   "repository": {
     "type": "git",
@@ -19,6 +20,7 @@
   "license": "MIT",
   "dependencies": {
     "chai": "^4.2.0",
+    "commander": "^5.1.0",
     "eslint": "^7.0.0",
     "mocha": "^7.1.2",
     "sinon": "^9.0.2"
