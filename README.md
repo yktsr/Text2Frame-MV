@@ -103,12 +103,66 @@ English README is [here](en).
 * [@Asyun3i9t](https://twitter.com/Asyun3i9t)
 [http://taikai-kobo.hatenablog.com/]
 
-## Contribution
-1. Fork it
-2. Create your feature branch (git checkout -b my-new-feature)
-3. Commit your changes (git commit -am 'Add some feature')
-4. Push to the branch (git push origin my-new-feature)
-5. Create new Pull Request
+## Development
+### Install dependencies
+```
+$ npm ci
+$ npm run build --if-present
+```
+
+### Show help
+```
+$ npm run debug
+===== Manual =====
+
+    NAME
+       Text2Frame - Simple compiler to convert text to event command.
+    SYNOPSIS
+        node Text2Frame.js
+        node Text2Frame.js --verbose --mode map --folder <input text folder name> --infile <input text file name> --mapid <map id> --eventid <event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode common --folder <input text folder name> --infile <input text file name> --commonid <common event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode test
+    DESCRIPTION
+        node Text2Frame.js
+          テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
+        node Text2Frame.js --verbose --mode map --folder <input text folder name> --infile <input text file name> --mapid <map id> --eventid <event id> --overwrite <true|false>
+          マップへのイベント出力モードです。
+          読み込むファイル、出力マップ、上書きの有無を引数で指定します。
+          test/basic.txtを読み込みdata/Map001.jsonに上書きするコマンド例は以下です。
+
+          例1：$ node Text2Frame.js --mode map --folder test --infile basic.txt --mapid 1 --eventid 1 --overwrite true
+          例2：$ node Text2Frame.js -m map -f test -i basic.txt -p 1 -e 1 -w true
+
+        node Text2Frame.js --verbose --mode common --folder <input text folder name> --infile <input text file name> --commonid <common event id> --overwrite <true|false>
+          コモンイベントへのイベント出力モードです。
+          読み込むファイル、出力コモンイベント、上書きの有無を引数で指定します。
+          test/basic.txtを読み込みdata/CommonEvents.jsonに上書きするコマンド例は以下です。
+
+          例1：$ node Text2Frame.js --mode common --folder test --infile basic.txt --commonid 1 --overwrite true
+          例2：$ node Text2Frame.js -m common -f test -i basic.txt -c 1 -w true
+```
+
+### Run Text2frame.js with command line
+```
+$ npm run debug -- --mode map --folder test --infile basic.txt --mapid 1 --eventid 1 --overwrite true
+
+> Text2Frame-MV@1.1.2 debug /home/yuki/github/Text2Frame-MV
+> node Text2Frame.js "--mode" "map" "--folder" "test" "--infile" "basic.txt" "--mapid" "1" "--eventid" "1" "--overwrite" "true"
+
+Please restart RPG Maker MV(Editor) WITHOUT save.
+**セーブせずに**プロジェクトファイルを開き直してください
+```
+
+### Lint check
+```
+$ npm run lint
+```
+
+### Test
+```
+$ npm run lint
+```
+
 
 ## ライセンス
 MIT LICENSE
