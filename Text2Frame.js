@@ -1632,56 +1632,74 @@ if(typeof PluginManager === 'undefined'){
 // $ node Text2Frame.js
 if(typeof require.main !== 'undefined' && require.main === module) {
   let argv = process.argv;
+  let program = require('commander');
+  program
+    .version('0.0.1')
+    .usage('[options]')
+    .option('-m, --mode <map|common|test>', 'output mode', /^(map|common|test)$/i)
+    .option('-f, --folder <name>', 'input file folder name')
+    .option('-i, --infile <name>', 'input file name')
+    .option('-p, --mapid <id>', 'map id')
+    .option('-e, --eventid <id>', 'event id')
+    .option('-c, --commonid <id>', 'common event id')
+    .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
+    .option('-v, --verbose', 'debug mode', false)
+    .parse(process.argv);
 
-  if (argv.length >= 7){
-    let folder_name = argv[2];
-    let file_name   = argv[3];
-    let map_id      = argv[4];
-    let event_id    = argv[5];
-    let overwrite   = argv[6];
+  if (program.mode === 'map'){
+    Laurus.Text2Frame.IsDebug = program.verbose;
+    let folder_name = program.folder;
+    let file_name   = program.infile;
+    let map_id      = program.mapid;
+    let event_id    = program.eventid;
+    let overwrite   = program.overwrite;
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
       [folder_name, file_name, map_id, event_id, overwrite]);
-  }else if (argv.length == 6){
-    let folder_name = argv[2];
-    let file_name   = argv[3];
-    let common_id   = argv[4];
-    let overwrite   = argv[5];
+  }else if (program.mode === 'common'){
+    Laurus.Text2Frame.IsDebug = program.verbose;
+    let folder_name = program.folder;
+    let file_name   = program.infile;
+    let common_id   = program.commonid;
+    let overwrite   = program.overwrite;
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_CE',
       [folder_name, file_name, common_id, overwrite]);
-  }else{
-    Laurus.Text2Frame.IsDebug = false;
+  }else if (program.mode === 'test'){
+    Laurus.Text2Frame.IsDebug = program.verbose;
     let folder_name = 'test';
     let file_name   = 'basic.txt';
     let map_id      = '1';
     let event_id    = '1';
     let overwrite   = 'true';
-    console.log('=====Test mode.=====');
+    Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
+      [folder_name, file_name, map_id, event_id, overwrite]);
+  }else{
+    console.log('===== Manual =====');
     console.log(`
     NAME
        Text2Frame - Simple compiler to convert text to event command.
     SYNOPSIS
         node Text2Frame.js
-        node Text2Frame.js folder_name file_name map_id overwrite
-        node Text2Frame.js folder_name file_name common_event_id overwrite
+        node Text2Frame.js --verbose --mode map --folder <input text folder name> --infile <input text file name> --mapid <map id> --eventid <event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode common --folder <input text folder name> --infile <input text file name> --commonid <common event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode test
     DESCRIPTION
         node Text2Frame.js
-          テストモードです。test/basic.txtを読み込み、Map001に出力します。
-        node Text2Frame.js folder_name file_name map_id overwrite
+          テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
+        node Text2Frame.js --verbose --mode map --folder <input text folder name> --infile <input text file name> --mapid <map id> --eventid <event id> --overwrite <true|false>
           マップへのイベント出力モードです。
           読み込むファイル、出力マップ、上書きの有無を引数で指定します。
-          data/basic.txtを読み込みMap001に上書きするコマンド例は以下です。
+          test/basic.txtを読み込みdata/Map001.jsonに上書きするコマンド例は以下です。
 
-          例：$ node Text2Frame.js test basic.txt 1 1 true
+          例1：$ node Text2Frame.js --mode map --folder test --infile basic.txt --mapid 1 --eventid 1 --overwrite true
+          例2：$ node Text2Frame.js -m map -f test -i basic.txt -p 1 -e 1 -w true
 
-        node Text2Frame.js folder_name file_name common_event_id overwrite
+        node Text2Frame.js --verbose --mode common --folder <input text folder name> --infile <input text file name> --commonid <common event id> --overwrite <true|false>
           コモンイベントへのイベント出力モードです。
           読み込むファイル、出力コモンイベント、上書きの有無を引数で指定します。
-          data/basic.txtを読み込みCommonEvent001に上書きするコマンド例は以下です。
+          test/basic.txtを読み込みdata/CommonEvents.jsonに上書きするコマンド例は以下です。
 
-          例：$ node Text2Frame.js test basci.txt 1 true
-
+          例1：$ node Text2Frame.js --mode common --folder test --infile basic.txt --commonid 1 --overwrite true
+          例2：$ node Text2Frame.js -m common -f test -i basic.txt -c 1 -w true
     `);
-    Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-      [folder_name, file_name, map_id, event_id, overwrite]);
   }
 }
