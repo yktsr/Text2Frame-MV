@@ -1631,7 +1631,6 @@ if(typeof PluginManager === 'undefined'){
 //
 // $ node Text2Frame.js
 if(typeof require.main !== 'undefined' && require.main === module) {
-  let argv = process.argv;
   let program = require('commander');
   program
     .version('0.0.1')
