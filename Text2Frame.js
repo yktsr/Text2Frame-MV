@@ -1076,7 +1076,7 @@ if(typeof PluginManager === 'undefined'){
       return {"code": 250, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
     }
     const getStopSeEvent = function(){
-      return {"code": 251, "indent": 0, "parameters": [""]};
+      return {"code": 251, "indent": 0, "parameters": []};
     }
 
     const getPlayMeEvent = function(name, volume, pitch, pan){
