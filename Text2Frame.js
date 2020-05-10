@@ -1505,7 +1505,7 @@ if(typeof PluginManager === 'undefined'){
 
           if(actor_number && face_number){
             frame_param.parameters[0] = actor_number[1];
-            frame_param.parameters[1] = face_number[1];
+            frame_param.parameters[1] = parseInt(face_number[1]);
             text = text.replace(face[0], '');
             logger.log("  face set: " + frame_param.parameters[0]
               + " : " + frame_param.parameters[1]);
