@@ -27,7 +27,7 @@
               "indent": 0,
               "parameters": [
                 "Actor1",
-                "0",
+                0,
                 0,
                 2
               ]
@@ -146,7 +146,7 @@
               "indent": 0,
               "parameters": [
                 "Actor1",
-                "0",
+                0,
                 1,
                 0
               ]
@@ -163,7 +163,7 @@
               "indent": 0,
               "parameters": [
                 "Actor1",
-                "1",
+                1,
                 1,
                 0
               ]
@@ -187,7 +187,7 @@
               "indent": 0,
               "parameters": [
                 "Actor1",
-                "1",
+                1,
                 1,
                 1
               ]
@@ -204,7 +204,7 @@
               "indent": 0,
               "parameters": [
                 "Actor1",
-                "1",
+                1,
                 1,
                 2
               ]
@@ -221,7 +221,7 @@
               "indent": 0,
               "parameters": [
                 "Actor1",
-                "1",
+                1,
                 1,
                 1
               ]
@@ -238,7 +238,7 @@
               "indent": 0,
               "parameters": [
                 "Actor1",
-                "1",
+                1,
                 1,
                 1
               ]
@@ -255,7 +255,7 @@
               "indent": 0,
               "parameters": [
                 "Actor1",
-                "1",
+                1,
                 1,
                 1
               ]
@@ -272,7 +272,7 @@
               "indent": 0,
               "parameters": [
                 "Actor1",
-                "1",
+                1,
                 1,
                 2
               ]
@@ -313,7 +313,7 @@
               "indent": 0,
               "parameters": [
                 "Actor1",
-                "1",
+                1,
                 1,
                 0
               ]
@@ -393,7 +393,7 @@
               "indent": 0,
               "parameters": [
                 "Actor1",
-                "2",
+                2,
                 2,
                 0
               ]
@@ -410,7 +410,7 @@
               "indent": 0,
               "parameters": [
                 "Actor1",
-                "0",
+                0,
                 1,
                 0
               ]
@@ -451,7 +451,7 @@
               "indent": 0,
               "parameters": [
                 "Actor1",
-                "1",
+                1,
                 1,
                 0
               ]
@@ -499,7 +499,7 @@
               "indent": 0,
               "parameters": [
                 "Actor1",
-                "0",
+                0,
                 1,
                 0
               ]

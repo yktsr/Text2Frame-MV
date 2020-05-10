@@ -1,0 +1,233 @@
+{
+  "events": [
+    null,
+    {
+      "pages": [
+        {
+          "list": [
+	    {
+	      "code": 241,
+	      "indent": 0,
+	      "parameters": [
+		{
+		  "name": "Battle1",
+		  "volume": 91,
+		  "pitch": 99,
+		  "pan": 1
+		}
+	      ]
+	    },
+	    {
+	      "code": 101,
+	      "indent": 0,
+	      "parameters": [
+		"Actor1",
+		0,
+		0,
+		2
+	      ]
+	    },
+	    {
+	      "code": 401,
+	      "indent": 0,
+	      "parameters": [
+		"今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑（顔）"
+	      ]
+	    },
+	    {
+	      "code": 117,
+	      "indent": 0,
+	      "parameters": [
+		2
+	      ]
+	    },
+	    {
+	      "code": 101,
+	      "indent": 0,
+	      "parameters": [
+		"Actor1",
+		1,
+		1,
+		1
+	      ]
+	    },
+	    {
+	      "code": 401,
+	      "indent": 0,
+	      "parameters": [
+		"今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑(中，暗く)"
+	      ]
+	    },
+	    {
+	      "code": 101,
+	      "indent": 0,
+	      "parameters": [
+		"",
+		0,
+		0,
+		2
+	      ]
+	    },
+	    {
+	      "code": 401,
+	      "indent": 0,
+	      "parameters": [
+		"今日も<一日>がんばる<ぞい！(و ･ㅂ･)و ̑̑"
+	      ]
+	    },
+	    {
+	      "code": 355,
+	      "indent": 0,
+	      "parameters": [
+		"var i = 0;"
+	      ]
+	    },
+	    {
+	      "code": 655,
+	      "indent": 0,
+	      "parameters": [
+		"for(i=0;i<10;i++){"
+	      ]
+	    },
+	    {
+	      "code": 655,
+	      "indent": 0,
+	      "parameters": [
+		"  console.log(\"今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑\");"
+	      ]
+	    },
+	    {
+	      "code": 655,
+	      "indent": 0,
+	      "parameters": [
+		"}"
+	      ]
+	    },
+	    {
+	      "code": 221,
+	      "indent": 0,
+	      "parameters": []
+	    },
+	    {
+	      "code": 230,
+	      "indent": 0,
+	      "parameters": [
+		60
+	      ]
+	    },
+	    {
+	      "code": 222,
+	      "indent": 0,
+	      "parameters": []
+	    },
+	    {
+	      "code": 250,
+	      "indent": 0,
+	      "parameters": [
+		{
+		  "name": "Save",
+		  "volume": 91,
+		  "pitch": 99,
+		  "pan": 1
+		}
+	      ]
+	    },
+	    {
+	      "code": 250,
+	      "indent": 0,
+	      "parameters": [
+		{
+		  "name": "",
+		  "volume": 90,
+		  "pitch": 100,
+		  "pan": 0
+		}
+	      ]
+	    },
+	    {
+	      "code": 241,
+	      "indent": 0,
+	      "parameters": [
+		{
+		  "name": "",
+		  "volume": 90,
+		  "pitch": 100,
+		  "pan": 0
+		}
+	      ]
+	    },
+	    {
+	      "code": 108,
+	      "indent": 0,
+	      "parameters": [
+		"今日も一日がんばるぞい！"
+	      ]
+	    },
+	    {
+	      "code": 408,
+	      "indent": 0,
+	      "parameters": [
+		"今日も一日がんばるぞい！"
+	      ]
+	    },
+	    {
+	      "code": 408,
+	      "indent": 0,
+	      "parameters": [
+		"今日も一日がんばるぞい！"
+	      ]
+	    },
+	    {
+	      "code": 408,
+	      "indent": 0,
+	      "parameters": [
+		"今日も一日がんばるぞい！"
+	      ]
+	    },
+	    {
+	      "code": 356,
+	      "indent": 0,
+	      "parameters": [
+		"import_message_to_event text basic.txt 1 8 true"
+	      ]
+	    },
+	    {
+	      "code": 101,
+	      "indent": 0,
+	      "parameters": [
+		"",
+		0,
+		0,
+		2
+	      ]
+	    },
+	    {
+	      "code": 401,
+	      "indent": 0,
+	      "parameters": [
+		"今日も<一日>がんばる<ぞい！(و ･ㅂ･)و ̑̑"
+	      ]
+	    },
+	    {
+	      "code": 132,
+	      "indent": 0,
+	      "parameters": [
+		{
+		  "name": "Battle1",
+		  "volume": 90,
+		  "pitch": 100,
+		  "pan": 0
+		}
+	      ]
+	    },
+	    {
+	      "code": 0,
+	      "indent": 0,
+	      "parameters": []
+	    }
+          ]
+        }
+      ]
+    }
+  ]
+}

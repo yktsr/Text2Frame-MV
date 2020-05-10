@@ -26,9 +26,11 @@ const text2frame = require('../Text2Frame.js');
 
 describe('Text2Frame Test', function() {
   var tests = [
-    {title: "Basic1", infile: "./test/basic.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_basic.json"},
-    {title: "Basic2", infile: "./test/basic.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_basic.json"},
-    {title: "Basic3", infile: "./test/basic.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_basic.json"},
+    {title: "Basic", infile: "./test/basic.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_basic.json"},
+    {title: "Crlf", infile: "./test/crlf.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_crlf.json"},
+    {title: "Audio", infile: "./test/audio.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_audio.json"},
+    {title: "Extend", infile: "./test/extend.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_extend.json"},
+    {title: "Mix", infile: "./test/mix.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_mix.json"}
   ];
 
   const consoleStub = sinon.stub(console, 'log');

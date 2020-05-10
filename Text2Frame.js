@@ -958,10 +958,10 @@ if(typeof PluginManager === 'undefined'){
     }
 
     const getFadeinEvent = function(){
-      return {"code": 222, "indent": 0, "parameters": [""]};
+      return {"code": 222, "indent": 0, "parameters": []};
     }
     const getFadeoutEvent = function(){
-      return {"code": 221, "indent": 0, "parameters": [""]};
+      return {"code": 221, "indent": 0, "parameters": []};
     }
 
     const getPlayBgmEvent = function(name, volume, pitch, pan){
@@ -1076,7 +1076,7 @@ if(typeof PluginManager === 'undefined'){
       return {"code": 250, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
     }
     const getStopSeEvent = function(){
-      return {"code": 251, "indent": 0, "parameters": [""]};
+      return {"code": 251, "indent": 0, "parameters": []};
     }
 
     const getPlayMeEvent = function(name, volume, pitch, pan){
@@ -1505,7 +1505,7 @@ if(typeof PluginManager === 'undefined'){
 
           if(actor_number && face_number){
             frame_param.parameters[0] = actor_number[1];
-            frame_param.parameters[1] = face_number[1];
+            frame_param.parameters[1] = parseInt(face_number[1]);
             text = text.replace(face[0], '');
             logger.log("  face set: " + frame_param.parameters[0]
               + " : " + frame_param.parameters[1]);
