@@ -27,7 +27,8 @@ const text2frame = require('../Text2Frame.js');
 describe('Text2Frame Test', function() {
   var tests = [
     {title: "Basic", infile: "./test/basic.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_basic.json"},
-    {title: "Audio", infile: "./test/audio.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_audio.json"}
+    {title: "Audio", infile: "./test/audio.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_audio.json"},
+    {title: "Extend", infile: "./test/extend.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_extend.json"}
   ];
 
   const consoleStub = sinon.stub(console, 'log');

@@ -958,10 +958,10 @@ if(typeof PluginManager === 'undefined'){
     }
 
     const getFadeinEvent = function(){
-      return {"code": 222, "indent": 0, "parameters": [""]};
+      return {"code": 222, "indent": 0, "parameters": []};
     }
     const getFadeoutEvent = function(){
-      return {"code": 221, "indent": 0, "parameters": [""]};
+      return {"code": 221, "indent": 0, "parameters": []};
     }
 
     const getPlayBgmEvent = function(name, volume, pitch, pan){
