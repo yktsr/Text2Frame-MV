@@ -1117,14 +1117,63 @@ if(typeof PluginManager === 'undefined'){
 
     const getStopMeEvent = function(volume, pitch, pan){
       return getPlayMeEvent("", volume, pitch, pan);
-    }
+    };
 
-    let event_command_list = [];
+    let getBlockStatement = function(scenario_text, statement){
+      let block_map = {};
+      let block_count = 0;
+      let re = null;
+      let event_head_func = function(){};
+      let event_body_func = function(){};
+      if(statement == 'script'){
+        re = /<script>([\s\S]*?)<\/script>|<sc>([\s\S]*?)<\/sc>|<スクリプト>([\s\S]*?)<\/スクリプト>/i;
+        event_head_func = getScriptHeadEvent;
+        event_body_func = getScriptBodyEvent;
+      }else if(statement == 'comment'){
+        re = /<comment>([\s\S]*?)<\/comment>|<co>([\s\S]*?)<\/co>|<注釈>([\s\S]*?)<\/注釈>/i;
+        event_head_func = getCommentOutHeadEvent;
+        event_body_func = getCommentOutBodyEvent;
+      }
+
+      let block = scenario_text.match(re);
+      while(block !== null){
+        let match_block = block[0];
+        let match_text = block[1] || block[2] || block[3];
+        scenario_text = scenario_text.replace(match_block, `\n#${statement.toUpperCase()}_BLOCK${block_count}#\n`);
+        let match_text_list = match_text.replace(/\r/g,'').replace(/^\n/,'').replace(/\n$/,'').split('\n');
+        let event_list = [];
+        for(let i=0; i<match_text_list.length; i++){
+          let text = match_text_list[i];
+          if(i == 0){
+            event_list.push(event_head_func(text));
+          }else{
+            event_list.push(event_body_func(text));
+          }
+        }
+        block_map[`#${statement.toUpperCase()}_BLOCK${block_count}#`] = event_list;
+        block = scenario_text.match(re);
+        block_count++;
+      }
+      return {scenario_text, block_map};
+    };
+
     let scenario_text = readText(Laurus.Text2Frame.TextPath);
+    let block_map = {};
+    {
+      const t = getBlockStatement(scenario_text, 'script');
+      scenario_text = t.scenario_text;
+      block_map = Object.assign(block_map, t.block_map);
+    }
+    {
+      const t = getBlockStatement(scenario_text, 'comment');
+      scenario_text = t.scenario_text;
+      block_map = Object.assign(block_map, t.block_map);
+    }
+    console.log(scenario_text, block_map)
+
     let text_lines = scenario_text.replace(/\r/g,'').split('\n');
+    let event_command_list = [];
     let frame_param = getPretextEvent();
-    let script_mode = {"mode": false, "body": false};
-    let comment_mode = {"mode": false, "body": false};
     logger.log("Default", frame_param.parameters);
     for(let i=0; i < text_lines.length; i++){
       let text = text_lines[i];
@@ -1133,66 +1182,6 @@ if(typeof PluginManager === 'undefined'){
 
       // Comment out
       if(Laurus.Text2Frame.CommentOutChar && text.match('^ *' + Laurus.Text2Frame.CommentOutChar)){
-        continue;
-      }
-
-      // Script
-      let script_start = text.match(/<script>/i)
-        || text.match(/<SC>/i)
-        || text.match(/<スクリプト>/i)
-      let script_end = text.match(/<\/script>/i)
-        || text.match(/<\/SC>/i)
-        || text.match(/<\/スクリプト>/i)
-
-      if(script_start){
-        script_mode["mode"] = true;
-        logger.log("script_mode = true;");
-        continue;
-      }
-      if(script_end){
-        script_mode["mode"] = false;
-        script_mode["body"] = false;
-        logger.log("script_mode = false;");
-        continue;
-      }
-
-      if(script_mode["mode"]){
-        if(script_mode["body"]){
-          event_command_list.push(getScriptBodyEvent(text));
-        }else{
-          event_command_list.push(getScriptHeadEvent(text));
-          script_mode["body"] = true;
-        }
-        continue;
-      }
-
-      // Comment out Event
-      let comment_start = text.match(/<comment>/i)
-        || text.match(/<CO>/i)
-        || text.match(/<注釈>/i);
-      let comment_end = text.match(/<\/comment>/i)
-        || text.match(/<\/CO>/i)
-        || text.match(/<\/注釈>/i);
-
-      if(comment_start){
-        comment_mode["mode"] = true;
-        logger.log("comment_mode = true;");
-        continue;
-      }
-      if(comment_end){
-        comment_mode["mode"] = false;
-        comment_mode["body"] = false;
-        logger.log("comment_mode = false;");
-        continue;
-      }
-
-      if(comment_mode["mode"]){
-        if(comment_mode["body"]){
-          event_command_list.push(getCommentOutBodyEvent(text));
-        }else{
-          event_command_list.push(getCommentOutHeadEvent(text));
-          comment_mode["body"] = true;
-        }
         continue;
       }
 
@@ -1254,10 +1243,29 @@ if(typeof PluginManager === 'undefined'){
           || text.match(/<playme *: *なし>/i)
           || text.match(/<MEの停止>/);
 
+        const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
+        const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
+
         if(frame_param){
           logger.log("  ", frame_param.parameters);
         }else{
           logger.log("  ", 'nil');
+        }
+
+        // Script Block
+        if(script_block){
+          const block_tag = script_block[0];
+          event_command_list = event_command_list.concat(block_map[block_tag]);
+          continue;
+        }
+
+
+        // Comment Block
+        if(comment_block){
+          const block_tag = comment_block[0];
+          console.log(block_tag)
+          event_command_list = event_command_list.concat(block_map[block_tag]);
+          continue;
         }
 
         // Plugin Command
