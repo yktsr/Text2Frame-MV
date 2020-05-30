@@ -1226,15 +1226,15 @@ if(typeof PluginManager === 'undefined'){
 
 
       if(text){
-        let face = text.match(/^<face *: *(.+?)>/i)
-          || text.match(/^<FC *: *(.+?)>/i)
-          || text.match(/^<顔 *: *(.+?)>/i);
-        let window_position = text.match(/^<windowposition *: *(.+?)>/i)
-          || text.match(/^<WP *: *(.+?)>/i)
-          || text.match(/^<位置 *: *(.+?)>/i);
-        let background = text.match(/^<background *: *(.+?)>/i)
-          || text.match(/^<BG *: *(.+?)>/i)
-          || text.match(/^<背景 *: *(.+?)>/i);
+        let face = text.match(/<face *: *(.+?)>/i)
+          || text.match(/<FC *: *(.+?)>/i)
+          || text.match(/<顔 *: *(.+?)>/i);
+        let window_position = text.match(/<windowposition *: *(.+?)>/i)
+          || text.match(/<WP *: *(.+?)>/i)
+          || text.match(/<位置 *: *(.+?)>/i);
+        let background = text.match(/<background *: *(.+?)>/i)
+          || text.match(/<BG *: *(.+?)>/i)
+          || text.match(/<背景 *: *(.+?)>/i);
         let plugin_command = text.match(/<plugincommand *: *(.+?)>/i)
           || text.match(/<PC *: *(.+?)>/i)
           || text.match(/<プラグインコマンド *: *(.+?)>/i);
@@ -1550,100 +1550,115 @@ if(typeof PluginManager === 'undefined'){
           continue;
         }
 
+        /* eslint-disable no-useless-escape */
+        const set = text.match(/<set *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<代入 *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<= *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
+        const set_range = text.match(/<set *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<代入 *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<= *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
+        const add = text.match(/<add *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<加算 *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\+ *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
+        const add_range = text.match(/<add *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<加算 *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\+ *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
+        const sub = text.match(/<sub *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<減算 *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<- *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
+        const sub_range = text.match(/<sub *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<減算 *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<- *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
+        const mul = text.match(/<mul *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<乗算 *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\* *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
+        const mul_range = text.match(/<mul *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<乗算 *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\* *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
+        const div = text.match(/<div *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<除算 *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\/ *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
+        const div_range = text.match(/<div *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<除算 *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\/ *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
+        const mod = text.match(/<mod *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<剰余 *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\% *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
+        const mod_range = text.match(/<mod *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<剰余 *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\% *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
+        /* eslint-enable */
 
-        const set = text.match(/<set *: *(\d+) *, *(\d+) *>|<代入 *: *(\d+) *, *(\d+) *>|<= *: *(\d+) *, *(\d+) *>/i);
-        const set_range = text.match(/<set *: *(\d+)-(\d+) *, *(\d+) *>|<代入 *: *(\d+)-(\d+) *, *(\d+) *>|<= *: *(\d+)-(\d+) *, *(\d+) *>/i);
-        const add = text.match(/<add *: *(\d+) *, *(\d+) *>|<加算 *: *(\d+) *, *(\d+) *>|<\+ *: *(\d+) *, *(\d+) *>/i);
-        const add_range = text.match(/<add *: *(\d+)-(\d+) *, *(\d+) *>|<加算 *: *(\d+)-(\d+) *, *(\d+) *>|<\+ *: *(\d+)-(\d+) *, *(\d+) *>/i);
-        const sub = text.match(/<sub *: *(\d+) *, *(\d+) *>|<減算 *: *(\d+) *, *(\d+) *>|<- *: *(\d+) *, *(\d+) *>/i);
-        const sub_range = text.match(/<sub *: *(\d+)-(\d+) *, *(\d+) *>|<減算 *: *(\d+)-(\d+) *, *(\d+) *>|<- *: *(\d+)-(\d+) *, *(\d+) *>/i);
-        const mul = text.match(/<mul *: *(\d+) *, *(\d+) *>|<乗算 *: *(\d+) *, *(\d+) *>|<\* *: *(\d+) *, *(\d+) *>/i);
-        const mul_range = text.match(/<mul *: *(\d+)-(\d+) *, *(\d+) *>|<乗算 *: *(\d+)-(\d+) *, *(\d+) *>|<\* *: *(\d+)-(\d+) *, *(\d+) *>/i);
-        const div = text.match(/<div *: *(\d+) *, *(\d+) *>|<除算 *: *(\d+) *, *(\d+) *>|<\/ *: *(\d+) *, *(\d+) *>/i);
-        const div_range = text.match(/<div *: *(\d+)-(\d+) *, *(\d+) *>|<除算 *: *(\d+)-(\d+) *, *(\d+) *>|<\/ *: *(\d+)-(\d+) *, *(\d+) *>/i);
-        const mod = text.match(/<mod *: *(\d+) *, *(\d+) *>|<剰余 *: *(\d+) *, *(\d+) *>|<\% *: *(\d+) *, *(\d+) *>/i);
-        const mod_range = text.match(/<mod *: *(\d+)-(\d+) *, *(\d+) *>|<剰余 *: *(\d+)-(\d+) *, *(\d+) *>|<\% *: *(\d+)-(\d+) *, *(\d+) *>/i);
-        const wrapperGetControlValiable = function(operator, text_match, operand){
+        const _wrapperGetControlValiable = function(operator, text_match, start_pointer, end_pointer, value){
+          let value_num = Number(value);
+          if(isNaN(value_num)){
+            const random = value.match(/r\[(\d+)\]\[(\d+)\]|random\[(\d+)\]\[(\d+)\]|乱数\[(\d+)\]\[(\d+)\]/i);
+            console.log(value,random)
+            if(random){
+              const random_range1 = random[1] || random[3] || random[5];
+              const random_range2 = random[2] || random[4] || random[6];
+              return getControlValiable(operator, start_pointer, end_pointer, 'random', parseInt(random_range1), parseInt(random_range2));
+            }
+          }else{
+            return getControlValiable(operator, start_pointer, end_pointer, 'constant', value_num);
+          }
+        }
+        const wrapperGetControlValiable = function(operator, text_match){
           let pointer = text_match[1] || text_match[3] || text_match[5];
           let value = text_match[2] || text_match[4] || text_match[6];
           pointer = parseInt(pointer);
-          value = parseInt(value);
-          return getControlValiable(operator, pointer, pointer, operand, value);
+          return _wrapperGetControlValiable(operator, text_match, pointer, pointer, value);
         }
-        const wrapperGetControlValiableRange = function(operator, text_match, operand){
+        const wrapperGetControlValiableRange = function(operator, text_match){
           let start_pointer = text_match[1] || text_match[4] || text_match[7];
           let end_pointer = text_match[2] || text_match[5] || text_match[8];
           let value = text_match[3] || text_match[6] || text_match[9];
+
           start_pointer = parseInt(start_pointer);
           end_pointer = parseInt(end_pointer);
-          value = parseInt(value);
-          return getControlValiable(operator, start_pointer, end_pointer, operand, value);
+          return _wrapperGetControlValiable(operator, text_match, start_pointer, end_pointer, value);
         }
 
         // set
         if(set){
-          event_command_list.push(wrapperGetControlValiable('set', set, 'constant'));
+          event_command_list.push(wrapperGetControlValiable('set', set));
           continue;
         }
         // set_range
         if(set_range){
-          event_command_list.push(wrapperGetControlValiableRange('set', set_range, 'constant'));
+          event_command_list.push(wrapperGetControlValiableRange('set', set_range));
           continue;
         }
 
         // add
         if(add){
-          event_command_list.push(wrapperGetControlValiable('add', add, 'constant'));
+          event_command_list.push(wrapperGetControlValiable('add', add));
           continue;
         }
         // add_range
         if(add_range){
-          event_command_list.push(wrapperGetControlValiableRange('add', add_range, 'constant'));
+          event_command_list.push(wrapperGetControlValiableRange('add', add_range));
           continue;
         }
 
         // sub
         if(sub){
-          event_command_list.push(wrapperGetControlValiable('sub', sub, 'constant'));
+          event_command_list.push(wrapperGetControlValiable('sub', sub));
           continue;
         }
         // sub_range
         if(sub_range){
-          event_command_list.push(wrapperGetControlValiableRange('sub', sub_range, 'constant'));
+          event_command_list.push(wrapperGetControlValiableRange('sub', sub_range));
           continue;
         }
 
         // mul
         if(mul){
-          event_command_list.push(wrapperGetControlValiable('mul', mul, 'constant'));
+          event_command_list.push(wrapperGetControlValiable('mul', mul));
           continue;
         }
         // mul_range
         if(mul_range){
-          event_command_list.push(wrapperGetControlValiableRange('mul', mul_range, 'constant'));
+          event_command_list.push(wrapperGetControlValiableRange('mul', mul_range));
           continue;
         }
 
         // div
         if(div){
           console.log(div)
-          event_command_list.push(wrapperGetControlValiable('div', div, 'constant'));
+          event_command_list.push(wrapperGetControlValiable('div', div));
           continue;
         }
         // div_range
         if(div_range){
-          event_command_list.push(wrapperGetControlValiableRange('div', div_range, 'constant'));
+          event_command_list.push(wrapperGetControlValiableRange('div', div_range));
           continue;
         }
 
         // mod
         if(mod){
-          event_command_list.push(wrapperGetControlValiable('mod', mod, 'constant'));
+          event_command_list.push(wrapperGetControlValiable('mod', mod));
           continue;
         }
         // mod_range
         if(mod_range){
-          event_command_list.push(wrapperGetControlValiableRange('mod', mod_range, 'constant'));
+          event_command_list.push(wrapperGetControlValiableRange('mod', mod_range));
           continue;
         }
 
