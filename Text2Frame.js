@@ -886,6 +886,8 @@ if(typeof PluginManager === 'undefined'){
       }
     };
 
+
+    /*************************************************************************************************************/
     const getBackground = function(background) {
       switch(background.toUpperCase()){
         case 'WINDOW':
@@ -1119,6 +1121,44 @@ if(typeof PluginManager === 'undefined'){
       return getPlayMeEvent("", volume, pitch, pan);
     };
 
+    const getControlValiable = function(operation, start_pointer, end_pointer, operand, operand_value1 = 0, operand_value2 = 0){
+      let parameters = [start_pointer, end_pointer, 0, 0, operand_value1];
+      switch(operation){
+        case 'set':
+          parameters[2] = 0;
+          break;
+        case 'add':
+          parameters[2] = 1;
+          break;
+        case 'sub':
+          parameters[2] = 2;
+          break;
+        case 'mul':
+          parameters[2] = 3;
+          break;
+        case 'div':
+          parameters[2] = 4;
+          break;
+        case 'mod':
+          parameters[2] = 5;
+          break;
+      }
+      switch(operand){
+        case 'constant':
+          parameters[3] = 0;
+          break;
+        case 'variable':
+          parameters[3] = 1;
+          break;
+        case 'random':
+          parameters[3] = 2;
+          parameters.push(operand_value2);
+          break;
+      }
+      return {"code": 122, "indent": 0, "parameters": parameters};
+    };
+
+    /*************************************************************************************************************/
     let getBlockStatement = function(scenario_text, statement){
       let block_map = {};
       let block_count = 0;
@@ -1251,7 +1291,6 @@ if(typeof PluginManager === 'undefined'){
           event_command_list = event_command_list.concat(block_map[block_tag]);
           continue;
         }
-
 
         // Comment Block
         if(comment_block){
@@ -1508,6 +1547,103 @@ if(typeof PluginManager === 'undefined'){
               event_command_list.push(getPlayMeEvent(name, volume, pitch, pan));
             }
           }
+          continue;
+        }
+
+
+        const set = text.match(/<set *: *(\d+) *, *(\d+) *>|<代入 *: *(\d+) *, *(\d+) *>|<= *: *(\d+) *, *(\d+) *>/i);
+        const set_range = text.match(/<set *: *(\d+)-(\d+) *, *(\d+) *>|<代入 *: *(\d+)-(\d+) *, *(\d+) *>|<= *: *(\d+)-(\d+) *, *(\d+) *>/i);
+        const add = text.match(/<add *: *(\d+) *, *(\d+) *>|<加算 *: *(\d+) *, *(\d+) *>|<\+ *: *(\d+) *, *(\d+) *>/i);
+        const add_range = text.match(/<add *: *(\d+)-(\d+) *, *(\d+) *>|<加算 *: *(\d+)-(\d+) *, *(\d+) *>|<\+ *: *(\d+)-(\d+) *, *(\d+) *>/i);
+        const sub = text.match(/<sub *: *(\d+) *, *(\d+) *>|<減算 *: *(\d+) *, *(\d+) *>|<- *: *(\d+) *, *(\d+) *>/i);
+        const sub_range = text.match(/<sub *: *(\d+)-(\d+) *, *(\d+) *>|<減算 *: *(\d+)-(\d+) *, *(\d+) *>|<- *: *(\d+)-(\d+) *, *(\d+) *>/i);
+        const mul = text.match(/<mul *: *(\d+) *, *(\d+) *>|<乗算 *: *(\d+) *, *(\d+) *>|<\* *: *(\d+) *, *(\d+) *>/i);
+        const mul_range = text.match(/<mul *: *(\d+)-(\d+) *, *(\d+) *>|<乗算 *: *(\d+)-(\d+) *, *(\d+) *>|<\* *: *(\d+)-(\d+) *, *(\d+) *>/i);
+        const div = text.match(/<div *: *(\d+) *, *(\d+) *>|<除算 *: *(\d+) *, *(\d+) *>|<\/ *: *(\d+) *, *(\d+) *>/i);
+        const div_range = text.match(/<div *: *(\d+)-(\d+) *, *(\d+) *>|<除算 *: *(\d+)-(\d+) *, *(\d+) *>|<\/ *: *(\d+)-(\d+) *, *(\d+) *>/i);
+        const mod = text.match(/<mod *: *(\d+) *, *(\d+) *>|<剰余 *: *(\d+) *, *(\d+) *>|<\% *: *(\d+) *, *(\d+) *>/i);
+        const mod_range = text.match(/<mod *: *(\d+)-(\d+) *, *(\d+) *>|<剰余 *: *(\d+)-(\d+) *, *(\d+) *>|<\% *: *(\d+)-(\d+) *, *(\d+) *>/i);
+        const wrapperGetControlValiable = function(operator, text_match, operand){
+          let pointer = text_match[1] || text_match[3] || text_match[5];
+          let value = text_match[2] || text_match[4] || text_match[6];
+          pointer = parseInt(pointer);
+          value = parseInt(value);
+          return getControlValiable(operator, pointer, pointer, operand, value);
+        }
+        const wrapperGetControlValiableRange = function(operator, text_match, operand){
+          let start_pointer = text_match[1] || text_match[4] || text_match[7];
+          let end_pointer = text_match[2] || text_match[5] || text_match[8];
+          let value = text_match[3] || text_match[6] || text_match[9];
+          start_pointer = parseInt(start_pointer);
+          end_pointer = parseInt(end_pointer);
+          value = parseInt(value);
+          return getControlValiable(operator, start_pointer, end_pointer, operand, value);
+        }
+
+        // set
+        if(set){
+          event_command_list.push(wrapperGetControlValiable('set', set, 'constant'));
+          continue;
+        }
+        // set_range
+        if(set_range){
+          event_command_list.push(wrapperGetControlValiableRange('set', set_range, 'constant'));
+          continue;
+        }
+
+        // add
+        if(add){
+          event_command_list.push(wrapperGetControlValiable('add', add, 'constant'));
+          continue;
+        }
+        // add_range
+        if(add_range){
+          event_command_list.push(wrapperGetControlValiableRange('add', add_range, 'constant'));
+          continue;
+        }
+
+        // sub
+        if(sub){
+          event_command_list.push(wrapperGetControlValiable('sub', sub, 'constant'));
+          continue;
+        }
+        // sub_range
+        if(sub_range){
+          event_command_list.push(wrapperGetControlValiableRange('sub', sub_range, 'constant'));
+          continue;
+        }
+
+        // mul
+        if(mul){
+          event_command_list.push(wrapperGetControlValiable('mul', mul, 'constant'));
+          continue;
+        }
+        // mul_range
+        if(mul_range){
+          event_command_list.push(wrapperGetControlValiableRange('mul', mul_range, 'constant'));
+          continue;
+        }
+
+        // div
+        if(div){
+          console.log(div)
+          event_command_list.push(wrapperGetControlValiable('div', div, 'constant'));
+          continue;
+        }
+        // div_range
+        if(div_range){
+          event_command_list.push(wrapperGetControlValiableRange('div', div_range, 'constant'));
+          continue;
+        }
+
+        // mod
+        if(mod){
+          event_command_list.push(wrapperGetControlValiable('mod', mod, 'constant'));
+          continue;
+        }
+        // mod_range
+        if(mod_range){
+          event_command_list.push(wrapperGetControlValiableRange('mod', mod_range, 'constant'));
           continue;
         }
 
