@@ -848,7 +848,7 @@ if(typeof PluginManager === 'undefined'){
     const logger = {};
     logger.log = function(){
       if(Laurus.Text2Frame.IsDebug){
-        console.log(Array.prototype.join.call(arguments));
+        console.debug.apply(console, arguments);
       }
     };
 
@@ -1169,7 +1169,6 @@ if(typeof PluginManager === 'undefined'){
       scenario_text = t.scenario_text;
       block_map = Object.assign(block_map, t.block_map);
     }
-    console.log(scenario_text, block_map)
 
     let text_lines = scenario_text.replace(/\r/g,'').split('\n');
     let event_command_list = [];
@@ -1187,15 +1186,15 @@ if(typeof PluginManager === 'undefined'){
 
 
       if(text){
-        let face = text.match(/<face *: *(.+?)>/i)
-          || text.match(/<FC *: *(.+?)>/i)
-          || text.match(/<顔 *: *(.+?)>/i);
-        let window_position = text.match(/<windowposition *: *(.+?)>/i)
-          || text.match(/<WP *: *(.+?)>/i)
-          || text.match(/<位置 *: *(.+?)>/i);
-        let background = text.match(/<background *: *(.+?)>/i)
-          || text.match(/<BG *: *(.+?)>/i)
-          || text.match(/<背景 *: *(.+?)>/i);
+        let face = text.match(/^<face *: *(.+?)>/i)
+          || text.match(/^<FC *: *(.+?)>/i)
+          || text.match(/^<顔 *: *(.+?)>/i);
+        let window_position = text.match(/^<windowposition *: *(.+?)>/i)
+          || text.match(/^<WP *: *(.+?)>/i)
+          || text.match(/^<位置 *: *(.+?)>/i);
+        let background = text.match(/^<background *: *(.+?)>/i)
+          || text.match(/^<BG *: *(.+?)>/i)
+          || text.match(/^<背景 *: *(.+?)>/i);
         let plugin_command = text.match(/<plugincommand *: *(.+?)>/i)
           || text.match(/<PC *: *(.+?)>/i)
           || text.match(/<プラグインコマンド *: *(.+?)>/i);
@@ -1246,12 +1245,6 @@ if(typeof PluginManager === 'undefined'){
         const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
         const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
 
-        if(frame_param){
-          logger.log("  ", frame_param.parameters);
-        }else{
-          logger.log("  ", 'nil');
-        }
-
         // Script Block
         if(script_block){
           const block_tag = script_block[0];
@@ -1263,7 +1256,6 @@ if(typeof PluginManager === 'undefined'){
         // Comment Block
         if(comment_block){
           const block_tag = comment_block[0];
-          console.log(block_tag)
           event_command_list = event_command_list.concat(block_map[block_tag]);
           continue;
         }
@@ -1530,9 +1522,6 @@ if(typeof PluginManager === 'undefined'){
             frame_param.parameters[0] = face[1].replace(/\(\d\)/,'');
             frame_param.parameters[1] = parseInt(face_number[1]);
             text = text.replace(face[0], '');
-            logger.log("  face set: " + frame_param.parameters[0]
-              + " : " + frame_param.parameters[1]);
-            logger.log("  [*]" + text);
           }else{
             console.error(text);
             throw new Error('Syntax error. / 文法エラーです。'
@@ -1557,8 +1546,6 @@ if(typeof PluginManager === 'undefined'){
               + text.replace(/</g, '  ').replace(/>/g, '  '));
           }
           text = text.replace(background[0], '');
-          logger.log("  background set: " + frame_param.parameters[2]);
-          logger.log("  [*]" + text);
         }
 
         // window position
@@ -1576,19 +1563,16 @@ if(typeof PluginManager === 'undefined'){
               + text.replace(/</g, '  ').replace(/>/g, '  '));
           }
           text = text.replace(window_position[0], '');
-          logger.log("  window_position set: " + frame_param.parameters[3]);
-          logger.log("  [*]" + text);
         }
 
-        if(Laurus.Text2Frame.IsDebug){
-          logger.log("  [!]" + text);
-        }
 
         if(text){
           if(frame_param){
+            logger.log("push: ", frame_param.parameters);
             event_command_list.push(frame_param);
             frame_param = null;
           }
+          logger.log("push: ", text);
           event_command_list.push(getTextFrameEvent(text));
         }
       }else{
