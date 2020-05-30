@@ -795,7 +795,7 @@ if(typeof PluginManager === 'undefined'){
     Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug"]) == 'true') ? true : false;
     Laurus.Text2Frame.TextPath        = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
     Laurus.Text2Frame.MapPath         = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
-    Laurus.Text2Frame.CommonEventPath = `${base}${path.sep}data${path.sep}CommonEvents.json`;
+    Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`;
   }
 
   //=============================================================================
@@ -835,7 +835,7 @@ if(typeof PluginManager === 'undefined'){
           Laurus.Text2Frame.CommonEventID   = args[2];
           Laurus.Text2Frame.IsOverwrite     = (args[3] == 'true') ? true : false;
           Laurus.Text2Frame.TextPath        = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
-          Laurus.Text2Frame.CommonEventPath = `${base}${path.sep}data${path.sep}CommonEvents.json`;
+          Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`;
         }
         break;
       case 'COMMAND_LINE' :
