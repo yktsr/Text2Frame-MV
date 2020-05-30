@@ -753,41 +753,50 @@ var Laurus = Laurus || {};
 Laurus.Text2Frame = {};
 
 if(typeof PluginManager === 'undefined'){
+  // for test
   /* eslint-disable no-global-assign */
   Game_Interpreter = {};
   Game_Interpreter.prototype = {};
   $gameMessage = {};
   $gameMessage.add = function(){};
   /* eslint-enable */
-
-  Laurus.Text2Frame.WindowPosition = "Bottom";
-  Laurus.Text2Frame.Background     = "Window";
-  Laurus.Text2Frame.FileFolder     = "test";
-  Laurus.Text2Frame.FileName       = "basic.txt";
-  Laurus.Text2Frame.CommonEventID  = "1";
-  Laurus.Text2Frame.MapID          = "1";
-  Laurus.Text2Frame.EventID        = "1";
-  Laurus.Text2Frame.IsOverwrite    = true;
-  Laurus.Text2Frame.CommentOutChar = "%";
-  Laurus.Text2Frame.IsDebug        = true;
-}else{
-  Laurus.Text2Frame.Parameters = PluginManager.parameters('Text2Frame');
-  Laurus.Text2Frame.WindowPosition = String(Laurus.Text2Frame.Parameters["Default Window Position"]);
-  Laurus.Text2Frame.Background     = String(Laurus.Text2Frame.Parameters["Default Background"]);
-  Laurus.Text2Frame.FileFolder     = String(Laurus.Text2Frame.Parameters["Default Scenario Folder"]);
-  Laurus.Text2Frame.FileName       = String(Laurus.Text2Frame.Parameters["Default Scenario File"]);
-  Laurus.Text2Frame.CommonEventID  = String(Laurus.Text2Frame.Parameters["Default Common Event ID"]);
-  Laurus.Text2Frame.MapID          = String(Laurus.Text2Frame.Parameters["Default MapID"]);
-  Laurus.Text2Frame.EventID        = String(Laurus.Text2Frame.Parameters["Default EventID"]);
-  Laurus.Text2Frame.IsOverwrite    = (String(Laurus.Text2Frame.Parameters["IsOverwrite"]) == 'true') ? true : false;
-  Laurus.Text2Frame.CommentOutChar = String(Laurus.Text2Frame.Parameters["Comment Out Char"]);
-  Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug"]) == 'true') ? true : false;
 }
+
 (function() {
   'use strict';
   const fs   = require('fs');
   const path = require('path');
-  const base = path.dirname(process.mainModule.filename);
+  const PATH_SEP = path.sep;
+  const BASE_PATH = path.dirname(process.mainModule.filename);
+
+  if(typeof PluginManager === 'undefined'){
+    Laurus.Text2Frame.WindowPosition = "Bottom";
+    Laurus.Text2Frame.Background     = "Window";
+    Laurus.Text2Frame.FileFolder     = "test";
+    Laurus.Text2Frame.FileName       = "basic.txt";
+    Laurus.Text2Frame.CommonEventID  = "1";
+    Laurus.Text2Frame.MapID          = "1";
+    Laurus.Text2Frame.EventID        = "1";
+    Laurus.Text2Frame.IsOverwrite    = true;
+    Laurus.Text2Frame.CommentOutChar = "%";
+    Laurus.Text2Frame.IsDebug        = true;
+  }else{
+    // for default plugin command
+    Laurus.Text2Frame.Parameters = PluginManager.parameters('Text2Frame');
+    Laurus.Text2Frame.WindowPosition = String(Laurus.Text2Frame.Parameters["Default Window Position"]);
+    Laurus.Text2Frame.Background     = String(Laurus.Text2Frame.Parameters["Default Background"]);
+    Laurus.Text2Frame.FileFolder     = String(Laurus.Text2Frame.Parameters["Default Scenario Folder"]);
+    Laurus.Text2Frame.FileName       = String(Laurus.Text2Frame.Parameters["Default Scenario File"]);
+    Laurus.Text2Frame.CommonEventID  = String(Laurus.Text2Frame.Parameters["Default Common Event ID"]);
+    Laurus.Text2Frame.MapID          = String(Laurus.Text2Frame.Parameters["Default MapID"]);
+    Laurus.Text2Frame.EventID        = String(Laurus.Text2Frame.Parameters["Default EventID"]);
+    Laurus.Text2Frame.IsOverwrite    = (String(Laurus.Text2Frame.Parameters["IsOverwrite"]) == 'true') ? true : false;
+    Laurus.Text2Frame.CommentOutChar = String(Laurus.Text2Frame.Parameters["Comment Out Char"]);
+    Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug"]) == 'true') ? true : false;
+    Laurus.Text2Frame.TextPath        = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
+    Laurus.Text2Frame.MapPath         = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
+    Laurus.Text2Frame.CommonEventPath = `${base}${path.sep}data${path.sep}CommonEvents.json`;
+  }
 
   //=============================================================================
   // Game_Interpreter
@@ -799,27 +808,38 @@ if(typeof PluginManager === 'undefined'){
   };
 
   Game_Interpreter.prototype.pluginCommandText2Frame = function(command, args) {
-    switch (command.toUpperCase()) {
+    Laurus.Text2Frame.ExecMode = command.toUpperCase();
+    switch (Laurus.Text2Frame.ExecMode) {
+      // for custom plugin command
       case 'IMPORT_MESSAGE_TO_EVENT' :
       case 'メッセージをイベントにインポート' :
         if(args.length == 5){
-          $gameMessage.add('Command arguments mode. / コマンド引数モードです');
-          Laurus.Text2Frame.FileFolder     = args[0];
-          Laurus.Text2Frame.FileName       = args[1];
-          Laurus.Text2Frame.MapID          = args[2];
-          Laurus.Text2Frame.EventID        = args[3];
-          Laurus.Text2Frame.IsOverwrite    = (args[4] == 'true') ? true : false;
+          $gameMessage.add('import message to event. / メッセージをイベントにインポートします。');
+          Laurus.Text2Frame.ExecMode        = 'IMPORT_MESSAGE_TO_EVENT';
+          Laurus.Text2Frame.FileFolder      = args[0];
+          Laurus.Text2Frame.FileName        = args[1];
+          Laurus.Text2Frame.MapID           = args[2];
+          Laurus.Text2Frame.EventID         = args[3];
+          Laurus.Text2Frame.IsOverwrite     = (args[4] == 'true') ? true : false;
+          Laurus.Text2Frame.TextPath        = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
+          Laurus.Text2Frame.MapPath         = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
         }
         break;
       case 'IMPORT_MESSAGE_TO_CE' :
       case 'メッセージをコモンイベントにインポート' :
         if(args.length == 4){
-          $gameMessage.add('Command arguments mode. / コマンド引数モードです');
-          Laurus.Text2Frame.FileFolder     = args[0];
-          Laurus.Text2Frame.FileName       = args[1];
-          Laurus.Text2Frame.CommonEventID  = args[2];
-          Laurus.Text2Frame.IsOverwrite    = (args[3] == 'true') ? true : false;
+          $gameMessage.add('import message to common event. / メッセージをコモンイベントにインポートします。');
+          Laurus.Text2Frame.ExecMode        = 'IMPORT_MESSAGE_TO_CE';
+          Laurus.Text2Frame.FileFolder      = args[0];
+          Laurus.Text2Frame.FileName        = args[1];
+          Laurus.Text2Frame.CommonEventID   = args[2];
+          Laurus.Text2Frame.IsOverwrite     = (args[3] == 'true') ? true : false;
+          Laurus.Text2Frame.TextPath        = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
+          Laurus.Text2Frame.CommonEventPath = `${base}${path.sep}data${path.sep}CommonEvents.json`;
         }
+        break;
+      case 'COMMAND_LINE' :
+        Laurus.Text2Frame.ExecMode = args[0];
         break;
       default:
         return;
@@ -836,34 +856,30 @@ if(typeof PluginManager === 'undefined'){
       console.error(Array.prototype.join.call(arguments));
     }
 
-    const readText = function(folderName, fileName){
-      const input_path = base + "/" + folderName + "/" + fileName;
+    const readText = function(filepath){
       try{
-        return fs.readFileSync(input_path, 'utf8');
+        return fs.readFileSync(filepath, {encoding: 'utf8'});
       }catch(e){
-        throw new Error('File not found. / ファイルが見つかりません。\n' + input_path);
+        throw new Error('File not found. / ファイルが見つかりません。\n' + filepath);
       }
     };
 
-    const readMapData = function(mapid){
+    const readJsonData = function(filepath){
       try{
-        return JSON.parse(fs.readFileSync(base + '/data/Map' + mapid + ".json", {encoding: 'utf8'}));
+        let jsondata = JSON.parse(readText(filepath));
+        if(typeof(jsondata) == 'object'){
+          return jsondata;
+        }else{
+          throw new Error('Json syntax error. \nファイルが壊れています。RPG Makerでプロジェクトをセーブし直してください\n' + filepath);
+        }
       }catch(e){
-        throw new Error('Map not found. / マップが見つかりません。\n' + "MAP " + mapid);
-      }
-    };
-
-    const readCommonEventData = function(){
-      try{
-        return JSON.parse(fs.readFileSync(base + "/data/CommonEvents.json", 'utf8'));
-      }catch(e){
-        throw new Error('File not found. / ファイルが見つかりません。\n' + "data/CommonEvents.json");
+        throw new Error('Json syntax error. \nファイルが壊れています。RPG Makerでプロジェクトをセーブし直してください\n' + filepath);
       }
     };
 
     const writeData = function(filepath, jsonData){
       try{
-        fs.writeFileSync(filepath, JSON.stringify(jsonData), {encoding: 'utf8'});
+        fs.writeFileSync(filepath, JSON.stringify(jsonData, null, "  "), {encoding: 'utf8'});
       }catch(e){
         throw new Error('Save failed. / 保存に失敗しました。\n'
           + 'ファイルが開いていないか確認してください。\n' + filepath);
@@ -1104,7 +1120,7 @@ if(typeof PluginManager === 'undefined'){
     }
 
     let event_command_list = [];
-    let scenario_text = readText(Laurus.Text2Frame.FileFolder,Laurus.Text2Frame.FileName);
+    let scenario_text = readText(Laurus.Text2Frame.TextPath);
     let text_lines = scenario_text.replace(/\r/g,'').split('\n');
     let frame_param = getPretextEvent();
     let script_mode = {"mode": false, "body": false};
@@ -1575,10 +1591,10 @@ if(typeof PluginManager === 'undefined'){
 
     event_command_list.push(getCommandBottomEvent());
 
-    switch (command.toUpperCase()) {
+    switch (Laurus.Text2Frame.ExecMode) {
       case 'IMPORT_MESSAGE_TO_EVENT' :
       case 'メッセージをイベントにインポート' : {
-        let map_data = readMapData(('000' + Laurus.Text2Frame.MapID).slice(-3));
+        let map_data = readJsonData(Laurus.Text2Frame.MapPath);
         if(! map_data.events[Laurus.Text2Frame.EventID]){
           throw new Error('EventID not found. / EventIDが見つかりません。\n' 
             + "Event ID: " + Laurus.Text2Frame.EventID);
@@ -1590,16 +1606,15 @@ if(typeof PluginManager === 'undefined'){
         }
         map_events.pop();
         map_events = map_events.concat(event_command_list);
-        let filepath = base + '/data/Map' + ('000' + Laurus.Text2Frame.MapID).slice(-3) + ".json";
         map_data.events[Laurus.Text2Frame.EventID].pages[0].list = map_events;
-        writeData(filepath, map_data);
+        writeData(Laurus.Text2Frame.MapPath, map_data);
         $gameMessage.add('Success / 書き出し成功！\n' 
           + "======> MapID: " + Laurus.Text2Frame.MapID + " -> EventID: " + Laurus.Text2Frame.EventID);
         break;
       }
       case 'IMPORT_MESSAGE_TO_CE' :
       case 'メッセージをコモンイベントにインポート' : {
-        let ce_data = readCommonEventData();
+        const ce_data = readJsonData(Laurus.Text2Frame.CommonEventPath);
         if(ce_data.length -1 < Laurus.Text2Frame.CommonEventID){
           throw new Error("Common Event not found. / コモンイベントが見つかりません。: " 
             + Laurus.Text2Frame.CommonEventID);
@@ -1611,8 +1626,7 @@ if(typeof PluginManager === 'undefined'){
         }
         ce_events.pop();
         ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list);
-        let filepath = base + '/data/CommonEvents.json';
-        writeData(filepath, ce_data);
+        writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
         $gameMessage.add('Success / 書き出し成功！\n' 
           + "=====> Common EventID :" + Laurus.Text2Frame.CommonEventID);
         break;
@@ -1636,39 +1650,32 @@ if(typeof require.main !== 'undefined' && require.main === module) {
     .version('0.0.1')
     .usage('[options]')
     .option('-m, --mode <map|common|test>', 'output mode', /^(map|common|test)$/i)
-    .option('-f, --folder <name>', 'input file folder name')
-    .option('-i, --infile <name>', 'input file name')
-    .option('-p, --mapid <id>', 'map id')
-    .option('-e, --eventid <id>', 'event id')
-    .option('-c, --commonid <id>', 'common event id')
+    .option('-t, --text_path <name>', 'text file path')
+    .option('-o, --output_path <name>', 'output file path')
+    .option('-e, --event_id <name>', 'event file id')
+    .option('-c, --common_event_id <name>', 'common event id')
     .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
     .option('-v, --verbose', 'debug mode', false)
     .parse(process.argv);
 
+  Laurus.Text2Frame.IsDebug  = program.verbose;
+  Laurus.Text2Frame.TextPath = program.text_path;
+  Laurus.Text2Frame.IsOverwrite = (program.overwrite == 'true') ? true : false;
+
   if (program.mode === 'map'){
-    Laurus.Text2Frame.IsDebug = program.verbose;
-    let folder_name = program.folder;
-    let file_name   = program.infile;
-    let map_id      = program.mapid;
-    let event_id    = program.eventid;
-    let overwrite   = program.overwrite;
-    Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-      [folder_name, file_name, map_id, event_id, overwrite]);
+    Laurus.Text2Frame.MapPath  = program.output_path;
+    Laurus.Text2Frame.EventID  = program.event_id;
+    Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', ['IMPORT_MESSAGE_TO_EVENT']);
   }else if (program.mode === 'common'){
-    Laurus.Text2Frame.IsDebug = program.verbose;
-    let folder_name = program.folder;
-    let file_name   = program.infile;
-    let common_id   = program.commonid;
-    let overwrite   = program.overwrite;
-    Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_CE',
-      [folder_name, file_name, common_id, overwrite]);
+    Laurus.Text2Frame.CommonEventPath = program.output_path;
+    Laurus.Text2Frame.CommonEventID   = program.common_event_id;
+    Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', ['IMPORT_MESSAGE_TO_CE']);
   }else if (program.mode === 'test'){
-    Laurus.Text2Frame.IsDebug = program.verbose;
-    let folder_name = 'test';
-    let file_name   = 'basic.txt';
-    let map_id      = '1';
-    let event_id    = '1';
-    let overwrite   = 'true';
+    const folder_name = 'test';
+    const file_name   = 'basic.txt';
+    const map_id      = '1';
+    const event_id    = '1';
+    const overwrite   = 'true';
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
       [folder_name, file_name, map_id, event_id, overwrite]);
   }else{
@@ -1678,27 +1685,27 @@ if(typeof require.main !== 'undefined' && require.main === module) {
        Text2Frame - Simple compiler to convert text to event command.
     SYNOPSIS
         node Text2Frame.js
-        node Text2Frame.js --verbose --mode map --folder <input text folder name> --infile <input text file name> --mapid <map id> --eventid <event id> --overwrite <true|false>
-        node Text2Frame.js --verbose --mode common --folder <input text folder name> --infile <input text file name> --commonid <common event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
         node Text2Frame.js --verbose --mode test
     DESCRIPTION
         node Text2Frame.js
           テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
-        node Text2Frame.js --verbose --mode map --folder <input text folder name> --infile <input text file name> --mapid <map id> --eventid <event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --overwrite <true|false>
           マップへのイベント出力モードです。
           読み込むファイル、出力マップ、上書きの有無を引数で指定します。
-          test/basic.txtを読み込みdata/Map001.jsonに上書きするコマンド例は以下です。
+          test/basic.txt を読み込み data/Map001.json に上書きするコマンド例は以下です。
 
-          例1：$ node Text2Frame.js --mode map --folder test --infile basic.txt --mapid 1 --eventid 1 --overwrite true
-          例2：$ node Text2Frame.js -m map -f test -i basic.txt -p 1 -e 1 -w true
+          例1：$ node Text2Frame.js --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --overwrite true
+          例2：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -w true
 
-        node Text2Frame.js --verbose --mode common --folder <input text folder name> --infile <input text file name> --commonid <common event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
           コモンイベントへのイベント出力モードです。
           読み込むファイル、出力コモンイベント、上書きの有無を引数で指定します。
-          test/basic.txtを読み込みdata/CommonEvents.jsonに上書きするコマンド例は以下です。
+          test/basic.txt を読み込み data/CommonEvents.json に上書きするコマンド例は以下です。
 
-          例1：$ node Text2Frame.js --mode common --folder test --infile basic.txt --commonid 1 --overwrite true
-          例2：$ node Text2Frame.js -m common -f test -i basic.txt -c 1 -w true
+          例1：$ node Text2Frame.js --mode common --text_path test/basic.txt --output_path data/CommonEvents.json --common_event_id 1 --overwrite true
+          例2：$ node Text2Frame.js -m common -t test/basic.txt -o data/CommonEvents.json -c 1 -w true
     `);
   }
 }
