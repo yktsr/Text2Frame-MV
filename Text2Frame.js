@@ -850,11 +850,11 @@ if(typeof PluginManager === 'undefined'){
       if(Laurus.Text2Frame.IsDebug){
         console.log(Array.prototype.join.call(arguments));
       }
-    }
+    };
 
     logger.error = function(){
       console.error(Array.prototype.join.call(arguments));
-    }
+    };
 
     const readText = function(filepath){
       try{
@@ -884,7 +884,7 @@ if(typeof PluginManager === 'undefined'){
         throw new Error('Save failed. / 保存に失敗しました。\n'
           + 'ファイルが開いていないか確認してください。\n' + filepath);
       }
-    }
+    };
 
     const getBackground = function(background) {
       switch(background.toUpperCase()){
@@ -923,62 +923,62 @@ if(typeof PluginManager === 'undefined'){
       return {"code": 101, "indent": 0, "parameters": ["", 0, 
               getBackground(Laurus.Text2Frame.Background), 
               getWindowPosition(Laurus.Text2Frame.WindowPosition)]}
-    }
+    };
 
     const getTextFrameEvent = function(text){
       return {"code": 401, "indent": 0, "parameters": [text]}
-    }
+    };
 
     const getCommandBottomEvent = function(){
       return {"code":0,"indent":0,"parameters":[]};
-    }
+    };
 
     const getScriptHeadEvent = function(text){
       let script_head = {"code": 355, "indent": 0, "parameters": [""]}
       script_head["parameters"][0] = text;
       return script_head;
-    }
+    };
     const getScriptBodyEvent = function(text){
       let script_body = {"code": 655, "indent": 0, "parameters": [""]}
       script_body["parameters"][0] = text;
       return script_body;
-    }
+    };
     
     const getPluginCommandEvent = function(text){
       let plugin_command = {"code": 356, "indent": 0, "parameters": [""]}
       plugin_command["parameters"][0] = text;
       return plugin_command;
-    }
+    };
     
     const getCommonEventEvent = function(num){
       let common_event= {"code": 117, "indent": 0, "parameters": [""]}
       common_event["parameters"][0] = num;
       return common_event;
-    }
+    };
     
     const getCommentOutHeadEvent = function(text){
       let comment_out= {"code": 108, "indent": 0, "parameters": [""]}
       comment_out["parameters"][0] = text;
       return comment_out;
-    }
+    };
     const getCommentOutBodyEvent = function(text){
       let comment_out= {"code": 408, "indent": 0, "parameters": [""]}
       comment_out["parameters"][0] = text;
       return comment_out;
-    }
+    };
     
     const getWaitEvent = function(num){
       let wait = {"code": 230, "indent": 0, "parameters": [""]}
       wait["parameters"][0] = num;
       return wait;
-    }
+    };
 
     const getFadeinEvent = function(){
       return {"code": 222, "indent": 0, "parameters": []};
-    }
+    };
     const getFadeoutEvent = function(){
       return {"code": 221, "indent": 0, "parameters": []};
-    }
+    };
 
     const getPlayBgmEvent = function(name, volume, pitch, pan){
       let param_volume = 90;
@@ -998,11 +998,11 @@ if(typeof PluginManager === 'undefined'){
       }
 
       return {"code": 241, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
-    }
+    };
 
     const getStopBgmEvent = function(volume, pitch, pan){
       return getPlayBgmEvent("", volume, pitch, pan);
-    }
+    };
 
     const getFadeoutBgmEvent = function(duration){
       let param_duration = 10;
@@ -1010,15 +1010,15 @@ if(typeof PluginManager === 'undefined'){
         param_duration = duration;
       }
       return {"code": 242, "indent": 0, "parameters": [param_duration]};
-    }
+    };
 
     const getSaveBgmEvent = function(){
       return {"code": 243, "indent": 0, "parameters": []};
-    }
+    };
 
     const getReplayBgmEvent = function(){
       return {"code": 244, "indent": 0, "parameters": []};
-    }
+    };
 
     const getChangeBattleBgmEvent = function(name, volume, pitch, pan){
       let param_volume = 90;
@@ -1038,7 +1038,7 @@ if(typeof PluginManager === 'undefined'){
       }
 
       return {"code": 132, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
-    }
+    };
 
     const getPlayBgsEvent = function(name, volume, pitch, pan){
       let param_volume = 90;
@@ -1058,11 +1058,11 @@ if(typeof PluginManager === 'undefined'){
       }
 
       return {"code": 245, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
-    }
+    };
 
     const getStopBgsEvent = function(volume, pitch, pan){
       return getPlayBgsEvent("", volume, pitch, pan);
-    }
+    };
 
     const getFadeoutBgsEvent = function(duration){
       let param_duration = 10;
@@ -1070,7 +1070,7 @@ if(typeof PluginManager === 'undefined'){
         param_duration = duration;
       }
       return {"code": 246, "indent": 0, "parameters": [param_duration]};
-    }
+    };
 
     const getPlaySeEvent = function(name, volume, pitch, pan){
       let param_volume = 90;
@@ -1090,10 +1090,10 @@ if(typeof PluginManager === 'undefined'){
       }
 
       return {"code": 250, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
-    }
+    };
     const getStopSeEvent = function(){
       return {"code": 251, "indent": 0, "parameters": []};
-    }
+    };
 
     const getPlayMeEvent = function(name, volume, pitch, pan){
       let param_volume = 90;
@@ -1113,7 +1113,7 @@ if(typeof PluginManager === 'undefined'){
       }
 
       return {"code": 249, "indent": 0, "parameters": [{"name": name, "volume": param_volume, "pitch": param_pitch, "pan": param_pan}]};
-    }
+    };
 
     const getStopMeEvent = function(volume, pitch, pan){
       return getPlayMeEvent("", volume, pitch, pan);
