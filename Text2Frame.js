@@ -1524,11 +1524,10 @@ if(typeof PluginManager === 'undefined'){
           if(!frame_param){
             frame_param = getPretextEvent();
           }
-          let actor_number = face[1].match(/(actor\d+)/i);
-          let face_number = face[1].match(/actor\d\((.+?)\)/i);
+          let face_number = face[1].match(/.*\((.+?)\)/i);
 
-          if(actor_number && face_number){
-            frame_param.parameters[0] = actor_number[1];
+          if(face_number){
+            frame_param.parameters[0] = face[1].replace(/\(\d\)/,'');
             frame_param.parameters[1] = parseInt(face_number[1]);
             text = text.replace(face[0], '');
             logger.log("  face set: " + frame_param.parameters[0]
