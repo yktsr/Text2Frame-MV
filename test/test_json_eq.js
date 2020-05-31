@@ -31,7 +31,7 @@ describe('Text2Frame Test', function() {
     {title: "Audio",   infile: "./test/audio.txt",      mapfile: "./data/Map001.json", expfile: "./test/expected_audio.json"},
     {title: "Extend",  infile: "./test/extend.txt",     mapfile: "./data/Map001.json", expfile: "./test/expected_extend.json"},
     {title: "Mix",     infile: "./test/mix.txt",        mapfile: "./data/Map001.json", expfile: "./test/expected_mix.json"},
-    //{title: "Content", infile: "./test/31-context.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_31-context.json"},
+    {title: "Context", infile: "./test/31-context.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_31-context.json"},
     {title: "Control variables/constant", infile: "./test/35-control_variables/constant.txt", mapfile: "./data/Map001.json", expfile: "./test/35-control_variables/expected_constant.json"},
     {title: "Control variables/random", infile: "./test/35-control_variables/random.txt", mapfile: "./data/Map001.json", expfile: "./test/35-control_variables/expected_random.json"},
     {title: "Control variables/gamedata", infile: "./test/35-control_variables/gamedata.txt", mapfile: "./data/Map001.json", expfile: "./test/35-control_variables/expected_gamedata.json"},
