@@ -40,6 +40,7 @@ describe('Text2Frame Test', function() {
     {title: "Control variables/misc", infile: "./test/35-control_variables/misc.txt", mapfile: "./data/Map001.json", expfile: "./test/35-control_variables/expected_misc.json"},
     {title: "Switch", infile: "./test/38-switches.txt", mapfile: "./data/Map001.json", expfile: "./test/38-expected_switches.json"},
     {title: "Self switch", infile: "./test/39-self_switches.txt", mapfile: "./data/Map001.json", expfile: "./test/39-expected_self_switches.json"},
+    {title: "Timer", infile: "./test/40-timer.txt", mapfile: "./data/Map001.json", expfile: "./test/40-expected_timer.json"},
   ];
 
   const consoleStub = sinon.stub(console, 'log');
