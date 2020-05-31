@@ -187,105 +187,11 @@
 	      ]
 	    },
 	    {
-	      "code": 243,
-	      "indent": 0,
-	      "parameters": []
-	    },
-	    {
-	      "code": 244,
-	      "indent": 0,
-	      "parameters": []
-	    },
-	    {
-	      "code": 101,
-	      "indent": 0,
-	      "parameters": [
-		"",
-		0,
-		0,
-		2
-	      ]
-	    },
-	    {
-	      "code": 401,
-	      "indent": 0,
-	      "parameters": [
-		"メガ粒子〜"
-	      ]
-	    },
-	    {
-	      "code": 401,
-	      "indent": 0,
-	      "parameters": [
-		"レクイエム〜<StopSE>"
-	      ]
-	    },
-	    {
-	      "code": 401,
-	      "indent": 0,
-	      "parameters": [
-		"青葉はじめひふみゆん"
-	      ]
-	    },
-	    {
-	      "code": 401,
-	      "indent": 0,
-	      "parameters": [
-		"シュート！(ﻭ ･ㅂ･)ﻭ ̑̑<Fadein>"
-	      ]
-	    },
-	    {
-	      "code": 221,
-	      "indent": 0,
-	      "parameters": []
-	    },
-	    {
-	      "code": 101,
-	      "indent": 0,
-	      "parameters": [
-		"",
-		0,
-		0,
-		1
-	      ]
-	    },
-	    {
-	      "code": 401,
-	      "indent": 0,
-	      "parameters": [
-		"今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑"
-	      ]
-	    },
-	    {
-	      "code": 108,
-	      "indent": 0,
-	      "parameters": [
-		"この辺でいい感じのBGMを挿入"
-	      ]
-	    },
-	    {
-	      "code": 101,
-	      "indent": 0,
-	      "parameters": [
-		"",
-		0,
-		0,
-		0
-	      ]
-	    },
-	    {
-	      "code": 401,
-	      "indent": 0,
-	      "parameters": [
-		"今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑"
-	      ]
-	    },
-	    {
 	      "code": 0,
 	      "indent": 0,
 	      "parameters": []
 	    }
-	  ]
+          ]
 	}
       ]
     }
