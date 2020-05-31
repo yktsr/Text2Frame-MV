@@ -1136,7 +1136,7 @@ if(typeof PluginManager === 'undefined'){
           return {"code": 121, "indent": 0, "parameters": [parseInt(start_pointer), parseInt(end_pointer), 1]};
         }
       }
-    }
+    };
 
     const getControlValiable = function(operation, start_pointer, end_pointer, operand, operand_arg1 = 0, operand_arg2 = 0, operand_arg3 = 0){
       let parameters = [start_pointer, end_pointer];
@@ -1420,6 +1420,23 @@ if(typeof PluginManager === 'undefined'){
           break;
       }
       return {"code": 122, "indent": 0, "parameters": parameters};
+    };
+
+    const getControlSelfSwitch = function(target, value){
+      switch(value.toLowerCase()){
+        case 'on':
+        case 'オン':
+        case '1':
+        case 'true':{
+          return {"code": 123, "indent": 0, "parameters": [target.toUpperCase(), 0]};
+        }
+        case 'off':
+        case 'オフ':
+        case '0':
+        case 'false':{
+          return {"code": 123, "indent": 0, "parameters": [target.toUpperCase(), 1]};
+        }
+      }
     };
 
     /*************************************************************************************************************/
@@ -1845,23 +1862,52 @@ if(typeof PluginManager === 'undefined'){
         const switch_operation_list = ['sw', 'switch', 'スイッチ'];
         const switch_reg_list = switch_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
         const switch_tag = text.match(new RegExp(switch_reg_list.join('|'), 'i'));
+
+        const self_switch_operation_list = ['ssw', 'selfswitch', 'セルフスイッチ'];
+        const self_switch_reg_list = self_switch_operation_list.map(x => `<${x} *: *([abcd]) *, *(${control_variable_arg_regex}) *>`);
+        const self_switch_tag = text.match(new RegExp(self_switch_reg_list.join('|'), 'i'));
         /* eslint-enable */
 
-        const _getControlTag = function(operator, start_pointer, end_pointer, value){
+        const getControlTag = function(operator, operand1, operand2){
+          if(operator == 'selfswitch'){
+            const selfswitch_target = operand1.match(/[abcd]/i);
+            const selfswitch_value = operand2.match(/on|オン|1|true|off|オフ|0|false/i);
+            if(selfswitch_target && selfswitch_value){
+              return getControlSelfSwitch(selfswitch_target[0], selfswitch_value[0]);
+            }
+          }
+
+          let operand1_num = operand1.match(/\d+/i);
+          /* eslint-disable no-useless-escape */
+          let operand1_range = operand1.match(/(\d+)\-?(\d+)/i);
+          /* eslint-enable */
+          let start_pointer = 0;
+          let end_pointer = 0;
+          if (operand1_range){
+            start_pointer = parseInt(operand1_range[1]);
+            end_pointer = parseInt(operand1_range[2]);
+          }else if(operand1_num){
+            let num = parseInt(operand1_num[0]);
+            start_pointer = num;
+            end_pointer = num;
+          }else{
+            throw new Error('Syntax error. / 文法エラーです。');
+          }
+
           if(operator == 'switch'){
-            const switch_tag = value.match(/on|オン|1|true|off|オフ|0|false/i);
+            const switch_tag = operand2.match(/on|オン|1|true|off|オフ|0|false/i);
             if(switch_tag){
               return getControlSwitch(start_pointer, end_pointer, switch_tag[0]);
             }
           }
 
-          const variables = value.match(/v\[(\d+)\]|variables\[(\d+)\]|変数\[(\d+)\]/i);
+          const variables = operand2.match(/v\[(\d+)\]|variables\[(\d+)\]|変数\[(\d+)\]/i);
           if(variables){
             const num = variables[1] || variables[2] || variables[3];
             return getControlValiable(operator, start_pointer, end_pointer, 'variables', parseInt(num));
           }
           /* eslint-disable no-useless-escape */
-          const random = value.match(/r\[(\-?\d+)\]\[(\-?\d+)\]|random\[(\-?\d+)\]\[(\-?\d+)\]|乱数\[(\-?\d+)\]\[(\-?\d+)\]/i);
+          const random = operand2.match(/r\[(\-?\d+)\]\[(\-?\d+)\]|random\[(\-?\d+)\]\[(\-?\d+)\]|乱数\[(\-?\d+)\]\[(\-?\d+)\]/i);
           /* eslint-enable */
           if(random){
             const random_range1 = random[1] || random[3] || random[5];
@@ -1870,13 +1916,13 @@ if(typeof PluginManager === 'undefined'){
           }
           const gamedata_operation_list = ['gd', 'gamedata', 'ゲームデータ'];
           const gamedata_reg_list = gamedata_operation_list.map(x => `(${x})(${control_variable_arg_regex})`)
-          const gamedata = value.match(new RegExp(gamedata_reg_list.join('|'), 'i'))
+          const gamedata = operand2.match(new RegExp(gamedata_reg_list.join('|'), 'i'))
           if(gamedata){
             const func = gamedata[2] || gamedata[4] || gamedata[6];
-            const operand_match = func.match(new RegExp(`\\[([${num_char_regex}]+)\\]`, 'i'));
-            if(operand_match){
-              const operand = operand_match[1];
-              switch(operand.toLowerCase()){
+            const gamedata_key_match = func.match(new RegExp(`\\[([${num_char_regex}]+)\\]`, 'i'));
+            if(gamedata_key_match){
+              const gamedata_key = gamedata_key_match[1];
+              switch(gamedata_key.toLowerCase()){
                 case 'mapid':
                 case 'マップid':
                 case 'partymembers':
@@ -1897,7 +1943,7 @@ if(typeof PluginManager === 'undefined'){
                 case '勝利回数':
                 case 'escapecount':
                 case '逃走回数':{
-                  return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', 'other', operand.toLowerCase(), 0);
+                  return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', 'other', gamedata_key.toLowerCase(), 0);
                 }
 
                 case 'item':
@@ -1911,7 +1957,7 @@ if(typeof PluginManager === 'undefined'){
                   const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}]+)\\]`, 'i'));
                   if(args){
                     const arg1 = args[1];
-                    return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', operand.toLowerCase(), parseInt(arg1));
+                    return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), parseInt(arg1));
                   }
                   break;
                 }
@@ -1925,35 +1971,20 @@ if(typeof PluginManager === 'undefined'){
                   if(args){
                     const arg1 = args[1];
                     const arg2 = args[2];
-                    return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', operand.toLowerCase(), arg1, arg2);
+                    return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), arg1, arg2);
                   }
                   break;
                 }
               }
             }
           }
-          const script = value.match(/sc\[(.+)\]|script\[(.+)\]|スクリプト\[(.+)\]/i);
+          const script = operand2.match(/sc\[(.+)\]|script\[(.+)\]|スクリプト\[(.+)\]/i);
           if(script){
             const script_body = script[1] || script[2] || script[3];
             return getControlValiable(operator, start_pointer, end_pointer, 'script', script_body);
           }
-          let value_num = Number(value);
+          let value_num = Number(operand2);
           return getControlValiable(operator, start_pointer, end_pointer, 'constant', value_num);
-        }
-        const getControlTag = function(operator, operand1, operand2){
-          let operand1_num = operand1.match(/\d+/i);
-          /* eslint-disable no-useless-escape */
-          let operand1_range = operand1.match(/(\d+)\-?(\d+)/i);
-          /* eslint-enable */
-          if (operand1_range){
-            let start_pointer = parseInt(operand1_range[1]);
-            let end_pointer = parseInt(operand1_range[2]);
-            return _getControlTag(operator, start_pointer, end_pointer, operand2);
-          }
-          if(operand1_num){
-            let num = parseInt(operand1_num[0]);
-            return _getControlTag(operator, num, num, operand2);
-          }
         }
 
         // set
@@ -2009,6 +2040,14 @@ if(typeof PluginManager === 'undefined'){
           const operand1 = switch_tag[1] || switch_tag[3] || switch_tag[5];
           const operand2 = switch_tag[2] || switch_tag[4] || switch_tag[6];
           event_command_list.push(getControlTag('switch', operand1, operand2));
+          continue;
+        }
+
+        // self switch
+        if(self_switch_tag){
+          const operand1 = self_switch_tag[1] || self_switch_tag[3] || self_switch_tag[5];
+          const operand2 = self_switch_tag[2] || self_switch_tag[4] || self_switch_tag[6];
+          event_command_list.push(getControlTag('selfswitch', operand1, operand2));
           continue;
         }
 
