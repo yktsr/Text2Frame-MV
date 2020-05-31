@@ -1860,7 +1860,9 @@ if(typeof PluginManager === 'undefined'){
             const num = variables[1] || variables[2] || variables[3];
             return getControlValiable(operator, start_pointer, end_pointer, 'variables', parseInt(num));
           }
+          /* eslint-disable no-useless-escape */
           const random = value.match(/r\[(\-?\d+)\]\[(\-?\d+)\]|random\[(\-?\d+)\]\[(\-?\d+)\]|乱数\[(\-?\d+)\]\[(\-?\d+)\]/i);
+          /* eslint-enable */
           if(random){
             const random_range1 = random[1] || random[3] || random[5];
             const random_range2 = random[2] || random[4] || random[6];
@@ -1940,7 +1942,9 @@ if(typeof PluginManager === 'undefined'){
         }
         const getControlTag = function(operator, operand1, operand2){
           let operand1_num = operand1.match(/\d+/i);
+          /* eslint-disable no-useless-escape */
           let operand1_range = operand1.match(/(\d+)\-?(\d+)/i);
+          /* eslint-enable */
           if (operand1_range){
             let start_pointer = parseInt(operand1_range[1]);
             let end_pointer = parseInt(operand1_range[2]);
