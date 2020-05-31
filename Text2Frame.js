@@ -814,7 +814,7 @@ if(typeof PluginManager === 'undefined'){
       case 'IMPORT_MESSAGE_TO_EVENT' :
       case 'メッセージをイベントにインポート' :
         if(args.length == 5){
-          $gameMessage.add('import message to event. / メッセージをイベントにインポートします。');
+          $gameMessage.add('import message to event. \n/ メッセージをイベントにインポートします。');
           Laurus.Text2Frame.ExecMode        = 'IMPORT_MESSAGE_TO_EVENT';
           Laurus.Text2Frame.FileFolder      = args[0];
           Laurus.Text2Frame.FileName        = args[1];
@@ -828,7 +828,7 @@ if(typeof PluginManager === 'undefined'){
       case 'IMPORT_MESSAGE_TO_CE' :
       case 'メッセージをコモンイベントにインポート' :
         if(args.length == 4){
-          $gameMessage.add('import message to common event. / メッセージをコモンイベントにインポートします。');
+          $gameMessage.add('import message to common event. \n/ メッセージをコモンイベントにインポートします。');
           Laurus.Text2Frame.ExecMode        = 'IMPORT_MESSAGE_TO_CE';
           Laurus.Text2Frame.FileFolder      = args[0];
           Laurus.Text2Frame.FileName        = args[1];
@@ -1121,40 +1121,266 @@ if(typeof PluginManager === 'undefined'){
       return getPlayMeEvent("", volume, pitch, pan);
     };
 
-    const getControlValiable = function(operation, start_pointer, end_pointer, operand, operand_value1 = 0, operand_value2 = 0){
-      let parameters = [start_pointer, end_pointer, 0, 0, operand_value1];
-      switch(operation){
+    const getControlValiable = function(operation, start_pointer, end_pointer, operand, operand_arg1 = 0, operand_arg2 = 0, operand_arg3 = 0){
+      let parameters = [start_pointer, end_pointer];
+      switch(operation.toLowerCase()){
         case 'set':
-          parameters[2] = 0;
+          parameters.push(0);
           break;
         case 'add':
-          parameters[2] = 1;
+          parameters.push(1);
           break;
         case 'sub':
-          parameters[2] = 2;
+          parameters.push(2);
           break;
         case 'mul':
-          parameters[2] = 3;
+          parameters.push(3);
           break;
         case 'div':
-          parameters[2] = 4;
+          parameters.push(4);
           break;
         case 'mod':
-          parameters[2] = 5;
+          parameters.push(5);
           break;
       }
-      switch(operand){
+      switch(operand.toLowerCase()){
         case 'constant':
-          parameters[3] = 0;
+          parameters.push(0);
+          parameters.push(operand_arg1);
           break;
         case 'variable':
-          parameters[3] = 1;
+          parameters.push(1);
+          parameters.push(operand_arg1);
           break;
         case 'random':
-          parameters[3] = 2;
-          parameters.push(operand_value2);
+          // operator, start_pointer, end_pointer, 'random', random_range1, random_range2
+          parameters.push(2);
+          parameters.push(parseInt(operand_arg1));
+          parameters.push(parseInt(operand_arg2));
           break;
+        case 'gamedata':{
+          // operator, start_pointer, end_pointer, 'gamedata', 'item', arg1, arg2, arg3
+          parameters.push(3);
+          operand_arg1 = operand_arg1.toLowerCase();
+          switch(operand_arg1){
+            case 'item':
+            case 'アイテム':
+              parameters.push(0);
+              parameters.push(parseInt(operand_arg2));
+              parameters.push(0);
+              break;
+            case 'weapon':
+            case '武器':
+              parameters.push(1);
+              parameters.push(parseInt(operand_arg2));
+              parameters.push(0);
+              break;
+            case 'armor':
+            case '防具':
+              parameters.push(2);
+              parameters.push(parseInt(operand_arg2));
+              parameters.push(0);
+              break;
+            case 'actor':
+            case 'アクター':
+            case 'enemy':
+            case 'エネミー':{
+              if(operand_arg1 == 'actor' || operand_arg1 == 'アクター'){
+                parameters.push(3);
+              }else{
+                parameters.push(4);
+              }
+              parameters.push(parseInt(operand_arg2));
+              switch(operand_arg3.toLowerCase()){
+                case 'level':
+                case 'レベル':{
+                  parameters.push(0);
+                  break;
+                }
+                case 'exp':
+                case '経験値':{
+                  parameters.push(1);
+                  break;
+                }
+                case 'hp':{
+                  parameters.push(2);
+                  break;
+                }
+                case 'mp':{
+                  parameters.push(3);
+                  break;
+                }
+                case 'maxhp':
+                case '最大hp':{
+                  parameters.push(4);
+                  break;
+                }
+                case 'maxmp':
+                case '最大mp':{
+                  parameters.push(5);
+                  break;
+                }
+                case 'attack':
+                case '攻撃力':{
+                  parameters.push(6);
+                  break;
+                }
+                case 'defense':
+                case '防御力':{
+                  parameters.push(7);
+                  break;
+                }
+                case 'm.attack':
+                case '魔法攻撃力':{
+                  parameters.push(8);
+                  break;
+                }
+                case 'm.defense':
+                case '魔法防御力':{
+                  parameters.push(9);
+                  break;
+                }
+                case 'agility':
+                case '敏捷性':{
+                  parameters.push(10);
+                  break;
+                }
+                case 'luck':
+                case '運':{
+                  parameters.push(11);
+                  break;
+                }
+              }
+              if(operand_arg1 == 'enemy' || operand_arg1 == 'エネミー'){
+                let value = parameters.pop();
+                let key = parameters.pop();
+                value = value - 2;
+                key = key - 1;
+                parameters.push(key);
+                parameters.push(value);
+              }
+              break;
+            }
+            case 'character':
+            case 'キャラクター':
+              parameters.push(5);
+              switch(operand_arg2.toLowerCase()){
+                case 'player':
+                case 'プレイヤー':
+                case '-1':{
+                  parameters.push(-1);
+                  break;
+                }
+                case 'thisevent':
+                case 'このイベント':
+                case '0':{
+                  parameters.push(0);
+                  break;
+                }
+                default:{
+                  parameters.push(parseInt(operand_arg2));
+                  break;
+                }
+              }
+              switch(operand_arg3.toLowerCase()){
+                case 'mapx':
+                case 'マップx':{
+                  parameters.push(0);
+                  break;
+                }
+                case 'mapy':
+                case 'マップy':{
+                  parameters.push(1);
+                  break;
+                }
+                case 'direction':
+                case '方向':{
+                  parameters.push(2);
+                  break;
+                }
+                case 'screenx':
+                case '画面x':{
+                  parameters.push(3);
+                  break;
+                }
+                case 'screeny':
+                case '画面y':{
+                  parameters.push(4);
+                  break;
+                }
+              }
+              break;
+            case 'party':
+            case 'パーティ':
+              parameters.push(6);
+              parameters.push(parseInt(operand_arg2)-1);
+              parameters.push(0);
+              break;
+            case 'other':
+              parameters.push(7);
+              switch(operand_arg2.toLowerCase()){
+                case 'mapid':
+                case 'マップid':{
+                  parameters.push(0);
+                  break;
+                }
+                case 'partymembers':
+                case 'パーティ人数':{
+                  parameters.push(1);
+                  break;
+                }
+                case 'gold':
+                case '所持金':{
+                  parameters.push(2);
+                  break;
+                }
+                case 'steps':
+                case '歩数':{
+                  parameters.push(3);
+                  break;
+                }
+                case 'playtime':
+                case 'プレイ時間':{
+                  parameters.push(4);
+                  break;
+                }
+                case 'timer':
+                case 'タイマー':{
+                  parameters.push(5);
+                  break;
+                }
+                case 'savecount':
+                case 'セーブ回数':{
+                  parameters.push(6);
+                  break;
+                }
+                case 'battlecount':
+                case '戦闘回数':{
+                  parameters.push(7);
+                  break;
+                }
+                case 'wincount':
+                case '勝利回数':{
+                  parameters.push(8);
+                  break;
+                }
+                case 'escapecount':
+                case '逃走回数':{
+                  parameters.push(9);
+                  break;
+                }
+                default:{
+                  parameters.push(parseInt(operand_arg2));
+                  break;
+                }
+              }
+              parameters.push(0);
+              break;
+          }
+          break;
+        }
       }
+      //parameters.push([operation, start_pointer, end_pointer, operand, operand_arg1, operand_arg2, operand_arg3].join(' '))
       return {"code": 122, "indent": 0, "parameters": parameters};
     };
 
@@ -1551,29 +1777,117 @@ if(typeof PluginManager === 'undefined'){
         }
 
         /* eslint-disable no-useless-escape */
-        const set = text.match(/<set *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<代入 *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<= *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
-        const set_range = text.match(/<set *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<代入 *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<= *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
-        const add = text.match(/<add *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<加算 *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\+ *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
-        const add_range = text.match(/<add *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<加算 *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\+ *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
-        const sub = text.match(/<sub *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<減算 *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<- *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
-        const sub_range = text.match(/<sub *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<減算 *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<- *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
-        const mul = text.match(/<mul *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<乗算 *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\* *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
-        const mul_range = text.match(/<mul *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<乗算 *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\* *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
-        const div = text.match(/<div *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<除算 *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\/ *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
-        const div_range = text.match(/<div *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<除算 *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\/ *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
-        const mod = text.match(/<mod *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<剰余 *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\% *: *(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
-        const mod_range = text.match(/<mod *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<剰余 *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>|<\% *: *(\d+)-(\d+) *, *([\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+) *>/i);
+        const num_char_regex = '\\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf'
+        const control_variable_arg_regex = `[${num_char_regex}\\[\\]\\.\\-]+`
+        const set_operation_list = ['set', '代入', '='];
+        const set_reg_list = set_operation_list.map(x => `<${x} *: *(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const set_range_reg_list = set_operation_list.map(x => `<${x} *: *(\\d+)\-(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const set = text.match(new RegExp(set_reg_list.join('|'), 'i'));
+        const set_range = text.match(new RegExp(set_range_reg_list.join('|'), 'i'));
+
+        const add_operation_list = ['add', '加算', '\\+'];
+        const add_reg_list = add_operation_list.map(x => `<${x} *: *(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const add_range_reg_list = add_operation_list.map(x => `<${x} *: *(\\d+)\-(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const add = text.match(new RegExp(add_reg_list.join('|'), 'i'));
+        const add_range = text.match(new RegExp(add_range_reg_list.join('|'), 'i'));
+
+        const sub_operation_list = ['sub', '減算', '-'];
+        const sub_reg_list = sub_operation_list.map(x => `<${x} *: *(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const sub_range_reg_list = sub_operation_list.map(x => `<${x} *: *(\\d+)\-(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const sub = text.match(new RegExp(sub_reg_list.join('|'), 'i'));
+        const sub_range = text.match(new RegExp(sub_range_reg_list.join('|'), 'i'));
+
+        const mul_operation_list = ['mul', '乗算', '\\*'];
+        const mul_reg_list = mul_operation_list.map(x => `<${x} *: *(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const mul_range_reg_list = mul_operation_list.map(x => `<${x} *: *(\\d+)\-(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const mul = text.match(new RegExp(mul_reg_list.join('|'), 'i'));
+        const mul_range = text.match(new RegExp(mul_range_reg_list.join('|'), 'i'));
+
+        const div_operation_list = ['div', '除算', '\\/'];
+        const div_reg_list = div_operation_list.map(x => `<${x} *: *(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const div_range_reg_list = div_operation_list.map(x => `<${x} *: *(\\d+)\-(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const div = text.match(new RegExp(div_reg_list.join('|'), 'i'));
+        const div_range = text.match(new RegExp(div_range_reg_list.join('|'), 'i'));
+
+        const mod_operation_list = ['mod', '剰余', '\\%'];
+        const mod_reg_list = mod_operation_list.map(x => `<${x} *: *(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const mod_range_reg_list = mod_operation_list.map(x => `<${x} *: *(\\d+)\-(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const mod = text.match(new RegExp(mod_reg_list.join('|'), 'i'));
+        const mod_range = text.match(new RegExp(mod_range_reg_list.join('|'), 'i'));
         /* eslint-enable */
 
         const _wrapperGetControlValiable = function(operator, text_match, start_pointer, end_pointer, value){
           let value_num = Number(value);
           if(isNaN(value_num)){
             const random = value.match(/r\[(\d+)\]\[(\d+)\]|random\[(\d+)\]\[(\d+)\]|乱数\[(\d+)\]\[(\d+)\]/i);
-            console.log(value,random)
+            const gamedata_operation_list = ['gd', 'gamedata', 'ゲームデータ'];
+            const gamedata_reg_list = gamedata_operation_list.map(x => `(${x})(${control_variable_arg_regex})`)
+            const gamedata = value.match(new RegExp(gamedata_reg_list.join('|'), 'i'))
             if(random){
               const random_range1 = random[1] || random[3] || random[5];
               const random_range2 = random[2] || random[4] || random[6];
               return getControlValiable(operator, start_pointer, end_pointer, 'random', parseInt(random_range1), parseInt(random_range2));
+            }
+            if(gamedata){
+              const func = gamedata[2] || gamedata[4] || gamedata[6];
+              const operand_match = func.match(new RegExp(`\\[([${num_char_regex}]+)\\]`, 'i'));
+              if(operand_match){
+                const operand = operand_match[1];
+                switch(operand.toLowerCase()){
+                  case 'mapid':
+                  case 'マップid':
+                  case 'partymembers':
+                  case 'パーティ人数':
+                  case 'gold':
+                  case '所持金':
+                  case 'steps':
+                  case '歩数':
+                  case 'playtime':
+                  case 'プレイ時間':
+                  case 'timer':
+                  case 'タイマー':
+                  case 'savecount':
+                  case 'セーブ回数':
+                  case 'battlecount':
+                  case '戦闘回数':
+                  case 'wincount':
+                  case '勝利回数':
+                  case 'escapecount':
+                  case '逃走回数':{
+                    return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', 'other', operand.toLowerCase(), 0);
+                  }
+
+                  case 'item':
+                  case 'アイテム':
+                  case 'weapon':
+                  case '武器':
+                  case 'armor':
+                  case '防具':
+                  case 'party':
+                  case 'パーティ':{
+                    const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}]+)\\]`, 'i'));
+                    if(args){
+                      const arg1 = args[1];
+                      return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', operand.toLowerCase(), parseInt(arg1));
+                    }
+                    break;
+                  }
+                  case 'actor':
+                  case 'アクター':
+                  case 'enemy':
+                  case 'エネミー':
+                  case 'character':
+                  case 'キャラクター':{
+                    const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}\\-]+)\\]\\[([${num_char_regex}\\.]+)\\]`, 'i'));
+                    if(args){
+                      const arg1 = args[1];
+                      const arg2 = args[2];
+                      return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', operand.toLowerCase(), arg1, arg2);
+                    }
+                    break;
+                  }
+                }
+              }
             }
           }else{
             return getControlValiable(operator, start_pointer, end_pointer, 'constant', value_num);
@@ -1641,7 +1955,6 @@ if(typeof PluginManager === 'undefined'){
 
         // div
         if(div){
-          console.log(div)
           event_command_list.push(wrapperGetControlValiable('div', div));
           continue;
         }
