@@ -53,4 +53,4 @@
 <Div: 2, GAMEDATA[Enemy][1][敏捷性]>
 
 %% 変数2-20に勝利回数との剰余をいれる>
-<Mod: 2-20: gaMeDAta[Wincount]>
+<Mod: 2-20, gaMeDAta[Wincount]>
