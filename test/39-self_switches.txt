@@ -4,8 +4,8 @@
 <selfswitch: a, On>
 <SELFSWITCH: A, ON>
 <セルフスイッチ: a, オン>
-<ss: A, 1>
-<SS: a, true>
+<ssw: A, 1>
+<SSW: a, true>
 
 今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
 
@@ -15,8 +15,8 @@
 <selfswitch: a, Off>
 <SELFSWITCH: A, OFF>
 <セルフスイッチ: a, オフ>
-<ss: A, 0>
-<SS: a, false>
+<ssw: A, 0>
+<SSW: a, false>
 
 今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
 
@@ -28,8 +28,8 @@
 <selfswitch: b, On>
 <SELFSWITCH: B, ON>
 <セルフスイッチ: B, オン>
-<ss: b, 1>
-<SS: B, true>
+<ssw: b, 1>
+<SSW: B, true>
 
 今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
 
@@ -39,8 +39,8 @@
 <selfswitch: b, Off>
 <SELFSWITCH: B, OFF>
 <セルフスイッチ: b, オフ>
-<ss: B, 0>
-<SS: b, false>
+<ssw: B, 0>
+<SSW: b, false>
 
 今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
 
@@ -52,8 +52,8 @@
 <selfswitch: c, On>
 <SELFSWITCH: C, ON>
 <セルフスイッチ: c, オン>
-<ss: C, 1>
-<SS: c, true>
+<ssw: C, 1>
+<SSW: c, true>
 
 今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
 
@@ -63,8 +63,8 @@
 <selfswitch: c, Off>
 <SELFSWITCH: C, OFF>
 <セルフスイッチ: c, オフ>
-<ss: C, 0>
-<SS: c, false>
+<ssw: C, 0>
+<SSW: c, false>
 
 今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
 
@@ -76,8 +76,8 @@
 <selfswitch: d, On>
 <SELFSWITCH: D, ON>
 <セルフスイッチ: d, オン>
-<ss: D, 1>
-<SS: d, true>
+<ssw: D, 1>
+<SSW: d, true>
 
 今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
 
@@ -87,7 +87,7 @@
 <selfswitch: d, Off>
 <SELFSWITCH: D, OFF>
 <セルフスイッチ: d, オフ>
-<ss: D, 0>
-<SS: d, false>
+<ssw: D, 0>
+<SSW: d, false>
 
 今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
