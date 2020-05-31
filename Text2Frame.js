@@ -1121,6 +1121,23 @@ if(typeof PluginManager === 'undefined'){
       return getPlayMeEvent("", volume, pitch, pan);
     };
 
+    const getControlSwitch = function(start_pointer, end_pointer, value){
+      switch(value.toLowerCase()){
+        case 'on':
+        case 'オン':
+        case '1':
+        case 'true':{
+          return {"code": 121, "indent": 0, "parameters": [parseInt(start_pointer), parseInt(end_pointer), 0]};
+        }
+        case 'off':
+        case 'オフ':
+        case '0':
+        case 'false':{
+          return {"code": 121, "indent": 0, "parameters": [parseInt(start_pointer), parseInt(end_pointer), 1]};
+        }
+      }
+    }
+
     const getControlValiable = function(operation, start_pointer, end_pointer, operand, operand_arg1 = 0, operand_arg2 = 0, operand_arg3 = 0){
       let parameters = [start_pointer, end_pointer];
       switch(operation.toLowerCase()){
@@ -1802,208 +1819,192 @@ if(typeof PluginManager === 'undefined'){
         //const control_variable_arg_regex = `[${num_char_regex}\\[\\]\\.\\-]+`;
         const control_variable_arg_regex = '.+';
         const set_operation_list = ['set', '代入', '='];
-        const set_reg_list = set_operation_list.map(x => `<${x} *: *(\\d+) *, *(${control_variable_arg_regex}) *>`)
-        const set_range_reg_list = set_operation_list.map(x => `<${x} *: *(\\d+)\-(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const set_reg_list = set_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
         const set = text.match(new RegExp(set_reg_list.join('|'), 'i'));
-        const set_range = text.match(new RegExp(set_range_reg_list.join('|'), 'i'));
 
         const add_operation_list = ['add', '加算', '\\+'];
-        const add_reg_list = add_operation_list.map(x => `<${x} *: *(\\d+) *, *(${control_variable_arg_regex}) *>`)
-        const add_range_reg_list = add_operation_list.map(x => `<${x} *: *(\\d+)\-(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const add_reg_list = add_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
         const add = text.match(new RegExp(add_reg_list.join('|'), 'i'));
-        const add_range = text.match(new RegExp(add_range_reg_list.join('|'), 'i'));
 
         const sub_operation_list = ['sub', '減算', '-'];
-        const sub_reg_list = sub_operation_list.map(x => `<${x} *: *(\\d+) *, *(${control_variable_arg_regex}) *>`)
-        const sub_range_reg_list = sub_operation_list.map(x => `<${x} *: *(\\d+)\-(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const sub_reg_list = sub_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
         const sub = text.match(new RegExp(sub_reg_list.join('|'), 'i'));
-        const sub_range = text.match(new RegExp(sub_range_reg_list.join('|'), 'i'));
 
         const mul_operation_list = ['mul', '乗算', '\\*'];
-        const mul_reg_list = mul_operation_list.map(x => `<${x} *: *(\\d+) *, *(${control_variable_arg_regex}) *>`)
-        const mul_range_reg_list = mul_operation_list.map(x => `<${x} *: *(\\d+)\-(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const mul_reg_list = mul_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
         const mul = text.match(new RegExp(mul_reg_list.join('|'), 'i'));
-        const mul_range = text.match(new RegExp(mul_range_reg_list.join('|'), 'i'));
 
         const div_operation_list = ['div', '除算', '\\/'];
-        const div_reg_list = div_operation_list.map(x => `<${x} *: *(\\d+) *, *(${control_variable_arg_regex}) *>`)
-        const div_range_reg_list = div_operation_list.map(x => `<${x} *: *(\\d+)\-(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const div_reg_list = div_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
         const div = text.match(new RegExp(div_reg_list.join('|'), 'i'));
-        const div_range = text.match(new RegExp(div_range_reg_list.join('|'), 'i'));
 
         const mod_operation_list = ['mod', '剰余', '\\%'];
-        const mod_reg_list = mod_operation_list.map(x => `<${x} *: *(\\d+) *, *(${control_variable_arg_regex}) *>`)
-        const mod_range_reg_list = mod_operation_list.map(x => `<${x} *: *(\\d+)\-(\\d+) *, *(${control_variable_arg_regex}) *>`)
+        const mod_reg_list = mod_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
         const mod = text.match(new RegExp(mod_reg_list.join('|'), 'i'));
-        const mod_range = text.match(new RegExp(mod_range_reg_list.join('|'), 'i'));
+
+        const switch_operation_list = ['sw', 'switch', 'スイッチ'];
+        const switch_reg_list = switch_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
+        const switch_tag = text.match(new RegExp(switch_reg_list.join('|'), 'i'));
         /* eslint-enable */
 
-        const _wrapperGetControlValiable = function(operator, text_match, start_pointer, end_pointer, value){
-          let value_num = Number(value);
-          if(isNaN(value_num)){
-            const variables = value.match(/v\[(\d+)\]|variables\[(\d+)\]|変数\[(\d+)\]/i);
-            if(variables){
-              const num = variables[1] || variables[2] || variables[3];
-              return getControlValiable(operator, start_pointer, end_pointer, 'variables', parseInt(num));
+        const _getControlTag = function(operator, start_pointer, end_pointer, value){
+          if(operator == 'switch'){
+            const switch_tag = value.match(/on|オン|1|true|off|オフ|0|false/i);
+            if(switch_tag){
+              return getControlSwitch(start_pointer, end_pointer, switch_tag[0]);
             }
-            const random = value.match(/r\[(\-?\d+)\]\[(\-?\d+)\]|random\[(\-?\d+)\]\[(\-?\d+)\]|乱数\[(\-?\d+)\]\[(\-?\d+)\]/i);
-            if(random){
-              const random_range1 = random[1] || random[3] || random[5];
-              const random_range2 = random[2] || random[4] || random[6];
-              return getControlValiable(operator, start_pointer, end_pointer, 'random', parseInt(random_range1), parseInt(random_range2));
-            }
-            const gamedata_operation_list = ['gd', 'gamedata', 'ゲームデータ'];
-            const gamedata_reg_list = gamedata_operation_list.map(x => `(${x})(${control_variable_arg_regex})`)
-            const gamedata = value.match(new RegExp(gamedata_reg_list.join('|'), 'i'))
-            if(gamedata){
-              const func = gamedata[2] || gamedata[4] || gamedata[6];
-              const operand_match = func.match(new RegExp(`\\[([${num_char_regex}]+)\\]`, 'i'));
-              if(operand_match){
-                const operand = operand_match[1];
-                switch(operand.toLowerCase()){
-                  case 'mapid':
-                  case 'マップid':
-                  case 'partymembers':
-                  case 'パーティ人数':
-                  case 'gold':
-                  case '所持金':
-                  case 'steps':
-                  case '歩数':
-                  case 'playtime':
-                  case 'プレイ時間':
-                  case 'timer':
-                  case 'タイマー':
-                  case 'savecount':
-                  case 'セーブ回数':
-                  case 'battlecount':
-                  case '戦闘回数':
-                  case 'wincount':
-                  case '勝利回数':
-                  case 'escapecount':
-                  case '逃走回数':{
-                    return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', 'other', operand.toLowerCase(), 0);
-                  }
+          }
 
-                  case 'item':
-                  case 'アイテム':
-                  case 'weapon':
-                  case '武器':
-                  case 'armor':
-                  case '防具':
-                  case 'party':
-                  case 'パーティ':{
-                    const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}]+)\\]`, 'i'));
-                    if(args){
-                      const arg1 = args[1];
-                      return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', operand.toLowerCase(), parseInt(arg1));
-                    }
-                    break;
+          const variables = value.match(/v\[(\d+)\]|variables\[(\d+)\]|変数\[(\d+)\]/i);
+          if(variables){
+            const num = variables[1] || variables[2] || variables[3];
+            return getControlValiable(operator, start_pointer, end_pointer, 'variables', parseInt(num));
+          }
+          const random = value.match(/r\[(\-?\d+)\]\[(\-?\d+)\]|random\[(\-?\d+)\]\[(\-?\d+)\]|乱数\[(\-?\d+)\]\[(\-?\d+)\]/i);
+          if(random){
+            const random_range1 = random[1] || random[3] || random[5];
+            const random_range2 = random[2] || random[4] || random[6];
+            return getControlValiable(operator, start_pointer, end_pointer, 'random', parseInt(random_range1), parseInt(random_range2));
+          }
+          const gamedata_operation_list = ['gd', 'gamedata', 'ゲームデータ'];
+          const gamedata_reg_list = gamedata_operation_list.map(x => `(${x})(${control_variable_arg_regex})`)
+          const gamedata = value.match(new RegExp(gamedata_reg_list.join('|'), 'i'))
+          if(gamedata){
+            const func = gamedata[2] || gamedata[4] || gamedata[6];
+            const operand_match = func.match(new RegExp(`\\[([${num_char_regex}]+)\\]`, 'i'));
+            if(operand_match){
+              const operand = operand_match[1];
+              switch(operand.toLowerCase()){
+                case 'mapid':
+                case 'マップid':
+                case 'partymembers':
+                case 'パーティ人数':
+                case 'gold':
+                case '所持金':
+                case 'steps':
+                case '歩数':
+                case 'playtime':
+                case 'プレイ時間':
+                case 'timer':
+                case 'タイマー':
+                case 'savecount':
+                case 'セーブ回数':
+                case 'battlecount':
+                case '戦闘回数':
+                case 'wincount':
+                case '勝利回数':
+                case 'escapecount':
+                case '逃走回数':{
+                  return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', 'other', operand.toLowerCase(), 0);
+                }
+
+                case 'item':
+                case 'アイテム':
+                case 'weapon':
+                case '武器':
+                case 'armor':
+                case '防具':
+                case 'party':
+                case 'パーティ':{
+                  const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}]+)\\]`, 'i'));
+                  if(args){
+                    const arg1 = args[1];
+                    return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', operand.toLowerCase(), parseInt(arg1));
                   }
-                  case 'actor':
-                  case 'アクター':
-                  case 'enemy':
-                  case 'エネミー':
-                  case 'character':
-                  case 'キャラクター':{
-                    const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}\\-]+)\\]\\[([${num_char_regex}\\.]+)\\]`, 'i'));
-                    if(args){
-                      const arg1 = args[1];
-                      const arg2 = args[2];
-                      return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', operand.toLowerCase(), arg1, arg2);
-                    }
-                    break;
+                  break;
+                }
+                case 'actor':
+                case 'アクター':
+                case 'enemy':
+                case 'エネミー':
+                case 'character':
+                case 'キャラクター':{
+                  const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}\\-]+)\\]\\[([${num_char_regex}\\.]+)\\]`, 'i'));
+                  if(args){
+                    const arg1 = args[1];
+                    const arg2 = args[2];
+                    return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', operand.toLowerCase(), arg1, arg2);
                   }
+                  break;
                 }
               }
             }
-            const script = value.match(/sc\[(.+)\]|script\[(.+)\]|スクリプト\[(.+)\]/i);
-            if(script){
-              const script_body = script[1] || script[2] || script[3];
-              return getControlValiable(operator, start_pointer, end_pointer, 'script', script_body);
-            }
-          }else{
-            return getControlValiable(operator, start_pointer, end_pointer, 'constant', value_num);
           }
+          const script = value.match(/sc\[(.+)\]|script\[(.+)\]|スクリプト\[(.+)\]/i);
+          if(script){
+            const script_body = script[1] || script[2] || script[3];
+            return getControlValiable(operator, start_pointer, end_pointer, 'script', script_body);
+          }
+          let value_num = Number(value);
+          return getControlValiable(operator, start_pointer, end_pointer, 'constant', value_num);
         }
-        const wrapperGetControlValiable = function(operator, text_match){
-          let pointer = text_match[1] || text_match[3] || text_match[5];
-          let value = text_match[2] || text_match[4] || text_match[6];
-          pointer = parseInt(pointer);
-          return _wrapperGetControlValiable(operator, text_match, pointer, pointer, value);
-        }
-        const wrapperGetControlValiableRange = function(operator, text_match){
-          let start_pointer = text_match[1] || text_match[4] || text_match[7];
-          let end_pointer = text_match[2] || text_match[5] || text_match[8];
-          let value = text_match[3] || text_match[6] || text_match[9];
-
-          start_pointer = parseInt(start_pointer);
-          end_pointer = parseInt(end_pointer);
-          return _wrapperGetControlValiable(operator, text_match, start_pointer, end_pointer, value);
+        const getControlTag = function(operator, operand1, operand2){
+          let operand1_num = operand1.match(/\d+/i);
+          let operand1_range = operand1.match(/(\d+)\-?(\d+)/i);
+          if (operand1_range){
+            let start_pointer = parseInt(operand1_range[1]);
+            let end_pointer = parseInt(operand1_range[2]);
+            return _getControlTag(operator, start_pointer, end_pointer, operand2);
+          }
+          if(operand1_num){
+            let num = parseInt(operand1_num[0]);
+            return _getControlTag(operator, num, num, operand2);
+          }
         }
 
         // set
         if(set){
-          event_command_list.push(wrapperGetControlValiable('set', set));
-          continue;
-        }
-        // set_range
-        if(set_range){
-          event_command_list.push(wrapperGetControlValiableRange('set', set_range));
+          const operand1 = set[1] || set[3] || set[5];
+          const operand2 = set[2] || set[4] || set[6];
+          event_command_list.push(getControlTag('set', operand1, operand2));
           continue;
         }
 
         // add
         if(add){
-          event_command_list.push(wrapperGetControlValiable('add', add));
-          continue;
-        }
-        // add_range
-        if(add_range){
-          event_command_list.push(wrapperGetControlValiableRange('add', add_range));
+          const operand1 = add[1] || add[3] || add[5];
+          const operand2 = add[2] || add[4] || add[6];
+          event_command_list.push(getControlTag('add', operand1, operand2));
           continue;
         }
 
         // sub
         if(sub){
-          event_command_list.push(wrapperGetControlValiable('sub', sub));
-          continue;
-        }
-        // sub_range
-        if(sub_range){
-          event_command_list.push(wrapperGetControlValiableRange('sub', sub_range));
+          const operand1 = sub[1] || sub[3] || sub[5];
+          const operand2 = sub[2] || sub[4] || sub[6];
+          event_command_list.push(getControlTag('sub', operand1, operand2));
           continue;
         }
 
         // mul
         if(mul){
-          event_command_list.push(wrapperGetControlValiable('mul', mul));
-          continue;
-        }
-        // mul_range
-        if(mul_range){
-          event_command_list.push(wrapperGetControlValiableRange('mul', mul_range));
+          const operand1 = mul[1] || mul[3] || mul[5];
+          const operand2 = mul[2] || mul[4] || mul[6];
+          event_command_list.push(getControlTag('mul', operand1, operand2));
           continue;
         }
 
         // div
         if(div){
-          event_command_list.push(wrapperGetControlValiable('div', div));
-          continue;
-        }
-        // div_range
-        if(div_range){
-          event_command_list.push(wrapperGetControlValiableRange('div', div_range));
+          const operand1 = div[1] || div[3] || div[5];
+          const operand2 = div[2] || div[4] || div[6];
+          event_command_list.push(getControlTag('div', operand1, operand2));
           continue;
         }
 
         // mod
         if(mod){
-          event_command_list.push(wrapperGetControlValiable('mod', mod));
+          const operand1 = mod[1] || mod[3] || mod[5];
+          const operand2 = mod[2] || mod[4] || mod[6];
+          event_command_list.push(getControlTag('mod', operand1, operand2));
           continue;
         }
-        // mod_range
-        if(mod_range){
-          event_command_list.push(wrapperGetControlValiableRange('mod', mod_range));
+
+        // switch
+        if(switch_tag){
+          const operand1 = switch_tag[1] || switch_tag[3] || switch_tag[5];
+          const operand2 = switch_tag[2] || switch_tag[4] || switch_tag[6];
+          event_command_list.push(getControlTag('switch', operand1, operand2));
           continue;
         }
 
