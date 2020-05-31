@@ -1148,7 +1148,7 @@ if(typeof PluginManager === 'undefined'){
           parameters.push(0);
           parameters.push(operand_arg1);
           break;
-        case 'variable':
+        case 'variables':
           parameters.push(1);
           parameters.push(operand_arg1);
           break;
@@ -1819,15 +1819,20 @@ if(typeof PluginManager === 'undefined'){
         const _wrapperGetControlValiable = function(operator, text_match, start_pointer, end_pointer, value){
           let value_num = Number(value);
           if(isNaN(value_num)){
+            const variables = value.match(/v\[(\d+)\]|variables\[(\d+)\]|変数\[(\d+)\]/i);
+            if(variables){
+              const num = variables[1] || variables[2] || variables[3];
+              return getControlValiable(operator, start_pointer, end_pointer, 'variables', parseInt(num));
+            }
             const random = value.match(/r\[(\d+)\]\[(\d+)\]|random\[(\d+)\]\[(\d+)\]|乱数\[(\d+)\]\[(\d+)\]/i);
-            const gamedata_operation_list = ['gd', 'gamedata', 'ゲームデータ'];
-            const gamedata_reg_list = gamedata_operation_list.map(x => `(${x})(${control_variable_arg_regex})`)
-            const gamedata = value.match(new RegExp(gamedata_reg_list.join('|'), 'i'))
             if(random){
               const random_range1 = random[1] || random[3] || random[5];
               const random_range2 = random[2] || random[4] || random[6];
               return getControlValiable(operator, start_pointer, end_pointer, 'random', parseInt(random_range1), parseInt(random_range2));
             }
+            const gamedata_operation_list = ['gd', 'gamedata', 'ゲームデータ'];
+            const gamedata_reg_list = gamedata_operation_list.map(x => `(${x})(${control_variable_arg_regex})`)
+            const gamedata = value.match(new RegExp(gamedata_reg_list.join('|'), 'i'))
             if(gamedata){
               const func = gamedata[2] || gamedata[4] || gamedata[6];
               const operand_match = func.match(new RegExp(`\\[([${num_char_regex}]+)\\]`, 'i'));
