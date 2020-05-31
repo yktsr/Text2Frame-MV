@@ -1846,7 +1846,7 @@ if(typeof PluginManager === 'undefined'){
               const num = variables[1] || variables[2] || variables[3];
               return getControlValiable(operator, start_pointer, end_pointer, 'variables', parseInt(num));
             }
-            const random = value.match(/r\[(\d+)\]\[(\d+)\]|random\[(\d+)\]\[(\d+)\]|乱数\[(\d+)\]\[(\d+)\]/i);
+            const random = value.match(/r\[(\-?\d+)\]\[(\-?\d+)\]|random\[(\-?\d+)\]\[(\-?\d+)\]|乱数\[(\-?\d+)\]\[(\-?\d+)\]/i);
             if(random){
               const random_range1 = random[1] || random[3] || random[5];
               const random_range2 = random[2] || random[4] || random[6];
