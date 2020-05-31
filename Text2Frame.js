@@ -1142,6 +1142,9 @@ if(typeof PluginManager === 'undefined'){
         case 'mod':
           parameters.push(5);
           break;
+        default:
+          parameters.push(0);
+          break;
       }
       switch(operand.toLowerCase()){
         case 'constant':
@@ -1250,6 +1253,10 @@ if(typeof PluginManager === 'undefined'){
                   parameters.push(11);
                   break;
                 }
+                default:{
+                  parameters.push(0);
+                  break;
+                }
               }
               if(operand_arg1 == 'enemy' || operand_arg1 == 'エネミー'){
                 let value = parameters.pop();
@@ -1306,6 +1313,10 @@ if(typeof PluginManager === 'undefined'){
                 case 'screeny':
                 case '画面y':{
                   parameters.push(4);
+                  break;
+                }
+                default:{
+                  parameters.push(0);
                   break;
                 }
               }
@@ -1379,8 +1390,18 @@ if(typeof PluginManager === 'undefined'){
           }
           break;
         }
+        case 'script':{
+          parameters.push(4);
+          parameters.push(operand_arg1);
+          break;
+        }
+        default:
+          parameters.push(0);
+          parameters.push(operand_arg1);
+          parameters.push(operand_arg2);
+          parameters.push(operand_arg3);
+          break;
       }
-      //parameters.push([operation, start_pointer, end_pointer, operand, operand_arg1, operand_arg2, operand_arg3].join(' '))
       return {"code": 122, "indent": 0, "parameters": parameters};
     };
 
@@ -1778,7 +1799,8 @@ if(typeof PluginManager === 'undefined'){
 
         /* eslint-disable no-useless-escape */
         const num_char_regex = '\\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf'
-        const control_variable_arg_regex = `[${num_char_regex}\\[\\]\\.\\-]+`
+        //const control_variable_arg_regex = `[${num_char_regex}\\[\\]\\.\\-]+`;
+        const control_variable_arg_regex = '.+';
         const set_operation_list = ['set', '代入', '='];
         const set_reg_list = set_operation_list.map(x => `<${x} *: *(\\d+) *, *(${control_variable_arg_regex}) *>`)
         const set_range_reg_list = set_operation_list.map(x => `<${x} *: *(\\d+)\-(\\d+) *, *(${control_variable_arg_regex}) *>`)
@@ -1893,6 +1915,11 @@ if(typeof PluginManager === 'undefined'){
                   }
                 }
               }
+            }
+            const script = value.match(/sc\[(.+)\]|script\[(.+)\]|スクリプト\[(.+)\]/i);
+            if(script){
+              const script_body = script[1] || script[2] || script[3];
+              return getControlValiable(operator, start_pointer, end_pointer, 'script', script_body);
             }
           }else{
             return getControlValiable(operator, start_pointer, end_pointer, 'constant', value_num);
