@@ -130,7 +130,7 @@
 %%% (戦闘中の)エネミー1の最大MP
 <Set: 2, gd[enemy][1][MaxMp]>
 <Set: 2, GD[ENEMY][1][MAXMP]>
-<Set: 2, gamedata[enemy][1][axmp]>
+<Set: 2, gamedata[enemy][1][maxmp]>
 <Set: 2, GAMEDATA[ENEMY][1][MAXMP]>
 <Set: 2, ゲームデータ[エネミー][1][最大MP]>
 
@@ -286,7 +286,7 @@
 <Set: 2, GD[PARTY][1]>
 <Set: 2, gamedata[party][1]>
 <Set: 2, GAMEDATA[PARTY][1]>
-<Set: 2, ゲームデータ[パーティー][1]>
+<Set: 2, ゲームデータ[パーティ][1]>
 
 %%% マップID
 <Set: 2, gd[MapID]>
