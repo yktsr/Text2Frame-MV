@@ -1,11 +1,12 @@
 //=============================================================================
 // Text2Frame.js
 // ----------------------------------------------------------------------------
-// (C)2018-2019 Yuki Katsura
+// (C)2018-2020 Yuki Katsura
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.2.0 2020/06/01 [draft] 変数の操作(Control Switch/Variable/Self Switch/Timer)タグ対応
 // 1.1.2 2019/01/03 PlayME, StopMEタグ追加
 // 1.1.1 2019/01/02 StopBGM, StopBGSタグ追加
 // 1.1.0 2018/10/15 script,wait,fadein,fadeout,comment,PluginCommand,CommonEventタグ追加
@@ -1436,11 +1437,27 @@ if(typeof PluginManager === 'undefined'){
         case 'false':{
           return {"code": 123, "indent": 0, "parameters": [target.toUpperCase(), 1]};
         }
+        default:
+          return {"code": 123, "indent": 0, "parameters": [target.toUpperCase(), 1]};
       }
     };
 
+    const getControlTimer = function(operation, sec){
+      switch(operation.toLowerCase()){
+        case 'start':
+        case 'スタート':{
+          return {"code": 124, "indent": 0, "parameters": [0, parseInt(sec)]};
+        }
+        case 'stop':
+        case 'ストップ':{
+          return {"code": 124, "indent": 0, "parameters": [1, parseInt(sec)]};
+        }
+        default:
+          return {"code": 124, "indent": 0, "parameters": [1, parseInt(sec)]};
+      }
+    };
     /*************************************************************************************************************/
-    let getBlockStatement = function(scenario_text, statement){
+    const getBlockStatement = function(scenario_text, statement){
       let block_map = {};
       let block_count = 0;
       let re = null;
@@ -2050,6 +2067,28 @@ if(typeof PluginManager === 'undefined'){
           event_command_list.push(getControlTag('selfswitch', operand1, operand2));
           continue;
         }
+
+        /// timer control
+        const timer_start_reg_list = ['timer', 'タイマー'].map(x => `<${x} *: *(.+) *, *(\\d+), *(\\d+) *>`);
+        const timer_start = text.match(new RegExp(timer_start_reg_list.join('|'), 'i'));
+        const timer_stop_reg_list = ['timer', 'タイマー'].map(x => `<${x} *: *(.+) *>`);
+        const timer_stop = text.match(new RegExp(timer_stop_reg_list.join('|'), 'i'));
+
+        if(timer_start){
+          let operand1 = timer_start[1] || timer_start[4];
+          let min = parseInt(timer_start[2] || timer_start[5]);
+          let sec = parseInt(timer_start[3] || timer_start[6]);
+          let setting_sec = 60 * min + sec;
+          event_command_list.push(getControlTimer(operand1, setting_sec));
+          continue;
+        }
+        if(timer_stop){
+          let operand1 = timer_stop[1] || timer_stop[2];
+          console.log(timer_stop, operand1)
+          event_command_list.push(getControlTimer(operand1, 0));
+          continue;
+        }
+
 
         // Face
         if(face){
