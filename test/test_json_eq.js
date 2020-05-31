@@ -36,6 +36,7 @@ describe('Text2Frame Test', function() {
     {title: "Control variables/random", infile: "./test/35-control_variables/random.txt", mapfile: "./data/Map001.json", expfile: "./test/35-control_variables/expected_random.json"},
     {title: "Control variables/gamedata", infile: "./test/35-control_variables/gamedata.txt", mapfile: "./data/Map001.json", expfile: "./test/35-control_variables/expected_gamedata.json"},
     {title: "Control variables/variable", infile: "./test/35-control_variables/variable.txt", mapfile: "./data/Map001.json", expfile: "./test/35-control_variables/expected_variable.json"},
+    {title: "Control variables/script", infile: "./test/35-control_variables/script.txt", mapfile: "./data/Map001.json", expfile: "./test/35-control_variables/expected_script.json"},
   ];
 
   const consoleStub = sinon.stub(console, 'log');
