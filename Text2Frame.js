@@ -1146,6 +1146,28 @@ if(typeof PluginManager === 'undefined'){
       }
     };
 
+    /* 改行コードを統一する関数 */
+    const uniformNewLineCode = function(text) {
+      return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    };
+
+    /* コメントアウト行を削除する関数 */
+    const eraseCommentOutLines = function(scenario_text, commentOutChar) {
+      // 一度改行毎にsplitして、要素毎にチェックして最後にひとつのテキストに結合する。
+      let re = new RegExp("^ *" + commentOutChar);
+      let text_lines = scenario_text.split("\n");
+      let out_text_lines = [];
+      for (let i=0; i < text_lines.length; i++) {
+        let text = text_lines[i];
+        if (text.match(re)){ // 頭にコメントアウト記号がある場合はスキップ
+          continue;
+        }
+        out_text_lines.push(text);
+      }
+      let out_text = out_text_lines.join("\n");
+      return out_text;
+    };
+
 
     /*************************************************************************************************************/
     const getBackground = function(background) {
@@ -1737,7 +1759,7 @@ if(typeof PluginManager === 'undefined'){
         let match_block = block[0];
         let match_text = block[1] || block[2] || block[3];
         scenario_text = scenario_text.replace(match_block, `\n#${statement.toUpperCase()}_BLOCK${block_count}#\n`);
-        let match_text_list = match_text.replace(/\r/g,'').replace(/^\n/,'').replace(/\n$/,'').split('\n');
+        let match_text_list = match_text.replace(/^\n/,'').replace(/\n$/,'').split('\n');
         let event_list = [];
         for(let i=0; i<match_text_list.length; i++){
           let text = match_text_list[i];
@@ -1755,6 +1777,8 @@ if(typeof PluginManager === 'undefined'){
     };
 
     let scenario_text = readText(Laurus.Text2Frame.TextPath);
+    scenario_text = uniformNewLineCode(scenario_text);
+    scenario_text = eraseCommentOutLines(scenario_text, Laurus.Text2Frame.CommentOutChar)
     let block_map = {};
     {
       const t = getBlockStatement(scenario_text, 'script');
@@ -1767,7 +1791,7 @@ if(typeof PluginManager === 'undefined'){
       block_map = Object.assign(block_map, t.block_map);
     }
 
-    let text_lines = scenario_text.replace(/\r/g,'').split('\n');
+    let text_lines = scenario_text.split('\n');
     let event_command_list = [];
     let frame_param = getPretextEvent();
     logger.log("Default", frame_param.parameters);
@@ -1775,12 +1799,6 @@ if(typeof PluginManager === 'undefined'){
       let text = text_lines[i];
 
       logger.log(i, text);
-
-      // Comment out
-      if(Laurus.Text2Frame.CommentOutChar && text.match('^ *' + Laurus.Text2Frame.CommentOutChar)){
-        continue;
-      }
-
 
       if(text){
         let face = text.match(/<face *: *(.+?)>/i)
