@@ -1,0 +1,678 @@
+{
+  "events": [
+    null,
+    {
+      "pages": [
+        {
+          "list": [
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		1,
+		1,
+		0,
+		4,
+		"\"涼風\" + $dataActors[1].name;"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		1,
+		1,
+		0,
+		4,
+		"\"涼風\" + $dataActors[1].name;"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		1,
+		1,
+		0,
+		4,
+		"\"涼風\" + $dataActors[1].name;"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		1,
+		1,
+		0,
+		4,
+		"\"涼風\" + $dataActors[1].name;"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		1,
+		1,
+		0,
+		4,
+		"\"涼風\" + $dataActors[1].name;"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		2,
+		2,
+		1,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		2,
+		2,
+		1,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		2,
+		2,
+		1,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		2,
+		2,
+		1,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		2,
+		2,
+		1,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		3,
+		3,
+		2,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		3,
+		3,
+		2,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		3,
+		3,
+		2,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		3,
+		3,
+		2,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		3,
+		3,
+		2,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		4,
+		4,
+		3,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		4,
+		4,
+		3,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		4,
+		4,
+		3,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		4,
+		4,
+		3,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		4,
+		4,
+		3,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		5,
+		5,
+		4,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		5,
+		5,
+		4,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		5,
+		5,
+		4,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		5,
+		5,
+		4,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		5,
+		5,
+		4,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		6,
+		6,
+		5,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		6,
+		6,
+		5,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		6,
+		6,
+		5,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		6,
+		6,
+		5,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		6,
+		6,
+		5,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		1,
+		30,
+		0,
+		4,
+		"\"涼風\" + $dataActors[1].name;"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		1,
+		30,
+		0,
+		4,
+		"\"涼風\" + $dataActors[1].name;"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		1,
+		30,
+		0,
+		4,
+		"\"涼風\" + $dataActors[1].name;"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		1,
+		30,
+		0,
+		4,
+		"\"涼風\" + $dataActors[1].name;"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		1,
+		30,
+		0,
+		4,
+		"\"涼風\" + $dataActors[1].name;"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		2,
+		40,
+		1,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		2,
+		40,
+		1,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		2,
+		40,
+		1,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		2,
+		40,
+		1,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		2,
+		40,
+		1,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		3,
+		50,
+		2,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		3,
+		50,
+		2,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		3,
+		50,
+		2,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		3,
+		50,
+		2,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		3,
+		50,
+		2,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		4,
+		60,
+		3,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		4,
+		60,
+		3,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		4,
+		60,
+		3,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		4,
+		60,
+		3,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		4,
+		60,
+		3,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		5,
+		70,
+		4,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		5,
+		70,
+		4,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		5,
+		70,
+		4,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		5,
+		70,
+		4,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		5,
+		70,
+		4,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		6,
+		80,
+		5,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		6,
+		80,
+		5,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		6,
+		80,
+		5,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		6,
+		80,
+		5,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 122,
+	      "indent": 0,
+	      "parameters": [
+		6,
+		80,
+		5,
+		4,
+		"$gameVariables.value(1);"
+	      ]
+	    },
+	    {
+	      "code": 0,
+	      "indent": 0,
+	      "parameters": []
+	    }
+          ]
+        }
+      ]
+    }
+  ]
+}

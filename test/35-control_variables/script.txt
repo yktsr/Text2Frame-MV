@@ -1,0 +1,84 @@
+% スクリプトを操作
+%% 変数1に"涼風" + $dataActors[1].name;を代入
+<Set: 1, sc["涼風" + $dataActors[1].name;]>
+<Set: 1, SC["涼風" + $dataActors[1].name;]>
+<Set: 1, script["涼風" + $dataActors[1].name;]>
+<Set: 1, SCRIPT["涼風" + $dataActors[1].name;]>
+<Set: 1, スクリプト["涼風" + $dataActors[1].name;]>
+
+%% 変数2に$gameVariables.value(1);加算
+<Add: 2, sc[$gameVariables.value(1);]>
+<Add: 2, SC[$gameVariables.value(1);]>
+<Add: 2, script[$gameVariables.value(1);]>
+<Add: 2, SCRIPT[$gameVariables.value(1);]>
+<Add: 2, スクリプト[$gameVariables.value(1);]>
+
+%% 変数3に$gameVariables.value(1);減算
+<Sub: 3, sc[$gameVariables.value(1);]>
+<Sub: 3, SC[$gameVariables.value(1);]>
+<Sub: 3, script[$gameVariables.value(1);]>
+<Sub: 3, SCRIPT[$gameVariables.value(1);]>
+<Sub: 3, スクリプト[$gameVariables.value(1);]>
+
+%% 変数4に$gameVariables.value(1);乗算
+<Mul: 4, sc[$gameVariables.value(1);]>
+<Mul: 4, SC[$gameVariables.value(1);]>
+<Mul: 4, script[$gameVariables.value(1);]>
+<Mul: 4, SCRIPT[$gameVariables.value(1);]>
+<Mul: 4, スクリプト[$gameVariables.value(1);]>
+
+%% 変数5に$gameVariables.value(1);除算
+<Div: 5, sc[$gameVariables.value(1);]>
+<Div: 5, SC[$gameVariables.value(1);]>
+<Div: 5, script[$gameVariables.value(1);]>
+<Div: 5, SCRIPT[$gameVariables.value(1);]>
+<Div: 5, スクリプト[$gameVariables.value(1);]>
+
+%% 変数6に$gameVariables.value(1);の剰余
+<Mod: 6, sc[$gameVariables.value(1);]>
+<Mod: 6, SC[$gameVariables.value(1);]>
+<Mod: 6, script[$gameVariables.value(1);]>
+<Mod: 6, SCRIPT[$gameVariables.value(1);]>
+<Mod: 6, スクリプト[$gameVariables.value(1);]>
+
+%% 変数1~30に$gameVariables.value(1);を代入
+<Set: 1-30, sc["涼風" + $dataActors[1].name;]>
+<Set: 1-30, SC["涼風" + $dataActors[1].name;]>
+<Set: 1-30, script["涼風" + $dataActors[1].name;]>
+<Set: 1-30, SCRIPT["涼風" + $dataActors[1].name;]>
+<Set: 1-30, スクリプト["涼風" + $dataActors[1].name;]>
+
+%% 変数2~40に$gameVariables.value(1);を加算
+<Add: 2-40, sc[$gameVariables.value(1);]>
+<Add: 2-40, SC[$gameVariables.value(1);]>
+<Add: 2-40, script[$gameVariables.value(1);]>
+<Add: 2-40, SCRIPT[$gameVariables.value(1);]>
+<Add: 2-40, スクリプト[$gameVariables.value(1);]>
+
+%% 変数3~50に$gameVariables.value(1);を減算
+<Sub: 3-50, sc[$gameVariables.value(1);]>
+<Sub: 3-50, SC[$gameVariables.value(1);]>
+<Sub: 3-50, script[$gameVariables.value(1);]>
+<Sub: 3-50, SCRIPT[$gameVariables.value(1);]>
+<Sub: 3-50, スクリプト[$gameVariables.value(1);]>
+
+%% 変数4~60に$gameVariables.value(1);を乗算
+<Mul: 4-60, sc[$gameVariables.value(1);]>
+<Mul: 4-60, SC[$gameVariables.value(1);]>
+<Mul: 4-60, script[$gameVariables.value(1);]>
+<Mul: 4-60, SCRIPT[$gameVariables.value(1);]>
+<Mul: 4-60, スクリプト[$gameVariables.value(1);]>
+
+%% 変数5~70に$gameVariables.value(1);を除算
+<Div: 5-70, sc[$gameVariables.value(1);]>
+<Div: 5-70, SC[$gameVariables.value(1);]>
+<Div: 5-70, script[$gameVariables.value(1);]>
+<Div: 5-70, SCRIPT[$gameVariables.value(1);]>
+<Div: 5-70, スクリプト[$gameVariables.value(1);]>
+
+%% 変数6~80に$gameVariables.value(1);の剰余を代入
+<Mod: 6-80, sc[$gameVariables.value(1);]>
+<Mod: 6-80, SC[$gameVariables.value(1);]>
+<Mod: 6-80, script[$gameVariables.value(1);]>
+<Mod: 6-80, SCRIPT[$gameVariables.value(1);]>
+<Mod: 6-80, スクリプト[$gameVariables.value(1);]>

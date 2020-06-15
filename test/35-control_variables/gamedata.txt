@@ -1,0 +1,359 @@
+% ゲームデータを操作
+%% 変数2に以降の値を代入
+%% 以下、すべて5つずつ同じ意味で違う記法を書いている。
+%%% アイテム1の所持数
+<Set: 2, gd[item][1]>
+<Set: 2, GD[ITEM][1]>
+<Set: 2, gamedata[item][1]>
+<Set: 2, GAMEDATA[ITEM][1]>
+<Set: 2, ゲームデータ[アイテム][1]>
+
+%%% 武器1の所持数
+<Set: 2, gd[weapon][1]>
+<Set: 2, GD[WEAPON][1]>
+<Set: 2, gamedata[weapon][1]>
+<Set: 2, GAMEDATA[WEAPON][1]>
+<Set: 2, ゲームデータ[武器][1]>
+
+%%% 防具1の所持数
+<Set: 2, gd[armor][1]>
+<Set: 2, GD[ARMOR][1]>
+<Set: 2, gamedata[armor][1]>
+<Set: 2, GAMEDATA[ARMOR][1]>
+<Set: 2, ゲームデータ[防具][1]>
+
+%%% アクター1のレベル
+<Set: 2, gd[actor][1][level]>
+<Set: 2, GD[ACTOR][1][LEVEL]>
+<Set: 2, gamedata[actor][1][level]>
+<Set: 2, GAMEDATA[ACTOR][1][LEVEL]>
+<Set: 2, ゲームデータ[アクター][1][レベル]>
+
+%%% アクター1の経験値
+<Set: 2, gd[actor][1][exp]>
+<Set: 2, GD[ACTOR][1][EXP]>
+<Set: 2, gamedata[actor][1][exp]>
+<Set: 2, GAMEDATA[ACTOR][1][EXP]>
+<Set: 2, ゲームデータ[アクター][1][経験値]>
+
+%%% アクター1のHP
+<Set: 2, gd[actor][1][hp]>
+<Set: 2, GD[ACTOR][1][HP]>
+<Set: 2, gamedata[actor][1][hp]>
+<Set: 2, GAMEDATA[ACTOR][1][HP]>
+<Set: 2, ゲームデータ[アクター][1][HP]>
+
+%%% アクター1のMP
+<Set: 2, gd[actor][1][mp]>
+<Set: 2, GD[ACTOR][1][MP]>
+<Set: 2, gamedata[actor][1][mp]>
+<Set: 2, GAMEDATA[ACTOR][1][MP]>
+<Set: 2, ゲームデータ[アクター][1][MP]>
+
+%%% アクター1の最大HP
+<Set: 2, gd[actor][1][MaxHp]>
+<Set: 2, GD[ACTOR][1][MAXHP]>
+<Set: 2, gamedata[actor][1][maxhp]>
+<Set: 2, GAMEDATA[ACTOR][1][MAXHP]>
+<Set: 2, ゲームデータ[アクター][1][最大HP]>
+
+%%% アクター1の最大MP
+<Set: 2, gd[actor][1][MaxMp]>
+<Set: 2, GD[ACTOR][1][MAXMP]>
+<Set: 2, gamedata[actor][1][maxmp]>
+<Set: 2, GAMEDATA[ACTOR][1][MAXMP]>
+<Set: 2, ゲームデータ[アクター][1][最大MP]>
+
+%%% アクター1の攻撃力
+<Set: 2, gd[actor][1][attack]>
+<Set: 2, GD[ACTOR][1][ATTACK]>
+<Set: 2, gamedata[actor][1][attack]>
+<Set: 2, GAMEDATA[ACTOR][1][ATTACK]>
+<Set: 2, ゲームデータ[アクター][1][攻撃力]>
+
+%%% アクター1の防御力
+<Set: 2, gd[actor][1][defense]>
+<Set: 2, GD[ACTOR][1][DEFENSE]>
+<Set: 2, gamedata[actor][1][defense]>
+<Set: 2, GAMEDATA[ACTOR][1][DEFENSE]>
+<Set: 2, ゲームデータ[アクター][1][防御力]>
+
+%%% アクター1の魔法攻撃力
+<Set: 2, gd[actor][1][m.attack]>
+<Set: 2, GD[ACTOR][1][M.ATTACK]>
+<Set: 2, gamedata[actor][1][m.attack]>
+<Set: 2, GAMEDATA[ACTOR][1][M.ATTACK]>
+<Set: 2, ゲームデータ[アクター][1][魔法攻撃力]>
+
+%%% アクター1の魔法防御力
+<Set: 2, gd[actor][1][m.defense]>
+<Set: 2, GD[ACTOR][1][M.DEFENSE]>
+<Set: 2, gamedata[actor][1][m.defense]>
+<Set: 2, GAMEDATA[ACTOR][1][M.DEFENSE]>
+<Set: 2, ゲームデータ[アクター][1][魔法防御力]>
+
+%%% アクター1の敏捷性
+<Set: 2, gd[actor][1][agility]>
+<Set: 2, GD[ACTOR][1][AGILITY]>
+<Set: 2, gamedata[actor][1][agility]>
+<Set: 2, GAMEDATA[ACTOR][1][AGILITY]>
+<Set: 2, ゲームデータ[アクター][1][敏捷性]>
+
+%%% アクター1の運
+<Set: 2, gd[actor][1][luck]>
+<Set: 2, GD[ACTOR][1][LUCK]>
+<Set: 2, gamedata[actor][1][luck]>
+<Set: 2, GAMEDATA[ACTOR][1][LUCK]>
+<Set: 2, ゲームデータ[アクター][1][運]>
+
+%%% (戦闘中の)エネミー1のHP
+<Set: 2, gd[enemy][1][hp]>
+<Set: 2, GD[ENEMY][1][HP]>
+<Set: 2, gamedata[enemy][1][hp]>
+<Set: 2, GAMEDATA[ENEMY][1][HP]>
+<Set: 2, ゲームデータ[エネミー][1][HP]>
+
+%%% (戦闘中の)エネミー1のMP
+<Set: 2, gd[enemy][1][mp]>
+<Set: 2, GD[ENEMY][1][MP]>
+<Set: 2, gamedata[enemy][1][mp]>
+<Set: 2, GAMEDATA[ENEMY][1][MP]>
+<Set: 2, ゲームデータ[エネミー][1][MP]>
+
+%%% (戦闘中の)エネミー1の最大HP
+<Set: 2, gd[enemy][1][MaxHp]>
+<Set: 2, GD[ENEMY][1][MAXHP]>
+<Set: 2, gamedata[enemy][1][maxhp]>
+<Set: 2, GAMEDATA[ENEMY][1][MAXHP]>
+<Set: 2, ゲームデータ[エネミー][1][最大HP]>
+
+%%% (戦闘中の)エネミー1の最大MP
+<Set: 2, gd[enemy][1][MaxMp]>
+<Set: 2, GD[ENEMY][1][MAXMP]>
+<Set: 2, gamedata[enemy][1][maxmp]>
+<Set: 2, GAMEDATA[ENEMY][1][MAXMP]>
+<Set: 2, ゲームデータ[エネミー][1][最大MP]>
+
+%%% (戦闘中の)エネミー1の攻撃力
+<Set: 2, gd[enemy][1][attack]>
+<Set: 2, GD[ENEMY][1][ATTACK]>
+<Set: 2, gamedata[enemy][1][attack]>
+<Set: 2, GAMEDATA[ENEMY][1][ATTACK]>
+<Set: 2, ゲームデータ[エネミー][1][攻撃力]>
+
+%%% (戦闘中の)エネミー1の防御力
+<Set: 2, gd[enemy][1][defense]>
+<Set: 2, GD[ENEMY][1][DEFENSE]>
+<Set: 2, gamedata[enemy][1][defense]>
+<Set: 2, GAMEDATA[ENEMY][1][DEFENSE]>
+<Set: 2, ゲームデータ[エネミー][1][防御力]>
+
+%%% (戦闘中の)エネミー1の魔法攻撃力
+<Set: 2, gd[enemy][1][m.attack]>
+<Set: 2, GD[ENEMY][1][M.ATTACK]>
+<Set: 2, gamedata[enemy][1][m.attack]>
+<Set: 2, GAMEDATA[ENEMY][1][M.ATTACK]>
+<Set: 2, ゲームデータ[エネミー][1][魔法攻撃力]>
+
+%%% (戦闘中の)エネミー1の魔法防御力
+<Set: 2, gd[enemy][1][m.defense]>
+<Set: 2, GD[ENEMY][1][M.DEFENSE]>
+<Set: 2, gamedata[enemy][1][m.defense]>
+<Set: 2, GAMEDATA[ENEMY][1][M.DEFENSE]>
+<Set: 2, ゲームデータ[エネミー][1][魔法防御力]>
+
+%%% (戦闘中の)エネミー1の敏捷性
+<Set: 2, gd[enemy][1][agility]>
+<Set: 2, GD[ENEMY][1][AGILITY]>
+<Set: 2, gamedata[enemy][1][agility]>
+<Set: 2, GAMEDATA[ENEMY][1][AGILITY]>
+<Set: 2, ゲームデータ[エネミー][1][敏捷性]>
+
+%%% (戦闘中の)エネミー1の運
+<Set: 2, gd[enemy][1][luck]>
+<Set: 2, GD[ENEMY][1][LUCK]>
+<Set: 2, gamedata[enemy][1][luck]>
+<Set: 2, GAMEDATA[ENEMY][1][LUCK]>
+<Set: 2, ゲームデータ[エネミー][1][運]>
+
+%%% プレイヤーのマップX座標
+<Set: 2, gd[character][player][MapX]>
+<Set: 2, GD[CHARACTER][PLAYER][MAPX]>
+<Set: 2, gamedata[character][player][mapx]>
+<Set: 2, GAMEDATA[CHARACTER][-1][MAPX]>
+<Set: 2, ゲームデータ[キャラクター][プレイヤー][マップX]>
+
+%%% プレイヤーのマップY座標
+<Set: 2, gd[character][player][MapY]>
+<Set: 2, GD[CHARACTER][PLAYER][MAPY]>
+<Set: 2, gamedata[character][player][mapy]>
+<Set: 2, GAMEDATA[CHARACTER][-1][MAPY]>
+<Set: 2, ゲームデータ[キャラクター][プレイヤー][マップY]>
+
+%%% プレイヤーの方向
+<Set: 2, gd[character][player][direction]>
+<Set: 2, GD[CHARACTER][PLAYER][DIRECTION]>
+<Set: 2, gamedata[character][player][direction]>
+<Set: 2, GAMEDATA[CHARACTER][-1][DIRECTION]>
+<Set: 2, ゲームデータ[キャラクター][プレイヤー][方向]>
+
+%%% プレイヤーのスクリーンX座標
+<Set: 2, gd[character][player][ScreenX]>
+<Set: 2, GD[CHARACTER][PLAYER][SCREENX]>
+<Set: 2, gamedata[character][player][screenx]>
+<Set: 2, GAMEDATA[CHARACTER][-1][SCREENX]>
+<Set: 2, ゲームデータ[キャラクター][プレイヤー][画面X]>
+
+%%% プレイヤーのスクリーンY座標
+<Set: 2, gd[character][player][ScreenY]>
+<Set: 2, GD[CHARACTER][PLAYER][SCREENY]>
+<Set: 2, gamedata[character][player][screeny]>
+<Set: 2, GAMEDATA[CHARACTER][-1][SCREENY]>
+<Set: 2, ゲームデータ[キャラクター][プレイヤー][画面Y]>
+
+%%% このイベントのマップX座標
+<Set: 2, gd[character][ThisEvent][MapX]>
+<Set: 2, GD[CHARACTER][THISEVENT][MAPX]>
+<Set: 2, gamedata[character][thisevent][mapx]>
+<Set: 2, GAMEDATA[character][0][MAPX]>
+<Set: 2, ゲームデータ[キャラクター][このイベント][マップX]>
+
+%%% このイベントのマップY座標
+<Set: 2, gd[character][ThisEvent][MapY]>
+<Set: 2, GD[CHARACTER][THISEVENT][MAPY]>
+<Set: 2, gamedata[character][thisevent][mapy]>
+<Set: 2, GAMEDATA[CHARACTER][0][MAPY]>
+<Set: 2, ゲームデータ[キャラクター][このイベント][マップY]>
+
+%%% このイベントの方向
+<Set: 2, gd[character][ThisEvent][direction]>
+<Set: 2, GD[CHARACTER][THISEVENT][DIRECTION]>
+<Set: 2, gamedata[character][thisevent][direction]>
+<Set: 2, GAMEDATA[CHARACTER][0][DIRECTION]>
+<Set: 2, ゲームデータ[キャラクター][このイベント][方向]>
+
+%%% このイベントのスクリーンX座標
+<Set: 2, gd[character][ThisEvent][ScreenX]>
+<Set: 2, GD[CHARACTER][THISEVENT][SCREENX]>
+<Set: 2, gamedata[character][thisevent][screenx]>
+<Set: 2, GAMEDATA[CHARACTER][0][SCREENX]>
+<Set: 2, ゲームデータ[キャラクター][このイベント][画面X]>
+
+%%% このイベントのスクリーンY座標
+<Set: 2, gd[character][ThisEvent][ScreenY]>
+<Set: 2, GD[CHARACTER][THISEVENT][SCREENY]>
+<Set: 2, gamedata[character][thisevent][screeny]>
+<Set: 2, GAMEDATA[CHARACTER][0][SCREENY]>
+<Set: 2, ゲームデータ[キャラクター][このイベント][画面Y]>
+
+%%% イベント1のマップX座標
+<Set: 2, gd[character][1][MapX]>
+<Set: 2, GD[CHARACTER][1][MAPX]>
+<Set: 2, gamedata[character][1][mapx]>
+<Set: 2, GAMEDATA[CHARACTER][1][MAPX]>
+<Set: 2, ゲームデータ[キャラクター][1][マップX]>
+
+%%% イベント1のマップY座標
+<Set: 2, gd[character][1][MapY]>
+<Set: 2, GD[CHARACTER][1][MAPY]>
+<Set: 2, gamedata[character][1][mapy]>
+<Set: 2, GAMEDATA[CHARACTER][1][MAPY]>
+<Set: 2, ゲームデータ[キャラクター][1][マップY]>
+
+%%% イベント1の方向
+<Set: 2, gd[character][1][direction]>
+<Set: 2, GD[CHARACTER][1][DIRECTION]>
+<Set: 2, gamedata[character][1][direction]>
+<Set: 2, GAMEDATA[CHARACTER][1][DIRECTION]>
+<Set: 2, ゲームデータ[キャラクター][1][方向]>
+
+%%% イベント1のスクリーンX座標
+<Set: 2, gd[character][1][ScreenX]>
+<Set: 2, GD[CHARACTER][1][SCREENX]>
+<Set: 2, gamedata[character][1][screenx]>
+<Set: 2, GAMEDATA[CHARACTER][1][SCREENX]>
+<Set: 2, ゲームデータ[キャラクター][1][画面X]>
+
+%%% イベント1のスクリーンY座標
+<Set: 2, gd[character][1][ScreenY]>
+<Set: 2, GD[CHARACTER][1][SCREENY]>
+<Set: 2, gamedata[character][1][screeny]>
+<Set: 2, GAMEDATA[CHARACTER][1][SCREENY]>
+<Set: 2, ゲームデータ[キャラクター][1][画面Y]>
+
+%%% パーティメンバー1のアクターID
+<Set: 2, gd[party][1]>
+<Set: 2, GD[PARTY][1]>
+<Set: 2, gamedata[party][1]>
+<Set: 2, GAMEDATA[PARTY][1]>
+<Set: 2, ゲームデータ[パーティ][1]>
+
+%%% マップID
+<Set: 2, gd[MapID]>
+<Set: 2, GD[MAPID]>
+<Set: 2, gamedata[mapid]>
+<Set: 2, GAMEDATA[MAPID]>
+<Set: 2, ゲームデータ[マップID]>
+
+%%% パーティ人数
+<Set: 2, gd[PartyMembers]>
+<Set: 2, GD[PARTYMEMBERS]>
+<Set: 2, gamedata[partymembers]>
+<Set: 2, GAMEDATA[PARTYMEMBERS]>
+<Set: 2, ゲームデータ[パーティ人数]>
+
+%%% 所持金
+<Set: 2, gd[gold]>
+<Set: 2, GD[GOLD]>
+<Set: 2, gamedata[gold]>
+<Set: 2, GAMEDATA[Gold]>
+<Set: 2, ゲームデータ[所持金]>
+
+%%% 歩数
+<Set: 2, gd[steps]>
+<Set: 2, GD[STEPS]>
+<Set: 2, gamedata[steps]>
+<Set: 2, GAMEDATA[STEPS]>
+<Set: 2, ゲームデータ[歩数]>
+
+%%% プレイ時間
+<Set: 2, gd[PlayTime]>
+<Set: 2, GD[PLAYTIME]>
+<Set: 2, gamedata[playtime]>
+<Set: 2, GAMEDATA[PLAYTIME]>
+<Set: 2, ゲームデータ[プレイ時間]>
+
+%%% タイマー
+<Set: 2, gd[timer]>
+<Set: 2, GD[TIMER]>
+<Set: 2, gamedata[timer]>
+<Set: 2, GAMEDATA[TIMER]>
+<Set: 2, ゲームデータ[タイマー]>
+
+%%% セーブ回数
+<Set: 2, gd[SaveCount]>
+<Set: 2, GD[SAVECOUNT]>
+<Set: 2, gamedata[savecount]>
+<Set: 2, GAMEDATA[SAVECOUNT]>
+<Set: 2, ゲームデータ[セーブ回数]>
+
+%%% 戦闘回数
+<Set: 2, gd[BattleCount]>
+<Set: 2, GD[BATTLECOUNT]>
+<Set: 2, gamedata[battlecount]>
+<Set: 2, GAMEDATA[BATTLECOUNT]>
+<Set: 2, ゲームデータ[戦闘回数]>
+
+%%% 勝利回数
+<Set: 2, gd[WinCount]>
+<Set: 2, GD[WINCOUNT]>
+<Set: 2, gamedata[wincount]>
+<Set: 2, GAMEDATA[WINCOUNT]>
+<Set: 2, ゲームデータ[勝利回数]>
+
+%%% 逃走回数
+<Set: 2, gd[EscapeCount]>
+<Set: 2, GD[ESCAPECOUNT]>
+<Set: 2, gamedata[escapecount]>
+<Set: 2, GAMEDATA[ESCAPECOUNT]>
+<Set: 2, ゲームデータ[逃走回数]>

@@ -1,0 +1,84 @@
+% 変数の値を操作
+%% 変数1に変数10の値を代入
+<Set: 1, v[10]>
+<Set: 1, V[10]>
+<Set: 1, variables[10]>
+<Set: 1, VARIABLES[10]>
+<Set: 1, 変数[10]>
+
+%% 変数2に変数20の値を加算
+<Add: 2, v[20]>
+<Add: 2, V[20]>
+<Add: 2, variables[20]>
+<Add: 2, VARIABLES[20]>
+<Add: 2, 変数[20]>
+
+%% 変数3に変数30の値を減算
+<Sub: 3, v[30]>
+<Sub: 3, V[30]>
+<Sub: 3, variables[30]>
+<Sub: 3, VARIABLES[30]>
+<Sub: 3, 変数[30]>
+
+%% 変数4に変数40の値を乗算
+<Mul: 4, v[40]>
+<Mul: 4, V[40]>
+<Mul: 4, variables[40]>
+<Mul: 4, VARIABLES[40]>
+<Mul: 4, 変数[40]>
+
+%% 変数5に変数50の値を除算
+<Div: 5, v[50]>
+<Div: 5, V[50]>
+<Div: 5, variables[50]>
+<Div: 5, VARIABLES[50]>
+<Div: 5, 変数[50]>
+
+%% 変数6に変数60の値の剰余
+<Mod: 6, v[60]>
+<Mod: 6, V[60]>
+<Mod: 6, variables[60]>
+<Mod: 6, VARIABLES[60]>
+<Mod: 6, 変数[60]>
+
+%% 変数1~30に変数10の値を代入
+<Set: 1-30, v[10]>
+<Set: 1-30, V[10]>
+<Set: 1-30, variables[10]>
+<Set: 1-30, VARIABLES[10]>
+<Set: 1-30, 変数[10]>
+
+%% 変数2~40に変数20の値を加算
+<Add: 2-40, v[20]>
+<Add: 2-40, V[20]>
+<Add: 2-40, variables[20]>
+<Add: 2-40, VARIABLES[20]>
+<Add: 2-40, 変数[20]>
+
+%% 変数3~50に変数30の値を減算
+<Sub: 3-50, v[30]>
+<Sub: 3-50, V[30]>
+<Sub: 3-50, variables[30]>
+<Sub: 3-50, VARIABLES[30]>
+<Sub: 3-50, 変数[30]>
+
+%% 変数4~60に変数40の値を乗算
+<Mul: 4-60, v[40]>
+<Mul: 4-60, V[40]>
+<Mul: 4-60, variables[40]>
+<Mul: 4-60, VARIABLES[40]>
+<Mul: 4-60, 変数[40]>
+
+%% 変数5~70に変数50の値を除算
+<Div: 5-70, v[50]>
+<Div: 5-70, V[50]>
+<Div: 5-70, variables[50]>
+<Div: 5-70, VARIABLES[50]>
+<Div: 5-70, 変数[50]>
+
+%% 変数6~80に変数60の値の剰余を代入
+<Mod: 6-80, v[60]>
+<Mod: 6-80, V[60]>
+<Mod: 6-80, variables[60]>
+<Mod: 6-80, VARIABLES[60]>
+<Mod: 6-80, 変数[60]>

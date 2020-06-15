@@ -1,0 +1,93 @@
+% セルフスイッチA
+%% セルフイッチAをオンにする
+<SelfSwitch: A, on>
+<selfswitch: a, On>
+<SELFSWITCH: A, ON>
+<セルフスイッチ: a, オン>
+<ssw: A, 1>
+<SSW: a, true>
+
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+
+%% セルフイッチAをオフにする
+<SelfSwitch: A, off>
+<selfswitch: a, Off>
+<SELFSWITCH: A, OFF>
+<セルフスイッチ: a, オフ>
+<ssw: A, 0>
+<SSW: a, false>
+
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+
+
+% セルフスイッチB
+%% セルフイッチBをオンにする
+<SelfSwitch: B, on>
+<selfswitch: b, On>
+<SELFSWITCH: B, ON>
+<セルフスイッチ: B, オン>
+<ssw: b, 1>
+<SSW: B, true>
+
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+
+%% セルフイッチBをオフにする
+<SelfSwitch: B, off>
+<selfswitch: b, Off>
+<SELFSWITCH: B, OFF>
+<セルフスイッチ: b, オフ>
+<ssw: B, 0>
+<SSW: b, false>
+
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+
+
+% セルフスイッチC
+%% セルフイッチCをオンにする
+<SelfSwitch: C, on>
+<selfswitch: c, On>
+<SELFSWITCH: C, ON>
+<セルフスイッチ: c, オン>
+<ssw: C, 1>
+<SSW: c, true>
+
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+
+% セルフイッチCをオフにする
+<SelfSwitch: C, off>
+<selfswitch: c, Off>
+<SELFSWITCH: C, OFF>
+<セルフスイッチ: c, オフ>
+<ssw: C, 0>
+<SSW: c, false>
+
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+
+
+% セルフスイッチD
+% セルフイッチDをオンにする
+<SelfSwitch: D, on>
+<selfswitch: d, On>
+<SELFSWITCH: D, ON>
+<セルフスイッチ: d, オン>
+<ssw: D, 1>
+<SSW: d, true>
+
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+
+% セルフイッチDをオフにする
+<SelfSwitch: D, off>
+<selfswitch: d, Off>
+<SELFSWITCH: D, OFF>
+<セルフスイッチ: d, オフ>
+<ssw: D, 0>
+<SSW: d, false>
+
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
