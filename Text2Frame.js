@@ -1155,17 +1155,7 @@ if(typeof PluginManager === 'undefined'){
     const eraseCommentOutLines = function(scenario_text, commentOutChar) {
       // 一度改行毎にsplitして、要素毎にチェックして最後にひとつのテキストに結合する。
       let re = new RegExp("^ *" + commentOutChar);
-      let text_lines = scenario_text.split("\n");
-      let out_text_lines = [];
-      for (let i=0; i < text_lines.length; i++) {
-        let text = text_lines[i];
-        if (text.match(re)){ // 頭にコメントアウト記号がある場合はスキップ
-          continue;
-        }
-        out_text_lines.push(text);
-      }
-      let out_text = out_text_lines.join("\n");
-      return out_text;
+      return scenario_text.split("\n").filter(x => ! x.match(re)).join('\n');
     };
 
 
