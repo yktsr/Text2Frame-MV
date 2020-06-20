@@ -24,7 +24,7 @@ English README is [here](en).
 1. イベントのタイルを踏み、実行します
 1. プロジェクトを開き直します
 
-より詳細な手順は[wiki](https://github.com/yktsr/Text2Frame-MV/wiki/%E5%9F%BA%E6%9C%AC%E7%9A%84%E3%81%AA%E4%BD%BF%E3%81%84%E6%96%B9)を参照してください。
+より詳細な手順は[wiki](https://github.com/yktsr/Text2Frame-MV/wiki)を参照してください。
 
 ![./basic_sample.gif](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/basic_sample.gif)
 
@@ -59,16 +59,16 @@ English README is [here](en).
 ### コメントアウト
 取り込みたい文章の行の先頭に「%」を記載すると、それはコメントと見なされ、取り込まれません。
 このコメントアウト記号はプラグインパラメータで変更することができます。
-動作例は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%82%B3%E3%83%A1%E3%83%B3%E3%83%88%E3%82%A2%E3%82%A6%E3%83%88%E3%81%AE%E5%8B%95%E4%BD%9C%E4%BE%8B)を参照してください。
+動作例は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%86%E3%82%AD%E3%82%B9%E3%83%88%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9)を参照してください。
 
 ### コモンイベントへの書き出し
 マップ上のイベントへの書き出しだけでなく、コモンイベントへも書き出すことができます。
-動作例は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%82%B3%E3%83%A2%E3%83%B3%E3%82%A4%E3%83%99%E3%83%B3%E3%83%88%E6%9B%B8%E3%81%8D%E5%87%BA%E3%81%97%E3%81%AE%E5%8B%95%E4%BD%9C%E4%BE%8B)を参照してください。
+動作例は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%82%B3%E3%83%A2%E3%83%B3%E3%82%A4%E3%83%99%E3%83%B3%E3%83%88%E3%81%B8%E3%81%AE%E6%9B%B8%E3%81%8D%E5%87%BA%E3%81%97)を参照してください。
 
 ### プラグインコマンド引数を使ったデフォルト値の変更
 読み込みたいファイルが複数あるときやファイルごとに異なるオプションを適用したいときなどに、プラグインコマンド引数を使うことでより高度な制御が行えます。
 
-詳細は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E5%BC%95%E6%95%B0)を参照してください。
+詳細は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3)を参照してください。
 
 
 ## 追加機能のタグ
@@ -119,8 +119,7 @@ English README is [here](en).
 |スクリプト|<script><br>console.log("ぞい！");<br></script>|&lt;SC><br>console.log("ぞい！")<br>&lt;/SC>|"console.log("ぞい！");"をスクリプトイベントとして組み込む。|
 |プラグインコマンド|<PluginCommand: IMPORT_MESSAGE_TO_EVENT><br><プラグインコマンド: IMPORT_MESSAGE_TO_EVENT><br><PC: IMPORT_MESSAGE_TO_EVENT>|"IMPORT_MESSAGE_TO_EVENT"をプラグインコマンドとして組み込む。|
 
-タグの詳細は[wikiの文法ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E6%96%87%E6%B3%95)や
-[wikiの動作確認サンプルページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E5%8B%95%E4%BD%9C%E7%A2%BA%E8%AA%8D%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB)を参照してください。
+タグの詳細は[wikiの文法ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%86%E3%82%AD%E3%82%B9%E3%83%88%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9)や
 また、プラグイン本体のヘルプ文にも詳細を記しています。
 
 
