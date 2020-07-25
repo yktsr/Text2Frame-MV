@@ -1,0 +1,10 @@
+% スクリプトが"$gameParty._gold == $gameVariables.value(1)"場合
+<If: Script, $gameParty._gold == $gameVariables.value(1)>
+今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑
+<End>
+<If: スクリプト, $gameParty._gold == $gameVariables.value(1)>
+今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑
+<End>
+<If: SC, $gameParty._gold == $gameVariables.value(1)>
+今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑
+<End>
