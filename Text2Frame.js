@@ -1696,13 +1696,14 @@ if(typeof PluginManager === 'undefined'){
         "x": 0, "y": 0,
         "width": 100, "height": 100, //%
         "opacity": 255, "blend_mode": 0, // 0:Normal, 1:Additive, 2:Multiply, 3:Screen
-        "duration": 60, "wait": true // for a function that move a picture
+        "duration": 60, "wait": true,  // for a function that move a picture
+        "red": 0, "green": 0, "blue": 0, "gray": 0 // for a function that tints a picture.
       };
     };
 
     const getPictureOptions = function(option_str) {
       let out = {};
-      let option_regexp = /([^\[\]]+)(\[[\sa-zA-Z0-9\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+\])/i;
+      let option_regexp = /([^\[\]]+)(\[[\s\-a-zA-Z0-9\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+\])/i;
       let option = option_str.match(option_regexp);
       if(option){
         let key = option[1] || '';
@@ -1765,6 +1766,61 @@ if(typeof PluginManager === 'undefined'){
             }
             break;
           }
+          case "colortone":
+          case "色調":
+          case "ct": {
+            let firstValue = values[0].toLowerCase() || 0;
+            switch(firstValue){
+              case "normal":
+              case "通常": {
+                out["red"] = 0;
+                out["green"] = 0;
+                out["blue"] = 0;
+                out["gray"] = 0;
+                break;
+              }
+              case "dark":
+              case "ダーク": {
+                out["red"] = -68;
+                out["green"] = -68;
+                out["blue"] = -68;
+                out["gray"] = 0;
+                break;
+              }
+              case "sepia":
+              case "セピア": {
+                out["red"] = 34;
+                out["green"] = -34;
+                out["blue"] = -68;
+                out["gray"] = 170;
+                break;
+              }
+              case "sunset":
+              case "夕暮れ": {
+                out["red"] = 68;
+                out["green"] = -34;
+                out["blue"] = -34;
+                out["gray"] = 0;
+                break;
+              }
+              case "night":
+              case "夜": {
+                out["red"] = -68;
+                out["green"] = -68;
+                out["blue"] = 0;
+                out["gray"] = 68;
+                break;
+              }
+              default: {
+                out["red"] = Number(values[0]) || 0;
+                out["green"] = Number(values[1]) || 0;
+                out["blue"] = Number(values[2]) || 0;
+                out["gray"] = Number(values[3]) || 0;
+                break;
+              }
+              break;
+            }
+          }
         }
       }
       return out;
@@ -1795,6 +1851,17 @@ if(typeof PluginManager === 'undefined'){
                              ps.opacity, ps.blend_mode,
                              ps.duration, ps.wait]};
     };
+
+    const getTintPicture = function(pic_no, options=[]) {
+      let ps = getDefaultPictureOptions();
+      for(let i=0; i<options.length; i++){
+        Object.assign(ps, getPictureOptions(options[i]))
+      }
+      return {"code": 234, "indent": 0,
+              "parameters": [pic_no,
+                             [ps.red, ps.green, ps.blue, ps.gray],
+                             ps.duration, ps.wait]};
+    }
 
     let scenario_text = readText(Laurus.Text2Frame.TextPath);
     scenario_text = uniformNewLineCode(scenario_text);
@@ -1885,6 +1952,9 @@ if(typeof PluginManager === 'undefined'){
         let rotate_picture = text.match(/<rotatepicture\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
           || text.match(/<ピクチャの回転\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
           || text.match(/<RP\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i);
+        let tint_picture = text.match(/<tintpicture *: *([^ ].*)>/i)
+          || text.match(/<ピクチャの色調変更 *: *([^ ].*)>/i)
+          || text.match(/<TP *: *([^ ].*)>/i);
 
         const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
         const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
@@ -2443,6 +2513,26 @@ if(typeof PluginManager === 'undefined'){
             "parameters": [pic_no, speed]
           });
           continue;
+        }
+
+        //Tint Picture
+        if(tint_picture){
+          if(tint_picture[1]){
+            let params = tint_picture[1].split(',').map(s => s.trim());
+            if(params.length > 0){
+              let pic_no = Number(params[0]);
+              let options = params.slice(1);
+              //console.log(pic_no, options);
+              event_command_list.push(getTintPicture(pic_no, options));
+              continue;
+            }else{
+              console.error(text);
+              throw new Error('Syntax error. / 文法エラーです。'
+                              + 'Please check line ' + (i+1) + '. / '
+                              + (i+1) + '行目付近を確認してください / '
+                              + text.replace(/</g, '  ').replace(/>/g, '  '));
+            }
+          }
         }
 
 

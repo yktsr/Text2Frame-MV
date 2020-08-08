@@ -45,7 +45,8 @@ describe('Text2Frame Test', function() {
     {title: "Comment Out 2", infile: "./test/45-comment-out.txt", mapfile: "./data/Map001.json", expfile: "./test/45-expected_comment-out.json"},
     {title: "Show Picture", infile: "./test/56-show-picture.txt", mapfile: "./data/Map001.json", expfile: "./test/56-expected_show-picture.json"},
     {title: "Move Picture", infile: "./test/57-move-picture.txt", mapfile: "./data/Map001.json", expfile: "./test/57-expected_move-picture.json"},
-    {title: "Rotate Picture", infile: "./test/58-rotate-picture.txt", mapfile: "./data/Map001.json", expfile: "./test/58-expected_rotate_picture.json"}
+    {title: "Rotate Picture", infile: "./test/58-rotate-picture.txt", mapfile: "./data/Map001.json", expfile: "./test/58-expected_rotate_picture.json"},
+    {title: "Tint Picture", infile: "./test/59-tint-picture.txt", mapfile: "./data/Map001.json", expfile: "./test/59-expected_tint-picture.json"}
   ];
 
   const consoleStub = sinon.stub(console, 'log');
