@@ -1955,6 +1955,9 @@ if(typeof PluginManager === 'undefined'){
         let tint_picture = text.match(/<tintpicture *: *([^ ].*)>/i)
           || text.match(/<ピクチャの色調変更 *: *([^ ].*)>/i)
           || text.match(/<TP *: *([^ ].*)>/i);
+        let erase_picture = text.match(/<erasepicture\s*:\s*(\d{1,2})\s*>/i)
+          || text.match(/<ピクチャの消去\s*:\s*(\d{1,2})\s*>/i)
+          || text.match(/<ep\s*:\s*(\d{1,2})\s*>/i);
 
         const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
         const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
@@ -2533,6 +2536,16 @@ if(typeof PluginManager === 'undefined'){
                               + text.replace(/</g, '  ').replace(/>/g, '  '));
             }
           }
+        }
+
+        // Erase Picture
+        if(erase_picture){
+          let pic_no = Number(erase_picture[1]);
+          event_command_list.push({
+            "code": 235, "indent": 0,
+            "parameters": [pic_no]
+          });
+          continue;
         }
 
 
