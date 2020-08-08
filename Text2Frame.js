@@ -1687,74 +1687,93 @@ if(typeof PluginManager === 'undefined'){
       return {scenario_text, block_map};
     };
 
-    const getShowPicture = function(pic_no, name, options=[]) {
-      let ps = {
+    const getDefaultPictureOptions = function() {
+      return {
         "origin": 0, // 0: UpperLeft, 1:Center
         "variable": 0, // 0: Constant, 1: Variable
         // if variable is 0, x and y are  a constant values.
         // if variable is 1, x is a number of variables
         "x": 0, "y": 0,
         "width": 100, "height": 100, //%
-        "opacity": 255, "blend_mode": 0 // 0:Normal, 1:Additive, 2:Multiply, 3:Screen
+        "opacity": 255, "blend_mode": 0, // 0:Normal, 1:Additive, 2:Multiply, 3:Screen
+        "duration": 60, "wait": true // for a function that move a picture
       };
+    };
+
+    const getPictureOptions = function(option_str) {
+      let out = {};
       let option_regexp = /([^\[\]]+)(\[[\sa-zA-Z0-9\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+\])/i;
-      for(let i=0; i<options.length; i++){
-        let option = options[i].match(option_regexp);
-        if(option){
-          let key = option[1] || '';
-          let values = option[2].slice(1, -1).split('][') || '';
-          switch(key.toLowerCase()){
-            case 'position':
-            case '位置':{
-              let origin = values[0] || 'Upper left';
-              if(origin.toLowerCase() == 'center' || origin == '中央'){
-                ps.origin = 1;
-              }
-              let constant_regexp = /^[0-9]+$/;
-              let variable_regexp = /(?:variables|v|変数)\[([0-9]+)\]/i;
-              let x = values[1] || '0';
-              if(x.match(constant_regexp)){
-                ps.variable = 0;
-                ps.x = Number(x);
-              }else{
-                let v = x.match(variable_regexp);
-                if(v){
-                  ps.variable = 1;
-                  ps.x = Number(v[1])
-                }
-              }
-              let y = values[2] || '0';
-              if(y.match(constant_regexp)){
-                ps.variable = 0;
-                ps.y = Number(y);
-              }else{
-                let v = y.match(variable_regexp);
-                if(v){
-                  ps.variable = 1;
-                  ps.y = Number(v[1]);
-                }
-              }
-              break;
+      let option = option_str.match(option_regexp);
+      if(option){
+        let key = option[1] || '';
+        let values = option[2].slice(1, -1).split('][') || '';
+        switch(key.toLowerCase()){
+          case "position":
+          case "位置":{
+            let origin = values[0] || 'Upper Left';
+            if(origin.toLowerCase() == 'center' || origin == '中央'){
+              out["origin"] = 1;
             }
-            case 'scale':
-            case '拡大率':{
-              ps.width = Number(values[0]) || 100;
-              ps.height = Number(values[1]) || 100;
-              break;
+            let constant_regexp = /^[0-9]+$/;
+            let variable_regexp = /(?:variables|v|変数)\[([0-9]+)\]/i;
+            let x = values[1] || '0';
+            if(x.match(constant_regexp)){
+              out["variable"] = 0;
+              out["x"] = Number(x);
+            }else{
+              let v = x.match(variable_regexp);
+              if(v){
+                out["variable"] = 1;
+                out["x"] = Number(v[1])
+              }
             }
-            case 'blend':
-            case '合成':{
-              ps.opacity = Number(values[0]) || 255;
-              ps.blend_mode = ({
-                "normal": 0, "通常": 0,
-                "additive": 1, "加算": 1,
-                "multiply": 2, "乗算": 2,
-                "screen": 3, "スクリーン": 3
-              })[values[1].toLowerCase()] || 0;
-              break;
+            let y = values[2] || '0';
+            if(y.match(constant_regexp)){
+              out["variable"] = 0;
+              out["y"] = Number(y);
+            }else{
+              let v = y.match(variable_regexp);
+              if(v){
+                out["variable"] = 1;
+                out["y"] = Number(v[1]);
+              }
             }
+            break;
+          }
+          case "scale":
+          case "拡大率":{
+            out["width"] = Number(values[0]) || 100;
+            out["height"] = Number(values[1]) || 100;
+            break;
+          }
+          case "blend":
+          case '合成':{
+            out["opacity"] = Number(values[0]) || 255;
+            out["blend_mode"] = ({
+              "normal": 0, "通常": 0,
+              "additive": 1, "加算": 1,
+              "multiply": 2, "乗算": 2,
+              "screen": 3, "スクリーン": 3
+            })[values[1].toLowerCase()] || 0;
+            break;
+          }
+          case "duration":
+          case "時間":{
+            out["duration"] = Number(values[0]) || 60;
+            if(typeof(values[1]) == "undefined" || values[1] == ""){
+              out["wait"] = false;
+            }
+            break;
           }
         }
+      }
+      return out;
+    }
+
+    const getShowPicture = function(pic_no, name, options=[]) {
+      let ps = getDefaultPictureOptions();
+      for(let i=0; i<options.length; i++){
+        Object.assign(ps, getPictureOptions(options[i]))
       }
       return {"code": 231, "indent": 0,
               "parameters": [pic_no, name,
@@ -1762,6 +1781,19 @@ if(typeof PluginManager === 'undefined'){
                              ps.x, ps.y, ps.width, ps.height,
                              ps.opacity, ps.blend_mode]
              };
+    };
+
+    const getMovePicture = function(pic_no, options=[]) {
+      let ps = getDefaultPictureOptions();
+      for(let i=0; i<options.length; i++){
+        Object.assign(ps, getPictureOptions(options[i]));
+      }
+      return {"code": 232, "indent": 0,
+              "parameters": [pic_no, 0,
+                             ps.origin, ps.variable,
+                             ps.x, ps.y, ps.width, ps.height,
+                             ps.opacity, ps.blend_mode,
+                             ps.duration, ps.wait]};
     };
 
     let scenario_text = readText(Laurus.Text2Frame.TextPath);
@@ -1844,9 +1876,12 @@ if(typeof PluginManager === 'undefined'){
           || text.match(/<playme *: *none>/i)
           || text.match(/<playme *: *なし>/i)
           || text.match(/<MEの停止>/);
-        let show_picture = text.match(/<showpicture *: *([^ ].+)>/i)
+        let show_picture = text.match(/<showpicture *: *([^ ].*)>/i)
           || text.match(/<ピクチャの表示 *: *([^ ].+)>/i)
           || text.match(/<SP *: *([^ ].+)>/i);
+        let move_picture = text.match(/<movepicture *: *([^ ].*)>/i)
+          || text.match(/<ピクチャの移動 *: *([^ ].*)>/i)
+          || text.match(/<MP *: *([^ ].*)>/i);
 
         const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
         const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
@@ -2366,6 +2401,25 @@ if(typeof PluginManager === 'undefined'){
               let name = params[1];
               let options = params.slice(2);
               event_command_list.push(getShowPicture(pic_no, name, options));
+              continue;
+            }else{
+              console.error(text);
+              throw new Error('Syntax error. / 文法エラーです。'
+                              + 'Please check line ' + (i+1) + '. / '
+                              + (i+1) + '行目付近を確認してください / '
+                              + text.replace(/</g, '  ').replace(/>/g, '  '));
+            }
+          }
+        }
+
+        // Move Picture
+        if(move_picture){
+          if(move_picture[1]){
+            let params = move_picture[1].split(',').map(s => s.trim());
+            if(params.length > 0){
+              let pic_no = Number(params[0]);
+              let options = params.slice(1);
+              event_command_list.push(getMovePicture(pic_no, options));
               continue;
             }else{
               console.error(text);
