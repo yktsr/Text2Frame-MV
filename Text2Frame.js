@@ -1882,6 +1882,9 @@ if(typeof PluginManager === 'undefined'){
         let move_picture = text.match(/<movepicture *: *([^ ].*)>/i)
           || text.match(/<ピクチャの移動 *: *([^ ].*)>/i)
           || text.match(/<MP *: *([^ ].*)>/i);
+        let rotate_picture = text.match(/<rotatepicture\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
+          || text.match(/<ピクチャの回転\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
+          || text.match(/<RP\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i);
 
         const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
         const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
@@ -2429,6 +2432,17 @@ if(typeof PluginManager === 'undefined'){
                               + text.replace(/</g, '  ').replace(/>/g, '  '));
             }
           }
+        }
+
+        // Rotate Picture
+        if(rotate_picture){
+          let pic_no = Number(rotate_picture[1]);
+          let speed = Number(rotate_picture[2]);
+          event_command_list.push({
+            "code": 233, "indent": 0,
+            "parameters": [pic_no, speed]
+          });
+          continue;
         }
 
 
