@@ -42,7 +42,8 @@ describe('Text2Frame Test', function() {
     {title: "Self switch", infile: "./test/39-self_switches.txt", mapfile: "./data/Map001.json", expfile: "./test/39-expected_self_switches.json"},
     {title: "Timer", infile: "./test/40-timer.txt", mapfile: "./data/Map001.json", expfile: "./test/40-expected_timer.json"},
     {title: "Comment Out 1", infile: "./test/43-bug-comment-out.txt", mapfile: "./data/Map001.json", expfile: "./test/43-expected_bug-comment-out.json"},
-    {title: "Comment Out 2", infile: "./test/45-comment-out.txt", mapfile: "./data/Map001.json", expfile: "./test/45-expected_comment-out.json"}
+    {title: "Comment Out 2", infile: "./test/45-comment-out.txt", mapfile: "./data/Map001.json", expfile: "./test/45-expected_comment-out.json"},
+    {title: "Show Picture", infile: "./test/56-show-picture.txt", mapfile: "./data/Map001.json", expfile: "./test/56-expected_show-picture.json"}
   ];
 
   const consoleStub = sinon.stub(console, 'log');
