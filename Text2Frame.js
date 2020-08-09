@@ -1954,7 +1954,7 @@ if(typeof PluginManager === 'undefined'){
 
     const getPictureOptions = function(option_str) {
       let out = {};
-      let option_regexp = /([^\[\]]+)(\[[\s\-a-zA-Z0-9\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf\[\]]+\])/i;
+      let option_regexp = /([^[\]]+)(\[[\s\-a-zA-Z0-9\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf[\]]+\])/i;
       let option = option_str.match(option_regexp);
       if(option){
         let key = option[1] || '';
@@ -2069,7 +2069,6 @@ if(typeof PluginManager === 'undefined'){
                 out["gray"] = Number(values[3]) || 0;
                 break;
               }
-              break;
             }
           }
         }
