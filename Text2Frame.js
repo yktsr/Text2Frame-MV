@@ -2074,13 +2074,11 @@ if(typeof PluginManager === 'undefined'){
         }
       }
       return out;
-    }
+    };
 
     const getShowPicture = function(pic_no, name, options=[]) {
       let ps = getDefaultPictureOptions();
-      for(let i=0; i<options.length; i++){
-        Object.assign(ps, getPictureOptions(options[i]))
-      }
+      options.map(x => Object.assign(ps, getPictureOptions(x)));
       return {"code": 231, "indent": 0,
               "parameters": [pic_no, name,
                              ps.origin, ps.variable,
@@ -2091,9 +2089,7 @@ if(typeof PluginManager === 'undefined'){
 
     const getMovePicture = function(pic_no, options=[]) {
       let ps = getDefaultPictureOptions();
-      for(let i=0; i<options.length; i++){
-        Object.assign(ps, getPictureOptions(options[i]));
-      }
+      options.map(x => Object.assign(ps, getPictureOptions(x)));
       return {"code": 232, "indent": 0,
               "parameters": [pic_no, 0,
                              ps.origin, ps.variable,
@@ -2102,16 +2098,18 @@ if(typeof PluginManager === 'undefined'){
                              ps.duration, ps.wait]};
     };
 
+    const getRotatePicture = function(pic_no, speed) {
+      return {"code": 233,  "indent": 0, "parameters": [pic_no, speed]};
+    };
+
     const getTintPicture = function(pic_no, options=[]) {
       let ps = getDefaultPictureOptions();
-      for(let i=0; i<options.length; i++){
-        Object.assign(ps, getPictureOptions(options[i]))
-      }
+      options.map(x => Object.assign(ps, getPictureOptions(x)));
       return {"code": 234, "indent": 0,
               "parameters": [pic_no,
                              [ps.red, ps.green, ps.blue, ps.gray],
                              ps.duration, ps.wait]};
-    }
+    };
 
     let scenario_text = readText(Laurus.Text2Frame.TextPath);
     scenario_text = uniformNewLineCode(scenario_text);
@@ -2193,18 +2191,18 @@ if(typeof PluginManager === 'undefined'){
           || text.match(/<playme *: *none>/i)
           || text.match(/<playme *: *なし>/i)
           || text.match(/<MEの停止>/);
-        let show_picture = text.match(/<showpicture *: *([^ ].*)>/i)
-          || text.match(/<ピクチャの表示 *: *([^ ].+)>/i)
-          || text.match(/<SP *: *([^ ].+)>/i);
-        let move_picture = text.match(/<movepicture *: *([^ ].*)>/i)
-          || text.match(/<ピクチャの移動 *: *([^ ].*)>/i)
-          || text.match(/<MP *: *([^ ].*)>/i);
+        let show_picture = text.match(/<showpicture\s*:\s*([^\s].*)>/i)
+          || text.match(/<ピクチャの表示\s*:\s*([^\s].+)>/i)
+          || text.match(/<SP\s*:\s*([^\s].+)>/i);
+        let move_picture = text.match(/<movepicture\s*:\s*([^\s].*)>/i)
+          || text.match(/<ピクチャの移動\s*:\s*([^\s].*)>/i)
+          || text.match(/<MP\s*:\s*([^\s].*)>/i);
         let rotate_picture = text.match(/<rotatepicture\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
           || text.match(/<ピクチャの回転\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
           || text.match(/<RP\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i);
-        let tint_picture = text.match(/<tintpicture *: *([^ ].*)>/i)
-          || text.match(/<ピクチャの色調変更 *: *([^ ].*)>/i)
-          || text.match(/<TP *: *([^ ].*)>/i);
+        let tint_picture = text.match(/<tintpicture\s*:\s*([^\s].*)>/i)
+          || text.match(/<ピクチャの色調変更\s*:\s*([^\s].*)>/i)
+          || text.match(/<TP\s*:\s*([^\s].*)>/i);
         let erase_picture = text.match(/<erasepicture\s*:\s*(\d{1,2})\s*>/i)
           || text.match(/<ピクチャの消去\s*:\s*(\d{1,2})\s*>/i)
           || text.match(/<ep\s*:\s*(\d{1,2})\s*>/i);
@@ -2720,40 +2718,36 @@ if(typeof PluginManager === 'undefined'){
 
         // Show Picture
         if(show_picture){
-          if(show_picture[1]){
-            let params = show_picture[1].split(',').map(s => s.trim());
-            if(params.length > 1){
-              let pic_no = Number(params[0]);
-              let name = params[1];
-              let options = params.slice(2);
-              event_command_list.push(getShowPicture(pic_no, name, options));
-              continue;
-            }else{
-              console.error(text);
-              throw new Error('Syntax error. / 文法エラーです。'
-                              + 'Please check line ' + (i+1) + '. / '
-                              + (i+1) + '行目付近を確認してください / '
-                              + text.replace(/</g, '  ').replace(/>/g, '  '));
-            }
+          let params = show_picture[1].split(',').map(s => s.trim());
+          if(params.length > 1){
+            let pic_no = Number(params[0]);
+            let name = params[1];
+            let options = params.slice(2);
+            event_command_list.push(getShowPicture(pic_no, name, options));
+            continue;
+          }else{
+            console.error(text);
+            throw new Error('Syntax error. / 文法エラーです。'
+                            + 'Please check line ' + (i+1) + '. / '
+                            + (i+1) + '行目付近を確認してください / '
+                            + text.replace(/</g, '  ').replace(/>/g, '  '));
           }
         }
 
         // Move Picture
         if(move_picture){
-          if(move_picture[1]){
-            let params = move_picture[1].split(',').map(s => s.trim());
-            if(params.length > 0){
-              let pic_no = Number(params[0]);
-              let options = params.slice(1);
-              event_command_list.push(getMovePicture(pic_no, options));
-              continue;
-            }else{
-              console.error(text);
-              throw new Error('Syntax error. / 文法エラーです。'
-                              + 'Please check line ' + (i+1) + '. / '
-                              + (i+1) + '行目付近を確認してください / '
-                              + text.replace(/</g, '  ').replace(/>/g, '  '));
-            }
+          let params = move_picture[1].split(',').map(s => s.trim());
+          if(params.length > 0){
+            let pic_no = Number(params[0]);
+            let options = params.slice(1);
+            event_command_list.push(getMovePicture(pic_no, options));
+            continue;
+          }else{
+            console.error(text);
+            throw new Error('Syntax error. / 文法エラーです。'
+                            + 'Please check line ' + (i+1) + '. / '
+                            + (i+1) + '行目付近を確認してください / '
+                            + text.replace(/</g, '  ').replace(/>/g, '  '));
           }
         }
 
@@ -2761,30 +2755,24 @@ if(typeof PluginManager === 'undefined'){
         if(rotate_picture){
           let pic_no = Number(rotate_picture[1]);
           let speed = Number(rotate_picture[2]);
-          event_command_list.push({
-            "code": 233, "indent": 0,
-            "parameters": [pic_no, speed]
-          });
+          event_command_list.push(getRotatePicture(pic_no, speed));
           continue;
         }
 
         //Tint Picture
         if(tint_picture){
-          if(tint_picture[1]){
-            let params = tint_picture[1].split(',').map(s => s.trim());
-            if(params.length > 0){
-              let pic_no = Number(params[0]);
-              let options = params.slice(1);
-              //console.log(pic_no, options);
-              event_command_list.push(getTintPicture(pic_no, options));
-              continue;
-            }else{
-              console.error(text);
-              throw new Error('Syntax error. / 文法エラーです。'
-                              + 'Please check line ' + (i+1) + '. / '
-                              + (i+1) + '行目付近を確認してください / '
-                              + text.replace(/</g, '  ').replace(/>/g, '  '));
-            }
+          let params = tint_picture[1].split(',').map(s => s.trim());
+          if(params.length > 0){
+            let pic_no = Number(params[0]);
+            let options = params.slice(1);
+            event_command_list.push(getTintPicture(pic_no, options));
+            continue;
+          }else{
+            console.error(text);
+            throw new Error('Syntax error. / 文法エラーです。'
+                            + 'Please check line ' + (i+1) + '. / '
+                            + (i+1) + '行目付近を確認してください / '
+                            + text.replace(/</g, '  ').replace(/>/g, '  '));
           }
         }
 

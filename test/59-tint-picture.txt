@@ -90,4 +90,7 @@
 <TP: 14, Duration[75], CT[30][-30][60][60]>
 <TP: 14, CT[30][-30][60][60], Duration[75]>
 
-
+%% オプションの文法ミス時はデフォルト設定が入る
+<TintPicture: 15, ColorTone[00]>
+<ピクチャの色調変更: 15, ColorTone[a][b]c[d][e]]>
+<TP: 15, Duration[afad][Wait for Completio]>

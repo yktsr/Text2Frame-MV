@@ -69,3 +69,9 @@
 <ピクチャの移動: 10, 時間[120]>
 <ピクチャの移動: 10, 時間[120][]>
 
+
+
+%% オプションの文法ミス時はデフォルト設定が入る
+<MovePicture: 11, Duration[hoge][1111]>
+<ピクチャの移動: 11, Position[01][Variable[4]][Variabls[5]]>
+<MP: 11, Blend[goro][giro], Scale[][][]>
