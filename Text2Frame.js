@@ -445,23 +445,28 @@
  * - (2) 変数の操作
  * - (3) セルフスイッチの操作
  * - (4) タイマーの操作
- * - (5) コモンイベント
- * - (6) 注釈
- * - (7) ウェイト
- * - (8) フェードアウト
- * - (9) フェードイン
- * - (10) BGMの演奏
- * - (11) BGMのフェードアウト
- * - (12) BGMの保存
- * - (13) BGMの再開
- * - (14) BGSの演奏
- * - (15) BGSのフェードアウト
- * - (16) MEの演奏
- * - (17) SEの演奏
- * - (18) SEの停止
- * - (19) 戦闘BGMの変更
- * - (20) スクリプト
- * - (21) プラグインコマンド
+ * - (9) コモンイベント
+ * - (12) 注釈
+ * - (13) ピクチャの表示
+ * - (14) ピクチャの移動
+ * - (15) ピクチャの回転
+ * - (16) ピクチャの色調変更
+ * - (17) ピクチャの消去
+ * - (18) ウェイト
+ * - (19) 画面のフェードアウト
+ * - (20) 画面のフェードイン
+ * - (21) BGMの演奏
+ * - (22) BGMのフェードアウト
+ * - (23) BGMの保存
+ * - (24) BGMの再開
+ * - (25) BGSの演奏
+ * - (26) BGSのフェードアウト
+ * - (27) MEの演奏
+ * - (28) SEの演奏
+ * - (29) SEの停止
+ * - (30) 戦闘BGMの変更
+ * - (31) スクリプト
+ * - (32) プラグインコマンド
  *
  * ○ (1)  スイッチの操作
  * 「スイッチの操作」は以下の記法で組み込むことができます。
@@ -674,7 +679,7 @@
  *   <Timer: Stop>
  *   <タイマー: ストップ>
  *
- * ○ (5) コモンイベント
+ * ○ (9) コモンイベント
  * 「コモンイベント」は以下のいずれかの記法で組み込みます。
  *    <CommonEvent: コモンイベントID>
  *    <CE: コモンイベントID>
@@ -685,7 +690,7 @@
  *    <CE: 2>
  *    <コモンイベント: 2>
  *
- * ○ (6) 注釈
+ * ○ (12) 注釈
  *  注釈のイベントコマンドは、以下のように<comment>と</comment>で挟み込む
  *  記法で指定します。
  *  <comment>
@@ -703,8 +708,254 @@
  * <comment>この辺からいい感じのBGMを再生する。</comment>
  * というように1行で記述することもできます。
  *
+ * ○ (13) ピクチャの表示
+ *  ピクチャの表示は、以下の記法で指定します。
+ *  <ShowPicture:ピクチャ番号, ファイル名, オプション1, オプション2, オプション3>
  *
- * ○ (7) ウェイト
+ *  必須の引数はピクチャ番号(整数)とファイル名だけです。
+ *  位置・拡大率・合成はオプションとして指定でき、指定しない場合はデフォルト値が
+ *  設定されます。
+ *  "ShowPicture"は"ピクチャの表示"か"SP"で代替できます。
+ *
+ *  オプションの指定方法を述べる前に、いくつか具体例を記します。
+ *
+ *  例1: 以下のデフォルト設定でピクチャを表示する。
+ *    - ピクチャ番号: 1
+ *    - 画像ファイル名: Castle.png
+ *    - 位置: 原点は左上でX座標0, Y座標0(デフォルト設定)
+ *    - 拡大率: 幅50%, 高さ55%
+ *    - 合成: 不透明度は255, 合成方法は通常(デフォルト設定)
+ *   <ShowPicture: 1, Castle, Scale[50][55],>
+ *   <ピクチャの表示: 1, Castle, 拡大率[50][55]>
+ *   <SP: 1, Castle, Scale[50][55]>
+ *
+ *  例2:  以下の設定(拡大率だけ指定)でピクチャを表示
+ *    - ピクチャ番号: 2
+ *    - 画像ファイル名: Castle.png
+ *    - 位置: 原点は中央でX座標は変数2,Y座標は変数3
+ *    - 拡大率: 幅100%, 高さ100%(デフォルト設定)
+ *    - 合成: 不透明度は255, 合成方法は通常(デフォルト設定)
+ *   <ShowPicture: 2, Castle,  Position[Center][Variables[2]][Variables[3]]>
+ *   <ピクチャの表示: 2, Castle, 位置[中央][変数[2][変数[3]]>
+ *   <SP: 2, Castle, Position[Center][V[2]][V[3]]>
+ *
+ *  例3: 以下の設定でピクチャを表示
+ *    - ピクチャ番号: 3
+ *    - 画像ファイル名: Castle.png
+ *    - 位置: 原点は中央で、X座標は10,Y座標は20
+ *    - 拡大率:幅100%, 高さ100%(デフォルト設定)
+ *    - 合成: 不透明度は235, 合成方法はスクリーン
+ *   <ShowPicture: 3, Castle, Position[Upper Left][10][20], Blend[235][Screen]>
+ *   <ピクチャの表示: 3, Castle, 位置[左上][100][200], 合成[235][スクリーン]>
+ *   <SP: 3, Castle, Position[Upper Left][10][20], Blend[235][Screen]>
+ *
+ *  オプションは順不同です。ピクチャ番号とファイル名は引数の位置は固定ですが、
+ *  オプション1,2,3はどのような順番で指定しても大丈夫です。
+ *
+ *  ・位置
+ *   ピクチャの位置は、以下の記法で指定します。
+ *   Position[原点("Upper Left"か "Center")][X座標][Y座標]
+ *
+ *   "Position"は"位置"でも代替できます。
+ *   X,Y座標は定数か変数で指定できます。
+ *   定数は整数値をそのまま入力し、変数の場合は"Variables[変数ID]"というよう
+ *   に指定します。
+ *   "Variables"は"変数"か"V"でも代替できます。
+ *
+ *   例えば以下の通りです。
+ *    - 例1: 原点は左上, X座標は100, Y座標は200,
+ *      - "Position[Upper Left][100][200]"
+ *      - "位置[左上][100][200]"
+ *    - 例2: X座標は変数2の値, 変数3の値
+ *      - "Position[Center][Variables[2]][Variables[3]]"
+ *      - "位置[中央][変数[2]][変数[3]]"
+ *      - "Position[Center][V[2]][V[3]]"
+ *   位置を指定しなかった場合のデフォルト値は"Position[Upper Left][0][0]"
+ *   となります。
+ *
+ *  ・拡大率
+ *    ピクチャの拡大率は、以下の記法で指定します。
+ *    Scale[幅(％)][高さ(％)]
+ *
+ *   "Scale"は"拡大率"でも代替できます。
+ *
+ *   例えば幅90%, 高さ95%は以下のように指定します。
+ *   - "Scale[90][95]"
+ *   - "拡大率[90][95]"
+ *   拡大率を指定しなかった場合のデフォルト値は"Scale[100][100]"
+ *   となります。
+ *
+ *  ・合成
+ *   ピクチャの合成は、以下の記法で指定します。
+ *   Blend[不透明度(0~255の整数)][合成方法(通常,加算,乗算,or スクリーン)]
+ *   "Blend"は"合成"で代替できます。
+ *
+ *   不透明度は以下のリストから指定します。
+ *   - 通常: "Normal", "通常"
+ *   - 加算: "Additive", "加算"
+ *   - 乗算: "Multiply", "乗算"
+ *   - スクリーン: "Screen", "スクリーン"
+ *
+ *   例えば不透明度が200で、加算を指定する場合は以下のように指定します。
+ *   - "Blend[200][Additive]"
+ *   - "合成[200][加算]"
+ *   合成を指定しなかった場合のデフォルト値は"Blend[255][Normal]"
+ *   となります。
+ *
+ *
+ * ○ (14) ピクチャの移動
+ *  ピクチャの合成は、以下の記法で指定します。
+ *  <MovePicture:ピクチャ番号,オプション1,オプション2,オプション3,オプション4>
+ *
+ *  必須の引数はピクチャ番号だけです。
+ *  移動にかける時間と、位置・拡大率・合成はオプションとして指定でき、
+ *  指定しない場合はデフォルト値が設定されます。
+ *
+ *  "MovePictures"は"ピクチャの移動"か"MP"で代替できます。
+ *
+ *  オプションの指定方法を述べる前に、いくつか具体例を記します。
+ *  例1: 以下のデフォルト設定でピクチャを移動する。
+ *    - ピクチャ番号: 1
+ *    - 時間: 60フレーム, 完了までウェイト(デフォルト設定)
+ *    - 位置: 原点は中央で、X座標は変数2,Y座標は変数3
+ *    - 拡大率: 幅100%, 高さ100%(デフォルト設定)
+ *    - 合成: 不透明度は255, 合成方法は通常(デフォルト設定)
+ *   <MovePicture: 1, Position[Center][Variables[2]][Variables[3]]>
+ *   <ピクチャの移動: 1, 位置[中央][変数[2]][変数[3]]>
+ *   <MP: 1, Position[Center][V[2]][V[3]]>
+ *
+ *   例2: 以下の設定でピクチャを移動
+ *    - ピクチャ番号: 2
+ *    - 時間: 45フレーム, 完了までウェイトしない
+ *    - 位置: 原点は左上でX座標0, Y座標0(デフォルト設定)
+ *    - 拡大率:幅90%, 高さ95%
+ *    - 合成: 不透明度は235, 合成方法はスクリーン
+ *   <MovePicture: 2, Duration[45][], Blend[235][Screen], Scale[90][95]>
+ *   <ピクチャの移動: 2, 時間[45], 合成[235][スクリーン], 拡大率[90][95]>
+ *   <MP: 2, Duration[45], Blend[235][Screen], Scale[90][95]>
+ *
+ *  オプションは順不同です。ピクチャ番号の引数の位置は固定ですが、
+ *  オプション1,2,3,4はどのような順番で指定しても大丈夫です。
+ *  また、
+ *   - 位置
+ *   - 拡大率
+ *   - 合成
+ *  については、「ピクチャの表示」イベントタグのオプションの記法と
+ *  同一なので、そちらをご覧ください。
+ *
+ *  ・時間
+ *    ピクチャの移動時間は、以下の記法で指定します。
+ *    Duration[フレーム数][ウェイトするか否か("Wait for Completion" or 省略)]
+ *
+ *    "Duration"は"時間"で、"Wait for Completion"は"完了までウェイト"か
+ *    "Wait"で代替できます。
+ *
+ *    例えば、以下の通りです。
+ *    例1: 45フレームで完了するまでウェイトする
+ *      - "Duration[45][Wait for Completion]"
+ *      - "時間[45][完了までウェイト]"
+ *      - "時間[45][Wait]"
+ *    例2: 60フレームで完了するまでウェイトしない
+ *      - "Duration[60]"
+ *      - "時間[60]"
+ *      - "Duration[60][]"
+ *
+ *    時間を指定しなかった場合のデフォルト値は
+ *    "Duration[60][Wait for Completion]"となります。
+ *
+ *
+ * ○ (15) ピクチャの回転
+ *  ピクチャの回転は以下の記法で指定します。
+ *  <RotatePicture: ピクチャ番号(整数), 回転速度(-90~90の整数)>
+ *
+ *  "RotatePicture"は"ピクチャの回転"か"RP"でも代替できます。
+ *
+ *  例えば、速度が-30で番号1のピクチャを回転するのは、以下の通りとなります。
+ *   <RotatePicture: 1, -30>
+ *   <ピクチャの回転: 1, -30>
+ *   <RP: 1, -30>
+ *
+ * ○ (16) ピクチャの色調変更
+ *  ピクチャの色調変更は以下の記法で指定します。
+ *  <TintPicture: ピクチャ番号(整数), オプション1, オプション2>
+ *
+ *  必須の引数はピクチャ番号だけです。
+ *  色調変更にかける時間と色調はオプションとして指定でき、
+ *  指定しない場合はデフォルト値が設定されます。
+ *
+ *  "TintPicture"は"ピクチャの色調変更"か"TP"で代替できます。
+ *
+ *  オプションの指定方法を述べる前にいくつか具体例を記します。
+ *  例1: 以下のデフォルト設定でピクチャの色調を変更する。
+ *    - ピクチャ番号: 1
+ *    - 時間: 60フレーム, 完了までウェイト(デフォルト設定)
+ *    - 色調: 赤0, 緑0, 青0, グレイ0(デフォルト設定)
+ *   <TintPicture: 1>
+ *   <ピクチャの色調変更: 1>
+ *   <TP: 1>
+ *
+ *  例2: 以下の設定でピクチャの色調を変更する。
+ *    - ピクチャ番号: 2
+ *    - 時間: 60フレーム, 完了までウェイト(デフォルト設定)
+ *    - 色調: 赤0, 緑255, 青255, グレイ0
+ *   <TintPicture: 2, ColorTone[0][255][255][0]>
+ *   <ピクチャの色調変更: 2, 色調[0][255][255][0]>
+ *   <TP: 2, CT[0][255][255][0]>
+ *
+ *  例3: 以下の設定でピクチャの色調を変更する。
+ *    - ピクチャ番号: 3
+ *    - 時間: 30フレーム, 完了までウェイト
+ *    - 色調: ダーク(赤-68, 緑-68, 青-68, グレイ0)
+ *   <TintPicture: 3, Duration[30][Wait for Completion], ColorTone[Dark]>
+ *   <ピクチャの色調変更: 3, 時間[30][完了までウェイト], 色調[ダーク]>
+ *   <TP: 3, Duration[30][Wait], CT[Dark]>
+ *
+ *  オプションは順不同です。ピクチャ番号は固定ですが、オプション1,2は
+ *  どのような順番で指定しても大丈夫です。
+ *
+ *  また、時間については、「ピクチャの移動」イベントタグのオプションの記法と
+ *  同一なので、そちらをご覧ください。
+ *  ここでは、色調の指定方法について記します。
+ *
+ * ・色調の指定方法
+ *   ピクチャの色調は、以下の記法で指定します。
+ *   ColorTone[赤の強さ][緑の強さ][青の強さ][グレイの強さ]>
+ *
+ *   "ColorTone"は"色調"か"CT"で代替できます。
+ *
+ *   例えば、以下のように設定できます。
+ *     - "ColorTone[-68][68][100][0]"
+ *     - "色調[-68][68][100][0]"
+ *     - "CT[-68][68][100][0]"
+ *
+ *   [赤の強さ]の部分に指定の文字列を入力することで、RPGツクールMVの機能と
+ *   同様に「通常」, 「ダーク」, 「セピア」, 「夕暮れ」,「夜」で設定することが
+ *   できます。以下のように色調が対応しています。
+ *     - "通常" or "Normal": "ColorTone[0][0][0][0]"
+ *     - "ダーク" or "Dark": "ColorTone[-68][-68][-68][0]"
+ *     - "セピア" or "Sepia": "ColorTone[34][-34][-68][170]"
+ *     - "夕暮れ" or "Sunset": "ColorTone[68][-34][-34][0]"
+ *     - "夜" or "Night": "ColorTone[-68][-68][0][68]"
+ *
+ *   例えば、番号4のピクチャを1秒でセピアに変更する場合は以下のように書けます。
+ *   1秒(60フレーム)はデフォルト設定です。
+ *     <TintPicture: 4, ColorTone[Sepia]>
+ *     <ピクチャの色調変更: 4, ColorTone[セピア]>
+ *     <TP: 4, CT[Sepia]>
+ *
+ *
+ * ○ (17) ピクチャの消去
+ *  ピクチャの消去は以下の記法で指定します。
+ *  <ErasePicture: ピクチャ番号(整数)>
+ *
+ *  "ErasePicture"は"ピクチャの消去"か"EP"でも代替できます。
+ *
+ *  例えば、以下のように書くと番号1のピクチャを削除できます。
+ *   <ErasePicture: 1>
+ *   <ピクチャの消去: 1>
+ *   <EP: 1>
+ *
+ * ○ (18) ウェイト
  *  ウェイトのイベントコマンドは、以下のいずれかの記法でしていします。
  *  <wait: フレーム数(1/60秒)>
  *  <ウェイト: フレーム数(1/60秒)>
@@ -712,19 +963,19 @@
  *  例えば以下のように記述すると60フレーム(1秒)のウェイトが組み込まれます。
  *  <wait: 60>
  *
- * ○ (8) フェードアウト
+ * ○ (19) 画面のフェードアウト
  *  フェードアウトは以下のいずれかの記法で組み込めます。
  *  <fadeout>
  *  <FO>
  *  <フェードアウト>
  *
- * ○ (9) フェードイン
+ * ○ (20) 画面のフェードイン
  *  フェードインは以下のいずれかの記法で組み込めます。
  *  <fadein>
  *  <FI>
  *  <フェードイン>
  *
- * ○ (10) BGMの演奏
+ * ○ (21) BGMの演奏
  *  BGMの演奏は、以下のいずれかの記法で指定します。
  *  <PlayBGM: ファイル名, 音量, ピッチ, 位相>
  *  <BGMの演奏: ファイル名, 音量, ピッチ, 位相>
@@ -746,7 +997,7 @@
  *  ご利用できないことにご注意ください。
  *
  *
- * ○ (11) BGMのフェードアウト
+ * ○ (22) BGMのフェードアウト
  *  BGMのフェードアウトは以下のいずれかの記法で組み込みます。
  *  <FadeoutBGM: 時間(秒)>
  *  <BGMのフェードアウト: 時間(秒)>
@@ -755,17 +1006,17 @@
  *  <FadeoutBGM: 3>
  *  <BGMのフェードアウト: 3>
  *
- * ○ (12) BGMの保存の組み込み方法
+ * ○ (23) BGMの保存
  *  BGMの保存は以下のいずれかの記法で組み込みます。
  *  <SaveBGM>
  *  <BGMの保存>
  *
- * ○ (13) BGMの再開
+ * ○ (24) BGMの再開
  *  BGMの再開は以下のいずれかの記法で組み込みます。
  *  <ReplayBGM>
  *  <BGMの再開>
  *
- * ○ (14) BGSの演奏
+ * ○ (25) BGSの演奏
  *  BGSの演奏は、以下のいずれかの記法で指定します。
  *  <PlayBGS: ファイル名, 音量, ピッチ, 位相>
  *  <BGSの演奏: ファイル名, 音量, ピッチ, 位相>
@@ -787,7 +1038,7 @@
  *  ご利用できないことにご注意ください。
  *
  *
- * ○ (15) BGSのフェードアウト
+ * ○ (26) BGSのフェードアウト
  *  BGSのフェードアウトは以下のいずれかの記法で組み込みます。
  *  <FadeoutBGS: 時間(秒)>
  *  <BGSのフェードアウト: 時間(秒)>
@@ -796,7 +1047,7 @@
  *  <FadeoutBGS: 3>
  *  <BGSのフェードアウト: 3>
  *
- * ○ (16) MEの演奏
+ * ○ (27) MEの演奏
  *  MEの演奏は、以下のいずれかの記法で指定します。
  *  <PlayME: ファイル名, 音量, ピッチ, 位相>
  *  <MEの演奏: ファイル名, 音量, ピッチ, 位相>
@@ -818,7 +1069,7 @@
  *  ご利用できないことにご注意ください。
  *
  *
- * ○ (17) SEの演奏
+ * ○ (28) SEの演奏
  *  SEの演奏は、以下のいずれかの記法で指定します。
  *  <PlaySE: ファイル名, 音量, ピッチ, 位相>
  *  <SEの演奏: ファイル名, 音量, ピッチ, 位相>
@@ -839,12 +1090,12 @@
  *  ご利用できないことにご注意ください。
  *
  *
- * ○ (18) SEの停止
+ * ○ (29) SEの停止
  *  SEの停止は以下のいずれかの記法で指定します。
  *  <StopSE>
  *  <SEの停止>
  *
- * ○ (19) 戦闘BGMの変更
+ * ○ (30) 戦闘BGMの変更
  *  戦闘BGMの変更は、以下のいずれかの記法で指定します。
  *  <ChangeBattleBGM: ファイル名, 音量, ピッチ, 位相>
  *  <戦闘曲の変更: ファイル名, 音量, ピッチ, 位相>
@@ -862,7 +1113,7 @@
  *  <ChangeBattleBGM: なし>
  *
  *
- * ○ (20) スクリプト
+ * ○ (31) スクリプト
  *  スクリプトのイベントコマンドは、以下のように<script>と</script>で挟み込む
  *  記法で指定します。
  *  <script>
@@ -891,7 +1142,7 @@
  *  というように1行で記述することもできます。
  *
  *
- * ○ (21) プラグインコマンド
+ * ○ (32) プラグインコマンド
  *  プラグインコマンドのイベントコマンドは、以下のいずれかの記法で指定します。
  *  <plugincommand: プラグインコマンドの内容>
  *  <PC: プラグインコマンドの内容>
@@ -1687,6 +1938,179 @@ if(typeof PluginManager === 'undefined'){
       return {scenario_text, block_map};
     };
 
+    const getDefaultPictureOptions = function() {
+      return {
+        "origin": 0, // 0: UpperLeft, 1:Center
+        "variable": 0, // 0: Constant, 1: Variable
+        // if variable is 0, x and y are  a constant values.
+        // if variable is 1, x is a number of variables
+        "x": 0, "y": 0,
+        "width": 100, "height": 100, //%
+        "opacity": 255, "blend_mode": 0, // 0:Normal, 1:Additive, 2:Multiply, 3:Screen
+        "duration": 60, "wait": true,  // for a function that move a picture
+        "red": 0, "green": 0, "blue": 0, "gray": 0 // for a function that tints a picture.
+      };
+    };
+
+    const getPictureOptions = function(option_str) {
+      let out = {};
+      let option_regexp = /([^[\]]+)(\[[\s\-a-zA-Z0-9\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf[\]]+\])/i;
+      let option = option_str.match(option_regexp);
+      if(option){
+        let key = option[1] || '';
+        let values = option[2].slice(1, -1).split('][') || '';
+        switch(key.toLowerCase()){
+          case "position":
+          case "位置":{
+            let origin = values[0] || 'Upper Left';
+            if(origin.toLowerCase() == 'center' || origin == '中央'){
+              out["origin"] = 1;
+            }
+            let constant_regexp = /^[0-9]+$/;
+            let variable_regexp = /(?:variables|v|変数)\[([0-9]+)\]/i;
+            let x = values[1] || '0';
+            if(x.match(constant_regexp)){
+              out["variable"] = 0;
+              out["x"] = Number(x);
+            }else{
+              let v = x.match(variable_regexp);
+              if(v){
+                out["variable"] = 1;
+                out["x"] = Number(v[1])
+              }
+            }
+            let y = values[2] || '0';
+            if(y.match(constant_regexp)){
+              out["variable"] = 0;
+              out["y"] = Number(y);
+            }else{
+              let v = y.match(variable_regexp);
+              if(v){
+                out["variable"] = 1;
+                out["y"] = Number(v[1]);
+              }
+            }
+            break;
+          }
+          case "scale":
+          case "拡大率":{
+            out["width"] = Number(values[0]) || 100;
+            out["height"] = Number(values[1]) || 100;
+            break;
+          }
+          case "blend":
+          case '合成':{
+            out["opacity"] = Number(values[0]) || 255;
+            out["blend_mode"] = ({
+              "normal": 0, "通常": 0,
+              "additive": 1, "加算": 1,
+              "multiply": 2, "乗算": 2,
+              "screen": 3, "スクリーン": 3
+            })[values[1].toLowerCase()] || 0;
+            break;
+          }
+          case "duration":
+          case "時間":{
+            out["duration"] = Number(values[0]) || 60;
+            if(typeof(values[1]) == "undefined" || values[1] == ""){
+              out["wait"] = false;
+            }
+            break;
+          }
+          case "colortone":
+          case "色調":
+          case "ct": {
+            let firstValue = values[0].toLowerCase() || 0;
+            switch(firstValue){
+              case "normal":
+              case "通常": {
+                out["red"] = 0;
+                out["green"] = 0;
+                out["blue"] = 0;
+                out["gray"] = 0;
+                break;
+              }
+              case "dark":
+              case "ダーク": {
+                out["red"] = -68;
+                out["green"] = -68;
+                out["blue"] = -68;
+                out["gray"] = 0;
+                break;
+              }
+              case "sepia":
+              case "セピア": {
+                out["red"] = 34;
+                out["green"] = -34;
+                out["blue"] = -68;
+                out["gray"] = 170;
+                break;
+              }
+              case "sunset":
+              case "夕暮れ": {
+                out["red"] = 68;
+                out["green"] = -34;
+                out["blue"] = -34;
+                out["gray"] = 0;
+                break;
+              }
+              case "night":
+              case "夜": {
+                out["red"] = -68;
+                out["green"] = -68;
+                out["blue"] = 0;
+                out["gray"] = 68;
+                break;
+              }
+              default: {
+                out["red"] = Number(values[0]) || 0;
+                out["green"] = Number(values[1]) || 0;
+                out["blue"] = Number(values[2]) || 0;
+                out["gray"] = Number(values[3]) || 0;
+                break;
+              }
+            }
+          }
+        }
+      }
+      return out;
+    };
+
+    const getShowPicture = function(pic_no, name, options=[]) {
+      let ps = getDefaultPictureOptions();
+      options.map(x => Object.assign(ps, getPictureOptions(x)));
+      return {"code": 231, "indent": 0,
+              "parameters": [pic_no, name,
+                             ps.origin, ps.variable,
+                             ps.x, ps.y, ps.width, ps.height,
+                             ps.opacity, ps.blend_mode]
+             };
+    };
+
+    const getMovePicture = function(pic_no, options=[]) {
+      let ps = getDefaultPictureOptions();
+      options.map(x => Object.assign(ps, getPictureOptions(x)));
+      return {"code": 232, "indent": 0,
+              "parameters": [pic_no, 0,
+                             ps.origin, ps.variable,
+                             ps.x, ps.y, ps.width, ps.height,
+                             ps.opacity, ps.blend_mode,
+                             ps.duration, ps.wait]};
+    };
+
+    const getRotatePicture = function(pic_no, speed) {
+      return {"code": 233,  "indent": 0, "parameters": [pic_no, speed]};
+    };
+
+    const getTintPicture = function(pic_no, options=[]) {
+      let ps = getDefaultPictureOptions();
+      options.map(x => Object.assign(ps, getPictureOptions(x)));
+      return {"code": 234, "indent": 0,
+              "parameters": [pic_no,
+                             [ps.red, ps.green, ps.blue, ps.gray],
+                             ps.duration, ps.wait]};
+    };
+
     let scenario_text = readText(Laurus.Text2Frame.TextPath);
     scenario_text = uniformNewLineCode(scenario_text);
     scenario_text = eraseCommentOutLines(scenario_text, Laurus.Text2Frame.CommentOutChar)
@@ -1767,6 +2191,21 @@ if(typeof PluginManager === 'undefined'){
           || text.match(/<playme *: *none>/i)
           || text.match(/<playme *: *なし>/i)
           || text.match(/<MEの停止>/);
+        let show_picture = text.match(/<showpicture\s*:\s*([^\s].*)>/i)
+          || text.match(/<ピクチャの表示\s*:\s*([^\s].+)>/i)
+          || text.match(/<SP\s*:\s*([^\s].+)>/i);
+        let move_picture = text.match(/<movepicture\s*:\s*([^\s].*)>/i)
+          || text.match(/<ピクチャの移動\s*:\s*([^\s].*)>/i)
+          || text.match(/<MP\s*:\s*([^\s].*)>/i);
+        let rotate_picture = text.match(/<rotatepicture\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
+          || text.match(/<ピクチャの回転\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
+          || text.match(/<RP\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i);
+        let tint_picture = text.match(/<tintpicture\s*:\s*([^\s].*)>/i)
+          || text.match(/<ピクチャの色調変更\s*:\s*([^\s].*)>/i)
+          || text.match(/<TP\s*:\s*([^\s].*)>/i);
+        let erase_picture = text.match(/<erasepicture\s*:\s*(\d{1,2})\s*>/i)
+          || text.match(/<ピクチャの消去\s*:\s*(\d{1,2})\s*>/i)
+          || text.match(/<ep\s*:\s*(\d{1,2})\s*>/i);
 
         const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
         const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
@@ -2274,6 +2713,76 @@ if(typeof PluginManager === 'undefined'){
           let operand1 = timer_stop[1] || timer_stop[2];
           console.log(timer_stop, operand1)
           event_command_list.push(getControlTimer(operand1, 0));
+          continue;
+        }
+
+        // Show Picture
+        if(show_picture){
+          let params = show_picture[1].split(',').map(s => s.trim());
+          if(params.length > 1){
+            let pic_no = Number(params[0]);
+            let name = params[1];
+            let options = params.slice(2);
+            event_command_list.push(getShowPicture(pic_no, name, options));
+            continue;
+          }else{
+            console.error(text);
+            throw new Error('Syntax error. / 文法エラーです。'
+                            + 'Please check line ' + (i+1) + '. / '
+                            + (i+1) + '行目付近を確認してください / '
+                            + text.replace(/</g, '  ').replace(/>/g, '  '));
+          }
+        }
+
+        // Move Picture
+        if(move_picture){
+          let params = move_picture[1].split(',').map(s => s.trim());
+          if(params.length > 0){
+            let pic_no = Number(params[0]);
+            let options = params.slice(1);
+            event_command_list.push(getMovePicture(pic_no, options));
+            continue;
+          }else{
+            console.error(text);
+            throw new Error('Syntax error. / 文法エラーです。'
+                            + 'Please check line ' + (i+1) + '. / '
+                            + (i+1) + '行目付近を確認してください / '
+                            + text.replace(/</g, '  ').replace(/>/g, '  '));
+          }
+        }
+
+        // Rotate Picture
+        if(rotate_picture){
+          let pic_no = Number(rotate_picture[1]);
+          let speed = Number(rotate_picture[2]);
+          event_command_list.push(getRotatePicture(pic_no, speed));
+          continue;
+        }
+
+        //Tint Picture
+        if(tint_picture){
+          let params = tint_picture[1].split(',').map(s => s.trim());
+          if(params.length > 0){
+            let pic_no = Number(params[0]);
+            let options = params.slice(1);
+            event_command_list.push(getTintPicture(pic_no, options));
+            continue;
+          }else{
+            console.error(text);
+            throw new Error('Syntax error. / 文法エラーです。'
+                            + 'Please check line ' + (i+1) + '. / '
+                            + (i+1) + '行目付近を確認してください / '
+                            + text.replace(/</g, '  ').replace(/>/g, '  '));
+          }
+        }
+
+        // Erase Picture
+        if(erase_picture){
+          let pic_no = Number(erase_picture[1]);
+          event_command_list.push({
+            "code": 235, "indent": 0,
+            "parameters": [pic_no]
+          });
           continue;
         }
 
