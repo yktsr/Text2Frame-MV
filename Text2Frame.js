@@ -2913,16 +2913,13 @@ if(typeof PluginManager === 'undefined'){
       }
 
       let bottom = []
-      while(true){
-        let code = stack.pop();
-        if(code){
-          bottom.push(getCommandBottomEvent());
-          if(code == IF_CODE) bottom.push(getEnd());
-          else if(code == ELSE_CODE) bottom.push(getEnd());
-          else if(code == LOOP_CODE) bottom.push(getRepeatAbove());
-        }else{
-           break;
-        }
+      let code = stack.pop();
+      while(code){
+        bottom.push(getCommandBottomEvent());
+        if(code == IF_CODE) bottom.push(getEnd());
+        else if(code == ELSE_CODE) bottom.push(getEnd());
+        else if(code == LOOP_CODE) bottom.push(getRepeatAbove());
+        code = stack.pop();
       }
       return events.concat(bottom);
     };
