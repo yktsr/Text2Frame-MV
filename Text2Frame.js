@@ -2608,7 +2608,7 @@ if(typeof PluginManager === 'undefined'){
       switchId = Math.max(Number(switchId) || 1, 1);
       if(typeof(params[0]) == "undefined"){
         return [0, switchId, 0];
-      };
+      }
       let value = ({"on": 0, "オン": 0,
                     "true": 0, "1": 0,
                     "off": 1, "オフ": 1,
@@ -2903,7 +2903,6 @@ if(typeof PluginManager === 'undefined'){
       let BOTTOM_CODE = 0;
       let IF_CODE = 111;
       let ELSE_CODE = 411;
-      let END_CODE = 412;
       let LOOP_CODE = 112;
       let stack = [];
       for(let i=0; i < events.length; i++){
@@ -2914,12 +2913,16 @@ if(typeof PluginManager === 'undefined'){
       }
 
       let bottom = []
-      let code = null;
-      while(code = stack.pop()){
-        bottom.push(getCommandBottomEvent());
-        if(code == IF_CODE) bottom.push(getEnd());
-        else if(code == ELSE_CODE) bottom.push(getEnd());
-        else if(code == LOOP_CODE) bottom.push(getRepeatAbove());
+      while(true){
+        let code = stack.pop();
+        if(code){
+          bottom.push(getCommandBottomEvent());
+          if(code == IF_CODE) bottom.push(getEnd());
+          else if(code == ELSE_CODE) bottom.push(getEnd());
+          else if(code == LOOP_CODE) bottom.push(getRepeatAbove());
+        }else{
+           break;
+        }
       }
       return events.concat(bottom);
     };
@@ -2928,7 +2931,6 @@ if(typeof PluginManager === 'undefined'){
       let BOTTOM_CODE = 0;
       let IF_CODE = 111;
       let ELSE_CODE = 411;
-      let END_CODE = 412;
       let LOOP_CODE = 112;
 
       let now_indent = 0;
