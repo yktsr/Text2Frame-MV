@@ -1167,6 +1167,18 @@
  *   <Label: Start>
  *   <ラベル: Start>
  *
+ * ○ (11) ラベルジャンプ
+ * 「ラベルジャンプ」は以下のいずれかの記法で指定します。
+ *   <JumpToLabel: ジャンプ先のラベル名>
+ *   <ラベルジャンプ: ジャンプ先のラベル名>
+ *   <JTL: ジャンプ先のラベル名>
+ *
+ *  例えば以下のように記述すると"Start"と名付けられたラベルへのラベルジャンプが
+ *  組み込まれます。
+ *   <JumpToLabel: Start>"
+ *   <ラベルジャンプ: Start>
+ *   <JumpToLabel: Start>"
+ *
  * ○ (12) 注釈
  *  注釈のイベントコマンドは、以下のように<comment>と</comment>で挟み込む
  *  記法で指定します。
@@ -2880,6 +2892,10 @@ if(typeof PluginManager === 'undefined'){
       return {"code": 118, "indent": 0, "parameters": [name]};
     };
 
+    const getJumpToLabel = function(name){
+      return {"code": 119, "indent": 0, "parameters": [name]};
+    };
+
     const completeLackedBottomEvent = function(events){
       let BOTTOM_CODE = 0;
       let IF_CODE = 111;
@@ -3048,6 +3064,9 @@ if(typeof PluginManager === 'undefined'){
           || text.match(/<EEP>/i);
         let label = text.match(/<label\s*:\s*(\S+)\s*>/i)
           || text.match(/<ラベル\s*:\s*(\S+)\s*>/i);
+        let jump_to_label = text.match(/<jumptolabel\s*:\s*(\S+)\s*>/i)
+          || text.match(/<ラベルジャンプ\s*:\s*(\S+)\s*>/)
+          || text.match(/<jtl\s*:\s*(\S+)\s*>/i);
 
         const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
         const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
@@ -3692,6 +3711,13 @@ if(typeof PluginManager === 'undefined'){
         if(label){
           let label_name = label[1] || "";
           event_command_list.push(getLabel(label_name));
+          continue;
+        }
+
+        // Jump to Label
+        if(jump_to_label){
+          let label_name = jump_to_label[1] || "";
+          event_command_list.push(getJumpToLabel(label_name));
           continue;
         }
 
