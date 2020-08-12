@@ -452,6 +452,7 @@
  * - (3) セルフスイッチの操作
  * - (4) タイマーの操作
  * - (5) 条件分岐
+ * - (6) ループ
  * - (9) コモンイベント
  * - (12) 注釈
  * - (13) ピクチャの表示
@@ -1094,6 +1095,41 @@
  *  タグ(If, Else, END)の直後は可能な限り改行してください。改行せずに次のイベン
  *  トやメッセージを入力した場合の動作は保証されていません。
  *
+ *
+ *
+ * ○ (6) ループ
+ * 「ループ」は以下の記法で組み込みます
+ *  ---
+ *  <Loop>
+ *  ループしたい処理
+ *  <RepeatAbove>
+ *  ---
+ *
+ *  "Loop"は"ループ"、"RepeatAbove"は"以上繰り返し"や"RA"で代替できます。
+ *
+ *  ループしたい処理は、メッセージの表示や他のタグを自由に組み込めます。
+ *
+ *  以下の具体例は、"今日も一日がんばるぞい！(و ･ㅂ･)و"というメッセージが無限ループします。
+ *  ---
+ *  <Loop>
+ *  今日も一日がんばるぞい！(و ･ㅂ･)و
+ *  <RepeatAbove>
+ *  ---
+ *
+ *  以下の例では、他のタグと組み合わせることで、"今日も一日がんばるぞい！(و ･ㅂ･)و"を
+ *  5回表示させる処理になります。
+ *  """
+ *  <Set: 1, 0>
+ *  <Loop>
+ *  <If: Variables[1], ==, 5>
+ *    <BreakLoop>
+ *  <End>
+ *  今日も一日がんばるぞい！(و ･ㅂ･)و
+ *  <Add: 1, 1>
+ *  <RepeatAbove>
+ *  """
+ *  "Set"と"Add"は「変数の操作」を、"If"と"End"は「条件分岐」を、"BreakLoop"はループの
+ *  中断の説明をご覧ください。
  *
  *
  * ○ (9) コモンイベント
@@ -2800,11 +2836,20 @@ if(typeof PluginManager === 'undefined'){
       return {"code": 412, "indent": 0, "parameters": []};
     };
 
+    const getLoop = function(){
+      return {"code": 112, "indent": 0, "parameters": []};
+    };
+
+    const getRepeatAbove = function(){
+      return {"code": 413, "indent": 0, "parameters": []};
+    };
+
     const completeLackedBottomEvent = function(events){
       let BOTTOM_CODE = 0;
       let IF_CODE = 111;
       let ELSE_CODE = 411;
       let END_CODE = 412;
+      let LOOP_CODE = 112;
       let stack = [];
       for(let i=0; i < events.length; i++){
         let code = events[i].code;
@@ -2819,6 +2864,7 @@ if(typeof PluginManager === 'undefined'){
         bottom.push(getCommandBottomEvent());
         if(code == IF_CODE) bottom.push(getEnd());
         else if(code == ELSE_CODE) bottom.push(getEnd());
+        else if(code == LOOP_CODE) bottom.push(getRepeatAbove());
       }
       return events.concat(bottom);
     };
@@ -2828,6 +2874,7 @@ if(typeof PluginManager === 'undefined'){
       let IF_CODE = 111;
       let ELSE_CODE = 411;
       let END_CODE = 412;
+      let LOOP_CODE = 112;
 
       let now_indent = 0;
       let out_events = [];
@@ -2838,7 +2885,8 @@ if(typeof PluginManager === 'undefined'){
                          "parameters": parameters});
         switch(event.code){
           case IF_CODE:
-          case ELSE_CODE:{
+          case ELSE_CODE:
+          case LOOP_CODE:{
             now_indent += 1;
             break;
           }
@@ -2951,6 +2999,11 @@ if(typeof PluginManager === 'undefined'){
           || text.match(/\s*<それ以外のとき>/);
         let conditional_branch_end = text.match(/\s*<end>/i)
           || text.match(/\s*<分岐修了>/);
+        let loop = text.match(/\s*<loop>/i)
+          || text.match(/\s*<ループ>/);
+        let repeat_above = text.match(/<repeatabove>/i)
+          || text.match(/\s*<以上繰り返し>/)
+          || text.match(/\s*<ra>/i);
 
         const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
         const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
@@ -3561,6 +3614,20 @@ if(typeof PluginManager === 'undefined'){
         if(conditional_branch_end){
           event_command_list.push(getCommandBottomEvent());
           event_command_list.push(getEnd());
+          frame_param = frame_param || getPretextEvent();
+          continue;
+        }
+
+        // Loop
+        if(loop){
+          event_command_list.push(getLoop());
+          continue;
+        }
+
+        // Repeat Above
+        if(repeat_above){
+          event_command_list.push(getCommandBottomEvent());
+          event_command_list.push(getRepeatAbove());
           frame_param = frame_param || getPretextEvent();
           continue;
         }

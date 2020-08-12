@@ -63,7 +63,8 @@ describe('Text2Frame Test', function() {
     {title: "Conditional Branch/Armor", infile: "./test/50-if-else/armor.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_armor.json"},
     {title: "Conditional Branch/Button", infile: "./test/50-if-else/button.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_button.json"},
     {title: "Conditional Branch/Script", infile: "./test/50-if-else/script.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_script.json"},
-    {title: "Conditional Branch/Error", infile: "./test/50-if-else/error.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_error.json"}
+    {title: "Conditional Branch/Error", infile: "./test/50-if-else/error.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_error.json"},
+    {title: "Loop", infile: "./test/51-loop.txt", mapfile: "./data/Map001.json", expfile: "./test/51-expected_loop.json"}
   ];
 
   const consoleStub = sinon.stub(console, 'log');
