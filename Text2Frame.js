@@ -456,6 +456,7 @@
  * - (7) ループの中断
  * - (8) イベント処理の中断
  * - (9) コモンイベント
+ * - (10) ラベル
  * - (12) 注釈
  * - (13) ピクチャの表示
  * - (14) ピクチャの移動
@@ -1156,6 +1157,15 @@
  *    <CommonEvent: 2>
  *    <CE: 2>
  *    <コモンイベント: 2>
+ *
+ * ○ (10) ラベル
+ * 「ラベル」は以下のいずれかの記法で指定します。
+ *   <Label: ラベル名>
+ *   <ラベル: ラベル名>
+ *
+ *  例えば以下のように記述すると"Start"というラベルが組み込まれます。
+ *   <Label: Start>
+ *   <ラベル: Start>
  *
  * ○ (12) 注釈
  *  注釈のイベントコマンドは、以下のように<comment>と</comment>で挟み込む
@@ -2866,6 +2876,10 @@ if(typeof PluginManager === 'undefined'){
       return {"code": 115, "indent": 0, "parameters": []};
     };
 
+    const getLabel = function(name){
+      return {"code": 118, "indent": 0, "parameters": [name]};
+    };
+
     const completeLackedBottomEvent = function(events){
       let BOTTOM_CODE = 0;
       let IF_CODE = 111;
@@ -3032,6 +3046,8 @@ if(typeof PluginManager === 'undefined'){
         let exit_event_processing = text.match(/<ExitEventProcessing>/i)
           || text.match(/<イベント処理の中断>/)
           || text.match(/<EEP>/i);
+        let label = text.match(/<label\s*:\s*(\S+)\s*>/i)
+          || text.match(/<ラベル\s*:\s*(\S+)\s*>/i);
 
         const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
         const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
@@ -3669,6 +3685,13 @@ if(typeof PluginManager === 'undefined'){
         // Exit Event Processing
         if(exit_event_processing){
           event_command_list.push(getExitEventProcessing());
+          continue;
+        }
+
+        // Label
+        if(label){
+          let label_name = label[1] || "";
+          event_command_list.push(getLabel(label_name));
           continue;
         }
 
