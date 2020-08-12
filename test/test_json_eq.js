@@ -65,6 +65,7 @@ describe('Text2Frame Test', function() {
     {title: "Conditional Branch/Script", infile: "./test/50-if-else/script.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_script.json"},
     {title: "Conditional Branch/Error", infile: "./test/50-if-else/error.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_error.json"},
     {title: "Loop", infile: "./test/51-loop.txt", mapfile: "./data/Map001.json", expfile: "./test/51-expected_loop.json"},
+    {title: "Break Loop", infile: "./test/52-break-loop.txt", mapfile: "./data/Map001.json", expfile: "./test/52-expected_break-loop.json"},
     {title: "Exit Event Processing", infile: "./test/53-exit-event-processing.txt", mapfile: "./data/Map001.json", expfile: "./test/53-expected_exit-event-processing.json"}
   ];
 

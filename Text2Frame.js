@@ -453,6 +453,7 @@
  * - (4) タイマーの操作
  * - (5) 条件分岐
  * - (6) ループ
+ * - (7) ループの中断
  * - (8) イベント処理の中断
  * - (9) コモンイベント
  * - (12) 注釈
@@ -1132,6 +1133,12 @@
  *  "Set"と"Add"は「変数の操作」を、"If"と"End"は「条件分岐」を、"BreakLoop"はループの
  *  中断の説明をご覧ください。
  *
+ *
+ * ○ (7) ループの中断
+ *  「ループの中断」は以下のいずれかの記法で組み込みます。
+ *   <BreakLoop>
+ *   <ループの中断>
+ *   <BL>
  *
  * ○ (8) イベント処理の中断
  * 「イベント処理の中断」は以下のいずれかの記法で組み込みます。
@@ -2851,6 +2858,10 @@ if(typeof PluginManager === 'undefined'){
       return {"code": 413, "indent": 0, "parameters": []};
     };
 
+    const getBreakLoop = function(){
+      return {"code": 113, "indent": 0, "parameters": []};
+    };
+
     const getExitEventProcessing = function(){
       return {"code": 115, "indent": 0, "parameters": []};
     };
@@ -3015,6 +3026,9 @@ if(typeof PluginManager === 'undefined'){
         let repeat_above = text.match(/<repeatabove>/i)
           || text.match(/\s*<以上繰り返し>/)
           || text.match(/\s*<ra>/i);
+        let break_loop = text.match(/<breakloop>/i)
+          || text.match(/<ループの中断>/)
+          || text.match(/<BL>/i);
         let exit_event_processing = text.match(/<ExitEventProcessing>/i)
           || text.match(/<イベント処理の中断>/)
           || text.match(/<EEP>/i);
@@ -3643,6 +3657,12 @@ if(typeof PluginManager === 'undefined'){
           event_command_list.push(getCommandBottomEvent());
           event_command_list.push(getRepeatAbove());
           frame_param = frame_param || getPretextEvent();
+          continue;
+        }
+
+        // Break Loop
+        if(break_loop){
+          event_command_list.push(getBreakLoop());
           continue;
         }
 
