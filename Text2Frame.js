@@ -2902,55 +2902,59 @@ if(typeof PluginManager === 'undefined'){
     };
 
     const completeLackedBottomEvent = function(events){
-      let BOTTOM_CODE = 0;
-      let IF_CODE = 111;
-      let ELSE_CODE = 411;
-      let LOOP_CODE = 112;
-      let stack = [];
-      for(let i=0; i < events.length; i++){
-        let code = events[i].code;
-        if(code == IF_CODE) stack.push(IF_CODE);
-        else if(code == ELSE_CODE) stack.push(ELSE_CODE);
-        else if(code == BOTTOM_CODE) stack.pop();
-      }
+      const BOTTOM_CODE = 0;
+      const IF_CODE = 111;
+      const ELSE_CODE = 411;
+      const LOOP_CODE = 112;
 
-      let bottom = []
-      let code = stack.pop();
-      while(code){
-        bottom.push(getCommandBottomEvent());
-        if(code == IF_CODE) bottom.push(getEnd());
-        else if(code == ELSE_CODE) bottom.push(getEnd());
-        else if(code == LOOP_CODE) bottom.push(getRepeatAbove());
-        code = stack.pop();
-      }
+      const stack = events.reduce((s, e) => {
+        const code = e.code;
+        if(code == IF_CODE) s.push(IF_CODE);
+        else if(code == ELSE_CODE) s.push(ELSE_CODE);
+        else if(code == BOTTOM_CODE) s.pop();
+        return s;
+      }, []);
+
+      const bottom = stack.reduce((b, code) => {
+        b.push(getCommandBottomEvent());
+        if(code == IF_CODE) b.push(getEnd());
+        else if(code == ELSE_CODE) b.push(getEnd());
+        else if(code == LOOP_CODE) b.push(getRepeatAbove());
+        return b;
+      }, []);
+
       return events.concat(bottom);
     };
 
     const autoIndent = function(events){
-      let BOTTOM_CODE = 0;
-      let IF_CODE = 111;
-      let ELSE_CODE = 411;
-      let LOOP_CODE = 112;
+      const BOTTOM_CODE = 0;
+      const IF_CODE = 111;
+      const ELSE_CODE = 411;
+      const LOOP_CODE = 112;
 
-      let now_indent = 0;
-      let out_events = [];
-      for(let i = 0; i < events.length; i++){
-        let event = events[i];
-        let parameters = JSON.parse(JSON.stringify(event.parameters));
-        out_events.push({"code": event.code, "indent": now_indent,
-                         "parameters": parameters});
-        switch(event.code){
-          case IF_CODE:
-          case ELSE_CODE:
-          case LOOP_CODE:{
-            now_indent += 1;
-            break;
+      const out_events = events.reduce((o, e) => {
+        const parameters = JSON.parse(JSON.stringify(e.parameters));
+        let now_indent = 0;
+
+        const last = o.slice(-1)[0]
+        if(last !== undefined){
+          now_indent = last.indent;
+          switch(last.code){
+            case IF_CODE:
+            case ELSE_CODE:
+            case LOOP_CODE:{
+              now_indent += 1;
+              break;
+            }
+            case BOTTOM_CODE:
+              now_indent -= 1;
+              break;
           }
-          case BOTTOM_CODE:
-            now_indent -= 1;
-            break;
         }
-      }
+        o.push({"code": e.code, "indent": now_indent, "parameters": parameters});
+        return o;
+      }, []);
+
       return out_events;
     };
 
