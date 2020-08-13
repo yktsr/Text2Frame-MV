@@ -2609,10 +2609,10 @@ if(typeof PluginManager === 'undefined'){
       if(typeof(params[0]) == "undefined"){
         return [0, switchId, 0];
       }
-      let value = ({"on": 0, "オン": 0,
-                    "true": 0, "1": 0,
-                    "off": 1, "オフ": 1,
-                    "false": 1, "0": 1})[params[0].toLowerCase()];
+      const value = ({"on": 0, "オン": 0,
+                      "true": 0, "1": 0,
+                      "off": 1, "オフ": 1,
+                      "false": 1, "0": 1})[params[0].toLowerCase()];
       if(switchId > 0 && (value == 1 || value == 0)){
         return [0, switchId, value];
       }
@@ -2621,17 +2621,17 @@ if(typeof PluginManager === 'undefined'){
 
     const getIfVariableParameters = function(variableId, params){
       variableId = Math.max(Number(variableId) || 1, 1);
-      let operator = {
+      const operator = {
         "==": 0, "＝": 0, ">=": 1, "≧": 1, "<=": 2, "≦": 2,
         ">": 3, "＞": 3, "<": 4, "＜": 4, "!=": 5, "≠": 5
       }[params[0]] || 0
-      let constant_regexp = /^\d+$/;
-      let variable_regexp = /(?:variables|v|変数)\[([0-9]+)\]/i;
-      let operand = params[1] || "0";
+      const constant_regexp = /^\d+$/;
+      const variable_regexp = /(?:variables|v|変数)\[([0-9]+)\]/i;
+      const operand = params[1] || "0";
       if(operand.match(constant_regexp)){
         return [1, variableId, 0, Number(operand), operator];
       }else if(operand.match(variable_regexp)){
-        let value = Math.max(Number(operand.match(variable_regexp)[1]), 1);
+        const value = Math.max(Number(operand.match(variable_regexp)[1]), 1);
         return [1, variableId, 1, value, operator];
       }
       return [1, variableId, 0, 0, 0];
@@ -2649,7 +2649,7 @@ if(typeof PluginManager === 'undefined'){
       if(typeof(params[0]) == "undefined"){
         return [2, selfSwitchId, 0];
       }
-      let value = ({"on": 0, "オン": 0,
+      const value = ({"on": 0, "オン": 0,
                     "true": 0, "1": 0,
                     "off": 1, "オフ": 1,
                     "false": 1, "0": 1})[params[0].toLowerCase()];
@@ -2660,18 +2660,18 @@ if(typeof PluginManager === 'undefined'){
     };
 
     const getIfTimerParameters = function(params){
-      let condition = {
+      const condition = {
         ">=": 0, "≧": 0,
         "<=": 1, "≦": 1
       }[params[0]] || 0;
-      let minute = Number(params[1]) || 0;
-      let second = Number(params[2]) || 0;
+      const minute = Number(params[1]) || 0;
+      const second = Number(params[2]) || 0;
       return [3, 60 * minute + second, condition];
     };
 
     const getIfActorParameters = function(actorId, params){
       actorId = Math.max(Number(actorId) || 1, 1);
-      let actor_mode = {
+      const actor_mode = {
         "in the party": 0, "パーティにいる": 0,
         "name": 1, "名前": 1, "class": 2, "職業": 2,
         "skill": 3, "スキル": 3, "weapon": 4, "武器": 4,
@@ -2690,8 +2690,8 @@ if(typeof PluginManager === 'undefined'){
 
     const getIfEnemyParameters = function(enemyId, params){
       enemyId = Math.max(Number(enemyId) || 1, 1) - 1;
-      let condition = (params[0] || "appeared").toLowerCase();
-      let state_id = Math.max(Number(params[1]) || 1, 1);
+      const condition = (params[0] || "appeared").toLowerCase();
+      const state_id = Math.max(Number(params[1]) || 1, 1);
       if(condition == "appeared" || condition == "出現している"){
         return [5, enemyId, 0];
       }else if(condition == "state" || condition == "ステート"){
@@ -2709,7 +2709,7 @@ if(typeof PluginManager === 'undefined'){
       if(typeof(characterId) == "undefined"){
         characterId = Math.max(Number(character) || 0, -1);
       }
-      let direction = {
+      const direction = {
         "down": 2, "下": 2, "2": 2,
         "left": 4, "左": 4, "4": 4,
         "right": 6, "右": 6, "6": 6,
@@ -2719,7 +2719,7 @@ if(typeof PluginManager === 'undefined'){
     };
 
     const getIfVehicleParameters = function(params){
-      let vehicle = {
+      const vehicle = {
         "boat": 0, "小型船": 0,
         "ship": 1, "大型船": 1,
         "airship": 2, "飛行船": 2
@@ -2728,12 +2728,12 @@ if(typeof PluginManager === 'undefined'){
     };
 
     const getIfGoldParameters = function(params){
-      let condition = {
+      const condition = {
         ">=": 0, "≧": 0,
         "<=": 1, "≦": 1,
         "<": 2, "＜": 2
       }[params[0]] || 0;
-      let gold = Number(params[1]) || 0;
+      const gold = Number(params[1]) || 0;
       return [7, gold, condition];
     };
 
@@ -2807,11 +2807,13 @@ if(typeof PluginManager === 'undefined'){
         case "セルフスイッチ":
         case "ssw":{
           out.parameters = getIfSelfSwitchParameters(mode_value, params);
-          break;}
+          break;
+        }
         case "timer":
         case "タイマー": {
           out.parameters = getIfTimerParameters(params);
-          break;}
+          break;
+        }
         case "actors":
         case "アクター": {
           out.parameters = getIfActorParameters(mode_value, params);
