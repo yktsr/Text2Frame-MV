@@ -102,7 +102,7 @@ Simple compiler to convert text to event.
 |セルフスイッチの操作(OFF)|<SelfSwitch: A, OFF><br><SSW: A, OFF><br><セルフスイッチ: A, OFF>|セルフスイッチAをOFFにする。|
 |タイマーの操作<br>(開始)|<Timer: Start, 1, 10><br><タイマー: スタート, 1, 10>|タイマーを1分10秒で開始する。|
 |タイマーの操作<br>(停止)|<Timer: Stop><br><タイマー: ストップ>|タイマーを停止する。|
-|条件分岐|<If: Switch[1], ON><br>条件を満たしている時の処理<br>\<Else\><br>条件を満たしていない時の処理<br>\<End\>|条件分岐を組み込む。詳細はwikiを参照。|
+|条件分岐|<If: Switch[1], ON><br>条件を満たしている時の処理<br>\<Else\><br>条件を満たしていない時の処理<br>\<End\>|「スイッチ1がONの場合」という条件分岐|
 |ループ|\<Loop\><br>ループしたい処理<br>\<RepeatAbove\>|ループ処理を組み込む。詳細はwikiを参照。|
 |ループの中断|\<BreakLoop\><br> <ループの中断><br>\<BL\>|ループ処理を該当箇所で中断する。|
 |イベント処理の中断|\<ExitEventProcessing\><br>\<イベント処理の中断\><br>\<EEP\>|イベントを該当箇所で中断する。|
