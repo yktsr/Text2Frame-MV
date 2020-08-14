@@ -103,7 +103,7 @@ Simple compiler to convert text to event.
 |タイマーの操作<br>(開始)|<Timer: Start, 1, 10><br><タイマー: スタート, 1, 10>|タイマーを1分10秒で開始する。|
 |タイマーの操作<br>(停止)|<Timer: Stop><br><タイマー: ストップ>|タイマーを停止する。|
 |条件分岐|<If: Switch[1], ON><br>条件を満たしている時の処理<br>\<Else\><br>条件を満たしていない時の処理<br>\<End\>|「スイッチ1がONの場合」という条件分岐|
-|ループ|\<Loop\><br>ループしたい処理<br>\<RepeatAbove\>|ループ処理を組み込む。詳細はwikiを参照。|
+|ループ|\<Loop\><br>ループしたい処理<br>\<RepeatAbove\>|処理をループする。|
 |ループの中断|\<BreakLoop\><br> <ループの中断><br>\<BL\>|ループ処理を該当箇所で中断する。|
 |イベント処理の中断|\<ExitEventProcessing\><br>\<イベント処理の中断\><br>\<EEP\>|イベントを該当箇所で中断する。|
 |コモンイベント|<CommonEvent: 1><br><CE: 1><br><コモンイベント: 1>|ID1のコモンイベントを挿入する。|
