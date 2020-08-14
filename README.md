@@ -1,6 +1,7 @@
 # Text2Frame-MV
-Simple compiler to convert text to message show event.
-English README is [here](en).
+Simple compiler to convert text to event.
+
+![Node.js CI](https://github.com/yktsr/Text2Frame-MV/workflows/Node.js%20CI/badge.svg?branch=master)
 
 テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、開発支援プラグイン
 
@@ -101,8 +102,19 @@ English README is [here](en).
 |セルフスイッチの操作(OFF)|<SelfSwitch: A, OFF><br><SSW: A, OFF><br><セルフスイッチ: A, OFF>|セルフスイッチAをOFFにする。|
 |タイマーの操作<br>(開始)|<Timer: Start, 1, 10><br><タイマー: スタート, 1, 10>|タイマーを1分10秒で開始する。|
 |タイマーの操作<br>(停止)|<Timer: Stop><br><タイマー: ストップ>|タイマーを停止する。|
+|条件分岐|<If: Switch[1], ON><br>条件を満たしている時の処理<br>\<Else\><br>条件を満たしていない時の処理<br>\<End\>|条件分岐を組み込む。詳細はwikiを参照。|
+|ループ|\<Loop\><br>ループしたい処理<br>\<RepeatAbove\>|ループ処理を組み込む。詳細はwikiを参照。|
+|ループの中断|\<BreakLoop\><br> <ループの中断><br>\<BL\>|ループ処理を該当箇所で中断する。|
+|イベント処理の中断|\<ExitEventProcessing\><br>\<イベント処理の中断\><br>\<EEP\>|イベントを該当箇所で中断する。|
 |コモンイベント|<CommonEvent: 1><br><CE: 1><br><コモンイベント: 1>|ID1のコモンイベントを挿入する。|
+|ラベルを設定する|\<Label: ラベル名\><br>\<ラベル: ラベル名\>|ラベルを設定する。|
+|ラベルジャンプ|\<JumpToLabel: ジャンプ先のラベル名\><br>\<ラベルジャンプ: ジャンプ先のラベル名\><br>\<JTL: ジャンプ先のラベル名\>|設定したラベルへジャンプする。|
 |注釈|\<comment\><br>今日も一日がんばるぞい！<br>\</comment\>|"今日も一日がんばるぞい！"という注釈を挿入する。<br>(コメントアウト機能とは違ってイベントコマンドとして組み込まれる)|
+|ピクチャの表示|<ShowPicture: 1, Castle, Scale[50][55]><br><ピクチャの表示: 1, Castle, 拡大率[50][55]><br><SP: 1, Castle, Scale[50][55]>|幅50%, 高さ55%でCastle.pngの番号1の画像を表示する。|
+|ピクチャの移動|<MovePicture: 1, Position[Center][Variables[2]][Variables[3]]><br><ピクチャの移動: 1, 位置[中央][変数[2]][変数[3]]><br><MP: 1, Position[Center][V[2]][V[3]]>|原点は中央で、X座標は変数2,Y座標は変数3の位置に番号1の画像を移動する。|
+|ピクチャの回転|<RotatePicture: 1, -30><br><ピクチャの回転: 1, -30><br><RP: 1, -30>|速度が-30で番号1のピクチャを回転する|
+|ピクチャの色調変更|<TintPicture: 1, ColorTone[0][255][255][0]><br><ピクチャの色調変更: 1, 色調[0][255][255][0]><br><TP: 1, CT[0][255][255][0]>|赤0, 緑255, 青255, グレイ0に番号1のピクチャの色調を変更する。|
+|ピクチャの消去|<ErasePicture: 1><br><ピクチャの消去: 1><br><EP: 1>|番号1のピクチャを削除する。|
 |ウェイト|<Wait: 60><br><ウェイト: 60>|60フレーム(1秒)のウェイトを挿入する。|
 |画面のフェードアウト|\<FadeOut\><br>\<FO\><br>\<フェードアウト\>|画面のフェードアウトを挿入する。|
 |画面のフェードイン|\<FadeIn\><br>\<FI\><br>\<フェードイン\>|画面のフェードインを挿入する。|
