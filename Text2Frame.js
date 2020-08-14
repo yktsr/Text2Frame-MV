@@ -6,6 +6,13 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.4.0 2020/08/14:
+// ・条件分岐タグ追加
+// ・ループタグ追加
+// ・ループの中断タグ追加
+// ・イベント処理の中断タグ追加
+// ・ラベルの設定タグ追加
+// ・ラベルジャンプタグ追加
 // 1.3.0 2020/08/09:
 // ・ピクチャの表示タグ追加
 // ・ピクチャの移動タグ追加
@@ -451,7 +458,12 @@
  * - (2) 変数の操作
  * - (3) セルフスイッチの操作
  * - (4) タイマーの操作
+ * - (5) 条件分岐
+ * - (6) ループ
+ * - (7) ループの中断
+ * - (8) イベント処理の中断
  * - (9) コモンイベント
+ * - (10) ラベル
  * - (12) 注釈
  * - (13) ピクチャの表示
  * - (14) ピクチャの移動
@@ -685,6 +697,466 @@
  *   <Timer: Stop>
  *   <タイマー: ストップ>
  *
+ * ○ (5) 条件分岐
+ * 「条件分岐」は、以下の記法で組み込みます。
+ *  ---
+ *  <If: 条件の対象, 引数1, 引数2, 引数3>
+ *  条件を満たしている時の処理
+ *  <Else>
+ *  条件を満たしていない時の処理
+ *  ---
+ *  詳細を述べる前に、いくつか具体例を記します。
+ *  いずれの例も、条件が満たされているときは
+ *   「私もずっと前から好きでした。」
+ *  というメッセージを、条件を満たさないときは
+ *   「ごめんなさい。お友達でいましょう。」
+ *  とメッセージを表示します。
+ *
+ *  例1: スイッチ1がONのとき
+ *   ---
+ *   <If: Switch[1], ON>
+ *   私もずっと前から好きでした。
+ *   <Else>
+ *   ごめんなさい。お友達でいましょう。
+ *   <End>
+ *   ---
+ *
+ *  例2: 変数1が定数2と等しいとき
+ *   ---
+ *   <If: Variables[1], ==, 2>
+ *   私もずっと前から好きでした
+ *   <Else>
+ *   ごめんなさい。お友達でいましょう。
+ *   <End>
+ *   ---
+ *
+ *  例3: ID1のアクターがパーティにいるとき
+ *   ---
+ *   <If: Actors[1], in the party>
+ *   私もずっと前から好きでした。
+ *   <Else>
+ *   ごめんなさい。お友達でいましょう。
+ *   <End>
+ *   ---
+ *
+ *  条件の対象毎に引数の記法が異なり、引数2,引数3を使わないものもあります。
+ *  以降、条件の対象毎に記法を説明します。
+ *
+ * ・スイッチを条件に使うとき
+ *  スイッチを条件に使うときは、以下のように条件を書きます。
+ *  <If: Switches[スイッチID], 値("ON" or "OFF")>
+ *
+ *  "Switches"は"SW"や"スイッチ"で代替できます。
+ *  また、代入値は基本的に"ON"か"OFF"で指定しますが、
+ *  以下のような代替記号でも指定できます。
+ *   - "ON": "オン", "true", "1"
+ *   - "OFF": "オフ", "false", "0"
+ *
+ *  例えば、以下の通りです。
+ *   例1: スイッチ1が"ON"のとき
+ *    - "<If: Switches[1], ON>"
+ *    - "<If: SW[1], true>"
+ *    - "<If: スイッチ[1], オン>"
+ *   例2: スイッチ1が"OFF"のとき
+ *    - "<If: Switches[1], OFF>"
+ *    - "<If: SW[1], false>"
+ *    - "<If: スイッチ[1], オフ>"
+ *
+ * ・変数を条件に使うとき
+ *  変数を条件に使うときは、以下のように条件を書きます。
+ *  <If: Variables[変数ID], 条件式(記号), オペランド(定数 or 変数)>
+ *
+ *  "Variables"は"V"や"変数"でも代替できます。
+ *  条件式に使える記号は以下の通りです。
+ *   - 等しい: "==" , "＝"(全角のイコールです)
+ *   - 以上: ">=", "≧"
+ *   - 以下: "<=", "≦"
+ *   - 大きい: ">", "＞"
+ *   - 小さい: "<", "＜"
+ *   - 等しくない: "!=", "≠"
+ *
+ *  オペランドの指定方法は以下の通りです。
+ *   - 定数: "1", "2"など数値をそのまま記入
+ *   - 変数: "Variables[変数ID]", "V[変数ID]", "変数[変数ID]"
+ *
+ *  例えば、以下の通りです。
+ *   例1: 変数1が定数2と等しいとき
+ *    - "<If: Variables[1], ==, 2>"
+ *    - "<If: V[1], ==, 2>"
+ *    - "<If: 変数[1], ＝, 2>"
+ *   例2: 変数1が変数2の値以上のとき
+ *    - "<If: Variables[1], >=, Variables[2]>"
+ *    - "<If: V[1], >=, V[2]>"
+ *    - "<If: 変数[1], >=, 変数[2]>"
+ *
+ * ・セルフスイッチを条件に使うとき
+ *  セルフスイッチを条件に使うときは、以下のように条件を書きます。
+ *  <If: SelfSwitches[セルフスイッチ記号(A,B,C, or D)], 代入値(ON or OFF)>
+ *
+ *  "SelfSwitch"は"SSW"や"セルフスイッチ"でも代替できます。
+ *  また、代入値は基本的に"ON"か"OFF"で指定しますが、
+ *  以下のような代替記号でも指定できます。
+ *   - "ON": "オン", "true", "1"
+ *   - "OFF": "オフ", "false", "0"
+ *
+ *  例えば、以下の通りです。
+ *   例1: セルフスイッチAがONのとき
+ *    - "<If: SelfSwitches[A], ON>"
+ *    - "<If: SSW[A], true>"
+ *    - "<If: セルフスイッチ[A], オフ>"
+ *   例2: セルフスイッチBがOFFのとき
+ *    - "<If: SelfSwitches[B], OFF>"
+ *    - "<If: SSW[B], false>"
+ *    - "<If: セルフスイッチ[B], オフ>"
+ *
+ * ・タイマーを条件に使うとき
+ *  タイマーを条件に使うときは、以下のように条件を書きます。
+ *   <If: Timer, 条件式(">=" or "<="), 分, 秒>
+ *
+ *  "Timer"は"タイマー"でも代替できます。
+ *  また、条件式">="は"≧"で、"<="は"≦"で代替できます。
+ *
+ *  例えば、以下の通りです。
+ *   例1: タイマーが1分10秒以上のとき
+ *    - "<If: Timer, >=, 1, 10>"
+ *    - "<If: タイマー, ≧, 1, 10>"
+ *   例2: タイマーが1分10秒以下のとき
+ *    - "<If: Timer, <=, 1, 10>"
+ *    - "<If: タイマー, ≦, 1, 10>"
+ *
+ * ・アクターに関する情報を条件に使うとき
+ *  アクターに関する情報を条件に使うときは、以下のように書きます。
+ *   <If: Actors[アクターID], 条件1, 条件2>
+ *
+ *  "Actors"は"アクター"でも代替できます。
+ *  条件1で対象を指定します。
+ *   - パーティにいる
+ *   - 名前
+ *   - 職業
+ *   - スキル
+ *   - 武器
+ *   - 防具
+ *   - ステート
+ *  を指定できます。
+ *  条件2は条件1で指定した対象によって使い方が異なります。
+ *  以下に、条件1での対象毎に説明します。
+ *
+ *  * アクターがパーティにいるかどうか
+ *   アクターがパーティにいるかどうかを判定するときは以下のように指定します。
+ *    <If: Actors[アクターID], in the party>
+ *
+ *    "in the party"は"パーティにいる"という文字列でも代替できます。
+ *    条件2は使用しません。
+ *
+ *    例えば、ID1のアクターがパーティにいるかどうかを条件に使うときは以下の
+ *   ように書きます。
+ *    - "<If: Actors[1], in the party>"
+ *    - "<If: アクター[1], パーティにいる>"
+ *
+ *  * アクターの名前
+ *   アクターの名前を条件式に使うときは以下のように指定します。
+ *    <If: Actors[アクターID], Name, 名前(自由記述)>
+ *
+ *    "Name"は"名前"でも代替できます。
+ *
+ *    例えば、ID1のアクターの名前が"ハロルド"かどうかは以下のように書きます。
+ *    - "<If: Actors[アクターID], Name, ハロルド>"
+ *    - "<If: アクター[アクターID], 名前, ハロルド>"
+ *
+ *  * 職業、スキル、武器、防具、ステート
+ *   職業、スキル、武器、防具、ステートは以下のように指定します。
+ *    <If: Actors[アクターID], テーブル名, テーブルID(1,2,...などの整数)>
+ *
+ *   テーブル名では、アクターに紐付いた情報のテーブル名を指定します。
+ *   指定方法は以下のとおりです。
+ *    - 職業: "Class", "職業"
+ *    - スキル: "Skill", "スキル"
+ *    - 武器: "Weapon", "武器"
+ *    - 防具: "Armor", "防具"
+ *    - ステート: "State", "ステート"
+ *
+ *   例えば、以下の通りです。
+ *    例1: ID1のアクターの職業が、ID2の職業のとき
+ *     - "<If: Actors[1], Class, 2>"
+ *     - "<If: アクター[1], 職業, 2>"
+ *    例2: ID1のアクターがID2のスキルを習得しているとき
+ *     - "<If: Actors[1], Skill, 2>"
+ *     - "<If: アクター[1], スキル, 2>"
+ *    例3: ID1のアクターがID2の武器を装備しているとき
+ *     - "<If: Actors[1], Weapon, 2>"
+ *     - "<If: アクター[1], 武器, 2>"
+ *    例4: ID1のアクターがID2の防具を装備しているとき
+ *     - "<If: Actors[1], Armor, 2>"
+ *     - "<If: アクター[1], 防具, 2>"
+ *    例5: ID1のアクターがID2のステートを付与されているとき
+ *     - "<If: Actors[1], State, 2>"
+ *     - "<If: アクター[1], ステート, 2>"
+ *
+ *  * 敵キャラに関する情報を条件に使うとき
+ *   敵キャラに関する情報を条件に使うときは、以下のように書きます。
+ *    <If: Enemies[戦闘中の敵キャラの番号], 条件1, 条件2>
+ *
+ *   "Enemies"は"エネミー"でも代替できます。
+ *
+ *   条件1は以下いずれかで設定します。
+ *   - 出現している: "Appeared" or "出現している"
+ *   - ステート: "State" or "ステート"
+ *
+ *  また、ステートを指定した場合は、条件2でステートのIDを指定します。
+ *
+ *  例えば以下の通りです。
+ *   例1: 1体目の敵キャラが出現しているとき
+ *    - "<If: Enemies[1], Appeared>"
+ *    - "<If: エネミー[1], 出現している>"
+ *   例2: 1体目の敵キャラがID2のステートにかかっているとき
+ *    - "<If: Enemies[1], State, 2>"
+ *    - "<If: エネミー[1], ステート, 2>"
+ *
+ *  * キャラクターの向きを条件に使うとき
+ *  キャラクターの向きを条件に使うときは、以下のように書きます。
+ *   <If: Characters[イベントの指定], 向き(下, 左, 右, 上)>
+ *
+ *  "Characters"は"キャラクター"でも代替できます。
+ *
+ *  引数のイベントの指定は以下のリストからご指定ください。
+ *   - プレイヤー: "Player", "プレイヤー", "-1"
+ *   - このイベント: "ThisEvent", "このイベント", "0"
+ *   - イベントID指定: "1", "2", ...
+ *
+ *  向きは以下のリストからご指定ください。
+ *  - 下: "Down", "下", "2"
+ *  - 左: "Left", "左", "4"
+ *  - 右: "Right", "右", "6"
+ *  - 上: "Up", "上", "8"
+ *
+ *  例えば、以下の通りです。
+ *   例1: プレイヤーが下向きの時
+ *    - "<If: Characters[Player], Down>"
+ *    - "<If: キャラクター[プレイヤー], 下>"
+ *    - "<If: Characters[-1], 2>"
+ *   例2: このイベントが左向きのとき
+ *    - "<If: Characters[ThisEvent], Left>"
+ *    - "<If: キャラクター[このイベント], 左>"
+ *    - "<If: Characters[0], 4>"
+ *   例3: ID1のイベントが右向きのとき
+ *    - "<If: Characters[1], Right>"
+ *    - "<If: キャラクター[1], 右>"
+ *    - "<If: Characters[1], 6>"
+ *
+ *  * 乗り物を条件に使うとき
+ *   乗り物に乗っていることを条件に使うときは、以下のように書きます。
+ *    <If: Vehicle, 乗り物の種類(小型船、大型船、飛行船)>
+ *
+ *  "Vehicle"は"乗り物"でも代替できます。
+ *
+ *  乗り物の種類は以下のリストからご指定ください。
+ *   - 小型船: "Boat", "小型船"
+ *   - 大型船: "Ship", "大型船"
+ *   - 飛行船: "Airship", "飛行船"
+ *
+ *  例えば以下の通りです。
+ *   例1: 小型船に乗っている時
+ *    - "<If: Vehicle, Boat>"
+ *    - "<If: 乗り物, 小型船>"
+ *   例2: 大型船に乗っている時
+ *    - "<If: Vehicle, Ship>"
+ *    - "<If: 乗り物, 大型船>"
+ *   例3: 飛行船に乗っている時
+ *    - "<If: Vehicle, Airsip>"
+ *    - "<If: 乗り物, 飛行船>"
+ *
+ *  * お金を条件に使うとき
+ *   お金を条件に使うときは、いかのようにかきます
+ *    <If: Gold, 条件式(≧, ≦, <), 数値(定数)
+ *
+ *   "Gold"は"お金"でも代替出来ます。
+ *
+ *   条件式に使える記号は以下の通りです。
+ *    - 以上: ">=", "≧"
+ *    - 以下: "<=", "≦"
+ *    - 小さい: "<", "＜"
+ *
+ *   例えば以下の通りです。
+ *    例1: お金を500以上所持しているとき
+ *     - "<If: Gold, >=, 500>"
+ *     - "<If: お金, ≧, 500>"
+ *    例2: 500以下しかお金を所持していないとき
+ *     - "<If: Gold, <=, 500>"
+ *     - "<If: お金, ≦, 500>"
+ *    例2: 500未満しかお金を所持していないとき
+ *     - "<If: Gold, <, 500>"
+ *     - "<If: お金, ＜, 500>"
+ *
+ *  * アイテムを条件に使うとき
+ *   アイテムを条件に使うときは以下のように書きます。
+ *    <If: Items[ID]>
+ *
+ *   "Items"は"アイテム"でも代替できます。
+ *
+ *   例えば、以下の通りです。
+ *    例1: IDが1のアイテムを所持しているとき
+ *     - "<If: Items[1]>"
+ *     - "<If: アイテム[1]>"
+ *
+ *  * 武器を条件に使うとき
+ *   武器を条件に使うときは以下のように書きます。
+ *    <If: Weapons[ID], 装備品を含むか>
+ *
+ *   "Weapons"は"武器"でも代替できます。
+ *   装備品を含む場合は、2つ目の引数の部分に"Include Equipment"もしくは
+ *   "装備品を含む"と記載してください。含まない場合は、省略してください。
+ *
+ *   例えば、以下の通りです。
+ *    例1: IDが1の武器を所持しているとき(装備品は含まない)
+ *     - "<If: Weapons[1]>"
+ *     - "<If: 武器[1]>"
+ *    例2: IDが1の武器を所持しているとき(装備品は含む)
+ *     - "<If: Weapons[1], Include Equipment>"
+ *     - "<If: 武器[1], 装備品を含む>"
+ *
+ *  * 防具を条件に使うとき
+ *   防具を条件に使うときは以下のように書きます。
+ *    <If: Armors[ID], 装備品を含むか>
+ *
+ *   "Armors"は"防具"でも代替できます。
+ *   装備品を含む場合は、2つ目の引数の部分に"Include Equipment"もしくは
+ *   "装備品を含む"と記載してください。含まない場合は、省略してください。
+ *
+ *   例えば、以下の通りです。
+ *    例1: IDが1の防具を所持しているとき(装備品は含まない)
+ *     - "<If: Armors[1]>"
+ *     - "<If: 防具[1]>"
+ *    例2: IDが1の防具を所持しているとき(装備品は含む)
+ *     - "<If: Armors[1], Include Equipment>"
+ *     - "<If: 防具[1], 装備品を含む>"
+ *
+ *  * ボタンを条件に使うとき
+ *   ボタンを条件に使うときは以下のように書きます。
+ *    <If: Button, ボタンの種類>
+ *
+ *   "Button"は"ボタン"でも代替できます。
+ *   以下のリストからボタンの種類を指定してください。
+ *    - 決定: "OK", "決定"
+ *    - キャンセル: "Cancel", "キャンセル"
+ *    - シフト: "Shift", "シフト"
+ *    - 下: "Down", "下"
+ *    - 左: "Left", "左"
+ *    - 右: "Right", "右"
+ *    - 上: "Up", "上"
+ *    - ページアップ: "Pageup", "ページアップ"
+ *    - ページダウン: "Pagedown", "ページダウン"
+ *
+ *    例えば以下の通りです。
+ *     例1: 決定ボタンが押されているとき
+ *      - "<If: Button, OK>"
+ *      - "<If: ボタン, 決定>"
+ *     例2: シフトボタンが押されているとき
+ *      - "<If: Button, Shift>"
+ *      - "<If: ボタン, シフト>"
+ *     例3: 下ボタンが押されているとき
+ *      - "<If: Button, Down>"
+ *      - "<If: ボタン, 下>"
+ *
+ *  * スクリプトを条件に使う時
+ *   スクリプトを条件に使うときは以下のように書きます。
+ *    <If: Script, スクリプト本文(Javascript)>
+ *
+ *   "Script"は"スクリプト"か"SC"でも代替できます。
+ *   例えば、"$gameParty._gold < $gameVariables.value(1)"を
+ *   条件にするときは以下のように書けます。
+ *    - "<If: Script, $gameParty._gold == $gameVariables.value(1)>"
+ *    - "<If: スクリプト, $gameParty._gold == $gameVariables.value(1)>"
+ *    - "<If: SC, $gameParty._gold == $gameVariables.value(1)>"
+ *
+ * ・その他の条件分岐の特徴
+ *  別記法として、以下の対応関係で日本語表記もできます。
+ *    - If: "条件分岐"
+ *    - Else: "それ以外のとき"
+ *    - End: "分岐修了"
+ *  <Else>とその処理は省略することができます。
+ *
+ *  入れ子にすることができます。例えば以下のようにすることもできます。
+ *  ---
+ *  <If: Switch[1], ON>
+ *    <If: Switch[2], ON>
+ *    1つ目と2つ目の条件が満たされているときの処理
+ *    <End>
+ *  <Else>
+ *  1つ目の条件が満たされていないときの処理
+ *  <End>
+ *  ---
+ *
+ *  条件分岐の中は「変数の操作」や「コモンイベント」など、その他の
+ *  イベントコマンドも組み込むことができます。
+ *  ---
+ *  <If: Switch[1], ON>
+ *    <Set: 1, 2>
+ *    <CommonEvent: 3>
+ *    私もずっと前から好きでした。
+ *  <Else>
+ *    <Set: 3, 4>
+ *    <CommonEvent: 4>
+ *    ごめんなさい。お友達でいましょう。
+ *  <End>
+ *  ---
+ *
+ *  "<End>"を書かなかった場合は、以降のメッセージやタグが全てIfもしくはElseの処
+ *  理として組み込まれます。
+ *  タグ(If, Else, END)の直後は可能な限り改行してください。改行せずに次のイベン
+ *  トやメッセージを入力した場合の動作は保証されていません。
+ *
+ *
+ *
+ * ○ (6) ループ
+ * 「ループ」は以下の記法で組み込みます
+ *  ---
+ *  <Loop>
+ *  ループしたい処理
+ *  <RepeatAbove>
+ *  ---
+ *
+ *  "Loop"は"ループ"、"RepeatAbove"は"以上繰り返し"や"RA"で代替できます。
+ *
+ *  ループしたい処理は、メッセージの表示や他のタグを自由に組み込めます。
+ *
+ *  以下の具体例は、"今日も一日がんばるぞい！(و ･ㅂ･)و"というメッセージが
+ *  無限ループします。
+ *  ---
+ *  <Loop>
+ *  今日も一日がんばるぞい！(و ･ㅂ･)و
+ *  <RepeatAbove>
+ *  ---
+ *
+ *  以下の例では、他のタグと組み合わせることで、
+ *  "今日も一日がんばるぞい！(و ･ㅂ･)و"を
+ *  5回表示させる処理になります。
+ *  """
+ *  <Set: 1, 0>
+ *  <Loop>
+ *  <If: Variables[1], ==, 5>
+ *    <BreakLoop>
+ *  <End>
+ *  今日も一日がんばるぞい！(و ･ㅂ･)و
+ *  <Add: 1, 1>
+ *  <RepeatAbove>
+ *  """
+ *  "Set"と"Add"は「変数の操作」を、"If"と"End"は「条件分岐」を、
+ *  "BreakLoop"はループの
+ *  中断の説明をご覧ください。
+ *
+ *
+ * ○ (7) ループの中断
+ *  「ループの中断」は以下のいずれかの記法で組み込みます。
+ *   <BreakLoop>
+ *   <ループの中断>
+ *   <BL>
+ *
+ * ○ (8) イベント処理の中断
+ * 「イベント処理の中断」は以下のいずれかの記法で組み込みます。
+ *   <ExitEventProcessing>
+ *   <イベント処理の中断>
+ *   <EEP>
+ *
  * ○ (9) コモンイベント
  * 「コモンイベント」は以下のいずれかの記法で組み込みます。
  *    <CommonEvent: コモンイベントID>
@@ -695,6 +1167,27 @@
  *    <CommonEvent: 2>
  *    <CE: 2>
  *    <コモンイベント: 2>
+ *
+ * ○ (10) ラベル
+ * 「ラベル」は以下のいずれかの記法で指定します。
+ *   <Label: ラベル名>
+ *   <ラベル: ラベル名>
+ *
+ *  例えば以下のように記述すると"Start"というラベルが組み込まれます。
+ *   <Label: Start>
+ *   <ラベル: Start>
+ *
+ * ○ (11) ラベルジャンプ
+ * 「ラベルジャンプ」は以下のいずれかの記法で指定します。
+ *   <JumpToLabel: ジャンプ先のラベル名>
+ *   <ラベルジャンプ: ジャンプ先のラベル名>
+ *   <JTL: ジャンプ先のラベル名>
+ *
+ *  例えば以下のように記述すると"Start"と名付けられたラベルへのラベルジャンプが
+ *  組み込まれます。
+ *   <JumpToLabel: Start>"
+ *   <ラベルジャンプ: Start>
+ *   <JumpToLabel: Start>"
  *
  * ○ (12) 注釈
  *  注釈のイベントコマンドは、以下のように<comment>と</comment>で挟み込む
@@ -2117,6 +2610,361 @@ if(typeof PluginManager === 'undefined'){
                              ps.duration, ps.wait]};
     };
 
+
+    const getIfSwitchParameters = function(switchId, params){
+      switchId = Math.max(Number(switchId) || 1, 1);
+      if(typeof(params[0]) == "undefined"){
+        return [0, switchId, 0];
+      }
+      const value = ({"on": 0, "オン": 0,
+                      "true": 0, "1": 0,
+                      "off": 1, "オフ": 1,
+                      "false": 1, "0": 1})[params[0].toLowerCase()];
+      if(switchId > 0 && (value == 1 || value == 0)){
+        return [0, switchId, value];
+      }
+      return [0, switchId, 0];
+    };
+
+    const getIfVariableParameters = function(variableId, params){
+      variableId = Math.max(Number(variableId) || 1, 1);
+      const operator = {
+        "==": 0, "＝": 0, ">=": 1, "≧": 1, "<=": 2, "≦": 2,
+        ">": 3, "＞": 3, "<": 4, "＜": 4, "!=": 5, "≠": 5
+      }[params[0]] || 0
+      const constant_regexp = /^\d+$/;
+      const variable_regexp = /(?:variables|v|変数)\[([0-9]+)\]/i;
+      const operand = params[1] || "0";
+      if(operand.match(constant_regexp)){
+        return [1, variableId, 0, Number(operand), operator];
+      }else if(operand.match(variable_regexp)){
+        const value = Math.max(Number(operand.match(variable_regexp)[1]), 1);
+        return [1, variableId, 1, value, operator];
+      }
+      return [1, variableId, 0, 0, 0];
+    };
+
+    const getIfSelfSwitchParameters = function(selfSwitchId, params){
+      selfSwitchId = selfSwitchId.toUpperCase();
+      switch(selfSwitchId){
+        case "A":
+        case "B":
+        case "C":
+        case "D": break;
+        default: selfSwitchId = "A";
+      }
+      if(typeof(params[0]) == "undefined"){
+        return [2, selfSwitchId, 0];
+      }
+      const value = ({"on": 0, "オン": 0,
+                    "true": 0, "1": 0,
+                    "off": 1, "オフ": 1,
+                    "false": 1, "0": 1})[params[0].toLowerCase()];
+      if(value == 0 || value == 1){
+        return [2, selfSwitchId, value];
+      }
+      return [2, selfSwitchId, 0];
+    };
+
+    const getIfTimerParameters = function(params){
+      const condition = {
+        ">=": 0, "≧": 0,
+        "<=": 1, "≦": 1
+      }[params[0]] || 0;
+      const minute = Number(params[1]) || 0;
+      const second = Number(params[2]) || 0;
+      return [3, 60 * minute + second, condition];
+    };
+
+    const getIfActorParameters = function(actorId, params){
+      actorId = Math.max(Number(actorId) || 1, 1);
+      const actor_mode = {
+        "in the party": 0, "パーティにいる": 0,
+        "name": 1, "名前": 1, "class": 2, "職業": 2,
+        "skill": 3, "スキル": 3, "weapon": 4, "武器": 4,
+        "armor": 5, "防具": 5, "state": 6, "ステート": 6
+      }[params[0].toLowerCase()] || 0;
+      if(actor_mode > 0){
+        if(actor_mode == 1){
+          return  [4, actorId, 1, params[1]];
+        }
+        else if(Number(params[1])){
+          return [4, actorId, actor_mode, Math.max(Number(params[1]), 1)];
+        }
+      }
+      return [4, actorId, 0];
+    };
+
+    const getIfEnemyParameters = function(enemyId, params){
+      enemyId = Math.max(Number(enemyId) || 1, 1) - 1;
+      const condition = (params[0] || "appeared").toLowerCase();
+      const state_id = Math.max(Number(params[1]) || 1, 1);
+      if(condition == "appeared" || condition == "出現している"){
+        return [5, enemyId, 0];
+      }else if(condition == "state" || condition == "ステート"){
+        return [5, enemyId, 1, state_id];
+      }else{
+        return [5, enemyId, 0];
+      }
+    };
+
+    const getIfCharacterParameters = function(character, params){
+      let characterId = {
+        "player": -1, "プレイヤー": -1,
+        "thisevent": 0, "このイベント": 0,
+      }[character.toLowerCase()];
+      if(typeof(characterId) == "undefined"){
+        characterId = Math.max(Number(character) || 0, -1);
+      }
+      const direction = {
+        "down": 2, "下": 2, "2": 2,
+        "left": 4, "左": 4, "4": 4,
+        "right": 6, "右": 6, "6": 6,
+        "up": 8, "上": 8, "8": 8
+      }[(params[0] || "").toLowerCase()] || 2;
+      return [6, characterId, direction];
+    };
+
+    const getIfVehicleParameters = function(params){
+      const vehicle = {
+        "boat": 0, "小型船": 0,
+        "ship": 1, "大型船": 1,
+        "airship": 2, "飛行船": 2
+      }[(params[0] || "").toLowerCase()] || 0
+      return [13, vehicle];
+    };
+
+    const getIfGoldParameters = function(params){
+      const condition = {
+        ">=": 0, "≧": 0,
+        "<=": 1, "≦": 1,
+        "<": 2, "＜": 2
+      }[params[0]] || 0;
+      const gold = Number(params[1]) || 0;
+      return [7, gold, condition];
+    };
+
+    const getIfItemParameters = function(itemId){
+      itemId = Math.max(Number(itemId) || 1, 1);
+      return [8, itemId];
+    };
+
+    const getIfWeaponParameters = function(weaponId, params){
+      weaponId = Math.max(Number(weaponId) || 1, 1);
+      let include_equipment = false;
+      if(params[0]) include_equipment = true;
+      return [9, weaponId, include_equipment];
+    };
+
+    const getIfArmorParameters = function(armorId, params){
+      armorId = Math.max(Number(armorId) || 1, 1);
+      let include_equipment = false;
+      if(params[0]) include_equipment = true;
+      return [10, armorId, include_equipment];
+    };
+
+    const getIfButtonParameters = function(params){
+      let button = {
+        "ok": "ok", "決定": "ok",
+        "cancel": "cancel",  "キャンセル": "cancel",
+        "shift": "shift",  "シフト": "shift",
+        "down": "down",  "下": "down",
+        "left": "left", "左": "left",
+        "right": "right", "右": "right",
+        "up": "up", "上": "up",
+        "pageup": "pageup", "ページアップ": "pageup",
+        "pagedown": "pagedown", "ページダウン" : "pagedown"
+      }[(params[0] || "").toLowerCase()] || "ok";
+      return [11, button];
+    };
+
+    const getIfScriptParameters = function(params){
+      return [12, params.join(",").trim()];
+    };
+
+    const getConditionalBranch = function(target, params){
+      let out = {"code": 111, "indent": 0, "parameters": [0, 1, 0]}; // default
+      let target_regexp = /([^[\]]+)(\[[\s\-a-zA-Z0-9\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf[\]]+\])*/i;
+      target = target.match(target_regexp);
+      let mode = target[1];
+      let mode_value = (target[2] || "").replace(/[[\]]/g, "");
+      switch(mode.toLowerCase()){
+        case "script":
+        case "スクリプト":
+        case "sc":
+          break;
+        default:
+          params = params.map(s => s.trim());
+          break;
+      }
+      switch(mode.toLowerCase()){
+        case "switches":
+        case "スイッチ":
+        case "sw":{
+          out.parameters = getIfSwitchParameters(mode_value, params);
+          break;
+        }
+        case "variables":
+        case "変数":
+        case "v":{
+          out.parameters = getIfVariableParameters(mode_value, params);
+          break;
+        }
+        case "selfswitches":
+        case "セルフスイッチ":
+        case "ssw":{
+          out.parameters = getIfSelfSwitchParameters(mode_value, params);
+          break;
+        }
+        case "timer":
+        case "タイマー": {
+          out.parameters = getIfTimerParameters(params);
+          break;
+        }
+        case "actors":
+        case "アクター": {
+          out.parameters = getIfActorParameters(mode_value, params);
+          break;
+        }
+        case "enemies":
+        case "エネミー": {
+          out.parameters = getIfEnemyParameters(mode_value, params);
+          break;
+        }
+        case "characters":
+        case "キャラクター": {
+          out.parameters = getIfCharacterParameters(mode_value, params);
+          break;
+        }
+        case "vehicle":
+        case "乗り物": {
+          out.parameters = getIfVehicleParameters(params);
+          break;
+        }
+        case "gold":
+        case "お金": {
+          out.parameters = getIfGoldParameters(params);
+          break;
+        }
+        case "items":
+        case "アイテム": {
+          out.parameters = getIfItemParameters(mode_value);
+          break;
+        }
+        case "weapons":
+        case "武器": {
+          out.parameters = getIfWeaponParameters(mode_value, params);
+          break;
+        }
+        case "armors":
+        case "防具": {
+          out.parameters = getIfArmorParameters(mode_value, params);
+          break;
+        }
+        case "button":
+        case "ボタン": {
+          out.parameters = getIfButtonParameters(params);
+          break;
+        }
+        case "script":
+        case "スクリプト":
+        case "sc": {
+          out.parameters = getIfScriptParameters(params);
+          break;
+        }
+      }
+      return out;
+    };
+
+    const getElse = function(){
+      return {"code": 411, "indent": 0, "parameters": []};
+    };
+
+    const getEnd = function(){
+      return {"code": 412, "indent": 0, "parameters": []};
+    };
+
+    const getLoop = function(){
+      return {"code": 112, "indent": 0, "parameters": []};
+    };
+
+    const getRepeatAbove = function(){
+      return {"code": 413, "indent": 0, "parameters": []};
+    };
+
+    const getBreakLoop = function(){
+      return {"code": 113, "indent": 0, "parameters": []};
+    };
+
+    const getExitEventProcessing = function(){
+      return {"code": 115, "indent": 0, "parameters": []};
+    };
+
+    const getLabel = function(name){
+      return {"code": 118, "indent": 0, "parameters": [name]};
+    };
+
+    const getJumpToLabel = function(name){
+      return {"code": 119, "indent": 0, "parameters": [name]};
+    };
+
+    const completeLackedBottomEvent = function(events){
+      const BOTTOM_CODE = 0;
+      const IF_CODE = 111;
+      const ELSE_CODE = 411;
+      const LOOP_CODE = 112;
+
+      const stack = events.reduce((s, e) => {
+        const code = e.code;
+        if(code == IF_CODE) s.push(IF_CODE);
+        else if(code == ELSE_CODE) s.push(ELSE_CODE);
+        else if(code == BOTTOM_CODE) s.pop();
+        return s;
+      }, []);
+
+      const bottom = stack.reduce((b, code) => {
+        b.push(getCommandBottomEvent());
+        if(code == IF_CODE) b.push(getEnd());
+        else if(code == ELSE_CODE) b.push(getEnd());
+        else if(code == LOOP_CODE) b.push(getRepeatAbove());
+        return b;
+      }, []);
+
+      return events.concat(bottom);
+    };
+
+    const autoIndent = function(events){
+      const BOTTOM_CODE = 0;
+      const IF_CODE = 111;
+      const ELSE_CODE = 411;
+      const LOOP_CODE = 112;
+
+      const out_events = events.reduce((o, e) => {
+        const parameters = JSON.parse(JSON.stringify(e.parameters));
+        let now_indent = 0;
+
+        const last = o.slice(-1)[0]
+        if(last !== undefined){
+          now_indent = last.indent;
+          switch(last.code){
+            case IF_CODE:
+            case ELSE_CODE:
+            case LOOP_CODE:{
+              now_indent += 1;
+              break;
+            }
+            case BOTTOM_CODE:
+              now_indent -= 1;
+              break;
+          }
+        }
+        o.push({"code": e.code, "indent": now_indent, "parameters": parameters});
+        return o;
+      }, []);
+
+      return out_events;
+    };
+
     let scenario_text = readText(Laurus.Text2Frame.TextPath);
     scenario_text = uniformNewLineCode(scenario_text);
     scenario_text = eraseCommentOutLines(scenario_text, Laurus.Text2Frame.CommentOutChar)
@@ -2212,6 +3060,28 @@ if(typeof PluginManager === 'undefined'){
         let erase_picture = text.match(/<erasepicture\s*:\s*(\d{1,2})\s*>/i)
           || text.match(/<ピクチャの消去\s*:\s*(\d{1,2})\s*>/i)
           || text.match(/<ep\s*:\s*(\d{1,2})\s*>/i);
+        let conditional_branch_if = text.match(/\s*<if\s*:\s*([^\s].*)>/i)
+          || text.match(/\s*<条件分岐\s*:\s*([^\s].*)>/i);
+        let conditional_branch_else = text.match(/\s*<else>/i)
+          || text.match(/\s*<それ以外のとき>/);
+        let conditional_branch_end = text.match(/\s*<end>/i)
+          || text.match(/\s*<分岐修了>/);
+        let loop = text.match(/\s*<loop>/i)
+          || text.match(/\s*<ループ>/);
+        let repeat_above = text.match(/<repeatabove>/i)
+          || text.match(/\s*<以上繰り返し>/)
+          || text.match(/\s*<ra>/i);
+        let break_loop = text.match(/<breakloop>/i)
+          || text.match(/<ループの中断>/)
+          || text.match(/<BL>/i);
+        let exit_event_processing = text.match(/<ExitEventProcessing>/i)
+          || text.match(/<イベント処理の中断>/)
+          || text.match(/<EEP>/i);
+        let label = text.match(/<label\s*:\s*(\S+)\s*>/i)
+          || text.match(/<ラベル\s*:\s*(\S+)\s*>/i);
+        let jump_to_label = text.match(/<jumptolabel\s*:\s*(\S+)\s*>/i)
+          || text.match(/<ラベルジャンプ\s*:\s*(\S+)\s*>/)
+          || text.match(/<jtl\s*:\s*(\S+)\s*>/i);
 
         const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
         const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
@@ -2792,6 +3662,79 @@ if(typeof PluginManager === 'undefined'){
           continue;
         }
 
+        // Conditional Branch (If)
+        if(conditional_branch_if){
+          let args = conditional_branch_if[1].split(',');
+          if(args.length > 0){
+            let target = args[0].trim();
+            let params = args.slice(1);
+            event_command_list.push(getConditionalBranch(target, params));
+            frame_param = frame_param || getPretextEvent();
+            continue;
+          }else{
+            console.error(text);
+            throw new Error('Syntax error. / 文法エラーです。'
+                            + 'Please check line ' + (i+1) + '. / '
+                            + (i+1) + '行目付近を確認してください / '
+                            + text.replace(/</g, '  ').replace(/>/g, '  '));
+          }
+        }
+
+        // Conditional Branch (Else)
+        if(conditional_branch_else){
+          event_command_list.push(getCommandBottomEvent());
+          event_command_list.push(getElse());
+          frame_param = frame_param || getPretextEvent();
+          continue;
+        }
+
+        // Conditional Branch (End)
+        if(conditional_branch_end){
+          event_command_list.push(getCommandBottomEvent());
+          event_command_list.push(getEnd());
+          frame_param = frame_param || getPretextEvent();
+          continue;
+        }
+
+        // Loop
+        if(loop){
+          event_command_list.push(getLoop());
+          continue;
+        }
+
+        // Repeat Above
+        if(repeat_above){
+          event_command_list.push(getCommandBottomEvent());
+          event_command_list.push(getRepeatAbove());
+          frame_param = frame_param || getPretextEvent();
+          continue;
+        }
+
+        // Break Loop
+        if(break_loop){
+          event_command_list.push(getBreakLoop());
+          continue;
+        }
+
+        // Exit Event Processing
+        if(exit_event_processing){
+          event_command_list.push(getExitEventProcessing());
+          continue;
+        }
+
+        // Label
+        if(label){
+          let label_name = label[1] || "";
+          event_command_list.push(getLabel(label_name));
+          continue;
+        }
+
+        // Jump to Label
+        if(jump_to_label){
+          let label_name = jump_to_label[1] || "";
+          event_command_list.push(getJumpToLabel(label_name));
+          continue;
+        }
 
         // Face
         if(face){
@@ -2862,6 +3805,8 @@ if(typeof PluginManager === 'undefined'){
       }
     }
 
+    event_command_list = completeLackedBottomEvent(event_command_list);
+    event_command_list = autoIndent(event_command_list);
     event_command_list.push(getCommandBottomEvent());
 
     switch (Laurus.Text2Frame.ExecMode) {

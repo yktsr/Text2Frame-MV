@@ -1,0 +1,115 @@
+% Switchのパラメータエラー
+<If: Switches[1], >
+<End>
+<If: Switches[1], HOGEHOGE>
+<End>
+<If: Switches[-1], HOGEHOGE>
+<End>
+
+
+% 変数のパラメータエラー
+<If: Variables[1], >
+<End>
+<If: Variables[1], HOGEHOGE>
+<End>
+<If: Variables[-1], HOGEHOGE>
+<End>
+
+% セルフスイッチのパラメータエラー
+<If: SelfSwitches["A"], >
+<End>
+<If: SelfSwitches["A"], hoge, goro>
+<End>
+<If: SelfSwitches["E"], >
+<End>
+
+% タイマーのパラメータエラー
+<If: Timer, >
+<End>
+<If: Timer, hoge>
+<End>
+<If: Timer, , ,>
+<End>
+
+% アクターのパラメータエラー
+<If: Actors[1], >
+<End>
+<If: Actors[1], lflejl>
+<End>
+<If: Actors[-1], lflejl>
+<End>
+
+
+% エネミーのパラメータエラー
+<If: Enemies[1], >
+<End>
+<If: Enemies[1], hoge>
+<End>
+<If: Enemies[-1], hoge, goro>
+<End>
+
+% キャラクターのパラメータエラー
+%% 最初の２つはキャラクターIDが1と入る。最後の一つは-1が入る
+<If: Characters[1], >
+<End>
+<If: Characters[1], hogehogehoge>
+<End>
+<If: Characters[-2],>
+<End>
+
+% 乗り物のパラメータエラー
+<If: Vehicle, >
+<End>
+<If: Vehicle, ,hoge,>
+<End>
+<If: Vehicle, ,,,,,,,,,>
+<End>
+
+
+% お金のパラメータエラー
+<If: Gold, >
+<End>
+<If: Gold, ,hoge,>
+<End>
+<If: Gold, ,,,,,,,,,>
+<End>
+
+% アイテムのパラメータエラー(引数1に値があると装備品も含まれる)
+<If: Items[1],>
+<End>
+<If: Items[1],,,,,>
+<End>
+<If: Items[1],,hogehoge,,,,,,>
+<End>
+
+% 武器のパラメータエラー(引数1に値があると装備品も含まれる)
+<If: Weapons[1],>
+<End>
+<If: Weapons[1],,,,,>
+<End>
+<If: Weapons[1],,hogehoge,,,,,,>
+<End>
+
+% 防具のパラメータエラー(引数1に値があると装備品も含まれる)
+<If: Armors[1],>
+<End>
+<If: Armors[1],,,,,>
+<End>
+<If: Armors[1],,hogehoge,,,,,,>
+<End>
+
+% ボタンのパラメータエラー
+<If: Button,>
+<End>
+<If: Button, NG,,,,>
+<End>
+<If: Button,,,,,>
+<End>
+
+% Scriptのパラメータエラー
+<If: Script,>
+<End>
+<If: Script,,,>
+<End>
+<If: Script,,,,,>
+<End>

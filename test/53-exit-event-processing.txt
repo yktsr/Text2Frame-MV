@@ -1,0 +1,3 @@
+<ExitEventProcessing>
+<イベント処理の中断>
+<EEP>

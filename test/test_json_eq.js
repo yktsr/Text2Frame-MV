@@ -47,7 +47,28 @@ describe('Text2Frame Test', function() {
     {title: "Move Picture", infile: "./test/57-move-picture.txt", mapfile: "./data/Map001.json", expfile: "./test/57-expected_move-picture.json"},
     {title: "Rotate Picture", infile: "./test/58-rotate-picture.txt", mapfile: "./data/Map001.json", expfile: "./test/58-expected_rotate_picture.json"},
     {title: "Tint Picture", infile: "./test/59-tint-picture.txt", mapfile: "./data/Map001.json", expfile: "./test/59-expected_tint-picture.json"},
-    {title: "Erase Picture", infile: "./test/60-erase-picture.txt", mapfile: "./data/Map001.json", expfile: "./test/60-expected_erase-picture.json"}
+    {title: "Erase Picture", infile: "./test/60-erase-picture.txt", mapfile: "./data/Map001.json", expfile: "./test/60-expected_erase-picture.json"}, 
+    {title: "Conditional Branch/if-else", infile: "./test/50-if-else/if-else.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_if-else.json"},
+    {title: "Conditional Branch/Switch", infile: "./test/50-if-else/switch.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_switch.json"},
+    {title: "Conditional Branch/SelfSwitch", infile: "./test/50-if-else/self-switch.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_self-switch.json"},
+    {title: "Conditional Branch/Variable", infile: "./test/50-if-else/variable.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_variable.json"},
+    {title: "Conditional Branch/Timer", infile: "./test/50-if-else/timer.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_timer.json"},
+    {title: "Conditional Branch/Actor", infile: "./test/50-if-else/actor.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_actor.json"},
+    {title: "Conditional Branch/Enemy", infile: "./test/50-if-else/enemy.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_enemy.json"},
+    {title: "Conditional Branch/Character", infile: "./test/50-if-else/character.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_character.json"},
+    {title: "Conditional Branch/Vehicle", infile: "./test/50-if-else/vehicle.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_vehicle.json"},
+    {title: "Conditional Branch/Gold", infile: "./test/50-if-else/gold.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_gold.json"},
+    {title: "Conditional Branch/Item", infile: "./test/50-if-else/item.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_item.json"},
+    {title: "Conditional Branch/Weapon", infile: "./test/50-if-else/weapon.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_weapon.json"},
+    {title: "Conditional Branch/Armor", infile: "./test/50-if-else/armor.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_armor.json"},
+    {title: "Conditional Branch/Button", infile: "./test/50-if-else/button.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_button.json"},
+    {title: "Conditional Branch/Script", infile: "./test/50-if-else/script.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_script.json"},
+    {title: "Conditional Branch/Error", infile: "./test/50-if-else/error.txt", mapfile: "./data/Map001.json", expfile: "./test/50-if-else/expected_error.json"},
+    {title: "Loop", infile: "./test/51-loop.txt", mapfile: "./data/Map001.json", expfile: "./test/51-expected_loop.json"},
+    {title: "Break Loop", infile: "./test/52-break-loop.txt", mapfile: "./data/Map001.json", expfile: "./test/52-expected_break-loop.json"},
+    {title: "Exit Event Processing", infile: "./test/53-exit-event-processing.txt", mapfile: "./data/Map001.json", expfile: "./test/53-expected_exit-event-processing.json"},
+    {title: "Label", infile: "./test/54-label.txt", mapfile: "./data/Map001.json", expfile: "./test/54-expected_label.json"},
+    {title: "Jump to Label", infile: "./test/55-jump-to-label.txt", mapfile: "./data/Map001.json", expfile: "./test/55-expected_jump-to-label.json"}
   ];
 
   const consoleStub = sinon.stub(console, 'log');
