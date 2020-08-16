@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.4.1 2020/08/16: 文法エラー時に行数を表示する機能を修正
 // 1.4.0 2020/08/14:
 // ・条件分岐タグ追加
 // ・ループタグ追加
@@ -3604,8 +3605,6 @@ if(typeof PluginManager === 'undefined'){
           }else{
             console.error(text);
             throw new Error('Syntax error. / 文法エラーです。'
-                            + 'Please check line ' + (i+1) + '. / '
-                            + (i+1) + '行目付近を確認してください / '
                             + text.replace(/</g, '  ').replace(/>/g, '  '));
           }
         }
@@ -3621,8 +3620,6 @@ if(typeof PluginManager === 'undefined'){
           }else{
             console.error(text);
             throw new Error('Syntax error. / 文法エラーです。'
-                            + 'Please check line ' + (i+1) + '. / '
-                            + (i+1) + '行目付近を確認してください / '
                             + text.replace(/</g, '  ').replace(/>/g, '  '));
           }
         }
@@ -3646,8 +3643,6 @@ if(typeof PluginManager === 'undefined'){
           }else{
             console.error(text);
             throw new Error('Syntax error. / 文法エラーです。'
-                            + 'Please check line ' + (i+1) + '. / '
-                            + (i+1) + '行目付近を確認してください / '
                             + text.replace(/</g, '  ').replace(/>/g, '  '));
           }
         }
@@ -3674,8 +3669,6 @@ if(typeof PluginManager === 'undefined'){
           }else{
             console.error(text);
             throw new Error('Syntax error. / 文法エラーです。'
-                            + 'Please check line ' + (i+1) + '. / '
-                            + (i+1) + '行目付近を確認してください / '
                             + text.replace(/</g, '  ').replace(/>/g, '  '));
           }
         }
@@ -3750,8 +3743,6 @@ if(typeof PluginManager === 'undefined'){
           }else{
             console.error(text);
             throw new Error('Syntax error. / 文法エラーです。'
-              + 'Please check line ' + (i+1) + '. / '
-              + (i+1) + '行目付近を確認してください / '
               + text.replace(/</g, '  ').replace(/>/g, '  '));
           }
         }
@@ -3766,8 +3757,6 @@ if(typeof PluginManager === 'undefined'){
           }catch(e){
             console.error(text);
             throw new Error('Syntax error. / 文法エラーです。'
-              + 'Please check line ' + (i+1) + '. / '
-              + (i+1) + '行目付近を確認してください / '
               + text.replace(/</g, '  ').replace(/>/g, '  '));
           }
           text = text.replace(background[0], '');
@@ -3783,8 +3772,6 @@ if(typeof PluginManager === 'undefined'){
           }catch(e){
             console.error(text);
             throw new Error('Syntax error. / 文法エラーです。'
-              + 'Please check line ' + (i+1) + '. / '
-              + (i+1) + '行目付近を確認してください / '
               + text.replace(/</g, '  ').replace(/>/g, '  '));
           }
           text = text.replace(window_position[0], '');
