@@ -106,13 +106,13 @@
  *
  * @param Default EventID
  * @text EventID
- * @desc Default setting os the eventID of the output destination. Default is "1". It means that it is taken in the event ID 1.
+ * @desc Default setting of the eventID of the output destination. Default is "1". It means that it is taken in the event ID 1.
  * @default 1
  * @type number
  *
  * @param Default PageID
  * @text PageID
- * @desc Default page ID of the output destination. Default is "1". It means that it is taken in the page ID 1.
+ * @desc page ID of the output destination. Default is "1". It means that it is taken in the page ID 1.
  * @default 1
  * @type number
  *
@@ -133,6 +133,85 @@
  * @desc Detail log is outputted to console log (F8). Default is false.
  * @default false
  * @type boolean 
+ *
+ *
+ * @command IMPORT_MESSAGE_TO_EVENT
+ * @text Import message to event
+ * @desc Import a message to the event. Specify the source file information and the map, event, page ID, etc. to be imported.
+ *
+ * @arg FileFolder
+ * @text Scenario Folder Name
+ * @desc Setting of the folder name which the text file is stored. Default is "text".
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text Scenario File Name
+ * @desc setting of text file name. Default is "message.txt". 
+ * @type string
+ * @default message.txt
+ *
+ * @arg MapID
+ * @text MapID
+ * @desc Map ID of the output destination. Default is "1". It means that it is taken in the map ID 1.
+ * @type number
+ * @default 1
+ *
+ * @arg EventID
+ * @text EventID
+ * @desc setting of the eventID of the output destination. Default is "1". It means that it is taken in the event ID 1.
+ * @type number
+ * @default 1
+ *
+ * @arg PageID
+ * @text PageID
+ * @desc page ID of the output destination. Default is "1". It means that it is taken in the page ID 1.
+ * @type number
+ * @default 1
+ *
+ * @arg IsOverwrite
+ * @text !!!Is overwrite!!!
+ * @desc text is added to the end of event, this param can change it to overwrite. Default is false.
+ * @default false
+ * @type select
+ * @option true(!!!overwrite!!!)
+ * @value true
+ * @option false(don't overwrite)
+ * @value false
+ * @default false
+ *
+ * @command IMPORT_MESSAGE_TO_CE
+ * @text Import message to a common event.
+ * @desc Import a message to a common event. Specify the source file information, the common event ID of the destination, etc.
+ *
+ * @arg FileFolder
+ * @text Scenario Folder Name
+ * @desc Setting of the folder name which the text file is stored. Default is "text".
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text Scenario File Name
+ * @desc setting of text file name. Default is "message.txt". 
+ * @type string
+ * @default message.txt
+ *
+ * @arg CommonEventID
+ * @text Common Event ID
+ * @desc setting of the common event ID of the output destination. Default is "1". It means that it is taken in the common event 1.
+ * @type common_event
+ * @default 1
+ *
+ * @arg IsOverwrite
+ * @text !!!Is overwrite!!!
+ * @desc text is added to the end of event, this param can change it to overwrite. Default is false.
+ * @default false
+ * @type select
+ * @option true(!!!overwrite!!!)
+ * @value true
+ * @option false(don't overwrite)
+ * @value false
+ * @default false
  *
  * @help
  * Update Soon.
