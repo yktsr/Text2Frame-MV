@@ -105,8 +105,14 @@
  *
  * @param Default EventID
  * @text EventID
- * @desc Default setting os the eventID of the output destination. Default is "2". It means that it is taken in the event ID 2.
- * @default 2
+ * @desc Default setting os the eventID of the output destination. Default is "1". It means that it is taken in the event ID 1.
+ * @default 1
+ * @type number
+ *
+ * @param Default PageID
+ * @text PageID
+ * @desc Default page ID of the output destination. Default is "1". It means that it is taken in the page ID 1.
+ * @default 1
  * @type number
  *
  * @param IsOverwrite
@@ -185,8 +191,14 @@
  *
  * @param Default EventID
  * @text 取り込み先イベントID
- * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。
- * @default 2
+ * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は1です。
+ * @default 1
+ * @type number
+ *
+ * @param Default PageID
+ * @text 取り込み先イベント内のページID
+ * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。
+ * @default 1
  * @type number
  *
  * @param IsOverwrite
@@ -1709,6 +1721,7 @@ if(typeof PluginManager === 'undefined'){
     Laurus.Text2Frame.CommonEventID  = "1";
     Laurus.Text2Frame.MapID          = "1";
     Laurus.Text2Frame.EventID        = "1";
+    Laurus.Text2Frame.PageID         = "1";
     Laurus.Text2Frame.IsOverwrite    = true;
     Laurus.Text2Frame.CommentOutChar = "%";
     Laurus.Text2Frame.IsDebug        = true;
@@ -1722,6 +1735,7 @@ if(typeof PluginManager === 'undefined'){
     Laurus.Text2Frame.CommonEventID  = String(Laurus.Text2Frame.Parameters["Default Common Event ID"]);
     Laurus.Text2Frame.MapID          = String(Laurus.Text2Frame.Parameters["Default MapID"]);
     Laurus.Text2Frame.EventID        = String(Laurus.Text2Frame.Parameters["Default EventID"]);
+    Laurus.Text2Frame.PageID         = String(Laurus.Text2Frame.Parameters["Default PageID"]);
     Laurus.Text2Frame.IsOverwrite    = (String(Laurus.Text2Frame.Parameters["IsOverwrite"]) == 'true') ? true : false;
     Laurus.Text2Frame.CommentOutChar = String(Laurus.Text2Frame.Parameters["Comment Out Char"]);
     Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug"]) == 'true') ? true : false;
@@ -1745,14 +1759,15 @@ if(typeof PluginManager === 'undefined'){
       // for custom plugin command
       case 'IMPORT_MESSAGE_TO_EVENT' :
       case 'メッセージをイベントにインポート' :
-        if(args.length == 5){
+        if(args.length == 6){
           $gameMessage.add('import message to event. \n/ メッセージをイベントにインポートします。');
           Laurus.Text2Frame.ExecMode        = 'IMPORT_MESSAGE_TO_EVENT';
           Laurus.Text2Frame.FileFolder      = args[0];
           Laurus.Text2Frame.FileName        = args[1];
           Laurus.Text2Frame.MapID           = args[2];
           Laurus.Text2Frame.EventID         = args[3];
-          Laurus.Text2Frame.IsOverwrite     = (args[4] == 'true') ? true : false;
+          Laurus.Text2Frame.PageID          = args[4];
+          Laurus.Text2Frame.IsOverwrite     = (args[5] == 'true') ? true : false;
           Laurus.Text2Frame.TextPath        = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
           Laurus.Text2Frame.MapPath         = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
         }
@@ -3805,16 +3820,56 @@ if(typeof PluginManager === 'undefined'){
             + "Event ID: " + Laurus.Text2Frame.EventID);
         }
 
-        let map_events = map_data.events[Laurus.Text2Frame.EventID].pages[0].list;
+        let pageID = Number(Laurus.Text2Frame.PageID) - 1;
+        while (! map_data.events[Laurus.Text2Frame.EventID].pages[pageID]){
+          map_data.events[Laurus.Text2Frame.EventID].pages.push({
+              "conditions":{
+                "actorId":1,
+                "actorValid":false,
+                "itemId":1,
+                "itemValid":false,
+                "selfSwitchCh":"A",
+                "selfSwitchValid":false,
+                "switch1Id":1,
+                "switch1Valid":false,
+                "switch2Id":1,
+                "switch2Valid":false,
+                "variableId":1,
+                "variableValid":false,
+                "variableValue":0
+              },
+              "directionFix":false,
+              "image": {"characterIndex":0,"characterName":"","direction":2,"pattern":0,"tileId":0},
+              "list":[
+                {"code":0,"indent":0,"parameters":[]}
+              ],
+              "moveFrequency":3,
+              "moveRoute": {
+                "list":[{"code":0,"parameters":[]}],
+                "repeat":true,"skippable":false,"wait":false
+              },
+              "moveSpeed":3,
+              "moveType":0,
+              "priorityType":0,
+              "stepAnime":false,
+              "through":false,
+              "trigger":0,
+              "walkAnime":true
+            });
+        }
+
+        let map_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list;
         if(Laurus.Text2Frame.IsOverwrite){
           map_events = [];
         }
         map_events.pop();
         map_events = map_events.concat(event_command_list);
-        map_data.events[Laurus.Text2Frame.EventID].pages[0].list = map_events;
+        map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list = map_events;
         writeData(Laurus.Text2Frame.MapPath, map_data);
         $gameMessage.add('Success / 書き出し成功！\n' 
-          + "======> MapID: " + Laurus.Text2Frame.MapID + " -> EventID: " + Laurus.Text2Frame.EventID);
+                         + "======> MapID: " + Laurus.Text2Frame.MapID
+                         + " -> EventID: " + Laurus.Text2Frame.EventID
+                         + " -> PageID: " + Laurus.Text2Frame.PageID);
         break;
       }
       case 'IMPORT_MESSAGE_TO_CE' :

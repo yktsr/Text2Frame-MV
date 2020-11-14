@@ -93,9 +93,10 @@ describe('Text2Frame Test', function() {
         const file_name   = '';
         const map_id      = '1';
         const event_id    = '1';
+        const page_id     = '1';
         const overwrite   = true;
         Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-          [folder_name, file_name, map_id, event_id, overwrite]);
+          [folder_name, file_name, map_id, event_id, page_id, overwrite]);
 
         const expected_json = JSON.parse(expected_data);
         const actual_json = JSON.parse(result_data);
