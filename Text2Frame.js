@@ -3782,7 +3782,6 @@ if(typeof PluginManager === 'undefined'){
         }
         if(timer_stop){
           let operand1 = timer_stop[1] || timer_stop[2];
-          console.log(timer_stop, operand1)
           event_command_list.push(getControlTimer(operand1, 0));
           continue;
         }
