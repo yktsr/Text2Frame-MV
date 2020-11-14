@@ -54,6 +54,7 @@
 
 
 /*:
+ *: @target MZ
  * @plugindesc Simple compiler to convert text to event command.
  * @author Yuki Katsura, えーしゅん(仕様・ヘルプ文章)
  *
@@ -196,7 +197,7 @@
  * @type number
  *
  * @param Default PageID
- * @text 取り込み先イベント内のページID
+ * @text 取り込み先ページID
  * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。
  * @default 1
  * @type number
@@ -218,6 +219,82 @@
  * @desc F8のコンソールログにこのプラグインの詳細ログが出力されます。デフォルト値はfalseです。処理時間が伸びます。
  * @default false
  * @type boolean
+ *
+ * @command IMPORT_MESSAGE_TO_EVENT
+ * @text イベントにインポート
+ * @desc イベントにメッセージをインポートします。取り込み元ファイルの情報や、取り込み先のマップ・イベント・ページID等を指定します。
+ *
+ * @arg FileFolder
+ * @text 取り込み元フォルダ名
+ * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text 取り込み元ファイル名
+ * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @type string
+ * @default message.txt
+ *
+ * @arg MapID
+ * @text 取り込み先マップID
+ * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。
+ * @type number
+ * @default 1
+ *
+ * @arg EventID
+ * @text 取り込み先イベントID
+ * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は1です。
+ * @type number
+ * @default 1
+ *
+ * @arg PageID
+ * @text 取り込み先ページID
+ * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。
+ * @type number
+ * @default 1
+ *
+ * @arg IsOverwrite
+ * @text 【取り扱い注意】上書きする
+ * @desc 通常イベントの末尾に追加しますが、上書きに変更できます。trueのとき上書きです。デフォルト値はfalseです。
+ * @type select
+ * @option true(!!!上書きする!!!)
+ * @value true
+ * @option false(上書きしない)
+ * @value false
+ * @default false
+ *
+ * @command IMPORT_MESSAGE_TO_CE
+ * @text コモンイベントにインポート
+ * @desc コモンイベントにメッセージをインポートします。取り込み元ファイルの情報や、取り込み先のコモンイベントID等を指定します。
+ *
+ * @arg FileFolder
+ * @text 取り込み元フォルダ名
+ * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text 取り込み元ファイル名
+ * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @type string
+ * @default message.txt
+ *
+ * @arg CommonEventID
+ * @text 取り込み先コモンイベントID
+ * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。
+ * @type common_event
+ * @default 1
+ *
+ * @arg IsOverwrite
+ * @text 【取り扱い注意】上書きする
+ * @desc 通常イベントの末尾に追加しますが、上書きに変更できます。trueのとき上書きです。デフォルト値はfalseです。
+ * @type select
+ * @option true(!!!上書きする!!!)
+ * @value true
+ * @option false(上書きしない)
+ * @value false
+ * @default false
  *
  * @help
  * 本プラグインはテキストファイル(.txtファイルなど)から「文章の表示」イベント
@@ -1747,6 +1824,29 @@ if(typeof PluginManager === 'undefined'){
   //=============================================================================
   // Game_Interpreter
   //=============================================================================
+
+  // for MZ plugin command
+  if(PluginManager.registerCommand){
+    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_EVENT', function(args) {
+      let file_folder = args.FileFolder;
+      let file_name = args.FileName;
+      let map_id = args.MapID;
+      let event_id = args.EventID;
+      let page_id = args.PageID;
+      let is_overwrite = args.IsOverwrite;
+      this.pluginCommand('IMPORT_MESSAGE_TO_EVENT',
+                         [file_folder, file_name, map_id, event_id, page_id, is_overwrite]);
+    });
+    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_CE', function(args) {
+      let file_folder = args.FileFolder;
+      let file_name = args.FileName;
+      let common_event_id = args.CommonEventID;
+      let is_overwrite = args.IsOverwrite;
+      this.pluginCommand('IMPORT_MESSAGE_TO_CE',
+                         [file_folder, file_name, common_event_id, is_overwrite]);
+    });
+  }
+
   const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
   Game_Interpreter.prototype.pluginCommand = function(command, args) {
     _Game_Interpreter_pluginCommand.apply(this, arguments);
