@@ -1938,17 +1938,23 @@ if(typeof PluginManager === 'undefined'){
       // for custom plugin command
       case 'IMPORT_MESSAGE_TO_EVENT' :
       case 'メッセージをイベントにインポート' :
-        if(args.length == 6){
-          $gameMessage.add('import message to event. \n/ メッセージをイベントにインポートします。');
-          Laurus.Text2Frame.ExecMode        = 'IMPORT_MESSAGE_TO_EVENT';
-          Laurus.Text2Frame.FileFolder      = args[0];
-          Laurus.Text2Frame.FileName        = args[1];
-          Laurus.Text2Frame.MapID           = args[2];
-          Laurus.Text2Frame.EventID         = args[3];
-          Laurus.Text2Frame.PageID          = args[4];
-          Laurus.Text2Frame.IsOverwrite     = (args[5] == 'true') ? true : false;
-          Laurus.Text2Frame.TextPath        = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
-          Laurus.Text2Frame.MapPath         = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
+        $gameMessage.add('import message to event. \n/ メッセージをイベントにインポートします。');
+        if(args[0]) Laurus.Text2Frame.FileFolder = args[0];
+        if(args[1]) Laurus.Text2Frame.FileName = args[1];
+        if(args[2]) Laurus.Text2Frame.MapID = args[2];
+        if(args[3]) Laurus.Text2Frame.EventID = args[3];
+        if(args[4] && (args[4].toLowerCase() === 'true' || args[4].toLowerCase() === 'false')) {
+          Laurus.Text2Frame.IsOverwrite = args[4].toLowerCase() === 'true' ? true : false;
+          $gameMessage.add('\n\n【警告】5番目の引数に上書き判定を設定することは非推奨に');
+          $gameMessage.add('なりました。ページIDを設定してください。上書き判定は6番');
+          $gameMessage.add('目に設定してください。');
+        } else if(args[4]) {
+          Laurus.Text2Frame.PageID = args[4];
+        }
+        if(args[5] && args[5].toLowerCase() === 'true') Laurus.Text2Frame.IsOverwrite = true;
+        if(args[0] || args[1]) {
+          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
+          Laurus.Text2Frame.MapPath  = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
         }
         break;
       case 'IMPORT_MESSAGE_TO_CE' :
