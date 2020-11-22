@@ -58,83 +58,6 @@
  * @plugindesc Simple compiler to convert text to event command.
  * @author Yuki Katsura, えーしゅん(仕様・ヘルプ文章)
  *
- * @param Default Window Position
- * @text Window Position
- * @desc Default setting of window position. Default is "Bottom". Command line mode can overwrite this option.
- * @type select
- * @option Top
- * @option Middle
- * @option Bottom
- * @default Bottom
- *
- * @param Default Background
- * @text Background
- * @desc Default setting of background. Default is "Window". Command line mode can overweite this option.
- * @type select
- * @option Window
- * @option Dim
- * @option Transparent
- * @default Window
- *
- * @param Default Scenario Folder
- * @text Scenario Folder Name
- * @desc Default setting of the folder name which the text file is stored. Default is "text".
- * @default text
- * @require 1
- * @dir text
- * @type string
- *
- * @param Default Scenario File
- * @text Scenario File Name
- * @desc Default setting of text file name. Default is "message.txt". 
- * @default message.txt
- * @require 1
- * @dir text
- * @type string
- *
- * @param Default Common Event ID
- * @text Common Event ID
- * @desc Default setting of the common event ID of the output destination. Default is "1". It means that it is taken in the common event 1.
- * @default 1
- * @type common_event
- *
- * @param Default MapID
- * @text MapID
- * @desc Default setting of the map ID of the output destination. Default is "1". It means that it is taken in the map ID 1.
- * @default 1
- * @type number
- *
- * @param Default EventID
- * @text EventID
- * @desc Default setting of the eventID of the output destination. Default is "1". It means that it is taken in the event ID 1.
- * @default 1
- * @type number
- *
- * @param Default PageID
- * @text PageID
- * @desc page ID of the output destination. Default is "1". It means that it is taken in the page ID 1.
- * @default 1
- * @type number
- *
- * @param IsOverwrite
- * @text IsOverwrite
- * @desc In the default case, text is added to the end of event, this param can change it to overwrite. Default is false.
- * @default false
- * @type boolean 
- * 
- * @param Comment Out Char
- * @text Comment Out Char
- * @desc If this charactor is placed at the beginning of a line, this line is not taken. Default is %.
- * @default %
- * @type string
- *
- * @param IsDebug
- * @text IsDebug
- * @desc Detail log is outputted to console log (F8). Default is false.
- * @default false
- * @type boolean 
- *
- *
  * @command IMPORT_MESSAGE_TO_EVENT
  * @text Import message to event
  * @desc Import a message to the event. Specify the source file information and the map, event, page ID, etc. to be imported.
@@ -213,6 +136,83 @@
  * @value false
  * @default false
  *
+ * @param Default Window Position
+ * @text Window Position
+ * @desc Default setting of window position. Default is "Bottom". Command line mode can overwrite this option.
+ * @type select
+ * @option Top
+ * @option Middle
+ * @option Bottom
+ * @default Bottom
+ *
+ * @param Default Background
+ * @text Background
+ * @desc Default setting of background. Default is "Window". Command line mode can overweite this option.
+ * @type select
+ * @option Window
+ * @option Dim
+ * @option Transparent
+ * @default Window
+ *
+ * @param Default Scenario Folder
+ * @text Scenario Folder Name
+ * @desc Default setting of the folder name which the text file is stored. Default is "text".
+ * @default text
+ * @require 1
+ * @dir text
+ * @type string
+ *
+ * @param Default Scenario File
+ * @text Scenario File Name
+ * @desc Default setting of text file name. Default is "message.txt". 
+ * @default message.txt
+ * @require 1
+ * @dir text
+ * @type string
+ *
+ * @param Default Common Event ID
+ * @text Common Event ID
+ * @desc Default setting of the common event ID of the output destination. Default is "1". It means that it is taken in the common event 1.
+ * @default 1
+ * @type common_event
+ *
+ * @param Default MapID
+ * @text MapID
+ * @desc Default setting of the map ID of the output destination. Default is "1". It means that it is taken in the map ID 1.
+ * @default 1
+ * @type number
+ *
+ * @param Default EventID
+ * @text EventID
+ * @desc Default setting of the eventID of the output destination. Default is "1". It means that it is taken in the event ID 1.
+ * @default 1
+ * @type number
+ *
+ * @param Default PageID
+ * @text PageID
+ * @desc page ID of the output destination. Default is "1". It means that it is taken in the page ID 1.
+ * @default 1
+ * @type number
+ *
+ * @param IsOverwrite
+ * @text IsOverwrite
+ * @desc In the default case, text is added to the end of event, this param can change it to overwrite. Default is false.
+ * @default false
+ * @type boolean 
+ * 
+ * @param Comment Out Char
+ * @text Comment Out Char
+ * @desc If this charactor is placed at the beginning of a line, this line is not taken. Default is %.
+ * @default %
+ * @type string
+ *
+ * @param IsDebug
+ * @text IsDebug
+ * @desc Detail log is outputted to console log (F8). Default is false.
+ * @default false
+ * @type boolean 
+ *
+ *
  * @help
  * Update Soon.
  * Please see wiki.
@@ -222,82 +222,6 @@
  /*:ja
  * @plugindesc テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、開発支援プラグインです。
  * @author Yuki Katsura, えーしゅん(仕様・ヘルプ文章)
- *
- * @param Default Window Position
- * @text 位置のデフォルト値
- * @desc テキストフレームの表示位置デフォルト値を設定します。デフォルトは下です。個別に指定した場合は上書きされます。
- * @type select
- * @option 上
- * @option 中
- * @option 下
- * @default 下
- *
- * @param Default Background
- * @text 背景のデフォルト値
- * @desc テキストフレームの背景デフォルト値を設定します。デフォルトはウインドウです。個別に指定した場合は上書きされます。
- * @type select
- * @option ウインドウ
- * @option 暗くする
- * @option 透明
- * @default ウインドウ
- *
- * @param Default Scenario Folder
- * @text 取り込み元フォルダ名
- * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
- * @default text
- * @require 1
- * @dir text
- * @type string
- *
- * @param Default Scenario File
- * @text 取り込み元ファイル名
- * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
- * @default message.txt
- * @require 1
- * @dir text
- * @type string
- *
- * @param Default Common Event ID
- * @text 取り込み先コモンイベントID
- * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。
- * @default 1
- * @type common_event
- *
- * @param Default MapID
- * @text 取り込み先マップID
- * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。
- * @default 1
- * @type number
- *
- * @param Default EventID
- * @text 取り込み先イベントID
- * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は1です。
- * @default 1
- * @type number
- *
- * @param Default PageID
- * @text 取り込み先ページID
- * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。
- * @default 1
- * @type number
- *
- * @param IsOverwrite
- * @text 【取り扱い注意】上書きする
- * @desc 通常イベントの末尾に追加しますが、上書きに変更できます。trueのとき上書きです。デフォルト値はfalseです。
- * @default false
- * @type boolean
- *
- * @param Comment Out Char
- * @text コメントアウト記号
- * @desc 行頭に置いた場合、その行をコメントとして処理する記号を定義します。デフォルト値は「％」（半角パーセント）です。
- * @default %
- * @type string
- *
- * @param IsDebug
- * @text デバッグモードを利用する
- * @desc F8のコンソールログにこのプラグインの詳細ログが出力されます。デフォルト値はfalseです。処理時間が伸びます。
- * @default false
- * @type boolean
  *
  * @command IMPORT_MESSAGE_TO_EVENT
  * @text イベントにインポート
@@ -374,6 +298,82 @@
  * @option false(上書きしない)
  * @value false
  * @default false
+ *
+ * @param Default Window Position
+ * @text 位置のデフォルト値
+ * @desc テキストフレームの表示位置デフォルト値を設定します。デフォルトは下です。個別に指定した場合は上書きされます。
+ * @type select
+ * @option 上
+ * @option 中
+ * @option 下
+ * @default 下
+ *
+ * @param Default Background
+ * @text 背景のデフォルト値
+ * @desc テキストフレームの背景デフォルト値を設定します。デフォルトはウインドウです。個別に指定した場合は上書きされます。
+ * @type select
+ * @option ウインドウ
+ * @option 暗くする
+ * @option 透明
+ * @default ウインドウ
+ *
+ * @param Default Scenario Folder
+ * @text 取り込み元フォルダ名
+ * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @default text
+ * @require 1
+ * @dir text
+ * @type string
+ *
+ * @param Default Scenario File
+ * @text 取り込み元ファイル名
+ * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @default message.txt
+ * @require 1
+ * @dir text
+ * @type string
+ *
+ * @param Default Common Event ID
+ * @text 取り込み先コモンイベントID
+ * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。
+ * @default 1
+ * @type common_event
+ *
+ * @param Default MapID
+ * @text 取り込み先マップID
+ * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。
+ * @default 1
+ * @type number
+ *
+ * @param Default EventID
+ * @text 取り込み先イベントID
+ * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は1です。
+ * @default 1
+ * @type number
+ *
+ * @param Default PageID
+ * @text 取り込み先ページID
+ * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。
+ * @default 1
+ * @type number
+ *
+ * @param IsOverwrite
+ * @text 【取り扱い注意】上書きする
+ * @desc 通常イベントの末尾に追加しますが、上書きに変更できます。trueのとき上書きです。デフォルト値はfalseです。
+ * @default false
+ * @type boolean
+ *
+ * @param Comment Out Char
+ * @text コメントアウト記号
+ * @desc 行頭に置いた場合、その行をコメントとして処理する記号を定義します。デフォルト値は「％」（半角パーセント）です。
+ * @default %
+ * @type string
+ *
+ * @param IsDebug
+ * @text デバッグモードを利用する
+ * @desc F8のコンソールログにこのプラグインの詳細ログが出力されます。デフォルト値はfalseです。処理時間が伸びます。
+ * @default false
+ * @type boolean
  *
  * @help
  * 本プラグインはテキストファイル(.txtファイルなど)から「文章の表示」イベント
