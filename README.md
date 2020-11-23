@@ -159,19 +159,19 @@ $ npm run debug
        Text2Frame - Simple compiler to convert text to event command.
     SYNOPSIS
         node Text2Frame.js
-        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
         node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
         node Text2Frame.js --verbose --mode test
     DESCRIPTION
         node Text2Frame.js
           テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
-        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
           マップへのイベント出力モードです。
           読み込むファイル、出力マップ、上書きの有無を引数で指定します。
           test/basic.txt を読み込み data/Map001.json に上書きするコマンド例は以下です。
 
-          例1：$ node Text2Frame.js --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --overwrite true
-          例2：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -w true
+          例1：$ node Text2Frame.js --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --page_id 1 --overwrite true
+          例2：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -p 1 -w true
 
         node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
           コモンイベントへのイベント出力モードです。

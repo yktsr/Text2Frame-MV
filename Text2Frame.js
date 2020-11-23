@@ -1970,7 +1970,7 @@ if(typeof PluginManager === 'undefined'){
   //=============================================================================
 
   // for MZ plugin command
-  if(PluginManager.registerCommand){
+  if(typeof PluginManager != 'undefined' && PluginManager.registerCommand){
     PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_EVENT', function(args) {
       let file_folder = args.FileFolder;
       let file_name = args.FileName;
@@ -4162,6 +4162,7 @@ if(typeof require.main !== 'undefined' && require.main === module) {
     .option('-t, --text_path <name>', 'text file path')
     .option('-o, --output_path <name>', 'output file path')
     .option('-e, --event_id <name>', 'event file id')
+    .option('-p, --page_id <name>', 'page id')
     .option('-c, --common_event_id <name>', 'common event id')
     .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
     .option('-v, --verbose', 'debug mode', false)
@@ -4174,6 +4175,7 @@ if(typeof require.main !== 'undefined' && require.main === module) {
   if (program.mode === 'map'){
     Laurus.Text2Frame.MapPath  = program.output_path;
     Laurus.Text2Frame.EventID  = program.event_id;
+    Laurus.Text2Frame.PageID   = program.page_id ? program.page_id : '1';
     Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', ['IMPORT_MESSAGE_TO_EVENT']);
   }else if (program.mode === 'common'){
     Laurus.Text2Frame.CommonEventPath = program.output_path;
@@ -4184,9 +4186,10 @@ if(typeof require.main !== 'undefined' && require.main === module) {
     const file_name   = 'basic.txt';
     const map_id      = '1';
     const event_id    = '1';
+    const page_id     = '1';
     const overwrite   = 'true';
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-      [folder_name, file_name, map_id, event_id, overwrite]);
+      [folder_name, file_name, map_id, event_id, page_id, overwrite]);
   }else{
     console.log('===== Manual =====');
     console.log(`
@@ -4194,19 +4197,19 @@ if(typeof require.main !== 'undefined' && require.main === module) {
        Text2Frame - Simple compiler to convert text to event command.
     SYNOPSIS
         node Text2Frame.js
-        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
         node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
         node Text2Frame.js --verbose --mode test
     DESCRIPTION
         node Text2Frame.js
           テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
-        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
           マップへのイベント出力モードです。
           読み込むファイル、出力マップ、上書きの有無を引数で指定します。
           test/basic.txt を読み込み data/Map001.json に上書きするコマンド例は以下です。
 
-          例1：$ node Text2Frame.js --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --overwrite true
-          例2：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -w true
+          例1：$ node Text2Frame.js --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --page_id 1 --overwrite true
+          例2：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -p 1 -w true
 
         node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
           コモンイベントへのイベント出力モードです。
