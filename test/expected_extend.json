@@ -109,7 +109,7 @@
 	      "code": 655,
 	      "indent": 0,
 	      "parameters": [
-		"  console.log(\"今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑\");"
+		"  console.log(\"今日も一日がんばるぞい！\");"
 	      ]
 	    },
 	    {
@@ -137,7 +137,7 @@
 	      "code": 655,
 	      "indent": 0,
 	      "parameters": [
-		"  console.log(\"今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑\");"
+		"  console.log(\"今日も一日がんばるぞい！\");"
 	      ]
 	    },
 	    {
@@ -165,7 +165,7 @@
 	      "code": 655,
 	      "indent": 0,
 	      "parameters": [
-		"  console.log(\"今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑\");"
+		"  console.log(\"今日も一日がんばるぞい！\");"
 	      ]
 	    },
 	    {
