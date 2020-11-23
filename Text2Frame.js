@@ -2144,7 +2144,7 @@ if(typeof PluginManager === 'undefined'){
     const getPretextEvent = function(){
       return {"code": 101, "indent": 0, "parameters": ["", 0, 
               getBackground(Laurus.Text2Frame.Background), 
-              getWindowPosition(Laurus.Text2Frame.WindowPosition)]}
+              getWindowPosition(Laurus.Text2Frame.WindowPosition), ""]}
     };
 
     const getTextFrameEvent = function(text){
