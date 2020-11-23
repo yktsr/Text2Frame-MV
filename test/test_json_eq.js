@@ -68,7 +68,8 @@ describe('Text2Frame Test', function() {
     {title: "Break Loop", infile: "./test/52-break-loop.txt", mapfile: "./data/Map001.json", expfile: "./test/52-expected_break-loop.json"},
     {title: "Exit Event Processing", infile: "./test/53-exit-event-processing.txt", mapfile: "./data/Map001.json", expfile: "./test/53-expected_exit-event-processing.json"},
     {title: "Label", infile: "./test/54-label.txt", mapfile: "./data/Map001.json", expfile: "./test/54-expected_label.json"},
-    {title: "Jump to Label", infile: "./test/55-jump-to-label.txt", mapfile: "./data/Map001.json", expfile: "./test/55-expected_jump-to-label.json"}
+    {title: "Jump to Label", infile: "./test/55-jump-to-label.txt", mapfile: "./data/Map001.json", expfile: "./test/55-expected_jump-to-label.json"},
+    {title: "Name", infile: "./test/67-name.txt", mapfile: "./data/Map001.json", expfile: "./test/67-expected_name.json"}
   ];
 
   const consoleStub = sinon.stub(console, 'log');
