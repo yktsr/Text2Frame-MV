@@ -1,0 +1,30 @@
+% 一定速度を設定
+<MovePicture: 1, Easing[Constant speed]>
+<ピクチャの移動: 1, イージング[一定速度]>
+<MP: 1, Easing[Linear]>
+
+% ゆっくり始まる
+<MovePicture: 1, Easing[Slow start]>
+<ピクチャの移動: 1, イージング[ゆっくり始まる]>
+<MP: 1, Easing[Ease-in]>
+
+% ゆっくり終わる
+<MovePicture: 1, Easing[Slow end]>
+<ピクチャの移動: 1, イージング[ゆっくり終わる]>
+<MP: 1, Easing[Ease-out]>
+
+% ゆっくり始まってゆっくり終わる
+<MovePicture: 1, Easing[Slow start and end]>
+<ピクチャの移動: 1, イージング[ゆっくり始まってゆっくり終わる]>
+<MP: 1, Easing[Ease-in-out]>
+
+% 他のオプションとの混合
+% - ピクチャ番号: 3
+% - 時間: 55フレーム, 完了までウェイトしない
+% - 位置: 原点は中央で、X座標は変数2,Y座標は変数5
+% - 拡大率:幅60%, 高さ70%
+% - 合成: 不透明度は200, 合成方法は加算
+% - イージング: ゆっくり始まる
+<MovePicture: 3, Duration[55], Position[Center][Variables[2]][Variables[5]], Scale[60][70], Blend[200][additive], Easing[Slow start]>
+
+

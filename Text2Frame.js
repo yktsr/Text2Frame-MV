@@ -1607,6 +1607,35 @@
  *    時間を指定しなかった場合のデフォルト値は
  *    "Duration[60][Wait for Completion]"となります。
  *
+ *  ・イージング
+ *    イージングは以下の記法で指定します。
+ *    Easing[モード]
+ *      モードは以下の4つを選択できます。
+ *       - "Constant speed"
+ *       - "Slow start"
+ *       - "Slow end"
+ *       - "Slow start and end"
+ *
+ *   "Easing"は"イージング"でも代替できます。
+ *   モードは以下の対応関係で代替できます。
+ *     - "Constant speed": "一定速度", "Linear"
+ *     - "Slow start": "ゆっくり始まる", "Ease-in"
+ *     - "Slow end": "ゆっくり終わる", "Ease-out"
+ *     - "Slow start and end": "ゆっくり始まってゆっくり終わる", "Ease-in-out"
+ *
+ *    例えば、以下の通りです。
+ *    例1: 一定速度
+ *     - "Easing[Constant speed]"
+ *     - "イージング[一定速度]"
+ *     - "Easing[Linear]"
+ *    例2: ゆっくり始まってゆっくり終わる
+ *     - "Easing[Slow start and end]"
+ *     - "イージング[ゆっくり始まってゆっくり終わる]"
+ *     - "Easing[Ease-in-out]"
+ *
+ *    イージングを指定しなかった場合のデフォルト値は
+ *    "Easing[Constant speed]"となります。
+ *
  *
  * ○ (15) ピクチャの回転
  *  ピクチャの回転は以下の記法で指定します。
@@ -2724,7 +2753,8 @@ if(typeof PluginManager === 'undefined'){
         "width": 100, "height": 100, //%
         "opacity": 255, "blend_mode": 0, // 0:Normal, 1:Additive, 2:Multiply, 3:Screen
         "duration": 60, "wait": true,  // for a function that move a picture
-        "red": 0, "green": 0, "blue": 0, "gray": 0 // for a function that tints a picture.
+        "red": 0, "green": 0, "blue": 0, "gray": 0,  // for a function that tints a picture.
+        "easing": 0 // for MZ
       };
     };
 
@@ -2846,6 +2876,18 @@ if(typeof PluginManager === 'undefined'){
                 break;
               }
             }
+            break;
+          }
+        case "easing":
+        case "イージング": {
+          let easingMode = values[0].toLowerCase() || "inear";
+          out["easing"] = {
+            "constant speed": 0, "一定速度": 0, "linear": 0,
+            "slow start": 1, "ゆっくり始まる": 1, "ease-in": 1,
+            "slow end": 2, "ゆっくり終わる": 2, "ease-out": 2,
+            "slow start and end": 3, "ゆっくり始まってゆっくり終わる": 3,
+            "ease-in-out": 3}[easingMode];
+          break;
           }
         }
       }
@@ -2871,7 +2913,7 @@ if(typeof PluginManager === 'undefined'){
                              ps.origin, ps.variable,
                              ps.x, ps.y, ps.width, ps.height,
                              ps.opacity, ps.blend_mode,
-                             ps.duration, ps.wait]};
+                             ps.duration, ps.wait, ps.easing]};
     };
 
     const getRotatePicture = function(pic_no, speed) {
