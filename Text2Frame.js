@@ -1277,7 +1277,7 @@
  *
  *  * ボタンを条件に使うとき
  *   ボタンを条件に使うときは以下のように書きます。
- *    <If: Button, ボタンの種類>
+ *    <If: Button, ボタンの種類, 押され方(省略可能)>
  *
  *   "Button"は"ボタン"でも代替できます。
  *   以下のリストからボタンの種類を指定してください。
@@ -1291,16 +1291,30 @@
  *    - ページアップ: "Pageup", "ページアップ"
  *    - ページダウン: "Pagedown", "ページダウン"
  *
+ *   押され方は以下のリストから指定してください。
+ *    - が押されている:
+ *       "is being pressed", "が押されている", "pressed"
+ *    - がトリガーされている:
+ *       "is being triggered", "がトリガーされている", "triggered"
+ *    - がリピートされている:
+ *       "is being repeated", "がリピートされている", "repeated"
+ *
+ *    押され方は省略が可能です。その場合は`is being pressed`が設定されます。
+ *
  *    例えば以下の通りです。
  *     例1: 決定ボタンが押されているとき
+ *      - "<If: Button, OK, is being pressed>"
+ *      - "<If: ボタン, 決定, が押されている>"
  *      - "<If: Button, OK>"
- *      - "<If: ボタン, 決定>"
- *     例2: シフトボタンが押されているとき
- *      - "<If: Button, Shift>"
- *      - "<If: ボタン, シフト>"
- *     例3: 下ボタンが押されているとき
- *      - "<If: Button, Down>"
- *      - "<If: ボタン, 下>"
+ *      - "<If: Button, OK, pressed>"
+ *     例2: シフトボタンがトリガーされているとき
+ *      - "<If: Button, Shift, is being triggered>"
+ *      - "<If: ボタン, シフト, がトリガーされている>"
+ *      - "<If: Button, Shift, triggered>"
+ *     例3: 下ボタンがリピートされているとき
+ *      - "<If: Button, Down,  is being repeated>"
+ *      - "<If: ボタン, 下, がリピートされている>"
+ *      - "<If: Button, Down, repeated>"
  *
  *  * スクリプトを条件に使う時
  *   スクリプトを条件に使うときは以下のように書きます。
@@ -3094,7 +3108,12 @@ if(typeof PluginManager === 'undefined'){
         "pageup": "pageup", "ページアップ": "pageup",
         "pagedown": "pagedown", "ページダウン" : "pagedown"
       }[(params[0] || "").toLowerCase()] || "ok";
-      return [11, button];
+      let how = {
+        "is being pressed": 0, "が押されている": 0, "pressed": 0,
+        "is being triggered": 1, "がトリガーされている": 1, "triggered": 1,
+        "is being repeated": 2, "がリピートされている": 2, "repeated": 2
+      }[(params[1] || "").toLowerCase()] || 0;
+      return [11, button, how];
     };
 
     const getIfScriptParameters = function(params){
