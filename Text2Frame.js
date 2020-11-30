@@ -911,6 +911,41 @@
  *  並び順は整数で指定します。
  *  引数1の"party"は"パーティ"でも代替できます。
  *
+ * ・ 直前
+ *  GameData[Last][項目]
+ *
+ *  例: 直前に使用したスキルのIDを変数1に代入する。
+ *   <Set: 1, gamedata[Last][Last Used Skill ID]>
+ *
+ *  項目は以下のリストからご指定ください。
+ *   - 直前に使用したスキルのID:
+ *     - "Last Used Skill ID"
+ *     - "直前に使用したスキルのID"
+ *     - "Used Skill ID"
+ *   - 直前に使用したアイテムのID:
+ *     - "Last Used Item ID"
+ *     - "直前に使用したアイテムのID"
+ *     - "Used Item ID"
+ *   - 直前に行動したアクターのID:
+ *     - "Last Actor ID to Act"
+ *     - "直前に行動したアクターのID"
+ *     - "Actor ID to Act"
+ *   - 直前に行動した敵キャラのインデックス:
+ *     - "Last Enemy Index to Act"
+ *     - "直前に行動した敵キャラのインデックス"
+ *     - "Enemy Index to Act"
+ *   - 直前に対象となったアクターのID:
+ *     - "Last Target Actor ID"
+ *     - "直前に対象となったアクターのID"
+ *     - "Target Actor ID"
+ *   - 直前に対象となった敵キャラのインデックス:
+ *     - "Last Target Enemy Index"
+ *     - "直前に対象となった敵キャラのインデックス"
+ *     - "Target Enemy Index"
+ *
+ *  引数1の"Last"は"直前"でも代替できます。
+ *
+ *
  * ・その他
  *  その他では、引数1のみを使用します。以下のリストから指定してください。
  *   - パーティ人数: "PartyMembers", "パーティ人数"
