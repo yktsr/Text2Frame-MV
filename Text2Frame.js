@@ -2724,6 +2724,53 @@ if(typeof PluginManager === 'undefined'){
               }
               parameters.push(0);
               break;
+            case 'last':
+            case '直前':
+              parameters.push(8);
+              switch(operand_arg2.toLowerCase()){
+                case 'last used skill id':
+                case '直前に使用したスキルのid':
+                case 'used skill id':{
+                  parameters.push(0);
+                  break;
+                }
+                case 'last used item id':
+                case '直前に使用したアイテムのid':
+                case 'used item id':{
+                  parameters.push(1);
+                  break;
+                }
+                case 'last actor id to act':
+                case '直前に行動したアクターのid':
+                case 'actor id to act':{
+                  parameters.push(2);
+                  break;
+                }
+                case 'last enemy index to act':
+                case '直前に行動した敵キャラのインデックス':
+                case 'enemy index to act':{
+                  parameters.push(3);
+                  break;
+                }
+                case 'last target actor id':
+                case '直前に対象となったアクターのid':
+                case 'target actor id':{
+                  parameters.push(4);
+                  break;
+                }
+                case 'last target enemy index':
+                case '直前に対象となった敵キャラのインデックス':
+                case 'target enemy index':{
+                  parameters.push(5);
+                  break;
+                }
+                default:{
+                  parameters.push(0);
+                  break;
+                }
+              }
+              parameters.push(0);
+              break;
           }
           break;
         }
@@ -3876,6 +3923,15 @@ if(typeof PluginManager === 'undefined'){
                   if(args){
                     const arg1 = args[1];
                     return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), parseInt(arg1));
+                  }
+                  break;
+                }
+                case 'last':
+                case '直前':{
+                  const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex} ]+)\\]`, 'i'));
+                  if(args){
+                    const arg1 = args[1];
+                    return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), arg1);
                   }
                   break;
                 }
