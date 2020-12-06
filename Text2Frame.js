@@ -212,6 +212,17 @@
  * @default false
  * @type boolean 
  *
+ * @param DisplayMsg
+ * @text メッセージ表示
+ * @desc Display messages when execution.
+ * @default true
+ * @type boolean
+ *
+ * @param DisplayWarning
+ * @text 警告文表示
+ * @desc Display warnings when execution.
+ * @default true
+ * @type boolean
  *
  * @help
  * Update Soon.
@@ -373,6 +384,18 @@
  * @text デバッグモードを利用する
  * @desc F8のコンソールログにこのプラグインの詳細ログが出力されます。デフォルト値はfalseです。処理時間が伸びます。
  * @default false
+ * @type boolean
+ *
+ * @param DisplayMsg
+ * @text メッセージ表示
+ * @desc 実行時に通常メッセージを表示します。OFFで警告以外のメッセージが表示されなくなります。デフォルト値はtrueです。
+ * @default true
+ * @type boolean
+ *
+ * @param DisplayWarning
+ * @text 警告文表示
+ * @desc 実行時に警告を表示します。OFFで警告が表示されなくなります。デフォルト値はtrueです。
+ * @default true
  * @type boolean
  *
  * @help
@@ -2095,6 +2118,8 @@ if(typeof PluginManager === 'undefined'){
     Laurus.Text2Frame.IsOverwrite    = true;
     Laurus.Text2Frame.CommentOutChar = "%";
     Laurus.Text2Frame.IsDebug        = true;
+    Laurus.Text2Frame.DisplayMsg     = true;
+    Laurus.Text2Frame.DisplayWarning = true;
   }else{
     // for default plugin command
     Laurus.Text2Frame.Parameters = PluginManager.parameters('Text2Frame');
@@ -2109,10 +2134,24 @@ if(typeof PluginManager === 'undefined'){
     Laurus.Text2Frame.IsOverwrite    = (String(Laurus.Text2Frame.Parameters["IsOverwrite"]) == 'true') ? true : false;
     Laurus.Text2Frame.CommentOutChar = String(Laurus.Text2Frame.Parameters["Comment Out Char"]);
     Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug"]) == 'true') ? true : false;
+    Laurus.Text2Frame.DisplayMsg     = (String(Laurus.Text2Frame.Parameters["DisplayMsg"]) == 'true') ? true : false;
+    Laurus.Text2Frame.DisplayWarning = (String(Laurus.Text2Frame.Parameters["DisplayWarning"]) == 'true') ? true : false;
     Laurus.Text2Frame.TextPath        = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
     Laurus.Text2Frame.MapPath         = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
     Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`;
   }
+
+  const messageAdd = function(text){
+    if(Laurus.Text2Frame.DisplayMsg){
+      $gameMessage.add(text);
+    }
+  };
+
+  const warningAdd = function(warning){
+    if(Laurus.Text2Frame.DisplayWarning){
+      $gameMessage.add(warning);
+    }
+  };
 
   //=============================================================================
   // Game_Interpreter
@@ -2152,16 +2191,16 @@ if(typeof PluginManager === 'undefined'){
       // for custom plugin command
       case 'IMPORT_MESSAGE_TO_EVENT' :
       case 'メッセージをイベントにインポート' :
-        $gameMessage.add('import message to event. \n/ メッセージをイベントにインポートします。');
+        messageAdd('import message to event. \n/ メッセージをイベントにインポートします。');
         if(args[0]) Laurus.Text2Frame.FileFolder = args[0];
         if(args[1]) Laurus.Text2Frame.FileName = args[1];
         if(args[2]) Laurus.Text2Frame.MapID = args[2];
         if(args[3]) Laurus.Text2Frame.EventID = args[3];
         if(args[4] && (args[4].toLowerCase() === 'true' || args[4].toLowerCase() === 'false')) {
           Laurus.Text2Frame.IsOverwrite = args[4].toLowerCase() === 'true' ? true : false;
-          $gameMessage.add('\n\n【警告】5番目の引数に上書き判定を設定することは非推奨に');
-          $gameMessage.add('なりました。ページIDを設定してください。上書き判定は6番');
-          $gameMessage.add('目に設定してください。');
+          warningAdd('【警告】5番目の引数に上書き判定を設定することは非推奨に');
+          warningAdd('なりました。ページIDを設定してください。上書き判定は6番');
+          warningAdd('目に設定してください。(警告はオプションでOFFにできます)');
         } else if(args[4]) {
           Laurus.Text2Frame.PageID = args[4];
         }
@@ -2174,7 +2213,7 @@ if(typeof PluginManager === 'undefined'){
       case 'IMPORT_MESSAGE_TO_CE' :
       case 'メッセージをコモンイベントにインポート' :
         if(args.length == 4){
-          $gameMessage.add('import message to common event. \n/ メッセージをコモンイベントにインポートします。');
+          messageAdd('import message to common event. \n/ メッセージをコモンイベントにインポートします。');
           Laurus.Text2Frame.ExecMode        = 'IMPORT_MESSAGE_TO_CE';
           Laurus.Text2Frame.FileFolder      = args[0];
           Laurus.Text2Frame.FileName        = args[1];
@@ -4418,10 +4457,10 @@ if(typeof PluginManager === 'undefined'){
         map_events = map_events.concat(event_command_list);
         map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list = map_events;
         writeData(Laurus.Text2Frame.MapPath, map_data);
-        $gameMessage.add('Success / 書き出し成功！\n' 
-                         + "======> MapID: " + Laurus.Text2Frame.MapID
-                         + " -> EventID: " + Laurus.Text2Frame.EventID
-                         + " -> PageID: " + Laurus.Text2Frame.PageID);
+        messageAdd('Success / 書き出し成功！\n' 
+                   + "======> MapID: " + Laurus.Text2Frame.MapID
+                   + " -> EventID: " + Laurus.Text2Frame.EventID
+                   + " -> PageID: " + Laurus.Text2Frame.PageID);
         break;
       }
       case 'IMPORT_MESSAGE_TO_CE' :
@@ -4439,13 +4478,13 @@ if(typeof PluginManager === 'undefined'){
         ce_events.pop();
         ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list);
         writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
-        $gameMessage.add('Success / 書き出し成功！\n' 
+        messageAdd('Success / 書き出し成功！\n' 
           + "=====> Common EventID :" + Laurus.Text2Frame.CommonEventID);
         break;
       }
     }
-    $gameMessage.add('\n');
-    $gameMessage.add('Please restart RPG Maker MV(Editor) WITHOUT save. \n' + 
+    messageAdd('\n');
+    messageAdd('Please restart RPG Maker MV(Editor) WITHOUT save. \n' + 
         '**セーブせずに**プロジェクトファイルを開き直してください');
     console.log('Please restart RPG Maker MV(Editor) WITHOUT save. \n' + 
         '**セーブせずに**プロジェクトファイルを開き直してください');
