@@ -878,9 +878,9 @@
  *    - 敏捷性: "Agility", "敏捷性"
  *    - 運: "Luck", "運"
  *
- * ・エネミー
- *  GameData[Enemy][(戦闘中の)エネミーID][パラメータ名]
- *  例: 変数1に戦闘中の2番目のエネミーのHPを代入する。
+ * ・敵キャラ
+ *  GameData[Enemy][(戦闘中の)敵キャラID][パラメータ名]
+ *  例: 変数1に戦闘中の2番目の敵キャラのHPを代入する。
  *    <Set: 1, GameData[Enemy][2][HP]>
  *  パラメータ名は、上述したゲームデータのアクターのパラメータ名のリストを
  *  参照してください。ただし、レベルと経験値は設定出来ません。
@@ -987,16 +987,18 @@
  *    <タイマー: 操作, 分, 秒>
  *
  *  操作ではスタートするかストップするかを以下の記法で指定する。
- *  - スタート: "Start", "スタート"
- *  - ストップ: "Stop", "ストップ"
+ *  - スタート: "Start", "始動", "スタート"
+ *  - ストップ: "Stop", "停止", "ストップ"
  * スタートの場合は分と秒を数値で指定してください。
  * ストップでは分と秒は指定しないでください。
  *
  * 例1: 1分10秒のタイマーをスタートする
  *   <Timer: Start, 1, 10>
+ *   <タイマー: 始動, 1, 10>
  *   <タイマー: スタート, 1, 10>
  * 例2: タイマーをストップする
  *   <Timer: Stop>
+ *   <タイマー: 停止>
  *   <タイマー: ストップ>
  *
  * ○ (5) 条件分岐
@@ -1198,7 +1200,7 @@
  *   敵キャラに関する情報を条件に使うときは、以下のように書きます。
  *    <If: Enemies[戦闘中の敵キャラの番号], 条件1, 条件2>
  *
- *   "Enemies"は"エネミー"でも代替できます。
+ *   "Enemies"は"敵キャラ", "エネミー"でも代替できます。
  *
  *   条件1は以下いずれかで設定します。
  *   - 出現している: "Appeared" or "出現している"
@@ -1209,9 +1211,11 @@
  *  例えば以下の通りです。
  *   例1: 1体目の敵キャラが出現しているとき
  *    - "<If: Enemies[1], Appeared>"
+ *    - "<If: 敵キャラ[1], 出現している>"
  *    - "<If: エネミー[1], 出現している>"
  *   例2: 1体目の敵キャラがID2のステートにかかっているとき
  *    - "<If: Enemies[1], State, 2>"
+ *    - "<If: 敵キャラ[1], ステート, 2>"
  *    - "<If: エネミー[1], ステート, 2>"
  *
  *  * キャラクターの向きを条件に使うとき
@@ -2590,6 +2594,7 @@ if(typeof PluginManager === 'undefined'){
             case 'actor':
             case 'アクター':
             case 'enemy':
+            case '敵キャラ':
             case 'エネミー':{
               if(operand_arg1 == 'actor' || operand_arg1 == 'アクター'){
                 parameters.push(3);
@@ -2661,7 +2666,7 @@ if(typeof PluginManager === 'undefined'){
                   break;
                 }
               }
-              if(operand_arg1 == 'enemy' || operand_arg1 == 'エネミー'){
+              if(operand_arg1 == 'enemy' || operand_arg1 == '敵キャラ' || operand_arg1 == 'エネミー'){
                 let value = parameters.pop();
                 let key = parameters.pop();
                 value = value - 2;
@@ -2877,10 +2882,12 @@ if(typeof PluginManager === 'undefined'){
     const getControlTimer = function(operation, sec){
       switch(operation.toLowerCase()){
         case 'start':
+        case '始動':
         case 'スタート':{
           return {"code": 124, "indent": 0, "parameters": [0, parseInt(sec)]};
         }
         case 'stop':
+        case '停止':
         case 'ストップ':{
           return {"code": 124, "indent": 0, "parameters": [1, parseInt(sec)]};
         }
@@ -3335,6 +3342,7 @@ if(typeof PluginManager === 'undefined'){
           break;
         }
         case "enemies":
+        case "敵キャラ":
         case "エネミー": {
           out.parameters = getIfEnemyParameters(mode_value, params);
           break;
@@ -4030,6 +4038,7 @@ if(typeof PluginManager === 'undefined'){
                 case 'actor':
                 case 'アクター':
                 case 'enemy':
+                case '敵キャラ':
                 case 'エネミー':
                 case 'character':
                 case 'キャラクター':{
