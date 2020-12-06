@@ -1986,7 +1986,7 @@
  *  というように1行で記述することもできます。
  *
  *
- * ○ (32) プラグインコマンド
+ * ○ (32)-1 プラグインコマンド(ツクールMV)
  *  プラグインコマンドのイベントコマンドは、以下のいずれかの記法で指定します。
  *  <plugincommand: プラグインコマンドの内容>
  *  <PC: プラグインコマンドの内容>
@@ -1997,6 +1997,40 @@
  *  <plugincommand: ItemBook open>
  *  <PC: ItemBook open>
  *  <プラグインコマンド: ItemBook open>
+ *
+ * ○ (32)-2 プラグインコマンド(ツクールMZ, 上級者向け)
+ *  プラグインコマンドのイベントコマンドは、以下の記法で指定します。
+ *  <PluginCommandMZ: プラグイン名, 関数名, コマンド, 引数[値][注釈],...>
+ *
+ *  プラグイン名はプラグインファイルの名前です。○○.jsの○○を記入して
+ *  ください。Text2Frame.jsの場合は"Text2Frame"となります。
+ *
+ *  内部関数名はプラグイン内で設定されている関数名を指定してください。
+ *  ただし、対応しているプラグイン本体であるJavascriptファイルかdataフォ
+ *  ルダ内のJSONファイルから直接確認する必要がある可能性が高いです。
+ *  そのため、このタグはある程度プラグインを開発する能力がある方向けと
+ *  なります。
+ *
+ *  コマンドはプラグインコマンド設定ウィンドウで、呼び出すコマンドの
+ *  名前を記述してください。
+ *
+ *  プラグインコマンドのパラメータは、コマンド名以降にカンマ区切りで
+ *  "引数の名前[値]"として記述してください。数に制限はありません。
+ *  例えば、引数の名前が"FileFolder", 値が"text"の場合は
+ *  "FileFolder[text]"と記述してください。
+ *  引数の名前は、「プラグインコマンド」ウィンドウの、指定したい引数の
+ *  「パラメータ」ウィンドウから確認できます。薄い灰色文字で書かれた
+ *  括弧書きされている文字が引数の名前です。
+ *  注釈は、ツクールMZ上での表示を正式なものにするために使います。
+ *  指定しない場合は、自動で補完します。実行上の違いはありませんが、
+ *  ツクールMZ上から設定した場合の表記とは異なります。
+ *
+ *  "PluginCommandMZ"は"PCZ","プラグインコマンドMZ"でも代替できます。
+ *
+ *  例えば、TextPictureプラグインで"ほげ"という文字列を画像にする
+ *  プラグインコマンドは以下のように設定します。
+ *  <PCZ: TextPicture, set, テキストピクチャの設定, text[ほげ]>
+ *
  *
  * --------------------------------------
  * 動作確認テキスト
@@ -2271,7 +2305,39 @@ if(typeof PluginManager === 'undefined'){
       plugin_command["parameters"][0] = text;
       return plugin_command;
     };
-    
+
+    const getPluginCommandEventMZ = function(
+      plugin_name, plugin_command, disp_plugin_command, args){
+      let plugin_args = {};
+      let plugin_command_mz = {"code": 357, "indent": 0, "parameters": [
+        plugin_name, plugin_command, disp_plugin_command, plugin_args
+      ]};
+      let arg_regexp = /([^[\]]+)(\[.+\])/i;
+      for(let i=0; i < args.length; i++){
+        let matched = args[i].match(arg_regexp);
+        if(matched){
+          let arg_name = matched[1] || '';
+          let values = matched[2].slice(1, -1).split('][') || [];
+          plugin_args[arg_name] = values[0] || '';
+        }
+      }
+      return plugin_command_mz;
+    };
+
+    const getPluginCommandMzParamsComment = function(plugin_command_mz_arg){
+      let arg_regexp = /([^[\]]+)(\[.+\])/i;
+      let matched = plugin_command_mz_arg.match(arg_regexp);
+      if(matched){
+        let arg_name = matched[1] || '';
+        let values = matched[2].slice(1, -1).split('][') || [];
+         let value = values[0] || '';
+         if(values[1]) {
+           arg_name = values[1];
+         }
+        var parameters = [arg_name + " = " + value];
+      }
+      return {"code": 657, "indent": 0, "parameters": parameters};
+    };
     const getCommonEventEvent = function(num){
       let common_event= {"code": 117, "indent": 0, "parameters": [""]}
       common_event["parameters"][0] = num;
@@ -3447,6 +3513,9 @@ if(typeof PluginManager === 'undefined'){
         let plugin_command = text.match(/<plugincommand *: *(.+?)>/i)
           || text.match(/<PC *: *(.+?)>/i)
           || text.match(/<プラグインコマンド *: *(.+?)>/i);
+        let plugin_command_mz = text.match(/<plugincommandmz\s*:\s*([^\s].*)>/i)
+          || text.match(/<PCZ\s*:\s*([^\s].*)>/i)
+          || text.match(/<プラグインコマンドmz\s*:\s*([^\s].*)>/i);
         let common_event = text.match(/<commonevent *: *(.+?)>/i)
           || text.match(/<CE *: *(.+?)>/i)
           || text.match(/<コモンイベント *: *(.+?)>/i);
@@ -3548,6 +3617,29 @@ if(typeof PluginManager === 'undefined'){
         // Plugin Command
         if(plugin_command){
           event_command_list.push(getPluginCommandEvent(plugin_command[1]));
+          continue;
+        }
+
+        // Plugin Command MZ
+        if(plugin_command_mz){
+          let params = plugin_command_mz[1].split(',').map(s => s.trim());
+          if(params.length > 2){
+            let arg_plugin_name = params[0];
+            let arg_plugin_command = params[1];
+            let arg_disp_plugin_command = params[2];
+            let pcz_args = params.slice(3);
+            let pcemz = getPluginCommandEventMZ(
+              arg_plugin_name,
+              arg_plugin_command,
+              arg_disp_plugin_command,
+              pcz_args
+            );
+            event_command_list.push(pcemz);
+            pcz_args.map(arg => event_command_list.push(getPluginCommandMzParamsComment(arg)))
+          }else{
+            throw new Error('Syntax error. / 文法エラーです。'
+                            + text.replace(/</g, '  ').replace(/>/g, '  '));
+          }
           continue;
         }
 
