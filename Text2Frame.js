@@ -92,9 +92,9 @@
  *
  * @arg EventID
  * @text EventID
- * @desc setting of the eventID of the output destination. Default is "1". It means that it is taken in the event ID 1.
+ * @desc setting of the eventID of the output destination. Default is "2". It means that it is taken in the event ID 2.
  * @type number
- * @default 1
+ * @default 2
  *
  * @arg PageID
  * @text PageID
@@ -223,13 +223,13 @@
  * @type boolean 
  *
  * @param DisplayMsg
- * @text メッセージ表示
+ * @text DisplayMsg
  * @desc Display messages when execution.
  * @default true
  * @type boolean
  *
  * @param DisplayWarning
- * @text 警告文表示
+ * @text DisplayWarning
  * @desc Display warnings when execution.
  * @default true
  * @type boolean
@@ -241,7 +241,8 @@
  */
 
  /*:ja
- * @plugindesc テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、開発支援プラグインです。
+ * @target MZ
+ * @plugindesc テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、開発支援プラグインです。ツクールMV・MZの両方に対応しています。
  * @author Yuki Katsura, えーしゅん
  *
  * @command IMPORT_MESSAGE_TO_EVENT
@@ -268,9 +269,9 @@
  *
  * @arg EventID
  * @text 取り込み先イベントID
- * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は1です。
+ * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。
  * @type number
- * @default 1
+ * @default 2
  *
  * @arg PageID
  * @text 取り込み先ページID
@@ -340,7 +341,7 @@
  *
  * @param Default Scenario Folder
  * @text 取り込み元フォルダ名
- * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。(MZでは無視されます)
  * @default text
  * @require 1
  * @dir text
@@ -348,7 +349,7 @@
  *
  * @param Default Scenario File
  * @text 取り込み元ファイル名
- * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。(MZでは無視されます)
  * @default message.txt
  * @require 1
  * @dir text
@@ -356,25 +357,25 @@
  *
  * @param Default Common Event ID
  * @text 取り込み先コモンイベントID
- * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。
+ * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。(MZでは無視されます)
  * @default 1
  * @type common_event
  *
  * @param Default MapID
  * @text 取り込み先マップID
- * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。
+ * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。(MZでは無視されます)
  * @default 1
  * @type number
  *
  * @param Default EventID
  * @text 取り込み先イベントID
- * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。
+ * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。(MZでは無視されます)
  * @default 2
  * @type number
  *
  * @param Default PageID
  * @text 取り込み先ページID
- * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。
+ * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。(MZでは無視されます)
  * @default 1
  * @type number
  *
@@ -528,18 +529,18 @@
  *  １つのメッセージを改行で区切るという書き方をします。
  *  例えば以下の通りです。
  *
- *  ↓↓↓↓↓ここから例文1↓↓↓↓↓
- *  やめて！ラーの翼神竜の特殊能力で、
- *  ギルフォード・ザ・ライトニングを焼き払われたら、
- *  闇のゲームでモンスターと繋がってる城之内の精神まで燃え尽きちゃう！
+ * ↓↓↓↓↓ここから例文1↓↓↓↓↓
+ * やめて！ラーの翼神竜の特殊能力で、
+ * ギルフォード・ザ・ライトニングを焼き払われたら、
+ * 闇のゲームでモンスターと繋がってる城之内の精神まで燃え尽きちゃう！
  *
- *  お願い、死なないで城之内！あんたが今ここで倒れたら、
- *  舞さんや遊戯との約束はどうなっちゃうの？
- *  ライフはまだ残ってる。
- *  ここを耐えれば、マリクに勝てるんだから！
+ * お願い、死なないで城之内！あんたが今ここで倒れたら、
+ * 舞さんや遊戯との約束はどうなっちゃうの？
+ * ライフはまだ残ってる。
+ * ここを耐えれば、マリクに勝てるんだから！
  *
- *  次回、「城之内死す」。デュエルスタンバイ！
- *  ↑↑↑↑↑ここまで例文1↑↑↑↑↑
+ * 次回、「城之内死す」。デュエルスタンバイ！
+ * ↑↑↑↑↑ここまで例文1↑↑↑↑↑
  *
  *  この場合は３つの「文章の表示」イベントコマンドに変換されて
  *  取り込まれます。改行は何行いれても同様の動作になります。
@@ -568,20 +569,20 @@
  *
  *  例えば以下の通りです。
  *
- *  ↓↓↓↓↓ここから例文2↓↓↓↓↓
- *  <Face: Actor1(0)><WindowPosition: Bottom><Background: Dim><Name: 真崎杏子>
- *  やめて！ラーの翼神竜の特殊能力で、
- *  ギルフォード・ザ・ライトニングを焼き払われたら、
- *  闇のゲームでモンスターと繋がってる城之内の精神まで燃え尽きちゃう！
+ * ↓↓↓↓↓ここから例文2↓↓↓↓↓
+ * <Face: Actor1(0)><WindowPosition: Bottom><Background: Dim><Name: 真崎杏子>
+ * やめて！ラーの翼神竜の特殊能力で、
+ * ギルフォード・ザ・ライトニングを焼き払われたら、
+ * 闇のゲームでモンスターと繋がってる城之内の精神まで燃え尽きちゃう！
  *
- *  <WindowPosition: Top><Name: 真崎杏子>
- *  お願い、死なないで城之内！あんたが今ここで倒れたら、
- *  舞さんや遊戯との約束はどうなっちゃうの？
- *  ライフはまだ残ってる。
- *  ここを耐えれば、マリクに勝てるんだから！
+ * <WindowPosition: Top><Name: 真崎杏子>
+ * お願い、死なないで城之内！あんたが今ここで倒れたら、
+ * 舞さんや遊戯との約束はどうなっちゃうの？
+ * ライフはまだ残ってる。
+ * ここを耐えれば、マリクに勝てるんだから！
  *
- *  次回、「城之内死す」。デュエルスタンバイ！
- *  ↑↑↑↑↑ここまで例文2↑↑↑↑↑
+ * 次回、「城之内死す」。デュエルスタンバイ！
+ * ↑↑↑↑↑ここまで例文2↑↑↑↑↑
  *
  *  この例の場合では、
  *  1つ目のメッセージ(やめて！〜)ではActor1ファイルの場所が1の顔が表示(詳細は後
