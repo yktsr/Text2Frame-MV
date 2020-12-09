@@ -194,8 +194,8 @@
  *
  * @param Default EventID
  * @text EventID
- * @desc Default setting of the eventID of the output destination. Default is "1". It means that it is taken in the event ID 1.
- * @default 1
+ * @desc Default setting of the eventID of the output destination. Default is "1". It means that it is taken in the event ID 2.
+ * @default 2
  * @type number
  *
  * @param Default PageID
@@ -368,8 +368,8 @@
  *
  * @param Default EventID
  * @text 取り込み先イベントID
- * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は1です。
- * @default 1
+ * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。
+ * @default 2
  * @type number
  *
  * @param Default PageID
@@ -2151,15 +2151,52 @@ if(typeof PluginManager === 'undefined'){
     Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`;
   }
 
-  const messageAdd = function(text){
+  const addMessage = function(text){
     if(Laurus.Text2Frame.DisplayMsg){
       $gameMessage.add(text);
     }
   };
 
-  const warningAdd = function(warning){
+  const addWarning = function(warning){
     if(Laurus.Text2Frame.DisplayWarning){
       $gameMessage.add(warning);
+    }
+  };
+
+  const getDefaultPage = function(){
+    return {
+      "conditions":{
+        "actorId":1,
+        "actorValid":false,
+        "itemId":1,
+        "itemValid":false,
+        "selfSwitchCh":"A",
+        "selfSwitchValid":false,
+        "switch1Id":1,
+        "switch1Valid":false,
+        "switch2Id":1,
+        "switch2Valid":false,
+        "variableId":1,
+        "variableValid":false,
+        "variableValue":0
+      },
+      "directionFix":false,
+      "image": {"characterIndex":0,"characterName":"","direction":2,"pattern":0,"tileId":0},
+      "list":[
+        {"code":0,"indent":0,"parameters":[]}
+      ],
+      "moveFrequency":3,
+      "moveRoute": {
+        "list":[{"code":0,"parameters":[]}],
+        "repeat":true,"skippable":false,"wait":false
+      },
+      "moveSpeed":3,
+      "moveType":0,
+      "priorityType":0,
+      "stepAnime":false,
+      "through":false,
+      "trigger":0,
+      "walkAnime":true
     }
   };
 
@@ -2201,16 +2238,16 @@ if(typeof PluginManager === 'undefined'){
       // for custom plugin command
       case 'IMPORT_MESSAGE_TO_EVENT' :
       case 'メッセージをイベントにインポート' :
-        messageAdd('import message to event. \n/ メッセージをイベントにインポートします。');
+        addMessage('import message to event. \n/ メッセージをイベントにインポートします。');
         if(args[0]) Laurus.Text2Frame.FileFolder = args[0];
         if(args[1]) Laurus.Text2Frame.FileName = args[1];
         if(args[2]) Laurus.Text2Frame.MapID = args[2];
         if(args[3]) Laurus.Text2Frame.EventID = args[3];
         if(args[4] && (args[4].toLowerCase() === 'true' || args[4].toLowerCase() === 'false')) {
           Laurus.Text2Frame.IsOverwrite = args[4].toLowerCase() === 'true' ? true : false;
-          warningAdd('【警告】5番目の引数に上書き判定を設定することは非推奨に');
-          warningAdd('なりました。ページIDを設定してください。上書き判定は6番');
-          warningAdd('目に設定してください。(警告はオプションでOFFにできます)');
+          addWarning('【警告】5番目の引数に上書き判定を設定することは非推奨に');
+          addWarning('なりました。ページIDを設定してください。上書き判定は6番');
+          addWarning('目に設定してください。(警告はオプションでOFFにできます)');
         } else if(args[4]) {
           Laurus.Text2Frame.PageID = args[4];
         }
@@ -2223,7 +2260,7 @@ if(typeof PluginManager === 'undefined'){
       case 'IMPORT_MESSAGE_TO_CE' :
       case 'メッセージをコモンイベントにインポート' :
         if(args.length == 4){
-          messageAdd('import message to common event. \n/ メッセージをコモンイベントにインポートします。');
+          addMessage('import message to common event. \n/ メッセージをコモンイベントにインポートします。');
           Laurus.Text2Frame.ExecMode        = 'IMPORT_MESSAGE_TO_CE';
           Laurus.Text2Frame.FileFolder      = args[0];
           Laurus.Text2Frame.FileName        = args[1];
@@ -4384,13 +4421,7 @@ if(typeof PluginManager === 'undefined'){
           if(!frame_param){
             frame_param = getPretextEvent();
           }
-          try{
-            frame_param.parameters[4] = namebox[1];
-          }catch(e){
-            console.error(text);
-            throw new Error('Syntax error. / 文法エラーです。'
-              + text.replace(/</g, '  ').replace(/>/g, '  '));
-          }
+          frame_param.parameters[4] = namebox[1];
           text = text.replace(namebox[0], '');
         }
 
@@ -4423,40 +4454,7 @@ if(typeof PluginManager === 'undefined'){
 
         let pageID = Number(Laurus.Text2Frame.PageID) - 1;
         while (! map_data.events[Laurus.Text2Frame.EventID].pages[pageID]){
-          map_data.events[Laurus.Text2Frame.EventID].pages.push({
-              "conditions":{
-                "actorId":1,
-                "actorValid":false,
-                "itemId":1,
-                "itemValid":false,
-                "selfSwitchCh":"A",
-                "selfSwitchValid":false,
-                "switch1Id":1,
-                "switch1Valid":false,
-                "switch2Id":1,
-                "switch2Valid":false,
-                "variableId":1,
-                "variableValid":false,
-                "variableValue":0
-              },
-              "directionFix":false,
-              "image": {"characterIndex":0,"characterName":"","direction":2,"pattern":0,"tileId":0},
-              "list":[
-                {"code":0,"indent":0,"parameters":[]}
-              ],
-              "moveFrequency":3,
-              "moveRoute": {
-                "list":[{"code":0,"parameters":[]}],
-                "repeat":true,"skippable":false,"wait":false
-              },
-              "moveSpeed":3,
-              "moveType":0,
-              "priorityType":0,
-              "stepAnime":false,
-              "through":false,
-              "trigger":0,
-              "walkAnime":true
-            });
+          map_data.events[Laurus.Text2Frame.EventID].pages.push(getDefaultPage());
         }
 
         let map_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list;
@@ -4467,7 +4465,7 @@ if(typeof PluginManager === 'undefined'){
         map_events = map_events.concat(event_command_list);
         map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list = map_events;
         writeData(Laurus.Text2Frame.MapPath, map_data);
-        messageAdd('Success / 書き出し成功！\n' 
+        addMessage('Success / 書き出し成功！\n' 
                    + "======> MapID: " + Laurus.Text2Frame.MapID
                    + " -> EventID: " + Laurus.Text2Frame.EventID
                    + " -> PageID: " + Laurus.Text2Frame.PageID);
@@ -4488,13 +4486,13 @@ if(typeof PluginManager === 'undefined'){
         ce_events.pop();
         ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list);
         writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
-        messageAdd('Success / 書き出し成功！\n' 
+        addMessage('Success / 書き出し成功！\n' 
           + "=====> Common EventID :" + Laurus.Text2Frame.CommonEventID);
         break;
       }
     }
-    messageAdd('\n');
-    messageAdd('Please restart RPG Maker MV(Editor) WITHOUT save. \n' + 
+    addMessage('\n');
+    addMessage('Please restart RPG Maker MV(Editor) WITHOUT save. \n' + 
         '**セーブせずに**プロジェクトファイルを開き直してください');
     console.log('Please restart RPG Maker MV(Editor) WITHOUT save. \n' + 
         '**セーブせずに**プロジェクトファイルを開き直してください');
