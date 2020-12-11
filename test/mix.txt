@@ -1,19 +1,19 @@
 <PlayBGM : Battle1, 91, 99, 1>
 <Face: Actor1(0)>
-今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑（顔）
+今日も一日がんばるぞい！（顔）
 
 <CommonEvent: 2>
 
 <Face: Actor1(1)>
 <WindowPosition: Middle>
 <Background: Dim>
-今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑(中，暗く)
+今日も一日がんばるぞい！(中，暗く)
 
-今日も<一日>がんばる<ぞい！(و ･ㅂ･)و ̑̑
+今日も<一日>がんばる<ぞい！
 <script>
 var i = 0;
 for(i=0;i<10;i++){
-  console.log("今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑");
+  console.log("今日も一日がんばるぞい！");
 }
 </script>
 
@@ -31,5 +31,5 @@ for(i=0;i<10;i++){
 今日も一日がんばるぞい！
 </注釈>
 <プラグインコマンド: import_message_to_event text basic.txt 1 8 true>
-今日も<一日>がんばる<ぞい！(و ･ㅂ･)و ̑̑
+今日も<一日>がんばる<ぞい！
 <戦闘曲の変更 : Battle1>

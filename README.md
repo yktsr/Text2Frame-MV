@@ -1,16 +1,16 @@
-# Text2Frame-MV
+# Text2Frame
 Simple compiler to convert text to event.
 
 ![Node.js CI](https://github.com/yktsr/Text2Frame-MV/workflows/Node.js%20CI/badge.svg?branch=master)
 
-テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、開発支援プラグイン
+テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、RPGツクールMV・MZ用の開発支援プラグインです。
 
-![./introduce_Text2Frame.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Text2Frame.png)
+![./introduce_Text2Frame_MV_MZ.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Text2Frame_MV_MZ.png)
 
 ## 説明
-会話などをツクールMV**以外**のエディタで編集して、あとでイベントコマンドとして組み込みたい人をサポートします。
+会話などをツクールMV・MZ**以外**のエディタで編集して、あとでイベントコマンドとして組み込みたい人をサポートします。
 
-プラグインコマンドを実行すると、テキストファイルを読み込み、ツクールMVのマップイベントまたはコモンイベントにイベントコマンドとして取り込むことができます。
+プラグインコマンドを実行すると、テキストファイルを読み込み、ツクールMV・MZのマップイベントまたはコモンイベントにイベントコマンドとして取り込むことができます。
 
 これによりツクール上でセリフ、ウインドウの表示方法（表示位置、背景）、BGMの編集などをする必要がなくなります。
 
@@ -36,7 +36,7 @@ Simple compiler to convert text to event.
 1. プラグインエディターからText2Frameのプラグインを有効にします。
 
 
-## 顔・背景・位置の設定
+## 顔・背景・位置・名前の設定
 タグを使って、顔・背景・位置等のメッセージの設定を変更することができます。
 これらのデフォルト値は、プラグインのオプションから変更することができます。
 
@@ -55,6 +55,11 @@ Simple compiler to convert text to event.
 
 ![./introduce_WindowPosition.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_WindowPosition.png)
 
+### 名前の設定(MZ用) <名前: ○○○○>
+ウィンドウに表示される名前を指定することができます。
+
+![./introduce_WindowPosition.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_namebox.png)
+
 
 ## その他の機能
 ### コメントアウト
@@ -66,8 +71,9 @@ Simple compiler to convert text to event.
 マップ上のイベントへの書き出しだけでなく、コモンイベントへも書き出すことができます。
 動作例は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%82%B3%E3%83%A2%E3%83%B3%E3%82%A4%E3%83%99%E3%83%B3%E3%83%88%E3%81%B8%E3%81%AE%E6%9B%B8%E3%81%8D%E5%87%BA%E3%81%97)を参照してください。
 
-### プラグインコマンド引数を使ったデフォルト値の変更
+### プラグインコマンド引数を使ったデフォルト値の変更(MV用)
 読み込みたいファイルが複数あるときやファイルごとに異なるオプションを適用したいときなどに、プラグインコマンド引数を使うことでより高度な制御が行えます。
+この機能はツクールMV用です。ツクールMZではプラグインコマンドから直接設定できます。
 
 詳細は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3)を参照してください。
 
@@ -159,19 +165,19 @@ $ npm run debug
        Text2Frame - Simple compiler to convert text to event command.
     SYNOPSIS
         node Text2Frame.js
-        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
         node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
         node Text2Frame.js --verbose --mode test
     DESCRIPTION
         node Text2Frame.js
           テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
-        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
           マップへのイベント出力モードです。
           読み込むファイル、出力マップ、上書きの有無を引数で指定します。
           test/basic.txt を読み込み data/Map001.json に上書きするコマンド例は以下です。
 
-          例1：$ node Text2Frame.js --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --overwrite true
-          例2：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -w true
+          例1：$ node Text2Frame.js --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --page_id 1 --overwrite true
+          例2：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -p 1 -w true
 
         node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
           コモンイベントへのイベント出力モードです。

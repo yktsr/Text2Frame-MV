@@ -1,22 +1,22 @@
 % スクリプトが"$gameParty._gold == $gameVariables.value(1)"場合
 <If: Script, $gameParty._gold == $gameVariables.value(1)>
-今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑
+今日も一日がんばるぞい！
 <End>
 <If: スクリプト, $gameParty._gold == $gameVariables.value(1)>
-今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑
+今日も一日がんばるぞい！
 <End>
 <If: SC, $gameParty._gold == $gameVariables.value(1)>
-今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑
+今日も一日がんばるぞい！
 <End>
 
 % 引数内に,がある場合
 <If: Script, [1, 2, 3][$gameVariables.value(1)]>
-今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑
+今日も一日がんばるぞい！
 <End>
 <If: スクリプト, [1, 2, 3][$gameVariables.value(1)]>
-今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑
+今日も一日がんばるぞい！
 <End>
 <If: SC, [1, 2, 3][$gameVariables.value(1)]>
-今日も一日がんばるぞい！(و ･ㅂ･)و ̑̑
+今日も一日がんばるぞい！
 <End>
 

@@ -68,7 +68,12 @@ describe('Text2Frame Test', function() {
     {title: "Break Loop", infile: "./test/52-break-loop.txt", mapfile: "./data/Map001.json", expfile: "./test/52-expected_break-loop.json"},
     {title: "Exit Event Processing", infile: "./test/53-exit-event-processing.txt", mapfile: "./data/Map001.json", expfile: "./test/53-expected_exit-event-processing.json"},
     {title: "Label", infile: "./test/54-label.txt", mapfile: "./data/Map001.json", expfile: "./test/54-expected_label.json"},
-    {title: "Jump to Label", infile: "./test/55-jump-to-label.txt", mapfile: "./data/Map001.json", expfile: "./test/55-expected_jump-to-label.json"}
+    {title: "Jump to Label", infile: "./test/55-jump-to-label.txt", mapfile: "./data/Map001.json", expfile: "./test/55-expected_jump-to-label.json"},
+    {title: "Name", infile: "./test/67-name.txt", mapfile: "./data/Map001.json", expfile: "./test/67-expected_name.json"},
+    {title: "Move Picture MZ", infile: "./test/69-move-picture-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/69-expected_move-picture-mz.json"},
+    {title: "Conditional Branch/Button-MZ", infile: "./test/70-if-else-button-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/70-expected_if-else-button-mz.json"},
+    {title: "Control Variables/Last-MZ", infile: "./test/71-control-variables-last-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/71-expected_control-variables-last-mz.json"},
+    {title: "Plugin Command MZ", infile: "./test/73-plugin-command-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/73-expected_plugin-command-mz.json"},
   ];
 
   const consoleStub = sinon.stub(console, 'log');
@@ -93,9 +98,10 @@ describe('Text2Frame Test', function() {
         const file_name   = '';
         const map_id      = '1';
         const event_id    = '1';
-        const overwrite   = true;
+        const page_id     = '1';
+        const overwrite   = 'true';
         Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-          [folder_name, file_name, map_id, event_id, overwrite]);
+          [folder_name, file_name, map_id, event_id, page_id, overwrite]);
 
         const expected_json = JSON.parse(expected_data);
         const actual_json = JSON.parse(result_data);

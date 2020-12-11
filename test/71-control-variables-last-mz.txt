@@ -1,0 +1,29 @@
+% 変数1に直前に使用したスキルのIDを代入
+<Set: 1, gamedata[Last][Last Used Skill ID]>
+<代入: 1, ゲームデータ[直前][直前に使用したスキルのID]>
+<=: 1, gd[Last][Used Skill ID]>
+
+% 変数1に直前に使用したアイテムのIDを代入
+<Set: 1, gamedata[Last][Last Used Item ID]>
+<代入: 1, ゲームデータ[直前][直前に使用したアイテムのID]>
+<=: 1, gd[Last][Used Item ID]>
+
+% 変数1に直前に行動したアクターのIDを代入
+<Set: 1, gamedata[Last][Last Actor ID to Act]>
+<代入: 1, ゲームデータ[直前][直前に行動したアクターのID]>
+<=: 1, gd[Last][Actor ID to Act]>
+
+% 変数1に直前に行動した敵キャラのインデックスを代入
+<Set: 1, gamedata[Last][Last Enemy Index to Act]>
+<代入: 1, ゲームデータ[直前][直前に行動した敵キャラのインデックス]>
+<=: 1, gd[Last][Enemy Index to Act]>
+
+% 変数1に直前に対象となったアクターのIDを代入
+<Set: 1, gamedata[Last][Last Target Actor ID]>
+<代入: 1, ゲームデータ[直前][直前に対象となったアクターのID]>
+<=: 1, gd[Last][Target Actor ID]>
+
+% 変数1に直前に対象となった敵キャラのインデックスを代入
+<Set: 1, gamedata[Last][Last Target Enemy Index]>
+<代入: 1, ゲームデータ[直前][直前に対象となった敵キャラのインデックス]>
+<=: 1, gd[Last][Target Enemy Index]>

@@ -16,14 +16,14 @@
 </comment>
 
 %% ケース2: script
-%%%% これで``console.log("今日も一日がんばるぞい！(و ･ㅂ･)و ")``という注釈が4つ挿入される.
-<script>console.log("今日も一日がんばるぞい！(و ･ㅂ･)و ")</script>
-<script>console.log("今日も一日がんばるぞい！(و ･ㅂ･)و ")
+%%%% これで``console.log("今日も一日がんばるぞい！ ")``という注釈が4つ挿入される.
+<script>console.log("今日も一日がんばるぞい！ ")</script>
+<script>console.log("今日も一日がんばるぞい！ ")
 </script>
 <script>
-console.log("今日も一日がんばるぞい！(و ･ㅂ･)و ")</script>
+console.log("今日も一日がんばるぞい！ ")</script>
 <script>
-console.log("今日も一日がんばるぞい！(و ･ㅂ･)و ")
+console.log("今日も一日がんばるぞい！ ")
 </script>
 
 %% ケース3: 複数行の場合

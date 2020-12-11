@@ -9,8 +9,9 @@
               "code": 111,
               "indent": 0,
               "parameters": [
-                12,
-                "$gameParty._gold == $gameVariables.value(1)"
+                11,
+                "ok",
+                0
               ]
             },
             {
@@ -45,8 +46,9 @@
               "code": 111,
               "indent": 0,
               "parameters": [
-                12,
-                "$gameParty._gold == $gameVariables.value(1)"
+                11,
+                "ok",
+                0
               ]
             },
             {
@@ -81,8 +83,74 @@
               "code": 111,
               "indent": 0,
               "parameters": [
-                12,
-                "$gameParty._gold == $gameVariables.value(1)"
+                11,
+                "ok",
+                0
+              ]
+            },
+            {
+              "code": 101,
+              "indent": 1,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 1,
+              "parameters": [
+                "今日も一日がんばるぞい！"
+              ]
+            },
+            {
+              "code": 0,
+              "indent": 1,
+              "parameters": []
+            },
+            {
+              "code": 411,
+              "indent": 0,
+              "parameters": []
+            },
+            {
+              "code": 101,
+              "indent": 1,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 1,
+              "parameters": [
+                "今日も一日がんばるぞい！"
+              ]
+            },
+            {
+              "code": 0,
+              "indent": 1,
+              "parameters": []
+            },
+            {
+              "code": 412,
+              "indent": 0,
+              "parameters": []
+            },
+            {
+              "code": 111,
+              "indent": 0,
+              "parameters": [
+                11,
+                "shift",
+                1
               ]
             },
             {
@@ -117,8 +185,9 @@
               "code": 111,
               "indent": 0,
               "parameters": [
-                12,
-                "[1, 2, 3][$gameVariables.value(1)]"
+                11,
+                "shift",
+                1
               ]
             },
             {
@@ -153,8 +222,74 @@
               "code": 111,
               "indent": 0,
               "parameters": [
-                12,
-                "[1, 2, 3][$gameVariables.value(1)]"
+                11,
+                "shift",
+                1
+              ]
+            },
+            {
+              "code": 101,
+              "indent": 1,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 1,
+              "parameters": [
+                "今日も一日がんばるぞい！"
+              ]
+            },
+            {
+              "code": 0,
+              "indent": 1,
+              "parameters": []
+            },
+            {
+              "code": 411,
+              "indent": 0,
+              "parameters": []
+            },
+            {
+              "code": 101,
+              "indent": 1,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 1,
+              "parameters": [
+                "今日も一日がんばるぞい！"
+              ]
+            },
+            {
+              "code": 0,
+              "indent": 1,
+              "parameters": []
+            },
+            {
+              "code": 412,
+              "indent": 0,
+              "parameters": []
+            },
+            {
+              "code": 111,
+              "indent": 0,
+              "parameters": [
+                11,
+                "pagedown",
+                2
               ]
             },
             {
@@ -189,9 +324,75 @@
               "code": 111,
               "indent": 0,
               "parameters": [
-                12,
-                "[1, 2, 3][$gameVariables.value(1)]"
+                11,
+                "pagedown",
+                2
               ]
+            },
+            {
+              "code": 101,
+              "indent": 1,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 1,
+              "parameters": [
+                "今日も一日がんばるぞい！"
+              ]
+            },
+            {
+              "code": 0,
+              "indent": 1,
+              "parameters": []
+            },
+            {
+              "code": 412,
+              "indent": 0,
+              "parameters": []
+            },
+            {
+              "code": 111,
+              "indent": 0,
+              "parameters": [
+                11,
+                "pagedown",
+                2
+              ]
+            },
+            {
+              "code": 101,
+              "indent": 1,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 1,
+              "parameters": [
+                "今日も一日がんばるぞい！"
+              ]
+            },
+            {
+              "code": 0,
+              "indent": 1,
+              "parameters": []
+            },
+            {
+              "code": 411,
+              "indent": 0,
+              "parameters": []
             },
             {
               "code": 101,

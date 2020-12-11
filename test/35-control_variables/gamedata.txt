@@ -110,70 +110,70 @@
 <Set: 2, gd[enemy][1][hp]>
 <Set: 2, GD[ENEMY][1][HP]>
 <Set: 2, gamedata[enemy][1][hp]>
-<Set: 2, GAMEDATA[ENEMY][1][HP]>
+<Set: 2, GAMEDATA[敵キャラ][1][HP]>
 <Set: 2, ゲームデータ[エネミー][1][HP]>
 
 %%% (戦闘中の)エネミー1のMP
 <Set: 2, gd[enemy][1][mp]>
 <Set: 2, GD[ENEMY][1][MP]>
 <Set: 2, gamedata[enemy][1][mp]>
-<Set: 2, GAMEDATA[ENEMY][1][MP]>
+<Set: 2, GAMEDATA[敵キャラ][1][MP]>
 <Set: 2, ゲームデータ[エネミー][1][MP]>
 
 %%% (戦闘中の)エネミー1の最大HP
 <Set: 2, gd[enemy][1][MaxHp]>
 <Set: 2, GD[ENEMY][1][MAXHP]>
 <Set: 2, gamedata[enemy][1][maxhp]>
-<Set: 2, GAMEDATA[ENEMY][1][MAXHP]>
+<Set: 2, GAMEDATA[敵キャラ][1][MAXHP]>
 <Set: 2, ゲームデータ[エネミー][1][最大HP]>
 
 %%% (戦闘中の)エネミー1の最大MP
 <Set: 2, gd[enemy][1][MaxMp]>
 <Set: 2, GD[ENEMY][1][MAXMP]>
 <Set: 2, gamedata[enemy][1][maxmp]>
-<Set: 2, GAMEDATA[ENEMY][1][MAXMP]>
+<Set: 2, GAMEDATA[敵キャラ][1][MAXMP]>
 <Set: 2, ゲームデータ[エネミー][1][最大MP]>
 
 %%% (戦闘中の)エネミー1の攻撃力
 <Set: 2, gd[enemy][1][attack]>
 <Set: 2, GD[ENEMY][1][ATTACK]>
 <Set: 2, gamedata[enemy][1][attack]>
-<Set: 2, GAMEDATA[ENEMY][1][ATTACK]>
+<Set: 2, GAMEDATA[敵キャラ][1][ATTACK]>
 <Set: 2, ゲームデータ[エネミー][1][攻撃力]>
 
 %%% (戦闘中の)エネミー1の防御力
 <Set: 2, gd[enemy][1][defense]>
 <Set: 2, GD[ENEMY][1][DEFENSE]>
 <Set: 2, gamedata[enemy][1][defense]>
-<Set: 2, GAMEDATA[ENEMY][1][DEFENSE]>
+<Set: 2, GAMEDATA[敵キャラ][1][DEFENSE]>
 <Set: 2, ゲームデータ[エネミー][1][防御力]>
 
 %%% (戦闘中の)エネミー1の魔法攻撃力
 <Set: 2, gd[enemy][1][m.attack]>
 <Set: 2, GD[ENEMY][1][M.ATTACK]>
 <Set: 2, gamedata[enemy][1][m.attack]>
-<Set: 2, GAMEDATA[ENEMY][1][M.ATTACK]>
+<Set: 2, GAMEDATA[敵キャラ][1][M.ATTACK]>
 <Set: 2, ゲームデータ[エネミー][1][魔法攻撃力]>
 
 %%% (戦闘中の)エネミー1の魔法防御力
 <Set: 2, gd[enemy][1][m.defense]>
 <Set: 2, GD[ENEMY][1][M.DEFENSE]>
 <Set: 2, gamedata[enemy][1][m.defense]>
-<Set: 2, GAMEDATA[ENEMY][1][M.DEFENSE]>
+<Set: 2, GAMEDATA[敵キャラ][1][M.DEFENSE]>
 <Set: 2, ゲームデータ[エネミー][1][魔法防御力]>
 
 %%% (戦闘中の)エネミー1の敏捷性
 <Set: 2, gd[enemy][1][agility]>
 <Set: 2, GD[ENEMY][1][AGILITY]>
 <Set: 2, gamedata[enemy][1][agility]>
-<Set: 2, GAMEDATA[ENEMY][1][AGILITY]>
+<Set: 2, GAMEDATA[敵キャラ][1][AGILITY]>
 <Set: 2, ゲームデータ[エネミー][1][敏捷性]>
 
 %%% (戦闘中の)エネミー1の運
 <Set: 2, gd[enemy][1][luck]>
 <Set: 2, GD[ENEMY][1][LUCK]>
 <Set: 2, gamedata[enemy][1][luck]>
-<Set: 2, GAMEDATA[ENEMY][1][LUCK]>
+<Set: 2, GAMEDATA[敵キャラ][1][LUCK]>
 <Set: 2, ゲームデータ[エネミー][1][運]>
 
 %%% プレイヤーのマップX座標

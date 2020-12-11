@@ -6,6 +6,16 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.0.0 2020/12/06: ツクールMZに対応
+// ・ツクールMZ仕様のプラグインコマンドの定義
+// ・取り込み先にページ番号を設定する機能の追加
+// ・実行時のメッセージ表示ON・OFFを切り替えるプラグインオプションの追加
+// ・MZ用のネームボックス機能の追加
+// ・MZ用のピクチャ移動(イージング)の追加
+// ・MZ用の変数操作(直前の情報)の追加
+// ・MZ用の条件分岐条件(タッチ・マウス操作)の追加
+// ・MZ用プラグインコマンドタグの追加
+// ・日本語表現に誤りがあったので、正しいものを追加(エネミー->敵キャラ, スタート->始動, ストップ->停止)
 // 1.4.1 2020/08/16: 文法エラー時に行数を表示する機能を削除
 // 1.4.0 2020/08/14:
 // ・条件分岐タグ追加
@@ -54,8 +64,87 @@
 
 
 /*:
+ *: @target MZ
  * @plugindesc Simple compiler to convert text to event command.
- * @author Yuki Katsura, えーしゅん(仕様・ヘルプ文章)
+ * @author Yuki Katsura, えーしゅん
+ *
+ * @command IMPORT_MESSAGE_TO_EVENT
+ * @text Import message to event
+ * @desc Import a message to the event. Specify the source file information and the map, event, page ID, etc. to be imported.
+ *
+ * @arg FileFolder
+ * @text Scenario Folder Name
+ * @desc Setting of the folder name which the text file is stored. Default is "text".
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text Scenario File Name
+ * @desc setting of text file name. Default is "message.txt". 
+ * @type string
+ * @default message.txt
+ *
+ * @arg MapID
+ * @text MapID
+ * @desc Map ID of the output destination. Default is "1". It means that it is taken in the map ID 1.
+ * @type number
+ * @default 1
+ *
+ * @arg EventID
+ * @text EventID
+ * @desc setting of the eventID of the output destination. Default is "2". It means that it is taken in the event ID 2.
+ * @type number
+ * @default 2
+ *
+ * @arg PageID
+ * @text PageID
+ * @desc page ID of the output destination. Default is "1". It means that it is taken in the page ID 1.
+ * @type number
+ * @default 1
+ *
+ * @arg IsOverwrite
+ * @text !!!Is overwrite!!!
+ * @desc text is added to the end of event, this param can change it to overwrite. Default is false.
+ * @default false
+ * @type select
+ * @option true(!!!overwrite!!!)
+ * @value true
+ * @option false(don't overwrite)
+ * @value false
+ * @default false
+ *
+ * @command IMPORT_MESSAGE_TO_CE
+ * @text Import message to a common event.
+ * @desc Import a message to a common event. Specify the source file information, the common event ID of the destination, etc.
+ *
+ * @arg FileFolder
+ * @text Scenario Folder Name
+ * @desc Setting of the folder name which the text file is stored. Default is "text".
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text Scenario File Name
+ * @desc setting of text file name. Default is "message.txt". 
+ * @type string
+ * @default message.txt
+ *
+ * @arg CommonEventID
+ * @text Common Event ID
+ * @desc setting of the common event ID of the output destination. Default is "1". It means that it is taken in the common event 1.
+ * @type common_event
+ * @default 1
+ *
+ * @arg IsOverwrite
+ * @text !!!Is overwrite!!!
+ * @desc text is added to the end of event, this param can change it to overwrite. Default is false.
+ * @default false
+ * @type select
+ * @option true(!!!overwrite!!!)
+ * @value true
+ * @option false(don't overwrite)
+ * @value false
+ * @default false
  *
  * @param Default Window Position
  * @text Window Position
@@ -105,8 +194,14 @@
  *
  * @param Default EventID
  * @text EventID
- * @desc Default setting os the eventID of the output destination. Default is "2". It means that it is taken in the event ID 2.
+ * @desc Default setting of the eventID of the output destination. Default is "1". It means that it is taken in the event ID 2.
  * @default 2
+ * @type number
+ *
+ * @param Default PageID
+ * @text PageID
+ * @desc page ID of the output destination. Default is "1". It means that it is taken in the page ID 1.
+ * @default 1
  * @type number
  *
  * @param IsOverwrite
@@ -127,6 +222,18 @@
  * @default false
  * @type boolean 
  *
+ * @param DisplayMsg
+ * @text DisplayMsg
+ * @desc Display messages when execution.
+ * @default true
+ * @type boolean
+ *
+ * @param DisplayWarning
+ * @text DisplayWarning
+ * @desc Display warnings when execution.
+ * @default true
+ * @type boolean
+ *
  * @help
  * Update Soon.
  * Please see wiki.
@@ -134,8 +241,85 @@
  */
 
  /*:ja
- * @plugindesc テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、開発支援プラグインです。
- * @author Yuki Katsura, えーしゅん(仕様・ヘルプ文章)
+ * @target MZ
+ * @plugindesc テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、開発支援プラグインです。ツクールMV・MZの両方に対応しています。
+ * @author Yuki Katsura, えーしゅん
+ *
+ * @command IMPORT_MESSAGE_TO_EVENT
+ * @text イベントにインポート
+ * @desc イベントにメッセージをインポートします。取り込み元ファイルの情報や、取り込み先のマップ・イベント・ページID等を指定します。
+ *
+ * @arg FileFolder
+ * @text 取り込み元フォルダ名
+ * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text 取り込み元ファイル名
+ * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @type string
+ * @default message.txt
+ *
+ * @arg MapID
+ * @text 取り込み先マップID
+ * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。
+ * @type number
+ * @default 1
+ *
+ * @arg EventID
+ * @text 取り込み先イベントID
+ * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。
+ * @type number
+ * @default 2
+ *
+ * @arg PageID
+ * @text 取り込み先ページID
+ * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。
+ * @type number
+ * @default 1
+ *
+ * @arg IsOverwrite
+ * @text 【取り扱い注意】上書きする
+ * @desc 通常イベントの末尾に追加しますが、上書きに変更できます。trueのとき上書きです。デフォルト値はfalseです。
+ * @type select
+ * @option true(!!!上書きする!!!)
+ * @value true
+ * @option false(上書きしない)
+ * @value false
+ * @default false
+ *
+ * @command IMPORT_MESSAGE_TO_CE
+ * @text コモンイベントにインポート
+ * @desc コモンイベントにメッセージをインポートします。取り込み元ファイルの情報や、取り込み先のコモンイベントID等を指定します。
+ *
+ * @arg FileFolder
+ * @text 取り込み元フォルダ名
+ * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text 取り込み元ファイル名
+ * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @type string
+ * @default message.txt
+ *
+ * @arg CommonEventID
+ * @text 取り込み先コモンイベントID
+ * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。
+ * @type common_event
+ * @default 1
+ *
+ * @arg IsOverwrite
+ * @text 【取り扱い注意】上書きする
+ * @desc 通常イベントの末尾に追加しますが、上書きに変更できます。trueのとき上書きです。デフォルト値はfalseです。
+ * @type select
+ * @option true(!!!上書きする!!!)
+ * @value true
+ * @option false(上書きしない)
+ * @value false
+ * @default false
  *
  * @param Default Window Position
  * @text 位置のデフォルト値
@@ -157,7 +341,7 @@
  *
  * @param Default Scenario Folder
  * @text 取り込み元フォルダ名
- * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。(MZでは無視されます)
  * @default text
  * @require 1
  * @dir text
@@ -165,7 +349,7 @@
  *
  * @param Default Scenario File
  * @text 取り込み元ファイル名
- * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。(MZでは無視されます)
  * @default message.txt
  * @require 1
  * @dir text
@@ -173,20 +357,26 @@
  *
  * @param Default Common Event ID
  * @text 取り込み先コモンイベントID
- * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。
+ * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。(MZでは無視されます)
  * @default 1
  * @type common_event
  *
  * @param Default MapID
  * @text 取り込み先マップID
- * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。
+ * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。(MZでは無視されます)
  * @default 1
  * @type number
  *
  * @param Default EventID
  * @text 取り込み先イベントID
- * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。
+ * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。(MZでは無視されます)
  * @default 2
+ * @type number
+ *
+ * @param Default PageID
+ * @text 取り込み先ページID
+ * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。(MZでは無視されます)
+ * @default 1
  * @type number
  *
  * @param IsOverwrite
@@ -207,15 +397,27 @@
  * @default false
  * @type boolean
  *
+ * @param DisplayMsg
+ * @text メッセージ表示
+ * @desc 実行時に通常メッセージを表示します。OFFで警告以外のメッセージが表示されなくなります。デフォルト値はtrueです。
+ * @default true
+ * @type boolean
+ *
+ * @param DisplayWarning
+ * @text 警告文表示
+ * @desc 実行時に警告を表示します。OFFで警告が表示されなくなります。デフォルト値はtrueです。
+ * @default true
+ * @type boolean
+ *
  * @help
  * 本プラグインはテキストファイル(.txtファイルなど)から「文章の表示」イベント
  * コマンドに簡単に変換するための、開発支援プラグインです。キャラクター同士の
- * 会話などをツクールMV**以外**のエディタで編集して、後でイベントコマンドとし
- * て組み込みたい人をサポートします。
+ * 会話などをツクールMV・MZ**以外**のエディタで編集して、後でイベントコマンド
+ * として組み込みたい人をサポートします。
  *
  * 所定のプラグインコマンド（後述）を実行することにより、テキストファイルを読
- * み込み、ツクールMVのマップイベントまたはコモンイベントにイベントコマンドと
- * して取り込むことができます。
+ * み込み、ツクールMV・MZのマップイベントまたはコモンイベントにイベントコマン
+ * ドとして取り込むことができます。
  *
  * テストプレイおよびイベントテスト（イベントエディタ上で右クリック→テスト）
  * から実行することを想定しています。
@@ -228,12 +430,12 @@
  *
  *     https://github.com/yktsr/Text2Frame-MV/wiki
  *
- * Wikiのほうが閲覧しやすいと思いますので、RPGツクールMV上では読みづらいと感じ
- * た場合は、こちらをご覧ください。
+ * Wikiのほうが閲覧しやすいと思いますので、RPGツクールMV・MZ上では読みづらい
+ * と感じた場合は、こちらをご覧ください。
  *
  *
  * -------------------------------------
- * 実行方法
+ * ツクールMVでの実行方法
  * --------------------------------------
  * 1. dataフォルダのバックアップをとっておく。(重要)
  *
@@ -242,21 +444,24 @@
  * 3. 作成したフォルダに読み込みたいテキストファイルを保存する。
  *
  * 4. 任意のマップ・位置に空のイベントをひとつ作成します。
- *     この時マップIDとイベントIDをメモしておきましょう。
+ *     この時マップID, イベントID, ページIDをメモしておきましょう。
  *     マップIDは画面左のマップを、右クリック→「編集」として出るウィンドウの
  *    左上に記載されています。
  *     イベントIDはイベントをダブルクリックして出るイベントエディターの左上に
  *    記載されています。
+ *     ページIDはイベントエディターのイベントの名前の下に記載されています。
  *
- * 5. プラグインの管理画面から本プラグインのパラメータを下記のとおり編集します。
+ * 5. プラグインの管理画面から本プラグインのパラメータを下記の通り編集します。
  *  ・「取り込み元フォルダ名」に2.で作成したフォルダのフォルダ名を入力。
  *      (デフォルトはtextです)
- *  ・「取り込み元ファイル名」に3.で保存したテキストファイルのファイル名を入力。
+ *  ・「取り込み元ファイル名」に3.で保存したファイルのファイル名を入力。
  *      (デフォルトはmessage.txtです)
  *  ・「取り込み先マップID」に4.でメモしたマップIDを入力。
  *      (デフォルトは1です)
  *  ・「取り込み先イベントID」に4.でメモしたイベントIDを入力。
- *      (デフォルトは2です)
+ *      (デフォルトは1です)
+ *  ・「取り込み先ページID」に4.でメモしたページIDを入力。
+ *      (デフォルトで1です)
  *
  * 6. 以下のうちいずれかを記述したプラグインコマンドを作成する。
  *    IMPORT_MESSAGE_TO_EVENT
@@ -270,8 +475,51 @@
  * 8. **セーブせずに**プロジェクトを開き直します。
  *      成功していれば、7.で設定したマップのイベントの中に「文章の表示」
  *     イベントコマンドとして書きだされています。
- *      デフォルトの場合はtextフォルダのmessage.txtの内容をIDが1の
- *     マップのIDが2のイベントに書き出したことになります。
+ *      デフォルトの場合はtextフォルダのmessage.txtの内容を
+ *     IDが1のマップの、IDが1のイベントの、IDが1のページに書き出したことに
+ *     なります。
+ *
+ * -------------------------------------
+ * ツクールMZでの実行方法
+ * --------------------------------------
+ * 1. dataフォルダのバックアップをとっておく。(重要)
+ *
+ * 2. プロジェクトの最上位フォルダ(dataやimgのあるところ)にフォルダを作成する。
+ *
+ * 3. 作成したフォルダに読み込みたいテキストファイルを保存する。
+ *
+ * 4. 任意のマップ・位置に空のイベントをひとつ作成します。
+ *     この時マップID, イベントID, ページIDをメモしておきましょう。
+ *     マップIDは画面左のマップを、右クリック→「編集」として出るウィンドウの
+ *    左上に記載されています。
+ *     イベントIDはイベントをダブルクリックして出るイベントエディターの左上に
+ *    記載されています。
+ *     ページIDはイベントエディターのイベントの名前の下に記載されています。
+ *
+ * 5. 以下の手順でプラグインコマンドを作成する。
+ *  ・ プラグイン名「Text2Frame」のコマンド「イベントにインポート」を選択
+ *  ・引数を下記のように設定する。
+ *   -「取り込み元フォルダ名」に2.で作成したフォルダのフォルダ名を入力。
+ *       (デフォルトはtextです)
+ *   -「取り込み元ファイル名」に3.で保存したファイルのファイル名を入力。
+ *       (デフォルトはmessage.txtです)
+ *   -「取り込み先マップID」に4.でメモしたマップIDを入力。
+ *       (デフォルトは1です)
+ *   -「取り込み先イベントID」に4.でメモしたイベントIDを入力。
+ *       (デフォルトは1です)
+ *   -「取り込み先ページID」に4.でメモしたページIDを入力。
+ *       (デフォルトで1です)
+ *
+ * 6. 作成したイベントコマンドをテストプレイかイベントテストで実行する。
+ *     実行前に本プラグインを管理画面からONにして「プロジェクトの保存」を
+ *    実行しておきましょう。
+ *
+ * 7. リロードするもしくは**セーブせずに**プロジェクトを開き直す。
+ *     成功していれば、7.で設定したマップのイベントの中に「文章の表示」
+ *    イベントコマンドとして書きだされています。
+ *     デフォルトの場合はtextフォルダのmessage.txtの内容を
+ *    IDが1のマップの、IDが1のイベントの、IDが1のページに書き出したことに
+ *    なります。
  *
  *
  * --------------------------------------
@@ -281,18 +529,18 @@
  *  １つのメッセージを改行で区切るという書き方をします。
  *  例えば以下の通りです。
  *
- *  ↓↓↓↓↓ここから例文1↓↓↓↓↓
- *  やめて！ラーの翼神竜の特殊能力で、
- *  ギルフォード・ザ・ライトニングを焼き払われたら、
- *  闇のゲームでモンスターと繋がってる城之内の精神まで燃え尽きちゃう！
+ * ↓↓↓↓↓ここから例文1↓↓↓↓↓
+ * やめて！ラーの翼神竜の特殊能力で、
+ * ギルフォード・ザ・ライトニングを焼き払われたら、
+ * 闇のゲームでモンスターと繋がってる城之内の精神まで燃え尽きちゃう！
  *
- *  お願い、死なないで城之内！あんたが今ここで倒れたら、
- *  舞さんや遊戯との約束はどうなっちゃうの？
- *  ライフはまだ残ってる。
- *  ここを耐えれば、マリクに勝てるんだから！
+ * お願い、死なないで城之内！あんたが今ここで倒れたら、
+ * 舞さんや遊戯との約束はどうなっちゃうの？
+ * ライフはまだ残ってる。
+ * ここを耐えれば、マリクに勝てるんだから！
  *
- *  次回、「城之内死す」。デュエルスタンバイ！
- *  ↑↑↑↑↑ここまで例文1↑↑↑↑↑
+ * 次回、「城之内死す」。デュエルスタンバイ！
+ * ↑↑↑↑↑ここまで例文1↑↑↑↑↑
  *
  *  この場合は３つの「文章の表示」イベントコマンドに変換されて
  *  取り込まれます。改行は何行いれても同様の動作になります。
@@ -303,49 +551,51 @@
  *
  * ◆ タグについて
  *  Text2Frameは文章を単純に組み込むだけでなく、タグを挿入することでより柔軟な
- *  設定を可能としています。例えば、メッセージの顔・背景・ウィンドウの位置を変
- *  更したり、メッセージ以外のイベントコマンドを挿入することが可能です。各タグ
- *  については以降の説明をご覧ください。
- *  また、タグについては以下の特徴があります。
+ *  設定を可能としています。例えば、メッセージの顔・背景・ウィンドウの位置変更
+ *  や名前の設定(MZ限定)、メッセージ以外のイベントコマンドを挿入することが可能
+ *  です。各タグについては以降の説明をご覧ください。
+ *
+ *  タグについては以下の特徴があります。
  *  ・タグや値の大文字小文字は区別されません。(ファイル名の指定は除く)
  *     （例：FaceとFACEは同じ動作です）
  *  ・タグは同じ行に複数個配置することができます。
  *     （例：<顔: Actor1(0)><位置: 上><背景: 暗く>
  *  ・基本は英語で指定ですが、省略形や日本語で指定可能な場合もある。
  *
- * ◆ 顔・背景・ウィンドウ位置の設定について
- *  それぞれのメッセージの「顔」「背景」「ウィンドウ位置」については、
+ * ◆ 顔・背景・ウィンドウ位置・名前の設定について
+ *  それぞれのメッセージの「顔」「背景」「ウィンドウ位置」「名前」については、
  *  メッセージの手前にタグを記述することで指定することができます。
  *  上述の例のように指定しない場合は、パラメータで設定したものが適用されます。
  *
  *  例えば以下の通りです。
  *
- *  ↓↓↓↓↓ここから例文2↓↓↓↓↓
- *  <Face: Actor1(0)><WindowPosition: Bottom><Background: Dim>
- *  やめて！ラーの翼神竜の特殊能力で、
- *  ギルフォード・ザ・ライトニングを焼き払われたら、
- *  闇のゲームでモンスターと繋がってる城之内の精神まで燃え尽きちゃう！
+ * ↓↓↓↓↓ここから例文2↓↓↓↓↓
+ * <Face: Actor1(0)><WindowPosition: Bottom><Background: Dim><Name: 真崎杏子>
+ * やめて！ラーの翼神竜の特殊能力で、
+ * ギルフォード・ザ・ライトニングを焼き払われたら、
+ * 闇のゲームでモンスターと繋がってる城之内の精神まで燃え尽きちゃう！
  *
- *  <WindowPosition: Top>
- *  お願い、死なないで城之内！あんたが今ここで倒れたら、
- *  舞さんや遊戯との約束はどうなっちゃうの？
- *  ライフはまだ残ってる。
- *  ここを耐えれば、マリクに勝てるんだから！
+ * <WindowPosition: Top><Name: 真崎杏子>
+ * お願い、死なないで城之内！あんたが今ここで倒れたら、
+ * 舞さんや遊戯との約束はどうなっちゃうの？
+ * ライフはまだ残ってる。
+ * ここを耐えれば、マリクに勝てるんだから！
  *
- *  次回、「城之内死す」。デュエルスタンバイ！
- *  ↑↑↑↑↑ここまで例文2↑↑↑↑↑
+ * 次回、「城之内死す」。デュエルスタンバイ！
+ * ↑↑↑↑↑ここまで例文2↑↑↑↑↑
  *
  *  この例の場合では、
  *  1つ目のメッセージ(やめて！〜)ではActor1ファイルの場所が1の顔が表示(詳細は後
- *  述)され、位置は下、背景が暗いメッセージウィンドウになります。
+ *  述)され、位置は下、背景が暗いメッセージウィンドウになります。名前は「真崎杏
+ *  子」と表示されます。
  *
- *  2つ目のメッセージ(お願い、〜)は、位置が上とだけ指定されます。
- *  指定されなかった他の顔や背景はプラグインのパラメータで設定されているものが
- *  適用されます。
+ *  2つ目のメッセージ(お願い、〜)は、位置が上であることと名前だけ指定されてい
+ *  ます。指定されなかった他の顔や背景はプラグインのパラメータで設定されている
+ *  ものが適用されます。ここでも名前は「真崎杏子」と表示されます。
  *
  *  3つめのメッセージ(次回、〜)は、何も指定されていません。
  *  そのため、例文1と同様にプラグインのパラメータで設定されているものが適用され
- *  ます。
+ *  ます。ここでは名前は表示されません。
  *
  *  タグの詳細は下記をご覧ください。
  *
@@ -357,7 +607,7 @@
  *   の３つのうちいずれかの記法で指定します。
  *   ファイル名はimg/facesのフォルダ内のものを参照します。
  *   顔の指定番号は、ファイルの中で参照する位置を指定します。
- *   番号の法則はツクールMVの仕様に準拠します。最も左上が0,右下が7です。
+ *   番号の法則はツクールMV・MZの仕様に準拠します。最も左上が0,右下が7です。
  *
  *  ○ 位置の指定方法
  *   <WindowPosition: 表示したい位置>
@@ -383,9 +633,18 @@
  *   ・Window        # ウィンドウ
  *   ・Dim           # 暗くする
  *   ・Transparent   # 透明
- *   Windowは「ウィンドウ」、Dimは「暗くする」、Transparentは「透明」となります。
+ *   Windowは「ウィンドウ」,Dimは「暗くする」,Transparentは「透明」となります。
  *   それぞれ大文字小文字を区別しません。
  *   また、英語ではなくて<Background: ウィンドウ>のように日本語指定もできます。
+ *
+ *  ○ 名前の設定方法【MZ用】
+ *  メッセージウィンドウへの名前の設定は
+ *   <Name: 設定する名前>
+ *   <NM: 設定する名前>
+ *   <名前: 設定する名前>
+ *
+ *   の３つのうちいずれかの記法で指定します。
+ *   例えば、<Name: リード>と設定することで、名前欄に「リード」と設定できます。
  *
  *
  * ◆ コメントアウトについて
@@ -412,29 +671,48 @@
  * コモンイベントへの書き出し
  * --------------------------------------
  * マップのイベントではなくコモンイベントに取り込むことも可能です。
- * その場合は以下のプラグインコマンドのうちいずれかを使用してください。
+ * ◆ ツクールMVの場合
+ *  以下のプラグインコマンドのうちいずれかを使用してください。
+ *    IMPORT_MESSAGE_TO_CE
+ *    メッセージをコモンイベントにインポート
+ *  これらは全く同じ機能なのでどちらを使ってもかまいません。
+ *  取り込む先のコモンイベントのIDはプラグインパラメータの
+ *  「取り込み先コモンイベントID」で指定できます。
  *
- * IMPORT_MESSAGE_TO_CE
- * メッセージをコモンイベントにインポート
- *
- * これらは全く同じ機能なのでどちらを使ってもかまいません。
- * 取り込む先のコモンイベントのIDはプラグインパラメータの
- * 「取り込み先コモンイベントID」で指定できます。
+ * ◆ ツクールMZの場合
+ *   プラグインコマンドからプラグイン名「Text2Frame」のコマンド
+ *  「コモンイベントにインポート」を選択してください。
+ *   フォルダ名・ファイル名・取り込み先のコモンイベントIDを引数から
+ *  入力してください。
  *
  *
  * --------------------------------------
- * プラグインコマンドの引数
+ * ツクールMVでのプラグインコマンドの引数
  * --------------------------------------
- * プラグインコマンドに引数を設定することにより、プラグインパラメータで指定した
- * テキストファイルやマップIDとは違うパラメータで実行ができます。
+ * ツクールMVでのプラグインコマンドに引数を設定することにより、プラグインパラ
+ * メータで指定したテキストファイルやマップIDとは違うパラメータで実行ができま
+ * す。
  *
- * 例1:text/message.txtをマップID1, イベント番号2に上書きせずに取り込む。
- * IMPORT_MESSAGE_TO_EVENT text message.txt 1 2 false
- * メッセージをイベントにインポート text message.txt 1 2 false
+ * 例1:text/message.txtをマップIDが1, イベントIDが2, ページIDが3で上書きせず
+ *     に取り込む。
+ *   IMPORT_MESSAGE_TO_EVENT text message.txt 1 2 3 false
+ *   メッセージをイベントにインポート text message.txt 1 2 3 false
  *
  * 例2:text/message.txtをIDが3のコモンイベントに上書きしてに取り込む。
- * IMPORT_MESSAGE_TO_CE text message.txt 3 true
- * メッセージをコモンイベントにインポート text message.txt 3 true
+ *   IMPORT_MESSAGE_TO_CE text message.txt 3 true
+ *   メッセージをコモンイベントにインポート text message.txt 3 true
+ *
+ * ◆ 旧版のプラグインコマンドの引数(非推奨)
+ *  最新版(ツクールMZ対応後,ver2.0.0)と旧版(ツクールMZ対応前,ver1.4.1)では、
+ *  イベントへのインポートにおいて仕様が異なります。
+ *  以下の旧仕様でも実行は可能ですが、非推奨となっております。
+ *
+ *  例:text/message.txtをマップIDが1, イベントIDが2, ページIDが3で上書きせず
+ *     に取り込む(ページIDは1として)。
+ *    IMPORT_MESSAGE_TO_EVENT text message.txt 1 2 false
+ *    メッセージをイベントにインポート text message.txt 1 2 false
+ *
+ *  旧版ではページIDの指定ができず、必ず1となっていました。
  *
  *
  * --------------------------------------
@@ -634,9 +912,9 @@
  *    - 敏捷性: "Agility", "敏捷性"
  *    - 運: "Luck", "運"
  *
- * ・エネミー
- *  GameData[Enemy][(戦闘中の)エネミーID][パラメータ名]
- *  例: 変数1に戦闘中の2番目のエネミーのHPを代入する。
+ * ・敵キャラ
+ *  GameData[Enemy][(戦闘中の)敵キャラID][パラメータ名]
+ *  例: 変数1に戦闘中の2番目の敵キャラのHPを代入する。
  *    <Set: 1, GameData[Enemy][2][HP]>
  *  パラメータ名は、上述したゲームデータのアクターのパラメータ名のリストを
  *  参照してください。ただし、レベルと経験値は設定出来ません。
@@ -659,6 +937,63 @@
  *    - 方向: "Direction", "方向"
  *    - 画面X座標: "ScreenX", "画面X"
  *    - 画面Y座標: "ScreenY", "画面Y"
+ *
+ * ・パーティ
+ *  GameData[party][並び順]
+ *  例: パーティの先頭のアクターIDを変数1に代入する。
+ *    <Set: 1, gamedata[party][1]>
+ *  並び順は整数で指定します。
+ *  引数1の"party"は"パーティ"でも代替できます。
+ *
+ * ・ 直前
+ *  GameData[Last][項目]
+ *
+ *  例: 直前に使用したスキルのIDを変数1に代入する。
+ *   <Set: 1, gamedata[Last][Last Used Skill ID]>
+ *
+ *  項目は以下のリストからご指定ください。
+ *   - 直前に使用したスキルのID:
+ *     - "Last Used Skill ID"
+ *     - "直前に使用したスキルのID"
+ *     - "Used Skill ID"
+ *   - 直前に使用したアイテムのID:
+ *     - "Last Used Item ID"
+ *     - "直前に使用したアイテムのID"
+ *     - "Used Item ID"
+ *   - 直前に行動したアクターのID:
+ *     - "Last Actor ID to Act"
+ *     - "直前に行動したアクターのID"
+ *     - "Actor ID to Act"
+ *   - 直前に行動した敵キャラのインデックス:
+ *     - "Last Enemy Index to Act"
+ *     - "直前に行動した敵キャラのインデックス"
+ *     - "Enemy Index to Act"
+ *   - 直前に対象となったアクターのID:
+ *     - "Last Target Actor ID"
+ *     - "直前に対象となったアクターのID"
+ *     - "Target Actor ID"
+ *   - 直前に対象となった敵キャラのインデックス:
+ *     - "Last Target Enemy Index"
+ *     - "直前に対象となった敵キャラのインデックス"
+ *     - "Target Enemy Index"
+ *
+ *  引数1の"Last"は"直前"でも代替できます。
+ *
+ *
+ * ・その他
+ *  その他では、引数1のみを使用します。以下のリストから指定してください。
+ *   - パーティ人数: "PartyMembers", "パーティ人数"
+ *   - 所持金: "gold", "所持金",
+ *   - 歩数: "steps", "歩数"
+ *   - プレイ時間: "PlayTime", "プレイ時間"
+ *   - タイマー: "timer", "タイマー"
+ *   - セーブ回数: "SaveCount", "セーブ回数"
+ *   - 戦闘回数: "BattleCount", "戦闘回数"
+ *   - 勝利回数: "WinCount", "勝利回数"
+ *   - 逃走回数: "EscapeCount", "逃走回数"
+ *
+ *   例: パーティ人数を変数1に代入する。
+ *    <Set: 1, gamedata[PartyMembers]>
  *
  *
  * ○ (3) セルフスイッチの操作
@@ -686,16 +1021,18 @@
  *    <タイマー: 操作, 分, 秒>
  *
  *  操作ではスタートするかストップするかを以下の記法で指定する。
- *  - スタート: "Start", "スタート"
- *  - ストップ: "Stop", "ストップ"
+ *  - スタート: "Start", "始動", "スタート"
+ *  - ストップ: "Stop", "停止", "ストップ"
  * スタートの場合は分と秒を数値で指定してください。
  * ストップでは分と秒は指定しないでください。
  *
  * 例1: 1分10秒のタイマーをスタートする
  *   <Timer: Start, 1, 10>
+ *   <タイマー: 始動, 1, 10>
  *   <タイマー: スタート, 1, 10>
  * 例2: タイマーをストップする
  *   <Timer: Stop>
+ *   <タイマー: 停止>
  *   <タイマー: ストップ>
  *
  * ○ (5) 条件分岐
@@ -897,7 +1234,7 @@
  *   敵キャラに関する情報を条件に使うときは、以下のように書きます。
  *    <If: Enemies[戦闘中の敵キャラの番号], 条件1, 条件2>
  *
- *   "Enemies"は"エネミー"でも代替できます。
+ *   "Enemies"は"敵キャラ", "エネミー"でも代替できます。
  *
  *   条件1は以下いずれかで設定します。
  *   - 出現している: "Appeared" or "出現している"
@@ -908,9 +1245,11 @@
  *  例えば以下の通りです。
  *   例1: 1体目の敵キャラが出現しているとき
  *    - "<If: Enemies[1], Appeared>"
+ *    - "<If: 敵キャラ[1], 出現している>"
  *    - "<If: エネミー[1], 出現している>"
  *   例2: 1体目の敵キャラがID2のステートにかかっているとき
  *    - "<If: Enemies[1], State, 2>"
+ *    - "<If: 敵キャラ[1], ステート, 2>"
  *    - "<If: エネミー[1], ステート, 2>"
  *
  *  * キャラクターの向きを条件に使うとき
@@ -1033,7 +1372,7 @@
  *
  *  * ボタンを条件に使うとき
  *   ボタンを条件に使うときは以下のように書きます。
- *    <If: Button, ボタンの種類>
+ *    <If: Button, ボタンの種類, 押され方(省略可能)>
  *
  *   "Button"は"ボタン"でも代替できます。
  *   以下のリストからボタンの種類を指定してください。
@@ -1047,16 +1386,30 @@
  *    - ページアップ: "Pageup", "ページアップ"
  *    - ページダウン: "Pagedown", "ページダウン"
  *
+ *   押され方は以下のリストから指定してください。
+ *    - が押されている:
+ *       "is being pressed", "が押されている", "pressed"
+ *    - がトリガーされている:
+ *       "is being triggered", "がトリガーされている", "triggered"
+ *    - がリピートされている:
+ *       "is being repeated", "がリピートされている", "repeated"
+ *
+ *    押され方は省略が可能です。その場合は`is being pressed`が設定されます。
+ *
  *    例えば以下の通りです。
  *     例1: 決定ボタンが押されているとき
+ *      - "<If: Button, OK, is being pressed>"
+ *      - "<If: ボタン, 決定, が押されている>"
  *      - "<If: Button, OK>"
- *      - "<If: ボタン, 決定>"
- *     例2: シフトボタンが押されているとき
- *      - "<If: Button, Shift>"
- *      - "<If: ボタン, シフト>"
- *     例3: 下ボタンが押されているとき
- *      - "<If: Button, Down>"
- *      - "<If: ボタン, 下>"
+ *      - "<If: Button, OK, pressed>"
+ *     例2: シフトボタンがトリガーされているとき
+ *      - "<If: Button, Shift, is being triggered>"
+ *      - "<If: ボタン, シフト, がトリガーされている>"
+ *      - "<If: Button, Shift, triggered>"
+ *     例3: 下ボタンがリピートされているとき
+ *      - "<If: Button, Down,  is being repeated>"
+ *      - "<If: ボタン, 下, がリピートされている>"
+ *      - "<If: Button, Down, repeated>"
  *
  *  * スクリプトを条件に使う時
  *   スクリプトを条件に使うときは以下のように書きます。
@@ -1120,16 +1473,16 @@
  *
  *  ループしたい処理は、メッセージの表示や他のタグを自由に組み込めます。
  *
- *  以下の具体例は、"今日も一日がんばるぞい！(و ･ㅂ･)و"というメッセージが
+ *  以下の具体例は、"今日も一日がんばるぞい！"というメッセージが
  *  無限ループします。
  *  ---
  *  <Loop>
- *  今日も一日がんばるぞい！(و ･ㅂ･)و
+ *  今日も一日がんばるぞい！
  *  <RepeatAbove>
  *  ---
  *
  *  以下の例では、他のタグと組み合わせることで、
- *  "今日も一日がんばるぞい！(و ･ㅂ･)و"を
+ *  "今日も一日がんばるぞい！"を
  *  5回表示させる処理になります。
  *  """
  *  <Set: 1, 0>
@@ -1137,7 +1490,7 @@
  *  <If: Variables[1], ==, 5>
  *    <BreakLoop>
  *  <End>
- *  今日も一日がんばるぞい！(و ･ㅂ･)و
+ *  今日も一日がんばるぞい！
  *  <Add: 1, 1>
  *  <RepeatAbove>
  *  """
@@ -1210,11 +1563,11 @@
  *
  * ○ (13) ピクチャの表示
  *  ピクチャの表示は、以下の記法で指定します。
- *  <ShowPicture:ピクチャ番号, ファイル名, オプション1, オプション2, オプション3>
+ *  <ShowPicture: ピクチャ番号,ファイル名,オプション1,オプション2,オプション3>
  *
  *  必須の引数はピクチャ番号(整数)とファイル名だけです。
- *  位置・拡大率・合成はオプションとして指定でき、指定しない場合はデフォルト値が
- *  設定されます。
+ *  位置・拡大率・合成はオプションとして指定でき、指定しない場合はデフォルト値
+ *  が設定されます。
  *  "ShowPicture"は"ピクチャの表示"か"SP"で代替できます。
  *
  *  オプションの指定方法を述べる前に、いくつか具体例を記します。
@@ -1363,6 +1716,35 @@
  *    時間を指定しなかった場合のデフォルト値は
  *    "Duration[60][Wait for Completion]"となります。
  *
+ *  ・イージング
+ *    イージングは以下の記法で指定します。
+ *    Easing[モード]
+ *      モードは以下の4つを選択できます。
+ *       - "Constant speed"
+ *       - "Slow start"
+ *       - "Slow end"
+ *       - "Slow start and end"
+ *
+ *   "Easing"は"イージング"でも代替できます。
+ *   モードは以下の対応関係で代替できます。
+ *     - "Constant speed": "一定速度", "Linear"
+ *     - "Slow start": "ゆっくり始まる", "Ease-in"
+ *     - "Slow end": "ゆっくり終わる", "Ease-out"
+ *     - "Slow start and end": "ゆっくり始まってゆっくり終わる", "Ease-in-out"
+ *
+ *    例えば、以下の通りです。
+ *    例1: 一定速度
+ *     - "Easing[Constant speed]"
+ *     - "イージング[一定速度]"
+ *     - "Easing[Linear]"
+ *    例2: ゆっくり始まってゆっくり終わる
+ *     - "Easing[Slow start and end]"
+ *     - "イージング[ゆっくり始まってゆっくり終わる]"
+ *     - "Easing[Ease-in-out]"
+ *
+ *    イージングを指定しなかった場合のデフォルト値は
+ *    "Easing[Constant speed]"となります。
+ *
  *
  * ○ (15) ピクチャの回転
  *  ピクチャの回転は以下の記法で指定します。
@@ -1428,7 +1810,7 @@
  *     - "色調[-68][68][100][0]"
  *     - "CT[-68][68][100][0]"
  *
- *   [赤の強さ]の部分に指定の文字列を入力することで、RPGツクールMVの機能と
+ *   [赤の強さ]の部分に指定の文字列を入力することで、RPGツクールMV・MZの機能と
  *   同様に「通常」, 「ダーク」, 「セピア」, 「夕暮れ」,「夜」で設定することが
  *   できます。以下のように色調が対応しています。
  *     - "通常" or "Normal": "ColorTone[0][0][0][0]"
@@ -1623,26 +2005,26 @@
  *  例えば以下のとおりです。
  *  <script>
  *  for(let i = 0; i < 10; i++) {
- *      console.log("今日も一日がんばるぞい！(و ･ㅂ･)و");
+ *      console.log("今日も一日がんばるぞい！");
  *  }
  *  </script>
  *
  *  このようにテキストファイル中に記載することで、
  *   for(let i = 0; i < 10; i++) {
- *       console.log("今日も一日がんばるぞい！(و ･ㅂ･)و");
+ *       console.log("今日も一日がんばるぞい！");
  *   }
  *  という内容のスクリプトのイベントコマンドが組み込まれます。
- *  ツクールMVのエディタ上からは12行を超えるスクリプトは記述出来ませんが、
+ *  ツクールMV・MZのエディタ上からは12行を超えるスクリプトは記述出来ませんが、
  *  本プラグインの機能では13行以上のスクリプトも組み込めます。
- *  ただし、ツクールMV上から一度開いて保存してしまうと、13行目以降はロストし
- *  てしまいます。
+ *  ただし、ツクールMV・MZ上から一度開いて保存してしまうと、13行目以降はロス
+ *  トしてしまいます。
  *  別記法として<SC>か、<スクリプト>としても記述できます。
  *  また、
- *  <script>console.log("今日も一日がんばるぞい！(و ･ㅂ･)و");</script>
+ *  <script>console.log("今日も一日がんばるぞい！");</script>
  *  というように1行で記述することもできます。
  *
  *
- * ○ (32) プラグインコマンド
+ * ○ (32)-1 プラグインコマンド(ツクールMV)
  *  プラグインコマンドのイベントコマンドは、以下のいずれかの記法で指定します。
  *  <plugincommand: プラグインコマンドの内容>
  *  <PC: プラグインコマンドの内容>
@@ -1653,6 +2035,40 @@
  *  <plugincommand: ItemBook open>
  *  <PC: ItemBook open>
  *  <プラグインコマンド: ItemBook open>
+ *
+ * ○ (32)-2 プラグインコマンド(ツクールMZ, 上級者向け)
+ *  プラグインコマンドのイベントコマンドは、以下の記法で指定します。
+ *  <PluginCommandMZ: プラグイン名, 関数名, コマンド, 引数[値][注釈],...>
+ *
+ *  プラグイン名はプラグインファイルの名前です。○○.jsの○○を記入して
+ *  ください。Text2Frame.jsの場合は"Text2Frame"となります。
+ *
+ *  内部関数名はプラグイン内で設定されている関数名を指定してください。
+ *  ただし、対応しているプラグイン本体であるJavascriptファイルかdataフォ
+ *  ルダ内のJSONファイルから直接確認する必要がある可能性が高いです。
+ *  そのため、このタグはある程度プラグインを開発する能力がある方向けと
+ *  なります。
+ *
+ *  コマンドはプラグインコマンド設定ウィンドウで、呼び出すコマンドの
+ *  名前を記述してください。
+ *
+ *  プラグインコマンドのパラメータは、コマンド名以降にカンマ区切りで
+ *  "引数の名前[値]"として記述してください。数に制限はありません。
+ *  例えば、引数の名前が"FileFolder", 値が"text"の場合は
+ *  "FileFolder[text]"と記述してください。
+ *  引数の名前は、「プラグインコマンド」ウィンドウの、指定したい引数の
+ *  「パラメータ」ウィンドウから確認できます。薄い灰色文字で書かれた
+ *  括弧書きされている文字が引数の名前です。
+ *  注釈は、ツクールMZ上での表示を正式なものにするために使います。
+ *  指定しない場合は、自動で補完します。実行上の違いはありませんが、
+ *  ツクールMZ上から設定した場合の表記とは異なります。
+ *
+ *  "PluginCommandMZ"は"PCZ","プラグインコマンドMZ"でも代替できます。
+ *
+ *  例えば、TextPictureプラグインで"ほげ"という文字列を画像にする
+ *  プラグインコマンドは以下のように設定します。
+ *  <PCZ: TextPicture, set, テキストピクチャの設定, text[ほげ]>
+ *
  *
  * --------------------------------------
  * 動作確認テキスト
@@ -1709,9 +2125,12 @@ if(typeof PluginManager === 'undefined'){
     Laurus.Text2Frame.CommonEventID  = "1";
     Laurus.Text2Frame.MapID          = "1";
     Laurus.Text2Frame.EventID        = "1";
+    Laurus.Text2Frame.PageID         = "1";
     Laurus.Text2Frame.IsOverwrite    = true;
     Laurus.Text2Frame.CommentOutChar = "%";
     Laurus.Text2Frame.IsDebug        = true;
+    Laurus.Text2Frame.DisplayMsg     = true;
+    Laurus.Text2Frame.DisplayWarning = true;
   }else{
     // for default plugin command
     Laurus.Text2Frame.Parameters = PluginManager.parameters('Text2Frame');
@@ -1722,17 +2141,92 @@ if(typeof PluginManager === 'undefined'){
     Laurus.Text2Frame.CommonEventID  = String(Laurus.Text2Frame.Parameters["Default Common Event ID"]);
     Laurus.Text2Frame.MapID          = String(Laurus.Text2Frame.Parameters["Default MapID"]);
     Laurus.Text2Frame.EventID        = String(Laurus.Text2Frame.Parameters["Default EventID"]);
+    Laurus.Text2Frame.PageID         = String(Laurus.Text2Frame.Parameters["Default PageID"]);
     Laurus.Text2Frame.IsOverwrite    = (String(Laurus.Text2Frame.Parameters["IsOverwrite"]) == 'true') ? true : false;
     Laurus.Text2Frame.CommentOutChar = String(Laurus.Text2Frame.Parameters["Comment Out Char"]);
     Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug"]) == 'true') ? true : false;
+    Laurus.Text2Frame.DisplayMsg     = (String(Laurus.Text2Frame.Parameters["DisplayMsg"]) == 'true') ? true : false;
+    Laurus.Text2Frame.DisplayWarning = (String(Laurus.Text2Frame.Parameters["DisplayWarning"]) == 'true') ? true : false;
     Laurus.Text2Frame.TextPath        = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
     Laurus.Text2Frame.MapPath         = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
     Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`;
   }
 
+  const addMessage = function(text){
+    if(Laurus.Text2Frame.DisplayMsg){
+      $gameMessage.add(text);
+    }
+  };
+
+  const addWarning = function(warning){
+    if(Laurus.Text2Frame.DisplayWarning){
+      $gameMessage.add(warning);
+    }
+  };
+
+  const getDefaultPage = function(){
+    return {
+      "conditions":{
+        "actorId":1,
+        "actorValid":false,
+        "itemId":1,
+        "itemValid":false,
+        "selfSwitchCh":"A",
+        "selfSwitchValid":false,
+        "switch1Id":1,
+        "switch1Valid":false,
+        "switch2Id":1,
+        "switch2Valid":false,
+        "variableId":1,
+        "variableValid":false,
+        "variableValue":0
+      },
+      "directionFix":false,
+      "image": {"characterIndex":0,"characterName":"","direction":2,"pattern":0,"tileId":0},
+      "list":[
+        {"code":0,"indent":0,"parameters":[]}
+      ],
+      "moveFrequency":3,
+      "moveRoute": {
+        "list":[{"code":0,"parameters":[]}],
+        "repeat":true,"skippable":false,"wait":false
+      },
+      "moveSpeed":3,
+      "moveType":0,
+      "priorityType":0,
+      "stepAnime":false,
+      "through":false,
+      "trigger":0,
+      "walkAnime":true
+    }
+  };
+
   //=============================================================================
   // Game_Interpreter
   //=============================================================================
+
+  // for MZ plugin command
+  if(typeof PluginManager != 'undefined' && PluginManager.registerCommand){
+    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_EVENT', function(args) {
+      let file_folder = args.FileFolder;
+      let file_name = args.FileName;
+      let map_id = args.MapID;
+      let event_id = args.EventID;
+      let page_id = args.PageID;
+      let is_overwrite = args.IsOverwrite;
+      this.pluginCommand('IMPORT_MESSAGE_TO_EVENT',
+                         [file_folder, file_name, map_id, event_id, page_id, is_overwrite]);
+    });
+    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_CE', function(args) {
+      let file_folder = args.FileFolder;
+      let file_name = args.FileName;
+      let common_event_id = args.CommonEventID;
+      let is_overwrite = args.IsOverwrite;
+      this.pluginCommand('IMPORT_MESSAGE_TO_CE',
+                         [file_folder, file_name, common_event_id, is_overwrite]);
+    });
+  }
+
   const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
   Game_Interpreter.prototype.pluginCommand = function(command, args) {
     _Game_Interpreter_pluginCommand.apply(this, arguments);
@@ -1745,22 +2239,29 @@ if(typeof PluginManager === 'undefined'){
       // for custom plugin command
       case 'IMPORT_MESSAGE_TO_EVENT' :
       case 'メッセージをイベントにインポート' :
-        if(args.length == 5){
-          $gameMessage.add('import message to event. \n/ メッセージをイベントにインポートします。');
-          Laurus.Text2Frame.ExecMode        = 'IMPORT_MESSAGE_TO_EVENT';
-          Laurus.Text2Frame.FileFolder      = args[0];
-          Laurus.Text2Frame.FileName        = args[1];
-          Laurus.Text2Frame.MapID           = args[2];
-          Laurus.Text2Frame.EventID         = args[3];
-          Laurus.Text2Frame.IsOverwrite     = (args[4] == 'true') ? true : false;
-          Laurus.Text2Frame.TextPath        = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
-          Laurus.Text2Frame.MapPath         = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
+        addMessage('import message to event. \n/ メッセージをイベントにインポートします。');
+        if(args[0]) Laurus.Text2Frame.FileFolder = args[0];
+        if(args[1]) Laurus.Text2Frame.FileName = args[1];
+        if(args[2]) Laurus.Text2Frame.MapID = args[2];
+        if(args[3]) Laurus.Text2Frame.EventID = args[3];
+        if(args[4] && (args[4].toLowerCase() === 'true' || args[4].toLowerCase() === 'false')) {
+          Laurus.Text2Frame.IsOverwrite = args[4].toLowerCase() === 'true' ? true : false;
+          addWarning('【警告】5番目の引数に上書き判定を設定することは非推奨に');
+          addWarning('なりました。ページIDを設定してください。上書き判定は6番');
+          addWarning('目に設定してください。(警告はオプションでOFFにできます)');
+        } else if(args[4]) {
+          Laurus.Text2Frame.PageID = args[4];
+        }
+        if(args[5] && args[5].toLowerCase() === 'true') Laurus.Text2Frame.IsOverwrite = true;
+        if(args[0] || args[1]) {
+          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
+          Laurus.Text2Frame.MapPath  = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
         }
         break;
       case 'IMPORT_MESSAGE_TO_CE' :
       case 'メッセージをコモンイベントにインポート' :
         if(args.length == 4){
-          $gameMessage.add('import message to common event. \n/ メッセージをコモンイベントにインポートします。');
+          addMessage('import message to common event. \n/ メッセージをコモンイベントにインポートします。');
           Laurus.Text2Frame.ExecMode        = 'IMPORT_MESSAGE_TO_CE';
           Laurus.Text2Frame.FileFolder      = args[0];
           Laurus.Text2Frame.FileName        = args[1];
@@ -1868,7 +2369,7 @@ if(typeof PluginManager === 'undefined'){
     const getPretextEvent = function(){
       return {"code": 101, "indent": 0, "parameters": ["", 0, 
               getBackground(Laurus.Text2Frame.Background), 
-              getWindowPosition(Laurus.Text2Frame.WindowPosition)]}
+              getWindowPosition(Laurus.Text2Frame.WindowPosition), ""]}
     };
 
     const getTextFrameEvent = function(text){
@@ -1895,7 +2396,39 @@ if(typeof PluginManager === 'undefined'){
       plugin_command["parameters"][0] = text;
       return plugin_command;
     };
-    
+
+    const getPluginCommandEventMZ = function(
+      plugin_name, plugin_command, disp_plugin_command, args){
+      let plugin_args = {};
+      let plugin_command_mz = {"code": 357, "indent": 0, "parameters": [
+        plugin_name, plugin_command, disp_plugin_command, plugin_args
+      ]};
+      let arg_regexp = /([^[\]]+)(\[.+\])/i;
+      for(let i=0; i < args.length; i++){
+        let matched = args[i].match(arg_regexp);
+        if(matched){
+          let arg_name = matched[1] || '';
+          let values = matched[2].slice(1, -1).split('][') || [];
+          plugin_args[arg_name] = values[0] || '';
+        }
+      }
+      return plugin_command_mz;
+    };
+
+    const getPluginCommandMzParamsComment = function(plugin_command_mz_arg){
+      let arg_regexp = /([^[\]]+)(\[.+\])/i;
+      let matched = plugin_command_mz_arg.match(arg_regexp);
+      if(matched){
+        let arg_name = matched[1] || '';
+        let values = matched[2].slice(1, -1).split('][') || [];
+         let value = values[0] || '';
+         if(values[1]) {
+           arg_name = values[1];
+         }
+        var parameters = [arg_name + " = " + value];
+      }
+      return {"code": 657, "indent": 0, "parameters": parameters};
+    };
     const getCommonEventEvent = function(num){
       let common_event= {"code": 117, "indent": 0, "parameters": [""]}
       common_event["parameters"][0] = num;
@@ -2148,6 +2681,7 @@ if(typeof PluginManager === 'undefined'){
             case 'actor':
             case 'アクター':
             case 'enemy':
+            case '敵キャラ':
             case 'エネミー':{
               if(operand_arg1 == 'actor' || operand_arg1 == 'アクター'){
                 parameters.push(3);
@@ -2219,7 +2753,7 @@ if(typeof PluginManager === 'undefined'){
                   break;
                 }
               }
-              if(operand_arg1 == 'enemy' || operand_arg1 == 'エネミー'){
+              if(operand_arg1 == 'enemy' || operand_arg1 == '敵キャラ' || operand_arg1 == 'エネミー'){
                 let value = parameters.pop();
                 let key = parameters.pop();
                 value = value - 2;
@@ -2348,6 +2882,53 @@ if(typeof PluginManager === 'undefined'){
               }
               parameters.push(0);
               break;
+            case 'last':
+            case '直前':
+              parameters.push(8);
+              switch(operand_arg2.toLowerCase()){
+                case 'last used skill id':
+                case '直前に使用したスキルのid':
+                case 'used skill id':{
+                  parameters.push(0);
+                  break;
+                }
+                case 'last used item id':
+                case '直前に使用したアイテムのid':
+                case 'used item id':{
+                  parameters.push(1);
+                  break;
+                }
+                case 'last actor id to act':
+                case '直前に行動したアクターのid':
+                case 'actor id to act':{
+                  parameters.push(2);
+                  break;
+                }
+                case 'last enemy index to act':
+                case '直前に行動した敵キャラのインデックス':
+                case 'enemy index to act':{
+                  parameters.push(3);
+                  break;
+                }
+                case 'last target actor id':
+                case '直前に対象となったアクターのid':
+                case 'target actor id':{
+                  parameters.push(4);
+                  break;
+                }
+                case 'last target enemy index':
+                case '直前に対象となった敵キャラのインデックス':
+                case 'target enemy index':{
+                  parameters.push(5);
+                  break;
+                }
+                default:{
+                  parameters.push(0);
+                  break;
+                }
+              }
+              parameters.push(0);
+              break;
           }
           break;
         }
@@ -2388,10 +2969,12 @@ if(typeof PluginManager === 'undefined'){
     const getControlTimer = function(operation, sec){
       switch(operation.toLowerCase()){
         case 'start':
+        case '始動':
         case 'スタート':{
           return {"code": 124, "indent": 0, "parameters": [0, parseInt(sec)]};
         }
         case 'stop':
+        case '停止':
         case 'ストップ':{
           return {"code": 124, "indent": 0, "parameters": [1, parseInt(sec)]};
         }
@@ -2448,7 +3031,8 @@ if(typeof PluginManager === 'undefined'){
         "width": 100, "height": 100, //%
         "opacity": 255, "blend_mode": 0, // 0:Normal, 1:Additive, 2:Multiply, 3:Screen
         "duration": 60, "wait": true,  // for a function that move a picture
-        "red": 0, "green": 0, "blue": 0, "gray": 0 // for a function that tints a picture.
+        "red": 0, "green": 0, "blue": 0, "gray": 0,  // for a function that tints a picture.
+        "easing": 0 // for MZ
       };
     };
 
@@ -2570,6 +3154,18 @@ if(typeof PluginManager === 'undefined'){
                 break;
               }
             }
+            break;
+          }
+        case "easing":
+        case "イージング": {
+          let easingMode = values[0].toLowerCase() || "inear";
+          out["easing"] = {
+            "constant speed": 0, "一定速度": 0, "linear": 0,
+            "slow start": 1, "ゆっくり始まる": 1, "ease-in": 1,
+            "slow end": 2, "ゆっくり終わる": 2, "ease-out": 2,
+            "slow start and end": 3, "ゆっくり始まってゆっくり終わる": 3,
+            "ease-in-out": 3}[easingMode];
+          break;
           }
         }
       }
@@ -2595,7 +3191,7 @@ if(typeof PluginManager === 'undefined'){
                              ps.origin, ps.variable,
                              ps.x, ps.y, ps.width, ps.height,
                              ps.opacity, ps.blend_mode,
-                             ps.duration, ps.wait]};
+                             ps.duration, ps.wait, ps.easing]};
     };
 
     const getRotatePicture = function(pic_no, speed) {
@@ -2776,7 +3372,12 @@ if(typeof PluginManager === 'undefined'){
         "pageup": "pageup", "ページアップ": "pageup",
         "pagedown": "pagedown", "ページダウン" : "pagedown"
       }[(params[0] || "").toLowerCase()] || "ok";
-      return [11, button];
+      let how = {
+        "is being pressed": 0, "が押されている": 0, "pressed": 0,
+        "is being triggered": 1, "がトリガーされている": 1, "triggered": 1,
+        "is being repeated": 2, "がリピートされている": 2, "repeated": 2
+      }[(params[1] || "").toLowerCase()] || 0;
+      return [11, button, how];
     };
 
     const getIfScriptParameters = function(params){
@@ -2828,6 +3429,7 @@ if(typeof PluginManager === 'undefined'){
           break;
         }
         case "enemies":
+        case "敵キャラ":
         case "エネミー": {
           out.parameters = getIfEnemyParameters(mode_value, params);
           break;
@@ -3000,9 +3602,15 @@ if(typeof PluginManager === 'undefined'){
         let background = text.match(/<background *: *(.+?)>/i)
           || text.match(/<BG *: *(.+?)>/i)
           || text.match(/<背景 *: *(.+?)>/i);
+         let namebox = text.match(/<name *: ?(.+?)>/i)
+          || text.match(/<NM *: ?(.+?)>/i)
+          || text.match(/<名前 *: ?(.+?)>/i);
         let plugin_command = text.match(/<plugincommand *: *(.+?)>/i)
           || text.match(/<PC *: *(.+?)>/i)
           || text.match(/<プラグインコマンド *: *(.+?)>/i);
+        let plugin_command_mz = text.match(/<plugincommandmz\s*:\s*([^\s].*)>/i)
+          || text.match(/<PCZ\s*:\s*([^\s].*)>/i)
+          || text.match(/<プラグインコマンドmz\s*:\s*([^\s].*)>/i);
         let common_event = text.match(/<commonevent *: *(.+?)>/i)
           || text.match(/<CE *: *(.+?)>/i)
           || text.match(/<コモンイベント *: *(.+?)>/i);
@@ -3104,6 +3712,29 @@ if(typeof PluginManager === 'undefined'){
         // Plugin Command
         if(plugin_command){
           event_command_list.push(getPluginCommandEvent(plugin_command[1]));
+          continue;
+        }
+
+        // Plugin Command MZ
+        if(plugin_command_mz){
+          let params = plugin_command_mz[1].split(',').map(s => s.trim());
+          if(params.length > 2){
+            let arg_plugin_name = params[0];
+            let arg_plugin_command = params[1];
+            let arg_disp_plugin_command = params[2];
+            let pcz_args = params.slice(3);
+            let pcemz = getPluginCommandEventMZ(
+              arg_plugin_name,
+              arg_plugin_command,
+              arg_disp_plugin_command,
+              pcz_args
+            );
+            event_command_list.push(pcemz);
+            pcz_args.map(arg => event_command_list.push(getPluginCommandMzParamsComment(arg)))
+          }else{
+            throw new Error('Syntax error. / 文法エラーです。'
+                            + text.replace(/</g, '  ').replace(/>/g, '  '));
+          }
           continue;
         }
 
@@ -3482,9 +4113,19 @@ if(typeof PluginManager === 'undefined'){
                   }
                   break;
                 }
+                case 'last':
+                case '直前':{
+                  const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex} ]+)\\]`, 'i'));
+                  if(args){
+                    const arg1 = args[1];
+                    return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), arg1);
+                  }
+                  break;
+                }
                 case 'actor':
                 case 'アクター':
                 case 'enemy':
+                case '敵キャラ':
                 case 'エネミー':
                 case 'character':
                 case 'キャラクター':{
@@ -3588,7 +4229,6 @@ if(typeof PluginManager === 'undefined'){
         }
         if(timer_stop){
           let operand1 = timer_stop[1] || timer_stop[2];
-          console.log(timer_stop, operand1)
           event_command_list.push(getControlTimer(operand1, 0));
           continue;
         }
@@ -3777,6 +4417,14 @@ if(typeof PluginManager === 'undefined'){
           text = text.replace(window_position[0], '');
         }
 
+        //name box
+        if(namebox){
+          if(!frame_param){
+            frame_param = getPretextEvent();
+          }
+          frame_param.parameters[4] = namebox[1];
+          text = text.replace(namebox[0], '');
+        }
 
         if(text){
           if(frame_param){
@@ -3805,16 +4453,23 @@ if(typeof PluginManager === 'undefined'){
             + "Event ID: " + Laurus.Text2Frame.EventID);
         }
 
-        let map_events = map_data.events[Laurus.Text2Frame.EventID].pages[0].list;
+        let pageID = Number(Laurus.Text2Frame.PageID) - 1;
+        while (! map_data.events[Laurus.Text2Frame.EventID].pages[pageID]){
+          map_data.events[Laurus.Text2Frame.EventID].pages.push(getDefaultPage());
+        }
+
+        let map_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list;
         if(Laurus.Text2Frame.IsOverwrite){
           map_events = [];
         }
         map_events.pop();
         map_events = map_events.concat(event_command_list);
-        map_data.events[Laurus.Text2Frame.EventID].pages[0].list = map_events;
+        map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list = map_events;
         writeData(Laurus.Text2Frame.MapPath, map_data);
-        $gameMessage.add('Success / 書き出し成功！\n' 
-          + "======> MapID: " + Laurus.Text2Frame.MapID + " -> EventID: " + Laurus.Text2Frame.EventID);
+        addMessage('Success / 書き出し成功！\n' 
+                   + "======> MapID: " + Laurus.Text2Frame.MapID
+                   + " -> EventID: " + Laurus.Text2Frame.EventID
+                   + " -> PageID: " + Laurus.Text2Frame.PageID);
         break;
       }
       case 'IMPORT_MESSAGE_TO_CE' :
@@ -3832,13 +4487,13 @@ if(typeof PluginManager === 'undefined'){
         ce_events.pop();
         ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list);
         writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
-        $gameMessage.add('Success / 書き出し成功！\n' 
+        addMessage('Success / 書き出し成功！\n' 
           + "=====> Common EventID :" + Laurus.Text2Frame.CommonEventID);
         break;
       }
     }
-    $gameMessage.add('\n');
-    $gameMessage.add('Please restart RPG Maker MV(Editor) WITHOUT save. \n' + 
+    addMessage('\n');
+    addMessage('Please restart RPG Maker MV(Editor) WITHOUT save. \n' + 
         '**セーブせずに**プロジェクトファイルを開き直してください');
     console.log('Please restart RPG Maker MV(Editor) WITHOUT save. \n' + 
         '**セーブせずに**プロジェクトファイルを開き直してください');
@@ -3858,6 +4513,7 @@ if(typeof require.main !== 'undefined' && require.main === module) {
     .option('-t, --text_path <name>', 'text file path')
     .option('-o, --output_path <name>', 'output file path')
     .option('-e, --event_id <name>', 'event file id')
+    .option('-p, --page_id <name>', 'page id')
     .option('-c, --common_event_id <name>', 'common event id')
     .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
     .option('-v, --verbose', 'debug mode', false)
@@ -3870,6 +4526,7 @@ if(typeof require.main !== 'undefined' && require.main === module) {
   if (program.mode === 'map'){
     Laurus.Text2Frame.MapPath  = program.output_path;
     Laurus.Text2Frame.EventID  = program.event_id;
+    Laurus.Text2Frame.PageID   = program.page_id ? program.page_id : '1';
     Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', ['IMPORT_MESSAGE_TO_EVENT']);
   }else if (program.mode === 'common'){
     Laurus.Text2Frame.CommonEventPath = program.output_path;
@@ -3880,9 +4537,10 @@ if(typeof require.main !== 'undefined' && require.main === module) {
     const file_name   = 'basic.txt';
     const map_id      = '1';
     const event_id    = '1';
+    const page_id     = '1';
     const overwrite   = 'true';
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-      [folder_name, file_name, map_id, event_id, overwrite]);
+      [folder_name, file_name, map_id, event_id, page_id, overwrite]);
   }else{
     console.log('===== Manual =====');
     console.log(`
@@ -3890,19 +4548,19 @@ if(typeof require.main !== 'undefined' && require.main === module) {
        Text2Frame - Simple compiler to convert text to event command.
     SYNOPSIS
         node Text2Frame.js
-        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
         node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
         node Text2Frame.js --verbose --mode test
     DESCRIPTION
         node Text2Frame.js
           テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
-        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
           マップへのイベント出力モードです。
           読み込むファイル、出力マップ、上書きの有無を引数で指定します。
           test/basic.txt を読み込み data/Map001.json に上書きするコマンド例は以下です。
 
-          例1：$ node Text2Frame.js --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --overwrite true
-          例2：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -w true
+          例1：$ node Text2Frame.js --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --page_id 1 --overwrite true
+          例2：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -p 1 -w true
 
         node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
           コモンイベントへのイベント出力モードです。

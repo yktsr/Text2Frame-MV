@@ -1,0 +1,36 @@
+% [OK]ボタンを押している場合
+<If: Button, OK, is being pressed>
+今日も一日がんばるぞい！
+<End>
+<If: ボタン, 決定, が押されている>
+今日も一日がんばるぞい！
+<End>
+<If: Button, OK, pressed>
+今日も一日がんばるぞい！
+<Else>
+今日も一日がんばるぞい！
+<End>
+
+<If: Button, Shift, is being triggered>
+今日も一日がんばるぞい！
+<End>
+<If: ボタン, シフト, がトリガーされている>
+今日も一日がんばるぞい！
+<End>
+<If: Button, Shift, triggered>
+今日も一日がんばるぞい！
+<Else>
+今日も一日がんばるぞい！
+<End>
+
+<If: Button, Pagedown, is being repeated>
+今日も一日がんばるぞい！
+<End>
+<If: ボタン, ページダウン, がリピートされている>
+今日も一日がんばるぞい！
+<End>
+<If: Button, Pagedown, repeated>
+今日も一日がんばるぞい！
+<Else>
+今日も一日がんばるぞい！
+<End>
