@@ -22,7 +22,7 @@
     "chai": ">=4.2.0",
     "commander": ">=6.0.0",
     "eslint": ">=7.6.0",
-    "mocha": ">=8.1.1",
+    "mocha": ">=10.2.0",
     "sinon": ">=9.0.2"
   },
   "devDependencies": {}
