@@ -1,11 +1,14 @@
 //=============================================================================
 // Text2Frame.js
 // ----------------------------------------------------------------------------
-// (C)2018-2020 Yuki Katsura
+// (C)2018-2023 Yuki Katsura
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.0.1 2023/02/01: 不具合修正
+// ・#83 変数やスイッチ操作タグを使用する際、操作の対象が1つだけのときかつ
+//   操作対象が2桁以上の番号の場合、意図しない範囲指定の操作に変換される不具合の修正
 // 2.0.0 2020/12/06: ツクールMZに対応
 // ・ツクールMZ仕様のプラグインコマンドの定義
 // ・取り込み先にページ番号を設定する機能の追加
@@ -4030,9 +4033,7 @@ if(typeof PluginManager === 'undefined'){
           }
 
           let operand1_num = operand1.match(/\d+/i);
-          /* eslint-disable no-useless-escape */
-          let operand1_range = operand1.match(/(\d+)\-?(\d+)/i);
-          /* eslint-enable */
+          let operand1_range = operand1.match(/(\d+)-(\d+)/i);
           let start_pointer = 0;
           let end_pointer = 0;
           if (operand1_range){
