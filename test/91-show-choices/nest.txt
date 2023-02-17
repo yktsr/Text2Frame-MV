@@ -1,0 +1,92 @@
+% 選択肢表示の入れ子をテストする
+% 条件分岐タグとも組み合わせる
+
+% 条件分岐だけ
+<ShowChoices: Window, left, 1, Branch>
+<When: Yes>
+  <SHC>
+  <When: Yes>
+  <When: No>
+  <End>
+% Noの中に3個同じ選択肢の表示を入れる
+<When: No>
+  <SHC>
+  <When: Yes>
+  <When: No>
+    <SHC>
+    <When: Yes>
+    <When: No>
+      <SHC>
+      <When: Yes>
+      <When: No>
+      <End>
+    <End>
+  <End>
+% キャンセル時の中に2個同じ選択肢の表示を入れる
+<WhenCancel>
+  <ShowChoices: Window, left, 1, Branch>
+  <When: Yes>
+  <When: No>
+  <WhenCancel>
+    <ShowChoices: Window, left, 1, Branch>
+    <When: Yes>
+    <When: No>
+    <WhenCancel>
+    <End>
+  <End>
+<End>
+
+
+% Ifと交互に選択肢表示
+<If: Switches[1], ONE>
+  <SHC>
+  <When: Yes>
+    <If: Switches[1], ONE>
+      <SHC>
+      <When: Yes>
+      <When: No>
+      <END>
+    <END>
+  <When: No>
+    <If: Switches[1], ONE>
+      <SHC>
+      <When: Yes>
+      <When: No>
+      <END>
+    <END>
+  <End>
+<End>
+
+% 10個くらいネスト
+<SHC, Window, Right, 1, 1>
+<When: Yes>
+  <SHC, Window, Right, 1, 1>
+  <When: Yes>
+    <SHC, Window, Right, 1, 1>
+    <When: Yes>
+      <SHC, Window, Right, 1, 1>
+      <When: Yes>
+        <SHC, Window, Right, 1, 1>
+        <When: Yes>
+          <SHC, Window, Right, 1, 1>
+          <When: Yes>
+            <SHC, Window, Right, 1, 1>
+            <When: Yes>
+              <SHC, Window, Right, 1, 1>
+              <When: Yes>
+                <SHC, Window, Right, 1, 1>
+                <When: Yes>
+                  <SHC, Window, Right, 1, 1>
+                  <When: Yes>
+                  <No>
+                <No>
+              <No>
+            <No>
+          <No>
+        <No>
+      <No>
+    <No>
+  <No>
+<No>
+
+
