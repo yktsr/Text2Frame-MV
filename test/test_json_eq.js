@@ -39,6 +39,7 @@ describe('Text2Frame Test', function() {
     {title: 'Show Choices/ten-choices', infile: "./test/91-show-choices/ten-choices.txt", mapfile: "./data/Map001.json", expfile: "./test/91-show-choices/expected_ten-choices.json"},
     {title: 'Show Choices/practical-case', infile: "./test/91-show-choices/practical-case.txt", mapfile: "./data/Map001.json", expfile: "./test/91-show-choices/expected_practical-case.json"},
     {title: 'Input Number', infile: "./test/92-input-number.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_92-input-number.json"},
+    {title: 'Select Item', infile: "./test/93-select-item.txt", mapfile: "./data/Map001.json", expfile: "./test/expected_93-select-item.json"},
     {title: "Control variables/constant", infile: "./test/35-control_variables/constant.txt", mapfile: "./data/Map001.json", expfile: "./test/35-control_variables/expected_constant.json"},
     {title: "Control variables/random", infile: "./test/35-control_variables/random.txt", mapfile: "./data/Map001.json", expfile: "./test/35-control_variables/expected_random.json"},
     {title: "Control variables/gamedata", infile: "./test/35-control_variables/gamedata.txt", mapfile: "./data/Map001.json", expfile: "./test/35-control_variables/expected_gamedata.json"},
