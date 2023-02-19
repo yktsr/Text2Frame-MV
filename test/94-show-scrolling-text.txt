@@ -1,0 +1,94 @@
+% デフォルト設定のサンプルと、タグの別表記
+<ShowScrollingText>
+世界は魔王によって滅ぼされた。
+しかし、勇者は立ち上がった。
+</ShowScrollingText>
+
+<SST:>
+世界は魔王によって滅ぼされた。
+しかし、勇者は立ち上がった。
+</文章のスクロール表示>
+
+<文章のスクロール表示: 2>
+世界は魔王によって滅ぼされた。
+しかし、勇者は立ち上がった。
+</SST>
+
+<ShowScrollingText: 2, OFF>
+世界は魔王によって滅ぼされた。
+しかし、勇者は立ち上がった。
+</ShowScrollingText>
+
+今日も一日がんばるぞい！
+
+
+% オプションの設定
+<ShowScrollingText: 1, ON>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 2, オン>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 3, true>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 4, 1>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 5, No Fast Forward>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 6, OFF>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 7, オフ>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 8, false>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 9, 0>
+世界は魔王によって滅ぼされた。(速度限界突破1)
+</ShowScrollingText>
+
+<ShowScrollingText: 10>
+世界は魔王によって滅ぼされた。(速度限界突破2)
+</ShowScrollingText>
+
+
+今日も一日がんばるぞい！
+
+% 1行表記
+<ShowScrollingText>世界は魔王によって滅ぼされた。</ShowScrollingText>
+
+% 複数行の確認
+今日も一日がんばるぞい！
+
+<ShowScrollingText>
+この世界は、魔法が存在し、神話の生き物たちが跋扈するファンタジックな世界である。
+かつて、この世界を支配していた邪悪な存在が滅び、平和が訪れた。
+
+しかし、最近、世界各地で謎の事件が起き始め、闇の力が再び復活しようとしている。
+主人公は、偶然事件に巻き込まれ、その解決に乗り出すことになる。
+
+果たして、主人公たちは邪悪な力を打ち破り、世界を救うことができるのだろうか？
+
+by ChatGPT
+</ShowScrollingText>
+
+今日も一日がんばるぞい！
+
+% Text2Frameのタグが入り込んだ場合も、それは文章の一部とみなす。
+<ShowScrollingText>
+<Name: 青葉>
+今日も一日がんばるぞい！
+<=: 1, 2>
+</ShowScrollingText>
