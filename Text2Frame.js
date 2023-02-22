@@ -3514,6 +3514,10 @@ if(typeof PluginManager === 'undefined'){
       return {"code": 119, "indent": 0, "parameters": [name]};
     };
 
+    const getInputNumber = function(val_num, num_of_digits){
+      return {"code": 103, "indent": 0, "parameters": [val_num, num_of_digits]};
+    };
+
     const completeLackedBottomEvent = function(events){
       const BOTTOM_CODE = 0;
       const IF_CODE = 111;
@@ -3694,6 +3698,9 @@ if(typeof PluginManager === 'undefined'){
         let jump_to_label = text.match(/<jumptolabel\s*:\s*(\S+)\s*>/i)
           || text.match(/<ラベルジャンプ\s*:\s*(\S+)\s*>/)
           || text.match(/<jtl\s*:\s*(\S+)\s*>/i);
+        let input_number = text.match(/<InputNumber\s*:\s*(\d+),\s*(\d+)>/i)
+          || text.match(/<INN\s*:\s*(\d+),\s*(\d+)>/i)
+          || text.match(/<数値入力の処理\s*:\s*(\d+),\s*(\d+)>/i)
 
         const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
         const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
@@ -4367,6 +4374,14 @@ if(typeof PluginManager === 'undefined'){
         if(jump_to_label){
           let label_name = jump_to_label[1] || "";
           event_command_list.push(getJumpToLabel(label_name));
+          continue;
+        }
+
+        // Input Number
+        if(input_number){
+          const val_num = Number(input_number[1]);
+          const num_of_digits = Number(input_number[2]);
+          event_command_list.push(getInputNumber(val_num, num_of_digits));
           continue;
         }
 
