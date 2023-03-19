@@ -2433,18 +2433,18 @@ if(typeof PluginManager === 'undefined'){
       return {"code": 657, "indent": 0, "parameters": parameters};
     };
     const getCommonEventEvent = function(num){
-      let common_event= {"code": 117, "indent": 0, "parameters": [""]}
+      let common_event = {"code": 117, "indent": 0, "parameters": [""]};
       common_event["parameters"][0] = num;
       return common_event;
     };
     
     const getCommentOutHeadEvent = function(text){
-      let comment_out= {"code": 108, "indent": 0, "parameters": [""]}
+      let comment_out = {"code": 108, "indent": 0, "parameters": [""]};
       comment_out["parameters"][0] = text;
       return comment_out;
     };
     const getCommentOutBodyEvent = function(text){
-      let comment_out= {"code": 408, "indent": 0, "parameters": [""]}
+      let comment_out = {"code": 408, "indent": 0, "parameters": [""]};
       comment_out["parameters"][0] = text;
       return comment_out;
     };
