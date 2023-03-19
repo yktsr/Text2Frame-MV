@@ -3518,6 +3518,33 @@ if(typeof PluginManager === 'undefined'){
       return {"code": 103, "indent": 0, "parameters": [val_num, num_of_digits]};
     };
 
+    const getSelectItem = function(val_num, item_type){
+      let item_type_num = 1;
+      switch(item_type.trim().toLowerCase()){
+        case "Regular Item".toLowerCase():
+        case "通常アイテム".toLowerCase():{
+          item_type_num = 1;
+          break;
+        }
+        case "Key Item".toLowerCase():
+        case "大事なもの".toLowerCase():{
+          item_type_num = 2;
+          break;
+        }
+        case "Hidden Item A".toLowerCase():
+        case "隠しアイテムA".toLowerCase():{
+          item_type_num = 3;
+          break;
+        }
+        case "Hidden Item B".toLowerCase():
+        case "隠しアイテムB".toLowerCase():{
+          item_type_num = 4;
+          break;
+        }
+      }
+      return {"code": 104, "indent": 0, "parameters": [val_num, item_type_num]};
+    };
+
     const completeLackedBottomEvent = function(events){
       const BOTTOM_CODE = 0;
       const IF_CODE = 111;
@@ -3700,7 +3727,10 @@ if(typeof PluginManager === 'undefined'){
           || text.match(/<jtl\s*:\s*(\S+)\s*>/i);
         let input_number = text.match(/<InputNumber\s*:\s*(\d+),\s*(\d+)>/i)
           || text.match(/<INN\s*:\s*(\d+),\s*(\d+)>/i)
-          || text.match(/<数値入力の処理\s*:\s*(\d+),\s*(\d+)>/i)
+          || text.match(/<数値入力の処理\s*:\s*(\d+),\s*(\d+)>/i);
+        let select_item = text.match(/<SelectItem\s*:\s*(\d+),\s*([\s\S]+)\s*>/i)
+          || text.match(/<SI\s*:\s*(\d+),\s*([\s\S]+)\s*>/i)
+          || text.match(/<アイテム選択の処理\s*:\s*(\d+),\s*([\s\S]+)\s*>/i);
 
         const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
         const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
@@ -4382,6 +4412,14 @@ if(typeof PluginManager === 'undefined'){
           const val_num = Number(input_number[1]);
           const num_of_digits = Number(input_number[2]);
           event_command_list.push(getInputNumber(val_num, num_of_digits));
+          continue;
+        }
+
+        // Select Item
+        if(select_item){
+          const val_num = Number(select_item[1]);
+          const item_type = select_item[2];
+          event_command_list.push(getSelectItem(val_num, item_type));
           continue;
         }
 
