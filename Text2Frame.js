@@ -3056,7 +3056,7 @@ if(typeof PluginManager === 'undefined'){
             block_count++;
 
             block = scenario_text.match(/<ShowScrollingText\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/ShowScrollingText>/i)
-              || scenario_text.match(/<sst\s*:*\s*(\d*)\s*,*\s*([\s\S])*?>([\s\S]*?)<\/sst>/i)
+              || scenario_text.match(/<sst\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/sst>/i)
               || scenario_text.match(/<文章のスクロール表示\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/文章のスクロール表示>/i);
           }
           return {scenario_text, block_map};
