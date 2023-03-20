@@ -7,12 +7,12 @@
 <SST:>
 世界は魔王によって滅ぼされた。
 しかし、勇者は立ち上がった。
-</文章のスクロール表示>
+</SST>
 
 <文章のスクロール表示: 2>
 世界は魔王によって滅ぼされた。
 しかし、勇者は立ち上がった。
-</SST>
+</文章のスクロール表示>
 
 <ShowScrollingText: 2, OFF>
 世界は魔王によって滅ぼされた。
@@ -27,37 +27,37 @@
 世界は魔王によって滅ぼされた。
 </ShowScrollingText>
 
-<ShowScrollingText: 2, オン>
+<SST: 2, オン>
 世界は魔王によって滅ぼされた。
-</ShowScrollingText>
+</SST>
 
-<ShowScrollingText: 3, true>
+<文章のスクロール表示: 3, true>
 世界は魔王によって滅ぼされた。
-</ShowScrollingText>
+</文章のスクロール表示>
 
 <ShowScrollingText: 4, 1>
 世界は魔王によって滅ぼされた。
 </ShowScrollingText>
 
-<ShowScrollingText: 5, No Fast Forward>
+<SST: 5, No Fast Forward>
 世界は魔王によって滅ぼされた。
-</ShowScrollingText>
+</SST>
 
-<ShowScrollingText: 6, OFF>
+<文章のスクロール表示: 6, OFF>
 世界は魔王によって滅ぼされた。
-</ShowScrollingText>
+</文章のスクロール表示>
 
 <ShowScrollingText: 7, オフ>
 世界は魔王によって滅ぼされた。
 </ShowScrollingText>
 
-<ShowScrollingText: 8, false>
+<SST: 8, false>
 世界は魔王によって滅ぼされた。
-</ShowScrollingText>
+</SST>
 
-<ShowScrollingText: 9, 0>
+<文章のスクロール表示: 9, 0>
 世界は魔王によって滅ぼされた。(速度限界突破1)
-</ShowScrollingText>
+</文章のスクロール表示>
 
 <ShowScrollingText: 10>
 世界は魔王によって滅ぼされた。(速度限界突破2)
