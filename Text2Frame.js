@@ -2448,6 +2448,36 @@ if(typeof PluginManager === 'undefined'){
       comment_out["parameters"][0] = text;
       return comment_out;
     };
+
+    const getScrollingTextHeadEvent = function(scrolling_speed, enable_auto_scroll){
+      let scrolling_text = {"code": 105, "indent": 0, "parameters": [2, false]};
+      if(scrolling_speed){
+        scrolling_text['parameters'][0] = scrolling_speed;
+      }
+      if(enable_auto_scroll){
+        switch(enable_auto_scroll.toLowerCase()){
+          case 'on':
+          case 'オン':
+          case 'true':
+          case 'no fast forward':
+          case '1':{
+            scrolling_text['parameters'][1] = true;
+            break;
+          }
+          case 'off':
+          case 'オフ':
+          case 'false':
+          case '0':{
+            scrolling_text['parameters'][1] = false;
+            break;
+          }
+        }
+      }
+      return scrolling_text;
+    };
+    const getScrollingTextBodyEvent = function(text){
+      return {"code": 405, "indent": 0, "parameters": [text]};
+    };
     
     const getWaitEvent = function(num){
       let wait = {"code": 230, "indent": 0, "parameters": [""]}
@@ -2992,14 +3022,45 @@ if(typeof PluginManager === 'undefined'){
       let re = null;
       let event_head_func = function(){};
       let event_body_func = function(){};
-      if(statement == 'script'){
-        re = /<script>([\s\S]*?)<\/script>|<sc>([\s\S]*?)<\/sc>|<スクリプト>([\s\S]*?)<\/スクリプト>/i;
-        event_head_func = getScriptHeadEvent;
-        event_body_func = getScriptBodyEvent;
-      }else if(statement == 'comment'){
-        re = /<comment>([\s\S]*?)<\/comment>|<co>([\s\S]*?)<\/co>|<注釈>([\s\S]*?)<\/注釈>/i;
-        event_head_func = getCommentOutHeadEvent;
-        event_body_func = getCommentOutBodyEvent;
+
+      switch(statement.toLowerCase()){
+        case 'script':{
+          re = /<script>([\s\S]*?)<\/script>|<sc>([\s\S]*?)<\/sc>|<スクリプト>([\s\S]*?)<\/スクリプト>/i;
+          event_head_func = getScriptHeadEvent;
+          event_body_func = getScriptBodyEvent;
+          break;
+        }
+        case 'comment':{
+          re = /<comment>([\s\S]*?)<\/comment>|<co>([\s\S]*?)<\/co>|<注釈>([\s\S]*?)<\/注釈>/i;
+          event_head_func = getCommentOutHeadEvent;
+          event_body_func = getCommentOutBodyEvent;
+          break;
+        }
+        case 'scrolling':{
+          let block = scenario_text.match(/<ShowScrollingText\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/ShowScrollingText>/i)
+            || scenario_text.match(/<sst\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/sst>/i)
+            || scenario_text.match(/<文章のスクロール表示\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/文章のスクロール表示>/i);
+          while(block !== null){
+            let match_block = block[0];
+            let scrolling_speed = Number(block[1]);
+            let enable_auto_scroll = block[2];
+            let scrolling_text = block[3];
+            let match_text_list = scrolling_text.replace(/^\n/,'').replace(/\n$/,'').split('\n');
+            let event_list = [];
+
+            event_list.push(getScrollingTextHeadEvent(scrolling_speed, enable_auto_scroll));
+            event_list = event_list.concat(match_text_list.map(t => getScrollingTextBodyEvent(t)));
+            block_map[`#${statement.toUpperCase()}_BLOCK${block_count}#`] = event_list;
+
+            scenario_text = scenario_text.replace(match_block, `\n#${statement.toUpperCase()}_BLOCK${block_count}#\n`);
+            block_count++;
+
+            block = scenario_text.match(/<ShowScrollingText\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/ShowScrollingText>/i)
+              || scenario_text.match(/<sst\s*:*\s*(\d*)\s*,*\s*([\s\S])*?>([\s\S]*?)<\/sst>/i)
+              || scenario_text.match(/<文章のスクロール表示\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/文章のスクロール表示>/i);
+          }
+          return {scenario_text, block_map};
+        }
       }
 
       let block = scenario_text.match(re);
@@ -3606,16 +3667,12 @@ if(typeof PluginManager === 'undefined'){
     scenario_text = uniformNewLineCode(scenario_text);
     scenario_text = eraseCommentOutLines(scenario_text, Laurus.Text2Frame.CommentOutChar)
     let block_map = {};
-    {
-      const t = getBlockStatement(scenario_text, 'script');
+
+    ["script", "comment", "scrolling"].forEach(function(block_name){
+      const t = getBlockStatement(scenario_text, block_name);
       scenario_text = t.scenario_text;
       block_map = Object.assign(block_map, t.block_map);
-    }
-    {
-      const t = getBlockStatement(scenario_text, 'comment');
-      scenario_text = t.scenario_text;
-      block_map = Object.assign(block_map, t.block_map);
-    }
+    });
 
     let text_lines = scenario_text.split('\n');
     let event_command_list = [];
@@ -3734,6 +3791,7 @@ if(typeof PluginManager === 'undefined'){
 
         const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
         const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
+        const scrolling_block = text.match(/#SCROLLING_BLOCK[0-9]+#/i);
 
         // Script Block
         if(script_block){
@@ -3745,6 +3803,13 @@ if(typeof PluginManager === 'undefined'){
         // Comment Block
         if(comment_block){
           const block_tag = comment_block[0];
+          event_command_list = event_command_list.concat(block_map[block_tag]);
+          continue;
+        }
+
+        // Scrolling Block
+        if(scrolling_block){
+          const block_tag = scrolling_block[0];
           event_command_list = event_command_list.concat(block_map[block_tag]);
           continue;
         }
