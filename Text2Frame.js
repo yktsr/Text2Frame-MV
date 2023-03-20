@@ -3271,6 +3271,9 @@ if(typeof PluginManager === 'undefined'){
                              ps.duration, ps.wait]};
     };
 
+    const getErasePicture = function(pic_no) {
+      return {"code": 235, "indent": 0, "parameters": [pic_no]}
+    };
 
     const getIfSwitchParameters = function(switchId, params){
       switchId = Math.max(Number(switchId) || 1, 1);
@@ -3631,6 +3634,880 @@ if(typeof PluginManager === 'undefined'){
       return events.concat(bottom);
     };
 
+    const _getEvents = function(text, frame_param){
+      let face = text.match(/<face *: *(.+?)>/i)
+        || text.match(/<FC *: *(.+?)>/i)
+        || text.match(/<顔 *: *(.+?)>/i);
+      let window_position = text.match(/<windowposition *: *(.+?)>/i)
+        || text.match(/<WP *: *(.+?)>/i)
+        || text.match(/<位置 *: *(.+?)>/i);
+      let background = text.match(/<background *: *(.+?)>/i)
+        || text.match(/<BG *: *(.+?)>/i)
+        || text.match(/<背景 *: *(.+?)>/i);
+       let namebox = text.match(/<name *: ?(.+?)>/i)
+        || text.match(/<NM *: ?(.+?)>/i)
+        || text.match(/<名前 *: ?(.+?)>/i);
+      let plugin_command = text.match(/<plugincommand *: *(.+?)>/i)
+        || text.match(/<PC *: *(.+?)>/i)
+        || text.match(/<プラグインコマンド *: *(.+?)>/i);
+      let plugin_command_mz = text.match(/<plugincommandmz\s*:\s*([^\s].*)>/i)
+        || text.match(/<PCZ\s*:\s*([^\s].*)>/i)
+        || text.match(/<プラグインコマンドmz\s*:\s*([^\s].*)>/i);
+      let common_event = text.match(/<commonevent *: *(.+?)>/i)
+        || text.match(/<CE *: *(.+?)>/i)
+        || text.match(/<コモンイベント *: *(.+?)>/i);
+      let wait = text.match(/<wait *: *(.+?)>/i)
+        || text.match(/<ウェイト *: *(.+?)>/i);
+      let fadein = text.match(/<fadein>/i)
+        || text.match(/<FI>/i)
+        || text.match(/<フェードイン>/i);
+      let fadeout = text.match(/<fadeout>/i)
+        || text.match(/<FO>/i)
+        || text.match(/<フェードアウト>/i);
+      let play_bgm = text.match(/<playbgm *: *([^ ].+)>/i)
+        || text.match(/<BGMの演奏 *: *([^ ].+)>/);
+      let stop_bgm = text.match(/<stopbgm>/i)
+        || text.match(/<playbgm *: *none>/i)
+        || text.match(/<playbgm *: *なし>/i)
+        || text.match(/<BGMの停止>/);
+      let fadeout_bgm = text.match(/<fadeoutbgm *: *(.+?)>/i)
+        || text.match(/<BGMのフェードアウト *: *(.+?)>/);
+      let save_bgm = text.match(/<savebgm>/i)
+        || text.match(/<BGMの保存>/);
+      let replay_bgm = text.match(/<replaybgm>/i)
+        || text.match(/<BGMの再開>/);
+      let change_battle_bgm = text.match(/<changebattlebgm *: *([^ ].+)>/i)
+        || text.match(/<戦闘曲の変更 *: *([^ ].+)>/);
+      let play_bgs = text.match(/<playbgs *: *([^ ].+)>/i)
+        || text.match(/<BGSの演奏 *: *([^ ].+)>/);
+      let stop_bgs = text.match(/<stopbgs>/i)
+        || text.match(/<playbgs *: *none>/i)
+        || text.match(/<playbgs *: *なし>/i)
+        || text.match(/<BGSの停止>/);
+      let fadeout_bgs = text.match(/<fadeoutbgs *: *(.+?)>/i)
+        || text.match(/<BGSのフェードアウト *: *(.+?)>/);
+      let play_se = text.match(/<playse *: *([^ ].+)>/i)
+        || text.match(/<SEの演奏 *: *([^ ].+)>/);
+      let stop_se = text.match(/<stopse>/i)
+        || text.match(/<SEの停止>/);
+      let play_me = text.match(/<playme *: *([^ ].+)>/i)
+        || text.match(/<MEの演奏 *: *([^ ].+)>/);
+      let stop_me = text.match(/<stopme>/i)
+        || text.match(/<playme *: *none>/i)
+        || text.match(/<playme *: *なし>/i)
+        || text.match(/<MEの停止>/);
+      let show_picture = text.match(/<showpicture\s*:\s*([^\s].*)>/i)
+        || text.match(/<ピクチャの表示\s*:\s*([^\s].+)>/i)
+        || text.match(/<SP\s*:\s*([^\s].+)>/i);
+      let move_picture = text.match(/<movepicture\s*:\s*([^\s].*)>/i)
+        || text.match(/<ピクチャの移動\s*:\s*([^\s].*)>/i)
+        || text.match(/<MP\s*:\s*([^\s].*)>/i);
+      let rotate_picture = text.match(/<rotatepicture\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
+        || text.match(/<ピクチャの回転\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
+        || text.match(/<RP\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i);
+      let tint_picture = text.match(/<tintpicture\s*:\s*([^\s].*)>/i)
+        || text.match(/<ピクチャの色調変更\s*:\s*([^\s].*)>/i)
+        || text.match(/<TP\s*:\s*([^\s].*)>/i);
+      let erase_picture = text.match(/<erasepicture\s*:\s*(\d{1,2})\s*>/i)
+        || text.match(/<ピクチャの消去\s*:\s*(\d{1,2})\s*>/i)
+        || text.match(/<ep\s*:\s*(\d{1,2})\s*>/i);
+      let conditional_branch_if = text.match(/\s*<if\s*:\s*([^\s].*)>/i)
+        || text.match(/\s*<条件分岐\s*:\s*([^\s].*)>/i);
+      let conditional_branch_else = text.match(/\s*<else>/i)
+        || text.match(/\s*<それ以外のとき>/);
+      let conditional_branch_end = text.match(/\s*<end>/i)
+        || text.match(/\s*<分岐修了>/);
+      let loop = text.match(/\s*<loop>/i)
+        || text.match(/\s*<ループ>/);
+      let repeat_above = text.match(/<repeatabove>/i)
+        || text.match(/\s*<以上繰り返し>/)
+        || text.match(/\s*<ra>/i);
+      let break_loop = text.match(/<breakloop>/i)
+        || text.match(/<ループの中断>/)
+        || text.match(/<BL>/i);
+      let exit_event_processing = text.match(/<ExitEventProcessing>/i)
+        || text.match(/<イベント処理の中断>/)
+        || text.match(/<EEP>/i);
+      let label = text.match(/<label\s*:\s*(\S+)\s*>/i)
+        || text.match(/<ラベル\s*:\s*(\S+)\s*>/i);
+      let jump_to_label = text.match(/<jumptolabel\s*:\s*(\S+)\s*>/i)
+        || text.match(/<ラベルジャンプ\s*:\s*(\S+)\s*>/)
+        || text.match(/<jtl\s*:\s*(\S+)\s*>/i);
+      let input_number = text.match(/<InputNumber\s*:\s*(\d+),\s*(\d+)>/i)
+        || text.match(/<INN\s*:\s*(\d+),\s*(\d+)>/i)
+        || text.match(/<数値入力の処理\s*:\s*(\d+),\s*(\d+)>/i);
+      let select_item = text.match(/<SelectItem\s*:\s*(\d+),\s*([\s\S]+)\s*>/i)
+        || text.match(/<SI\s*:\s*(\d+),\s*([\s\S]+)\s*>/i)
+        || text.match(/<アイテム選択の処理\s*:\s*(\d+),\s*([\s\S]+)\s*>/i);
+
+      const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
+      const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
+      const scrolling_block = text.match(/#SCROLLING_BLOCK[0-9]+#/i);
+
+      // Script Block
+      if(script_block){
+        const block_tag = script_block[0];
+        return block_map[block_tag];
+      }
+
+      // Comment Block
+      if(comment_block){
+        const block_tag = comment_block[0];
+        return block_map[block_tag];
+      }
+
+      // Scrolling Block
+      if(scrolling_block){
+        const block_tag = scrolling_block[0];
+        return block_map[block_tag];
+      }
+
+      // Plugin Command
+      if(plugin_command){
+        return [getPluginCommandEvent(plugin_command[1])];
+      }
+
+      // Plugin Command MZ
+      if(plugin_command_mz){
+        let params = plugin_command_mz[1].split(',').map(s => s.trim());
+        let event_command_list = [];
+        if(params.length > 2){
+          let arg_plugin_name = params[0];
+          let arg_plugin_command = params[1];
+          let arg_disp_plugin_command = params[2];
+          let pcz_args = params.slice(3);
+          let pcemz = getPluginCommandEventMZ(
+            arg_plugin_name,
+            arg_plugin_command,
+            arg_disp_plugin_command,
+            pcz_args
+          );
+          event_command_list.push(pcemz);
+          pcz_args.map(arg => event_command_list.push(getPluginCommandMzParamsComment(arg)))
+        }else{
+          throw new Error('Syntax error. / 文法エラーです。'
+                          + text.replace(/</g, '  ').replace(/>/g, '  '));
+        }
+        return event_command_list;
+      }
+
+      // Common Event
+      if(common_event){
+        let event_num = Number(common_event[1]);
+        if(event_num){
+          return [getCommonEventEvent(event_num)];
+        }else{
+          throw new Error('Syntax error. / 文法エラーです。'
+            + common_event[1] + ' is not number. / '
+            + common_event[1] + 'は整数ではありません');
+        }
+      }
+
+      // Wait
+      if(wait){
+        let wait_num = Number(wait[1]);
+        if(wait_num){
+          return [getWaitEvent(wait_num)];
+        }else{
+          throw new Error('Syntax error. / 文法エラーです。'
+            + common_event[1] + ' is not number. / '
+            + common_event[1] + 'は整数ではありません');
+        }
+      }
+
+      // Fadein
+      if(fadein){
+        return [getFadeinEvent()];
+      }
+
+      // Fadeout
+      if(fadeout){
+        return [getFadeoutEvent()];
+      }
+
+      // Stop BGM
+      if(stop_bgm){
+        return [getStopBgmEvent(90, 100, 0)];
+      }
+
+      // Play BGM
+      if(play_bgm){
+        if(play_bgm[1]){
+          let params = play_bgm[1].replace(/ /g, '').split(',');
+          let name = "Battle1";
+          let volume = 90;
+          let pitch = 100;
+          let pan = 0;
+          if(params[0]){
+            name = params[0];
+          }
+          if(Number(params[1]) || Number(params[1]) == 0){
+            volume = Number(params[1]);
+          }
+          if(Number(params[2]) || Number(params[2]) == 0){
+            pitch = Number(params[2]);
+          }
+          if(Number(params[3]) || Number(params[3]) == 0){
+            pan = Number(params[3]);
+          }
+          if(name.toUpperCase() === "NONE" || name === "なし"){
+            return [getPlayBgmEvent("", volume, pitch, pan)];
+          }else{
+            return [getPlayBgmEvent(name, volume, pitch, pan)];
+          }
+        }
+      }
+
+      // Fadeout BGM
+      if(fadeout_bgm){
+        if(fadeout_bgm[1]){
+          let duration = 10;
+          let d = fadeout_bgm[1].replace(/ /g, '');
+          if(Number(d) || Number(d) == 0){
+            duration = Number(d);
+          }
+          return [getFadeoutBgmEvent(duration)];
+        }
+      }
+
+      // Save BGM
+      if(save_bgm){
+        return [getSaveBgmEvent()];
+      }
+
+      // Replay BGM
+      if(replay_bgm){
+        return [getReplayBgmEvent()];
+      }
+
+      // Change Battle BGM
+      if(change_battle_bgm){
+        if(change_battle_bgm[1]){
+          let params = change_battle_bgm[1].replace(/ /g, '').split(',');
+          let name = "Battle1";
+          let volume = 90;
+          let pitch = 100;
+          let pan = 0;
+          if(params[0]){
+            name = params[0];
+          }
+          if(Number(params[1]) || Number(params[1]) == 0){
+            volume = Number(params[1]);
+          }
+          if(Number(params[2]) || Number(params[2]) == 0){
+            pitch = Number(params[2]);
+          }
+          if(Number(params[3]) || Number(params[3]) == 0){
+            pan = Number(params[3]);
+          }
+          if(name.toUpperCase() === "NONE" || name === "なし"){
+            return [getChangeBattleBgmEvent("", volume, pitch, pan)];
+          }else{
+            return [getChangeBattleBgmEvent(name, volume, pitch, pan)];
+          }
+        }
+      }
+
+      // Stop BGS
+      if(stop_bgs){
+        return [getStopBgsEvent(90, 100, 0)];
+      }
+
+      // Play BGS
+      if(play_bgs){
+        if(play_bgs[1]){
+          let params = play_bgs[1].replace(/ /g, '').split(',');
+          let name = "City";
+          let volume = 90;
+          let pitch = 100;
+          let pan = 0;
+          if(params[0]){
+            name = params[0];
+          }
+          if(Number(params[1]) || Number(params[1]) == 0){
+            volume = Number(params[1]);
+          }
+          if(Number(params[2]) || Number(params[2]) == 0){
+            pitch = Number(params[2]);
+          }
+          if(Number(params[3]) || Number(params[3]) == 0){
+            pan = Number(params[3]);
+          }
+          if(name.toUpperCase() === "NONE" || name === "なし"){
+            return [getPlayBgsEvent("", volume, pitch, pan)];
+          }else{
+            return [getPlayBgsEvent(name, volume, pitch, pan)];
+          }
+        }
+      }
+
+      // Fadeout BGS
+      if(fadeout_bgs){
+        if(fadeout_bgs[1]){
+          let duration = 10;
+          let d = fadeout_bgs[1].replace(/ /g, '');
+          if(Number(d) || Number(d) == 0){
+            duration = Number(d);
+          }
+          return [getFadeoutBgsEvent(duration)];
+        }
+      }
+
+      // Play SE
+      if(play_se){
+        if(play_se[1]){
+          let params = play_se[1].replace(/ /g, '').split(',');
+          let name = "Attack1";
+          let volume = 90;
+          let pitch = 100;
+          let pan = 0;
+          if(params[0]){
+            name = params[0];
+          }
+          if(Number(params[1]) || Number(params[1]) == 0){
+            volume = Number(params[1]);
+          }
+          if(Number(params[2]) || Number(params[2]) == 0){
+            pitch = Number(params[2]);
+          }
+          if(Number(params[3]) || Number(params[3]) == 0){
+            pan = Number(params[3]);
+          }
+          if(name.toUpperCase() === "NONE" || name === "なし"){
+            return [getPlaySeEvent("", volume, pitch, pan)];
+          }else{
+            return [getPlaySeEvent(name, volume, pitch, pan)];
+          }
+        }
+      }
+
+      // Stop SE
+      if(stop_se){
+        return [getStopSeEvent()];
+      }
+
+      // Stop ME
+      if(stop_me){
+        return [getStopMeEvent(90, 100, 0)];
+      }
+
+      // Play ME
+      if(play_me){
+        if(play_me[1]){
+          let params = play_me[1].replace(/ /g, '').split(',');
+          let name = "Curse1";
+          let volume = 90;
+          let pitch = 100;
+          let pan = 0;
+          if(params[0]){
+            name = params[0];
+          }
+          if(Number(params[1]) || Number(params[1]) == 0){
+            volume = Number(params[1]);
+          }
+          if(Number(params[2]) || Number(params[2]) == 0){
+            pitch = Number(params[2]);
+          }
+          if(Number(params[3]) || Number(params[3]) == 0){
+            pan = Number(params[3]);
+          }
+          if(name.toUpperCase() === "NONE" || name === "なし"){
+            return [getPlayMeEvent("", volume, pitch, pan)];
+          }else{
+            return [getPlayMeEvent(name, volume, pitch, pan)];
+          }
+        }
+      }
+
+      /* eslint-disable no-useless-escape */
+      const num_char_regex = '\\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf'
+      //const control_variable_arg_regex = `[${num_char_regex}\\[\\]\\.\\-]+`;
+      const control_variable_arg_regex = '.+';
+      const set_operation_list = ['set', '代入', '='];
+      const set_reg_list = set_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
+      const set = text.match(new RegExp(set_reg_list.join('|'), 'i'));
+
+      const add_operation_list = ['add', '加算', '\\+'];
+      const add_reg_list = add_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
+      const add = text.match(new RegExp(add_reg_list.join('|'), 'i'));
+
+      const sub_operation_list = ['sub', '減算', '-'];
+      const sub_reg_list = sub_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
+      const sub = text.match(new RegExp(sub_reg_list.join('|'), 'i'));
+
+      const mul_operation_list = ['mul', '乗算', '\\*'];
+      const mul_reg_list = mul_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
+      const mul = text.match(new RegExp(mul_reg_list.join('|'), 'i'));
+
+      const div_operation_list = ['div', '除算', '\\/'];
+      const div_reg_list = div_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
+      const div = text.match(new RegExp(div_reg_list.join('|'), 'i'));
+
+      const mod_operation_list = ['mod', '剰余', '\\%'];
+      const mod_reg_list = mod_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
+      const mod = text.match(new RegExp(mod_reg_list.join('|'), 'i'));
+
+      const switch_operation_list = ['sw', 'switch', 'スイッチ'];
+      const switch_reg_list = switch_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
+      const switch_tag = text.match(new RegExp(switch_reg_list.join('|'), 'i'));
+
+      const self_switch_operation_list = ['ssw', 'selfswitch', 'セルフスイッチ'];
+      const self_switch_reg_list = self_switch_operation_list.map(x => `<${x} *: *([abcd]) *, *(${control_variable_arg_regex}) *>`);
+      const self_switch_tag = text.match(new RegExp(self_switch_reg_list.join('|'), 'i'));
+      /* eslint-enable */
+
+      const getControlTag = function(operator, operand1, operand2){
+        if(operator == 'selfswitch'){
+          const selfswitch_target = operand1.match(/[abcd]/i);
+          const selfswitch_value = operand2.match(/on|オン|1|true|off|オフ|0|false/i);
+          if(selfswitch_target && selfswitch_value){
+            return getControlSelfSwitch(selfswitch_target[0], selfswitch_value[0]);
+          }
+        }
+
+        let operand1_num = operand1.match(/\d+/i);
+        let operand1_range = operand1.match(/(\d+)-(\d+)/i);
+        let start_pointer = 0;
+        let end_pointer = 0;
+        if (operand1_range){
+          start_pointer = parseInt(operand1_range[1]);
+          end_pointer = parseInt(operand1_range[2]);
+        }else if(operand1_num){
+          let num = parseInt(operand1_num[0]);
+          start_pointer = num;
+          end_pointer = num;
+        }else{
+          throw new Error('Syntax error. / 文法エラーです。');
+        }
+
+        if(operator == 'switch'){
+          const switch_tag = operand2.match(/on|オン|1|true|off|オフ|0|false/i);
+          if(switch_tag){
+            return getControlSwitch(start_pointer, end_pointer, switch_tag[0]);
+          }
+        }
+
+        const variables = operand2.match(/v\[(\d+)\]|variables\[(\d+)\]|変数\[(\d+)\]/i);
+        if(variables){
+          const num = variables[1] || variables[2] || variables[3];
+          return getControlValiable(operator, start_pointer, end_pointer, 'variables', parseInt(num));
+        }
+        /* eslint-disable no-useless-escape */
+        const random = operand2.match(/r\[(\-?\d+)\]\[(\-?\d+)\]|random\[(\-?\d+)\]\[(\-?\d+)\]|乱数\[(\-?\d+)\]\[(\-?\d+)\]/i);
+        /* eslint-enable */
+        if(random){
+          const random_range1 = random[1] || random[3] || random[5];
+          const random_range2 = random[2] || random[4] || random[6];
+          return getControlValiable(operator, start_pointer, end_pointer, 'random', parseInt(random_range1), parseInt(random_range2));
+        }
+        const gamedata_operation_list = ['gd', 'gamedata', 'ゲームデータ'];
+        const gamedata_reg_list = gamedata_operation_list.map(x => `(${x})(${control_variable_arg_regex})`)
+        const gamedata = operand2.match(new RegExp(gamedata_reg_list.join('|'), 'i'))
+        if(gamedata){
+          const func = gamedata[2] || gamedata[4] || gamedata[6];
+          const gamedata_key_match = func.match(new RegExp(`\\[([${num_char_regex}]+)\\]`, 'i'));
+          if(gamedata_key_match){
+            const gamedata_key = gamedata_key_match[1];
+            switch(gamedata_key.toLowerCase()){
+              case 'mapid':
+              case 'マップid':
+              case 'partymembers':
+              case 'パーティ人数':
+              case 'gold':
+              case '所持金':
+              case 'steps':
+              case '歩数':
+              case 'playtime':
+              case 'プレイ時間':
+              case 'timer':
+              case 'タイマー':
+              case 'savecount':
+              case 'セーブ回数':
+              case 'battlecount':
+              case '戦闘回数':
+              case 'wincount':
+              case '勝利回数':
+              case 'escapecount':
+              case '逃走回数':{
+                return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', 'other', gamedata_key.toLowerCase(), 0);
+              }
+
+              case 'item':
+              case 'アイテム':
+              case 'weapon':
+              case '武器':
+              case 'armor':
+              case '防具':
+              case 'party':
+              case 'パーティ':{
+                const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}]+)\\]`, 'i'));
+                if(args){
+                  const arg1 = args[1];
+                  return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), parseInt(arg1));
+                }
+                break;
+              }
+              case 'last':
+              case '直前':{
+                const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex} ]+)\\]`, 'i'));
+                if(args){
+                  const arg1 = args[1];
+                  return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), arg1);
+                }
+                break;
+              }
+              case 'actor':
+              case 'アクター':
+              case 'enemy':
+              case '敵キャラ':
+              case 'エネミー':
+              case 'character':
+              case 'キャラクター':{
+                const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}\\-]+)\\]\\[([${num_char_regex}\\.]+)\\]`, 'i'));
+                if(args){
+                  const arg1 = args[1];
+                  const arg2 = args[2];
+                  return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), arg1, arg2);
+                }
+                break;
+              }
+            }
+          }
+        }
+        const script = operand2.match(/sc\[(.+)\]|script\[(.+)\]|スクリプト\[(.+)\]/i);
+        if(script){
+          const script_body = script[1] || script[2] || script[3];
+          return getControlValiable(operator, start_pointer, end_pointer, 'script', script_body);
+        }
+        let value_num = Number(operand2);
+        return getControlValiable(operator, start_pointer, end_pointer, 'constant', value_num);
+      }
+
+      // set
+      if(set){
+        const operand1 = set[1] || set[3] || set[5];
+        const operand2 = set[2] || set[4] || set[6];
+        return [getControlTag('set', operand1, operand2)];
+      }
+
+      // add
+      if(add){
+        const operand1 = add[1] || add[3] || add[5];
+        const operand2 = add[2] || add[4] || add[6];
+        return [getControlTag('add', operand1, operand2)];
+      }
+
+      // sub
+      if(sub){
+        const operand1 = sub[1] || sub[3] || sub[5];
+        const operand2 = sub[2] || sub[4] || sub[6];
+        return [getControlTag('sub', operand1, operand2)];
+      }
+
+      // mul
+      if(mul){
+        const operand1 = mul[1] || mul[3] || mul[5];
+        const operand2 = mul[2] || mul[4] || mul[6];
+        return [getControlTag('mul', operand1, operand2)];
+      }
+
+      // div
+      if(div){
+        const operand1 = div[1] || div[3] || div[5];
+        const operand2 = div[2] || div[4] || div[6];
+        return [getControlTag('div', operand1, operand2)];
+      }
+
+      // mod
+      if(mod){
+        const operand1 = mod[1] || mod[3] || mod[5];
+        const operand2 = mod[2] || mod[4] || mod[6];
+        return [getControlTag('mod', operand1, operand2)];
+      }
+
+      // switch
+      if(switch_tag){
+        const operand1 = switch_tag[1] || switch_tag[3] || switch_tag[5];
+        const operand2 = switch_tag[2] || switch_tag[4] || switch_tag[6];
+        return [getControlTag('switch', operand1, operand2)];
+      }
+
+      // self switch
+      if(self_switch_tag){
+        const operand1 = self_switch_tag[1] || self_switch_tag[3] || self_switch_tag[5];
+        const operand2 = self_switch_tag[2] || self_switch_tag[4] || self_switch_tag[6];
+        return [getControlTag('selfswitch', operand1, operand2)];
+      }
+
+      /// timer control
+      const timer_start_reg_list = ['timer', 'タイマー'].map(x => `<${x} *: *(.+) *, *(\\d+), *(\\d+) *>`);
+      const timer_start = text.match(new RegExp(timer_start_reg_list.join('|'), 'i'));
+      const timer_stop_reg_list = ['timer', 'タイマー'].map(x => `<${x} *: *(.+) *>`);
+      const timer_stop = text.match(new RegExp(timer_stop_reg_list.join('|'), 'i'));
+
+      if(timer_start){
+        let operand1 = timer_start[1] || timer_start[4];
+        let min = parseInt(timer_start[2] || timer_start[5]);
+        let sec = parseInt(timer_start[3] || timer_start[6]);
+        let setting_sec = 60 * min + sec;
+        return [getControlTimer(operand1, setting_sec)];
+      }
+      if(timer_stop){
+        let operand1 = timer_stop[1] || timer_stop[2];
+        return [getControlTimer(operand1, 0)];
+      }
+
+      // Show Picture
+      if(show_picture){
+        let params = show_picture[1].split(',').map(s => s.trim());
+        if(params.length > 1){
+          let pic_no = Number(params[0]);
+          let name = params[1];
+          let options = params.slice(2);
+          return [getShowPicture(pic_no, name, options)];
+        }else{
+          console.error(text);
+          throw new Error('Syntax error. / 文法エラーです。'
+                          + text.replace(/</g, '  ').replace(/>/g, '  '));
+        }
+      }
+
+      // Move Picture
+      if(move_picture){
+        let params = move_picture[1].split(',').map(s => s.trim());
+        if(params.length > 0){
+          let pic_no = Number(params[0]);
+          let options = params.slice(1);
+          return [getMovePicture(pic_no, options)];
+        }else{
+          console.error(text);
+          throw new Error('Syntax error. / 文法エラーです。'
+                          + text.replace(/</g, '  ').replace(/>/g, '  '));
+        }
+      }
+
+      // Rotate Picture
+      if(rotate_picture){
+        let pic_no = Number(rotate_picture[1]);
+        let speed = Number(rotate_picture[2]);
+        return [getRotatePicture(pic_no, speed)];
+      }
+
+      //Tint Picture
+      if(tint_picture){
+        let params = tint_picture[1].split(',').map(s => s.trim());
+        if(params.length > 0){
+          let pic_no = Number(params[0]);
+          let options = params.slice(1);
+          return [getTintPicture(pic_no, options)];
+        }else{
+          console.error(text);
+          throw new Error('Syntax error. / 文法エラーです。'
+                          + text.replace(/</g, '  ').replace(/>/g, '  '));
+        }
+      }
+
+      // Erase Picture
+      if(erase_picture){
+        let pic_no = Number(erase_picture[1]);
+        return [getErasePicture(pic_no)];
+      }
+
+      // Conditional Branch (If)
+      if(conditional_branch_if){
+        let args = conditional_branch_if[1].split(',');
+        if(args.length > 0){
+          let target = args[0].trim();
+          let params = args.slice(1);
+          return [getConditionalBranch(target, params)];
+          // frame_param = frame_param || getPretextEvent();
+        }else{
+          console.error(text);
+          throw new Error('Syntax error. / 文法エラーです。'
+                          + text.replace(/</g, '  ').replace(/>/g, '  '));
+        }
+      }
+
+      // Conditional Branch (Else)
+      if(conditional_branch_else){
+        let event_command_list = [];
+        event_command_list.push(getCommandBottomEvent());
+        event_command_list.push(getElse());
+        return event_command_list;
+        // frame_param = frame_param || getPretextEvent();
+      }
+
+      // Conditional Branch (End)
+      if(conditional_branch_end){
+        let event_command_list = [];
+        event_command_list.push(getCommandBottomEvent());
+        event_command_list.push(getEnd());
+        return event_command_list;
+        // frame_param = frame_param || getPretextEvent();
+      }
+
+      // Loop
+      if(loop){
+        return [getLoop()];
+      }
+
+      // Repeat Above
+      if(repeat_above){
+        let event_command_list = [];
+        event_command_list.push(getCommandBottomEvent());
+        event_command_list.push(getRepeatAbove());
+        return event_command_list;
+        // frame_param = frame_param || getPretextEvent();
+      }
+
+      // Break Loop
+      if(break_loop){
+        return [getBreakLoop()];
+      }
+
+      // Exit Event Processing
+      if(exit_event_processing){
+        return [getExitEventProcessing()];
+      }
+
+      // Label
+      if(label){
+        let label_name = label[1] || "";
+        return [getLabel(label_name)];
+      }
+
+      // Jump to Label
+      if(jump_to_label){
+        let label_name = jump_to_label[1] || "";
+        return [getJumpToLabel(label_name)];
+      }
+
+      // Input Number
+      if(input_number){
+        const val_num = Number(input_number[1]);
+        const num_of_digits = Number(input_number[2]);
+        return [getInputNumber(val_num, num_of_digits)];
+      }
+
+      // Select Item
+      if(select_item){
+        const val_num = Number(select_item[1]);
+        const item_type = select_item[2];
+        return [getSelectItem(val_num, item_type)];
+      }
+
+      // Face
+      if(face){
+        if(!frame_param){
+          frame_param = getPretextEvent();
+        }
+        let face_number = face[1].match(/.*\((.+?)\)/i);
+
+        if(face_number){
+          frame_param.parameters[0] = face[1].replace(/\(\d\)/,'');
+          frame_param.parameters[1] = parseInt(face_number[1]);
+          text = text.replace(face[0], '');
+        }else{
+          console.error(text);
+          throw new Error('Syntax error. / 文法エラーです。'
+            + text.replace(/</g, '  ').replace(/>/g, '  '));
+        }
+      }
+
+      // window backgound
+      if(background){
+        if(!frame_param){
+          frame_param = getPretextEvent();
+        }
+        try{
+          frame_param.parameters[2] = getBackground(background[1]);
+        }catch(e){
+          console.error(text);
+          throw new Error('Syntax error. / 文法エラーです。'
+            + text.replace(/</g, '  ').replace(/>/g, '  '));
+        }
+        text = text.replace(background[0], '');
+      }
+
+      // window position
+      if(window_position){
+        if(!frame_param){
+          frame_param = getPretextEvent();
+        }
+        try{
+          frame_param.parameters[3] = getWindowPosition(window_position[1]);
+        }catch(e){
+          console.error(text);
+          throw new Error('Syntax error. / 文法エラーです。'
+            + text.replace(/</g, '  ').replace(/>/g, '  '));
+        }
+        text = text.replace(window_position[0], '');
+      }
+
+      //name box
+      if(namebox){
+        if(!frame_param){
+          frame_param = getPretextEvent();
+        }
+        frame_param.parameters[4] = namebox[1];
+        text = text.replace(namebox[0], '');
+      }
+
+      let event_command_list = [];
+
+      if(face || background || window_position || namebox){
+        if(frame_param){
+          logger.log("push: ", frame_param.parameters);
+          event_command_list.push(frame_param);
+          // frame_param = null;
+        }
+      }
+
+      if(text){
+        logger.log("push: ", text);
+        event_command_list.push(getTextFrameEvent(text));
+      }
+
+      return event_command_list;
+    };
+
+    const getEvents = function(text, previous_text, window_frame, previous_frame){
+      let event_command_list = [];
+      let events = _getEvents(text, window_frame);
+      if(events.length > 1){
+        // 一行に複数書かれている
+        event_command_list = event_command_list.concat(events);
+        return {window_frame: null, event_command_list};
+      }
+      const current_frame = events[0];
+      if(current_frame.code == 101){
+        // 401になるまで遅延する
+        window_frame = current_frame;
+        return {window_frame, event_command_list};
+      }
+      if(current_frame.code == 401){
+        if(previous_frame){
+          if(previous_frame.code == 401){
+            // 空行でwindow frameを初期化
+            if(previous_text === ''){
+              event_command_list.push(getPretextEvent());
+            }
+          }else if(previous_frame.code == 101){
+            // stackに積んだframeを挿入する
+            event_command_list.push(window_frame);
+          }else{
+            // window frameを初期化
+            event_command_list.push(getPretextEvent());
+          }
+        }else{
+          event_command_list.push(getPretextEvent());
+        }
+      }
+      event_command_list = event_command_list.concat(events);
+      return {window_frame: null, event_command_list};
+    }
+
+
     const autoIndent = function(events){
       const BOTTOM_CODE = 0;
       const IF_CODE = 111;
@@ -3676,887 +4553,24 @@ if(typeof PluginManager === 'undefined'){
 
     let text_lines = scenario_text.split('\n');
     let event_command_list = [];
-    let frame_param = getPretextEvent();
-    logger.log("Default", frame_param.parameters);
+    let previous_text = '';
+    let window_frame = null;
     for(let i=0; i < text_lines.length; i++){
-      let text = text_lines[i];
-
-      logger.log(i, text);
+      const text = text_lines[i];
 
       if(text){
-        let face = text.match(/<face *: *(.+?)>/i)
-          || text.match(/<FC *: *(.+?)>/i)
-          || text.match(/<顔 *: *(.+?)>/i);
-        let window_position = text.match(/<windowposition *: *(.+?)>/i)
-          || text.match(/<WP *: *(.+?)>/i)
-          || text.match(/<位置 *: *(.+?)>/i);
-        let background = text.match(/<background *: *(.+?)>/i)
-          || text.match(/<BG *: *(.+?)>/i)
-          || text.match(/<背景 *: *(.+?)>/i);
-         let namebox = text.match(/<name *: ?(.+?)>/i)
-          || text.match(/<NM *: ?(.+?)>/i)
-          || text.match(/<名前 *: ?(.+?)>/i);
-        let plugin_command = text.match(/<plugincommand *: *(.+?)>/i)
-          || text.match(/<PC *: *(.+?)>/i)
-          || text.match(/<プラグインコマンド *: *(.+?)>/i);
-        let plugin_command_mz = text.match(/<plugincommandmz\s*:\s*([^\s].*)>/i)
-          || text.match(/<PCZ\s*:\s*([^\s].*)>/i)
-          || text.match(/<プラグインコマンドmz\s*:\s*([^\s].*)>/i);
-        let common_event = text.match(/<commonevent *: *(.+?)>/i)
-          || text.match(/<CE *: *(.+?)>/i)
-          || text.match(/<コモンイベント *: *(.+?)>/i);
-        let wait = text.match(/<wait *: *(.+?)>/i)
-          || text.match(/<ウェイト *: *(.+?)>/i);
-        let fadein = text.match(/<fadein>/i)
-          || text.match(/<FI>/i)
-          || text.match(/<フェードイン>/i);
-        let fadeout = text.match(/<fadeout>/i)
-          || text.match(/<FO>/i)
-          || text.match(/<フェードアウト>/i);
-        let play_bgm = text.match(/<playbgm *: *([^ ].+)>/i)
-          || text.match(/<BGMの演奏 *: *([^ ].+)>/);
-        let stop_bgm = text.match(/<stopbgm>/i)
-          || text.match(/<playbgm *: *none>/i)
-          || text.match(/<playbgm *: *なし>/i)
-          || text.match(/<BGMの停止>/);
-        let fadeout_bgm = text.match(/<fadeoutbgm *: *(.+?)>/i)
-          || text.match(/<BGMのフェードアウト *: *(.+?)>/);
-        let save_bgm = text.match(/<savebgm>/i)
-          || text.match(/<BGMの保存>/);
-        let replay_bgm = text.match(/<replaybgm>/i)
-          || text.match(/<BGMの再開>/);
-        let change_battle_bgm = text.match(/<changebattlebgm *: *([^ ].+)>/i)
-          || text.match(/<戦闘曲の変更 *: *([^ ].+)>/);
-        let play_bgs = text.match(/<playbgs *: *([^ ].+)>/i)
-          || text.match(/<BGSの演奏 *: *([^ ].+)>/);
-        let stop_bgs = text.match(/<stopbgs>/i)
-          || text.match(/<playbgs *: *none>/i)
-          || text.match(/<playbgs *: *なし>/i)
-          || text.match(/<BGSの停止>/);
-        let fadeout_bgs = text.match(/<fadeoutbgs *: *(.+?)>/i)
-          || text.match(/<BGSのフェードアウト *: *(.+?)>/);
-        let play_se = text.match(/<playse *: *([^ ].+)>/i)
-          || text.match(/<SEの演奏 *: *([^ ].+)>/);
-        let stop_se = text.match(/<stopse>/i)
-          || text.match(/<SEの停止>/);
-        let play_me = text.match(/<playme *: *([^ ].+)>/i)
-          || text.match(/<MEの演奏 *: *([^ ].+)>/);
-        let stop_me = text.match(/<stopme>/i)
-          || text.match(/<playme *: *none>/i)
-          || text.match(/<playme *: *なし>/i)
-          || text.match(/<MEの停止>/);
-        let show_picture = text.match(/<showpicture\s*:\s*([^\s].*)>/i)
-          || text.match(/<ピクチャの表示\s*:\s*([^\s].+)>/i)
-          || text.match(/<SP\s*:\s*([^\s].+)>/i);
-        let move_picture = text.match(/<movepicture\s*:\s*([^\s].*)>/i)
-          || text.match(/<ピクチャの移動\s*:\s*([^\s].*)>/i)
-          || text.match(/<MP\s*:\s*([^\s].*)>/i);
-        let rotate_picture = text.match(/<rotatepicture\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
-          || text.match(/<ピクチャの回転\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
-          || text.match(/<RP\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i);
-        let tint_picture = text.match(/<tintpicture\s*:\s*([^\s].*)>/i)
-          || text.match(/<ピクチャの色調変更\s*:\s*([^\s].*)>/i)
-          || text.match(/<TP\s*:\s*([^\s].*)>/i);
-        let erase_picture = text.match(/<erasepicture\s*:\s*(\d{1,2})\s*>/i)
-          || text.match(/<ピクチャの消去\s*:\s*(\d{1,2})\s*>/i)
-          || text.match(/<ep\s*:\s*(\d{1,2})\s*>/i);
-        let conditional_branch_if = text.match(/\s*<if\s*:\s*([^\s].*)>/i)
-          || text.match(/\s*<条件分岐\s*:\s*([^\s].*)>/i);
-        let conditional_branch_else = text.match(/\s*<else>/i)
-          || text.match(/\s*<それ以外のとき>/);
-        let conditional_branch_end = text.match(/\s*<end>/i)
-          || text.match(/\s*<分岐修了>/);
-        let loop = text.match(/\s*<loop>/i)
-          || text.match(/\s*<ループ>/);
-        let repeat_above = text.match(/<repeatabove>/i)
-          || text.match(/\s*<以上繰り返し>/)
-          || text.match(/\s*<ra>/i);
-        let break_loop = text.match(/<breakloop>/i)
-          || text.match(/<ループの中断>/)
-          || text.match(/<BL>/i);
-        let exit_event_processing = text.match(/<ExitEventProcessing>/i)
-          || text.match(/<イベント処理の中断>/)
-          || text.match(/<EEP>/i);
-        let label = text.match(/<label\s*:\s*(\S+)\s*>/i)
-          || text.match(/<ラベル\s*:\s*(\S+)\s*>/i);
-        let jump_to_label = text.match(/<jumptolabel\s*:\s*(\S+)\s*>/i)
-          || text.match(/<ラベルジャンプ\s*:\s*(\S+)\s*>/)
-          || text.match(/<jtl\s*:\s*(\S+)\s*>/i);
-        let input_number = text.match(/<InputNumber\s*:\s*(\d+),\s*(\d+)>/i)
-          || text.match(/<INN\s*:\s*(\d+),\s*(\d+)>/i)
-          || text.match(/<数値入力の処理\s*:\s*(\d+),\s*(\d+)>/i);
-        let select_item = text.match(/<SelectItem\s*:\s*(\d+),\s*([\s\S]+)\s*>/i)
-          || text.match(/<SI\s*:\s*(\d+),\s*([\s\S]+)\s*>/i)
-          || text.match(/<アイテム選択の処理\s*:\s*(\d+),\s*([\s\S]+)\s*>/i);
-
-        const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
-        const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
-        const scrolling_block = text.match(/#SCROLLING_BLOCK[0-9]+#/i);
-
-        // Script Block
-        if(script_block){
-          const block_tag = script_block[0];
-          event_command_list = event_command_list.concat(block_map[block_tag]);
-          continue;
+        let previous_frame = window_frame;
+        if(previous_frame === null){
+          previous_frame = event_command_list.slice(-1)[0];
         }
-
-        // Comment Block
-        if(comment_block){
-          const block_tag = comment_block[0];
-          event_command_list = event_command_list.concat(block_map[block_tag]);
-          continue;
-        }
-
-        // Scrolling Block
-        if(scrolling_block){
-          const block_tag = scrolling_block[0];
-          event_command_list = event_command_list.concat(block_map[block_tag]);
-          continue;
-        }
-
-        // Plugin Command
-        if(plugin_command){
-          event_command_list.push(getPluginCommandEvent(plugin_command[1]));
-          continue;
-        }
-
-        // Plugin Command MZ
-        if(plugin_command_mz){
-          let params = plugin_command_mz[1].split(',').map(s => s.trim());
-          if(params.length > 2){
-            let arg_plugin_name = params[0];
-            let arg_plugin_command = params[1];
-            let arg_disp_plugin_command = params[2];
-            let pcz_args = params.slice(3);
-            let pcemz = getPluginCommandEventMZ(
-              arg_plugin_name,
-              arg_plugin_command,
-              arg_disp_plugin_command,
-              pcz_args
-            );
-            event_command_list.push(pcemz);
-            pcz_args.map(arg => event_command_list.push(getPluginCommandMzParamsComment(arg)))
-          }else{
-            throw new Error('Syntax error. / 文法エラーです。'
-                            + text.replace(/</g, '  ').replace(/>/g, '  '));
-          }
-          continue;
-        }
-
-        // Common Event
-        if(common_event){
-          let event_num = Number(common_event[1]);
-          if(event_num){
-            event_command_list.push(getCommonEventEvent(event_num));
-          }else{
-            throw new Error('Syntax error. / 文法エラーです。'
-              + common_event[1] + ' is not number. / '
-              + common_event[1] + 'は整数ではありません');
-          }
-          continue;
-        }
-
-        // Wait
-        if(wait){
-          let wait_num = Number(wait[1]);
-          if(wait_num){
-            event_command_list.push(getWaitEvent(wait_num));
-          }else{
-            throw new Error('Syntax error. / 文法エラーです。'
-              + common_event[1] + ' is not number. / '
-              + common_event[1] + 'は整数ではありません');
-          }
-          continue;
-        }
-
-        // Fadein
-        if(fadein){
-          event_command_list.push(getFadeinEvent());
-          continue;
-        }
-
-        // Fadeout
-        if(fadeout){
-          event_command_list.push(getFadeoutEvent());
-          continue;
-        }
-
-        // Stop BGM
-        if(stop_bgm){
-          event_command_list.push(getStopBgmEvent(90, 100, 0));
-          continue;
-        }
-
-        // Play BGM
-        if(play_bgm){
-          if(play_bgm[1]){
-            let params = play_bgm[1].replace(/ /g, '').split(',');
-            let name = "Battle1";
-            let volume = 90;
-            let pitch = 100;
-            let pan = 0;
-            if(params[0]){
-              name = params[0];
-            }
-            if(Number(params[1]) || Number(params[1]) == 0){
-              volume = Number(params[1]);
-            }
-            if(Number(params[2]) || Number(params[2]) == 0){
-              pitch = Number(params[2]);
-            }
-            if(Number(params[3]) || Number(params[3]) == 0){
-              pan = Number(params[3]);
-            }
-            if(name.toUpperCase() === "NONE" || name === "なし"){
-              event_command_list.push(getPlayBgmEvent("", volume, pitch, pan));
-            }else{
-              event_command_list.push(getPlayBgmEvent(name, volume, pitch, pan));
-            }
-          }
-          continue;
-        }
-
-        // Fadeout BGM
-        if(fadeout_bgm){
-          if(fadeout_bgm[1]){
-            let duration = 10;
-            let d = fadeout_bgm[1].replace(/ /g, '');
-            if(Number(d) || Number(d) == 0){
-              duration = Number(d);
-            }
-            event_command_list.push(getFadeoutBgmEvent(duration));
-          }
-          continue;
-        }
-
-        // Save BGM
-        if(save_bgm){
-          event_command_list.push(getSaveBgmEvent());
-          continue;
-        }
-
-        // Replay BGM
-        if(replay_bgm){
-          event_command_list.push(getReplayBgmEvent());
-          continue;
-        }
-
-        // Change Battle BGM
-        if(change_battle_bgm){
-          if(change_battle_bgm[1]){
-            let params = change_battle_bgm[1].replace(/ /g, '').split(',');
-            let name = "Battle1";
-            let volume = 90;
-            let pitch = 100;
-            let pan = 0;
-            if(params[0]){
-              name = params[0];
-            }
-            if(Number(params[1]) || Number(params[1]) == 0){
-              volume = Number(params[1]);
-            }
-            if(Number(params[2]) || Number(params[2]) == 0){
-              pitch = Number(params[2]);
-            }
-            if(Number(params[3]) || Number(params[3]) == 0){
-              pan = Number(params[3]);
-            }
-            if(name.toUpperCase() === "NONE" || name === "なし"){
-              event_command_list.push(getChangeBattleBgmEvent("", volume, pitch, pan));
-            }else{
-              event_command_list.push(getChangeBattleBgmEvent(name, volume, pitch, pan));
-            }
-          }
-          continue;
-        }
-
-        // Stop BGS
-        if(stop_bgs){
-          event_command_list.push(getStopBgsEvent(90, 100, 0));
-          continue;
-        }
-
-        // Play BGS
-        if(play_bgs){
-          if(play_bgs[1]){
-            let params = play_bgs[1].replace(/ /g, '').split(',');
-            let name = "City";
-            let volume = 90;
-            let pitch = 100;
-            let pan = 0;
-            if(params[0]){
-              name = params[0];
-            }
-            if(Number(params[1]) || Number(params[1]) == 0){
-              volume = Number(params[1]);
-            }
-            if(Number(params[2]) || Number(params[2]) == 0){
-              pitch = Number(params[2]);
-            }
-            if(Number(params[3]) || Number(params[3]) == 0){
-              pan = Number(params[3]);
-            }
-            if(name.toUpperCase() === "NONE" || name === "なし"){
-              event_command_list.push(getPlayBgsEvent("", volume, pitch, pan));
-            }else{
-              event_command_list.push(getPlayBgsEvent(name, volume, pitch, pan));
-            }
-          }
-          continue;
-        }
-
-        // Fadeout BGS
-        if(fadeout_bgs){
-          if(fadeout_bgs[1]){
-            let duration = 10;
-            let d = fadeout_bgs[1].replace(/ /g, '');
-            if(Number(d) || Number(d) == 0){
-              duration = Number(d);
-            }
-            event_command_list.push(getFadeoutBgsEvent(duration));
-          }
-          continue;
-        }
-
-        // Play SE
-        if(play_se){
-          if(play_se[1]){
-            let params = play_se[1].replace(/ /g, '').split(',');
-            let name = "Attack1";
-            let volume = 90;
-            let pitch = 100;
-            let pan = 0;
-            if(params[0]){
-              name = params[0];
-            }
-            if(Number(params[1]) || Number(params[1]) == 0){
-              volume = Number(params[1]);
-            }
-            if(Number(params[2]) || Number(params[2]) == 0){
-              pitch = Number(params[2]);
-            }
-            if(Number(params[3]) || Number(params[3]) == 0){
-              pan = Number(params[3]);
-            }
-            if(name.toUpperCase() === "NONE" || name === "なし"){
-              event_command_list.push(getPlaySeEvent("", volume, pitch, pan));
-            }else{
-              event_command_list.push(getPlaySeEvent(name, volume, pitch, pan));
-            }
-          }
-          continue;
-        }
-
-        // Stop SE
-        if(stop_se){
-          event_command_list.push(getStopSeEvent());
-          continue;
-        }
-
-        // Stop ME
-        if(stop_me){
-          event_command_list.push(getStopMeEvent(90, 100, 0));
-          continue;
-        }
-
-        // Play ME
-        if(play_me){
-          if(play_me[1]){
-            let params = play_me[1].replace(/ /g, '').split(',');
-            let name = "Curse1";
-            let volume = 90;
-            let pitch = 100;
-            let pan = 0;
-            if(params[0]){
-              name = params[0];
-            }
-            if(Number(params[1]) || Number(params[1]) == 0){
-              volume = Number(params[1]);
-            }
-            if(Number(params[2]) || Number(params[2]) == 0){
-              pitch = Number(params[2]);
-            }
-            if(Number(params[3]) || Number(params[3]) == 0){
-              pan = Number(params[3]);
-            }
-            if(name.toUpperCase() === "NONE" || name === "なし"){
-              event_command_list.push(getPlayMeEvent("", volume, pitch, pan));
-            }else{
-              event_command_list.push(getPlayMeEvent(name, volume, pitch, pan));
-            }
-          }
-          continue;
-        }
-
-        /* eslint-disable no-useless-escape */
-        const num_char_regex = '\\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf'
-        //const control_variable_arg_regex = `[${num_char_regex}\\[\\]\\.\\-]+`;
-        const control_variable_arg_regex = '.+';
-        const set_operation_list = ['set', '代入', '='];
-        const set_reg_list = set_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
-        const set = text.match(new RegExp(set_reg_list.join('|'), 'i'));
-
-        const add_operation_list = ['add', '加算', '\\+'];
-        const add_reg_list = add_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
-        const add = text.match(new RegExp(add_reg_list.join('|'), 'i'));
-
-        const sub_operation_list = ['sub', '減算', '-'];
-        const sub_reg_list = sub_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
-        const sub = text.match(new RegExp(sub_reg_list.join('|'), 'i'));
-
-        const mul_operation_list = ['mul', '乗算', '\\*'];
-        const mul_reg_list = mul_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
-        const mul = text.match(new RegExp(mul_reg_list.join('|'), 'i'));
-
-        const div_operation_list = ['div', '除算', '\\/'];
-        const div_reg_list = div_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
-        const div = text.match(new RegExp(div_reg_list.join('|'), 'i'));
-
-        const mod_operation_list = ['mod', '剰余', '\\%'];
-        const mod_reg_list = mod_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
-        const mod = text.match(new RegExp(mod_reg_list.join('|'), 'i'));
-
-        const switch_operation_list = ['sw', 'switch', 'スイッチ'];
-        const switch_reg_list = switch_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
-        const switch_tag = text.match(new RegExp(switch_reg_list.join('|'), 'i'));
-
-        const self_switch_operation_list = ['ssw', 'selfswitch', 'セルフスイッチ'];
-        const self_switch_reg_list = self_switch_operation_list.map(x => `<${x} *: *([abcd]) *, *(${control_variable_arg_regex}) *>`);
-        const self_switch_tag = text.match(new RegExp(self_switch_reg_list.join('|'), 'i'));
-        /* eslint-enable */
-
-        const getControlTag = function(operator, operand1, operand2){
-          if(operator == 'selfswitch'){
-            const selfswitch_target = operand1.match(/[abcd]/i);
-            const selfswitch_value = operand2.match(/on|オン|1|true|off|オフ|0|false/i);
-            if(selfswitch_target && selfswitch_value){
-              return getControlSelfSwitch(selfswitch_target[0], selfswitch_value[0]);
-            }
-          }
-
-          let operand1_num = operand1.match(/\d+/i);
-          let operand1_range = operand1.match(/(\d+)-(\d+)/i);
-          let start_pointer = 0;
-          let end_pointer = 0;
-          if (operand1_range){
-            start_pointer = parseInt(operand1_range[1]);
-            end_pointer = parseInt(operand1_range[2]);
-          }else if(operand1_num){
-            let num = parseInt(operand1_num[0]);
-            start_pointer = num;
-            end_pointer = num;
-          }else{
-            throw new Error('Syntax error. / 文法エラーです。');
-          }
-
-          if(operator == 'switch'){
-            const switch_tag = operand2.match(/on|オン|1|true|off|オフ|0|false/i);
-            if(switch_tag){
-              return getControlSwitch(start_pointer, end_pointer, switch_tag[0]);
-            }
-          }
-
-          const variables = operand2.match(/v\[(\d+)\]|variables\[(\d+)\]|変数\[(\d+)\]/i);
-          if(variables){
-            const num = variables[1] || variables[2] || variables[3];
-            return getControlValiable(operator, start_pointer, end_pointer, 'variables', parseInt(num));
-          }
-          /* eslint-disable no-useless-escape */
-          const random = operand2.match(/r\[(\-?\d+)\]\[(\-?\d+)\]|random\[(\-?\d+)\]\[(\-?\d+)\]|乱数\[(\-?\d+)\]\[(\-?\d+)\]/i);
-          /* eslint-enable */
-          if(random){
-            const random_range1 = random[1] || random[3] || random[5];
-            const random_range2 = random[2] || random[4] || random[6];
-            return getControlValiable(operator, start_pointer, end_pointer, 'random', parseInt(random_range1), parseInt(random_range2));
-          }
-          const gamedata_operation_list = ['gd', 'gamedata', 'ゲームデータ'];
-          const gamedata_reg_list = gamedata_operation_list.map(x => `(${x})(${control_variable_arg_regex})`)
-          const gamedata = operand2.match(new RegExp(gamedata_reg_list.join('|'), 'i'))
-          if(gamedata){
-            const func = gamedata[2] || gamedata[4] || gamedata[6];
-            const gamedata_key_match = func.match(new RegExp(`\\[([${num_char_regex}]+)\\]`, 'i'));
-            if(gamedata_key_match){
-              const gamedata_key = gamedata_key_match[1];
-              switch(gamedata_key.toLowerCase()){
-                case 'mapid':
-                case 'マップid':
-                case 'partymembers':
-                case 'パーティ人数':
-                case 'gold':
-                case '所持金':
-                case 'steps':
-                case '歩数':
-                case 'playtime':
-                case 'プレイ時間':
-                case 'timer':
-                case 'タイマー':
-                case 'savecount':
-                case 'セーブ回数':
-                case 'battlecount':
-                case '戦闘回数':
-                case 'wincount':
-                case '勝利回数':
-                case 'escapecount':
-                case '逃走回数':{
-                  return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', 'other', gamedata_key.toLowerCase(), 0);
-                }
-
-                case 'item':
-                case 'アイテム':
-                case 'weapon':
-                case '武器':
-                case 'armor':
-                case '防具':
-                case 'party':
-                case 'パーティ':{
-                  const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}]+)\\]`, 'i'));
-                  if(args){
-                    const arg1 = args[1];
-                    return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), parseInt(arg1));
-                  }
-                  break;
-                }
-                case 'last':
-                case '直前':{
-                  const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex} ]+)\\]`, 'i'));
-                  if(args){
-                    const arg1 = args[1];
-                    return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), arg1);
-                  }
-                  break;
-                }
-                case 'actor':
-                case 'アクター':
-                case 'enemy':
-                case '敵キャラ':
-                case 'エネミー':
-                case 'character':
-                case 'キャラクター':{
-                  const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}\\-]+)\\]\\[([${num_char_regex}\\.]+)\\]`, 'i'));
-                  if(args){
-                    const arg1 = args[1];
-                    const arg2 = args[2];
-                    return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), arg1, arg2);
-                  }
-                  break;
-                }
-              }
-            }
-          }
-          const script = operand2.match(/sc\[(.+)\]|script\[(.+)\]|スクリプト\[(.+)\]/i);
-          if(script){
-            const script_body = script[1] || script[2] || script[3];
-            return getControlValiable(operator, start_pointer, end_pointer, 'script', script_body);
-          }
-          let value_num = Number(operand2);
-          return getControlValiable(operator, start_pointer, end_pointer, 'constant', value_num);
-        }
-
-        // set
-        if(set){
-          const operand1 = set[1] || set[3] || set[5];
-          const operand2 = set[2] || set[4] || set[6];
-          event_command_list.push(getControlTag('set', operand1, operand2));
-          continue;
-        }
-
-        // add
-        if(add){
-          const operand1 = add[1] || add[3] || add[5];
-          const operand2 = add[2] || add[4] || add[6];
-          event_command_list.push(getControlTag('add', operand1, operand2));
-          continue;
-        }
-
-        // sub
-        if(sub){
-          const operand1 = sub[1] || sub[3] || sub[5];
-          const operand2 = sub[2] || sub[4] || sub[6];
-          event_command_list.push(getControlTag('sub', operand1, operand2));
-          continue;
-        }
-
-        // mul
-        if(mul){
-          const operand1 = mul[1] || mul[3] || mul[5];
-          const operand2 = mul[2] || mul[4] || mul[6];
-          event_command_list.push(getControlTag('mul', operand1, operand2));
-          continue;
-        }
-
-        // div
-        if(div){
-          const operand1 = div[1] || div[3] || div[5];
-          const operand2 = div[2] || div[4] || div[6];
-          event_command_list.push(getControlTag('div', operand1, operand2));
-          continue;
-        }
-
-        // mod
-        if(mod){
-          const operand1 = mod[1] || mod[3] || mod[5];
-          const operand2 = mod[2] || mod[4] || mod[6];
-          event_command_list.push(getControlTag('mod', operand1, operand2));
-          continue;
-        }
-
-        // switch
-        if(switch_tag){
-          const operand1 = switch_tag[1] || switch_tag[3] || switch_tag[5];
-          const operand2 = switch_tag[2] || switch_tag[4] || switch_tag[6];
-          event_command_list.push(getControlTag('switch', operand1, operand2));
-          continue;
-        }
-
-        // self switch
-        if(self_switch_tag){
-          const operand1 = self_switch_tag[1] || self_switch_tag[3] || self_switch_tag[5];
-          const operand2 = self_switch_tag[2] || self_switch_tag[4] || self_switch_tag[6];
-          event_command_list.push(getControlTag('selfswitch', operand1, operand2));
-          continue;
-        }
-
-        /// timer control
-        const timer_start_reg_list = ['timer', 'タイマー'].map(x => `<${x} *: *(.+) *, *(\\d+), *(\\d+) *>`);
-        const timer_start = text.match(new RegExp(timer_start_reg_list.join('|'), 'i'));
-        const timer_stop_reg_list = ['timer', 'タイマー'].map(x => `<${x} *: *(.+) *>`);
-        const timer_stop = text.match(new RegExp(timer_stop_reg_list.join('|'), 'i'));
-
-        if(timer_start){
-          let operand1 = timer_start[1] || timer_start[4];
-          let min = parseInt(timer_start[2] || timer_start[5]);
-          let sec = parseInt(timer_start[3] || timer_start[6]);
-          let setting_sec = 60 * min + sec;
-          event_command_list.push(getControlTimer(operand1, setting_sec));
-          continue;
-        }
-        if(timer_stop){
-          let operand1 = timer_stop[1] || timer_stop[2];
-          event_command_list.push(getControlTimer(operand1, 0));
-          continue;
-        }
-
-        // Show Picture
-        if(show_picture){
-          let params = show_picture[1].split(',').map(s => s.trim());
-          if(params.length > 1){
-            let pic_no = Number(params[0]);
-            let name = params[1];
-            let options = params.slice(2);
-            event_command_list.push(getShowPicture(pic_no, name, options));
-            continue;
-          }else{
-            console.error(text);
-            throw new Error('Syntax error. / 文法エラーです。'
-                            + text.replace(/</g, '  ').replace(/>/g, '  '));
-          }
-        }
-
-        // Move Picture
-        if(move_picture){
-          let params = move_picture[1].split(',').map(s => s.trim());
-          if(params.length > 0){
-            let pic_no = Number(params[0]);
-            let options = params.slice(1);
-            event_command_list.push(getMovePicture(pic_no, options));
-            continue;
-          }else{
-            console.error(text);
-            throw new Error('Syntax error. / 文法エラーです。'
-                            + text.replace(/</g, '  ').replace(/>/g, '  '));
-          }
-        }
-
-        // Rotate Picture
-        if(rotate_picture){
-          let pic_no = Number(rotate_picture[1]);
-          let speed = Number(rotate_picture[2]);
-          event_command_list.push(getRotatePicture(pic_no, speed));
-          continue;
-        }
-
-        //Tint Picture
-        if(tint_picture){
-          let params = tint_picture[1].split(',').map(s => s.trim());
-          if(params.length > 0){
-            let pic_no = Number(params[0]);
-            let options = params.slice(1);
-            event_command_list.push(getTintPicture(pic_no, options));
-            continue;
-          }else{
-            console.error(text);
-            throw new Error('Syntax error. / 文法エラーです。'
-                            + text.replace(/</g, '  ').replace(/>/g, '  '));
-          }
-        }
-
-        // Erase Picture
-        if(erase_picture){
-          let pic_no = Number(erase_picture[1]);
-          event_command_list.push({
-            "code": 235, "indent": 0,
-            "parameters": [pic_no]
-          });
-          continue;
-        }
-
-        // Conditional Branch (If)
-        if(conditional_branch_if){
-          let args = conditional_branch_if[1].split(',');
-          if(args.length > 0){
-            let target = args[0].trim();
-            let params = args.slice(1);
-            event_command_list.push(getConditionalBranch(target, params));
-            frame_param = frame_param || getPretextEvent();
-            continue;
-          }else{
-            console.error(text);
-            throw new Error('Syntax error. / 文法エラーです。'
-                            + text.replace(/</g, '  ').replace(/>/g, '  '));
-          }
-        }
-
-        // Conditional Branch (Else)
-        if(conditional_branch_else){
-          event_command_list.push(getCommandBottomEvent());
-          event_command_list.push(getElse());
-          frame_param = frame_param || getPretextEvent();
-          continue;
-        }
-
-        // Conditional Branch (End)
-        if(conditional_branch_end){
-          event_command_list.push(getCommandBottomEvent());
-          event_command_list.push(getEnd());
-          frame_param = frame_param || getPretextEvent();
-          continue;
-        }
-
-        // Loop
-        if(loop){
-          event_command_list.push(getLoop());
-          continue;
-        }
-
-        // Repeat Above
-        if(repeat_above){
-          event_command_list.push(getCommandBottomEvent());
-          event_command_list.push(getRepeatAbove());
-          frame_param = frame_param || getPretextEvent();
-          continue;
-        }
-
-        // Break Loop
-        if(break_loop){
-          event_command_list.push(getBreakLoop());
-          continue;
-        }
-
-        // Exit Event Processing
-        if(exit_event_processing){
-          event_command_list.push(getExitEventProcessing());
-          continue;
-        }
-
-        // Label
-        if(label){
-          let label_name = label[1] || "";
-          event_command_list.push(getLabel(label_name));
-          continue;
-        }
-
-        // Jump to Label
-        if(jump_to_label){
-          let label_name = jump_to_label[1] || "";
-          event_command_list.push(getJumpToLabel(label_name));
-          continue;
-        }
-
-        // Input Number
-        if(input_number){
-          const val_num = Number(input_number[1]);
-          const num_of_digits = Number(input_number[2]);
-          event_command_list.push(getInputNumber(val_num, num_of_digits));
-          continue;
-        }
-
-        // Select Item
-        if(select_item){
-          const val_num = Number(select_item[1]);
-          const item_type = select_item[2];
-          event_command_list.push(getSelectItem(val_num, item_type));
-          continue;
-        }
-
-        // Face
-        if(face){
-          if(!frame_param){
-            frame_param = getPretextEvent();
-          }
-          let face_number = face[1].match(/.*\((.+?)\)/i);
-
-          if(face_number){
-            frame_param.parameters[0] = face[1].replace(/\(\d\)/,'');
-            frame_param.parameters[1] = parseInt(face_number[1]);
-            text = text.replace(face[0], '');
-          }else{
-            console.error(text);
-            throw new Error('Syntax error. / 文法エラーです。'
-              + text.replace(/</g, '  ').replace(/>/g, '  '));
-          }
-        }
-
-        // window backgound
-        if(background){
-          if(!frame_param){
-            frame_param = getPretextEvent();
-          }
-          try{
-            frame_param.parameters[2] = getBackground(background[1]);
-          }catch(e){
-            console.error(text);
-            throw new Error('Syntax error. / 文法エラーです。'
-              + text.replace(/</g, '  ').replace(/>/g, '  '));
-          }
-          text = text.replace(background[0], '');
-        }
-
-        // window position
-        if(window_position){
-          if(!frame_param){
-            frame_param = getPretextEvent();
-          }
-          try{
-            frame_param.parameters[3] = getWindowPosition(window_position[1]);
-          }catch(e){
-            console.error(text);
-            throw new Error('Syntax error. / 文法エラーです。'
-              + text.replace(/</g, '  ').replace(/>/g, '  '));
-          }
-          text = text.replace(window_position[0], '');
-        }
-
-        //name box
-        if(namebox){
-          if(!frame_param){
-            frame_param = getPretextEvent();
-          }
-          frame_param.parameters[4] = namebox[1];
-          text = text.replace(namebox[0], '');
-        }
-
-        if(text){
-          if(frame_param){
-            logger.log("push: ", frame_param.parameters);
-            event_command_list.push(frame_param);
-            frame_param = null;
-          }
-          logger.log("push: ", text);
-          event_command_list.push(getTextFrameEvent(text));
-        }
-      }else{
-        frame_param = getPretextEvent();
+        const return_obj = getEvents(text, previous_text, window_frame, previous_frame);
+        window_frame = return_obj["window_frame"]
+        const new_event_command_list = return_obj["event_command_list"]
+        event_command_list = event_command_list.concat(new_event_command_list);
       }
+      // window_frame = null;
+      logger.log(i, text);
+      previous_text = text;
     }
 
     event_command_list = completeLackedBottomEvent(event_command_list);
