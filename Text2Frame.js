@@ -2347,7 +2347,7 @@ if(typeof PluginManager === 'undefined'){
           return 1;
         case 'TRANSPARENT':
         case '透明':
-         return 2;
+          return 2;
         default:
           throw new Error('Syntax error. / 文法エラーです。');
       }
@@ -2363,6 +2363,22 @@ if(typeof PluginManager === 'undefined'){
           return 1;
         case 'BOTTOM':
         case '下':
+          return 2;
+        default:
+          throw new Error('Syntax error. / 文法エラーです。');
+      }
+    };
+
+    const getChoiceWindowPosition = function(windowPosition){
+      switch(windowPosition.toUpperCase()){
+        case 'LEFT':
+        case '左':
+          return 0;
+        case 'MIDDLE':
+        case '中':
+          return 1;
+        case 'RIGHT':
+        case '右':
           return 2;
         default:
           throw new Error('Syntax error. / 文法エラーです。');
@@ -3566,6 +3582,10 @@ if(typeof PluginManager === 'undefined'){
       return {"code": 113, "indent": 0, "parameters": []};
     };
 
+    const getBlockEnd = function(){
+      return {"code": 0, "indent": 0, "parameters": []};
+    };
+
     const getExitEventProcessing = function(){
       return {"code": 115, "indent": 0, "parameters": []};
     };
@@ -3607,6 +3627,22 @@ if(typeof PluginManager === 'undefined'){
         }
       }
       return {"code": 104, "indent": 0, "parameters": [val_num, item_type_num]};
+    };
+
+    const getShowChoices = function(window_type, window_position, default_choice, default_cancel){
+      return {"code": 102, "indent": 0, "parameters": [[], default_cancel, default_choice, window_position, window_type]};
+    };
+
+    const getShowChoiceWhen = function(index, text){
+      return {"code": 402, "indent": 0, "parameters": [index, text]};
+    };
+
+    const getShowChoiceWhenCancel = function(index, text){
+      return {"code": 403, "indent": 0, "parameters": [6, null]};
+    };
+
+    const getShowChoiceEnd = function(index, text){
+      return {"code": 404, "indent": 0, "parameters": []};
     };
 
     const completeLackedBottomEvent = function(events){
@@ -3739,6 +3775,12 @@ if(typeof PluginManager === 'undefined'){
       let select_item = text.match(/<SelectItem\s*:\s*(\d+),\s*([\s\S]+)\s*>/i)
         || text.match(/<SI\s*:\s*(\d+),\s*([\s\S]+)\s*>/i)
         || text.match(/<アイテム選択の処理\s*:\s*(\d+),\s*([\s\S]+)\s*>/i);
+      let show_choices = text.match(/<ShowChoices\s*:*\s*([\s\S]*)>/i)
+        || text.match(/<SHC\s*:*\s*([\s\S]*)>/i)
+        || text.match(/<選択肢の表示\s*:*\s*([\s\S]*)>/i);
+      let show_choice_when = text.match(/<When\s*:\s*(\S+)>/i);
+      let show_choice_when_cancel = text.match(/<WhenCancel>/i);
+      let show_choice_end = text.match(/<End>/i);
 
       const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
       const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
@@ -4396,6 +4438,68 @@ if(typeof PluginManager === 'undefined'){
         return [getSelectItem(val_num, item_type)];
       }
 
+      // Show Choices
+      if(show_choices){
+        let params = show_choices[1].split(',').filter(s => s).map(s => s.trim());
+        let window_type = 0;
+        let window_position = 2;
+        let default_choice = 0;
+        let default_cancel = 1;
+        let exist_default_choice = false;
+
+        params.forEach((p) => {
+          try{
+            window_type = getBackground(p);
+            return;
+          }catch(e){}
+          try{
+            window_position = getChoiceWindowPosition(p);
+            return;
+          }catch(e){}
+          switch(p.toLowerCase()){
+            case "branch":
+            case "分岐":
+              default_cancel = -2;
+              return;
+            case "disallow":
+            case "禁止":
+              default_cancel = -1;
+              return;
+            case "none":
+            case "なし":
+              default_choice = 0;
+              return;
+          }
+          if(!isNaN(Number(p))){
+            if(exist_default_choice){
+              default_cancel = Number(p) - 1;
+            }else{
+              default_choice = Number(p) - 1;
+              exist_default_choice = true;
+            }
+          }
+        });
+
+        return [getShowChoices(window_type, window_position, default_choice, default_cancel)];
+      }
+
+      // Show Choice When
+      if(show_choice_when){
+        const text = show_choice_when[1];
+        const index = 0;
+        return [getShowChoiceWhen(index, text)];
+      }
+
+      // Show Choice When Cancel
+      if(show_choice_when_cancel){
+        return [getShowChoiceWhenCancel()];
+      }
+
+      // Show Choice End
+      if(show_choice_end){
+        return [getShowChoiceEnd()];
+      }
+
       // Face
       if(face){
         if(!frame_param){
@@ -4502,6 +4606,10 @@ if(typeof PluginManager === 'undefined'){
         }else{
           event_command_list.push(getPretextEvent());
         }
+      }else if(current_frame.code == 402 || current_frame.code == 403){
+        if(previous_frame.code == 401){
+          event_command_list.push(getBlockEnd());
+        }
       }
       event_command_list = event_command_list.concat(events);
       return {window_frame: null, event_command_list};
@@ -4513,6 +4621,8 @@ if(typeof PluginManager === 'undefined'){
       const IF_CODE = 111;
       const ELSE_CODE = 411;
       const LOOP_CODE = 112;
+      const WHEN_CODE = 402;
+      const WHEN_CANCEL_CODE = 403;
 
       const out_events = events.reduce((o, e) => {
         const parameters = JSON.parse(JSON.stringify(e.parameters));
@@ -4524,7 +4634,9 @@ if(typeof PluginManager === 'undefined'){
           switch(last.code){
             case IF_CODE:
             case ELSE_CODE:
-            case LOOP_CODE:{
+            case LOOP_CODE:
+            case WHEN_CODE:
+            case WHEN_CANCEL_CODE:{
               now_indent += 1;
               break;
             }
