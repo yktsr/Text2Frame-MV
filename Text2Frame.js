@@ -3752,7 +3752,7 @@ if(typeof PluginManager === 'undefined'){
       let conditional_branch_else = text.match(/\s*<else>/i)
         || text.match(/\s*<それ以外のとき>/);
       let conditional_branch_end = text.match(/\s*<end>/i)
-        || text.match(/\s*<分岐修了>/);
+        || text.match(/\s*<分岐終了>/);
       let loop = text.match(/\s*<loop>/i)
         || text.match(/\s*<ループ>/);
       let repeat_above = text.match(/<repeatabove>/i)
