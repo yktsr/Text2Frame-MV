@@ -4362,7 +4362,6 @@ if(typeof PluginManager === 'undefined'){
           let target = args[0].trim();
           let params = args.slice(1);
           return [getConditionalBranch(target, params)];
-          // frame_param = frame_param || getPretextEvent();
         }else{
           console.error(text);
           throw new Error('Syntax error. / 文法エラーです。'
@@ -4376,7 +4375,6 @@ if(typeof PluginManager === 'undefined'){
         event_command_list.push(getCommandBottomEvent());
         event_command_list.push(getElse());
         return event_command_list;
-        // frame_param = frame_param || getPretextEvent();
       }
 
       // Conditional Branch (End)
@@ -4385,7 +4383,6 @@ if(typeof PluginManager === 'undefined'){
         event_command_list.push(getCommandBottomEvent());
         event_command_list.push(getEnd());
         return event_command_list;
-        // frame_param = frame_param || getPretextEvent();
       }
 
       // Loop
@@ -4399,7 +4396,6 @@ if(typeof PluginManager === 'undefined'){
         event_command_list.push(getCommandBottomEvent());
         event_command_list.push(getRepeatAbove());
         return event_command_list;
-        // frame_param = frame_param || getPretextEvent();
       }
 
       // Break Loop
@@ -4563,7 +4559,6 @@ if(typeof PluginManager === 'undefined'){
         if(frame_param){
           logger.log("push: ", frame_param.parameters);
           event_command_list.push(frame_param);
-          // frame_param = null;
         }
       }
 
@@ -4680,7 +4675,6 @@ if(typeof PluginManager === 'undefined'){
         const new_event_command_list = return_obj["event_command_list"]
         event_command_list = event_command_list.concat(new_event_command_list);
       }
-      // window_frame = null;
       logger.log(i, text);
       previous_text = text;
     }
