@@ -3670,7 +3670,7 @@ if(typeof PluginManager === 'undefined'){
       return events.concat(bottom);
     };
 
-    const _getEvents = function(text, frame_param){
+    const _getEvents = function(text, frame_param, block_stack){
       let face = text.match(/<face *: *(.+?)>/i)
         || text.match(/<FC *: *(.+?)>/i)
         || text.match(/<顔 *: *(.+?)>/i);
@@ -3778,9 +3778,8 @@ if(typeof PluginManager === 'undefined'){
       let show_choices = text.match(/<ShowChoices\s*:*\s*([\s\S]*)>/i)
         || text.match(/<SHC\s*:*\s*([\s\S]*)>/i)
         || text.match(/<選択肢の表示\s*:*\s*([\s\S]*)>/i);
-      let show_choice_when = text.match(/<When\s*:\s*(\S+)>/i);
-      let show_choice_when_cancel = text.match(/<WhenCancel>/i);
-      let show_choice_end = text.match(/<End>/i);
+      let show_choice_when = text.match(/<When\s*:\s*(\S+)>/i) || text.match(/<選択肢\s*:\s*(\S+)>/i);
+      let show_choice_when_cancel = text.match(/<WhenCancel>/i) || text.match(/<キャンセルのとき>/i);
 
       const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
       const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
@@ -4379,9 +4378,15 @@ if(typeof PluginManager === 'undefined'){
 
       // Conditional Branch (End)
       if(conditional_branch_end){
+        const current_block = block_stack.slice(-1)[0];
+        const CHOICE_CODE = 102;
         let event_command_list = [];
-        event_command_list.push(getCommandBottomEvent());
-        event_command_list.push(getEnd());
+
+        if(Boolean(current_block) && current_block["code"] == CHOICE_CODE){
+          return [getBlockEnd(), getShowChoiceEnd()];
+        }else{
+          return [getCommandBottomEvent(), getEnd()];
+        }
         return event_command_list;
       }
 
@@ -4481,19 +4486,14 @@ if(typeof PluginManager === 'undefined'){
 
       // Show Choice When
       if(show_choice_when){
-        const text = show_choice_when[1];
         const index = 0;
+        const text = show_choice_when[1];
         return [getShowChoiceWhen(index, text)];
       }
 
       // Show Choice When Cancel
       if(show_choice_when_cancel){
         return [getShowChoiceWhenCancel()];
-      }
-
-      // Show Choice End
-      if(show_choice_end){
-        return [getShowChoiceEnd()];
       }
 
       // Face
@@ -4570,28 +4570,44 @@ if(typeof PluginManager === 'undefined'){
       return event_command_list;
     };
 
-    const getEvents = function(text, previous_text, window_frame, previous_frame){
+    const getEvents = function(text, previous_text, window_frame, previous_frame, block_stack){
       let event_command_list = [];
-      let events = _getEvents(text, window_frame);
+      let events = _getEvents(text, window_frame, block_stack);
+      const PRE_CODE = 101;
+      const CHOICE_CODE = 102;
+      const TEXT_CODE = 401;
+      const WHEN_CODE = 402;
+      const WHEN_CANCEL_CODE = 403;
+      const IF_CODE = 111;
+      const IF_END_CODE = getEnd().code;
+      const CHOICE_END_CODE = getShowChoiceEnd().code;
+
+      events.forEach((current_frame) => {
+        if(current_frame.code == IF_END_CODE || current_frame.code == CHOICE_END_CODE){
+          block_stack.pop();
+        }
+      });
+
       if(events.length > 1){
         // 一行に複数書かれている
         event_command_list = event_command_list.concat(events);
-        return {window_frame: null, event_command_list};
+        return {window_frame: null, event_command_list, block_stack};
       }
       const current_frame = events[0];
-      if(current_frame.code == 101){
+      if(current_frame.code == PRE_CODE){
         // 401になるまで遅延する
         window_frame = current_frame;
-        return {window_frame, event_command_list};
+        return {window_frame, event_command_list, block_stack};
       }
-      if(current_frame.code == 401){
+
+      if(current_frame.code == TEXT_CODE){
         if(previous_frame){
-          if(previous_frame.code == 401){
+          if(previous_frame.code == TEXT_CODE){
             // 空行でwindow frameを初期化
             if(previous_text === ''){
               event_command_list.push(getPretextEvent());
             }
-          }else if(previous_frame.code == 101){
+          }else if(previous_frame.code == PRE_CODE){
             // stackに積んだframeを挿入する
             event_command_list.push(window_frame);
           }else{
@@ -4601,13 +4617,34 @@ if(typeof PluginManager === 'undefined'){
         }else{
           event_command_list.push(getPretextEvent());
         }
-      }else if(current_frame.code == 402 || current_frame.code == 403){
-        if(previous_frame.code == 401){
+      }else if(current_frame.code == WHEN_CODE){
+        const current_index = block_stack.slice(-1)[0]["index"];
+        let current_choice = block_stack.slice(-1)[0]["event"];
+        if(current_index != 0){
           event_command_list.push(getBlockEnd());
         }
+        current_frame.parameters[0] = current_index;
+        block_stack.slice(-1)[0]["index"] += 1;
+        if(current_choice){
+          // if block の中で when を書いている
+          if(Array.isArray(current_choice.parameters)){
+            current_choice.parameters[0].push(current_frame.parameters[1]);
+          }
+        }
+      }else if(current_frame.code == WHEN_CANCEL_CODE){
+        const current_index = block_stack.slice(-1)[0]["index"];
+        if(current_index != 0){
+          event_command_list.push(getBlockEnd());
+        }
+        block_stack.slice(-1)[0]["index"] += 1;
+      }else if(current_frame.code == CHOICE_CODE){
+        block_stack.push({"code": current_frame.code, "event": current_frame, "indent": block_stack.length, "index": 0});
+      }else if(current_frame.code == IF_CODE){
+        block_stack.push({"code": current_frame.code, "event": current_frame, "indent": block_stack.length, "index": 0});
       }
+
       event_command_list = event_command_list.concat(events);
-      return {window_frame: null, event_command_list};
+      return {window_frame: null, event_command_list, block_stack};
     }
 
 
@@ -4662,6 +4699,7 @@ if(typeof PluginManager === 'undefined'){
     let event_command_list = [];
     let previous_text = '';
     let window_frame = null;
+    let block_stack = [];
     for(let i=0; i < text_lines.length; i++){
       const text = text_lines[i];
 
@@ -4670,9 +4708,10 @@ if(typeof PluginManager === 'undefined'){
         if(previous_frame === null){
           previous_frame = event_command_list.slice(-1)[0];
         }
-        const return_obj = getEvents(text, previous_text, window_frame, previous_frame);
+        const return_obj = getEvents(text, previous_text, window_frame, previous_frame, block_stack);
         window_frame = return_obj["window_frame"]
         const new_event_command_list = return_obj["event_command_list"]
+        block_stack = return_obj["block_stack"]
         event_command_list = event_command_list.concat(new_event_command_list);
       }
       logger.log(i, text);
