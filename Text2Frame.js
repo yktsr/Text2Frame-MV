@@ -3642,11 +3642,11 @@ if(typeof PluginManager === 'undefined'){
       return {"code": 402, "indent": 0, "parameters": [index, text]};
     };
 
-    const getShowChoiceWhenCancel = function(index, text){
+    const getShowChoiceWhenCancel = function(){
       return {"code": 403, "indent": 0, "parameters": [6, null]};
     };
 
-    const getShowChoiceEnd = function(index, text){
+    const getShowChoiceEnd = function(){
       return {"code": 404, "indent": 0, "parameters": []};
     };
 
@@ -4385,14 +4385,12 @@ if(typeof PluginManager === 'undefined'){
       if(conditional_branch_end){
         const current_block = block_stack.slice(-1)[0];
         const CHOICE_CODE = 102;
-        let event_command_list = [];
 
         if(Boolean(current_block) && current_block["code"] == CHOICE_CODE){
           return [getBlockEnd(), getShowChoiceEnd()];
         }else{
           return [getCommandBottomEvent(), getEnd()];
         }
-        return event_command_list;
       }
 
       // Loop
@@ -4454,6 +4452,7 @@ if(typeof PluginManager === 'undefined'){
         let exist_default_choice = false;
 
         params.forEach((p) => {
+          /* eslint-disable no-empty */
           try{
             window_type = getBackground(p);
             return;
@@ -4462,6 +4461,7 @@ if(typeof PluginManager === 'undefined'){
             window_position = getChoiceWindowPosition(p);
             return;
           }catch(e){}
+          /* eslint-enable */
           switch(p.toLowerCase()){
             case "branch":
             case "分岐":
