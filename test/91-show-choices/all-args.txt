@@ -38,7 +38,7 @@
 
 <End>
 
-<ShowChoices: 暗くする, 真ん中, 1, 禁止>
+<ShowChoices: 暗くする, 中, 1, 禁止>
 <When: Alice>
 アリス
 

@@ -2,7 +2,7 @@
 % 条件分岐タグとも組み合わせる
 
 % 条件分岐だけ
-<ShowChoices: Window, left, 1, Branch>
+<ShowChoices: Window, right, 1, Branch>
 <When: Yes>
   <SHC>
   <When: Yes>
@@ -24,11 +24,11 @@
   <End>
 % キャンセル時の中に2個同じ選択肢の表示を入れる
 <WhenCancel>
-  <ShowChoices: Window, left, 1, Branch>
+  <ShowChoices: Window, right, 1, Branch>
   <When: Yes>
   <When: No>
   <WhenCancel>
-    <ShowChoices: Window, left, 1, Branch>
+    <ShowChoices: Window, right, 1, Branch>
     <When: Yes>
     <When: No>
     <WhenCancel>
@@ -78,15 +78,15 @@
                 <When: Yes>
                   <SHC, Window, Right, 1, 1>
                   <When: Yes>
-                  <No>
-                <No>
-              <No>
-            <No>
-          <No>
-        <No>
-      <No>
-    <No>
-  <No>
-<No>
+                  <END>
+                <END>
+              <END>
+            <END>
+          <END>
+        <END>
+      <END>
+    <END>
+  <END>
+<END>
 
 
