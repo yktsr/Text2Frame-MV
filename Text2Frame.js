@@ -3778,7 +3778,7 @@ if(typeof PluginManager === 'undefined'){
       let show_choices = text.match(/<ShowChoices\s*:*\s*([\s\S]*)>/i)
         || text.match(/<SHC\s*:*\s*([\s\S]*)>/i)
         || text.match(/<選択肢の表示\s*:*\s*([\s\S]*)>/i);
-      let show_choice_when = text.match(/<When\s*:\s*(\S+)>/i) || text.match(/<選択肢\s*:\s*(\S+)>/i);
+      let show_choice_when = text.match(/<When\s*:\s*([\s\S]+)>/i) || text.match(/<選択肢\s*:\s*([\s\S]+)>/i);
       let show_choice_when_cancel = text.match(/<WhenCancel>/i) || text.match(/<キャンセルのとき>/i);
 
       const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
@@ -4468,7 +4468,7 @@ if(typeof PluginManager === 'undefined'){
               return;
             case "none":
             case "なし":
-              default_choice = 0;
+              default_choice = -1;
               return;
           }
           if(!isNaN(Number(p))){
@@ -4562,11 +4562,10 @@ if(typeof PluginManager === 'undefined'){
         }
       }
 
-      if(text){
+      if(text.match(/\S/g)){
         logger.log("push: ", text);
         event_command_list.push(getTextFrameEvent(text));
       }
-
       return event_command_list;
     };
 
@@ -4588,62 +4587,64 @@ if(typeof PluginManager === 'undefined'){
         }
       });
 
-      if(events.length > 1){
-        // 一行に複数書かれている
-        event_command_list = event_command_list.concat(events);
-        return {window_frame: null, event_command_list, block_stack};
-      }
-      const current_frame = events[0];
-      if(current_frame.code == PRE_CODE){
-        // 401になるまで遅延する
-        window_frame = current_frame;
-        return {window_frame, event_command_list, block_stack};
-      }
+      if(Array.isArray(events) && events.length > 0){
+        if(events.length > 1){
+          // 一行に複数書かれている
+          event_command_list = event_command_list.concat(events);
+          return {window_frame: null, event_command_list, block_stack};
+        }
+        const current_frame = events[0];
+        if(current_frame.code == PRE_CODE){
+          // 401になるまで遅延する
+          window_frame = current_frame;
+          return {window_frame, event_command_list, block_stack};
+        }
 
-      if(current_frame.code == TEXT_CODE){
-        if(previous_frame){
-          if(previous_frame.code == TEXT_CODE){
-            // 空行でwindow frameを初期化
-            if(previous_text === ''){
+        if(current_frame.code == TEXT_CODE){
+          if(previous_frame){
+            if(previous_frame.code == TEXT_CODE){
+              // 空行でwindow frameを初期化
+              if(previous_text === ''){
+                event_command_list.push(getPretextEvent());
+              }
+            }else if(previous_frame.code == PRE_CODE){
+              // stackに積んだframeを挿入する
+              event_command_list.push(window_frame);
+            }else{
+              // window frameを初期化
               event_command_list.push(getPretextEvent());
             }
-          }else if(previous_frame.code == PRE_CODE){
-            // stackに積んだframeを挿入する
-            event_command_list.push(window_frame);
           }else{
-            // window frameを初期化
             event_command_list.push(getPretextEvent());
           }
-        }else{
-          event_command_list.push(getPretextEvent());
-        }
-      }else if(current_frame.code == WHEN_CODE){
-        const current_index = block_stack.slice(-1)[0]["index"];
-        let current_choice = block_stack.slice(-1)[0]["event"];
-        if(current_index != 0){
-          event_command_list.push(getBlockEnd());
-        }
-        current_frame.parameters[0] = current_index;
-        block_stack.slice(-1)[0]["index"] += 1;
-        if(current_choice){
-          // if block の中で when を書いている
-          if(Array.isArray(current_choice.parameters)){
-            current_choice.parameters[0].push(current_frame.parameters[1]);
+        }else if(current_frame.code == WHEN_CODE){
+          const current_index = block_stack.slice(-1)[0]["index"];
+          let current_choice = block_stack.slice(-1)[0]["event"];
+          if(current_index != 0){
+            event_command_list.push(getBlockEnd());
           }
+          current_frame.parameters[0] = current_index;
+          block_stack.slice(-1)[0]["index"] += 1;
+          if(current_choice){
+            // if block の中で when を書いている
+            if(Array.isArray(current_choice.parameters)){
+              current_choice.parameters[0].push(current_frame.parameters[1]);
+            }
+          }
+        }else if(current_frame.code == WHEN_CANCEL_CODE){
+          const current_index = block_stack.slice(-1)[0]["index"];
+          if(current_index != 0){
+            event_command_list.push(getBlockEnd());
+          }
+          block_stack.slice(-1)[0]["index"] += 1;
+        }else if(current_frame.code == CHOICE_CODE){
+          block_stack.push({"code": current_frame.code, "event": current_frame, "indent": block_stack.length, "index": 0});
+        }else if(current_frame.code == IF_CODE){
+          block_stack.push({"code": current_frame.code, "event": current_frame, "indent": block_stack.length, "index": 0});
         }
-      }else if(current_frame.code == WHEN_CANCEL_CODE){
-        const current_index = block_stack.slice(-1)[0]["index"];
-        if(current_index != 0){
-          event_command_list.push(getBlockEnd());
-        }
-        block_stack.slice(-1)[0]["index"] += 1;
-      }else if(current_frame.code == CHOICE_CODE){
-        block_stack.push({"code": current_frame.code, "event": current_frame, "indent": block_stack.length, "index": 0});
-      }else if(current_frame.code == IF_CODE){
-        block_stack.push({"code": current_frame.code, "event": current_frame, "indent": block_stack.length, "index": 0});
-      }
 
-      event_command_list = event_command_list.concat(events);
+        event_command_list = event_command_list.concat(events);
+      }
       return {window_frame: null, event_command_list, block_stack};
     }
 
