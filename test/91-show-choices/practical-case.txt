@@ -49,7 +49,7 @@
 じゃあ、またな。
 
   <Else>
-    <If: Variables[2], >= Variables[1]>
+    <If: Variables[2], >=, Variables[1]>
 <Name: プリシラ>
 お買い上げありがとうございます♪
 
