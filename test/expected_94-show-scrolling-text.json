@@ -1,0 +1,443 @@
+{
+  "events": [
+    null,
+    {
+      "pages": [
+        {
+          "list": [
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                2,
+                false
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。"
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "しかし、勇者は立ち上がった。"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                2,
+                false
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。"
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "しかし、勇者は立ち上がった。"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                2,
+                false
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。"
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "しかし、勇者は立ち上がった。"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                2,
+                false
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。"
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "しかし、勇者は立ち上がった。"
+              ]
+            },
+            {
+              "code": 101,
+              "indent": 0,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 0,
+              "parameters": [
+                "今日も一日がんばるぞい！"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                1,
+                true
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                2,
+                true
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                3,
+                true
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                4,
+                true
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                5,
+                true
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                6,
+                false
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                7,
+                false
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                8,
+                false
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                9,
+                false
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。(速度限界突破1)"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                10,
+                false
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。(速度限界突破2)"
+              ]
+            },
+            {
+              "code": 101,
+              "indent": 0,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 0,
+              "parameters": [
+                "今日も一日がんばるぞい！"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                2,
+                false
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "世界は魔王によって滅ぼされた。"
+              ]
+            },
+            {
+              "code": 101,
+              "indent": 0,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 0,
+              "parameters": [
+                "今日も一日がんばるぞい！"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                2,
+                false
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "この世界は、魔法が存在し、神話の生き物たちが跋扈するファンタジックな世界である。"
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "かつて、この世界を支配していた邪悪な存在が滅び、平和が訪れた。"
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                ""
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "しかし、最近、世界各地で謎の事件が起き始め、闇の力が再び復活しようとしている。"
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "主人公は、偶然事件に巻き込まれ、その解決に乗り出すことになる。"
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                ""
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "果たして、主人公たちは邪悪な力を打ち破り、世界を救うことができるのだろうか？"
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                ""
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "by ChatGPT"
+              ]
+            },
+            {
+              "code": 101,
+              "indent": 0,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 0,
+              "parameters": [
+                "今日も一日がんばるぞい！"
+              ]
+            },
+            {
+              "code": 105,
+              "indent": 0,
+              "parameters": [
+                2,
+                false
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "<Name: 青葉>"
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "今日も一日がんばるぞい！"
+              ]
+            },
+            {
+              "code": 405,
+              "indent": 0,
+              "parameters": [
+                "<=: 1, 2>"
+              ]
+            },
+            {
+              "code": 0,
+              "indent": 0,
+              "parameters": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

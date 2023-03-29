@@ -1,0 +1,168 @@
+{
+  "events": [
+    null,
+    {
+      "pages": [
+        {
+          "list": [
+            {
+              "code": 104,
+              "indent": 0,
+              "parameters": [
+                1,
+                1
+              ]
+            },
+            {
+              "code": 104,
+              "indent": 0,
+              "parameters": [
+                1,
+                1
+              ]
+            },
+            {
+              "code": 104,
+              "indent": 0,
+              "parameters": [
+                1,
+                1
+              ]
+            },
+            {
+              "code": 101,
+              "indent": 0,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 0,
+              "parameters": [
+                "今日も一日がんばるぞい！"
+              ]
+            },
+            {
+              "code": 104,
+              "indent": 0,
+              "parameters": [
+                20,
+                3
+              ]
+            },
+            {
+              "code": 104,
+              "indent": 0,
+              "parameters": [
+                20,
+                3
+              ]
+            },
+            {
+              "code": 104,
+              "indent": 0,
+              "parameters": [
+                20,
+                3
+              ]
+            },
+            {
+              "code": 101,
+              "indent": 0,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 0,
+              "parameters": [
+                "今日も一日がんばるぞい！"
+              ]
+            },
+            {
+              "code": 104,
+              "indent": 0,
+              "parameters": [
+                15,
+                2
+              ]
+            },
+            {
+              "code": 104,
+              "indent": 0,
+              "parameters": [
+                15,
+                2
+              ]
+            },
+            {
+              "code": 104,
+              "indent": 0,
+              "parameters": [
+                15,
+                2
+              ]
+            },
+            {
+              "code": 101,
+              "indent": 0,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 0,
+              "parameters": [
+                "今日も一日がんばるぞい！"
+              ]
+            },
+            {
+              "code": 104,
+              "indent": 0,
+              "parameters": [
+                300,
+                4
+              ]
+            },
+            {
+              "code": 104,
+              "indent": 0,
+              "parameters": [
+                300,
+                4
+              ]
+            },
+            {
+              "code": 104,
+              "indent": 0,
+              "parameters": [
+                300,
+                4
+              ]
+            },
+            {
+              "code": 0,
+              "indent": 0,
+              "parameters": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

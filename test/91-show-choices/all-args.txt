@@ -1,0 +1,161 @@
+% 全ての引数の種類が登場するような組み合わせを順次実行
+%% ケース1 * 3
+<ShowChoices: Window, Left, None, Branch>
+<When: Yes>
+ほげ
+<WhenCancel>
+ほげ when cancel
+<End>
+
+<選択肢の表示: ウィンドウ, 左, なし, 分岐>
+<選択肢: Yes>
+ほげ
+<キャンセルのとき>
+ほげ when cancel
+<分岐終了>
+
+<SHC: Window, Left, なし, Branch>
+<When: Yes>
+ほげ
+<WhenCancel>
+ほげ when cancel
+<End>
+
+
+%% ケース2 * 2
+<ShowChoices: Dim, Middle, 1, Disallow>
+<When: Alice>
+アリス
+
+<When: Bob>
+ボブ
+
+<When: Carol>
+キャロル
+
+<When: Dave>
+デイブ
+
+<End>
+
+<ShowChoices: 暗くする, 中, 1, 禁止>
+<When: Alice>
+アリス
+
+<When: Bob>
+ボブ
+
+<When: Carol>
+キャロル
+
+<When: Dave>
+デイブ
+
+<End>
+
+%% ケース3 * 2
+<ShowChoices: Transparent, Right, 2, 1>
+<When: Alice>
+アリス
+<When: Bob>
+ボブ
+<When: Carol>
+キャロル
+<When: Dave>
+デイブ
+<When: Eve>
+イブ
+<When: Isaac>
+アイザック
+<End>
+
+<ShowChoices: 透明, 右, 2, 1>
+<When: Alice>
+アリス
+<When: Bob>
+ボブ
+<When: Carol>
+キャロル
+<When: Dave>
+デイブ
+<When: Eve>
+イブ
+<When: Isaac>
+アイザック
+<End>
+
+%% ケース4: 背景と位置は全て実行したので、デフォルトとキャンセル全項目
+<ShowChoices: 透明, 右, 3, 4>
+<When: Alice>
+アリス
+<When: Bob>
+ボブ
+<When: Carol>
+キャロル
+<When: Dave>
+デイブ
+<End>
+
+<ShowChoices: 透明, 右, 4, 5>
+<When: Alice>
+アリス
+<When: Bob>
+ボブ
+<When: Carol>
+キャロル
+<When: Dave>
+デイブ
+<When: Eve>
+イブ
+<End>
+
+<ShowChoices: 透明, 右, 5, 6>
+<When: Alice>
+アリス
+<When: Bob>
+ボブ
+<When: Carol>
+キャロル
+<When: Dave>
+デイブ
+<When: Eve>
+イブ
+<When: Isaac>
+アイザック
+<End>
+
+<ShowChoices: 透明, 右, 6, 6>
+<When: Alice>
+アリス
+<When: Bob>
+ボブ
+<When: Carol>
+キャロル
+<When: Dave>
+デイブ
+<When: Eve>
+イブ
+<When: Isaac>
+アイザック
+<End>
+
+
+%% ケース5: 引数の数が可変なのでその動作確認.(デフォルト値が入るか確認)
+<ShowChoices: Dim>
+<When: Yes>
+ほげ
+<When:No>
+ほげほげ
+<End>
+<ShowChoices: Window, 左>
+<When: Yes>
+ほげ
+<When:No>
+ほげほげ
+<End>
+<ShowChoices: Transparent, Right, None>
+<When: Yes>
+ほげ
+<When:No>
+all-args-end
+<End>
