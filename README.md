@@ -96,6 +96,10 @@ Simple compiler to convert text to event.
 |メッセージウィンドウの顔|<Face: Actor1(0)><br><FC: Actor1(0)><br><顔: Actor1(0)>|ウインドウに表示される顔をActor1.pngの位置0(一番左上)に変更する。|
 |メッセージウィンドウの位置|<WindowPosition: Top><br><WP: Top><br><位置: 上>|ウインドウの位置を上に変更する。|
 |メッセージウィンドウの背景|<Background: Dim><br><BG: Dim><br><背景:暗く>|ウインドウの背景を暗くする。|
+|選択肢の表示|\<ShowChoices\><br><When: はい><br>選択肢1を選んだ時の処理<br><When: いいえ><br>選択肢2を選んだ時の処理<br>\<End\>|「はい」と「いいえ」の選択肢を表示する|
+|数値入力の処理|<InputNumber: 1, 2><br><INN: 1, 2><br><数値入力の処理: 1, 2>|変数1に桁数2で数値入力する。|
+|アイテム選択の処理|<SelectItem: 1, Regular Item><br><SI: 1, REGULAR ITEM><br><アイテム選択の処理: 1, 通常アイテム>|通常アイテムの一覧を表示し選択されたアイテムのIDを変数1に代入する。|
+|文章のスクロール表示|<ShowScrollingText: 2, OFF><br>世界は魔王によって滅ぼされた。<br>しかし、勇者は立ち上がった。<br>\</ShowScrollingText\>|速度を"2"で文章をスクロール|
 |スイッチの操作(ON)| <Switch: 1, ON><br><SW: 1, true><br><スイッチ: 1, オン> | スイッチ1をONにする。|
 |スイッチの操作(OFF)| <Switch: 1, OFF><br><SW: 1, false><br><スイッチ: 1, オフ> | スイッチ1をOFFにする。|
 |変数の操作<br>(代入, 単一, 定数)| <Set: 1, 2><br><=: 1, 2><br><代入: 1, 2> |変数1に定数2を代入する。|
@@ -134,7 +138,7 @@ Simple compiler to convert text to event.
 |SEの演奏|<PlaySE: Attack1, 90, 100, 0><br><SEの演奏: Attack1, 90, 100, 0>|Attack1をSEとして、音量90,ピッチ100, 位相0で演奏する。|
 |SEの停止|\<StopSE\><br><SEの停止>|SEの停止イベントを挿入する。|
 |戦闘曲の変更|<ChangeBattleBGM: Battle2, 90, 100, 0><br><戦闘曲の変更: Battle2, 90, 100, 0>|戦闘BGMをBattle2に、音量90,ピッチ100, 位相0で変更する。|
-|スクリプト|<script><br>console.log("ぞい！");<br></script>|&lt;SC><br>console.log("ぞい！")<br>&lt;/SC>|"console.log("ぞい！");"をスクリプトイベントとして組み込む。|
+|スクリプト|<script><br>console.log("ぞい！");<br></script>|"console.log("ぞい！");"をスクリプトイベントとして組み込む。|
 |プラグインコマンド|<PluginCommand: IMPORT_MESSAGE_TO_EVENT><br><プラグインコマンド: IMPORT_MESSAGE_TO_EVENT><br><PC: IMPORT_MESSAGE_TO_EVENT>|"IMPORT_MESSAGE_TO_EVENT"をプラグインコマンドとして組み込む。|
 
 タグの詳細は[wikiの文法ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%86%E3%82%AD%E3%82%B9%E3%83%88%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9)や
