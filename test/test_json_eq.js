@@ -82,6 +82,7 @@ describe('Text2Frame Test', function() {
     {title: "Move Picture MZ", infile: "./test/69-move-picture-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/69-expected_move-picture-mz.json"},
     {title: "Conditional Branch/Button-MZ", infile: "./test/70-if-else-button-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/70-expected_if-else-button-mz.json"},
     {title: "Control Variables/Last-MZ", infile: "./test/71-control-variables-last-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/71-expected_control-variables-last-mz.json"},
+    {title: "Movement/Scroll Map", infile: "./test/movement/scroll-map.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_scroll-map.json"},
     {title: "Plugin Command MZ", infile: "./test/73-plugin-command-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/73-expected_plugin-command-mz.json"},
   ];
 

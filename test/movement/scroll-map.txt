@@ -1,0 +1,50 @@
+% 下向き, 距離3, 1/8倍速, ウェイトしない
+<ScrollMap: down, 3, x8 slower>
+<マップのスクロール: 下, 3, 1/8倍速, オフ>
+<マップのスクロール: 2, 3, 1, 0>
+<scrollmapスクロール: 2, 3, 1,   false>
+<SCROLLMAP:2,3,1,OFF>
+
+% 左向き, 距離44, 1/4倍速, ウェイトする
+<ScrollMap: left, x4 slower, 44, Wait for Completion>
+<マップのスクロール: 左, 1/4倍速, 44, 完了までウェイト>
+<ScrollMap: 4, 44, 2, Wait>
+<ScrollMap: 4, 44, 2, true>
+<ScrollMap: 4, 44, 2, 1>
+<ScrollMap: 4, 44, 2, オン>
+<ScrollMap: 4, 44, 2, ON>
+
+% 右向き, 距離100, 1/2倍速, ウェイトしない
+<ScrollMap: right, 100, x2 slower>
+<マップのスクロール: 右, 100, 1/2倍速>
+<ScrollMap: 6, 100, 3>
+
+% 上向き, 距離1, 標準速, ウェイトしない
+<ScrollMap: up, 1, normal>
+<マップのスクロール: 上, 1, 標準速>
+<scrollmap: 8, 1, 4>
+
+% 下向き, 距離1, 2倍速,  ウェイトしない>
+<ScrollMap: down, 1, x2 faster>
+<ScrollMap: down, 1, 2倍速>
+<ScrollMap: down, 1, 5>
+
+% 下向き, 距離1, 4倍速,  ウェイトしない>
+<ScrollMap: down, 1, x4 faster>
+<ScrollMap: down, 1, 4倍速>
+<ScrollMap: down, 1, 6>
+
+
+% 例1: 下方向の距離100、標準速でマップをスクロール 完了までウェイトしない
+<ScrollMap: down, 100, normal>
+<マップのスクロール: 下, 100, 標準速>
+<ScrollMap: down, 100, normal, false>
+<マップのスクロール: 下, 100, 標準速, オフ>
+
+% 例2: 右方向の距離50、1/2倍速でマップをスクロール 完了までウェイト
+<ScrollMap: right, 50, x2 slower, Wait for Completion>
+<ScrollMap: right, 50, x2 slower, Wait>
+<ScrollMap: right, 50, x2 slower, ON>
+<マップのスクロール: 右, 50, 1/2倍速, true>
+<ScrollMap: right, 50, x2slower, オン>
+<マップのスクロール: 右, 50, 1/2倍速, オン>
