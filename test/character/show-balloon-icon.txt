@@ -1,0 +1,81 @@
+% びっくり, プレイヤー, ウェイトしない
+
+<ShowBalloonIcon: Player, Exclamation, false>
+<フキダシアイコンの表示:, プレイヤー, びっくり, オフ>
+<showballoonicon: -1, 1, 0>
+<フキダシアイコンの表示: player, びっくり, OFF>
+<ShowBalloonIcon: player, exclamation>
+
+% はてな, このイベント, 完了までウェイト
+<ShowBalloonIcon: This Event, Question, Wait for Completion>
+<フキダシアイコンの表示: このイベント, はてな, 完了までウェイト>
+<ShowBalloonIcon: 0, 2, Wait>
+<ShowBalloonIcon: 0, Question, true>
+<ShowBalloonIcon: 0, はてな, 1>
+<ShowBalloonIcon: 0, 2, オン>
+<ShowBalloonIcon: 0, 2, ON>
+
+% 音符, イベントID=1, ウェイトしない
+<ShowBalloonIcon: 1, Music Note>
+<フキダシアイコンの表示: 1, 音符>
+<ShowBalloonIcon: 1, 3>
+
+% ハート, イベントID=22, ウェイトする
+<ShowBalloonIcon: 22, Heart, Wait for Completion>
+<フキダシアイコンの表示: 22, ハート, 完了までウェイト>
+<ShowBalloonIcon: 22, 4, Wait>
+
+% 怒り, イベントID=100, ウェイトしない
+<ShowBalloonIcon:    100 , Anger >
+<ShowBalloonIcon: 100, 怒り >
+<ShowBalloonIcon:  100, 5 >
+
+% 汗, イベントID=1, ウェイトしない
+<ShowBalloonIcon: 1, Sweat>
+<ShowBalloonIcon: 1, 汗>
+<ShowBalloonIcon: 1, 6>
+
+% くしゃくしゃ
+<ShowBalloonIcon: 1, Cobweb>
+<ShowBalloonIcon: 1, 7>
+<ShowBalloonIcon: 1, くしゃくしゃ>
+
+% 沈黙
+<ShowBalloonIcon: 1, Silence>
+<ShowBalloonIcon: 1, 沈黙>
+<ShowBalloonIcon: 1, 8>
+
+% 電球
+<ShowBalloonIcon: 1, Light Bulb>
+<ShowBalloonIcon: 1, 電球>
+<ShowBalloonIcon: 1, 9>
+
+% zzz
+<ShowBalloonIcon: 1, Zzz>
+<ShowBalloonIcon: 1, zzz>
+<ShowBalloonIcon: 1, 10>
+
+% ユーザー定義1
+<ShowBalloonIcon: 1, user-defined1>
+<ShowBalloonIcon: 1, ユーザー定義1>
+<ShowBalloonIcon: 1, 11>
+
+% ユーザー定義2
+<ShowBalloonIcon: 1, user-defined2>
+<ShowBalloonIcon: 1, ユーザー定義2>
+<ShowBalloonIcon: 1, 12>
+
+% ユーザー定義3
+<ShowBalloonIcon: 1, user-defined3>
+<ShowBalloonIcon: 1, ユーザー定義3>
+<ShowBalloonIcon: 1, 13>
+
+% ユーザー定義4
+<ShowBalloonIcon: 1, user-defined4>
+<ShowBalloonIcon: 1, ユーザー定義4>
+<ShowBalloonIcon: 1, 14>
+
+% ユーザー定義5
+<ShowBalloonIcon: 1, user-defined5>
+<ShowBalloonIcon: 1, ユーザー定義5>
+<ShowBalloonIcon: 1, 15>
