@@ -7094,7 +7094,7 @@ if (typeof PluginManager === "undefined") {
       const operationAddList = ["add", "+", "加える", "付加"];
       const operationRemoveList = ["remove", "-", "外す", "解除"];
       const operationLearnList = ["learn", "+", "覚える"];
-      const operationForgotList = ["forgot", "-", "忘れる"];
+      const operationForgetList = ["forget", "-", "忘れる"];
       //場所/Location
       const locationDirectList = ["direct", "0", "直接指定"];
       const locationVariablesList = ["variables", "1", "変数の指定"];
@@ -7199,6 +7199,9 @@ if (typeof PluginManager === "undefined") {
       //敵キャラ
       const enemyTargetList = ["entiretroop", "敵グループ全体"];
 
+      //アクター
+      const actorTargetList = ["entire party", "パーティ全体"];
+
       //関数
       const getIncreaseOrDecrease = (operationType) => {
         if (operationIncreaseList.includes(operationType)) {
@@ -7218,10 +7221,10 @@ if (typeof PluginManager === "undefined") {
           throw new Error("Syntax error. / 文法エラーです。:" + text.replace(/</g, "  ").replace(/>/g, "  "));
         }
       };
-      const getLearnOrForgot = (operationType) => {
+      const getLearnOrForget = (operationType) => {
         if (operationLearnList.includes(operationType)) {
           return 0;
-        } else if (operationForgotList.includes(operationType)) {
+        } else if (operationForgetList.includes(operationType)) {
           return 1;
         } else {
           throw new Error("Syntax error. / 文法エラーです。:" + text.replace(/</g, "  ").replace(/>/g, "  "));
@@ -7240,6 +7243,8 @@ if (typeof PluginManager === "undefined") {
       const getFixedOrVariable = (operandValue) => {
         if (operandValue.match(constant_regexp)) {
           return { actor: 0, actorValue: Number(operandValue) };
+        } else if (actorTargetList.includes(operandValue)) {
+          return { actor: 0, actorValue: 0 };
         } else if (operandValue.match(variable_regexp)) {
           return { actor: 1, actorValue: Number(operandValue.match(variable_regexp)[1]) };
         } else {
@@ -7677,7 +7682,7 @@ if (typeof PluginManager === "undefined") {
       if (change_skill) {
         const params = change_skill[1].split(",").map((s) => s.trim().toLowerCase());
         const { actor, actorValue } = getFixedOrVariable(params[0]);
-        const operation = getLearnOrForgot(params[1]);
+        const operation = getLearnOrForget(params[1]);
         const skillId = parseInt(params[2]);
 
         return [getChangeSkill(actor, actorValue, operation, skillId)];
