@@ -1,0 +1,20 @@
+% 対象: パーティ全体, 覚える
+<ChangeSkill: Entire Party, learn, 1>
+<スキルの増減: パーティ全体, 覚える, 10>
+<changeskill: 0, +, 100>
+
+% 対象: 固定, 忘れる
+<changeskill: 1, forget, 4>
+<スキルの増減: 2, 忘れる, 10>
+<changeskill: 10, -, 10>
+
+% 対象: 変数, 色々
+<changeskill: Variables[1], LEARN, 22>
+<スキルの増減: 変数[10], FORGET, 50>
+<changeskill: V[100], +, 33>
+
+% Example
+<ChangeSkill: 1, learn, 2>
+<スキルの増減: 1, 覚える, 2>
+<ChangeSkill: variables[4], forget, 1>
+<スキルの増減: 変数[4], 忘れる, 1>
