@@ -1,7 +1,7 @@
 % びっくり, プレイヤー, ウェイトしない
 
 <ShowBalloonIcon: Player, Exclamation, false>
-<フキダシアイコンの表示:, プレイヤー, びっくり, オフ>
+<フキダシアイコンの表示: プレイヤー, びっくり, オフ>
 <showballoonicon: -1, 1, 0>
 <フキダシアイコンの表示: player, びっくり, OFF>
 <ShowBalloonIcon: player, exclamation>
@@ -37,6 +37,7 @@
 
 % くしゃくしゃ
 <ShowBalloonIcon: 1, Cobweb>
+<ShowBalloonIcon: 1, Flustration>
 <ShowBalloonIcon: 1, 7>
 <ShowBalloonIcon: 1, くしゃくしゃ>
 
