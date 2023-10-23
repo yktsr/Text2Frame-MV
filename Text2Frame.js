@@ -247,7 +247,8 @@
  * https://github.com/yktsr/Text2Frame-MV/wiki
  */
 
-/*: ja
+/* eslint-disable spaced-comment */
+/*:ja
  * @target MZ
  * @plugindesc テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、開発支援プラグインです。ツクールMV・MZの両方に対応しています。
  * @author Yuki Katsura, えーしゅん
@@ -2307,10 +2308,11 @@
  * [Twitter]: https://twitter.com/Asyun3i9t/
  * [GitHub] : https://github.com/yktsr/
  */
+/* eslint-enable spaced-comment */
 
 /* global Game_Interpreter, $gameMessage, process, PluginManager */
 
-var Laurus = Laurus || {}
+var Laurus = Laurus || {} // eslint-disable-line no-var, no-use-before-define
 Laurus.Text2Frame = {}
 
 if (typeof PluginManager === 'undefined') {
@@ -2320,7 +2322,7 @@ if (typeof PluginManager === 'undefined') {
   Game_Interpreter.prototype = {}
   $gameMessage = {}
   $gameMessage.add = function () {}
-  /* eslint-enable */
+  /* eslint-enable no-global-assign */
 }
 
 (function () {
@@ -4405,7 +4407,7 @@ if (typeof PluginManager === 'undefined') {
       const self_switch_operation_list = ['ssw', 'selfswitch', 'セルフスイッチ']
       const self_switch_reg_list = self_switch_operation_list.map(x => `<${x} *: *([abcd]) *, *(${control_variable_arg_regex}) *>`)
       const self_switch_tag = text.match(new RegExp(self_switch_reg_list.join('|'), 'i'))
-      /* eslint-enable */
+      /* eslint-enable no-useless-escape */
 
       const getControlTag = function (operator, operand1, operand2) {
         if (operator == 'selfswitch') {
@@ -4445,7 +4447,7 @@ if (typeof PluginManager === 'undefined') {
         }
         /* eslint-disable no-useless-escape */
         const random = operand2.match(/r\[(\-?\d+)\]\[(\-?\d+)\]|random\[(\-?\d+)\]\[(\-?\d+)\]|乱数\[(\-?\d+)\]\[(\-?\d+)\]/i)
-        /* eslint-enable */
+        /* eslint-enable no-useless-escape */
         if (random) {
           const random_range1 = random[1] || random[3] || random[5]
           const random_range2 = random[2] || random[4] || random[6]
@@ -4766,7 +4768,7 @@ if (typeof PluginManager === 'undefined') {
             window_position = getChoiceWindowPosition(p)
             return
           } catch (e) {}
-          /* eslint-enable */
+          /* eslint-enable no-empty */
           switch (p.toLowerCase()) {
             case 'branch':
             case '分岐':
