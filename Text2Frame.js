@@ -7112,12 +7112,12 @@ if (typeof PluginManager === "undefined") {
       const vehicleBoatList = ["boat", "0", "小型船"];
       const vehicleShipList = ["ship", "1", "大型船"];
       const vehicleAirshipList = ["airship", "2", "飛行船"];
-      const speedX8SlowerList = ["x8slower", "1", "1/8倍速"];
-      const speedX4SlowerList = ["x4slower", "2", "1/4倍速"];
-      const speedX2SlowerList = ["x2slower", "3", "1/2倍速"];
+      const speedX8SlowerList = ["x8 slower", "1", "1/8倍速"];
+      const speedX4SlowerList = ["x4 slower", "2", "1/4倍速"];
+      const speedX2SlowerList = ["x2 slower", "3", "1/2倍速"];
       const speedNormalList = ["normal", "4", "標準速"];
-      const speedX2FasterList = ["x2faster", "5", "2倍速"];
-      const speedX4FasterList = ["x4faster", "6", "4倍速"];
+      const speedX2FasterList = ["x2 faster", "5", "2倍速"];
+      const speedX4FasterList = ["x4 faster", "6", "4倍速"];
       const infoTypeTerrainTagList = ["terraintag", "0", "地形タグ"];
       const infoTypeEventIdList = ["eventid", "1", "イベントid"];
       const infoTypeLayer1List = ["layer1", "2", "レイヤー1"];
@@ -7781,7 +7781,7 @@ if (typeof PluginManager === "undefined") {
         const direction = getDirectionValue(params[0]);
         const distance = parseInt(params[1]);
         const speed = getSpeedValue(params[2]);
-        const waitForCompletion = params[3] == "mv" ? params[3] : getCheckBoxValue(params[3]);
+        const waitForCompletion = params[3] == undefined ? false : getCheckBoxValue(params[3]);
 
         return [getScrollMap(direction, distance, speed, waitForCompletion)];
       }
