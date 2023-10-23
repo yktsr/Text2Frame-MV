@@ -2,12 +2,12 @@
 <ScrollMap: down, 3, x8 slower>
 <マップのスクロール: 下, 3, 1/8倍速, オフ>
 <マップのスクロール: 2, 3, 1, 0>
-<scrollmapスクロール: 2, 3, 1,   false>
+<scrollmap: 2, 3, 1,   false>
 <SCROLLMAP:2,3,1,OFF>
 
 % 左向き, 距離44, 1/4倍速, ウェイトする
-<ScrollMap: left, x4 slower, 44, Wait for Completion>
-<マップのスクロール: 左, 1/4倍速, 44, 完了までウェイト>
+<ScrollMap: left,  44, x4 slower, Wait for Completion>
+<マップのスクロール: 左, 44, 1/4倍速, 完了までウェイト>
 <ScrollMap: 4, 44, 2, Wait>
 <ScrollMap: 4, 44, 2, true>
 <ScrollMap: 4, 44, 2, 1>
@@ -46,5 +46,5 @@
 <ScrollMap: right, 50, x2 slower, Wait>
 <ScrollMap: right, 50, x2 slower, ON>
 <マップのスクロール: 右, 50, 1/2倍速, true>
-<ScrollMap: right, 50, x2slower, オン>
+<ScrollMap: right, 50, x2 slower, オン>
 <マップのスクロール: 右, 50, 1/2倍速, オン>
