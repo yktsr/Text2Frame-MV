@@ -75,3 +75,35 @@
 <IfLose>
 負けた！
 <End>
+
+
+% 入れ子の処理
+<BattleProcessing: 1>
+<IfWin>
+勝った！
+  <BattleProcessing: 1>
+  <IfWin>
+勝って勝った！
+  <IfLose>
+勝って負けた！
+    <If: Switches[1], ON>
+今日も一日がんばるぞい！
+    <Else>
+今日も一日がんばるぞい！
+    <End>
+  <End>
+<IfEscape>
+逃げた！
+  <BattleProcessing: 1>
+  <IfWin>
+逃げたあとに勝った！
+  <IfLose>
+逃げたあとに負けた！
+  <End>
+<IfLose>
+負けた
+  <BattleProcessing: 1>
+  <IfEscape>
+負けたあとに逃げた
+  <End>
+<End>
