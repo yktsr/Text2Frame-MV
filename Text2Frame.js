@@ -7145,23 +7145,23 @@ if (typeof PluginManager === "undefined") {
       const actorLuckList = ["luck", 7, "運"];
 
       //キャラクター
-      const characterPlayerList = ["player", -1, "プレイヤー"];
-      const characterThisEventList = ["thisevent", 0, "このイベント"];
-      const balloonIconExclamationList = ["exclamation", 1, "びっくり"];
-      const balloonIconQuestionList = ["question", 2, "はてな"];
-      const balloonIconMusicNoteList = ["musicnote", 3, "音符"];
-      const balloonIconHeartList = ["heart", 4, "ハート"];
-      const balloonIconAngerList = ["anger", 5, "怒り"];
-      const balloonIconSweatList = ["sweat", 6, "汗"];
-      const balloonIconFlustrationList = ["flustration", 7, "くしゃくしゃ"];
-      const balloonIconSilenceList = ["silence", 8, "沈黙"];
-      const balloonIconLightBulbList = ["lightbulb", 9, "電球"];
-      const balloonIconZzzList = ["zzz", 10, "zzz"];
-      const balloonIconUserDefined1List = ["userdefined1", 11, "ユーザー定義1"];
-      const balloonIconUserDefined2List = ["userdefined2", 12, "ユーザー定義2"];
-      const balloonIconUserDefined3List = ["userdefined3", 13, "ユーザー定義3"];
-      const balloonIconUserDefined4List = ["userdefined4", 14, "ユーザー定義4"];
-      const balloonIconUserDefined5List = ["userdefined5", 15, "ユーザー定義5"];
+      const characterPlayerList = ["player", "-1", "プレイヤー"];
+      const characterThisEventList = ["this event", "0", "このイベント"];
+      const balloonIconExclamationList = ["exclamation", "1", "びっくり"];
+      const balloonIconQuestionList = ["question", "2", "はてな"];
+      const balloonIconMusicNoteList = ["music note", "3", "音符"];
+      const balloonIconHeartList = ["heart", "4", "ハート"];
+      const balloonIconAngerList = ["anger", "5", "怒り"];
+      const balloonIconSweatList = ["sweat", "6", "汗"];
+      const balloonIconFlustrationList = ["flustration", "cobweb", "7", "くしゃくしゃ"];
+      const balloonIconSilenceList = ["silence", "8", "沈黙"];
+      const balloonIconLightBulbList = ["light bulb", "9", "電球"];
+      const balloonIconZzzList = ["zzz", "10", "zzz"];
+      const balloonIconUserDefined1List = ["user-defined1", "11", "ユーザー定義1"];
+      const balloonIconUserDefined2List = ["user-defined2", "12", "ユーザー定義2"];
+      const balloonIconUserDefined3List = ["user-defined3", "13", "ユーザー定義3"];
+      const balloonIconUserDefined4List = ["user-defined4", "14", "ユーザー定義4"];
+      const balloonIconUserDefined5List = ["user-defined5", "15", "ユーザー定義5"];
 
       //天気
       const weatherNoneList = ["none", "なし"];
@@ -7191,6 +7191,7 @@ if (typeof PluginManager === "undefined") {
       //チェックボックス ラジオボタン
       const checkBoxOnList = ["true", "on", "オン", "1"];
       const checkBoxOffList = ["false", "off", "オフ", "0"];
+      const checkBoxWaitList = ["wait for completion", "完了までウェイト", "wait"];
       const radioButtonOnList = ["true", "on", "オン", "0"];
       const radioButtonOffList = ["false", "off", "オフ", "1"];
       const radioButtonDisableList = ["disable", "0", "禁止"];
@@ -7262,6 +7263,8 @@ if (typeof PluginManager === "undefined") {
       };
       const getCheckBoxValue = (checkBoxValue) => {
         if (checkBoxOnList.includes(checkBoxValue)) {
+          return true;
+        } else if (checkBoxWaitList.includes(checkBoxValue)) {
           return true;
         } else if (checkBoxOffList.includes(checkBoxValue)) {
           return false;
@@ -8098,7 +8101,7 @@ if (typeof PluginManager === "undefined") {
         const params = show_balloon_icon[1].split(",").map((s) => s.trim().toLowerCase());
         const character = getCharacterValue(params[0]);
         const balloonIcon = getBalloonIconValue(params[1]);
-        const waitForCompletion = getCheckBoxValue(params[2]);
+        const waitForCompletion = params[2] == undefined ? false : getCheckBoxValue(params[2]);
 
         return [getShowBalloonIcon(character, balloonIcon, waitForCompletion)];
       }
