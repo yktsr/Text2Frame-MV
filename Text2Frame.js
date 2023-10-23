@@ -3742,11 +3742,11 @@ if (typeof PluginManager === 'undefined') {
     Laurus.Text2Frame.MapID = String(Laurus.Text2Frame.Parameters['Default MapID'])
     Laurus.Text2Frame.EventID = String(Laurus.Text2Frame.Parameters['Default EventID'])
     Laurus.Text2Frame.PageID = String(Laurus.Text2Frame.Parameters['Default PageID'])
-    Laurus.Text2Frame.IsOverwrite = String(Laurus.Text2Frame.Parameters.IsOverwrite) == 'true'
+    Laurus.Text2Frame.IsOverwrite = (String(Laurus.Text2Frame.Parameters.IsOverwrite) === 'true')
     Laurus.Text2Frame.CommentOutChar = String(Laurus.Text2Frame.Parameters['Comment Out Char'])
-    Laurus.Text2Frame.IsDebug = String(Laurus.Text2Frame.Parameters.IsDebug) == 'true'
-    Laurus.Text2Frame.DisplayMsg = String(Laurus.Text2Frame.Parameters.DisplayMsg) == 'true'
-    Laurus.Text2Frame.DisplayWarning = String(Laurus.Text2Frame.Parameters.DisplayWarning) == 'true'
+    Laurus.Text2Frame.IsDebug = (String(Laurus.Text2Frame.Parameters.IsDebug) === 'true')
+    Laurus.Text2Frame.DisplayMsg = (String(Laurus.Text2Frame.Parameters.DisplayMsg) === 'true')
+    Laurus.Text2Frame.DisplayWarning = (String(Laurus.Text2Frame.Parameters.DisplayWarning) === 'true')
     Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
     Laurus.Text2Frame.MapPath = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(
       -3
@@ -3860,15 +3860,15 @@ if (typeof PluginManager === 'undefined') {
           ).slice(-3)}.json`
         }
         break
-      case 'IMPORT_MESSAGE_TO_CE':
-      case 'メッセージをコモンイベントにインポート':
-        if (args.length == 4) {
+      case 'IMPORT_MESSAGE_TO_CE' :
+      case 'メッセージをコモンイベントにインポート' :
+        if (args.length === 4) {
           addMessage('import message to common event. \n/ メッセージをコモンイベントにインポートします。')
           Laurus.Text2Frame.ExecMode = 'IMPORT_MESSAGE_TO_CE'
           Laurus.Text2Frame.FileFolder = args[0]
           Laurus.Text2Frame.FileName = args[1]
           Laurus.Text2Frame.CommonEventID = args[2]
-          Laurus.Text2Frame.IsOverwrite = args[3] == 'true'
+          Laurus.Text2Frame.IsOverwrite = (args[3] === 'true')
           Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
           Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`
         }
@@ -4374,8 +4374,8 @@ if (typeof PluginManager === 'undefined') {
             case 'アクター':
             case 'enemy':
             case '敵キャラ':
-            case 'エネミー': {
-              if (operand_arg1 == 'actor' || operand_arg1 == 'アクター') {
+            case 'エネミー':{
+              if (operand_arg1 === 'actor' || operand_arg1 === 'アクター') {
                 parameters.push(3)
               } else {
                 parameters.push(4)
@@ -4445,7 +4445,7 @@ if (typeof PluginManager === 'undefined') {
                   break
                 }
               }
-              if (operand_arg1 == 'enemy' || operand_arg1 == '敵キャラ' || operand_arg1 == 'エネミー') {
+              if (operand_arg1 === 'enemy' || operand_arg1 === '敵キャラ' || operand_arg1 === 'エネミー') {
                 let value = parameters.pop()
                 let key = parameters.pop()
                 value = value - 2
@@ -4739,7 +4739,7 @@ if (typeof PluginManager === 'undefined') {
         const event_list = []
         for (let i = 0; i < match_text_list.length; i++) {
           const text = match_text_list[i]
-          if (i == 0) {
+          if (i === 0) {
             event_list.push(event_head_func(text))
           } else {
             event_list.push(event_body_func(text))
@@ -4785,7 +4785,7 @@ if (typeof PluginManager === 'undefined') {
           case 'position':
           case '位置': {
             const origin = values[0] || 'Upper Left'
-            if (origin.toLowerCase() == 'center' || origin == '中央') {
+            if (origin.toLowerCase() === 'center' || origin === '中央') {
               out.origin = 1
             }
             const constant_regexp = /^[0-9]+$/
@@ -4839,7 +4839,7 @@ if (typeof PluginManager === 'undefined') {
           case 'duration':
           case '時間': {
             out.duration = Number(values[0]) || 60
-            if (typeof values[1] === 'undefined' || values[1] == '') {
+            if (typeof (values[1]) === 'undefined' || values[1] === '') {
               out.wait = false
             }
             break
@@ -4976,8 +4976,17 @@ if (typeof PluginManager === 'undefined') {
       if (typeof params[0] === 'undefined') {
         return [0, switchId, 0]
       }
-      const value = { on: 0, オン: 0, true: 0, 1: 0, off: 1, オフ: 1, false: 1, 0: 1 }[params[0].toLowerCase()]
-      if (switchId > 0 && (value == 1 || value == 0)) {
+      const value = ({
+        on: 0,
+        オン: 0,
+        true: 0,
+        1: 0,
+        off: 1,
+        オフ: 1,
+        false: 1,
+        0: 1
+      })[params[0].toLowerCase()]
+      if (switchId > 0 && (value === 1 || value === 0)) {
         return [0, switchId, value]
       }
       return [0, switchId, 0]
@@ -5026,8 +5035,17 @@ if (typeof PluginManager === 'undefined') {
       if (typeof params[0] === 'undefined') {
         return [2, selfSwitchId, 0]
       }
-      const value = { on: 0, オン: 0, true: 0, 1: 0, off: 1, オフ: 1, false: 1, 0: 1 }[params[0].toLowerCase()]
-      if (value == 0 || value == 1) {
+      const value = ({
+        on: 0,
+        オン: 0,
+        true: 0,
+        1: 0,
+        off: 1,
+        オフ: 1,
+        false: 1,
+        0: 1
+      })[params[0].toLowerCase()]
+      if (value === 0 || value === 1) {
         return [2, selfSwitchId, value]
       }
       return [2, selfSwitchId, 0]
@@ -5066,7 +5084,7 @@ if (typeof PluginManager === 'undefined') {
           ステート: 6
         }[params[0].toLowerCase()] || 0
       if (actor_mode > 0) {
-        if (actor_mode == 1) {
+        if (actor_mode === 1) {
           return [4, actorId, 1, params[1]]
         } else if (Number(params[1])) {
           return [4, actorId, actor_mode, Math.max(Number(params[1]), 1)]
@@ -5079,9 +5097,9 @@ if (typeof PluginManager === 'undefined') {
       enemyId = Math.max(Number(enemyId) || 1, 1) - 1
       const condition = (params[0] || 'appeared').toLowerCase()
       const state_id = Math.max(Number(params[1]) || 1, 1)
-      if (condition == 'appeared' || condition == '出現している') {
+      if (condition === 'appeared' || condition === '出現している') {
         return [5, enemyId, 0]
-      } else if (condition == 'state' || condition == 'ステート') {
+      } else if (condition === 'state' || condition === 'ステート') {
         return [5, enemyId, 1, state_id]
       } else {
         return [5, enemyId, 0]
@@ -5957,17 +5975,17 @@ if (typeof PluginManager === 'undefined') {
 
       const stack = events.reduce((s, e) => {
         const code = e.code
-        if (code == IF_CODE) s.push(IF_CODE)
-        else if (code == ELSE_CODE) s.push(ELSE_CODE)
-        else if (code == BOTTOM_CODE) s.pop()
+        if (code === IF_CODE) s.push(IF_CODE)
+        else if (code === ELSE_CODE) s.push(ELSE_CODE)
+        else if (code === BOTTOM_CODE) s.pop()
         return s
       }, [])
 
       const bottom = stack.reduce((b, code) => {
         b.push(getCommandBottomEvent())
-        if (code == IF_CODE) b.push(getEnd())
-        else if (code == ELSE_CODE) b.push(getEnd())
-        else if (code == LOOP_CODE) b.push(getRepeatAbove())
+        if (code === IF_CODE) b.push(getEnd())
+        else if (code === ELSE_CODE) b.push(getEnd())
+        else if (code === LOOP_CODE) b.push(getRepeatAbove())
         return b
       }, [])
 
@@ -6347,13 +6365,13 @@ if (typeof PluginManager === 'undefined') {
           if (params[0]) {
             name = params[0]
           }
-          if (Number(params[1]) || Number(params[1]) == 0) {
+          if (Number(params[1]) || Number(params[1]) === 0) {
             volume = Number(params[1])
           }
-          if (Number(params[2]) || Number(params[2]) == 0) {
+          if (Number(params[2]) || Number(params[2]) === 0) {
             pitch = Number(params[2])
           }
-          if (Number(params[3]) || Number(params[3]) == 0) {
+          if (Number(params[3]) || Number(params[3]) === 0) {
             pan = Number(params[3])
           }
           if (name.toUpperCase() === 'NONE' || name === 'なし') {
@@ -6369,7 +6387,7 @@ if (typeof PluginManager === 'undefined') {
         if (fadeout_bgm[1]) {
           let duration = 10
           const d = fadeout_bgm[1].replace(/ /g, '')
-          if (Number(d) || Number(d) == 0) {
+          if (Number(d) || Number(d) === 0) {
             duration = Number(d)
           }
           return [getFadeoutBgmEvent(duration)]
@@ -6397,13 +6415,13 @@ if (typeof PluginManager === 'undefined') {
           if (params[0]) {
             name = params[0]
           }
-          if (Number(params[1]) || Number(params[1]) == 0) {
+          if (Number(params[1]) || Number(params[1]) === 0) {
             volume = Number(params[1])
           }
-          if (Number(params[2]) || Number(params[2]) == 0) {
+          if (Number(params[2]) || Number(params[2]) === 0) {
             pitch = Number(params[2])
           }
-          if (Number(params[3]) || Number(params[3]) == 0) {
+          if (Number(params[3]) || Number(params[3]) === 0) {
             pan = Number(params[3])
           }
           if (name.toUpperCase() === 'NONE' || name === 'なし') {
@@ -6430,13 +6448,13 @@ if (typeof PluginManager === 'undefined') {
           if (params[0]) {
             name = params[0]
           }
-          if (Number(params[1]) || Number(params[1]) == 0) {
+          if (Number(params[1]) || Number(params[1]) === 0) {
             volume = Number(params[1])
           }
-          if (Number(params[2]) || Number(params[2]) == 0) {
+          if (Number(params[2]) || Number(params[2]) === 0) {
             pitch = Number(params[2])
           }
-          if (Number(params[3]) || Number(params[3]) == 0) {
+          if (Number(params[3]) || Number(params[3]) === 0) {
             pan = Number(params[3])
           }
           if (name.toUpperCase() === 'NONE' || name === 'なし') {
@@ -6452,7 +6470,7 @@ if (typeof PluginManager === 'undefined') {
         if (fadeout_bgs[1]) {
           let duration = 10
           const d = fadeout_bgs[1].replace(/ /g, '')
-          if (Number(d) || Number(d) == 0) {
+          if (Number(d) || Number(d) === 0) {
             duration = Number(d)
           }
           return [getFadeoutBgsEvent(duration)]
@@ -6470,13 +6488,13 @@ if (typeof PluginManager === 'undefined') {
           if (params[0]) {
             name = params[0]
           }
-          if (Number(params[1]) || Number(params[1]) == 0) {
+          if (Number(params[1]) || Number(params[1]) === 0) {
             volume = Number(params[1])
           }
-          if (Number(params[2]) || Number(params[2]) == 0) {
+          if (Number(params[2]) || Number(params[2]) === 0) {
             pitch = Number(params[2])
           }
-          if (Number(params[3]) || Number(params[3]) == 0) {
+          if (Number(params[3]) || Number(params[3]) === 0) {
             pan = Number(params[3])
           }
           if (name.toUpperCase() === 'NONE' || name === 'なし') {
@@ -6508,13 +6526,13 @@ if (typeof PluginManager === 'undefined') {
           if (params[0]) {
             name = params[0]
           }
-          if (Number(params[1]) || Number(params[1]) == 0) {
+          if (Number(params[1]) || Number(params[1]) === 0) {
             volume = Number(params[1])
           }
-          if (Number(params[2]) || Number(params[2]) == 0) {
+          if (Number(params[2]) || Number(params[2]) === 0) {
             pitch = Number(params[2])
           }
-          if (Number(params[3]) || Number(params[3]) == 0) {
+          if (Number(params[3]) || Number(params[3]) === 0) {
             pan = Number(params[3])
           }
           if (name.toUpperCase() === 'NONE' || name === 'なし') {
@@ -6579,7 +6597,7 @@ if (typeof PluginManager === 'undefined') {
       /* eslint-enable */
 
       const getControlTag = function (operator, operand1, operand2) {
-        if (operator == 'selfswitch') {
+        if (operator === 'selfswitch') {
           const selfswitch_target = operand1.match(/[abcd]/i)
           const selfswitch_value = operand2.match(/on|オン|1|true|off|オフ|0|false/i)
           if (selfswitch_target && selfswitch_value) {
@@ -6602,7 +6620,7 @@ if (typeof PluginManager === 'undefined') {
           throw new Error('Syntax error. / 文法エラーです。')
         }
 
-        if (operator == 'switch') {
+        if (operator === 'switch') {
           const switch_tag = operand2.match(/on|オン|1|true|off|オフ|0|false/i)
           if (switch_tag) {
             return getControlSwitch(start_pointer, end_pointer, switch_tag[0])
@@ -6902,7 +6920,7 @@ if (typeof PluginManager === 'undefined') {
         const current_block = block_stack.slice(-1)[0]
         const CHOICE_CODE = 102
 
-        if (Boolean(current_block) && current_block.code == CHOICE_CODE) {
+        if (Boolean(current_block) && current_block.code === CHOICE_CODE) {
           return [getBlockEnd(), getShowChoiceEnd()]
         } else {
           return [getCommandBottomEvent(), getEnd()]
@@ -8522,9 +8540,9 @@ if (typeof PluginManager === 'undefined') {
       // イベントコマンド追加
       events.forEach((current_frame) => {
         if (
-          current_frame.code == IF_END_CODE ||
-          current_frame.code == CHOICE_END_CODE ||
-          current_frame.code == IF_IFEND_CODE
+          current_frame.code === IF_END_CODE ||
+          current_frame.code === CHOICE_END_CODE ||
+          current_frame.code === IF_IFEND_CODE
         ) {
           block_stack.pop()
         }
@@ -8537,21 +8555,21 @@ if (typeof PluginManager === 'undefined') {
           return { window_frame: null, event_command_list, block_stack }
         }
         const current_frame = events[0]
-        if (current_frame.code == PRE_CODE) {
+        if (current_frame.code === PRE_CODE) {
           // 401になるまで遅延する
           window_frame = current_frame
           return { window_frame, event_command_list, block_stack }
         }
 
         // イベントコマンド追加
-        if (current_frame.code == TEXT_CODE) {
+        if (current_frame.code === TEXT_CODE) {
           if (previous_frame) {
-            if (previous_frame.code == TEXT_CODE) {
+            if (previous_frame.code === TEXT_CODE) {
               // 空行でwindow frameを初期化
               if (previous_text === '') {
                 event_command_list.push(getPretextEvent())
               }
-            } else if (previous_frame.code == PRE_CODE) {
+            } else if (previous_frame.code === PRE_CODE) {
               // stackに積んだframeを挿入する
               event_command_list.push(window_frame)
             } else {
@@ -8561,10 +8579,10 @@ if (typeof PluginManager === 'undefined') {
           } else {
             event_command_list.push(getPretextEvent())
           }
-        } else if (current_frame.code == WHEN_CODE) {
+        } else if (current_frame.code === WHEN_CODE) {
           const current_index = block_stack.slice(-1)[0].index
           const current_choice = block_stack.slice(-1)[0].event
-          if (current_index != 0) {
+          if (current_index !== 0) {
             event_command_list.push(getBlockEnd())
           }
           current_frame.parameters[0] = current_index
@@ -8575,15 +8593,15 @@ if (typeof PluginManager === 'undefined') {
               current_choice.parameters[0].push(current_frame.parameters[1])
             }
           }
-        } else if (current_frame.code == WHEN_CANCEL_CODE) {
+        } else if (current_frame.code === WHEN_CANCEL_CODE) {
           const current_index = block_stack.slice(-1)[0].index
-          if (current_index != 0) {
+          if (current_index !== 0) {
             event_command_list.push(getBlockEnd())
           }
           block_stack.slice(-1)[0].index += 1
-        } else if (current_frame.code == CHOICE_CODE) {
+        } else if (current_frame.code === CHOICE_CODE) {
           block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, index: 0 })
-        } else if (current_frame.code == IF_CODE) {
+        } else if (current_frame.code === IF_CODE) {
           block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, index: 0 })
         }
 
@@ -8790,7 +8808,7 @@ if (typeof require.main !== 'undefined' && require.main === module) {
 
   Laurus.Text2Frame.IsDebug = program.verbose
   Laurus.Text2Frame.TextPath = program.text_path
-  Laurus.Text2Frame.IsOverwrite = program.overwrite == 'true'
+  Laurus.Text2Frame.IsOverwrite = (program.overwrite === 'true')
 
   if (program.mode === 'map') {
     Laurus.Text2Frame.MapPath = program.output_path
