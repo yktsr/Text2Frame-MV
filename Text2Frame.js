@@ -2665,7 +2665,7 @@ if (typeof PluginManager === 'undefined') {
         if (values[1]) {
           arg_name = values[1]
         }
-        return { code: 657, indent: 0, parameters: [arg_name + ' = ' + value]}
+        return { code: 657, indent: 0, parameters: [arg_name + ' = ' + value] }
       } else {
         throw new Error('Syntax error. / 文法エラーです。' +
                         plugin_command_mz_arg +
