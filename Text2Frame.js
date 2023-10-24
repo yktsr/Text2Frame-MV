@@ -2665,9 +2665,12 @@ if (typeof PluginManager === 'undefined') {
         if (values[1]) {
           arg_name = values[1]
         }
-        var parameters = [arg_name + ' = ' + value]
+        return { code: 657, indent: 0, parameters: [arg_name + ' = ' + value]}
+      } else {
+        throw new Error('Syntax error. / 文法エラーです。' +
+                        plugin_command_mz_arg +
+                        ' はプラグインコマンドMZの引数として不適切です。')
       }
-      return { code: 657, indent: 0, parameters }
     }
     const getCommonEventEvent = function (num) {
       const common_event = { code: 117, indent: 0, parameters: [''] }
