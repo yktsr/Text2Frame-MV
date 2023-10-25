@@ -248,7 +248,8 @@
  * https://github.com/yktsr/Text2Frame-MV/wiki
  */
 
-/*: ja
+/* eslint-disable spaced-comment */
+/*:ja
  * @target MZ
  * @plugindesc テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、開発支援プラグインです。ツクールMV・MZの両方に対応しています。
  * @author Yuki Katsura, えーしゅん
@@ -3694,10 +3695,11 @@
  * [Twitter]: https://twitter.com/Asyun3i9t/
  * [GitHub] : https://github.com/yktsr/
  */
+/* eslint-enable spaced-comment */
 
 /* global Game_Interpreter, $gameMessage, process, PluginManager */
 
-var Laurus = Laurus || {}
+var Laurus = Laurus || {} // eslint-disable-line no-var, no-use-before-define
 Laurus.Text2Frame = {}
 
 if (typeof PluginManager === 'undefined') {
@@ -3707,7 +3709,7 @@ if (typeof PluginManager === 'undefined') {
   Game_Interpreter.prototype = {}
   $gameMessage = {}
   $gameMessage.add = function () {}
-  /* eslint-enable */
+  /* eslint-enable no-global-assign */
 }
 
 (function () {
@@ -3748,9 +3750,7 @@ if (typeof PluginManager === 'undefined') {
     Laurus.Text2Frame.DisplayMsg = (String(Laurus.Text2Frame.Parameters.DisplayMsg) === 'true')
     Laurus.Text2Frame.DisplayWarning = (String(Laurus.Text2Frame.Parameters.DisplayWarning) === 'true')
     Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
-    Laurus.Text2Frame.MapPath = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(
-      -3
-    )}.json`
+    Laurus.Text2Frame.MapPath = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
     Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`
   }
 
@@ -3785,7 +3785,9 @@ if (typeof PluginManager === 'undefined') {
       },
       directionFix: false,
       image: { characterIndex: 0, characterName: '', direction: 2, pattern: 0, tileId: 0 },
-      list: [{ code: 0, indent: 0, parameters: [] }],
+      list: [
+        { code: 0, indent: 0, parameters: [] }
+      ],
       moveFrequency: 3,
       moveRoute: {
         list: [{ code: 0, parameters: [] }],
@@ -3816,14 +3818,16 @@ if (typeof PluginManager === 'undefined') {
       const event_id = args.EventID
       const page_id = args.PageID
       const is_overwrite = args.IsOverwrite
-      this.pluginCommand('IMPORT_MESSAGE_TO_EVENT', [file_folder, file_name, map_id, event_id, page_id, is_overwrite])
+      this.pluginCommand('IMPORT_MESSAGE_TO_EVENT',
+        [file_folder, file_name, map_id, event_id, page_id, is_overwrite])
     })
     PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_CE', function (args) {
       const file_folder = args.FileFolder
       const file_name = args.FileName
       const common_event_id = args.CommonEventID
       const is_overwrite = args.IsOverwrite
-      this.pluginCommand('IMPORT_MESSAGE_TO_CE', [file_folder, file_name, common_event_id, is_overwrite])
+      this.pluginCommand('IMPORT_MESSAGE_TO_CE',
+        [file_folder, file_name, common_event_id, is_overwrite])
     })
   }
 
@@ -3837,8 +3841,8 @@ if (typeof PluginManager === 'undefined') {
     Laurus.Text2Frame.ExecMode = command.toUpperCase()
     switch (Laurus.Text2Frame.ExecMode) {
       // for custom plugin command
-      case 'IMPORT_MESSAGE_TO_EVENT':
-      case 'メッセージをイベントにインポート':
+      case 'IMPORT_MESSAGE_TO_EVENT' :
+      case 'メッセージをイベントにインポート' :
         addMessage('import message to event. \n/ メッセージをイベントにインポートします。')
         if (args[0]) Laurus.Text2Frame.FileFolder = args[0]
         if (args[1]) Laurus.Text2Frame.FileName = args[1]
@@ -3855,9 +3859,7 @@ if (typeof PluginManager === 'undefined') {
         if (args[5] && args[5].toLowerCase() === 'true') Laurus.Text2Frame.IsOverwrite = true
         if (args[0] || args[1]) {
           Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
-          Laurus.Text2Frame.MapPath = `${BASE_PATH}${path.sep}data${path.sep}Map${(
-            '000' + Laurus.Text2Frame.MapID
-          ).slice(-3)}.json`
+          Laurus.Text2Frame.MapPath = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
         }
         break
       case 'IMPORT_MESSAGE_TO_CE' :
@@ -3873,7 +3875,7 @@ if (typeof PluginManager === 'undefined') {
           Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`
         }
         break
-      case 'COMMAND_LINE':
+      case 'COMMAND_LINE' :
         Laurus.Text2Frame.ExecMode = args[0]
         break
       default:
@@ -4030,12 +4032,15 @@ if (typeof PluginManager === 'undefined') {
       return plugin_command
     }
 
-    const getPluginCommandEventMZ = function (plugin_name, plugin_command, disp_plugin_command, args) {
+    const getPluginCommandEventMZ = function (
+      plugin_name, plugin_command, disp_plugin_command, args) {
       const plugin_args = {}
       const plugin_command_mz = {
         code: 357,
         indent: 0,
-        parameters: [plugin_name, plugin_command, disp_plugin_command, plugin_args]
+        parameters: [
+          plugin_name, plugin_command, disp_plugin_command, plugin_args
+        ]
       }
       const arg_regexp = /([^[\]]+)(\[.+\])/i
       for (let i = 0; i < args.length; i++) {
@@ -4059,9 +4064,12 @@ if (typeof PluginManager === 'undefined') {
         if (values[1]) {
           arg_name = values[1]
         }
-        var parameters = [arg_name + ' = ' + value]
+        return { code: 657, indent: 0, parameters: [arg_name + ' = ' + value] }
+      } else {
+        throw new Error('Syntax error. / 文法エラーです。' +
+                        plugin_command_mz_arg +
+                        ' はプラグインコマンドMZの引数として不適切です。')
       }
-      return { code: 657, indent: 0, parameters }
     }
     const getCommonEventEvent = function (num) {
       const common_event = { code: 117, indent: 0, parameters: [''] }
@@ -4128,15 +4136,15 @@ if (typeof PluginManager === 'undefined') {
       let param_pitch = 100
       let param_pan = 0
 
-      if (typeof volume === 'number') {
+      if (typeof (volume) === 'number') {
         param_volume = volume
       }
 
-      if (typeof pitch === 'number') {
+      if (typeof (pitch) === 'number') {
         param_pitch = pitch
       }
 
-      if (typeof pan === 'number') {
+      if (typeof (pan) === 'number') {
         param_pan = pan
       }
 
@@ -4153,7 +4161,7 @@ if (typeof PluginManager === 'undefined') {
 
     const getFadeoutBgmEvent = function (duration) {
       let param_duration = 10
-      if (typeof duration === 'number') {
+      if (typeof (duration) === 'number') {
         param_duration = duration
       }
       return { code: 242, indent: 0, parameters: [param_duration] }
@@ -4172,15 +4180,15 @@ if (typeof PluginManager === 'undefined') {
       let param_pitch = 100
       let param_pan = 0
 
-      if (typeof volume === 'number') {
+      if (typeof (volume) === 'number') {
         param_volume = volume
       }
 
-      if (typeof pitch === 'number') {
+      if (typeof (pitch) === 'number') {
         param_pitch = pitch
       }
 
-      if (typeof pan === 'number') {
+      if (typeof (pan) === 'number') {
         param_pan = pan
       }
 
@@ -4196,15 +4204,15 @@ if (typeof PluginManager === 'undefined') {
       let param_pitch = 100
       let param_pan = 0
 
-      if (typeof volume === 'number') {
+      if (typeof (volume) === 'number') {
         param_volume = volume
       }
 
-      if (typeof pitch === 'number') {
+      if (typeof (pitch) === 'number') {
         param_pitch = pitch
       }
 
-      if (typeof pan === 'number') {
+      if (typeof (pan) === 'number') {
         param_pan = pan
       }
 
@@ -4221,7 +4229,7 @@ if (typeof PluginManager === 'undefined') {
 
     const getFadeoutBgsEvent = function (duration) {
       let param_duration = 10
-      if (typeof duration === 'number') {
+      if (typeof (duration) === 'number') {
         param_duration = duration
       }
       return { code: 246, indent: 0, parameters: [param_duration] }
@@ -4232,15 +4240,15 @@ if (typeof PluginManager === 'undefined') {
       let param_pitch = 100
       let param_pan = 0
 
-      if (typeof volume === 'number') {
+      if (typeof (volume) === 'number') {
         param_volume = volume
       }
 
-      if (typeof pitch === 'number') {
+      if (typeof (pitch) === 'number') {
         param_pitch = pitch
       }
 
-      if (typeof pan === 'number') {
+      if (typeof (pan) === 'number') {
         param_pan = pan
       }
 
@@ -4259,15 +4267,15 @@ if (typeof PluginManager === 'undefined') {
       let param_pitch = 100
       let param_pan = 0
 
-      if (typeof volume === 'number') {
+      if (typeof (volume) === 'number') {
         param_volume = volume
       }
 
-      if (typeof pitch === 'number') {
+      if (typeof (pitch) === 'number') {
         param_pitch = pitch
       }
 
-      if (typeof pan === 'number') {
+      if (typeof (pan) === 'number') {
         param_pan = pan
       }
 
@@ -4711,7 +4719,7 @@ if (typeof PluginManager === 'undefined') {
             let event_list = []
 
             event_list.push(getScrollingTextHeadEvent(scrolling_speed, enable_auto_scroll))
-            event_list = event_list.concat(match_text_list.map((t) => getScrollingTextBodyEvent(t)))
+            event_list = event_list.concat(match_text_list.map(t => getScrollingTextBodyEvent(t)))
             block_map[`#${statement.toUpperCase()}_BLOCK${block_count}#`] = event_list
 
             scenario_text = scenario_text.replace(match_block, `\n#${statement.toUpperCase()}_BLOCK${block_count}#\n`)
@@ -4925,11 +4933,14 @@ if (typeof PluginManager === 'undefined') {
 
     const getShowPicture = function (pic_no, name, options = []) {
       const ps = getDefaultPictureOptions()
-      options.map((x) => Object.assign(ps, getPictureOptions(x)))
+      options.map(x => Object.assign(ps, getPictureOptions(x)))
       return {
         code: 231,
         indent: 0,
-        parameters: [pic_no, name, ps.origin, ps.variable, ps.x, ps.y, ps.width, ps.height, ps.opacity, ps.blend_mode]
+        parameters: [pic_no, name,
+          ps.origin, ps.variable,
+          ps.x, ps.y, ps.width, ps.height,
+          ps.opacity, ps.blend_mode]
       }
     }
 
@@ -4963,8 +4974,14 @@ if (typeof PluginManager === 'undefined') {
 
     const getTintPicture = function (pic_no, options = []) {
       const ps = getDefaultPictureOptions()
-      options.map((x) => Object.assign(ps, getPictureOptions(x)))
-      return { code: 234, indent: 0, parameters: [pic_no, [ps.red, ps.green, ps.blue, ps.gray], ps.duration, ps.wait] }
+      options.map(x => Object.assign(ps, getPictureOptions(x)))
+      return {
+        code: 234,
+        indent: 0,
+        parameters: [pic_no,
+          [ps.red, ps.green, ps.blue, ps.gray],
+          ps.duration, ps.wait]
+      }
     }
 
     const getErasePicture = function (pic_no) {
@@ -4973,7 +4990,7 @@ if (typeof PluginManager === 'undefined') {
 
     const getIfSwitchParameters = function (switchId, params) {
       switchId = Math.max(Number(switchId) || 1, 1)
-      if (typeof params[0] === 'undefined') {
+      if (typeof (params[0]) === 'undefined') {
         return [0, switchId, 0]
       }
       const value = ({
@@ -4994,21 +5011,20 @@ if (typeof PluginManager === 'undefined') {
 
     const getIfVariableParameters = function (variableId, params) {
       variableId = Math.max(Number(variableId) || 1, 1)
-      const operator =
-        {
-          '==': 0,
-          '＝': 0,
-          '>=': 1,
-          '≧': 1,
-          '<=': 2,
-          '≦': 2,
-          '>': 3,
-          '＞': 3,
-          '<': 4,
-          '＜': 4,
-          '!=': 5,
-          '≠': 5
-        }[params[0]] || 0
+      const operator = {
+        '==': 0,
+        '＝': 0,
+        '>=': 1,
+        '≧': 1,
+        '<=': 2,
+        '≦': 2,
+        '>': 3,
+        '＞': 3,
+        '<': 4,
+        '＜': 4,
+        '!=': 5,
+        '≠': 5
+      }[params[0]] || 0
       const constant_regexp = /^\d+$/
       const variable_regexp = /(?:variables|v|変数)\[([0-9]+)\]/i
       const operand = params[1] || '0'
@@ -5032,7 +5048,7 @@ if (typeof PluginManager === 'undefined') {
         default:
           selfSwitchId = 'A'
       }
-      if (typeof params[0] === 'undefined') {
+      if (typeof (params[0]) === 'undefined') {
         return [2, selfSwitchId, 0]
       }
       const value = ({
@@ -5052,13 +5068,12 @@ if (typeof PluginManager === 'undefined') {
     }
 
     const getIfTimerParameters = function (params) {
-      const condition =
-        {
-          '>=': 0,
-          '≧': 0,
-          '<=': 1,
-          '≦': 1
-        }[params[0]] || 0
+      const condition = {
+        '>=': 0,
+        '≧': 0,
+        '<=': 1,
+        '≦': 1
+      }[params[0]] || 0
       const minute = Number(params[1]) || 0
       const second = Number(params[2]) || 0
       return [3, 60 * minute + second, condition]
@@ -5066,23 +5081,22 @@ if (typeof PluginManager === 'undefined') {
 
     const getIfActorParameters = function (actorId, params) {
       actorId = Math.max(Number(actorId) || 1, 1)
-      const actor_mode =
-        {
-          'in the party': 0,
-          パーティにいる: 0,
-          name: 1,
-          名前: 1,
-          class: 2,
-          職業: 2,
-          skill: 3,
-          スキル: 3,
-          weapon: 4,
-          武器: 4,
-          armor: 5,
-          防具: 5,
-          state: 6,
-          ステート: 6
-        }[params[0].toLowerCase()] || 0
+      const actor_mode = {
+        'in the party': 0,
+        パーティにいる: 0,
+        name: 1,
+        名前: 1,
+        class: 2,
+        職業: 2,
+        skill: 3,
+        スキル: 3,
+        weapon: 4,
+        武器: 4,
+        armor: 5,
+        防具: 5,
+        state: 6,
+        ステート: 6
+      }[params[0].toLowerCase()] || 0
       if (actor_mode > 0) {
         if (actor_mode === 1) {
           return [4, actorId, 1, params[1]]
@@ -5113,50 +5127,47 @@ if (typeof PluginManager === 'undefined') {
         thisevent: 0,
         このイベント: 0
       }[character.toLowerCase()]
-      if (typeof characterId === 'undefined') {
+      if (typeof (characterId) === 'undefined') {
         characterId = Math.max(Number(character) || 0, -1)
       }
-      const direction =
-        {
-          down: 2,
-          下: 2,
-          2: 2,
-          left: 4,
-          左: 4,
-          4: 4,
-          right: 6,
-          右: 6,
-          6: 6,
-          up: 8,
-          上: 8,
-          8: 8
-        }[(params[0] || '').toLowerCase()] || 2
+      const direction = {
+        down: 2,
+        下: 2,
+        2: 2,
+        left: 4,
+        左: 4,
+        4: 4,
+        right: 6,
+        右: 6,
+        6: 6,
+        up: 8,
+        上: 8,
+        8: 8
+      }[(params[0] || '').toLowerCase()] || 2
       return [6, characterId, direction]
     }
 
     const getIfVehicleParameters = function (params) {
-      const vehicle =
-        {
-          boat: 0,
-          小型船: 0,
-          ship: 1,
-          大型船: 1,
-          airship: 2,
-          飛行船: 2
-        }[(params[0] || '').toLowerCase()] || 0
+      const vehicle = {
+        boat: 0,
+        小型船: 0,
+        ship: 1,
+        大型船: 1,
+        airship: 2,
+        飛行船: 2
+      }[(params[0] || '').toLowerCase()] || 0
       return [13, vehicle]
     }
 
     const getIfGoldParameters = function (params) {
-      const condition =
-        {
-          '>=': 0,
-          '≧': 0,
-          '<=': 1,
-          '≦': 1,
-          '<': 2,
-          '＜': 2
-        }[params[0]] || 0
+      const condition = {
+        '>=': 0,
+        '≧': 0,
+        '<=': 1,
+        '≦': 1,
+        '<': 2,
+        '＜': 2
+      }[params[0]] || 0
       const gold = Number(params[1]) || 0
       return [7, gold, condition]
     }
@@ -5181,39 +5192,37 @@ if (typeof PluginManager === 'undefined') {
     }
 
     const getIfButtonParameters = function (params) {
-      const button =
-        {
-          ok: 'ok',
-          決定: 'ok',
-          cancel: 'cancel',
-          キャンセル: 'cancel',
-          shift: 'shift',
-          シフト: 'shift',
-          down: 'down',
-          下: 'down',
-          left: 'left',
-          左: 'left',
-          right: 'right',
-          右: 'right',
-          up: 'up',
-          上: 'up',
-          pageup: 'pageup',
-          ページアップ: 'pageup',
-          pagedown: 'pagedown',
-          ページダウン: 'pagedown'
-        }[(params[0] || '').toLowerCase()] || 'ok'
-      const how =
-        {
-          'is being pressed': 0,
-          が押されている: 0,
-          pressed: 0,
-          'is being triggered': 1,
-          がトリガーされている: 1,
-          triggered: 1,
-          'is being repeated': 2,
-          がリピートされている: 2,
-          repeated: 2
-        }[(params[1] || '').toLowerCase()] || 0
+      const button = {
+        ok: 'ok',
+        決定: 'ok',
+        cancel: 'cancel',
+        キャンセル: 'cancel',
+        shift: 'shift',
+        シフト: 'shift',
+        down: 'down',
+        下: 'down',
+        left: 'left',
+        左: 'left',
+        right: 'right',
+        右: 'right',
+        up: 'up',
+        上: 'up',
+        pageup: 'pageup',
+        ページアップ: 'pageup',
+        pagedown: 'pagedown',
+        ページダウン: 'pagedown'
+      }[(params[0] || '').toLowerCase()] || 'ok'
+      const how = {
+        'is being pressed': 0,
+        が押されている: 0,
+        pressed: 0,
+        'is being triggered': 1,
+        がトリガーされている: 1,
+        triggered: 1,
+        'is being repeated': 2,
+        がリピートされている: 2,
+        repeated: 2
+      }[(params[1] || '').toLowerCase()] || 0
       return [11, button, how]
     }
 
@@ -6291,18 +6300,24 @@ if (typeof PluginManager === 'undefined') {
 
       // Plugin Command MZ
       if (plugin_command_mz) {
-        const params = plugin_command_mz[1].split(',').map((s) => s.trim())
+        const params = plugin_command_mz[1].split(',').map(s => s.trim())
         const event_command_list = []
         if (params.length > 2) {
           const arg_plugin_name = params[0]
           const arg_plugin_command = params[1]
           const arg_disp_plugin_command = params[2]
           const pcz_args = params.slice(3)
-          const pcemz = getPluginCommandEventMZ(arg_plugin_name, arg_plugin_command, arg_disp_plugin_command, pcz_args)
+          const pcemz = getPluginCommandEventMZ(
+            arg_plugin_name,
+            arg_plugin_command,
+            arg_disp_plugin_command,
+            pcz_args
+          )
           event_command_list.push(pcemz)
-          pcz_args.map((arg) => event_command_list.push(getPluginCommandMzParamsComment(arg)))
+          pcz_args.map(arg => event_command_list.push(getPluginCommandMzParamsComment(arg)))
         } else {
-          throw new Error('Syntax error. / 文法エラーです。' + text.replace(/</g, '  ').replace(/>/g, '  '))
+          throw new Error('Syntax error. / 文法エラーです。' +
+                          text.replace(/</g, '  ').replace(/>/g, '  '))
         }
         return event_command_list
       }
@@ -6636,7 +6651,7 @@ if (typeof PluginManager === 'undefined') {
         const random = operand2.match(
           /r\[(\-?\d+)\]\[(\-?\d+)\]|random\[(\-?\d+)\]\[(\-?\d+)\]|乱数\[(\-?\d+)\]\[(\-?\d+)\]/i
         )
-        /* eslint-enable */
+        /* eslint-enable no-useless-escape */
         if (random) {
           const random_range1 = random[1] || random[3] || random[5]
           const random_range2 = random[2] || random[4] || random[6]
@@ -6998,7 +7013,7 @@ if (typeof PluginManager === 'undefined') {
             window_position = getChoiceWindowPosition(p)
             return
           } catch (e) {}
-          /* eslint-enable */
+          /* eslint-enable no-empty */
           switch (p.toLowerCase()) {
             case 'branch':
             case '分岐':
@@ -8561,7 +8576,6 @@ if (typeof PluginManager === 'undefined') {
           return { window_frame, event_command_list, block_stack }
         }
 
-        // イベントコマンド追加
         if (current_frame.code === TEXT_CODE) {
           if (previous_frame) {
             if (previous_frame.code === TEXT_CODE) {
