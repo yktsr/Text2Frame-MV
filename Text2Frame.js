@@ -1,4 +1,4 @@
-//=============================================================================
+//= ============================================================================
 // Text2Frame.js
 // ----------------------------------------------------------------------------
 // (C)2018-2023 Yuki Katsura
@@ -68,8 +68,7 @@
 // ----------------------------------------------------------------------------
 // [Twitter]: https://twitter.com/kryptos_nv/
 // [GitHub] : https://github.com/yktsr/
-//=============================================================================
-
+//= ============================================================================
 
 /*:
  *: @target MZ
@@ -88,7 +87,7 @@
  *
  * @arg FileName
  * @text Scenario File Name
- * @desc setting of text file name. Default is "message.txt". 
+ * @desc setting of text file name. Default is "message.txt".
  * @type string
  * @default message.txt
  *
@@ -133,7 +132,7 @@
  *
  * @arg FileName
  * @text Scenario File Name
- * @desc setting of text file name. Default is "message.txt". 
+ * @desc setting of text file name. Default is "message.txt".
  * @type string
  * @default message.txt
  *
@@ -182,7 +181,7 @@
  *
  * @param Default Scenario File
  * @text Scenario File Name
- * @desc Default setting of text file name. Default is "message.txt". 
+ * @desc Default setting of text file name. Default is "message.txt".
  * @default message.txt
  * @require 1
  * @dir text
@@ -216,8 +215,8 @@
  * @text IsOverwrite
  * @desc In the default case, text is added to the end of event, this param can change it to overwrite. Default is false.
  * @default false
- * @type boolean 
- * 
+ * @type boolean
+ *
  * @param Comment Out Char
  * @text Comment Out Char
  * @desc If this charactor is placed at the beginning of a line, this line is not taken. Default is %.
@@ -228,7 +227,7 @@
  * @text IsDebug
  * @desc Detail log is outputted to console log (F8). Default is false.
  * @default false
- * @type boolean 
+ * @type boolean
  *
  * @param DisplayMsg
  * @text DisplayMsg
@@ -248,7 +247,8 @@
  * https://github.com/yktsr/Text2Frame-MV/wiki
  */
 
- /*:ja
+/* eslint-disable spaced-comment */
+/*:ja
  * @target MZ
  * @plugindesc テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、開発支援プラグインです。ツクールMV・MZの両方に対応しています。
  * @author Yuki Katsura, えーしゅん
@@ -2308,2059 +2308,2163 @@
  * [Twitter]: https://twitter.com/Asyun3i9t/
  * [GitHub] : https://github.com/yktsr/
  */
+/* eslint-enable spaced-comment */
 
 /* global Game_Interpreter, $gameMessage, process, PluginManager */
 
-var Laurus = Laurus || {};
-Laurus.Text2Frame = {};
+var Laurus = Laurus || {} // eslint-disable-line no-var, no-use-before-define
+Laurus.Text2Frame = {}
 
-if(typeof PluginManager === 'undefined'){
+if (typeof PluginManager === 'undefined') {
   // for test
   /* eslint-disable no-global-assign */
-  Game_Interpreter = {};
-  Game_Interpreter.prototype = {};
-  $gameMessage = {};
-  $gameMessage.add = function(){};
-  /* eslint-enable */
+  Game_Interpreter = {}
+  Game_Interpreter.prototype = {}
+  $gameMessage = {}
+  $gameMessage.add = function () {}
+  /* eslint-enable no-global-assign */
 }
 
-(function() {
-  'use strict';
-  const fs   = require('fs');
-  const path = require('path');
-  const PATH_SEP = path.sep;
-  const BASE_PATH = path.dirname(process.mainModule.filename);
+(function () {
+  'use strict'
+  const fs = require('fs')
+  const path = require('path')
+  const PATH_SEP = path.sep
+  const BASE_PATH = path.dirname(process.mainModule.filename)
 
-  if(typeof PluginManager === 'undefined'){
-    Laurus.Text2Frame.WindowPosition = "Bottom";
-    Laurus.Text2Frame.Background     = "Window";
-    Laurus.Text2Frame.FileFolder     = "test";
-    Laurus.Text2Frame.FileName       = "basic.txt";
-    Laurus.Text2Frame.CommonEventID  = "1";
-    Laurus.Text2Frame.MapID          = "1";
-    Laurus.Text2Frame.EventID        = "1";
-    Laurus.Text2Frame.PageID         = "1";
-    Laurus.Text2Frame.IsOverwrite    = true;
-    Laurus.Text2Frame.CommentOutChar = "%";
-    Laurus.Text2Frame.IsDebug        = true;
-    Laurus.Text2Frame.DisplayMsg     = true;
-    Laurus.Text2Frame.DisplayWarning = true;
-  }else{
+  if (typeof PluginManager === 'undefined') {
+    Laurus.Text2Frame.WindowPosition = 'Bottom'
+    Laurus.Text2Frame.Background = 'Window'
+    Laurus.Text2Frame.FileFolder = 'test'
+    Laurus.Text2Frame.FileName = 'basic.txt'
+    Laurus.Text2Frame.CommonEventID = '1'
+    Laurus.Text2Frame.MapID = '1'
+    Laurus.Text2Frame.EventID = '1'
+    Laurus.Text2Frame.PageID = '1'
+    Laurus.Text2Frame.IsOverwrite = true
+    Laurus.Text2Frame.CommentOutChar = '%'
+    Laurus.Text2Frame.IsDebug = true
+    Laurus.Text2Frame.DisplayMsg = true
+    Laurus.Text2Frame.DisplayWarning = true
+  } else {
     // for default plugin command
-    Laurus.Text2Frame.Parameters = PluginManager.parameters('Text2Frame');
-    Laurus.Text2Frame.WindowPosition = String(Laurus.Text2Frame.Parameters["Default Window Position"]);
-    Laurus.Text2Frame.Background     = String(Laurus.Text2Frame.Parameters["Default Background"]);
-    Laurus.Text2Frame.FileFolder     = String(Laurus.Text2Frame.Parameters["Default Scenario Folder"]);
-    Laurus.Text2Frame.FileName       = String(Laurus.Text2Frame.Parameters["Default Scenario File"]);
-    Laurus.Text2Frame.CommonEventID  = String(Laurus.Text2Frame.Parameters["Default Common Event ID"]);
-    Laurus.Text2Frame.MapID          = String(Laurus.Text2Frame.Parameters["Default MapID"]);
-    Laurus.Text2Frame.EventID        = String(Laurus.Text2Frame.Parameters["Default EventID"]);
-    Laurus.Text2Frame.PageID         = String(Laurus.Text2Frame.Parameters["Default PageID"]);
-    Laurus.Text2Frame.IsOverwrite    = (String(Laurus.Text2Frame.Parameters["IsOverwrite"]) == 'true') ? true : false;
-    Laurus.Text2Frame.CommentOutChar = String(Laurus.Text2Frame.Parameters["Comment Out Char"]);
-    Laurus.Text2Frame.IsDebug        = (String(Laurus.Text2Frame.Parameters["IsDebug"]) == 'true') ? true : false;
-    Laurus.Text2Frame.DisplayMsg     = (String(Laurus.Text2Frame.Parameters["DisplayMsg"]) == 'true') ? true : false;
-    Laurus.Text2Frame.DisplayWarning = (String(Laurus.Text2Frame.Parameters["DisplayWarning"]) == 'true') ? true : false;
-    Laurus.Text2Frame.TextPath        = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
-    Laurus.Text2Frame.MapPath         = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
-    Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`;
+    Laurus.Text2Frame.Parameters = PluginManager.parameters('Text2Frame')
+    Laurus.Text2Frame.WindowPosition = String(Laurus.Text2Frame.Parameters['Default Window Position'])
+    Laurus.Text2Frame.Background = String(Laurus.Text2Frame.Parameters['Default Background'])
+    Laurus.Text2Frame.FileFolder = String(Laurus.Text2Frame.Parameters['Default Scenario Folder'])
+    Laurus.Text2Frame.FileName = String(Laurus.Text2Frame.Parameters['Default Scenario File'])
+    Laurus.Text2Frame.CommonEventID = String(Laurus.Text2Frame.Parameters['Default Common Event ID'])
+    Laurus.Text2Frame.MapID = String(Laurus.Text2Frame.Parameters['Default MapID'])
+    Laurus.Text2Frame.EventID = String(Laurus.Text2Frame.Parameters['Default EventID'])
+    Laurus.Text2Frame.PageID = String(Laurus.Text2Frame.Parameters['Default PageID'])
+    Laurus.Text2Frame.IsOverwrite = (String(Laurus.Text2Frame.Parameters.IsOverwrite) === 'true')
+    Laurus.Text2Frame.CommentOutChar = String(Laurus.Text2Frame.Parameters['Comment Out Char'])
+    Laurus.Text2Frame.IsDebug = (String(Laurus.Text2Frame.Parameters.IsDebug) === 'true')
+    Laurus.Text2Frame.DisplayMsg = (String(Laurus.Text2Frame.Parameters.DisplayMsg) === 'true')
+    Laurus.Text2Frame.DisplayWarning = (String(Laurus.Text2Frame.Parameters.DisplayWarning) === 'true')
+    Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
+    Laurus.Text2Frame.MapPath = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
+    Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`
   }
 
-  const addMessage = function(text){
-    if(Laurus.Text2Frame.DisplayMsg){
-      $gameMessage.add(text);
+  const addMessage = function (text) {
+    if (Laurus.Text2Frame.DisplayMsg) {
+      $gameMessage.add(text)
     }
-  };
+  }
 
-  const addWarning = function(warning){
-    if(Laurus.Text2Frame.DisplayWarning){
-      $gameMessage.add(warning);
+  const addWarning = function (warning) {
+    if (Laurus.Text2Frame.DisplayWarning) {
+      $gameMessage.add(warning)
     }
-  };
+  }
 
-  const getDefaultPage = function(){
+  const getDefaultPage = function () {
     return {
-      "conditions":{
-        "actorId":1,
-        "actorValid":false,
-        "itemId":1,
-        "itemValid":false,
-        "selfSwitchCh":"A",
-        "selfSwitchValid":false,
-        "switch1Id":1,
-        "switch1Valid":false,
-        "switch2Id":1,
-        "switch2Valid":false,
-        "variableId":1,
-        "variableValid":false,
-        "variableValue":0
+      conditions: {
+        actorId: 1,
+        actorValid: false,
+        itemId: 1,
+        itemValid: false,
+        selfSwitchCh: 'A',
+        selfSwitchValid: false,
+        switch1Id: 1,
+        switch1Valid: false,
+        switch2Id: 1,
+        switch2Valid: false,
+        variableId: 1,
+        variableValid: false,
+        variableValue: 0
       },
-      "directionFix":false,
-      "image": {"characterIndex":0,"characterName":"","direction":2,"pattern":0,"tileId":0},
-      "list":[
-        {"code":0,"indent":0,"parameters":[]}
+      directionFix: false,
+      image: { characterIndex: 0, characterName: '', direction: 2, pattern: 0, tileId: 0 },
+      list: [
+        { code: 0, indent: 0, parameters: [] }
       ],
-      "moveFrequency":3,
-      "moveRoute": {
-        "list":[{"code":0,"parameters":[]}],
-        "repeat":true,"skippable":false,"wait":false
+      moveFrequency: 3,
+      moveRoute: {
+        list: [{ code: 0, parameters: [] }],
+        repeat: true,
+        skippable: false,
+        wait: false
       },
-      "moveSpeed":3,
-      "moveType":0,
-      "priorityType":0,
-      "stepAnime":false,
-      "through":false,
-      "trigger":0,
-      "walkAnime":true
+      moveSpeed: 3,
+      moveType: 0,
+      priorityType: 0,
+      stepAnime: false,
+      through: false,
+      trigger: 0,
+      walkAnime: true
     }
-  };
+  }
 
-  //=============================================================================
+  //= ============================================================================
   // Game_Interpreter
-  //=============================================================================
+  //= ============================================================================
 
   // for MZ plugin command
-  if(typeof PluginManager != 'undefined' && PluginManager.registerCommand){
-    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_EVENT', function(args) {
-      let file_folder = args.FileFolder;
-      let file_name = args.FileName;
-      let map_id = args.MapID;
-      let event_id = args.EventID;
-      let page_id = args.PageID;
-      let is_overwrite = args.IsOverwrite;
+  if (typeof PluginManager !== 'undefined' && PluginManager.registerCommand) {
+    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_EVENT', function (args) {
+      const file_folder = args.FileFolder
+      const file_name = args.FileName
+      const map_id = args.MapID
+      const event_id = args.EventID
+      const page_id = args.PageID
+      const is_overwrite = args.IsOverwrite
       this.pluginCommand('IMPORT_MESSAGE_TO_EVENT',
-                         [file_folder, file_name, map_id, event_id, page_id, is_overwrite]);
-    });
-    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_CE', function(args) {
-      let file_folder = args.FileFolder;
-      let file_name = args.FileName;
-      let common_event_id = args.CommonEventID;
-      let is_overwrite = args.IsOverwrite;
+        [file_folder, file_name, map_id, event_id, page_id, is_overwrite])
+    })
+    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_CE', function (args) {
+      const file_folder = args.FileFolder
+      const file_name = args.FileName
+      const common_event_id = args.CommonEventID
+      const is_overwrite = args.IsOverwrite
       this.pluginCommand('IMPORT_MESSAGE_TO_CE',
-                         [file_folder, file_name, common_event_id, is_overwrite]);
-    });
+        [file_folder, file_name, common_event_id, is_overwrite])
+    })
   }
 
-  const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
-  Game_Interpreter.prototype.pluginCommand = function(command, args) {
-    _Game_Interpreter_pluginCommand.apply(this, arguments);
-    this.pluginCommandText2Frame(command, args);
-  };
+  const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand
+  Game_Interpreter.prototype.pluginCommand = function (command, args) {
+    _Game_Interpreter_pluginCommand.apply(this, arguments)
+    this.pluginCommandText2Frame(command, args)
+  }
 
-  Game_Interpreter.prototype.pluginCommandText2Frame = function(command, args) {
-    Laurus.Text2Frame.ExecMode = command.toUpperCase();
+  Game_Interpreter.prototype.pluginCommandText2Frame = function (command, args) {
+    Laurus.Text2Frame.ExecMode = command.toUpperCase()
     switch (Laurus.Text2Frame.ExecMode) {
       // for custom plugin command
       case 'IMPORT_MESSAGE_TO_EVENT' :
       case 'メッセージをイベントにインポート' :
-        addMessage('import message to event. \n/ メッセージをイベントにインポートします。');
-        if(args[0]) Laurus.Text2Frame.FileFolder = args[0];
-        if(args[1]) Laurus.Text2Frame.FileName = args[1];
-        if(args[2]) Laurus.Text2Frame.MapID = args[2];
-        if(args[3]) Laurus.Text2Frame.EventID = args[3];
-        if(args[4] && (args[4].toLowerCase() === 'true' || args[4].toLowerCase() === 'false')) {
-          Laurus.Text2Frame.IsOverwrite = args[4].toLowerCase() === 'true' ? true : false;
-          addWarning('【警告】5番目の引数に上書き判定を設定することは非推奨に');
-          addWarning('なりました。ページIDを設定してください。上書き判定は6番');
-          addWarning('目に設定してください。(警告はオプションでOFFにできます)');
-        } else if(args[4]) {
-          Laurus.Text2Frame.PageID = args[4];
+        addMessage('import message to event. \n/ メッセージをイベントにインポートします。')
+        if (args[0]) Laurus.Text2Frame.FileFolder = args[0]
+        if (args[1]) Laurus.Text2Frame.FileName = args[1]
+        if (args[2]) Laurus.Text2Frame.MapID = args[2]
+        if (args[3]) Laurus.Text2Frame.EventID = args[3]
+        if (args[4] && (args[4].toLowerCase() === 'true' || args[4].toLowerCase() === 'false')) {
+          Laurus.Text2Frame.IsOverwrite = args[4].toLowerCase() === 'true'
+          addWarning('【警告】5番目の引数に上書き判定を設定することは非推奨に')
+          addWarning('なりました。ページIDを設定してください。上書き判定は6番')
+          addWarning('目に設定してください。(警告はオプションでOFFにできます)')
+        } else if (args[4]) {
+          Laurus.Text2Frame.PageID = args[4]
         }
-        if(args[5] && args[5].toLowerCase() === 'true') Laurus.Text2Frame.IsOverwrite = true;
-        if(args[0] || args[1]) {
-          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
-          Laurus.Text2Frame.MapPath  = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
+        if (args[5] && args[5].toLowerCase() === 'true') Laurus.Text2Frame.IsOverwrite = true
+        if (args[0] || args[1]) {
+          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
+          Laurus.Text2Frame.MapPath = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
         }
-        break;
+        break
       case 'IMPORT_MESSAGE_TO_CE' :
       case 'メッセージをコモンイベントにインポート' :
-        if(args.length == 4){
-          addMessage('import message to common event. \n/ メッセージをコモンイベントにインポートします。');
-          Laurus.Text2Frame.ExecMode        = 'IMPORT_MESSAGE_TO_CE';
-          Laurus.Text2Frame.FileFolder      = args[0];
-          Laurus.Text2Frame.FileName        = args[1];
-          Laurus.Text2Frame.CommonEventID   = args[2];
-          Laurus.Text2Frame.IsOverwrite     = (args[3] == 'true') ? true : false;
-          Laurus.Text2Frame.TextPath        = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
-          Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`;
+        if (args.length === 4) {
+          addMessage('import message to common event. \n/ メッセージをコモンイベントにインポートします。')
+          Laurus.Text2Frame.ExecMode = 'IMPORT_MESSAGE_TO_CE'
+          Laurus.Text2Frame.FileFolder = args[0]
+          Laurus.Text2Frame.FileName = args[1]
+          Laurus.Text2Frame.CommonEventID = args[2]
+          Laurus.Text2Frame.IsOverwrite = (args[3] === 'true')
+          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
+          Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`
         }
-        break;
+        break
       case 'COMMAND_LINE' :
-        Laurus.Text2Frame.ExecMode = args[0];
-        break;
+        Laurus.Text2Frame.ExecMode = args[0]
+        break
       default:
-        return;
+        return
     }
 
-    const logger = {};
-    logger.log = function(){
-      if(Laurus.Text2Frame.IsDebug){
-        console.debug.apply(console, arguments);
+    const logger = {}
+    logger.log = function () {
+      if (Laurus.Text2Frame.IsDebug) {
+        console.debug.apply(console, arguments)
       }
-    };
+    }
 
-    logger.error = function(){
-      console.error(Array.prototype.join.call(arguments));
-    };
+    logger.error = function () {
+      console.error(Array.prototype.join.call(arguments))
+    }
 
-    const readText = function(filepath){
-      try{
-        return fs.readFileSync(filepath, {encoding: 'utf8'});
-      }catch(e){
-        throw new Error('File not found. / ファイルが見つかりません。\n' + filepath);
+    const readText = function (filepath) {
+      try {
+        return fs.readFileSync(filepath, { encoding: 'utf8' })
+      } catch (e) {
+        throw new Error('File not found. / ファイルが見つかりません。\n' + filepath)
       }
-    };
+    }
 
-    const readJsonData = function(filepath){
-      try{
-        let jsondata = JSON.parse(readText(filepath));
-        if(typeof(jsondata) == 'object'){
-          return jsondata;
-        }else{
-          throw new Error('Json syntax error. \nファイルが壊れています。RPG Makerでプロジェクトをセーブし直してください\n' + filepath);
+    const readJsonData = function (filepath) {
+      try {
+        const jsondata = JSON.parse(readText(filepath))
+        if (typeof (jsondata) === 'object') {
+          return jsondata
+        } else {
+          throw new Error('Json syntax error. \nファイルが壊れています。RPG Makerでプロジェクトをセーブし直してください\n' + filepath)
         }
-      }catch(e){
-        throw new Error('Json syntax error. \nファイルが壊れています。RPG Makerでプロジェクトをセーブし直してください\n' + filepath);
+      } catch (e) {
+        throw new Error('Json syntax error. \nファイルが壊れています。RPG Makerでプロジェクトをセーブし直してください\n' + filepath)
       }
-    };
+    }
 
-    const writeData = function(filepath, jsonData){
-      try{
-        fs.writeFileSync(filepath, JSON.stringify(jsonData, null, "  "), {encoding: 'utf8'});
-      }catch(e){
-        throw new Error('Save failed. / 保存に失敗しました。\n'
-          + 'ファイルが開いていないか確認してください。\n' + filepath);
+    const writeData = function (filepath, jsonData) {
+      try {
+        fs.writeFileSync(filepath, JSON.stringify(jsonData, null, '  '), { encoding: 'utf8' })
+      } catch (e) {
+        throw new Error('Save failed. / 保存に失敗しました。\n' +
+          'ファイルが開いていないか確認してください。\n' + filepath)
       }
-    };
+    }
 
     /* 改行コードを統一する関数 */
-    const uniformNewLineCode = function(text) {
-      return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-    };
+    const uniformNewLineCode = function (text) {
+      return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+    }
 
     /* コメントアウト行を削除する関数 */
-    const eraseCommentOutLines = function(scenario_text, commentOutChar) {
+    const eraseCommentOutLines = function (scenario_text, commentOutChar) {
       // 一度改行毎にsplitして、要素毎にチェックして最後にひとつのテキストに結合する。
-      let re = new RegExp("^ *" + commentOutChar);
-      return scenario_text.split("\n").filter(x => ! x.match(re)).join('\n');
-    };
-
+      const re = new RegExp('^ *' + commentOutChar)
+      return scenario_text.split('\n').filter(x => !x.match(re)).join('\n')
+    }
 
     /*************************************************************************************************************/
-    const getBackground = function(background) {
-      switch(background.toUpperCase()){
+    const getBackground = function (background) {
+      switch (background.toUpperCase()) {
         case 'WINDOW':
         case 'ウインドウ':
-          return 0;
+          return 0
         case 'DIM':
         case '暗くする':
         case '暗く':
-          return 1;
+          return 1
         case 'TRANSPARENT':
         case '透明':
-          return 2;
+          return 2
         default:
-          throw new Error('Syntax error. / 文法エラーです。');
+          throw new Error('Syntax error. / 文法エラーです。')
       }
-    };
+    }
 
-    const getWindowPosition = function(windowPosition){
-      switch(windowPosition.toUpperCase()){
+    const getWindowPosition = function (windowPosition) {
+      switch (windowPosition.toUpperCase()) {
         case 'TOP':
         case '上':
-          return 0;
+          return 0
         case 'MIDDLE':
         case '中':
-          return 1;
+          return 1
         case 'BOTTOM':
         case '下':
-          return 2;
+          return 2
         default:
-          throw new Error('Syntax error. / 文法エラーです。');
+          throw new Error('Syntax error. / 文法エラーです。')
       }
-    };
+    }
 
-    const getChoiceWindowPosition = function(windowPosition){
-      switch(windowPosition.toUpperCase()){
+    const getChoiceWindowPosition = function (windowPosition) {
+      switch (windowPosition.toUpperCase()) {
         case 'LEFT':
         case '左':
-          return 0;
+          return 0
         case 'MIDDLE':
         case '中':
-          return 1;
+          return 1
         case 'RIGHT':
         case '右':
-          return 2;
+          return 2
         default:
-          throw new Error('Syntax error. / 文法エラーです。');
+          throw new Error('Syntax error. / 文法エラーです。')
       }
-    };
+    }
 
-    const getPretextEvent = function(){
-      return {"code": 101, "indent": 0, "parameters": ["", 0, 
-              getBackground(Laurus.Text2Frame.Background), 
-              getWindowPosition(Laurus.Text2Frame.WindowPosition), ""]}
-    };
+    const getPretextEvent = function () {
+      return {
+        code: 101,
+        indent: 0,
+        parameters: ['', 0,
+          getBackground(Laurus.Text2Frame.Background),
+          getWindowPosition(Laurus.Text2Frame.WindowPosition), '']
+      }
+    }
 
-    const getTextFrameEvent = function(text){
-      return {"code": 401, "indent": 0, "parameters": [text]}
-    };
+    const getTextFrameEvent = function (text) {
+      return { code: 401, indent: 0, parameters: [text] }
+    }
 
-    const getCommandBottomEvent = function(){
-      return {"code":0,"indent":0,"parameters":[]};
-    };
+    const getCommandBottomEvent = function () {
+      return { code: 0, indent: 0, parameters: [] }
+    }
 
-    const getScriptHeadEvent = function(text){
-      let script_head = {"code": 355, "indent": 0, "parameters": [""]}
-      script_head["parameters"][0] = text;
-      return script_head;
-    };
-    const getScriptBodyEvent = function(text){
-      let script_body = {"code": 655, "indent": 0, "parameters": [""]}
-      script_body["parameters"][0] = text;
-      return script_body;
-    };
-    
-    const getPluginCommandEvent = function(text){
-      let plugin_command = {"code": 356, "indent": 0, "parameters": [""]}
-      plugin_command["parameters"][0] = text;
-      return plugin_command;
-    };
+    const getScriptHeadEvent = function (text) {
+      const script_head = { code: 355, indent: 0, parameters: [''] }
+      script_head.parameters[0] = text
+      return script_head
+    }
+    const getScriptBodyEvent = function (text) {
+      const script_body = { code: 655, indent: 0, parameters: [''] }
+      script_body.parameters[0] = text
+      return script_body
+    }
 
-    const getPluginCommandEventMZ = function(
-      plugin_name, plugin_command, disp_plugin_command, args){
-      let plugin_args = {};
-      let plugin_command_mz = {"code": 357, "indent": 0, "parameters": [
-        plugin_name, plugin_command, disp_plugin_command, plugin_args
-      ]};
-      let arg_regexp = /([^[\]]+)(\[.+\])/i;
-      for(let i=0; i < args.length; i++){
-        let matched = args[i].match(arg_regexp);
-        if(matched){
-          let arg_name = matched[1] || '';
-          let values = matched[2].slice(1, -1).split('][') || [];
-          plugin_args[arg_name] = values[0] || '';
+    const getPluginCommandEvent = function (text) {
+      const plugin_command = { code: 356, indent: 0, parameters: [''] }
+      plugin_command.parameters[0] = text
+      return plugin_command
+    }
+
+    const getPluginCommandEventMZ = function (
+      plugin_name, plugin_command, disp_plugin_command, args) {
+      const plugin_args = {}
+      const plugin_command_mz = {
+        code: 357,
+        indent: 0,
+        parameters: [
+          plugin_name, plugin_command, disp_plugin_command, plugin_args
+        ]
+      }
+      const arg_regexp = /([^[\]]+)(\[.+\])/i
+      for (let i = 0; i < args.length; i++) {
+        const matched = args[i].match(arg_regexp)
+        if (matched) {
+          const arg_name = matched[1] || ''
+          const values = matched[2].slice(1, -1).split('][') || []
+          plugin_args[arg_name] = values[0] || ''
         }
       }
-      return plugin_command_mz;
-    };
+      return plugin_command_mz
+    }
 
-    const getPluginCommandMzParamsComment = function(plugin_command_mz_arg){
-      let arg_regexp = /([^[\]]+)(\[.+\])/i;
-      let matched = plugin_command_mz_arg.match(arg_regexp);
-      if(matched){
-        let arg_name = matched[1] || '';
-        let values = matched[2].slice(1, -1).split('][') || [];
-         let value = values[0] || '';
-         if(values[1]) {
-           arg_name = values[1];
-         }
-        var parameters = [arg_name + " = " + value];
+    const getPluginCommandMzParamsComment = function (plugin_command_mz_arg) {
+      const arg_regexp = /([^[\]]+)(\[.+\])/i
+      const matched = plugin_command_mz_arg.match(arg_regexp)
+      if (matched) {
+        let arg_name = matched[1] || ''
+        const values = matched[2].slice(1, -1).split('][') || []
+        const value = values[0] || ''
+        if (values[1]) {
+          arg_name = values[1]
+        }
+        return { code: 657, indent: 0, parameters: [arg_name + ' = ' + value] }
+      } else {
+        throw new Error('Syntax error. / 文法エラーです。' +
+                        plugin_command_mz_arg +
+                        ' はプラグインコマンドMZの引数として不適切です。')
       }
-      return {"code": 657, "indent": 0, "parameters": parameters};
-    };
-    const getCommonEventEvent = function(num){
-      let common_event = {"code": 117, "indent": 0, "parameters": [""]};
-      common_event["parameters"][0] = num;
-      return common_event;
-    };
-    
-    const getCommentOutHeadEvent = function(text){
-      let comment_out = {"code": 108, "indent": 0, "parameters": [""]};
-      comment_out["parameters"][0] = text;
-      return comment_out;
-    };
-    const getCommentOutBodyEvent = function(text){
-      let comment_out = {"code": 408, "indent": 0, "parameters": [""]};
-      comment_out["parameters"][0] = text;
-      return comment_out;
-    };
+    }
+    const getCommonEventEvent = function (num) {
+      const common_event = { code: 117, indent: 0, parameters: [''] }
+      common_event.parameters[0] = num
+      return common_event
+    }
 
-    const getScrollingTextHeadEvent = function(scrolling_speed, enable_auto_scroll){
-      let scrolling_text = {"code": 105, "indent": 0, "parameters": [2, false]};
-      if(scrolling_speed){
-        scrolling_text['parameters'][0] = scrolling_speed;
+    const getCommentOutHeadEvent = function (text) {
+      const comment_out = { code: 108, indent: 0, parameters: [''] }
+      comment_out.parameters[0] = text
+      return comment_out
+    }
+    const getCommentOutBodyEvent = function (text) {
+      const comment_out = { code: 408, indent: 0, parameters: [''] }
+      comment_out.parameters[0] = text
+      return comment_out
+    }
+
+    const getScrollingTextHeadEvent = function (scrolling_speed, enable_auto_scroll) {
+      const scrolling_text = { code: 105, indent: 0, parameters: [2, false] }
+      if (scrolling_speed) {
+        scrolling_text.parameters[0] = scrolling_speed
       }
-      if(enable_auto_scroll){
-        switch(enable_auto_scroll.toLowerCase()){
+      if (enable_auto_scroll) {
+        switch (enable_auto_scroll.toLowerCase()) {
           case 'on':
           case 'オン':
           case 'true':
           case 'no fast forward':
           case '1':{
-            scrolling_text['parameters'][1] = true;
-            break;
+            scrolling_text.parameters[1] = true
+            break
           }
           case 'off':
           case 'オフ':
           case 'false':
           case '0':{
-            scrolling_text['parameters'][1] = false;
-            break;
+            scrolling_text.parameters[1] = false
+            break
           }
         }
       }
-      return scrolling_text;
-    };
-    const getScrollingTextBodyEvent = function(text){
-      return {"code": 405, "indent": 0, "parameters": [text]};
-    };
-    
-    const getWaitEvent = function(num){
-      let wait = {"code": 230, "indent": 0, "parameters": [""]}
-      wait["parameters"][0] = num;
-      return wait;
-    };
+      return scrolling_text
+    }
+    const getScrollingTextBodyEvent = function (text) {
+      return { code: 405, indent: 0, parameters: [text] }
+    }
 
-    const getFadeinEvent = function(){
-      return {"code": 222, "indent": 0, "parameters": []};
-    };
-    const getFadeoutEvent = function(){
-      return {"code": 221, "indent": 0, "parameters": []};
-    };
+    const getWaitEvent = function (num) {
+      const wait = { code: 230, indent: 0, parameters: [''] }
+      wait.parameters[0] = num
+      return wait
+    }
 
-    const getPlayBgmEvent = function(name, volume, pitch, pan){
-      let param_volume = 90;
-      let param_pitch = 100;
-      let param_pan = 0;
+    const getFadeinEvent = function () {
+      return { code: 222, indent: 0, parameters: [] }
+    }
+    const getFadeoutEvent = function () {
+      return { code: 221, indent: 0, parameters: [] }
+    }
 
-      if(typeof(volume) == "number"){
-        param_volume = volume;
+    const getPlayBgmEvent = function (name, volume, pitch, pan) {
+      let param_volume = 90
+      let param_pitch = 100
+      let param_pan = 0
+
+      if (typeof (volume) === 'number') {
+        param_volume = volume
       }
 
-      if(typeof(pitch) == "number"){
-        param_pitch = pitch;
+      if (typeof (pitch) === 'number') {
+        param_pitch = pitch
       }
 
-      if(typeof(pan) == "number"){
-        param_pan = pan;
+      if (typeof (pan) === 'number') {
+        param_pan = pan
       }
 
-      return {"code": 241, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
-    };
+      return { code: 241, indent: 0, parameters: [{ name, volume: param_volume, pitch: param_pitch, pan: param_pan }] }
+    }
 
-    const getStopBgmEvent = function(volume, pitch, pan){
-      return getPlayBgmEvent("", volume, pitch, pan);
-    };
+    const getStopBgmEvent = function (volume, pitch, pan) {
+      return getPlayBgmEvent('', volume, pitch, pan)
+    }
 
-    const getFadeoutBgmEvent = function(duration){
-      let param_duration = 10;
-      if(typeof(duration) == "number"){
-        param_duration = duration;
+    const getFadeoutBgmEvent = function (duration) {
+      let param_duration = 10
+      if (typeof (duration) === 'number') {
+        param_duration = duration
       }
-      return {"code": 242, "indent": 0, "parameters": [param_duration]};
-    };
+      return { code: 242, indent: 0, parameters: [param_duration] }
+    }
 
-    const getSaveBgmEvent = function(){
-      return {"code": 243, "indent": 0, "parameters": []};
-    };
+    const getSaveBgmEvent = function () {
+      return { code: 243, indent: 0, parameters: [] }
+    }
 
-    const getReplayBgmEvent = function(){
-      return {"code": 244, "indent": 0, "parameters": []};
-    };
+    const getReplayBgmEvent = function () {
+      return { code: 244, indent: 0, parameters: [] }
+    }
 
-    const getChangeBattleBgmEvent = function(name, volume, pitch, pan){
-      let param_volume = 90;
-      let param_pitch = 100;
-      let param_pan = 0;
+    const getChangeBattleBgmEvent = function (name, volume, pitch, pan) {
+      let param_volume = 90
+      let param_pitch = 100
+      let param_pan = 0
 
-      if(typeof(volume) == "number"){
-        param_volume = volume;
-      }
-
-      if(typeof(pitch) == "number"){
-        param_pitch = pitch;
+      if (typeof (volume) === 'number') {
+        param_volume = volume
       }
 
-      if(typeof(pan) == "number"){
-        param_pan = pan;
+      if (typeof (pitch) === 'number') {
+        param_pitch = pitch
       }
 
-      return {"code": 132, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
-    };
-
-    const getPlayBgsEvent = function(name, volume, pitch, pan){
-      let param_volume = 90;
-      let param_pitch = 100;
-      let param_pan = 0;
-
-      if(typeof(volume) == "number"){
-        param_volume = volume;
+      if (typeof (pan) === 'number') {
+        param_pan = pan
       }
 
-      if(typeof(pitch) == "number"){
-        param_pitch = pitch;
+      return { code: 132, indent: 0, parameters: [{ name, volume: param_volume, pitch: param_pitch, pan: param_pan }] }
+    }
+
+    const getPlayBgsEvent = function (name, volume, pitch, pan) {
+      let param_volume = 90
+      let param_pitch = 100
+      let param_pan = 0
+
+      if (typeof (volume) === 'number') {
+        param_volume = volume
       }
 
-      if(typeof(pan) == "number"){
-        param_pan = pan;
+      if (typeof (pitch) === 'number') {
+        param_pitch = pitch
       }
 
-      return {"code": 245, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
-    };
-
-    const getStopBgsEvent = function(volume, pitch, pan){
-      return getPlayBgsEvent("", volume, pitch, pan);
-    };
-
-    const getFadeoutBgsEvent = function(duration){
-      let param_duration = 10;
-      if(typeof(duration) == "number"){
-        param_duration = duration;
-      }
-      return {"code": 246, "indent": 0, "parameters": [param_duration]};
-    };
-
-    const getPlaySeEvent = function(name, volume, pitch, pan){
-      let param_volume = 90;
-      let param_pitch = 100;
-      let param_pan = 0;
-
-      if(typeof(volume) == "number"){
-        param_volume = volume;
+      if (typeof (pan) === 'number') {
+        param_pan = pan
       }
 
-      if(typeof(pitch) == "number"){
-        param_pitch = pitch;
+      return { code: 245, indent: 0, parameters: [{ name, volume: param_volume, pitch: param_pitch, pan: param_pan }] }
+    }
+
+    const getStopBgsEvent = function (volume, pitch, pan) {
+      return getPlayBgsEvent('', volume, pitch, pan)
+    }
+
+    const getFadeoutBgsEvent = function (duration) {
+      let param_duration = 10
+      if (typeof (duration) === 'number') {
+        param_duration = duration
+      }
+      return { code: 246, indent: 0, parameters: [param_duration] }
+    }
+
+    const getPlaySeEvent = function (name, volume, pitch, pan) {
+      let param_volume = 90
+      let param_pitch = 100
+      let param_pan = 0
+
+      if (typeof (volume) === 'number') {
+        param_volume = volume
       }
 
-      if(typeof(pan) == "number"){
-        param_pan = pan;
+      if (typeof (pitch) === 'number') {
+        param_pitch = pitch
       }
 
-      return {"code": 250, "indent": 0, "parameters": [{"name": name,"volume": param_volume,"pitch": param_pitch,"pan": param_pan}]};
-    };
-    const getStopSeEvent = function(){
-      return {"code": 251, "indent": 0, "parameters": []};
-    };
-
-    const getPlayMeEvent = function(name, volume, pitch, pan){
-      let param_volume = 90;
-      let param_pitch = 100;
-      let param_pan = 0;
-
-      if(typeof(volume) == "number"){
-        param_volume = volume;
+      if (typeof (pan) === 'number') {
+        param_pan = pan
       }
 
-      if(typeof(pitch) == "number"){
-        param_pitch = pitch;
+      return { code: 250, indent: 0, parameters: [{ name, volume: param_volume, pitch: param_pitch, pan: param_pan }] }
+    }
+    const getStopSeEvent = function () {
+      return { code: 251, indent: 0, parameters: [] }
+    }
+
+    const getPlayMeEvent = function (name, volume, pitch, pan) {
+      let param_volume = 90
+      let param_pitch = 100
+      let param_pan = 0
+
+      if (typeof (volume) === 'number') {
+        param_volume = volume
       }
 
-      if(typeof(pan) == "number"){
-        param_pan = pan;
+      if (typeof (pitch) === 'number') {
+        param_pitch = pitch
       }
 
-      return {"code": 249, "indent": 0, "parameters": [{"name": name, "volume": param_volume, "pitch": param_pitch, "pan": param_pan}]};
-    };
+      if (typeof (pan) === 'number') {
+        param_pan = pan
+      }
 
-    const getStopMeEvent = function(volume, pitch, pan){
-      return getPlayMeEvent("", volume, pitch, pan);
-    };
+      return { code: 249, indent: 0, parameters: [{ name, volume: param_volume, pitch: param_pitch, pan: param_pan }] }
+    }
 
-    const getControlSwitch = function(start_pointer, end_pointer, value){
-      switch(value.toLowerCase()){
+    const getStopMeEvent = function (volume, pitch, pan) {
+      return getPlayMeEvent('', volume, pitch, pan)
+    }
+
+    const getControlSwitch = function (start_pointer, end_pointer, value) {
+      switch (value.toLowerCase()) {
         case 'on':
         case 'オン':
         case '1':
         case 'true':{
-          return {"code": 121, "indent": 0, "parameters": [parseInt(start_pointer), parseInt(end_pointer), 0]};
+          return { code: 121, indent: 0, parameters: [parseInt(start_pointer), parseInt(end_pointer), 0] }
         }
         case 'off':
         case 'オフ':
         case '0':
         case 'false':{
-          return {"code": 121, "indent": 0, "parameters": [parseInt(start_pointer), parseInt(end_pointer), 1]};
+          return { code: 121, indent: 0, parameters: [parseInt(start_pointer), parseInt(end_pointer), 1] }
         }
       }
-    };
+    }
 
-    const getControlValiable = function(operation, start_pointer, end_pointer, operand, operand_arg1 = 0, operand_arg2 = 0, operand_arg3 = 0){
-      let parameters = [start_pointer, end_pointer];
-      switch(operation.toLowerCase()){
+    const getControlValiable = function (operation, start_pointer, end_pointer, operand, operand_arg1 = 0, operand_arg2 = 0, operand_arg3 = 0) {
+      const parameters = [start_pointer, end_pointer]
+      switch (operation.toLowerCase()) {
         case 'set':
-          parameters.push(0);
-          break;
+          parameters.push(0)
+          break
         case 'add':
-          parameters.push(1);
-          break;
+          parameters.push(1)
+          break
         case 'sub':
-          parameters.push(2);
-          break;
+          parameters.push(2)
+          break
         case 'mul':
-          parameters.push(3);
-          break;
+          parameters.push(3)
+          break
         case 'div':
-          parameters.push(4);
-          break;
+          parameters.push(4)
+          break
         case 'mod':
-          parameters.push(5);
-          break;
+          parameters.push(5)
+          break
         default:
-          parameters.push(0);
-          break;
+          parameters.push(0)
+          break
       }
-      switch(operand.toLowerCase()){
+      switch (operand.toLowerCase()) {
         case 'constant':
-          parameters.push(0);
-          parameters.push(operand_arg1);
-          break;
+          parameters.push(0)
+          parameters.push(operand_arg1)
+          break
         case 'variables':
-          parameters.push(1);
-          parameters.push(operand_arg1);
-          break;
+          parameters.push(1)
+          parameters.push(operand_arg1)
+          break
         case 'random':
           // operator, start_pointer, end_pointer, 'random', random_range1, random_range2
-          parameters.push(2);
-          parameters.push(parseInt(operand_arg1));
-          parameters.push(parseInt(operand_arg2));
-          break;
+          parameters.push(2)
+          parameters.push(parseInt(operand_arg1))
+          parameters.push(parseInt(operand_arg2))
+          break
         case 'gamedata':{
           // operator, start_pointer, end_pointer, 'gamedata', 'item', arg1, arg2, arg3
-          parameters.push(3);
-          operand_arg1 = operand_arg1.toLowerCase();
-          switch(operand_arg1){
+          parameters.push(3)
+          operand_arg1 = operand_arg1.toLowerCase()
+          switch (operand_arg1) {
             case 'item':
             case 'アイテム':
-              parameters.push(0);
-              parameters.push(parseInt(operand_arg2));
-              parameters.push(0);
-              break;
+              parameters.push(0)
+              parameters.push(parseInt(operand_arg2))
+              parameters.push(0)
+              break
             case 'weapon':
             case '武器':
-              parameters.push(1);
-              parameters.push(parseInt(operand_arg2));
-              parameters.push(0);
-              break;
+              parameters.push(1)
+              parameters.push(parseInt(operand_arg2))
+              parameters.push(0)
+              break
             case 'armor':
             case '防具':
-              parameters.push(2);
-              parameters.push(parseInt(operand_arg2));
-              parameters.push(0);
-              break;
+              parameters.push(2)
+              parameters.push(parseInt(operand_arg2))
+              parameters.push(0)
+              break
             case 'actor':
             case 'アクター':
             case 'enemy':
             case '敵キャラ':
             case 'エネミー':{
-              if(operand_arg1 == 'actor' || operand_arg1 == 'アクター'){
-                parameters.push(3);
-              }else{
-                parameters.push(4);
+              if (operand_arg1 === 'actor' || operand_arg1 === 'アクター') {
+                parameters.push(3)
+              } else {
+                parameters.push(4)
               }
-              parameters.push(parseInt(operand_arg2));
-              switch(operand_arg3.toLowerCase()){
+              parameters.push(parseInt(operand_arg2))
+              switch (operand_arg3.toLowerCase()) {
                 case 'level':
                 case 'レベル':{
-                  parameters.push(0);
-                  break;
+                  parameters.push(0)
+                  break
                 }
                 case 'exp':
                 case '経験値':{
-                  parameters.push(1);
-                  break;
+                  parameters.push(1)
+                  break
                 }
                 case 'hp':{
-                  parameters.push(2);
-                  break;
+                  parameters.push(2)
+                  break
                 }
                 case 'mp':{
-                  parameters.push(3);
-                  break;
+                  parameters.push(3)
+                  break
                 }
                 case 'maxhp':
                 case '最大hp':{
-                  parameters.push(4);
-                  break;
+                  parameters.push(4)
+                  break
                 }
                 case 'maxmp':
                 case '最大mp':{
-                  parameters.push(5);
-                  break;
+                  parameters.push(5)
+                  break
                 }
                 case 'attack':
                 case '攻撃力':{
-                  parameters.push(6);
-                  break;
+                  parameters.push(6)
+                  break
                 }
                 case 'defense':
                 case '防御力':{
-                  parameters.push(7);
-                  break;
+                  parameters.push(7)
+                  break
                 }
                 case 'm.attack':
                 case '魔法攻撃力':{
-                  parameters.push(8);
-                  break;
+                  parameters.push(8)
+                  break
                 }
                 case 'm.defense':
                 case '魔法防御力':{
-                  parameters.push(9);
-                  break;
+                  parameters.push(9)
+                  break
                 }
                 case 'agility':
                 case '敏捷性':{
-                  parameters.push(10);
-                  break;
+                  parameters.push(10)
+                  break
                 }
                 case 'luck':
                 case '運':{
-                  parameters.push(11);
-                  break;
+                  parameters.push(11)
+                  break
                 }
                 default:{
-                  parameters.push(0);
-                  break;
+                  parameters.push(0)
+                  break
                 }
               }
-              if(operand_arg1 == 'enemy' || operand_arg1 == '敵キャラ' || operand_arg1 == 'エネミー'){
-                let value = parameters.pop();
-                let key = parameters.pop();
-                value = value - 2;
-                key = key - 1;
-                parameters.push(key);
-                parameters.push(value);
+              if (operand_arg1 === 'enemy' || operand_arg1 === '敵キャラ' || operand_arg1 === 'エネミー') {
+                let value = parameters.pop()
+                let key = parameters.pop()
+                value = value - 2
+                key = key - 1
+                parameters.push(key)
+                parameters.push(value)
               }
-              break;
+              break
             }
             case 'character':
             case 'キャラクター':
-              parameters.push(5);
-              switch(operand_arg2.toLowerCase()){
+              parameters.push(5)
+              switch (operand_arg2.toLowerCase()) {
                 case 'player':
                 case 'プレイヤー':
                 case '-1':{
-                  parameters.push(-1);
-                  break;
+                  parameters.push(-1)
+                  break
                 }
                 case 'thisevent':
                 case 'このイベント':
                 case '0':{
-                  parameters.push(0);
-                  break;
+                  parameters.push(0)
+                  break
                 }
                 default:{
-                  parameters.push(parseInt(operand_arg2));
-                  break;
+                  parameters.push(parseInt(operand_arg2))
+                  break
                 }
               }
-              switch(operand_arg3.toLowerCase()){
+              switch (operand_arg3.toLowerCase()) {
                 case 'mapx':
                 case 'マップx':{
-                  parameters.push(0);
-                  break;
+                  parameters.push(0)
+                  break
                 }
                 case 'mapy':
                 case 'マップy':{
-                  parameters.push(1);
-                  break;
+                  parameters.push(1)
+                  break
                 }
                 case 'direction':
                 case '方向':{
-                  parameters.push(2);
-                  break;
+                  parameters.push(2)
+                  break
                 }
                 case 'screenx':
                 case '画面x':{
-                  parameters.push(3);
-                  break;
+                  parameters.push(3)
+                  break
                 }
                 case 'screeny':
                 case '画面y':{
-                  parameters.push(4);
-                  break;
+                  parameters.push(4)
+                  break
                 }
                 default:{
-                  parameters.push(0);
-                  break;
+                  parameters.push(0)
+                  break
                 }
               }
-              break;
+              break
             case 'party':
             case 'パーティ':
-              parameters.push(6);
-              parameters.push(parseInt(operand_arg2)-1);
-              parameters.push(0);
-              break;
+              parameters.push(6)
+              parameters.push(parseInt(operand_arg2) - 1)
+              parameters.push(0)
+              break
             case 'other':
-              parameters.push(7);
-              switch(operand_arg2.toLowerCase()){
+              parameters.push(7)
+              switch (operand_arg2.toLowerCase()) {
                 case 'mapid':
                 case 'マップid':{
-                  parameters.push(0);
-                  break;
+                  parameters.push(0)
+                  break
                 }
                 case 'partymembers':
                 case 'パーティ人数':{
-                  parameters.push(1);
-                  break;
+                  parameters.push(1)
+                  break
                 }
                 case 'gold':
                 case '所持金':{
-                  parameters.push(2);
-                  break;
+                  parameters.push(2)
+                  break
                 }
                 case 'steps':
                 case '歩数':{
-                  parameters.push(3);
-                  break;
+                  parameters.push(3)
+                  break
                 }
                 case 'playtime':
                 case 'プレイ時間':{
-                  parameters.push(4);
-                  break;
+                  parameters.push(4)
+                  break
                 }
                 case 'timer':
                 case 'タイマー':{
-                  parameters.push(5);
-                  break;
+                  parameters.push(5)
+                  break
                 }
                 case 'savecount':
                 case 'セーブ回数':{
-                  parameters.push(6);
-                  break;
+                  parameters.push(6)
+                  break
                 }
                 case 'battlecount':
                 case '戦闘回数':{
-                  parameters.push(7);
-                  break;
+                  parameters.push(7)
+                  break
                 }
                 case 'wincount':
                 case '勝利回数':{
-                  parameters.push(8);
-                  break;
+                  parameters.push(8)
+                  break
                 }
                 case 'escapecount':
                 case '逃走回数':{
-                  parameters.push(9);
-                  break;
+                  parameters.push(9)
+                  break
                 }
                 default:{
-                  parameters.push(parseInt(operand_arg2));
-                  break;
+                  parameters.push(parseInt(operand_arg2))
+                  break
                 }
               }
-              parameters.push(0);
-              break;
+              parameters.push(0)
+              break
             case 'last':
             case '直前':
-              parameters.push(8);
-              switch(operand_arg2.toLowerCase()){
+              parameters.push(8)
+              switch (operand_arg2.toLowerCase()) {
                 case 'last used skill id':
                 case '直前に使用したスキルのid':
                 case 'used skill id':{
-                  parameters.push(0);
-                  break;
+                  parameters.push(0)
+                  break
                 }
                 case 'last used item id':
                 case '直前に使用したアイテムのid':
                 case 'used item id':{
-                  parameters.push(1);
-                  break;
+                  parameters.push(1)
+                  break
                 }
                 case 'last actor id to act':
                 case '直前に行動したアクターのid':
                 case 'actor id to act':{
-                  parameters.push(2);
-                  break;
+                  parameters.push(2)
+                  break
                 }
                 case 'last enemy index to act':
                 case '直前に行動した敵キャラのインデックス':
                 case 'enemy index to act':{
-                  parameters.push(3);
-                  break;
+                  parameters.push(3)
+                  break
                 }
                 case 'last target actor id':
                 case '直前に対象となったアクターのid':
                 case 'target actor id':{
-                  parameters.push(4);
-                  break;
+                  parameters.push(4)
+                  break
                 }
                 case 'last target enemy index':
                 case '直前に対象となった敵キャラのインデックス':
                 case 'target enemy index':{
-                  parameters.push(5);
-                  break;
+                  parameters.push(5)
+                  break
                 }
                 default:{
-                  parameters.push(0);
-                  break;
+                  parameters.push(0)
+                  break
                 }
               }
-              parameters.push(0);
-              break;
+              parameters.push(0)
+              break
           }
-          break;
+          break
         }
         case 'script':{
-          parameters.push(4);
-          parameters.push(operand_arg1);
-          break;
+          parameters.push(4)
+          parameters.push(operand_arg1)
+          break
         }
         default:
-          parameters.push(0);
-          parameters.push(operand_arg1);
-          parameters.push(operand_arg2);
-          parameters.push(operand_arg3);
-          break;
+          parameters.push(0)
+          parameters.push(operand_arg1)
+          parameters.push(operand_arg2)
+          parameters.push(operand_arg3)
+          break
       }
-      return {"code": 122, "indent": 0, "parameters": parameters};
-    };
+      return { code: 122, indent: 0, parameters }
+    }
 
-    const getControlSelfSwitch = function(target, value){
-      switch(value.toLowerCase()){
+    const getControlSelfSwitch = function (target, value) {
+      switch (value.toLowerCase()) {
         case 'on':
         case 'オン':
         case '1':
         case 'true':{
-          return {"code": 123, "indent": 0, "parameters": [target.toUpperCase(), 0]};
+          return { code: 123, indent: 0, parameters: [target.toUpperCase(), 0] }
         }
         case 'off':
         case 'オフ':
         case '0':
         case 'false':{
-          return {"code": 123, "indent": 0, "parameters": [target.toUpperCase(), 1]};
+          return { code: 123, indent: 0, parameters: [target.toUpperCase(), 1] }
         }
         default:
-          return {"code": 123, "indent": 0, "parameters": [target.toUpperCase(), 1]};
+          return { code: 123, indent: 0, parameters: [target.toUpperCase(), 1] }
       }
-    };
+    }
 
-    const getControlTimer = function(operation, sec){
-      switch(operation.toLowerCase()){
+    const getControlTimer = function (operation, sec) {
+      switch (operation.toLowerCase()) {
         case 'start':
         case '始動':
         case 'スタート':{
-          return {"code": 124, "indent": 0, "parameters": [0, parseInt(sec)]};
+          return { code: 124, indent: 0, parameters: [0, parseInt(sec)] }
         }
         case 'stop':
         case '停止':
         case 'ストップ':{
-          return {"code": 124, "indent": 0, "parameters": [1, parseInt(sec)]};
+          return { code: 124, indent: 0, parameters: [1, parseInt(sec)] }
         }
         default:
-          return {"code": 124, "indent": 0, "parameters": [1, parseInt(sec)]};
+          return { code: 124, indent: 0, parameters: [1, parseInt(sec)] }
       }
-    };
+    }
     /*************************************************************************************************************/
-    const getBlockStatement = function(scenario_text, statement){
-      let block_map = {};
-      let block_count = 0;
-      let re = null;
-      let event_head_func = function(){};
-      let event_body_func = function(){};
+    const getBlockStatement = function (scenario_text, statement) {
+      const block_map = {}
+      let block_count = 0
+      let re = null
+      let event_head_func = function () {}
+      let event_body_func = function () {}
 
-      switch(statement.toLowerCase()){
+      switch (statement.toLowerCase()) {
         case 'script':{
-          re = /<script>([\s\S]*?)<\/script>|<sc>([\s\S]*?)<\/sc>|<スクリプト>([\s\S]*?)<\/スクリプト>/i;
-          event_head_func = getScriptHeadEvent;
-          event_body_func = getScriptBodyEvent;
-          break;
+          re = /<script>([\s\S]*?)<\/script>|<sc>([\s\S]*?)<\/sc>|<スクリプト>([\s\S]*?)<\/スクリプト>/i
+          event_head_func = getScriptHeadEvent
+          event_body_func = getScriptBodyEvent
+          break
         }
         case 'comment':{
-          re = /<comment>([\s\S]*?)<\/comment>|<co>([\s\S]*?)<\/co>|<注釈>([\s\S]*?)<\/注釈>/i;
-          event_head_func = getCommentOutHeadEvent;
-          event_body_func = getCommentOutBodyEvent;
-          break;
+          re = /<comment>([\s\S]*?)<\/comment>|<co>([\s\S]*?)<\/co>|<注釈>([\s\S]*?)<\/注釈>/i
+          event_head_func = getCommentOutHeadEvent
+          event_body_func = getCommentOutBodyEvent
+          break
         }
         case 'scrolling':{
-          let block = scenario_text.match(/<ShowScrollingText\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/ShowScrollingText>/i)
-            || scenario_text.match(/<sst\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/sst>/i)
-            || scenario_text.match(/<文章のスクロール表示\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/文章のスクロール表示>/i);
-          while(block !== null){
-            let match_block = block[0];
-            let scrolling_speed = Number(block[1]);
-            let enable_auto_scroll = block[2];
-            let scrolling_text = block[3];
-            let match_text_list = scrolling_text.replace(/^\n/,'').replace(/\n$/,'').split('\n');
-            let event_list = [];
+          let block = scenario_text.match(/<ShowScrollingText\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/ShowScrollingText>/i) ||
+            scenario_text.match(/<sst\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/sst>/i) ||
+            scenario_text.match(/<文章のスクロール表示\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/文章のスクロール表示>/i)
+          while (block !== null) {
+            const match_block = block[0]
+            const scrolling_speed = Number(block[1])
+            const enable_auto_scroll = block[2]
+            const scrolling_text = block[3]
+            const match_text_list = scrolling_text.replace(/^\n/, '').replace(/\n$/, '').split('\n')
+            let event_list = []
 
-            event_list.push(getScrollingTextHeadEvent(scrolling_speed, enable_auto_scroll));
-            event_list = event_list.concat(match_text_list.map(t => getScrollingTextBodyEvent(t)));
-            block_map[`#${statement.toUpperCase()}_BLOCK${block_count}#`] = event_list;
+            event_list.push(getScrollingTextHeadEvent(scrolling_speed, enable_auto_scroll))
+            event_list = event_list.concat(match_text_list.map(t => getScrollingTextBodyEvent(t)))
+            block_map[`#${statement.toUpperCase()}_BLOCK${block_count}#`] = event_list
 
-            scenario_text = scenario_text.replace(match_block, `\n#${statement.toUpperCase()}_BLOCK${block_count}#\n`);
-            block_count++;
+            scenario_text = scenario_text.replace(match_block, `\n#${statement.toUpperCase()}_BLOCK${block_count}#\n`)
+            block_count++
 
-            block = scenario_text.match(/<ShowScrollingText\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/ShowScrollingText>/i)
-              || scenario_text.match(/<sst\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/sst>/i)
-              || scenario_text.match(/<文章のスクロール表示\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/文章のスクロール表示>/i);
+            block = scenario_text.match(/<ShowScrollingText\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/ShowScrollingText>/i) ||
+              scenario_text.match(/<sst\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/sst>/i) ||
+              scenario_text.match(/<文章のスクロール表示\s*:*\s*(\d*)\s*,*\s*([\s\S]*?)>([\s\S]*?)<\/文章のスクロール表示>/i)
           }
-          return {scenario_text, block_map};
+          return { scenario_text, block_map }
         }
       }
 
-      let block = scenario_text.match(re);
-      while(block !== null){
-        let match_block = block[0];
-        let match_text = block[1] || block[2] || block[3];
-        scenario_text = scenario_text.replace(match_block, `\n#${statement.toUpperCase()}_BLOCK${block_count}#\n`);
-        let match_text_list = match_text.replace(/^\n/,'').replace(/\n$/,'').split('\n');
-        let event_list = [];
-        for(let i=0; i<match_text_list.length; i++){
-          let text = match_text_list[i];
-          if(i == 0){
-            event_list.push(event_head_func(text));
-          }else{
-            event_list.push(event_body_func(text));
+      let block = scenario_text.match(re)
+      while (block !== null) {
+        const match_block = block[0]
+        const match_text = block[1] || block[2] || block[3]
+        scenario_text = scenario_text.replace(match_block, `\n#${statement.toUpperCase()}_BLOCK${block_count}#\n`)
+        const match_text_list = match_text.replace(/^\n/, '').replace(/\n$/, '').split('\n')
+        const event_list = []
+        for (let i = 0; i < match_text_list.length; i++) {
+          const text = match_text_list[i]
+          if (i === 0) {
+            event_list.push(event_head_func(text))
+          } else {
+            event_list.push(event_body_func(text))
           }
         }
-        block_map[`#${statement.toUpperCase()}_BLOCK${block_count}#`] = event_list;
-        block = scenario_text.match(re);
-        block_count++;
+        block_map[`#${statement.toUpperCase()}_BLOCK${block_count}#`] = event_list
+        block = scenario_text.match(re)
+        block_count++
       }
-      return {scenario_text, block_map};
-    };
+      return { scenario_text, block_map }
+    }
 
-    const getDefaultPictureOptions = function() {
+    const getDefaultPictureOptions = function () {
       return {
-        "origin": 0, // 0: UpperLeft, 1:Center
-        "variable": 0, // 0: Constant, 1: Variable
+        origin: 0, // 0: UpperLeft, 1:Center
+        variable: 0, // 0: Constant, 1: Variable
         // if variable is 0, x and y are  a constant values.
         // if variable is 1, x is a number of variables
-        "x": 0, "y": 0,
-        "width": 100, "height": 100, //%
-        "opacity": 255, "blend_mode": 0, // 0:Normal, 1:Additive, 2:Multiply, 3:Screen
-        "duration": 60, "wait": true,  // for a function that move a picture
-        "red": 0, "green": 0, "blue": 0, "gray": 0,  // for a function that tints a picture.
-        "easing": 0 // for MZ
-      };
-    };
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100, // %
+        opacity: 255,
+        blend_mode: 0, // 0:Normal, 1:Additive, 2:Multiply, 3:Screen
+        duration: 60,
+        wait: true, // for a function that move a picture
+        red: 0,
+        green: 0,
+        blue: 0,
+        gray: 0, // for a function that tints a picture.
+        easing: 0 // for MZ
+      }
+    }
 
-    const getPictureOptions = function(option_str) {
-      let out = {};
-      let option_regexp = /([^[\]]+)(\[[\s\-a-zA-Z0-9\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf[\]]+\])/i;
-      let option = option_str.match(option_regexp);
-      if(option){
-        let key = option[1] || '';
-        let values = option[2].slice(1, -1).split('][') || '';
-        switch(key.toLowerCase()){
-          case "position":
-          case "位置":{
-            let origin = values[0] || 'Upper Left';
-            if(origin.toLowerCase() == 'center' || origin == '中央'){
-              out["origin"] = 1;
+    const getPictureOptions = function (option_str) {
+      const out = {}
+      const option_regexp = /([^[\]]+)(\[[\s\-a-zA-Z0-9\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf[\]]+\])/i
+      const option = option_str.match(option_regexp)
+      if (option) {
+        const key = option[1] || ''
+        const values = option[2].slice(1, -1).split('][') || ''
+        switch (key.toLowerCase()) {
+          case 'position':
+          case '位置':{
+            const origin = values[0] || 'Upper Left'
+            if (origin.toLowerCase() === 'center' || origin === '中央') {
+              out.origin = 1
             }
-            let constant_regexp = /^[0-9]+$/;
-            let variable_regexp = /(?:variables|v|変数)\[([0-9]+)\]/i;
-            let x = values[1] || '0';
-            if(x.match(constant_regexp)){
-              out["variable"] = 0;
-              out["x"] = Number(x);
-            }else{
-              let v = x.match(variable_regexp);
-              if(v){
-                out["variable"] = 1;
-                out["x"] = Number(v[1])
+            const constant_regexp = /^[0-9]+$/
+            const variable_regexp = /(?:variables|v|変数)\[([0-9]+)\]/i
+            const x = values[1] || '0'
+            if (x.match(constant_regexp)) {
+              out.variable = 0
+              out.x = Number(x)
+            } else {
+              const v = x.match(variable_regexp)
+              if (v) {
+                out.variable = 1
+                out.x = Number(v[1])
               }
             }
-            let y = values[2] || '0';
-            if(y.match(constant_regexp)){
-              out["variable"] = 0;
-              out["y"] = Number(y);
-            }else{
-              let v = y.match(variable_regexp);
-              if(v){
-                out["variable"] = 1;
-                out["y"] = Number(v[1]);
+            const y = values[2] || '0'
+            if (y.match(constant_regexp)) {
+              out.variable = 0
+              out.y = Number(y)
+            } else {
+              const v = y.match(variable_regexp)
+              if (v) {
+                out.variable = 1
+                out.y = Number(v[1])
               }
             }
-            break;
+            break
           }
-          case "scale":
-          case "拡大率":{
-            out["width"] = Number(values[0]) || 100;
-            out["height"] = Number(values[1]) || 100;
-            break;
+          case 'scale':
+          case '拡大率':{
+            out.width = Number(values[0]) || 100
+            out.height = Number(values[1]) || 100
+            break
           }
-          case "blend":
+          case 'blend':
           case '合成':{
-            out["opacity"] = Number(values[0]) || 255;
-            out["blend_mode"] = ({
-              "normal": 0, "通常": 0,
-              "additive": 1, "加算": 1,
-              "multiply": 2, "乗算": 2,
-              "screen": 3, "スクリーン": 3
-            })[values[1].toLowerCase()] || 0;
-            break;
+            out.opacity = Number(values[0]) || 255
+            out.blend_mode = ({
+              normal: 0,
+              通常: 0,
+              additive: 1,
+              加算: 1,
+              multiply: 2,
+              乗算: 2,
+              screen: 3,
+              スクリーン: 3
+            })[values[1].toLowerCase()] || 0
+            break
           }
-          case "duration":
-          case "時間":{
-            out["duration"] = Number(values[0]) || 60;
-            if(typeof(values[1]) == "undefined" || values[1] == ""){
-              out["wait"] = false;
+          case 'duration':
+          case '時間':{
+            out.duration = Number(values[0]) || 60
+            if (typeof (values[1]) === 'undefined' || values[1] === '') {
+              out.wait = false
             }
-            break;
+            break
           }
-          case "colortone":
-          case "色調":
-          case "ct": {
-            let firstValue = values[0].toLowerCase() || 0;
-            switch(firstValue){
-              case "normal":
-              case "通常": {
-                out["red"] = 0;
-                out["green"] = 0;
-                out["blue"] = 0;
-                out["gray"] = 0;
-                break;
+          case 'colortone':
+          case '色調':
+          case 'ct': {
+            const firstValue = values[0].toLowerCase() || 0
+            switch (firstValue) {
+              case 'normal':
+              case '通常': {
+                out.red = 0
+                out.green = 0
+                out.blue = 0
+                out.gray = 0
+                break
               }
-              case "dark":
-              case "ダーク": {
-                out["red"] = -68;
-                out["green"] = -68;
-                out["blue"] = -68;
-                out["gray"] = 0;
-                break;
+              case 'dark':
+              case 'ダーク': {
+                out.red = -68
+                out.green = -68
+                out.blue = -68
+                out.gray = 0
+                break
               }
-              case "sepia":
-              case "セピア": {
-                out["red"] = 34;
-                out["green"] = -34;
-                out["blue"] = -68;
-                out["gray"] = 170;
-                break;
+              case 'sepia':
+              case 'セピア': {
+                out.red = 34
+                out.green = -34
+                out.blue = -68
+                out.gray = 170
+                break
               }
-              case "sunset":
-              case "夕暮れ": {
-                out["red"] = 68;
-                out["green"] = -34;
-                out["blue"] = -34;
-                out["gray"] = 0;
-                break;
+              case 'sunset':
+              case '夕暮れ': {
+                out.red = 68
+                out.green = -34
+                out.blue = -34
+                out.gray = 0
+                break
               }
-              case "night":
-              case "夜": {
-                out["red"] = -68;
-                out["green"] = -68;
-                out["blue"] = 0;
-                out["gray"] = 68;
-                break;
+              case 'night':
+              case '夜': {
+                out.red = -68
+                out.green = -68
+                out.blue = 0
+                out.gray = 68
+                break
               }
               default: {
-                out["red"] = Number(values[0]) || 0;
-                out["green"] = Number(values[1]) || 0;
-                out["blue"] = Number(values[2]) || 0;
-                out["gray"] = Number(values[3]) || 0;
-                break;
+                out.red = Number(values[0]) || 0
+                out.green = Number(values[1]) || 0
+                out.blue = Number(values[2]) || 0
+                out.gray = Number(values[3]) || 0
+                break
               }
             }
-            break;
+            break
           }
-        case "easing":
-        case "イージング": {
-          let easingMode = values[0].toLowerCase() || "inear";
-          out["easing"] = {
-            "constant speed": 0, "一定速度": 0, "linear": 0,
-            "slow start": 1, "ゆっくり始まる": 1, "ease-in": 1,
-            "slow end": 2, "ゆっくり終わる": 2, "ease-out": 2,
-            "slow start and end": 3, "ゆっくり始まってゆっくり終わる": 3,
-            "ease-in-out": 3}[easingMode];
-          break;
+          case 'easing':
+          case 'イージング': {
+            const easingMode = values[0].toLowerCase() || 'inear'
+            out.easing = {
+              'constant speed': 0,
+              一定速度: 0,
+              linear: 0,
+              'slow start': 1,
+              ゆっくり始まる: 1,
+              'ease-in': 1,
+              'slow end': 2,
+              ゆっくり終わる: 2,
+              'ease-out': 2,
+              'slow start and end': 3,
+              ゆっくり始まってゆっくり終わる: 3,
+              'ease-in-out': 3
+            }[easingMode]
+            break
           }
         }
       }
-      return out;
-    };
+      return out
+    }
 
-    const getShowPicture = function(pic_no, name, options=[]) {
-      let ps = getDefaultPictureOptions();
-      options.map(x => Object.assign(ps, getPictureOptions(x)));
-      return {"code": 231, "indent": 0,
-              "parameters": [pic_no, name,
-                             ps.origin, ps.variable,
-                             ps.x, ps.y, ps.width, ps.height,
-                             ps.opacity, ps.blend_mode]
-             };
-    };
-
-    const getMovePicture = function(pic_no, options=[]) {
-      let ps = getDefaultPictureOptions();
-      options.map(x => Object.assign(ps, getPictureOptions(x)));
-      return {"code": 232, "indent": 0,
-              "parameters": [pic_no, 0,
-                             ps.origin, ps.variable,
-                             ps.x, ps.y, ps.width, ps.height,
-                             ps.opacity, ps.blend_mode,
-                             ps.duration, ps.wait, ps.easing]};
-    };
-
-    const getRotatePicture = function(pic_no, speed) {
-      return {"code": 233,  "indent": 0, "parameters": [pic_no, speed]};
-    };
-
-    const getTintPicture = function(pic_no, options=[]) {
-      let ps = getDefaultPictureOptions();
-      options.map(x => Object.assign(ps, getPictureOptions(x)));
-      return {"code": 234, "indent": 0,
-              "parameters": [pic_no,
-                             [ps.red, ps.green, ps.blue, ps.gray],
-                             ps.duration, ps.wait]};
-    };
-
-    const getErasePicture = function(pic_no) {
-      return {"code": 235, "indent": 0, "parameters": [pic_no]}
-    };
-
-    const getIfSwitchParameters = function(switchId, params){
-      switchId = Math.max(Number(switchId) || 1, 1);
-      if(typeof(params[0]) == "undefined"){
-        return [0, switchId, 0];
+    const getShowPicture = function (pic_no, name, options = []) {
+      const ps = getDefaultPictureOptions()
+      options.map(x => Object.assign(ps, getPictureOptions(x)))
+      return {
+        code: 231,
+        indent: 0,
+        parameters: [pic_no, name,
+          ps.origin, ps.variable,
+          ps.x, ps.y, ps.width, ps.height,
+          ps.opacity, ps.blend_mode]
       }
-      const value = ({"on": 0, "オン": 0,
-                      "true": 0, "1": 0,
-                      "off": 1, "オフ": 1,
-                      "false": 1, "0": 1})[params[0].toLowerCase()];
-      if(switchId > 0 && (value == 1 || value == 0)){
-        return [0, switchId, value];
-      }
-      return [0, switchId, 0];
-    };
+    }
 
-    const getIfVariableParameters = function(variableId, params){
-      variableId = Math.max(Number(variableId) || 1, 1);
+    const getMovePicture = function (pic_no, options = []) {
+      const ps = getDefaultPictureOptions()
+      options.map(x => Object.assign(ps, getPictureOptions(x)))
+      return {
+        code: 232,
+        indent: 0,
+        parameters: [pic_no, 0,
+          ps.origin, ps.variable,
+          ps.x, ps.y, ps.width, ps.height,
+          ps.opacity, ps.blend_mode,
+          ps.duration, ps.wait, ps.easing]
+      }
+    }
+
+    const getRotatePicture = function (pic_no, speed) {
+      return { code: 233, indent: 0, parameters: [pic_no, speed] }
+    }
+
+    const getTintPicture = function (pic_no, options = []) {
+      const ps = getDefaultPictureOptions()
+      options.map(x => Object.assign(ps, getPictureOptions(x)))
+      return {
+        code: 234,
+        indent: 0,
+        parameters: [pic_no,
+          [ps.red, ps.green, ps.blue, ps.gray],
+          ps.duration, ps.wait]
+      }
+    }
+
+    const getErasePicture = function (pic_no) {
+      return { code: 235, indent: 0, parameters: [pic_no] }
+    }
+
+    const getIfSwitchParameters = function (switchId, params) {
+      switchId = Math.max(Number(switchId) || 1, 1)
+      if (typeof (params[0]) === 'undefined') {
+        return [0, switchId, 0]
+      }
+      const value = ({
+        on: 0,
+        オン: 0,
+        true: 0,
+        1: 0,
+        off: 1,
+        オフ: 1,
+        false: 1,
+        0: 1
+      })[params[0].toLowerCase()]
+      if (switchId > 0 && (value === 1 || value === 0)) {
+        return [0, switchId, value]
+      }
+      return [0, switchId, 0]
+    }
+
+    const getIfVariableParameters = function (variableId, params) {
+      variableId = Math.max(Number(variableId) || 1, 1)
       const operator = {
-        "==": 0, "＝": 0, ">=": 1, "≧": 1, "<=": 2, "≦": 2,
-        ">": 3, "＞": 3, "<": 4, "＜": 4, "!=": 5, "≠": 5
+        '==': 0,
+        '＝': 0,
+        '>=': 1,
+        '≧': 1,
+        '<=': 2,
+        '≦': 2,
+        '>': 3,
+        '＞': 3,
+        '<': 4,
+        '＜': 4,
+        '!=': 5,
+        '≠': 5
       }[params[0]] || 0
-      const constant_regexp = /^\d+$/;
-      const variable_regexp = /(?:variables|v|変数)\[([0-9]+)\]/i;
-      const operand = params[1] || "0";
-      if(operand.match(constant_regexp)){
-        return [1, variableId, 0, Number(operand), operator];
-      }else if(operand.match(variable_regexp)){
-        const value = Math.max(Number(operand.match(variable_regexp)[1]), 1);
-        return [1, variableId, 1, value, operator];
+      const constant_regexp = /^\d+$/
+      const variable_regexp = /(?:variables|v|変数)\[([0-9]+)\]/i
+      const operand = params[1] || '0'
+      if (operand.match(constant_regexp)) {
+        return [1, variableId, 0, Number(operand), operator]
+      } else if (operand.match(variable_regexp)) {
+        const value = Math.max(Number(operand.match(variable_regexp)[1]), 1)
+        return [1, variableId, 1, value, operator]
       }
-      return [1, variableId, 0, 0, 0];
-    };
+      return [1, variableId, 0, 0, 0]
+    }
 
-    const getIfSelfSwitchParameters = function(selfSwitchId, params){
-      selfSwitchId = selfSwitchId.toUpperCase();
-      switch(selfSwitchId){
-        case "A":
-        case "B":
-        case "C":
-        case "D": break;
-        default: selfSwitchId = "A";
+    const getIfSelfSwitchParameters = function (selfSwitchId, params) {
+      selfSwitchId = selfSwitchId.toUpperCase()
+      switch (selfSwitchId) {
+        case 'A':
+        case 'B':
+        case 'C':
+        case 'D': break
+        default: selfSwitchId = 'A'
       }
-      if(typeof(params[0]) == "undefined"){
-        return [2, selfSwitchId, 0];
+      if (typeof (params[0]) === 'undefined') {
+        return [2, selfSwitchId, 0]
       }
-      const value = ({"on": 0, "オン": 0,
-                    "true": 0, "1": 0,
-                    "off": 1, "オフ": 1,
-                    "false": 1, "0": 1})[params[0].toLowerCase()];
-      if(value == 0 || value == 1){
-        return [2, selfSwitchId, value];
+      const value = ({
+        on: 0,
+        オン: 0,
+        true: 0,
+        1: 0,
+        off: 1,
+        オフ: 1,
+        false: 1,
+        0: 1
+      })[params[0].toLowerCase()]
+      if (value === 0 || value === 1) {
+        return [2, selfSwitchId, value]
       }
-      return [2, selfSwitchId, 0];
-    };
+      return [2, selfSwitchId, 0]
+    }
 
-    const getIfTimerParameters = function(params){
+    const getIfTimerParameters = function (params) {
       const condition = {
-        ">=": 0, "≧": 0,
-        "<=": 1, "≦": 1
-      }[params[0]] || 0;
-      const minute = Number(params[1]) || 0;
-      const second = Number(params[2]) || 0;
-      return [3, 60 * minute + second, condition];
-    };
+        '>=': 0,
+        '≧': 0,
+        '<=': 1,
+        '≦': 1
+      }[params[0]] || 0
+      const minute = Number(params[1]) || 0
+      const second = Number(params[2]) || 0
+      return [3, 60 * minute + second, condition]
+    }
 
-    const getIfActorParameters = function(actorId, params){
-      actorId = Math.max(Number(actorId) || 1, 1);
+    const getIfActorParameters = function (actorId, params) {
+      actorId = Math.max(Number(actorId) || 1, 1)
       const actor_mode = {
-        "in the party": 0, "パーティにいる": 0,
-        "name": 1, "名前": 1, "class": 2, "職業": 2,
-        "skill": 3, "スキル": 3, "weapon": 4, "武器": 4,
-        "armor": 5, "防具": 5, "state": 6, "ステート": 6
-      }[params[0].toLowerCase()] || 0;
-      if(actor_mode > 0){
-        if(actor_mode == 1){
-          return  [4, actorId, 1, params[1]];
-        }
-        else if(Number(params[1])){
-          return [4, actorId, actor_mode, Math.max(Number(params[1]), 1)];
+        'in the party': 0,
+        パーティにいる: 0,
+        name: 1,
+        名前: 1,
+        class: 2,
+        職業: 2,
+        skill: 3,
+        スキル: 3,
+        weapon: 4,
+        武器: 4,
+        armor: 5,
+        防具: 5,
+        state: 6,
+        ステート: 6
+      }[params[0].toLowerCase()] || 0
+      if (actor_mode > 0) {
+        if (actor_mode === 1) {
+          return [4, actorId, 1, params[1]]
+        } else if (Number(params[1])) {
+          return [4, actorId, actor_mode, Math.max(Number(params[1]), 1)]
         }
       }
-      return [4, actorId, 0];
-    };
+      return [4, actorId, 0]
+    }
 
-    const getIfEnemyParameters = function(enemyId, params){
-      enemyId = Math.max(Number(enemyId) || 1, 1) - 1;
-      const condition = (params[0] || "appeared").toLowerCase();
-      const state_id = Math.max(Number(params[1]) || 1, 1);
-      if(condition == "appeared" || condition == "出現している"){
-        return [5, enemyId, 0];
-      }else if(condition == "state" || condition == "ステート"){
-        return [5, enemyId, 1, state_id];
-      }else{
-        return [5, enemyId, 0];
+    const getIfEnemyParameters = function (enemyId, params) {
+      enemyId = Math.max(Number(enemyId) || 1, 1) - 1
+      const condition = (params[0] || 'appeared').toLowerCase()
+      const state_id = Math.max(Number(params[1]) || 1, 1)
+      if (condition === 'appeared' || condition === '出現している') {
+        return [5, enemyId, 0]
+      } else if (condition === 'state' || condition === 'ステート') {
+        return [5, enemyId, 1, state_id]
+      } else {
+        return [5, enemyId, 0]
       }
-    };
+    }
 
-    const getIfCharacterParameters = function(character, params){
+    const getIfCharacterParameters = function (character, params) {
       let characterId = {
-        "player": -1, "プレイヤー": -1,
-        "thisevent": 0, "このイベント": 0,
-      }[character.toLowerCase()];
-      if(typeof(characterId) == "undefined"){
-        characterId = Math.max(Number(character) || 0, -1);
+        player: -1,
+        プレイヤー: -1,
+        thisevent: 0,
+        このイベント: 0
+      }[character.toLowerCase()]
+      if (typeof (characterId) === 'undefined') {
+        characterId = Math.max(Number(character) || 0, -1)
       }
       const direction = {
-        "down": 2, "下": 2, "2": 2,
-        "left": 4, "左": 4, "4": 4,
-        "right": 6, "右": 6, "6": 6,
-        "up": 8, "上": 8, "8": 8
-      }[(params[0] || "").toLowerCase()] || 2;
-      return [6, characterId, direction];
-    };
+        down: 2,
+        下: 2,
+        2: 2,
+        left: 4,
+        左: 4,
+        4: 4,
+        right: 6,
+        右: 6,
+        6: 6,
+        up: 8,
+        上: 8,
+        8: 8
+      }[(params[0] || '').toLowerCase()] || 2
+      return [6, characterId, direction]
+    }
 
-    const getIfVehicleParameters = function(params){
+    const getIfVehicleParameters = function (params) {
       const vehicle = {
-        "boat": 0, "小型船": 0,
-        "ship": 1, "大型船": 1,
-        "airship": 2, "飛行船": 2
-      }[(params[0] || "").toLowerCase()] || 0
-      return [13, vehicle];
-    };
+        boat: 0,
+        小型船: 0,
+        ship: 1,
+        大型船: 1,
+        airship: 2,
+        飛行船: 2
+      }[(params[0] || '').toLowerCase()] || 0
+      return [13, vehicle]
+    }
 
-    const getIfGoldParameters = function(params){
+    const getIfGoldParameters = function (params) {
       const condition = {
-        ">=": 0, "≧": 0,
-        "<=": 1, "≦": 1,
-        "<": 2, "＜": 2
-      }[params[0]] || 0;
-      const gold = Number(params[1]) || 0;
-      return [7, gold, condition];
-    };
+        '>=': 0,
+        '≧': 0,
+        '<=': 1,
+        '≦': 1,
+        '<': 2,
+        '＜': 2
+      }[params[0]] || 0
+      const gold = Number(params[1]) || 0
+      return [7, gold, condition]
+    }
 
-    const getIfItemParameters = function(itemId){
-      itemId = Math.max(Number(itemId) || 1, 1);
-      return [8, itemId];
-    };
+    const getIfItemParameters = function (itemId) {
+      itemId = Math.max(Number(itemId) || 1, 1)
+      return [8, itemId]
+    }
 
-    const getIfWeaponParameters = function(weaponId, params){
-      weaponId = Math.max(Number(weaponId) || 1, 1);
-      let include_equipment = false;
-      if(params[0]) include_equipment = true;
-      return [9, weaponId, include_equipment];
-    };
+    const getIfWeaponParameters = function (weaponId, params) {
+      weaponId = Math.max(Number(weaponId) || 1, 1)
+      let include_equipment = false
+      if (params[0]) include_equipment = true
+      return [9, weaponId, include_equipment]
+    }
 
-    const getIfArmorParameters = function(armorId, params){
-      armorId = Math.max(Number(armorId) || 1, 1);
-      let include_equipment = false;
-      if(params[0]) include_equipment = true;
-      return [10, armorId, include_equipment];
-    };
+    const getIfArmorParameters = function (armorId, params) {
+      armorId = Math.max(Number(armorId) || 1, 1)
+      let include_equipment = false
+      if (params[0]) include_equipment = true
+      return [10, armorId, include_equipment]
+    }
 
-    const getIfButtonParameters = function(params){
-      let button = {
-        "ok": "ok", "決定": "ok",
-        "cancel": "cancel",  "キャンセル": "cancel",
-        "shift": "shift",  "シフト": "shift",
-        "down": "down",  "下": "down",
-        "left": "left", "左": "left",
-        "right": "right", "右": "right",
-        "up": "up", "上": "up",
-        "pageup": "pageup", "ページアップ": "pageup",
-        "pagedown": "pagedown", "ページダウン" : "pagedown"
-      }[(params[0] || "").toLowerCase()] || "ok";
-      let how = {
-        "is being pressed": 0, "が押されている": 0, "pressed": 0,
-        "is being triggered": 1, "がトリガーされている": 1, "triggered": 1,
-        "is being repeated": 2, "がリピートされている": 2, "repeated": 2
-      }[(params[1] || "").toLowerCase()] || 0;
-      return [11, button, how];
-    };
+    const getIfButtonParameters = function (params) {
+      const button = {
+        ok: 'ok',
+        決定: 'ok',
+        cancel: 'cancel',
+        キャンセル: 'cancel',
+        shift: 'shift',
+        シフト: 'shift',
+        down: 'down',
+        下: 'down',
+        left: 'left',
+        左: 'left',
+        right: 'right',
+        右: 'right',
+        up: 'up',
+        上: 'up',
+        pageup: 'pageup',
+        ページアップ: 'pageup',
+        pagedown: 'pagedown',
+        ページダウン: 'pagedown'
+      }[(params[0] || '').toLowerCase()] || 'ok'
+      const how = {
+        'is being pressed': 0,
+        が押されている: 0,
+        pressed: 0,
+        'is being triggered': 1,
+        がトリガーされている: 1,
+        triggered: 1,
+        'is being repeated': 2,
+        がリピートされている: 2,
+        repeated: 2
+      }[(params[1] || '').toLowerCase()] || 0
+      return [11, button, how]
+    }
 
-    const getIfScriptParameters = function(params){
-      return [12, params.join(",").trim()];
-    };
+    const getIfScriptParameters = function (params) {
+      return [12, params.join(',').trim()]
+    }
 
-    const getConditionalBranch = function(target, params){
-      let out = {"code": 111, "indent": 0, "parameters": [0, 1, 0]}; // default
-      let target_regexp = /([^[\]]+)(\[[\s\-a-zA-Z0-9\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf[\]]+\])*/i;
-      target = target.match(target_regexp);
-      let mode = target[1];
-      let mode_value = (target[2] || "").replace(/[[\]]/g, "");
-      switch(mode.toLowerCase()){
-        case "script":
-        case "スクリプト":
-        case "sc":
-          break;
+    const getConditionalBranch = function (target, params) {
+      const out = { code: 111, indent: 0, parameters: [0, 1, 0] } // default
+      const target_regexp = /([^[\]]+)(\[[\s\-a-zA-Z0-9\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf[\]]+\])*/i
+      target = target.match(target_regexp)
+      const mode = target[1]
+      const mode_value = (target[2] || '').replace(/[[\]]/g, '')
+      switch (mode.toLowerCase()) {
+        case 'script':
+        case 'スクリプト':
+        case 'sc':
+          break
         default:
-          params = params.map(s => s.trim());
-          break;
+          params = params.map(s => s.trim())
+          break
       }
-      switch(mode.toLowerCase()){
-        case "switches":
-        case "スイッチ":
-        case "sw":{
-          out.parameters = getIfSwitchParameters(mode_value, params);
-          break;
+      switch (mode.toLowerCase()) {
+        case 'switches':
+        case 'スイッチ':
+        case 'sw':{
+          out.parameters = getIfSwitchParameters(mode_value, params)
+          break
         }
-        case "variables":
-        case "変数":
-        case "v":{
-          out.parameters = getIfVariableParameters(mode_value, params);
-          break;
+        case 'variables':
+        case '変数':
+        case 'v':{
+          out.parameters = getIfVariableParameters(mode_value, params)
+          break
         }
-        case "selfswitches":
-        case "セルフスイッチ":
-        case "ssw":{
-          out.parameters = getIfSelfSwitchParameters(mode_value, params);
-          break;
+        case 'selfswitches':
+        case 'セルフスイッチ':
+        case 'ssw':{
+          out.parameters = getIfSelfSwitchParameters(mode_value, params)
+          break
         }
-        case "timer":
-        case "タイマー": {
-          out.parameters = getIfTimerParameters(params);
-          break;
+        case 'timer':
+        case 'タイマー': {
+          out.parameters = getIfTimerParameters(params)
+          break
         }
-        case "actors":
-        case "アクター": {
-          out.parameters = getIfActorParameters(mode_value, params);
-          break;
+        case 'actors':
+        case 'アクター': {
+          out.parameters = getIfActorParameters(mode_value, params)
+          break
         }
-        case "enemies":
-        case "敵キャラ":
-        case "エネミー": {
-          out.parameters = getIfEnemyParameters(mode_value, params);
-          break;
+        case 'enemies':
+        case '敵キャラ':
+        case 'エネミー': {
+          out.parameters = getIfEnemyParameters(mode_value, params)
+          break
         }
-        case "characters":
-        case "キャラクター": {
-          out.parameters = getIfCharacterParameters(mode_value, params);
-          break;
+        case 'characters':
+        case 'キャラクター': {
+          out.parameters = getIfCharacterParameters(mode_value, params)
+          break
         }
-        case "vehicle":
-        case "乗り物": {
-          out.parameters = getIfVehicleParameters(params);
-          break;
+        case 'vehicle':
+        case '乗り物': {
+          out.parameters = getIfVehicleParameters(params)
+          break
         }
-        case "gold":
-        case "お金": {
-          out.parameters = getIfGoldParameters(params);
-          break;
+        case 'gold':
+        case 'お金': {
+          out.parameters = getIfGoldParameters(params)
+          break
         }
-        case "items":
-        case "アイテム": {
-          out.parameters = getIfItemParameters(mode_value);
-          break;
+        case 'items':
+        case 'アイテム': {
+          out.parameters = getIfItemParameters(mode_value)
+          break
         }
-        case "weapons":
-        case "武器": {
-          out.parameters = getIfWeaponParameters(mode_value, params);
-          break;
+        case 'weapons':
+        case '武器': {
+          out.parameters = getIfWeaponParameters(mode_value, params)
+          break
         }
-        case "armors":
-        case "防具": {
-          out.parameters = getIfArmorParameters(mode_value, params);
-          break;
+        case 'armors':
+        case '防具': {
+          out.parameters = getIfArmorParameters(mode_value, params)
+          break
         }
-        case "button":
-        case "ボタン": {
-          out.parameters = getIfButtonParameters(params);
-          break;
+        case 'button':
+        case 'ボタン': {
+          out.parameters = getIfButtonParameters(params)
+          break
         }
-        case "script":
-        case "スクリプト":
-        case "sc": {
-          out.parameters = getIfScriptParameters(params);
-          break;
-        }
-      }
-      return out;
-    };
-
-    const getElse = function(){
-      return {"code": 411, "indent": 0, "parameters": []};
-    };
-
-    const getEnd = function(){
-      return {"code": 412, "indent": 0, "parameters": []};
-    };
-
-    const getLoop = function(){
-      return {"code": 112, "indent": 0, "parameters": []};
-    };
-
-    const getRepeatAbove = function(){
-      return {"code": 413, "indent": 0, "parameters": []};
-    };
-
-    const getBreakLoop = function(){
-      return {"code": 113, "indent": 0, "parameters": []};
-    };
-
-    const getBlockEnd = function(){
-      return {"code": 0, "indent": 0, "parameters": []};
-    };
-
-    const getExitEventProcessing = function(){
-      return {"code": 115, "indent": 0, "parameters": []};
-    };
-
-    const getLabel = function(name){
-      return {"code": 118, "indent": 0, "parameters": [name]};
-    };
-
-    const getJumpToLabel = function(name){
-      return {"code": 119, "indent": 0, "parameters": [name]};
-    };
-
-    const getInputNumber = function(val_num, num_of_digits){
-      return {"code": 103, "indent": 0, "parameters": [val_num, num_of_digits]};
-    };
-
-    const getSelectItem = function(val_num, item_type){
-      let item_type_num = 1;
-      switch(item_type.trim().toLowerCase()){
-        case "Regular Item".toLowerCase():
-        case "通常アイテム".toLowerCase():{
-          item_type_num = 1;
-          break;
-        }
-        case "Key Item".toLowerCase():
-        case "大事なもの".toLowerCase():{
-          item_type_num = 2;
-          break;
-        }
-        case "Hidden Item A".toLowerCase():
-        case "隠しアイテムA".toLowerCase():{
-          item_type_num = 3;
-          break;
-        }
-        case "Hidden Item B".toLowerCase():
-        case "隠しアイテムB".toLowerCase():{
-          item_type_num = 4;
-          break;
+        case 'script':
+        case 'スクリプト':
+        case 'sc': {
+          out.parameters = getIfScriptParameters(params)
+          break
         }
       }
-      return {"code": 104, "indent": 0, "parameters": [val_num, item_type_num]};
-    };
+      return out
+    }
 
-    const getShowChoices = function(window_type, window_position, default_choice, default_cancel){
-      return {"code": 102, "indent": 0, "parameters": [[], default_cancel, default_choice, window_position, window_type]};
-    };
+    const getElse = function () {
+      return { code: 411, indent: 0, parameters: [] }
+    }
 
-    const getShowChoiceWhen = function(index, text){
-      return {"code": 402, "indent": 0, "parameters": [index, text]};
-    };
+    const getEnd = function () {
+      return { code: 412, indent: 0, parameters: [] }
+    }
 
-    const getShowChoiceWhenCancel = function(){
-      return {"code": 403, "indent": 0, "parameters": [6, null]};
-    };
+    const getLoop = function () {
+      return { code: 112, indent: 0, parameters: [] }
+    }
 
-    const getShowChoiceEnd = function(){
-      return {"code": 404, "indent": 0, "parameters": []};
-    };
+    const getRepeatAbove = function () {
+      return { code: 413, indent: 0, parameters: [] }
+    }
 
-    const completeLackedBottomEvent = function(events){
-      const BOTTOM_CODE = 0;
-      const IF_CODE = 111;
-      const ELSE_CODE = 411;
-      const LOOP_CODE = 112;
+    const getBreakLoop = function () {
+      return { code: 113, indent: 0, parameters: [] }
+    }
+
+    const getBlockEnd = function () {
+      return { code: 0, indent: 0, parameters: [] }
+    }
+
+    const getExitEventProcessing = function () {
+      return { code: 115, indent: 0, parameters: [] }
+    }
+
+    const getLabel = function (name) {
+      return { code: 118, indent: 0, parameters: [name] }
+    }
+
+    const getJumpToLabel = function (name) {
+      return { code: 119, indent: 0, parameters: [name] }
+    }
+
+    const getInputNumber = function (val_num, num_of_digits) {
+      return { code: 103, indent: 0, parameters: [val_num, num_of_digits] }
+    }
+
+    const getSelectItem = function (val_num, item_type) {
+      let item_type_num = 1
+      switch (item_type.trim().toLowerCase()) {
+        case 'Regular Item'.toLowerCase():
+        case '通常アイテム'.toLowerCase():{
+          item_type_num = 1
+          break
+        }
+        case 'Key Item'.toLowerCase():
+        case '大事なもの'.toLowerCase():{
+          item_type_num = 2
+          break
+        }
+        case 'Hidden Item A'.toLowerCase():
+        case '隠しアイテムA'.toLowerCase():{
+          item_type_num = 3
+          break
+        }
+        case 'Hidden Item B'.toLowerCase():
+        case '隠しアイテムB'.toLowerCase():{
+          item_type_num = 4
+          break
+        }
+      }
+      return { code: 104, indent: 0, parameters: [val_num, item_type_num] }
+    }
+
+    const getShowChoices = function (window_type, window_position, default_choice, default_cancel) {
+      return { code: 102, indent: 0, parameters: [[], default_cancel, default_choice, window_position, window_type] }
+    }
+
+    const getShowChoiceWhen = function (index, text) {
+      return { code: 402, indent: 0, parameters: [index, text] }
+    }
+
+    const getShowChoiceWhenCancel = function () {
+      return { code: 403, indent: 0, parameters: [6, null] }
+    }
+
+    const getShowChoiceEnd = function () {
+      return { code: 404, indent: 0, parameters: [] }
+    }
+
+    const completeLackedBottomEvent = function (events) {
+      const BOTTOM_CODE = 0
+      const IF_CODE = 111
+      const ELSE_CODE = 411
+      const LOOP_CODE = 112
 
       const stack = events.reduce((s, e) => {
-        const code = e.code;
-        if(code == IF_CODE) s.push(IF_CODE);
-        else if(code == ELSE_CODE) s.push(ELSE_CODE);
-        else if(code == BOTTOM_CODE) s.pop();
-        return s;
-      }, []);
+        const code = e.code
+        if (code === IF_CODE) s.push(IF_CODE)
+        else if (code === ELSE_CODE) s.push(ELSE_CODE)
+        else if (code === BOTTOM_CODE) s.pop()
+        return s
+      }, [])
 
       const bottom = stack.reduce((b, code) => {
-        b.push(getCommandBottomEvent());
-        if(code == IF_CODE) b.push(getEnd());
-        else if(code == ELSE_CODE) b.push(getEnd());
-        else if(code == LOOP_CODE) b.push(getRepeatAbove());
-        return b;
-      }, []);
+        b.push(getCommandBottomEvent())
+        if (code === IF_CODE) b.push(getEnd())
+        else if (code === ELSE_CODE) b.push(getEnd())
+        else if (code === LOOP_CODE) b.push(getRepeatAbove())
+        return b
+      }, [])
 
-      return events.concat(bottom);
-    };
+      return events.concat(bottom)
+    }
 
-    const _getEvents = function(text, frame_param, block_stack){
-      let face = text.match(/<face *: *(.+?)>/i)
-        || text.match(/<FC *: *(.+?)>/i)
-        || text.match(/<顔 *: *(.+?)>/i);
-      let window_position = text.match(/<windowposition *: *(.+?)>/i)
-        || text.match(/<WP *: *(.+?)>/i)
-        || text.match(/<位置 *: *(.+?)>/i);
-      let background = text.match(/<background *: *(.+?)>/i)
-        || text.match(/<BG *: *(.+?)>/i)
-        || text.match(/<背景 *: *(.+?)>/i);
-       let namebox = text.match(/<name *: ?(.+?)>/i)
-        || text.match(/<NM *: ?(.+?)>/i)
-        || text.match(/<名前 *: ?(.+?)>/i);
-      let plugin_command = text.match(/<plugincommand *: *(.+?)>/i)
-        || text.match(/<PC *: *(.+?)>/i)
-        || text.match(/<プラグインコマンド *: *(.+?)>/i);
-      let plugin_command_mz = text.match(/<plugincommandmz\s*:\s*([^\s].*)>/i)
-        || text.match(/<PCZ\s*:\s*([^\s].*)>/i)
-        || text.match(/<プラグインコマンドmz\s*:\s*([^\s].*)>/i);
-      let common_event = text.match(/<commonevent *: *(.+?)>/i)
-        || text.match(/<CE *: *(.+?)>/i)
-        || text.match(/<コモンイベント *: *(.+?)>/i);
-      let wait = text.match(/<wait *: *(.+?)>/i)
-        || text.match(/<ウェイト *: *(.+?)>/i);
-      let fadein = text.match(/<fadein>/i)
-        || text.match(/<FI>/i)
-        || text.match(/<フェードイン>/i);
-      let fadeout = text.match(/<fadeout>/i)
-        || text.match(/<FO>/i)
-        || text.match(/<フェードアウト>/i);
-      let play_bgm = text.match(/<playbgm *: *([^ ].+)>/i)
-        || text.match(/<BGMの演奏 *: *([^ ].+)>/);
-      let stop_bgm = text.match(/<stopbgm>/i)
-        || text.match(/<playbgm *: *none>/i)
-        || text.match(/<playbgm *: *なし>/i)
-        || text.match(/<BGMの停止>/);
-      let fadeout_bgm = text.match(/<fadeoutbgm *: *(.+?)>/i)
-        || text.match(/<BGMのフェードアウト *: *(.+?)>/);
-      let save_bgm = text.match(/<savebgm>/i)
-        || text.match(/<BGMの保存>/);
-      let replay_bgm = text.match(/<replaybgm>/i)
-        || text.match(/<BGMの再開>/);
-      let change_battle_bgm = text.match(/<changebattlebgm *: *([^ ].+)>/i)
-        || text.match(/<戦闘曲の変更 *: *([^ ].+)>/);
-      let play_bgs = text.match(/<playbgs *: *([^ ].+)>/i)
-        || text.match(/<BGSの演奏 *: *([^ ].+)>/);
-      let stop_bgs = text.match(/<stopbgs>/i)
-        || text.match(/<playbgs *: *none>/i)
-        || text.match(/<playbgs *: *なし>/i)
-        || text.match(/<BGSの停止>/);
-      let fadeout_bgs = text.match(/<fadeoutbgs *: *(.+?)>/i)
-        || text.match(/<BGSのフェードアウト *: *(.+?)>/);
-      let play_se = text.match(/<playse *: *([^ ].+)>/i)
-        || text.match(/<SEの演奏 *: *([^ ].+)>/);
-      let stop_se = text.match(/<stopse>/i)
-        || text.match(/<SEの停止>/);
-      let play_me = text.match(/<playme *: *([^ ].+)>/i)
-        || text.match(/<MEの演奏 *: *([^ ].+)>/);
-      let stop_me = text.match(/<stopme>/i)
-        || text.match(/<playme *: *none>/i)
-        || text.match(/<playme *: *なし>/i)
-        || text.match(/<MEの停止>/);
-      let show_picture = text.match(/<showpicture\s*:\s*([^\s].*)>/i)
-        || text.match(/<ピクチャの表示\s*:\s*([^\s].+)>/i)
-        || text.match(/<SP\s*:\s*([^\s].+)>/i);
-      let move_picture = text.match(/<movepicture\s*:\s*([^\s].*)>/i)
-        || text.match(/<ピクチャの移動\s*:\s*([^\s].*)>/i)
-        || text.match(/<MP\s*:\s*([^\s].*)>/i);
-      let rotate_picture = text.match(/<rotatepicture\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
-        || text.match(/<ピクチャの回転\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
-        || text.match(/<RP\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i);
-      let tint_picture = text.match(/<tintpicture\s*:\s*([^\s].*)>/i)
-        || text.match(/<ピクチャの色調変更\s*:\s*([^\s].*)>/i)
-        || text.match(/<TP\s*:\s*([^\s].*)>/i);
-      let erase_picture = text.match(/<erasepicture\s*:\s*(\d{1,2})\s*>/i)
-        || text.match(/<ピクチャの消去\s*:\s*(\d{1,2})\s*>/i)
-        || text.match(/<ep\s*:\s*(\d{1,2})\s*>/i);
-      let conditional_branch_if = text.match(/\s*<if\s*:\s*([^\s].*)>/i)
-        || text.match(/\s*<条件分岐\s*:\s*([^\s].*)>/i);
-      let conditional_branch_else = text.match(/\s*<else>/i)
-        || text.match(/\s*<それ以外のとき>/);
-      let conditional_branch_end = text.match(/\s*<end>/i)
-        || text.match(/\s*<分岐終了>/);
-      let loop = text.match(/\s*<loop>/i)
-        || text.match(/\s*<ループ>/);
-      let repeat_above = text.match(/<repeatabove>/i)
-        || text.match(/\s*<以上繰り返し>/)
-        || text.match(/\s*<ra>/i);
-      let break_loop = text.match(/<breakloop>/i)
-        || text.match(/<ループの中断>/)
-        || text.match(/<BL>/i);
-      let exit_event_processing = text.match(/<ExitEventProcessing>/i)
-        || text.match(/<イベント処理の中断>/)
-        || text.match(/<EEP>/i);
-      let label = text.match(/<label\s*:\s*(\S+)\s*>/i)
-        || text.match(/<ラベル\s*:\s*(\S+)\s*>/i);
-      let jump_to_label = text.match(/<jumptolabel\s*:\s*(\S+)\s*>/i)
-        || text.match(/<ラベルジャンプ\s*:\s*(\S+)\s*>/)
-        || text.match(/<jtl\s*:\s*(\S+)\s*>/i);
-      let input_number = text.match(/<InputNumber\s*:\s*(\d+),\s*(\d+)>/i)
-        || text.match(/<INN\s*:\s*(\d+),\s*(\d+)>/i)
-        || text.match(/<数値入力の処理\s*:\s*(\d+),\s*(\d+)>/i);
-      let select_item = text.match(/<SelectItem\s*:\s*(\d+),\s*([\s\S]+)\s*>/i)
-        || text.match(/<SI\s*:\s*(\d+),\s*([\s\S]+)\s*>/i)
-        || text.match(/<アイテム選択の処理\s*:\s*(\d+),\s*([\s\S]+)\s*>/i);
-      let show_choices = text.match(/<ShowChoices\s*:*\s*([\s\S]*)>/i)
-        || text.match(/<SHC\s*:*\s*([\s\S]*)>/i)
-        || text.match(/<選択肢の表示\s*:*\s*([\s\S]*)>/i);
-      let show_choice_when = text.match(/<When\s*:\s*([\s\S]+)>/i) || text.match(/<選択肢\s*:\s*([\s\S]+)>/i);
-      let show_choice_when_cancel = text.match(/<WhenCancel>/i) || text.match(/<キャンセルのとき>/i);
+    const _getEvents = function (text, frame_param, block_stack) {
+      const face = text.match(/<face *: *(.+?)>/i) ||
+        text.match(/<FC *: *(.+?)>/i) ||
+        text.match(/<顔 *: *(.+?)>/i)
+      const window_position = text.match(/<windowposition *: *(.+?)>/i) ||
+        text.match(/<WP *: *(.+?)>/i) ||
+        text.match(/<位置 *: *(.+?)>/i)
+      const background = text.match(/<background *: *(.+?)>/i) ||
+        text.match(/<BG *: *(.+?)>/i) ||
+        text.match(/<背景 *: *(.+?)>/i)
+      const namebox = text.match(/<name *: ?(.+?)>/i) ||
+        text.match(/<NM *: ?(.+?)>/i) ||
+        text.match(/<名前 *: ?(.+?)>/i)
+      const plugin_command = text.match(/<plugincommand *: *(.+?)>/i) ||
+        text.match(/<PC *: *(.+?)>/i) ||
+        text.match(/<プラグインコマンド *: *(.+?)>/i)
+      const plugin_command_mz = text.match(/<plugincommandmz\s*:\s*([^\s].*)>/i) ||
+        text.match(/<PCZ\s*:\s*([^\s].*)>/i) ||
+        text.match(/<プラグインコマンドmz\s*:\s*([^\s].*)>/i)
+      const common_event = text.match(/<commonevent *: *(.+?)>/i) ||
+        text.match(/<CE *: *(.+?)>/i) ||
+        text.match(/<コモンイベント *: *(.+?)>/i)
+      const wait = text.match(/<wait *: *(.+?)>/i) ||
+        text.match(/<ウェイト *: *(.+?)>/i)
+      const fadein = text.match(/<fadein>/i) ||
+        text.match(/<FI>/i) ||
+        text.match(/<フェードイン>/i)
+      const fadeout = text.match(/<fadeout>/i) ||
+        text.match(/<FO>/i) ||
+        text.match(/<フェードアウト>/i)
+      const play_bgm = text.match(/<playbgm *: *([^ ].+)>/i) ||
+        text.match(/<BGMの演奏 *: *([^ ].+)>/)
+      const stop_bgm = text.match(/<stopbgm>/i) ||
+        text.match(/<playbgm *: *none>/i) ||
+        text.match(/<playbgm *: *なし>/i) ||
+        text.match(/<BGMの停止>/)
+      const fadeout_bgm = text.match(/<fadeoutbgm *: *(.+?)>/i) ||
+        text.match(/<BGMのフェードアウト *: *(.+?)>/)
+      const save_bgm = text.match(/<savebgm>/i) ||
+        text.match(/<BGMの保存>/)
+      const replay_bgm = text.match(/<replaybgm>/i) ||
+        text.match(/<BGMの再開>/)
+      const change_battle_bgm = text.match(/<changebattlebgm *: *([^ ].+)>/i) ||
+        text.match(/<戦闘曲の変更 *: *([^ ].+)>/)
+      const play_bgs = text.match(/<playbgs *: *([^ ].+)>/i) ||
+        text.match(/<BGSの演奏 *: *([^ ].+)>/)
+      const stop_bgs = text.match(/<stopbgs>/i) ||
+        text.match(/<playbgs *: *none>/i) ||
+        text.match(/<playbgs *: *なし>/i) ||
+        text.match(/<BGSの停止>/)
+      const fadeout_bgs = text.match(/<fadeoutbgs *: *(.+?)>/i) ||
+        text.match(/<BGSのフェードアウト *: *(.+?)>/)
+      const play_se = text.match(/<playse *: *([^ ].+)>/i) ||
+        text.match(/<SEの演奏 *: *([^ ].+)>/)
+      const stop_se = text.match(/<stopse>/i) ||
+        text.match(/<SEの停止>/)
+      const play_me = text.match(/<playme *: *([^ ].+)>/i) ||
+        text.match(/<MEの演奏 *: *([^ ].+)>/)
+      const stop_me = text.match(/<stopme>/i) ||
+        text.match(/<playme *: *none>/i) ||
+        text.match(/<playme *: *なし>/i) ||
+        text.match(/<MEの停止>/)
+      const show_picture = text.match(/<showpicture\s*:\s*([^\s].*)>/i) ||
+        text.match(/<ピクチャの表示\s*:\s*([^\s].+)>/i) ||
+        text.match(/<SP\s*:\s*([^\s].+)>/i)
+      const move_picture = text.match(/<movepicture\s*:\s*([^\s].*)>/i) ||
+        text.match(/<ピクチャの移動\s*:\s*([^\s].*)>/i) ||
+        text.match(/<MP\s*:\s*([^\s].*)>/i)
+      const rotate_picture = text.match(/<rotatepicture\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i) ||
+        text.match(/<ピクチャの回転\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i) ||
+        text.match(/<RP\s*:\s*(\d{1,2})\s*,\s*(-?\d{1,2})\s*>/i)
+      const tint_picture = text.match(/<tintpicture\s*:\s*([^\s].*)>/i) ||
+        text.match(/<ピクチャの色調変更\s*:\s*([^\s].*)>/i) ||
+        text.match(/<TP\s*:\s*([^\s].*)>/i)
+      const erase_picture = text.match(/<erasepicture\s*:\s*(\d{1,2})\s*>/i) ||
+        text.match(/<ピクチャの消去\s*:\s*(\d{1,2})\s*>/i) ||
+        text.match(/<ep\s*:\s*(\d{1,2})\s*>/i)
+      const conditional_branch_if = text.match(/\s*<if\s*:\s*([^\s].*)>/i) ||
+        text.match(/\s*<条件分岐\s*:\s*([^\s].*)>/i)
+      const conditional_branch_else = text.match(/\s*<else>/i) ||
+        text.match(/\s*<それ以外のとき>/)
+      const conditional_branch_end = text.match(/\s*<end>/i) ||
+        text.match(/\s*<分岐終了>/)
+      const loop = text.match(/\s*<loop>/i) ||
+        text.match(/\s*<ループ>/)
+      const repeat_above = text.match(/<repeatabove>/i) ||
+        text.match(/\s*<以上繰り返し>/) ||
+        text.match(/\s*<ra>/i)
+      const break_loop = text.match(/<breakloop>/i) ||
+        text.match(/<ループの中断>/) ||
+        text.match(/<BL>/i)
+      const exit_event_processing = text.match(/<ExitEventProcessing>/i) ||
+        text.match(/<イベント処理の中断>/) ||
+        text.match(/<EEP>/i)
+      const label = text.match(/<label\s*:\s*(\S+)\s*>/i) ||
+        text.match(/<ラベル\s*:\s*(\S+)\s*>/i)
+      const jump_to_label = text.match(/<jumptolabel\s*:\s*(\S+)\s*>/i) ||
+        text.match(/<ラベルジャンプ\s*:\s*(\S+)\s*>/) ||
+        text.match(/<jtl\s*:\s*(\S+)\s*>/i)
+      const input_number = text.match(/<InputNumber\s*:\s*(\d+),\s*(\d+)>/i) ||
+        text.match(/<INN\s*:\s*(\d+),\s*(\d+)>/i) ||
+        text.match(/<数値入力の処理\s*:\s*(\d+),\s*(\d+)>/i)
+      const select_item = text.match(/<SelectItem\s*:\s*(\d+),\s*([\s\S]+)\s*>/i) ||
+        text.match(/<SI\s*:\s*(\d+),\s*([\s\S]+)\s*>/i) ||
+        text.match(/<アイテム選択の処理\s*:\s*(\d+),\s*([\s\S]+)\s*>/i)
+      const show_choices = text.match(/<ShowChoices\s*:*\s*([\s\S]*)>/i) ||
+        text.match(/<SHC\s*:*\s*([\s\S]*)>/i) ||
+        text.match(/<選択肢の表示\s*:*\s*([\s\S]*)>/i)
+      const show_choice_when = text.match(/<When\s*:\s*([\s\S]+)>/i) || text.match(/<選択肢\s*:\s*([\s\S]+)>/i)
+      const show_choice_when_cancel = text.match(/<WhenCancel>/i) || text.match(/<キャンセルのとき>/i)
 
-      const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i);
-      const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i);
-      const scrolling_block = text.match(/#SCROLLING_BLOCK[0-9]+#/i);
+      const script_block = text.match(/#SCRIPT_BLOCK[0-9]+#/i)
+      const comment_block = text.match(/#COMMENT_BLOCK[0-9]+#/i)
+      const scrolling_block = text.match(/#SCROLLING_BLOCK[0-9]+#/i)
 
       // Script Block
-      if(script_block){
-        const block_tag = script_block[0];
-        return block_map[block_tag];
+      if (script_block) {
+        const block_tag = script_block[0]
+        return block_map[block_tag]
       }
 
       // Comment Block
-      if(comment_block){
-        const block_tag = comment_block[0];
-        return block_map[block_tag];
+      if (comment_block) {
+        const block_tag = comment_block[0]
+        return block_map[block_tag]
       }
 
       // Scrolling Block
-      if(scrolling_block){
-        const block_tag = scrolling_block[0];
-        return block_map[block_tag];
+      if (scrolling_block) {
+        const block_tag = scrolling_block[0]
+        return block_map[block_tag]
       }
 
       // Plugin Command
-      if(plugin_command){
-        return [getPluginCommandEvent(plugin_command[1])];
+      if (plugin_command) {
+        return [getPluginCommandEvent(plugin_command[1])]
       }
 
       // Plugin Command MZ
-      if(plugin_command_mz){
-        let params = plugin_command_mz[1].split(',').map(s => s.trim());
-        let event_command_list = [];
-        if(params.length > 2){
-          let arg_plugin_name = params[0];
-          let arg_plugin_command = params[1];
-          let arg_disp_plugin_command = params[2];
-          let pcz_args = params.slice(3);
-          let pcemz = getPluginCommandEventMZ(
+      if (plugin_command_mz) {
+        const params = plugin_command_mz[1].split(',').map(s => s.trim())
+        const event_command_list = []
+        if (params.length > 2) {
+          const arg_plugin_name = params[0]
+          const arg_plugin_command = params[1]
+          const arg_disp_plugin_command = params[2]
+          const pcz_args = params.slice(3)
+          const pcemz = getPluginCommandEventMZ(
             arg_plugin_name,
             arg_plugin_command,
             arg_disp_plugin_command,
             pcz_args
-          );
-          event_command_list.push(pcemz);
+          )
+          event_command_list.push(pcemz)
           pcz_args.map(arg => event_command_list.push(getPluginCommandMzParamsComment(arg)))
-        }else{
-          throw new Error('Syntax error. / 文法エラーです。'
-                          + text.replace(/</g, '  ').replace(/>/g, '  '));
+        } else {
+          throw new Error('Syntax error. / 文法エラーです。' +
+                          text.replace(/</g, '  ').replace(/>/g, '  '))
         }
-        return event_command_list;
+        return event_command_list
       }
 
       // Common Event
-      if(common_event){
-        let event_num = Number(common_event[1]);
-        if(event_num){
-          return [getCommonEventEvent(event_num)];
-        }else{
-          throw new Error('Syntax error. / 文法エラーです。'
-            + common_event[1] + ' is not number. / '
-            + common_event[1] + 'は整数ではありません');
+      if (common_event) {
+        const event_num = Number(common_event[1])
+        if (event_num) {
+          return [getCommonEventEvent(event_num)]
+        } else {
+          throw new Error('Syntax error. / 文法エラーです。' +
+            common_event[1] + ' is not number. / ' +
+            common_event[1] + 'は整数ではありません')
         }
       }
 
       // Wait
-      if(wait){
-        let wait_num = Number(wait[1]);
-        if(wait_num){
-          return [getWaitEvent(wait_num)];
-        }else{
-          throw new Error('Syntax error. / 文法エラーです。'
-            + common_event[1] + ' is not number. / '
-            + common_event[1] + 'は整数ではありません');
+      if (wait) {
+        const wait_num = Number(wait[1])
+        if (wait_num) {
+          return [getWaitEvent(wait_num)]
+        } else {
+          throw new Error('Syntax error. / 文法エラーです。' +
+            common_event[1] + ' is not number. / ' +
+            common_event[1] + 'は整数ではありません')
         }
       }
 
       // Fadein
-      if(fadein){
-        return [getFadeinEvent()];
+      if (fadein) {
+        return [getFadeinEvent()]
       }
 
       // Fadeout
-      if(fadeout){
-        return [getFadeoutEvent()];
+      if (fadeout) {
+        return [getFadeoutEvent()]
       }
 
       // Stop BGM
-      if(stop_bgm){
-        return [getStopBgmEvent(90, 100, 0)];
+      if (stop_bgm) {
+        return [getStopBgmEvent(90, 100, 0)]
       }
 
       // Play BGM
-      if(play_bgm){
-        if(play_bgm[1]){
-          let params = play_bgm[1].replace(/ /g, '').split(',');
-          let name = "Battle1";
-          let volume = 90;
-          let pitch = 100;
-          let pan = 0;
-          if(params[0]){
-            name = params[0];
+      if (play_bgm) {
+        if (play_bgm[1]) {
+          const params = play_bgm[1].replace(/ /g, '').split(',')
+          let name = 'Battle1'
+          let volume = 90
+          let pitch = 100
+          let pan = 0
+          if (params[0]) {
+            name = params[0]
           }
-          if(Number(params[1]) || Number(params[1]) == 0){
-            volume = Number(params[1]);
+          if (Number(params[1]) || Number(params[1]) === 0) {
+            volume = Number(params[1])
           }
-          if(Number(params[2]) || Number(params[2]) == 0){
-            pitch = Number(params[2]);
+          if (Number(params[2]) || Number(params[2]) === 0) {
+            pitch = Number(params[2])
           }
-          if(Number(params[3]) || Number(params[3]) == 0){
-            pan = Number(params[3]);
+          if (Number(params[3]) || Number(params[3]) === 0) {
+            pan = Number(params[3])
           }
-          if(name.toUpperCase() === "NONE" || name === "なし"){
-            return [getPlayBgmEvent("", volume, pitch, pan)];
-          }else{
-            return [getPlayBgmEvent(name, volume, pitch, pan)];
+          if (name.toUpperCase() === 'NONE' || name === 'なし') {
+            return [getPlayBgmEvent('', volume, pitch, pan)]
+          } else {
+            return [getPlayBgmEvent(name, volume, pitch, pan)]
           }
         }
       }
 
       // Fadeout BGM
-      if(fadeout_bgm){
-        if(fadeout_bgm[1]){
-          let duration = 10;
-          let d = fadeout_bgm[1].replace(/ /g, '');
-          if(Number(d) || Number(d) == 0){
-            duration = Number(d);
+      if (fadeout_bgm) {
+        if (fadeout_bgm[1]) {
+          let duration = 10
+          const d = fadeout_bgm[1].replace(/ /g, '')
+          if (Number(d) || Number(d) === 0) {
+            duration = Number(d)
           }
-          return [getFadeoutBgmEvent(duration)];
+          return [getFadeoutBgmEvent(duration)]
         }
       }
 
       // Save BGM
-      if(save_bgm){
-        return [getSaveBgmEvent()];
+      if (save_bgm) {
+        return [getSaveBgmEvent()]
       }
 
       // Replay BGM
-      if(replay_bgm){
-        return [getReplayBgmEvent()];
+      if (replay_bgm) {
+        return [getReplayBgmEvent()]
       }
 
       // Change Battle BGM
-      if(change_battle_bgm){
-        if(change_battle_bgm[1]){
-          let params = change_battle_bgm[1].replace(/ /g, '').split(',');
-          let name = "Battle1";
-          let volume = 90;
-          let pitch = 100;
-          let pan = 0;
-          if(params[0]){
-            name = params[0];
+      if (change_battle_bgm) {
+        if (change_battle_bgm[1]) {
+          const params = change_battle_bgm[1].replace(/ /g, '').split(',')
+          let name = 'Battle1'
+          let volume = 90
+          let pitch = 100
+          let pan = 0
+          if (params[0]) {
+            name = params[0]
           }
-          if(Number(params[1]) || Number(params[1]) == 0){
-            volume = Number(params[1]);
+          if (Number(params[1]) || Number(params[1]) === 0) {
+            volume = Number(params[1])
           }
-          if(Number(params[2]) || Number(params[2]) == 0){
-            pitch = Number(params[2]);
+          if (Number(params[2]) || Number(params[2]) === 0) {
+            pitch = Number(params[2])
           }
-          if(Number(params[3]) || Number(params[3]) == 0){
-            pan = Number(params[3]);
+          if (Number(params[3]) || Number(params[3]) === 0) {
+            pan = Number(params[3])
           }
-          if(name.toUpperCase() === "NONE" || name === "なし"){
-            return [getChangeBattleBgmEvent("", volume, pitch, pan)];
-          }else{
-            return [getChangeBattleBgmEvent(name, volume, pitch, pan)];
+          if (name.toUpperCase() === 'NONE' || name === 'なし') {
+            return [getChangeBattleBgmEvent('', volume, pitch, pan)]
+          } else {
+            return [getChangeBattleBgmEvent(name, volume, pitch, pan)]
           }
         }
       }
 
       // Stop BGS
-      if(stop_bgs){
-        return [getStopBgsEvent(90, 100, 0)];
+      if (stop_bgs) {
+        return [getStopBgsEvent(90, 100, 0)]
       }
 
       // Play BGS
-      if(play_bgs){
-        if(play_bgs[1]){
-          let params = play_bgs[1].replace(/ /g, '').split(',');
-          let name = "City";
-          let volume = 90;
-          let pitch = 100;
-          let pan = 0;
-          if(params[0]){
-            name = params[0];
+      if (play_bgs) {
+        if (play_bgs[1]) {
+          const params = play_bgs[1].replace(/ /g, '').split(',')
+          let name = 'City'
+          let volume = 90
+          let pitch = 100
+          let pan = 0
+          if (params[0]) {
+            name = params[0]
           }
-          if(Number(params[1]) || Number(params[1]) == 0){
-            volume = Number(params[1]);
+          if (Number(params[1]) || Number(params[1]) === 0) {
+            volume = Number(params[1])
           }
-          if(Number(params[2]) || Number(params[2]) == 0){
-            pitch = Number(params[2]);
+          if (Number(params[2]) || Number(params[2]) === 0) {
+            pitch = Number(params[2])
           }
-          if(Number(params[3]) || Number(params[3]) == 0){
-            pan = Number(params[3]);
+          if (Number(params[3]) || Number(params[3]) === 0) {
+            pan = Number(params[3])
           }
-          if(name.toUpperCase() === "NONE" || name === "なし"){
-            return [getPlayBgsEvent("", volume, pitch, pan)];
-          }else{
-            return [getPlayBgsEvent(name, volume, pitch, pan)];
+          if (name.toUpperCase() === 'NONE' || name === 'なし') {
+            return [getPlayBgsEvent('', volume, pitch, pan)]
+          } else {
+            return [getPlayBgsEvent(name, volume, pitch, pan)]
           }
         }
       }
 
       // Fadeout BGS
-      if(fadeout_bgs){
-        if(fadeout_bgs[1]){
-          let duration = 10;
-          let d = fadeout_bgs[1].replace(/ /g, '');
-          if(Number(d) || Number(d) == 0){
-            duration = Number(d);
+      if (fadeout_bgs) {
+        if (fadeout_bgs[1]) {
+          let duration = 10
+          const d = fadeout_bgs[1].replace(/ /g, '')
+          if (Number(d) || Number(d) === 0) {
+            duration = Number(d)
           }
-          return [getFadeoutBgsEvent(duration)];
+          return [getFadeoutBgsEvent(duration)]
         }
       }
 
       // Play SE
-      if(play_se){
-        if(play_se[1]){
-          let params = play_se[1].replace(/ /g, '').split(',');
-          let name = "Attack1";
-          let volume = 90;
-          let pitch = 100;
-          let pan = 0;
-          if(params[0]){
-            name = params[0];
+      if (play_se) {
+        if (play_se[1]) {
+          const params = play_se[1].replace(/ /g, '').split(',')
+          let name = 'Attack1'
+          let volume = 90
+          let pitch = 100
+          let pan = 0
+          if (params[0]) {
+            name = params[0]
           }
-          if(Number(params[1]) || Number(params[1]) == 0){
-            volume = Number(params[1]);
+          if (Number(params[1]) || Number(params[1]) === 0) {
+            volume = Number(params[1])
           }
-          if(Number(params[2]) || Number(params[2]) == 0){
-            pitch = Number(params[2]);
+          if (Number(params[2]) || Number(params[2]) === 0) {
+            pitch = Number(params[2])
           }
-          if(Number(params[3]) || Number(params[3]) == 0){
-            pan = Number(params[3]);
+          if (Number(params[3]) || Number(params[3]) === 0) {
+            pan = Number(params[3])
           }
-          if(name.toUpperCase() === "NONE" || name === "なし"){
-            return [getPlaySeEvent("", volume, pitch, pan)];
-          }else{
-            return [getPlaySeEvent(name, volume, pitch, pan)];
+          if (name.toUpperCase() === 'NONE' || name === 'なし') {
+            return [getPlaySeEvent('', volume, pitch, pan)]
+          } else {
+            return [getPlaySeEvent(name, volume, pitch, pan)]
           }
         }
       }
 
       // Stop SE
-      if(stop_se){
-        return [getStopSeEvent()];
+      if (stop_se) {
+        return [getStopSeEvent()]
       }
 
       // Stop ME
-      if(stop_me){
-        return [getStopMeEvent(90, 100, 0)];
+      if (stop_me) {
+        return [getStopMeEvent(90, 100, 0)]
       }
 
       // Play ME
-      if(play_me){
-        if(play_me[1]){
-          let params = play_me[1].replace(/ /g, '').split(',');
-          let name = "Curse1";
-          let volume = 90;
-          let pitch = 100;
-          let pan = 0;
-          if(params[0]){
-            name = params[0];
+      if (play_me) {
+        if (play_me[1]) {
+          const params = play_me[1].replace(/ /g, '').split(',')
+          let name = 'Curse1'
+          let volume = 90
+          let pitch = 100
+          let pan = 0
+          if (params[0]) {
+            name = params[0]
           }
-          if(Number(params[1]) || Number(params[1]) == 0){
-            volume = Number(params[1]);
+          if (Number(params[1]) || Number(params[1]) === 0) {
+            volume = Number(params[1])
           }
-          if(Number(params[2]) || Number(params[2]) == 0){
-            pitch = Number(params[2]);
+          if (Number(params[2]) || Number(params[2]) === 0) {
+            pitch = Number(params[2])
           }
-          if(Number(params[3]) || Number(params[3]) == 0){
-            pan = Number(params[3]);
+          if (Number(params[3]) || Number(params[3]) === 0) {
+            pan = Number(params[3])
           }
-          if(name.toUpperCase() === "NONE" || name === "なし"){
-            return [getPlayMeEvent("", volume, pitch, pan)];
-          }else{
-            return [getPlayMeEvent(name, volume, pitch, pan)];
+          if (name.toUpperCase() === 'NONE' || name === 'なし') {
+            return [getPlayMeEvent('', volume, pitch, pan)]
+          } else {
+            return [getPlayMeEvent(name, volume, pitch, pan)]
           }
         }
       }
 
       /* eslint-disable no-useless-escape */
       const num_char_regex = '\\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf'
-      //const control_variable_arg_regex = `[${num_char_regex}\\[\\]\\.\\-]+`;
-      const control_variable_arg_regex = '.+';
-      const set_operation_list = ['set', '代入', '='];
-      const set_reg_list = set_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
-      const set = text.match(new RegExp(set_reg_list.join('|'), 'i'));
+      // const control_variable_arg_regex = `[${num_char_regex}\\[\\]\\.\\-]+`;
+      const control_variable_arg_regex = '.+'
+      const set_operation_list = ['set', '代入', '=']
+      const set_reg_list = set_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`)
+      const set = text.match(new RegExp(set_reg_list.join('|'), 'i'))
 
-      const add_operation_list = ['add', '加算', '\\+'];
-      const add_reg_list = add_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
-      const add = text.match(new RegExp(add_reg_list.join('|'), 'i'));
+      const add_operation_list = ['add', '加算', '\\+']
+      const add_reg_list = add_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`)
+      const add = text.match(new RegExp(add_reg_list.join('|'), 'i'))
 
-      const sub_operation_list = ['sub', '減算', '-'];
-      const sub_reg_list = sub_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
-      const sub = text.match(new RegExp(sub_reg_list.join('|'), 'i'));
+      const sub_operation_list = ['sub', '減算', '-']
+      const sub_reg_list = sub_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`)
+      const sub = text.match(new RegExp(sub_reg_list.join('|'), 'i'))
 
-      const mul_operation_list = ['mul', '乗算', '\\*'];
-      const mul_reg_list = mul_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
-      const mul = text.match(new RegExp(mul_reg_list.join('|'), 'i'));
+      const mul_operation_list = ['mul', '乗算', '\\*']
+      const mul_reg_list = mul_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`)
+      const mul = text.match(new RegExp(mul_reg_list.join('|'), 'i'))
 
-      const div_operation_list = ['div', '除算', '\\/'];
-      const div_reg_list = div_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
-      const div = text.match(new RegExp(div_reg_list.join('|'), 'i'));
+      const div_operation_list = ['div', '除算', '\\/']
+      const div_reg_list = div_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`)
+      const div = text.match(new RegExp(div_reg_list.join('|'), 'i'))
 
-      const mod_operation_list = ['mod', '剰余', '\\%'];
-      const mod_reg_list = mod_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
-      const mod = text.match(new RegExp(mod_reg_list.join('|'), 'i'));
+      const mod_operation_list = ['mod', '剰余', '\\%']
+      const mod_reg_list = mod_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`)
+      const mod = text.match(new RegExp(mod_reg_list.join('|'), 'i'))
 
-      const switch_operation_list = ['sw', 'switch', 'スイッチ'];
-      const switch_reg_list = switch_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`);
-      const switch_tag = text.match(new RegExp(switch_reg_list.join('|'), 'i'));
+      const switch_operation_list = ['sw', 'switch', 'スイッチ']
+      const switch_reg_list = switch_operation_list.map(x => `<${x} *: *(\\d+\\-?\\d*) *, *(${control_variable_arg_regex}) *>`)
+      const switch_tag = text.match(new RegExp(switch_reg_list.join('|'), 'i'))
 
-      const self_switch_operation_list = ['ssw', 'selfswitch', 'セルフスイッチ'];
-      const self_switch_reg_list = self_switch_operation_list.map(x => `<${x} *: *([abcd]) *, *(${control_variable_arg_regex}) *>`);
-      const self_switch_tag = text.match(new RegExp(self_switch_reg_list.join('|'), 'i'));
-      /* eslint-enable */
+      const self_switch_operation_list = ['ssw', 'selfswitch', 'セルフスイッチ']
+      const self_switch_reg_list = self_switch_operation_list.map(x => `<${x} *: *([abcd]) *, *(${control_variable_arg_regex}) *>`)
+      const self_switch_tag = text.match(new RegExp(self_switch_reg_list.join('|'), 'i'))
+      /* eslint-enable no-useless-escape */
 
-      const getControlTag = function(operator, operand1, operand2){
-        if(operator == 'selfswitch'){
-          const selfswitch_target = operand1.match(/[abcd]/i);
-          const selfswitch_value = operand2.match(/on|オン|1|true|off|オフ|0|false/i);
-          if(selfswitch_target && selfswitch_value){
-            return getControlSelfSwitch(selfswitch_target[0], selfswitch_value[0]);
+      const getControlTag = function (operator, operand1, operand2) {
+        if (operator === 'selfswitch') {
+          const selfswitch_target = operand1.match(/[abcd]/i)
+          const selfswitch_value = operand2.match(/on|オン|1|true|off|オフ|0|false/i)
+          if (selfswitch_target && selfswitch_value) {
+            return getControlSelfSwitch(selfswitch_target[0], selfswitch_value[0])
           }
         }
 
-        let operand1_num = operand1.match(/\d+/i);
-        let operand1_range = operand1.match(/(\d+)-(\d+)/i);
-        let start_pointer = 0;
-        let end_pointer = 0;
-        if (operand1_range){
-          start_pointer = parseInt(operand1_range[1]);
-          end_pointer = parseInt(operand1_range[2]);
-        }else if(operand1_num){
-          let num = parseInt(operand1_num[0]);
-          start_pointer = num;
-          end_pointer = num;
-        }else{
-          throw new Error('Syntax error. / 文法エラーです。');
+        const operand1_num = operand1.match(/\d+/i)
+        const operand1_range = operand1.match(/(\d+)-(\d+)/i)
+        let start_pointer = 0
+        let end_pointer = 0
+        if (operand1_range) {
+          start_pointer = parseInt(operand1_range[1])
+          end_pointer = parseInt(operand1_range[2])
+        } else if (operand1_num) {
+          const num = parseInt(operand1_num[0])
+          start_pointer = num
+          end_pointer = num
+        } else {
+          throw new Error('Syntax error. / 文法エラーです。')
         }
 
-        if(operator == 'switch'){
-          const switch_tag = operand2.match(/on|オン|1|true|off|オフ|0|false/i);
-          if(switch_tag){
-            return getControlSwitch(start_pointer, end_pointer, switch_tag[0]);
+        if (operator === 'switch') {
+          const switch_tag = operand2.match(/on|オン|1|true|off|オフ|0|false/i)
+          if (switch_tag) {
+            return getControlSwitch(start_pointer, end_pointer, switch_tag[0])
           }
         }
 
-        const variables = operand2.match(/v\[(\d+)\]|variables\[(\d+)\]|変数\[(\d+)\]/i);
-        if(variables){
-          const num = variables[1] || variables[2] || variables[3];
-          return getControlValiable(operator, start_pointer, end_pointer, 'variables', parseInt(num));
+        const variables = operand2.match(/v\[(\d+)\]|variables\[(\d+)\]|変数\[(\d+)\]/i)
+        if (variables) {
+          const num = variables[1] || variables[2] || variables[3]
+          return getControlValiable(operator, start_pointer, end_pointer, 'variables', parseInt(num))
         }
         /* eslint-disable no-useless-escape */
-        const random = operand2.match(/r\[(\-?\d+)\]\[(\-?\d+)\]|random\[(\-?\d+)\]\[(\-?\d+)\]|乱数\[(\-?\d+)\]\[(\-?\d+)\]/i);
-        /* eslint-enable */
-        if(random){
-          const random_range1 = random[1] || random[3] || random[5];
-          const random_range2 = random[2] || random[4] || random[6];
-          return getControlValiable(operator, start_pointer, end_pointer, 'random', parseInt(random_range1), parseInt(random_range2));
+        const random = operand2.match(/r\[(\-?\d+)\]\[(\-?\d+)\]|random\[(\-?\d+)\]\[(\-?\d+)\]|乱数\[(\-?\d+)\]\[(\-?\d+)\]/i)
+        /* eslint-enable no-useless-escape */
+        if (random) {
+          const random_range1 = random[1] || random[3] || random[5]
+          const random_range2 = random[2] || random[4] || random[6]
+          return getControlValiable(operator, start_pointer, end_pointer, 'random', parseInt(random_range1), parseInt(random_range2))
         }
-        const gamedata_operation_list = ['gd', 'gamedata', 'ゲームデータ'];
+        const gamedata_operation_list = ['gd', 'gamedata', 'ゲームデータ']
         const gamedata_reg_list = gamedata_operation_list.map(x => `(${x})(${control_variable_arg_regex})`)
         const gamedata = operand2.match(new RegExp(gamedata_reg_list.join('|'), 'i'))
-        if(gamedata){
-          const func = gamedata[2] || gamedata[4] || gamedata[6];
-          const gamedata_key_match = func.match(new RegExp(`\\[([${num_char_regex}]+)\\]`, 'i'));
-          if(gamedata_key_match){
-            const gamedata_key = gamedata_key_match[1];
-            switch(gamedata_key.toLowerCase()){
+        if (gamedata) {
+          const func = gamedata[2] || gamedata[4] || gamedata[6]
+          const gamedata_key_match = func.match(new RegExp(`\\[([${num_char_regex}]+)\\]`, 'i'))
+          if (gamedata_key_match) {
+            const gamedata_key = gamedata_key_match[1]
+            switch (gamedata_key.toLowerCase()) {
               case 'mapid':
               case 'マップid':
               case 'partymembers':
@@ -4381,7 +4485,7 @@ if(typeof PluginManager === 'undefined'){
               case '勝利回数':
               case 'escapecount':
               case '逃走回数':{
-                return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', 'other', gamedata_key.toLowerCase(), 0);
+                return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', 'other', gamedata_key.toLowerCase(), 0)
               }
 
               case 'item':
@@ -4392,21 +4496,21 @@ if(typeof PluginManager === 'undefined'){
               case '防具':
               case 'party':
               case 'パーティ':{
-                const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}]+)\\]`, 'i'));
-                if(args){
-                  const arg1 = args[1];
-                  return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), parseInt(arg1));
+                const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}]+)\\]`, 'i'))
+                if (args) {
+                  const arg1 = args[1]
+                  return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), parseInt(arg1))
                 }
-                break;
+                break
               }
               case 'last':
               case '直前':{
-                const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex} ]+)\\]`, 'i'));
-                if(args){
-                  const arg1 = args[1];
-                  return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), arg1);
+                const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex} ]+)\\]`, 'i'))
+                if (args) {
+                  const arg1 = args[1]
+                  return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), arg1)
                 }
-                break;
+                break
               }
               case 'actor':
               case 'アクター':
@@ -4415,587 +4519,585 @@ if(typeof PluginManager === 'undefined'){
               case 'エネミー':
               case 'character':
               case 'キャラクター':{
-                const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}\\-]+)\\]\\[([${num_char_regex}\\.]+)\\]`, 'i'));
-                if(args){
-                  const arg1 = args[1];
-                  const arg2 = args[2];
-                  return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), arg1, arg2);
+                const args = func.match(new RegExp(`\\[[${num_char_regex}]+\\]\\[([${num_char_regex}\\-]+)\\]\\[([${num_char_regex}\\.]+)\\]`, 'i'))
+                if (args) {
+                  const arg1 = args[1]
+                  const arg2 = args[2]
+                  return getControlValiable(operator, start_pointer, end_pointer, 'gamedata', gamedata_key.toLowerCase(), arg1, arg2)
                 }
-                break;
+                break
               }
             }
           }
         }
-        const script = operand2.match(/sc\[(.+)\]|script\[(.+)\]|スクリプト\[(.+)\]/i);
-        if(script){
-          const script_body = script[1] || script[2] || script[3];
-          return getControlValiable(operator, start_pointer, end_pointer, 'script', script_body);
+        const script = operand2.match(/sc\[(.+)\]|script\[(.+)\]|スクリプト\[(.+)\]/i)
+        if (script) {
+          const script_body = script[1] || script[2] || script[3]
+          return getControlValiable(operator, start_pointer, end_pointer, 'script', script_body)
         }
-        let value_num = Number(operand2);
-        return getControlValiable(operator, start_pointer, end_pointer, 'constant', value_num);
+        const value_num = Number(operand2)
+        return getControlValiable(operator, start_pointer, end_pointer, 'constant', value_num)
       }
 
       // set
-      if(set){
-        const operand1 = set[1] || set[3] || set[5];
-        const operand2 = set[2] || set[4] || set[6];
-        return [getControlTag('set', operand1, operand2)];
+      if (set) {
+        const operand1 = set[1] || set[3] || set[5]
+        const operand2 = set[2] || set[4] || set[6]
+        return [getControlTag('set', operand1, operand2)]
       }
 
       // add
-      if(add){
-        const operand1 = add[1] || add[3] || add[5];
-        const operand2 = add[2] || add[4] || add[6];
-        return [getControlTag('add', operand1, operand2)];
+      if (add) {
+        const operand1 = add[1] || add[3] || add[5]
+        const operand2 = add[2] || add[4] || add[6]
+        return [getControlTag('add', operand1, operand2)]
       }
 
       // sub
-      if(sub){
-        const operand1 = sub[1] || sub[3] || sub[5];
-        const operand2 = sub[2] || sub[4] || sub[6];
-        return [getControlTag('sub', operand1, operand2)];
+      if (sub) {
+        const operand1 = sub[1] || sub[3] || sub[5]
+        const operand2 = sub[2] || sub[4] || sub[6]
+        return [getControlTag('sub', operand1, operand2)]
       }
 
       // mul
-      if(mul){
-        const operand1 = mul[1] || mul[3] || mul[5];
-        const operand2 = mul[2] || mul[4] || mul[6];
-        return [getControlTag('mul', operand1, operand2)];
+      if (mul) {
+        const operand1 = mul[1] || mul[3] || mul[5]
+        const operand2 = mul[2] || mul[4] || mul[6]
+        return [getControlTag('mul', operand1, operand2)]
       }
 
       // div
-      if(div){
-        const operand1 = div[1] || div[3] || div[5];
-        const operand2 = div[2] || div[4] || div[6];
-        return [getControlTag('div', operand1, operand2)];
+      if (div) {
+        const operand1 = div[1] || div[3] || div[5]
+        const operand2 = div[2] || div[4] || div[6]
+        return [getControlTag('div', operand1, operand2)]
       }
 
       // mod
-      if(mod){
-        const operand1 = mod[1] || mod[3] || mod[5];
-        const operand2 = mod[2] || mod[4] || mod[6];
-        return [getControlTag('mod', operand1, operand2)];
+      if (mod) {
+        const operand1 = mod[1] || mod[3] || mod[5]
+        const operand2 = mod[2] || mod[4] || mod[6]
+        return [getControlTag('mod', operand1, operand2)]
       }
 
       // switch
-      if(switch_tag){
-        const operand1 = switch_tag[1] || switch_tag[3] || switch_tag[5];
-        const operand2 = switch_tag[2] || switch_tag[4] || switch_tag[6];
-        return [getControlTag('switch', operand1, operand2)];
+      if (switch_tag) {
+        const operand1 = switch_tag[1] || switch_tag[3] || switch_tag[5]
+        const operand2 = switch_tag[2] || switch_tag[4] || switch_tag[6]
+        return [getControlTag('switch', operand1, operand2)]
       }
 
       // self switch
-      if(self_switch_tag){
-        const operand1 = self_switch_tag[1] || self_switch_tag[3] || self_switch_tag[5];
-        const operand2 = self_switch_tag[2] || self_switch_tag[4] || self_switch_tag[6];
-        return [getControlTag('selfswitch', operand1, operand2)];
+      if (self_switch_tag) {
+        const operand1 = self_switch_tag[1] || self_switch_tag[3] || self_switch_tag[5]
+        const operand2 = self_switch_tag[2] || self_switch_tag[4] || self_switch_tag[6]
+        return [getControlTag('selfswitch', operand1, operand2)]
       }
 
       /// timer control
-      const timer_start_reg_list = ['timer', 'タイマー'].map(x => `<${x} *: *(.+) *, *(\\d+), *(\\d+) *>`);
-      const timer_start = text.match(new RegExp(timer_start_reg_list.join('|'), 'i'));
-      const timer_stop_reg_list = ['timer', 'タイマー'].map(x => `<${x} *: *(.+) *>`);
-      const timer_stop = text.match(new RegExp(timer_stop_reg_list.join('|'), 'i'));
+      const timer_start_reg_list = ['timer', 'タイマー'].map(x => `<${x} *: *(.+) *, *(\\d+), *(\\d+) *>`)
+      const timer_start = text.match(new RegExp(timer_start_reg_list.join('|'), 'i'))
+      const timer_stop_reg_list = ['timer', 'タイマー'].map(x => `<${x} *: *(.+) *>`)
+      const timer_stop = text.match(new RegExp(timer_stop_reg_list.join('|'), 'i'))
 
-      if(timer_start){
-        let operand1 = timer_start[1] || timer_start[4];
-        let min = parseInt(timer_start[2] || timer_start[5]);
-        let sec = parseInt(timer_start[3] || timer_start[6]);
-        let setting_sec = 60 * min + sec;
-        return [getControlTimer(operand1, setting_sec)];
+      if (timer_start) {
+        const operand1 = timer_start[1] || timer_start[4]
+        const min = parseInt(timer_start[2] || timer_start[5])
+        const sec = parseInt(timer_start[3] || timer_start[6])
+        const setting_sec = 60 * min + sec
+        return [getControlTimer(operand1, setting_sec)]
       }
-      if(timer_stop){
-        let operand1 = timer_stop[1] || timer_stop[2];
-        return [getControlTimer(operand1, 0)];
+      if (timer_stop) {
+        const operand1 = timer_stop[1] || timer_stop[2]
+        return [getControlTimer(operand1, 0)]
       }
 
       // Show Picture
-      if(show_picture){
-        let params = show_picture[1].split(',').map(s => s.trim());
-        if(params.length > 1){
-          let pic_no = Number(params[0]);
-          let name = params[1];
-          let options = params.slice(2);
-          return [getShowPicture(pic_no, name, options)];
-        }else{
-          console.error(text);
-          throw new Error('Syntax error. / 文法エラーです。'
-                          + text.replace(/</g, '  ').replace(/>/g, '  '));
+      if (show_picture) {
+        const params = show_picture[1].split(',').map(s => s.trim())
+        if (params.length > 1) {
+          const pic_no = Number(params[0])
+          const name = params[1]
+          const options = params.slice(2)
+          return [getShowPicture(pic_no, name, options)]
+        } else {
+          console.error(text)
+          throw new Error('Syntax error. / 文法エラーです。' +
+                          text.replace(/</g, '  ').replace(/>/g, '  '))
         }
       }
 
       // Move Picture
-      if(move_picture){
-        let params = move_picture[1].split(',').map(s => s.trim());
-        if(params.length > 0){
-          let pic_no = Number(params[0]);
-          let options = params.slice(1);
-          return [getMovePicture(pic_no, options)];
-        }else{
-          console.error(text);
-          throw new Error('Syntax error. / 文法エラーです。'
-                          + text.replace(/</g, '  ').replace(/>/g, '  '));
+      if (move_picture) {
+        const params = move_picture[1].split(',').map(s => s.trim())
+        if (params.length > 0) {
+          const pic_no = Number(params[0])
+          const options = params.slice(1)
+          return [getMovePicture(pic_no, options)]
+        } else {
+          console.error(text)
+          throw new Error('Syntax error. / 文法エラーです。' +
+                          text.replace(/</g, '  ').replace(/>/g, '  '))
         }
       }
 
       // Rotate Picture
-      if(rotate_picture){
-        let pic_no = Number(rotate_picture[1]);
-        let speed = Number(rotate_picture[2]);
-        return [getRotatePicture(pic_no, speed)];
+      if (rotate_picture) {
+        const pic_no = Number(rotate_picture[1])
+        const speed = Number(rotate_picture[2])
+        return [getRotatePicture(pic_no, speed)]
       }
 
-      //Tint Picture
-      if(tint_picture){
-        let params = tint_picture[1].split(',').map(s => s.trim());
-        if(params.length > 0){
-          let pic_no = Number(params[0]);
-          let options = params.slice(1);
-          return [getTintPicture(pic_no, options)];
-        }else{
-          console.error(text);
-          throw new Error('Syntax error. / 文法エラーです。'
-                          + text.replace(/</g, '  ').replace(/>/g, '  '));
+      // Tint Picture
+      if (tint_picture) {
+        const params = tint_picture[1].split(',').map(s => s.trim())
+        if (params.length > 0) {
+          const pic_no = Number(params[0])
+          const options = params.slice(1)
+          return [getTintPicture(pic_no, options)]
+        } else {
+          console.error(text)
+          throw new Error('Syntax error. / 文法エラーです。' +
+                          text.replace(/</g, '  ').replace(/>/g, '  '))
         }
       }
 
       // Erase Picture
-      if(erase_picture){
-        let pic_no = Number(erase_picture[1]);
-        return [getErasePicture(pic_no)];
+      if (erase_picture) {
+        const pic_no = Number(erase_picture[1])
+        return [getErasePicture(pic_no)]
       }
 
       // Conditional Branch (If)
-      if(conditional_branch_if){
-        let args = conditional_branch_if[1].split(',');
-        if(args.length > 0){
-          let target = args[0].trim();
-          let params = args.slice(1);
-          return [getConditionalBranch(target, params)];
-        }else{
-          console.error(text);
-          throw new Error('Syntax error. / 文法エラーです。'
-                          + text.replace(/</g, '  ').replace(/>/g, '  '));
+      if (conditional_branch_if) {
+        const args = conditional_branch_if[1].split(',')
+        if (args.length > 0) {
+          const target = args[0].trim()
+          const params = args.slice(1)
+          return [getConditionalBranch(target, params)]
+        } else {
+          console.error(text)
+          throw new Error('Syntax error. / 文法エラーです。' +
+                          text.replace(/</g, '  ').replace(/>/g, '  '))
         }
       }
 
       // Conditional Branch (Else)
-      if(conditional_branch_else){
-        let event_command_list = [];
-        event_command_list.push(getCommandBottomEvent());
-        event_command_list.push(getElse());
-        return event_command_list;
+      if (conditional_branch_else) {
+        const event_command_list = []
+        event_command_list.push(getCommandBottomEvent())
+        event_command_list.push(getElse())
+        return event_command_list
       }
 
       // Conditional Branch (End)
-      if(conditional_branch_end){
-        const current_block = block_stack.slice(-1)[0];
-        const CHOICE_CODE = 102;
+      if (conditional_branch_end) {
+        const current_block = block_stack.slice(-1)[0]
+        const CHOICE_CODE = 102
 
-        if(Boolean(current_block) && current_block["code"] == CHOICE_CODE){
-          return [getBlockEnd(), getShowChoiceEnd()];
-        }else{
-          return [getCommandBottomEvent(), getEnd()];
+        if (Boolean(current_block) && current_block.code === CHOICE_CODE) {
+          return [getBlockEnd(), getShowChoiceEnd()]
+        } else {
+          return [getCommandBottomEvent(), getEnd()]
         }
       }
 
       // Loop
-      if(loop){
-        return [getLoop()];
+      if (loop) {
+        return [getLoop()]
       }
 
       // Repeat Above
-      if(repeat_above){
-        let event_command_list = [];
-        event_command_list.push(getCommandBottomEvent());
-        event_command_list.push(getRepeatAbove());
-        return event_command_list;
+      if (repeat_above) {
+        const event_command_list = []
+        event_command_list.push(getCommandBottomEvent())
+        event_command_list.push(getRepeatAbove())
+        return event_command_list
       }
 
       // Break Loop
-      if(break_loop){
-        return [getBreakLoop()];
+      if (break_loop) {
+        return [getBreakLoop()]
       }
 
       // Exit Event Processing
-      if(exit_event_processing){
-        return [getExitEventProcessing()];
+      if (exit_event_processing) {
+        return [getExitEventProcessing()]
       }
 
       // Label
-      if(label){
-        let label_name = label[1] || "";
-        return [getLabel(label_name)];
+      if (label) {
+        const label_name = label[1] || ''
+        return [getLabel(label_name)]
       }
 
       // Jump to Label
-      if(jump_to_label){
-        let label_name = jump_to_label[1] || "";
-        return [getJumpToLabel(label_name)];
+      if (jump_to_label) {
+        const label_name = jump_to_label[1] || ''
+        return [getJumpToLabel(label_name)]
       }
 
       // Input Number
-      if(input_number){
-        const val_num = Number(input_number[1]);
-        const num_of_digits = Number(input_number[2]);
-        return [getInputNumber(val_num, num_of_digits)];
+      if (input_number) {
+        const val_num = Number(input_number[1])
+        const num_of_digits = Number(input_number[2])
+        return [getInputNumber(val_num, num_of_digits)]
       }
 
       // Select Item
-      if(select_item){
-        const val_num = Number(select_item[1]);
-        const item_type = select_item[2];
-        return [getSelectItem(val_num, item_type)];
+      if (select_item) {
+        const val_num = Number(select_item[1])
+        const item_type = select_item[2]
+        return [getSelectItem(val_num, item_type)]
       }
 
       // Show Choices
-      if(show_choices){
-        let params = show_choices[1].split(',').filter(s => s).map(s => s.trim());
-        let window_type = 0;
-        let window_position = 2;
-        let default_choice = 0;
-        let default_cancel = 1;
-        let exist_default_choice = false;
+      if (show_choices) {
+        const params = show_choices[1].split(',').filter(s => s).map(s => s.trim())
+        let window_type = 0
+        let window_position = 2
+        let default_choice = 0
+        let default_cancel = 1
+        let exist_default_choice = false
 
         params.forEach((p) => {
           /* eslint-disable no-empty */
-          try{
-            window_type = getBackground(p);
-            return;
-          }catch(e){}
-          try{
-            window_position = getChoiceWindowPosition(p);
-            return;
-          }catch(e){}
-          /* eslint-enable */
-          switch(p.toLowerCase()){
-            case "branch":
-            case "分岐":
-              default_cancel = -2;
-              return;
-            case "disallow":
-            case "禁止":
-              default_cancel = -1;
-              return;
-            case "none":
-            case "なし":
-              default_choice = -1;
-              return;
+          try {
+            window_type = getBackground(p)
+            return
+          } catch (e) {}
+          try {
+            window_position = getChoiceWindowPosition(p)
+            return
+          } catch (e) {}
+          /* eslint-enable no-empty */
+          switch (p.toLowerCase()) {
+            case 'branch':
+            case '分岐':
+              default_cancel = -2
+              return
+            case 'disallow':
+            case '禁止':
+              default_cancel = -1
+              return
+            case 'none':
+            case 'なし':
+              default_choice = -1
+              return
           }
-          if(!isNaN(Number(p))){
-            if(exist_default_choice){
-              default_cancel = Number(p) - 1;
-            }else{
-              default_choice = Number(p) - 1;
-              exist_default_choice = true;
+          if (!isNaN(Number(p))) {
+            if (exist_default_choice) {
+              default_cancel = Number(p) - 1
+            } else {
+              default_choice = Number(p) - 1
+              exist_default_choice = true
             }
           }
-        });
+        })
 
-        return [getShowChoices(window_type, window_position, default_choice, default_cancel)];
+        return [getShowChoices(window_type, window_position, default_choice, default_cancel)]
       }
 
       // Show Choice When
-      if(show_choice_when){
-        const index = 0;
-        const text = show_choice_when[1];
-        return [getShowChoiceWhen(index, text)];
+      if (show_choice_when) {
+        const index = 0
+        const text = show_choice_when[1]
+        return [getShowChoiceWhen(index, text)]
       }
 
       // Show Choice When Cancel
-      if(show_choice_when_cancel){
-        return [getShowChoiceWhenCancel()];
+      if (show_choice_when_cancel) {
+        return [getShowChoiceWhenCancel()]
       }
 
       // Face
-      if(face){
-        if(!frame_param){
-          frame_param = getPretextEvent();
+      if (face) {
+        if (!frame_param) {
+          frame_param = getPretextEvent()
         }
-        let face_number = face[1].match(/.*\((.+?)\)/i);
+        const face_number = face[1].match(/.*\((.+?)\)/i)
 
-        if(face_number){
-          frame_param.parameters[0] = face[1].replace(/\(\d\)/,'');
-          frame_param.parameters[1] = parseInt(face_number[1]);
-          text = text.replace(face[0], '');
-        }else{
-          console.error(text);
-          throw new Error('Syntax error. / 文法エラーです。'
-            + text.replace(/</g, '  ').replace(/>/g, '  '));
+        if (face_number) {
+          frame_param.parameters[0] = face[1].replace(/\(\d\)/, '')
+          frame_param.parameters[1] = parseInt(face_number[1])
+          text = text.replace(face[0], '')
+        } else {
+          console.error(text)
+          throw new Error('Syntax error. / 文法エラーです。' +
+            text.replace(/</g, '  ').replace(/>/g, '  '))
         }
       }
 
       // window backgound
-      if(background){
-        if(!frame_param){
-          frame_param = getPretextEvent();
+      if (background) {
+        if (!frame_param) {
+          frame_param = getPretextEvent()
         }
-        try{
-          frame_param.parameters[2] = getBackground(background[1]);
-        }catch(e){
-          console.error(text);
-          throw new Error('Syntax error. / 文法エラーです。'
-            + text.replace(/</g, '  ').replace(/>/g, '  '));
+        try {
+          frame_param.parameters[2] = getBackground(background[1])
+        } catch (e) {
+          console.error(text)
+          throw new Error('Syntax error. / 文法エラーです。' +
+            text.replace(/</g, '  ').replace(/>/g, '  '))
         }
-        text = text.replace(background[0], '');
+        text = text.replace(background[0], '')
       }
 
       // window position
-      if(window_position){
-        if(!frame_param){
-          frame_param = getPretextEvent();
+      if (window_position) {
+        if (!frame_param) {
+          frame_param = getPretextEvent()
         }
-        try{
-          frame_param.parameters[3] = getWindowPosition(window_position[1]);
-        }catch(e){
-          console.error(text);
-          throw new Error('Syntax error. / 文法エラーです。'
-            + text.replace(/</g, '  ').replace(/>/g, '  '));
+        try {
+          frame_param.parameters[3] = getWindowPosition(window_position[1])
+        } catch (e) {
+          console.error(text)
+          throw new Error('Syntax error. / 文法エラーです。' +
+            text.replace(/</g, '  ').replace(/>/g, '  '))
         }
-        text = text.replace(window_position[0], '');
+        text = text.replace(window_position[0], '')
       }
 
-      //name box
-      if(namebox){
-        if(!frame_param){
-          frame_param = getPretextEvent();
+      // name box
+      if (namebox) {
+        if (!frame_param) {
+          frame_param = getPretextEvent()
         }
-        frame_param.parameters[4] = namebox[1];
-        text = text.replace(namebox[0], '');
+        frame_param.parameters[4] = namebox[1]
+        text = text.replace(namebox[0], '')
       }
 
-      let event_command_list = [];
+      const event_command_list = []
 
-      if(face || background || window_position || namebox){
-        if(frame_param){
-          logger.log("push: ", frame_param.parameters);
-          event_command_list.push(frame_param);
+      if (face || background || window_position || namebox) {
+        if (frame_param) {
+          logger.log('push: ', frame_param.parameters)
+          event_command_list.push(frame_param)
         }
       }
 
-      if(text.match(/\S/g)){
-        logger.log("push: ", text);
-        event_command_list.push(getTextFrameEvent(text));
+      if (text.match(/\S/g)) {
+        logger.log('push: ', text)
+        event_command_list.push(getTextFrameEvent(text))
       }
-      return event_command_list;
-    };
-
-    const getEvents = function(text, previous_text, window_frame, previous_frame, block_stack){
-      let event_command_list = [];
-      let events = _getEvents(text, window_frame, block_stack);
-      const PRE_CODE = 101;
-      const CHOICE_CODE = 102;
-      const TEXT_CODE = 401;
-      const WHEN_CODE = 402;
-      const WHEN_CANCEL_CODE = 403;
-      const IF_CODE = 111;
-      const IF_END_CODE = getEnd().code;
-      const CHOICE_END_CODE = getShowChoiceEnd().code;
-
-      events.forEach((current_frame) => {
-        if(current_frame.code == IF_END_CODE || current_frame.code == CHOICE_END_CODE){
-          block_stack.pop();
-        }
-      });
-
-      if(Array.isArray(events) && events.length > 0){
-        if(events.length > 1){
-          // 一行に複数書かれている
-          event_command_list = event_command_list.concat(events);
-          return {window_frame: null, event_command_list, block_stack};
-        }
-        const current_frame = events[0];
-        if(current_frame.code == PRE_CODE){
-          // 401になるまで遅延する
-          window_frame = current_frame;
-          return {window_frame, event_command_list, block_stack};
-        }
-
-        if(current_frame.code == TEXT_CODE){
-          if(previous_frame){
-            if(previous_frame.code == TEXT_CODE){
-              // 空行でwindow frameを初期化
-              if(previous_text === ''){
-                event_command_list.push(getPretextEvent());
-              }
-            }else if(previous_frame.code == PRE_CODE){
-              // stackに積んだframeを挿入する
-              event_command_list.push(window_frame);
-            }else{
-              // window frameを初期化
-              event_command_list.push(getPretextEvent());
-            }
-          }else{
-            event_command_list.push(getPretextEvent());
-          }
-        }else if(current_frame.code == WHEN_CODE){
-          const current_index = block_stack.slice(-1)[0]["index"];
-          let current_choice = block_stack.slice(-1)[0]["event"];
-          if(current_index != 0){
-            event_command_list.push(getBlockEnd());
-          }
-          current_frame.parameters[0] = current_index;
-          block_stack.slice(-1)[0]["index"] += 1;
-          if(current_choice){
-            // if block の中で when を書いている
-            if(Array.isArray(current_choice.parameters)){
-              current_choice.parameters[0].push(current_frame.parameters[1]);
-            }
-          }
-        }else if(current_frame.code == WHEN_CANCEL_CODE){
-          const current_index = block_stack.slice(-1)[0]["index"];
-          if(current_index != 0){
-            event_command_list.push(getBlockEnd());
-          }
-          block_stack.slice(-1)[0]["index"] += 1;
-        }else if(current_frame.code == CHOICE_CODE){
-          block_stack.push({"code": current_frame.code, "event": current_frame, "indent": block_stack.length, "index": 0});
-        }else if(current_frame.code == IF_CODE){
-          block_stack.push({"code": current_frame.code, "event": current_frame, "indent": block_stack.length, "index": 0});
-        }
-
-        event_command_list = event_command_list.concat(events);
-      }
-      return {window_frame: null, event_command_list, block_stack};
+      return event_command_list
     }
 
+    const getEvents = function (text, previous_text, window_frame, previous_frame, block_stack) {
+      let event_command_list = []
+      const events = _getEvents(text, window_frame, block_stack)
+      const PRE_CODE = 101
+      const CHOICE_CODE = 102
+      const TEXT_CODE = 401
+      const WHEN_CODE = 402
+      const WHEN_CANCEL_CODE = 403
+      const IF_CODE = 111
+      const IF_END_CODE = getEnd().code
+      const CHOICE_END_CODE = getShowChoiceEnd().code
 
-    const autoIndent = function(events){
-      const BOTTOM_CODE = 0;
-      const IF_CODE = 111;
-      const ELSE_CODE = 411;
-      const LOOP_CODE = 112;
-      const WHEN_CODE = 402;
-      const WHEN_CANCEL_CODE = 403;
+      events.forEach((current_frame) => {
+        if (current_frame.code === IF_END_CODE || current_frame.code === CHOICE_END_CODE) {
+          block_stack.pop()
+        }
+      })
+
+      if (Array.isArray(events) && events.length > 0) {
+        if (events.length > 1) {
+          // 一行に複数書かれている
+          event_command_list = event_command_list.concat(events)
+          return { window_frame: null, event_command_list, block_stack }
+        }
+        const current_frame = events[0]
+        if (current_frame.code === PRE_CODE) {
+          // 401になるまで遅延する
+          window_frame = current_frame
+          return { window_frame, event_command_list, block_stack }
+        }
+
+        if (current_frame.code === TEXT_CODE) {
+          if (previous_frame) {
+            if (previous_frame.code === TEXT_CODE) {
+              // 空行でwindow frameを初期化
+              if (previous_text === '') {
+                event_command_list.push(getPretextEvent())
+              }
+            } else if (previous_frame.code === PRE_CODE) {
+              // stackに積んだframeを挿入する
+              event_command_list.push(window_frame)
+            } else {
+              // window frameを初期化
+              event_command_list.push(getPretextEvent())
+            }
+          } else {
+            event_command_list.push(getPretextEvent())
+          }
+        } else if (current_frame.code === WHEN_CODE) {
+          const current_index = block_stack.slice(-1)[0].index
+          const current_choice = block_stack.slice(-1)[0].event
+          if (current_index !== 0) {
+            event_command_list.push(getBlockEnd())
+          }
+          current_frame.parameters[0] = current_index
+          block_stack.slice(-1)[0].index += 1
+          if (current_choice) {
+            // if block の中で when を書いている
+            if (Array.isArray(current_choice.parameters)) {
+              current_choice.parameters[0].push(current_frame.parameters[1])
+            }
+          }
+        } else if (current_frame.code === WHEN_CANCEL_CODE) {
+          const current_index = block_stack.slice(-1)[0].index
+          if (current_index !== 0) {
+            event_command_list.push(getBlockEnd())
+          }
+          block_stack.slice(-1)[0].index += 1
+        } else if (current_frame.code === CHOICE_CODE) {
+          block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, index: 0 })
+        } else if (current_frame.code === IF_CODE) {
+          block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, index: 0 })
+        }
+
+        event_command_list = event_command_list.concat(events)
+      }
+      return { window_frame: null, event_command_list, block_stack }
+    }
+
+    const autoIndent = function (events) {
+      const BOTTOM_CODE = 0
+      const IF_CODE = 111
+      const ELSE_CODE = 411
+      const LOOP_CODE = 112
+      const WHEN_CODE = 402
+      const WHEN_CANCEL_CODE = 403
 
       const out_events = events.reduce((o, e) => {
-        const parameters = JSON.parse(JSON.stringify(e.parameters));
-        let now_indent = 0;
+        const parameters = JSON.parse(JSON.stringify(e.parameters))
+        let now_indent = 0
 
         const last = o.slice(-1)[0]
-        if(last !== undefined){
-          now_indent = last.indent;
-          switch(last.code){
+        if (last !== undefined) {
+          now_indent = last.indent
+          switch (last.code) {
             case IF_CODE:
             case ELSE_CODE:
             case LOOP_CODE:
             case WHEN_CODE:
             case WHEN_CANCEL_CODE:{
-              now_indent += 1;
-              break;
+              now_indent += 1
+              break
             }
             case BOTTOM_CODE:
-              now_indent -= 1;
-              break;
+              now_indent -= 1
+              break
           }
         }
-        o.push({"code": e.code, "indent": now_indent, "parameters": parameters});
-        return o;
-      }, []);
+        o.push({ code: e.code, indent: now_indent, parameters })
+        return o
+      }, [])
 
-      return out_events;
-    };
+      return out_events
+    }
 
-    let scenario_text = readText(Laurus.Text2Frame.TextPath);
-    scenario_text = uniformNewLineCode(scenario_text);
+    let scenario_text = readText(Laurus.Text2Frame.TextPath)
+    scenario_text = uniformNewLineCode(scenario_text)
     scenario_text = eraseCommentOutLines(scenario_text, Laurus.Text2Frame.CommentOutChar)
     let block_map = {};
 
-    ["script", "comment", "scrolling"].forEach(function(block_name){
-      const t = getBlockStatement(scenario_text, block_name);
-      scenario_text = t.scenario_text;
-      block_map = Object.assign(block_map, t.block_map);
-    });
+    ['script', 'comment', 'scrolling'].forEach(function (block_name) {
+      const t = getBlockStatement(scenario_text, block_name)
+      scenario_text = t.scenario_text
+      block_map = Object.assign(block_map, t.block_map)
+    })
 
-    let text_lines = scenario_text.split('\n');
-    let event_command_list = [];
-    let previous_text = '';
-    let window_frame = null;
-    let block_stack = [];
-    for(let i=0; i < text_lines.length; i++){
-      const text = text_lines[i];
+    const text_lines = scenario_text.split('\n')
+    let event_command_list = []
+    let previous_text = ''
+    let window_frame = null
+    let block_stack = []
+    for (let i = 0; i < text_lines.length; i++) {
+      const text = text_lines[i]
 
-      if(text){
-        let previous_frame = window_frame;
-        if(previous_frame === null){
-          previous_frame = event_command_list.slice(-1)[0];
+      if (text) {
+        let previous_frame = window_frame
+        if (previous_frame === null) {
+          previous_frame = event_command_list.slice(-1)[0]
         }
-        const return_obj = getEvents(text, previous_text, window_frame, previous_frame, block_stack);
-        window_frame = return_obj["window_frame"]
-        const new_event_command_list = return_obj["event_command_list"]
-        block_stack = return_obj["block_stack"]
-        event_command_list = event_command_list.concat(new_event_command_list);
+        const return_obj = getEvents(text, previous_text, window_frame, previous_frame, block_stack)
+        window_frame = return_obj.window_frame
+        const new_event_command_list = return_obj.event_command_list
+        block_stack = return_obj.block_stack
+        event_command_list = event_command_list.concat(new_event_command_list)
       }
-      logger.log(i, text);
-      previous_text = text;
+      logger.log(i, text)
+      previous_text = text
     }
 
-    event_command_list = completeLackedBottomEvent(event_command_list);
-    event_command_list = autoIndent(event_command_list);
-    event_command_list.push(getCommandBottomEvent());
+    event_command_list = completeLackedBottomEvent(event_command_list)
+    event_command_list = autoIndent(event_command_list)
+    event_command_list.push(getCommandBottomEvent())
 
     switch (Laurus.Text2Frame.ExecMode) {
       case 'IMPORT_MESSAGE_TO_EVENT' :
       case 'メッセージをイベントにインポート' : {
-        let map_data = readJsonData(Laurus.Text2Frame.MapPath);
-        if(! map_data.events[Laurus.Text2Frame.EventID]){
-          throw new Error('EventID not found. / EventIDが見つかりません。\n' 
-            + "Event ID: " + Laurus.Text2Frame.EventID);
+        const map_data = readJsonData(Laurus.Text2Frame.MapPath)
+        if (!map_data.events[Laurus.Text2Frame.EventID]) {
+          throw new Error('EventID not found. / EventIDが見つかりません。\n' +
+            'Event ID: ' + Laurus.Text2Frame.EventID)
         }
 
-        let pageID = Number(Laurus.Text2Frame.PageID) - 1;
-        while (! map_data.events[Laurus.Text2Frame.EventID].pages[pageID]){
-          map_data.events[Laurus.Text2Frame.EventID].pages.push(getDefaultPage());
+        const pageID = Number(Laurus.Text2Frame.PageID) - 1
+        while (!map_data.events[Laurus.Text2Frame.EventID].pages[pageID]) {
+          map_data.events[Laurus.Text2Frame.EventID].pages.push(getDefaultPage())
         }
 
-        let map_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list;
-        if(Laurus.Text2Frame.IsOverwrite){
-          map_events = [];
+        let map_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list
+        if (Laurus.Text2Frame.IsOverwrite) {
+          map_events = []
         }
-        map_events.pop();
-        map_events = map_events.concat(event_command_list);
-        map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list = map_events;
-        writeData(Laurus.Text2Frame.MapPath, map_data);
-        addMessage('Success / 書き出し成功！\n' 
-                   + "======> MapID: " + Laurus.Text2Frame.MapID
-                   + " -> EventID: " + Laurus.Text2Frame.EventID
-                   + " -> PageID: " + Laurus.Text2Frame.PageID);
-        break;
+        map_events.pop()
+        map_events = map_events.concat(event_command_list)
+        map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list = map_events
+        writeData(Laurus.Text2Frame.MapPath, map_data)
+        addMessage('Success / 書き出し成功！\n' +
+                   '======> MapID: ' + Laurus.Text2Frame.MapID +
+                   ' -> EventID: ' + Laurus.Text2Frame.EventID +
+                   ' -> PageID: ' + Laurus.Text2Frame.PageID)
+        break
       }
       case 'IMPORT_MESSAGE_TO_CE' :
       case 'メッセージをコモンイベントにインポート' : {
-        const ce_data = readJsonData(Laurus.Text2Frame.CommonEventPath);
-        if(ce_data.length -1 < Laurus.Text2Frame.CommonEventID){
-          throw new Error("Common Event not found. / コモンイベントが見つかりません。: " 
-            + Laurus.Text2Frame.CommonEventID);
+        const ce_data = readJsonData(Laurus.Text2Frame.CommonEventPath)
+        if (ce_data.length - 1 < Laurus.Text2Frame.CommonEventID) {
+          throw new Error('Common Event not found. / コモンイベントが見つかりません。: ' +
+            Laurus.Text2Frame.CommonEventID)
         }
 
-        let ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list;
-        if(Laurus.Text2Frame.IsOverwrite){
-          ce_events = [];
+        let ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list
+        if (Laurus.Text2Frame.IsOverwrite) {
+          ce_events = []
         }
-        ce_events.pop();
-        ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list);
-        writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
-        addMessage('Success / 書き出し成功！\n' 
-          + "=====> Common EventID :" + Laurus.Text2Frame.CommonEventID);
-        break;
+        ce_events.pop()
+        ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list)
+        writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
+        addMessage('Success / 書き出し成功！\n' +
+          '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
+        break
       }
     }
-    addMessage('\n');
-    addMessage('Please restart RPG Maker MV(Editor) WITHOUT save. \n' + 
-        '**セーブせずに**プロジェクトファイルを開き直してください');
-    console.log('Please restart RPG Maker MV(Editor) WITHOUT save. \n' + 
-        '**セーブせずに**プロジェクトファイルを開き直してください');
-  };
-})();
-
+    addMessage('\n')
+    addMessage('Please restart RPG Maker MV(Editor) WITHOUT save. \n' +
+        '**セーブせずに**プロジェクトファイルを開き直してください')
+    console.log('Please restart RPG Maker MV(Editor) WITHOUT save. \n' +
+        '**セーブせずに**プロジェクトファイルを開き直してください')
+  }
+})()
 
 // developer mode
 //
 // $ node Text2Frame.js
-if(typeof require.main !== 'undefined' && require.main === module) {
-  let program = require('commander');
+if (typeof require.main !== 'undefined' && require.main === module) {
+  const program = require('commander')
   program
     .version('0.0.1')
     .usage('[options]')
@@ -5007,32 +5109,32 @@ if(typeof require.main !== 'undefined' && require.main === module) {
     .option('-c, --common_event_id <name>', 'common event id')
     .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
     .option('-v, --verbose', 'debug mode', false)
-    .parse(process.argv);
+    .parse(process.argv)
 
-  Laurus.Text2Frame.IsDebug  = program.verbose;
-  Laurus.Text2Frame.TextPath = program.text_path;
-  Laurus.Text2Frame.IsOverwrite = (program.overwrite == 'true') ? true : false;
+  Laurus.Text2Frame.IsDebug = program.verbose
+  Laurus.Text2Frame.TextPath = program.text_path
+  Laurus.Text2Frame.IsOverwrite = (program.overwrite === 'true')
 
-  if (program.mode === 'map'){
-    Laurus.Text2Frame.MapPath  = program.output_path;
-    Laurus.Text2Frame.EventID  = program.event_id;
-    Laurus.Text2Frame.PageID   = program.page_id ? program.page_id : '1';
-    Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', ['IMPORT_MESSAGE_TO_EVENT']);
-  }else if (program.mode === 'common'){
-    Laurus.Text2Frame.CommonEventPath = program.output_path;
-    Laurus.Text2Frame.CommonEventID   = program.common_event_id;
-    Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', ['IMPORT_MESSAGE_TO_CE']);
-  }else if (program.mode === 'test'){
-    const folder_name = 'test';
-    const file_name   = 'basic.txt';
-    const map_id      = '1';
-    const event_id    = '1';
-    const page_id     = '1';
-    const overwrite   = 'true';
+  if (program.mode === 'map') {
+    Laurus.Text2Frame.MapPath = program.output_path
+    Laurus.Text2Frame.EventID = program.event_id
+    Laurus.Text2Frame.PageID = program.page_id ? program.page_id : '1'
+    Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', ['IMPORT_MESSAGE_TO_EVENT'])
+  } else if (program.mode === 'common') {
+    Laurus.Text2Frame.CommonEventPath = program.output_path
+    Laurus.Text2Frame.CommonEventID = program.common_event_id
+    Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', ['IMPORT_MESSAGE_TO_CE'])
+  } else if (program.mode === 'test') {
+    const folder_name = 'test'
+    const file_name = 'basic.txt'
+    const map_id = '1'
+    const event_id = '1'
+    const page_id = '1'
+    const overwrite = 'true'
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-      [folder_name, file_name, map_id, event_id, page_id, overwrite]);
-  }else{
-    console.log('===== Manual =====');
+      [folder_name, file_name, map_id, event_id, page_id, overwrite])
+  } else {
+    console.log('===== Manual =====')
     console.log(`
     NAME
        Text2Frame - Simple compiler to convert text to event command.
@@ -5059,6 +5161,6 @@ if(typeof require.main !== 'undefined' && require.main === module) {
 
           例1：$ node Text2Frame.js --mode common --text_path test/basic.txt --output_path data/CommonEvents.json --common_event_id 1 --overwrite true
           例2：$ node Text2Frame.js -m common -t test/basic.txt -o data/CommonEvents.json -c 1 -w true
-    `);
+    `)
   }
 }
