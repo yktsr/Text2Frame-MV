@@ -5499,7 +5499,7 @@ if (typeof PluginManager === 'undefined') {
     }
 
     const getScrollMap = function (direction, distance, speed, waitForCompletion) {
-      if (waitForCompletion == 'mv') {
+      if (waitForCompletion === 'mv') {
         return { code: 204, indent: 0, parameters: [direction, distance, speed] }
       } else {
         return { code: 204, indent: 0, parameters: [direction, distance, speed, waitForCompletion] }
@@ -5916,7 +5916,7 @@ if (typeof PluginManager === 'undefined') {
     }
 
     const getGetLocationInfo = function (variableId, infoType, location, mapX, mapY) {
-      if (mapY == 'mz') {
+      if (mapY === 'mz') {
         return {
           code: 285,
           indent: 0,
@@ -5960,8 +5960,8 @@ if (typeof PluginManager === 'undefined') {
     }
 
     const getShowBattleAnimation = function (enemy, animationId, mvmz) {
-      if (mvmz == 'mv') {
-        const allEnemy = enemy == -1
+      if (mvmz === 'mv') {
+        const allEnemy = enemy === -1
         return { code: 337, indent: 0, parameters: [enemy, animationId, allEnemy] }
       } else {
         return { code: 337, indent: 0, parameters: [enemy, animationId] }
@@ -7814,7 +7814,7 @@ if (typeof PluginManager === 'undefined') {
         const direction = getDirectionValue(params[0])
         const distance = parseInt(params[1])
         const speed = getSpeedValue(params[2])
-        const waitForCompletion = params[3] == undefined ? false : getCheckBoxValue(params[3])
+        const waitForCompletion = params[3] === undefined ? false : getCheckBoxValue(params[3])
 
         return [getScrollMap(direction, distance, speed, waitForCompletion)]
       }
@@ -8134,7 +8134,7 @@ if (typeof PluginManager === 'undefined') {
         const params = show_balloon_icon[1].split(',').map((s) => s.trim().toLowerCase())
         const character = getCharacterValue(params[0])
         const balloonIcon = getBalloonIconValue(params[1])
-        const waitForCompletion = params[2] == undefined ? false : getCheckBoxValue(params[2])
+        const waitForCompletion = params[2] === undefined ? false : getCheckBoxValue(params[2])
 
         return [getShowBalloonIcon(character, balloonIcon, waitForCompletion)]
       }
@@ -8678,13 +8678,13 @@ if (typeof PluginManager === 'undefined') {
 
       events.forEach(function (event, index) {
         // 205(表示用)のindexを格納
-        if (event.code == SET_MOVEMENT_ROUTE_DISPLAY_CODE) {
+        if (event.code === SET_MOVEMENT_ROUTE_DISPLAY_CODE) {
           code205Count++
           code205Index[code205Count] = index
           code505Data[code205Count] = []
         }
         // 205(表示用)にpushする用の505のデータを格納
-        if (event.code == SET_MOVEMENT_ROUTE_CODE && code205Count >= 0) { code505Data[code205Count].push(event.parameters[0]) }
+        if (event.code === SET_MOVEMENT_ROUTE_CODE && code205Count >= 0) { code505Data[code205Count].push(event.parameters[0]) }
       })
 
       // 205(表示用)に505のデータを格納
