@@ -5797,8 +5797,8 @@ if (typeof PluginManager === 'undefined') {
       return { code: 261, indent: 0, parameters: [fileName] }
     }
 
-    const getBattleProcessing = function (troop, troopValue, canEscape, canLose) {
-      return { code: 301, indent: 0, parameters: [troop, troopValue, canEscape, canLose] }
+    const getBattleProcessing = function (troop, troopValue) {
+      return { code: 301, indent: 0, parameters: [troop, troopValue, false, false] }
     }
 
     const getIfWin = function () {
@@ -6213,7 +6213,6 @@ if (typeof PluginManager === 'undefined') {
       const if_win = text.match(/\s*<IfWin>/i) || text.match(/\s*<勝ったとき>/)
       const if_escape = text.match(/\s*<IfEscape>/i) || text.match(/\s*<逃げたとき>/)
       const if_lose = text.match(/\s*<IfLose>/i) || text.match(/\s*<負けたとき>/)
-      const if_end = text.match(/\s*<IfEnd>/i) || text.match(/\s*<戦闘処理分岐終了>/)
       const name_input_processing =
         text.match(/<NameInputProcessing\s*:\s*([^\s].*)>/i) || text.match(/<名前入力の処理\s*:\s*([^\s].*)>/i)
       const open_menu_screen = text.match(/<OpenMenuScreen>/i) || text.match(/<メニュー画面を開く>/)
@@ -6934,9 +6933,12 @@ if (typeof PluginManager === 'undefined') {
       if (conditional_branch_end) {
         const current_block = block_stack.slice(-1)[0]
         const CHOICE_CODE = 102
+        const BATTLE_PROCESSING_CODE = 301
 
         if (Boolean(current_block) && current_block.code === CHOICE_CODE) {
           return [getBlockEnd(), getShowChoiceEnd()]
+        } else if (Boolean(current_block) && (current_block.code === BATTLE_PROCESSING_CODE)) {
+          return [getBlockEnd(), getIfEnd()]
         } else {
           return [getCommandBottomEvent(), getEnd()]
         }
@@ -7335,12 +7337,12 @@ if (typeof PluginManager === 'undefined') {
         }
       }
       const getTroopValue = (troop) => {
-        if (locationDirectList.includes(troop)) {
-          return 0
-        } else if (locationVariablesList.includes(troop)) {
-          return 1
+        if (troop.match(constant_regexp)) {
+          return { troop: 0, troopValue: Number(troop) }
+        } else if (troop.match(variable_regexp)) {
+          return { troop: 1, troopValue: Number(troop.match(variable_regexp)[1]) }
         } else if (troopRandomEncountList.includes(troop)) {
-          return 2
+          return { troop: 2, troopValue: 0 }
         } else {
           throw new Error('Syntax error. / 文法エラーです。:' + text.replace(/</g, '  ').replace(/>/g, '  '))
         }
@@ -8203,12 +8205,9 @@ if (typeof PluginManager === 'undefined') {
       // battle processing
       if (battle_processing) {
         const params = battle_processing[1].split(',').map((s) => s.trim().toLowerCase())
-        const troop = getTroopValue(params[0])
-        const troopValue = parseInt(params[1])
-        const canEscape = getCheckBoxValue(params[2])
-        const canLose = getCheckBoxValue(params[3])
+        const { troop, troopValue } = getTroopValue(params[0])
 
-        return [getBattleProcessing(troop, troopValue, canEscape, canLose)]
+        return [getBattleProcessing(troop, troopValue)]
       }
 
       // if win
@@ -8218,26 +8217,12 @@ if (typeof PluginManager === 'undefined') {
 
       // if escape
       if (if_escape) {
-        const event_command_list = []
-        event_command_list.push(getCommandBottomEvent())
-        event_command_list.push(getIfEscape())
-        return event_command_list
+        return [getIfEscape()]
       }
 
       // if lose
       if (if_lose) {
-        const event_command_list = []
-        event_command_list.push(getCommandBottomEvent())
-        event_command_list.push(getIfLose())
-        return event_command_list
-      }
-
-      // if end
-      if (if_end) {
-        const event_command_list = []
-        event_command_list.push(getCommandBottomEvent())
-        event_command_list.push(getIfEnd())
-        return event_command_list
+        return [getIfLose()]
       }
 
       // name input processing
@@ -8551,6 +8536,10 @@ if (typeof PluginManager === 'undefined') {
       const IF_END_CODE = getEnd().code
       const CHOICE_END_CODE = getShowChoiceEnd().code
       const IF_IFEND_CODE = getIfEnd().code
+      const BATTLE_PROCESSING_CODE = 301
+      const IF_WIN_CODE = 601
+      const IF_ESCAPE_CODE = 602
+      const IF_LOSE_CODE = 603
 
       // イベントコマンド追加
       events.forEach((current_frame) => {
@@ -8613,10 +8602,33 @@ if (typeof PluginManager === 'undefined') {
             event_command_list.push(getBlockEnd())
           }
           block_stack.slice(-1)[0].index += 1
+        } else if (current_frame.code === IF_WIN_CODE) {
+          // WIN_CODEが来たらtrueに更新
+          block_stack.slice(-1)[0].winCode = true
+        } else if (current_frame.code === IF_ESCAPE_CODE) {
+          // WIN_CODEが無い状態でESCAPEが来たらIF_WINコードを追加し、trueに更新
+          if (block_stack.slice(-1)[0].winCode === false) {
+            event_command_list.push(getIfWin())
+            block_stack.slice(-1)[0].winCode = true
+          }
+          const current_event = block_stack.slice(-1)[0].event
+          event_command_list.push(getBlockEnd())
+          current_event.parameters[2] = true
+        } else if (current_frame.code === IF_LOSE_CODE) {
+          // WIN_CODEが無い状態でLOSEが来たらIF_WINコードを追加し、trueに更新
+          if (block_stack.slice(-1)[0].winCode === false) {
+            event_command_list.push(getIfWin())
+            block_stack.slice(-1)[0].winCode = true
+          }
+          const current_event = block_stack.slice(-1)[0].event
+          event_command_list.push(getBlockEnd())
+          current_event.parameters[3] = true
         } else if (current_frame.code === CHOICE_CODE) {
           block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, index: 0 })
         } else if (current_frame.code === IF_CODE) {
           block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, index: 0 })
+        } else if (current_frame.code === BATTLE_PROCESSING_CODE) {
+          block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, winCode: false })
         }
 
         event_command_list = event_command_list.concat(events)
