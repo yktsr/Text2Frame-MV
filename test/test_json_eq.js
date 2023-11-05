@@ -84,6 +84,7 @@ describe('Text2Frame Test', function() {
     {title: "Conditional Branch/Button-MZ", infile: "./test/70-if-else-button-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/70-expected_if-else-button-mz.json"},
     {title: "Control Variables/Last-MZ", infile: "./test/71-control-variables-last-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/71-expected_control-variables-last-mz.json"},
     {title: "Movement/Scroll Map", infile: "./test/movement/scroll-map.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_scroll-map.json"},
+    {title: "Movement/Set Movement Route", infile: "./test/movement/set-movement-route.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_set-movement-route.json"},
     {title: "character/Show Balloon Icon", infile: "./test/character/show-balloon-icon.txt", mapfile: "./data/Map001.json", expfile: "./test/character/expected_show-balloon-icon.json"},
     {title: "Scene Control/Battle Processing", infile: "./test/scene-control/battle-processing.txt", mapfile: "./data/Map001.json", expfile: "./test/scene-control/expected_battle-processing.json"},
     {title: "Scene Control/Shop Processing", infile: "./test/scene-control/shop-processing.txt", mapfile: "./data/Map001.json", expfile: "./test/scene-control/expected_shop-processing.json"},
