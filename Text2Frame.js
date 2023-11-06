@@ -5915,19 +5915,11 @@ if (typeof PluginManager === 'undefined') {
       }
     }
 
-    const getGetLocationInfo = function (variableId, infoType, location, mapX, mapY) {
-      if (mapY === 'mz') {
-        return {
-          code: 285,
-          indent: 0,
-          parameters: [variableId, infoType, location, mapX, 0]
-        }
-      } else {
-        return {
-          code: 285,
-          indent: 0,
-          parameters: [variableId, infoType, location, mapX, parseInt(mapY)]
-        }
+    const getGetLocationInfo = function (variableId, infoType, locationType, locationX, locationY) {
+      return {
+        code: 285,
+        indent: 0,
+        parameters: [variableId, infoType, locationType, locationX, locationY]
       }
     }
 
@@ -6247,8 +6239,8 @@ if (typeof PluginManager === 'undefined') {
         text.match(/<ChangeBattleBackGround\s*:\s*([^\s].*)>/i) || text.match(/<戦闘背景の変更\s*:\s*([^\s].*)>/i)
       const change_parallax =
         text.match(/<ChangeParallax\s*:\s*([^\s].*)>/i) || text.match(/<遠景の変更\s*:\s*([^\s].*)>/i)
-      const change_get_location_info =
-        text.match(/<ChangeGetLocationInfo\s*:\s*([^\s].*)>/i) || text.match(/<指定位置の情報取得\s*:\s*([^\s].*)>/i)
+      const get_location_info =
+        text.match(/<GetLocationInfo\s*:\s*([^\s].*)>/i) || text.match(/<指定位置の情報取得\s*:\s*([^\s].*)>/i)
       const change_enemy_hp =
         text.match(/<ChangeEnemyHp\s*:\s*([^\s].*)>/i) || text.match(/<敵キャラのHP増減\s*:\s*([^\s].*)>/i)
       const change_enemy_mp =
@@ -7133,9 +7125,10 @@ if (typeof PluginManager === 'undefined') {
       // 場所/Location
       const locationDirectList = ['direct', '0', '直接指定']
       const locationVariablesList = ['variables', '1', '変数の指定']
+      const locationEventVariablesList = ['withvariables', '変数で指定']
       const locationExchangeList = ['exchange', '2', '他のイベントと交換']
       const troopRandomEncountList = ['random', '2', 'ランダム']
-      const locationDesignationList = ['character', '2', 'キャラクターで指定']
+      const locationDesignationList = ['character', '2', 'キャラクターで指定', 'キャラクター']
       const directionRetainList = ['retain', '0', 'そのまま']
       const directionDownList = ['down', '2', '下']
       const directionLeftList = ['left', '4', '左']
@@ -7153,13 +7146,13 @@ if (typeof PluginManager === 'undefined') {
       const speedNormalList = ['normal', '4', '標準速']
       const speedX2FasterList = ['x2 faster', '5', '2倍速']
       const speedX4FasterList = ['x4 faster', '6', '4倍速']
-      const infoTypeTerrainTagList = ['terraintag', '0', '地形タグ']
-      const infoTypeEventIdList = ['eventid', '1', 'イベントid']
-      const infoTypeLayer1List = ['layer1', '2', 'レイヤー1']
-      const infoTypeLayer2List = ['layer2', '3', 'レイヤー2']
-      const infoTypeLayer3List = ['layer3', '4', 'レイヤー3']
-      const infoTypeLayer4List = ['layer4', '5', 'レイヤー4']
-      const infoTypeRegionIdList = ['regionid', '6', 'リージョンid']
+      const infoTypeTerrainTagList = ['terrain tag', '0', '地形タグ']
+      const infoTypeEventIdList = ['event id', '1', 'イベントid']
+      const infoTypeLayer1List = ['layer 1', '2', 'レイヤー１']
+      const infoTypeLayer2List = ['layer 2', '3', 'レイヤー２']
+      const infoTypeLayer3List = ['layer 3', '4', 'レイヤー３']
+      const infoTypeLayer4List = ['layer 4', '5', 'レイヤー４']
+      const infoTypeRegionIdList = ['region id', '6', 'リージョンid']
       const frequencyLowestList = ['lowest', '1', '最低']
       const frequencyLowerList = ['lower', '2', '低']
       const frequencynormalList = ['normal', '3', '標準']
@@ -7334,6 +7327,25 @@ if (typeof PluginManager === 'undefined') {
           return 1
         } else if (locationExchangeList.includes(location) || locationDesignationList.includes(location)) {
           return 2
+        } else {
+          throw new Error('Syntax error. / 文法エラーです。:' + text.replace(/</g, '  ').replace(/>/g, '  '))
+        }
+      }
+      const getLocationEvent = (matches1, matches2, matches4) => {
+        if (locationDirectList.includes(matches1)) {
+          return { locationType: 0, locationX: parseInt(matches2), locationY: parseInt(matches4) }
+        } else if (locationEventVariablesList.includes(matches1)) {
+          return { locationType: 1, locationX: parseInt(matches2), locationY: parseInt(matches4) }
+        } else if (locationDesignationList.includes(matches1)) {
+          if (characterPlayerList.includes(matches2)) {
+            return { locationType: 2, locationX: -1, locationY: 0 }
+          } else if (characterThisEventList.includes(matches2)) {
+            return { locationType: 2, locationX: 0, locationY: 0 }
+          } else if (!isNaN(parseInt(matches2))) {
+            return { locationType: 2, locationX: parseInt(matches2), locationY: 0 }
+          } else {
+            throw new Error('Syntax error. / 文法エラーです。:' + text.replace(/</g, '  ').replace(/>/g, '  '))
+          }
         } else {
           throw new Error('Syntax error. / 文法エラーです。:' + text.replace(/</g, '  ').replace(/>/g, '  '))
         }
@@ -8410,17 +8422,20 @@ if (typeof PluginManager === 'undefined') {
         return [getChangeParallax(image, loopHorizontaly, loopVertically, loopHorizontalyScroll, loopVerticallyScroll)]
       }
 
-      // change get location info
-      if (change_get_location_info) {
-        const params = change_get_location_info[1].split(',').map((s) => s.trim().toLowerCase())
+      // get_location_info
+      if (get_location_info) {
+        const params = get_location_info[1].split(',').map((s) => s.trim().toLowerCase())
         const variableId = parseInt(params[0])
         const infoType = getLocationInfoTypeValue(params[1])
-        const location = getLocationValue(params[2])
-        // mz対応のプレイヤー、このイベントの対応でgetCharacterValueを使用 ※nを指定した場合はそのままの値が入る
-        const mapX = getCharacterValue(params[3])
-        const mapY = params[4]
 
-        return [getGetLocationInfo(variableId, infoType, location, mapX, mapY)]
+        // 位置(params[2])を正規表現で取得
+        const regex = /^(.*?)\[(.*?)](\[(\d+)])?/
+        const matches = params[2].match(regex)
+        // 取得チェック
+        if (!matches) throw new Error('Syntax error. / 文法エラーです。:' + params[2])
+        const { locationType, locationX, locationY } = getLocationEvent(matches[1], matches[2], matches[4])
+
+        return [getGetLocationInfo(variableId, infoType, locationType, locationX, locationY)]
       }
 
       // change enemy hp
