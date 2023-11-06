@@ -5959,13 +5959,8 @@ if (typeof PluginManager === 'undefined') {
       return { code: 336, indent: 0, parameters: [enemy, transformToEnemyId] }
     }
 
-    const getShowBattleAnimation = function (enemy, animationId, mvmz) {
-      if (mvmz === 'mv') {
-        const allEnemy = enemy === -1
-        return { code: 337, indent: 0, parameters: [enemy, animationId, allEnemy] }
-      } else {
-        return { code: 337, indent: 0, parameters: [enemy, animationId] }
-      }
+    const getShowBattleAnimation = function (enemyValue, animationId, isAllChecked) {
+      return { code: 337, indent: 0, parameters: [enemyValue, animationId, isAllChecked] }
     }
 
     const getForceAction = function (subject, subjectValue, skillId, target) {
@@ -7231,7 +7226,7 @@ if (typeof PluginManager === 'undefined') {
       const radioButtonEnableList = ['enable', '1', '許可']
 
       // 敵キャラ
-      const enemyTargetList = ['entiretroop', '敵グループ全体']
+      const enemyTargetList = ['entire troop', '敵グループ全体']
 
       // アクター
       const actorTargetList = ['entire party', 'パーティ全体']
@@ -7576,6 +7571,15 @@ if (typeof PluginManager === 'undefined') {
           return -1
         } else if (!isNaN(parseInt(enemy))) {
           return parseInt(enemy) - 1
+        } else {
+          throw new Error('Syntax error. / 文法エラーです。:' + text.replace(/</g, '  ').replace(/>/g, '  '))
+        }
+      }
+      const getTargetEnemyMultipleValues = (enemy) => {
+        if (enemyTargetList.includes(enemy)) {
+          return { enemyValue: 0, isAllChecked: true }
+        } else if (!isNaN(parseInt(enemy))) {
+          return { enemyValue: parseInt(enemy) - 1, isAllChecked: false }
         } else {
           throw new Error('Syntax error. / 文法エラーです。:' + text.replace(/</g, '  ').replace(/>/g, '  '))
         }
@@ -8510,11 +8514,10 @@ if (typeof PluginManager === 'undefined') {
       // show battle animation
       if (show_battle_animation) {
         const params = show_battle_animation[1].split(',').map((s) => s.trim().toLowerCase())
-        const enemy = getEnemyTargetValue(params[0])
+        const { enemyValue, isAllChecked } = getTargetEnemyMultipleValues(params[0])
         const animationId = parseInt(params[1])
-        const mvmz = params[2]
 
-        return [getShowBattleAnimation(enemy, animationId, mvmz)]
+        return [getShowBattleAnimation(enemyValue, animationId, isAllChecked)]
       }
 
       // force action
