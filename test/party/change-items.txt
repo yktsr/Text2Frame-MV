@@ -5,7 +5,7 @@
 
 % 例2: アイテムID3を変数ID2の値分減らす
 <ChangeItems: 3, decrease, Variables[2]>
-<ChangeItems: 3, -, Variables[2]>
+<ChangeItems: 3, -, V[2]>
 <アイテムの増減: 3, 減らす, 変数[2]>
 
 

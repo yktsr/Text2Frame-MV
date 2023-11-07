@@ -1,11 +1,11 @@
 % 例1: 所持金を1増やす
-<ChangeGold: increase, 1>
+<ChangeGold: Increase, 1>
 <ChangeGold: +, 1>
 <所持金の増減: 増やす, 1>
 
 % 例2: 所持金を変数ID5の値分減らす
-<ChangeGold: Decrease, variables[5]>
-<ChangeGold: -, variables[5]>
+<ChangeGold: Decrease, Variables[5]>
+<ChangeGold: -, V[5]>
 <所持金の増減: 減らす, 変数[5]>
 
 
