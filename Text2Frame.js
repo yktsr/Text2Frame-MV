@@ -7204,16 +7204,16 @@ if (typeof PluginManager === 'undefined') {
       const priceStandardList = ['standard', '0', '標準']
 
       // バトル
-      const actionTargetLastTargetList = ['lasttarget', -2, 'ラストターゲット']
-      const actionTargetRandomList = ['random', -1, 'ランダム']
-      const actionTargetIndex1List = ['index1', 0, 'インデックス1']
-      const actionTargetIndex2List = ['index2', 1, 'インデックス2']
-      const actionTargetIndex3List = ['index3', 2, 'インデックス3']
-      const actionTargetIndex4List = ['index4', 3, 'インデックス4']
-      const actionTargetIndex5List = ['index5', 4, 'インデックス5']
-      const actionTargetIndex6List = ['index6', 5, 'インデックス6']
-      const actionTargetIndex7List = ['index7', 6, 'インデックス7']
-      const actionTargetIndex8List = ['index8', 7, 'インデックス8']
+      const actionTargetLastTargetList = ['last target', '-1', 'ラストターゲット']
+      const actionTargetRandomList = ['random', '0', 'ランダム']
+      const actionTargetIndex1List = ['index 1', '1', 'インデックス１']
+      const actionTargetIndex2List = ['index 2', '2', 'インデックス２']
+      const actionTargetIndex3List = ['index 3', '3', 'インデックス３']
+      const actionTargetIndex4List = ['index 4', '4', 'インデックス４']
+      const actionTargetIndex5List = ['index 5', '5', 'インデックス５']
+      const actionTargetIndex6List = ['index 6', '6', 'インデックス６']
+      const actionTargetIndex7List = ['index 7', '7', 'インデックス７']
+      const actionTargetIndex8List = ['index 8', '8', 'インデックス８']
 
       // チェックボックス ラジオボタン
       const checkBoxOnList = ['true', 'on', 'オン', '1']
