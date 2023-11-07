@@ -87,6 +87,7 @@ describe('Text2Frame Test', function() {
     {title: "Movement / Set Vehicle Location", infile: "./test/movement/set-vehicle-location.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_set-vehicle-location.json"},
     {title: "Movement / Transfer Player", infile: "./test/movement/transfer-player.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_transfer-player.json"},
     {title: "Actor / Change Profile", infile: "./test/actor/change-profile.txt", mapfile: "./data/Map001.json", expfile: "./test/actor/expected_change-profile.json"},
+    {title: "Party / Change Gold", infile: "./test/party/change-gold.txt", mapfile: "./data/Map001.json", expfile: "./test/party/expected_change-gold.json"},
     {title: "Movement/Scroll Map", infile: "./test/movement/scroll-map.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_scroll-map.json"},
     {title: "Movement/Set Movement Route", infile: "./test/movement/set-movement-route.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_set-movement-route.json"},
     {title: "character/Show Balloon Icon", infile: "./test/character/show-balloon-icon.txt", mapfile: "./data/Map001.json", expfile: "./test/character/expected_show-balloon-icon.json"},
