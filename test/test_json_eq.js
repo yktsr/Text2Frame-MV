@@ -89,6 +89,7 @@ describe('Text2Frame Test', function() {
     {title: "Actor / Change Profile", infile: "./test/actor/change-profile.txt", mapfile: "./data/Map001.json", expfile: "./test/actor/expected_change-profile.json"},
     {title: "Party / Change Gold", infile: "./test/party/change-gold.txt", mapfile: "./data/Map001.json", expfile: "./test/party/expected_change-gold.json"},
     {title: "Party / Change Items", infile: "./test/party/change-items.txt", mapfile: "./data/Map001.json", expfile: "./test/party/expected_change-items.json"},
+    {title: "Party / Change Weapons", infile: "./test/party/change-weapons.txt", mapfile: "./data/Map001.json", expfile: "./test/party/expected_change-weapons.json"},
     {title: "Movement/Scroll Map", infile: "./test/movement/scroll-map.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_scroll-map.json"},
     {title: "Movement/Set Movement Route", infile: "./test/movement/set-movement-route.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_set-movement-route.json"},
     {title: "character/Show Balloon Icon", infile: "./test/character/show-balloon-icon.txt", mapfile: "./data/Map001.json", expfile: "./test/character/expected_show-balloon-icon.json"},
