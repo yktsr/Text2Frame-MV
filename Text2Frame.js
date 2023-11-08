@@ -4042,7 +4042,7 @@ if (typeof PluginManager === 'undefined') {
           plugin_name, plugin_command, disp_plugin_command, plugin_args
         ]
       }
-      const arg_regexp = /([^[\]]+)(\[.+\])/i
+      const arg_regexp = /([^[\]]+)(\[.*\])/i
       for (let i = 0; i < args.length; i++) {
         const matched = args[i].match(arg_regexp)
         if (matched) {
@@ -4055,7 +4055,7 @@ if (typeof PluginManager === 'undefined') {
     }
 
     const getPluginCommandMzParamsComment = function (plugin_command_mz_arg) {
-      const arg_regexp = /([^[\]]+)(\[.+\])/i
+      const arg_regexp = /([^[\]]+)(\[.*\])/i
       const matched = plugin_command_mz_arg.match(arg_regexp)
       if (matched) {
         let arg_name = matched[1] || ''
