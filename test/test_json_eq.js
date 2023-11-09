@@ -98,6 +98,7 @@ describe('Text2Frame Test', function() {
     {title: "Actor / Change State", infile: "./test/actor/change-state.txt", mapfile: "./data/Map001.json", expfile: "./test/actor/expected_change-state.json"},
     {title: "Actor / Recover All", infile: "./test/actor/recover-all.txt", mapfile: "./data/Map001.json", expfile: "./test/actor/expected_recover-all.json"},
     {title: "Actor / Change Exp", infile: "./test/actor/change-exp.txt", mapfile: "./data/Map001.json", expfile: "./test/actor/expected_change-exp.json"},
+    {title: "Actor / Change Level", infile: "./test/actor/change-level.txt", mapfile: "./data/Map001.json", expfile: "./test/actor/expected_change-level.json"},
     {title: "Movement/Scroll Map", infile: "./test/movement/scroll-map.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_scroll-map.json"},
     {title: "Movement/Set Movement Route", infile: "./test/movement/set-movement-route.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_set-movement-route.json"},
     {title: "character/Show Balloon Icon", infile: "./test/character/show-balloon-icon.txt", mapfile: "./data/Map001.json", expfile: "./test/character/expected_show-balloon-icon.json"},
