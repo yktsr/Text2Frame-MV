@@ -1,0 +1,22 @@
+% 例1: アクターID1を全回復
+<RecoverAll: 1>`
+<全回復: 1>`
+
+% 例2: パーティ全体を全回復
+<RecoverAll: Entire Party>`
+<RecoverAll: 0>`
+<全回復: パーティ全体>`
+
+
+% 2桁
+<RecoverAll: 10>`
+
+% 変数
+<RecoverAll: Variables[1]>`
+<RecoverAll: V[1]>`
+<RecoverAll: 変数[1]>`
+
+
+<RecoverAll: Variables[10]>`
+<RecoverAll: V[10]>`
+<RecoverAll: 変数[10]>`
