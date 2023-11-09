@@ -1,0 +1,19 @@
+% 例1: アクターID3の経験値を1増やす レベルアップを表示
+<ChangeExp: 3, Increase, 1, Show Level Up>
+<ChangeExp: 3, +, 1, true>
+<経験値の増減: 3, 増やす, 1, レベルアップを表示>
+
+%例2: 変数ID1のアクターの経験値を変数ID3の分減らす レベルアップを表示しない
+<ChangeExp: Variables[1], Decrease, Variables[3], false>
+<ChangeExp: V[1], -, V[3]>
+<経験値の増減: 変数[1], 減らす, 変数[3], オフ>
+
+% 2桁, チェックリスト ON
+<Changeexp: 10, Increase, 10, show level up>
+<Changeexp: 10, Increase, 10, 1>
+<ChangeExp: 10, Increase, 10, ON>
+<ChangeExp: 10, Increase, 10, オン>
+
+% 変数2桁, チェックリストOFF
+<ChangeExp: V[10], Increase, V[20], 0>
+<ChangeExp: V[10], Increase, V[20], OFF>
