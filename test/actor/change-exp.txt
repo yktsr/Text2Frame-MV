@@ -17,3 +17,8 @@
 % 変数2桁, チェックリストOFF
 <ChangeExp: V[10], Increase, V[20], 0>
 <ChangeExp: V[10], Increase, V[20], OFF>
+
+% アクターのリスト
+<Changeexp: Entire Party, Increase, 10, show level up>
+<Changeexp: パーティ全体, Increase, 10, show level up>
+<ChangeExp: 0, Increase, 10, show level up>

@@ -19,3 +19,8 @@
 <ChangeLevel: V[10], Increase, V[20], 0>
 <ChangeLevel: V[10], Increase, V[20], オフ>
 <ChangeLevel: V[10], Increase, V[20], OFF>
+
+% アクター全体
+<Changelevel: Entire Party, Increase, 10, show level up>
+<Changelevel: パーティ全体, Increase, 10, show level up>
+<Changelevel: 0, Increase, 10, show level up>
