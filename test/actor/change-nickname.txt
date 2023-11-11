@@ -1,0 +1,9 @@
+% 例: アクターID3の二つ名を「三人目のアクター」に変更
+<ChangeNickname: 3, 三人目のアクター>
+<二つ名の変更: 3, 三人目のアクター>
+
+% アクターIDが2桁, 英語
+<changenickname: 10, an actor of ten>
+
+% 二つ名を空欄に
+<ChangeNickname: 1>
