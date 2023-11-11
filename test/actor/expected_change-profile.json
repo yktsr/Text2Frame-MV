@@ -1,0 +1,58 @@
+{
+  "events": [
+    null,
+    {
+      "pages": [
+        {
+          "list": [
+            {
+              "code": 325,
+              "indent": 0,
+              "parameters": [
+                3,
+                "アクター3\n初期キャラクター"
+              ]
+            },
+            {
+              "code": 325,
+              "indent": 0,
+              "parameters": [
+                3,
+                "アクター3\n初期キャラクター"
+              ]
+            },
+            {
+              "code": 325,
+              "indent": 0,
+              "parameters": [
+                10,
+                "Actor 10\nInitial character"
+              ]
+            },
+            {
+              "code": 325,
+              "indent": 0,
+              "parameters": [
+                1,
+                "アクター1"
+              ]
+            },
+            {
+              "code": 325,
+              "indent": 0,
+              "parameters": [
+                1,
+                ""
+              ]
+            },
+            {
+              "code": 0,
+              "indent": 0,
+              "parameters": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
