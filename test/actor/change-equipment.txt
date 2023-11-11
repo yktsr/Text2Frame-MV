@@ -1,0 +1,11 @@
+% 例: アクターID1に装備タイプID2の装備品ID6を装備
+<ChangeEquipment: 1, 2, 6>
+<装備の変更: 1, 2, 6>
+
+% 2桁
+<ChangeEquipment: 10, 10, 10>
+
+% なし
+<ChangeEquipment: 1, 1, None>
+<装備の変更: 1, 1, なし>
+<ChangeEquipment: 1, 1, 0>
