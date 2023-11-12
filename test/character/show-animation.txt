@@ -1,0 +1,37 @@
+% 例1: プレイヤーを対象にアニメーションID2を表示 完了までウェイト
+<ShowAnimation: Player, 2, Wait for Completion>
+<アニメーションの表示: プレイヤー, 2, 完了までウェイト>
+
+例2: EV003を対象にアニメーションID4を表示 完了までウェイトしない
+<ShowAnimation: 3, 4>
+<アニメーションの表示: 3, 4, オフ>
+
+
+% 二桁
+<ShowAnimation: 10, 10, Wait for Completion>
+
+% Player
+<ShowAnimation: Player, 1, Wait for Completion>
+<ShowAnimation: -1, 1, Wait for Completion>
+<ShowAnimation: プレイヤー, 1, Wait for Completion>
+
+% This Event
+<ShowAnimation: This Event, 1>
+<ShowAnimation: このイベント, 1>
+<ShowAnimation: 0, 1>
+
+% ウェイトのリスト
+<ShowAnimation: 1, 1, Wait for Completion>
+<ShowAnimation: 1, 1, 完了までウェイト>
+<ShowAnimation: 1, 1, Wait>
+<ShowAnimation: 1, 1, true>
+<ShowAnimation: 1, 1, 1>
+<ShowAnimation: 1, 1, オン>
+<ShowAnimation: 1, 1, ON>
+
+% ウェイトしない
+<ShowAnimation: 1, 1, false>
+<ShowAnimation: 1, 1, 0>
+<ShowAnimation: 1, 1, オフ>
+<ShowAnimation: 1, 1, OFF>
+<ShowAnimation: 1, 1>

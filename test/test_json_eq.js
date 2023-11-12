@@ -110,6 +110,7 @@ describe('Text2Frame Test', function() {
     {title: "character / Change Transparency", infile: "./test/character/change-transparency.txt", mapfile: "./data/Map001.json", expfile: "./test/character/expected_change-transparency.json"},
     {title: "character / Change Player Followers", infile: "./test/character/change-player-followers.txt", mapfile: "./data/Map001.json", expfile: "./test/character/expected_change-player-followers.json"},
     {title: "character / Gather Followers", infile: "./test/character/gather-followers.txt", mapfile: "./data/Map001.json", expfile: "./test/character/expected_gather-followers.json"},
+    {title: "character / Show Animation", infile: "./test/character/show-animation.txt", mapfile: "./data/Map001.json", expfile: "./test/character/expected_show-animation.json"},
     {title: "character/Show Balloon Icon", infile: "./test/character/show-balloon-icon.txt", mapfile: "./data/Map001.json", expfile: "./test/character/expected_show-balloon-icon.json"},
     {title: "Battle/Show Battle Animation", infile: "./test/battle/show-battle-animation.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_show-battle-animation.json"},
     {title: "Battle/Force Action", infile: "./test/battle/force-action.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_force-action.json"},
