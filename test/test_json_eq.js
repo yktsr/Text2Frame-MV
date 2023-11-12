@@ -107,6 +107,7 @@ describe('Text2Frame Test', function() {
     {title: "Movement / Scroll Map", infile: "./test/movement/scroll-map.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_scroll-map.json"},
     {title: "Movement / Set Movement Route", infile: "./test/movement/set-movement-route.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_set-movement-route.json"},
     {title: "Movement / Get on/off Vehicle", infile: "./test/movement/get-on-off-vehicle.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_get-on-off-vehicle.json"},
+    {title: "character / Change Transparency", infile: "./test/character/change-transparency.txt", mapfile: "./data/Map001.json", expfile: "./test/character/expected_change-transparency.json"},
     {title: "character/Show Balloon Icon", infile: "./test/character/show-balloon-icon.txt", mapfile: "./data/Map001.json", expfile: "./test/character/expected_show-balloon-icon.json"},
     {title: "Battle/Show Battle Animation", infile: "./test/battle/show-battle-animation.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_show-battle-animation.json"},
     {title: "Battle/Force Action", infile: "./test/battle/force-action.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_force-action.json"},
