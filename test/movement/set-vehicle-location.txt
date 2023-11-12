@@ -1,0 +1,18 @@
+% 例1: マップID1のX座標10,Y座標20に小型船を配置
+<SetVehicleLocation: Boat, Direct[1][10][20]>
+<乗り物の位置設定: 小型船, 直接指定[1][10][20]>
+
+% 例2: 変数1のマップID、変数2のX座標,変数3のY座標に大型船を配置
+<SetVehicleLocation: Ship, WithVariables[1][2][3]>
+<乗り物の位置設定: 大型船, WithVariables[1][2][3]>
+
+
+% 直接指定と変数指定の桁確認, 小型船と大型船の数字での確認
+<SetVehicleLocation: 0, Direct[10][1][2]>
+
+<SetVehicleLocation: 1, WithVariables[10][20][30]>
+
+% 飛行船の確認
+<SetVehicleLocation: Airship, Direct[1][2][3]>
+<SetVehicleLocation: 2, Direct[1][2][3]>
+<SetVehicleLocation: 飛行船, Direct[1][2][3]>
