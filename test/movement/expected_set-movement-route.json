@@ -67,7 +67,7 @@
                       "code": 44,
                       "parameters": [
                         {
-                          "name": "Attack1",
+                          "name": "Absorb1",
                           "volume": 90,
                           "pitch": 100,
                           "pan": 0
@@ -193,7 +193,7 @@
                   "code": 44,
                   "parameters": [
                     {
-                      "name": "Attack1",
+                      "name": "Absorb1",
                       "volume": 90,
                       "pitch": 100,
                       "pan": 0
@@ -278,7 +278,7 @@
                       "code": 44,
                       "parameters": [
                         {
-                          "name": "Attack1",
+                          "name": "Absorb1",
                           "volume": 90,
                           "pitch": 100,
                           "pan": 0
@@ -404,7 +404,7 @@
                   "code": 44,
                   "parameters": [
                     {
-                      "name": "Attack1",
+                      "name": "Absorb1",
                       "volume": 90,
                       "pitch": 100,
                       "pan": 0
@@ -440,7 +440,7 @@
                   ],
                   "repeat": false,
                   "skippable": false,
-                  "wait": false
+                  "wait": true
                 }
               ]
             },
@@ -457,7 +457,7 @@
                   ],
                   "repeat": false,
                   "skippable": false,
-                  "wait": false
+                  "wait": true
                 }
               ]
             },
@@ -474,7 +474,7 @@
                   ],
                   "repeat": false,
                   "skippable": false,
-                  "wait": false
+                  "wait": true
                 }
               ]
             },
@@ -678,7 +678,7 @@
                   ],
                   "repeat": false,
                   "skippable": false,
-                  "wait": false
+                  "wait": true
                 }
               ]
             },
@@ -695,7 +695,7 @@
                   ],
                   "repeat": false,
                   "skippable": false,
-                  "wait": false
+                  "wait": true
                 }
               ]
             },
