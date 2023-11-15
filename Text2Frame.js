@@ -7119,7 +7119,6 @@ if (typeof PluginManager === 'undefined') {
       const operationForgetList = ['forget', '-', '忘れる']
       // 場所/Location
       const locationDirectList = ['direct', '0', '直接指定']
-      const locationVariablesList = ['variables', '1', '変数の指定']
       const locationEventVariablesList = ['withvariables', '変数で指定']
       const locationExchangeList = ['exchange', '2', '他のイベントと交換']
       const troopRandomEncountList = ['random', '2', 'ランダム']
@@ -7318,7 +7317,7 @@ if (typeof PluginManager === 'undefined') {
       const getLocationValue = (location) => {
         if (locationDirectList.includes(location)) {
           return 0
-        } else if (locationVariablesList.includes(location)) {
+        } else if (locationEventVariablesList.includes(location)) {
           return 1
         } else if (locationExchangeList.includes(location) || locationDesignationList.includes(location)) {
           return 2
@@ -7794,12 +7793,17 @@ if (typeof PluginManager === 'undefined') {
       // transfer player
       if (transfer_player) {
         const params = transfer_player[1].split(',').map((s) => s.trim().toLowerCase())
-        const location = getLocationValue(params[0])
-        const mapId = parseInt(params[1])
-        const mapX = parseInt(params[2])
-        const mapY = parseInt(params[3])
-        const direction = getDirectionValue(params[4])
-        const fade = getFadeValue(params[5])
+        // 位置(params[0])を正規表現で取得
+        const regex = /(.*?)\[(\d+)]\[(\d+)]\[(\d+)]/
+        const matches = params[0].match(regex)
+        // 取得チェック
+        if (!matches) throw new Error('Syntax error. / 文法エラーです。:' + params[0])
+        const location = getLocationValue(matches[1])
+        const mapId = parseInt(matches[2])
+        const mapX = parseInt(matches[3])
+        const mapY = parseInt(matches[4])
+        const direction = getDirectionValue(params[1])
+        const fade = getFadeValue(params[2])
 
         return [getTransferPlayer(location, mapId, mapX, mapY, direction, fade)]
       }
