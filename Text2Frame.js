@@ -7852,7 +7852,7 @@ if (typeof PluginManager === 'undefined') {
         const target = getCharacterValue(params[0])
         const repeat = params[1] === undefined ? false : getCheckBoxValue(params[1])
         const skippable = params[2] === undefined ? false : getCheckBoxValue(params[2])
-        const wait = params[3] === undefined ? true : getCheckBoxValue(params[3])
+        const wait = params[3] === undefined ? false : getCheckBoxValue(params[3])
 
         return [getMovementRoute(target, repeat, skippable, wait)]
       }

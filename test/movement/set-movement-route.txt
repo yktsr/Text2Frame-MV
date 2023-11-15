@@ -35,7 +35,7 @@
 
 
 % 引数の確認
-%% このイベント, 「リピート」、「スキップ」オプションを省略でオフ、「完了までウェイト」オプションを省略でオン
+%% このイベント, すべてのオプションを省略でオフ
 <SetMovementRoute: This Event>
 <移動ルートの設定: このイベント>
 <SetMovementRoute: 0>
@@ -54,8 +54,6 @@
 <SetMovementRoute: 10, 0, 0, 0>
 <SetMovementRoute: 10, オフ, オフ, オフ>
 <SetMovementRoute: 10, OFF, OFF, OFF>
-
-%% イベントID10, リピートOFF, スキップOFF, 完了までウェイトON
 <SetMovementRoute: 10, false>
 <SetMovementRoute: 10, 0, 0>
 
