@@ -9,6 +9,7 @@
 % 例3: EV012をこのイベントと交換 向き：上
 <SetEventLocation: 12, Exchange[This Event], Up>
 <イベントの位置設定: 12, 交換[このイベント], 上>
+<SetEventLocation: 12, Exchange[0], Up>
 
 
 % いろいろな桁数, 向きはすべてそのまま
