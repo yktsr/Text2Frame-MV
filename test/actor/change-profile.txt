@@ -12,3 +12,9 @@
 
 % プロフィールがなし
 <ChangeProfile: 1>
+
+% 1行目に改行コードがあり、2行目を省略
+<ChangeProfile: 1, test\nAbC>
+
+% 1行目に改行コードがあり、2行目を省略しない
+<ChangeProfile: 1, test\nAbC, 2Gyoume>

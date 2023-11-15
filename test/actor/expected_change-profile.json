@@ -46,6 +46,22 @@
               ]
             },
             {
+              "code": 325,
+              "indent": 0,
+              "parameters": [
+                1,
+                "test\nAbC"
+              ]
+            },
+            {
+              "code": 325,
+              "indent": 0,
+              "parameters": [
+                1,
+                "test\nAbC"
+              ]
+            },
+            {
               "code": 0,
               "indent": 0,
               "parameters": []

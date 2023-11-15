@@ -7784,9 +7784,19 @@ if (typeof PluginManager === 'undefined') {
 
       // change profile
       if (change_profile) {
-        const params = change_profile[1].split(',').map((s) => s.trim().toLowerCase())
+        const params = change_profile[1].split(',').map((s) => s.trim())
         const actorId = parseInt(params[0])
-        const profile = params[1]
+        const firstLine = params[1] === undefined ? '' : String(params[1])
+        const secondLine = params[2] === undefined ? '' : String(params[2])
+        const isNewlineCharacter = firstLine.includes('\\n')
+        let profile = ''
+
+        // 1行目に改行コードがある、または２行目が省略されている場合は1行目のみを出力
+        if (isNewlineCharacter || secondLine === '') {
+          profile = firstLine
+        } else {
+          profile = firstLine + '\n' + secondLine
+        }
 
         return [getChangeProfile(actorId, profile)]
       }
