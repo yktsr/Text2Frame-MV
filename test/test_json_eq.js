@@ -83,6 +83,7 @@ describe('Text2Frame Test', function() {
     {title: "Move Picture MZ", infile: "./test/69-move-picture-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/69-expected_move-picture-mz.json"},
     {title: "Conditional Branch/Button-MZ", infile: "./test/70-if-else-button-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/70-expected_if-else-button-mz.json"},
     {title: "Control Variables/Last-MZ", infile: "./test/71-control-variables-last-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/71-expected_control-variables-last-mz.json"},
+    {title: "Actor / Change Profile", infile: "./test/actor/change-profile.txt", mapfile: "./data/Map001.json", expfile: "./test/actor/expected_change-profile.json"},
     {title: "Movement/Scroll Map", infile: "./test/movement/scroll-map.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_scroll-map.json"},
     {title: "Movement/Set Movement Route", infile: "./test/movement/set-movement-route.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_set-movement-route.json"},
     {title: "character/Show Balloon Icon", infile: "./test/character/show-balloon-icon.txt", mapfile: "./data/Map001.json", expfile: "./test/character/expected_show-balloon-icon.json"},
