@@ -1,0 +1,249 @@
+% 例: 移動ルートの設定 対象をプレイヤー リピートしない スキップしない 完了までウェイトする
+% 1. x10,y20にジャンプ
+% 2. 60フレームウェイト
+% 3. スイッチID1をスイッチON
+% 4. 移動速度を「標準速」に変更
+% 5. Actor1.pngの三つ目のIDに画像を変更
+% 6. 不透明度を255に変更
+% 7. 合成方法を通常に変更
+% 8. SEを「Absorb1.ogg」の音量90,ピッチ100%,位相0に変更
+% 9. スクリプトにconsole.log("今日も一日がんばるぞい！")を設定
+
+% 【英語のタグ】
+<SetMovementRoute: player, false, false, true>
+<Jump: 10, 20>
+<McWait: 60>
+<SwitchOn: 1>
+<ChangeSpeed: normal>
+<ChangeImage: Actor1, 2>
+<ChangeOpacity: 255>
+<ChangeBlendMode: normal>
+<McPlaySe: Absorb1, 90, 100, 0>
+<McScript: console.log("今日も一日がんばるぞい！");>
+
+% 日本語のタグ
+<移動ルートの設定: プレイヤー, オフ, オフ, オン>
+<ジャンプ: 10, 20>
+<移動コマンドウェイト: 60>
+<スイッチON: 1>
+<移動速度の変更: 標準速>
+<画像の変更: Actor1, 2>
+<不透明度の変更: 255>
+<合成方法の変更: 通常>
+<移動コマンドSEの演奏: Absorb1, 90, 100, 0>
+<移動コマンドスクリプト: console.log("今日も一日がんばるぞい！");>
+
+
+% 引数の確認
+%% このイベント, すべてのオプションを省略でオフ
+<SetMovementRoute: This Event>
+<移動ルートの設定: このイベント>
+<SetMovementRoute: 0>
+
+%% プレイヤー, リピートON, スキップON, 完了までウェイトON
+<SetMovementRoute: Player, Repeat Movements, Skip If Cannot Move, Wait for Completion>
+<SetMovementRoute: Player, Repeat, Skip, Wait>
+<移動ルートの設定: プレイヤー, 動作を繰り返す, 移動できない場合は飛ばす, 完了までウェイト>
+<SetMovementRoute: -1, true, true, true>
+<SetMovementRoute: -1, 1, 1, 1>
+<SetMovementRoute: -1, オン, オン, オン>
+<SetMovementRoute: -1, ON, ON, ON>
+
+%% イベントID10, リピートOFF, スキップOFF, 完了までウェイトOFF
+<SetMovementRoute: 10, false, false, false>
+<SetMovementRoute: 10, 0, 0, 0>
+<SetMovementRoute: 10, オフ, オフ, オフ>
+<SetMovementRoute: 10, OFF, OFF, OFF>
+<SetMovementRoute: 10, false>
+<SetMovementRoute: 10, 0, 0>
+
+
+% 引数なしのコマンド
+<SetMovementRoute: Player, false, false, Wait>
+<MoveDown>
+<下に移動>
+<MoveLeft>
+<左に移動>
+<MoveRight>
+<右に移動>
+<MoveUp>
+<上に移動>
+<MoveLowerLeft>
+<左下に移動>
+<MoveLowerRight>
+<右下に移動>
+<MoveUpperLeft>
+<左上に移動>
+<MoveUpperRight>
+<右上に移動>
+<MoveAtRandom>
+<ランダムに移動>
+<MoveTowardPlayer>
+<プレイヤーに近づく>
+<MoveAwayFromPlayer>
+<プレイヤーから遠ざかる>
+<OneStepForward>
+<一歩前進>
+<OneStepBackward>
+<一歩後退>
+<TurnDown>
+<下を向く>
+<TurnLeft>
+<左を向く>
+<TurnRight>
+<右を向く>
+<TurnUp>
+<上を向く>
+<Turn90Right>
+<右に90度回転>
+<Turn90Left>
+<左に90度回転>
+<Turn180>
+<180度回転>
+<Turn90RightorLeft>
+<右か左に90度回転>
+<TurnAtRandom>
+<ランダムに方向転換>
+<TurnTowardPlayer>
+<プレイヤーの方を向く>
+<TurnAwayFromPlayer>
+<プレイヤーの逆を向く>
+<WalkingAnimationOn>
+<歩行アニメON>
+<WalkingAnimationOff>
+<歩行アニメOFF>
+<SteppingAnimationOn>
+<足踏みアニメON>
+<SteppingAnimationOff>
+<足踏みアニメOFF>
+<DirectionFixOn>
+<向き固定ON>
+<DirectionFixOff>
+<向き固定OFF>
+<ThroughOn>
+<すり抜けON>
+<ThroughOff>
+<すり抜けOFF>
+<TransparentOn>
+<透明化ON>
+<TransparentOff>
+<透明化OFF>
+
+
+
+% 引数ありのコマンド
+<SetMovementRoute: Player, false, false, Wait>
+%% ジャンプ, 1, 2と10,20と-5, -50
+<Jump: 1, 2>
+<ジャンプ: 10, 20>
+<ジャンプ: -5, -50>
+
+%% ウェイト 5と60
+<McWait: 5>
+<移動コマンドウェイト: 60>
+
+%% スイッチON, 1と10
+<SwitchOn: 1>
+<スイッチON: 10>
+
+%% スイッチOFF, 1と10
+<SwitchOff: 1>
+<SwitchOFF: 10>
+
+%% 移動速度の変更
+%%% 1/8
+<ChangeSpeed: x8 slower>
+<ChangeSpeed: 1>
+<移動速度の変更: 1/8倍速>
+%%% 1/4
+<ChangeSpeed: x4 slower>
+<ChangeSpeed: 2>
+<移動速度の変更: 1/4倍速>
+%%% 1/2
+<ChangeSpeed: x2 slower>
+<ChangeSpeed: 3>
+<移動速度の変更: 1/2倍速>
+%%% 等倍
+<ChangeSpeed: Normal>
+<ChangeSpeed: 4>
+<移動速度の変更: 標準速>
+%%% 2倍
+<ChangeSpeed: x2 Faster>
+<ChangeSpeed: 5>
+<移動速度の変更: 2倍速>
+%%% 4倍
+<ChangeSpeed: x4 Faster>
+<ChangeSpeed: 6>
+<移動速度の変更: 4倍速>
+
+%% 移動頻度の変更
+%%% 最低
+<ChangeFrequency: Lowest>
+<ChangeFrequency: 1>
+<移動頻度の変更: 最低>
+
+%%% 低
+<ChangeFrequency: Lower>
+<ChangeFrequency: 2>
+<移動頻度の変更: 低>
+
+%%% 標準
+<ChangeFrequency: Normal>
+<ChangeFrequency: 3>
+<移動頻度の変更: 標準>
+
+%%% 高
+<ChangeFrequency: Higher>
+<ChangeFrequency: 4>
+<移動頻度の変更: 高>
+
+%%% 最高
+<ChangeFrequency: Highest>
+<ChangeFrequency: 5>
+<移動頻度の変更: 最高>
+
+%% 画像の変更, Actor1の0
+<ChangeImage: Actor1, 0>
+<画像の変更: Actor1, 0>
+
+%% 不透明度の変更, 0と255
+<ChangeOpacity: 0>
+<不透明度の変更: 255>
+
+%% 合成方法の変更
+%%% 通常
+<ChangeBlendMode: Normal>
+<ChangeBlendMode: 0>
+<合成方法の変更: 通常>
+
+%%% 加算
+<ChangeBlendMode: Additive>
+<ChangeBlendMode: 1>
+<合成方法の変更: 加算>
+
+%%% 乗算
+<ChangeBlendMode: Multiply>
+<ChangeBlendMode: 2>
+<合成方法の変更: 乗算>
+
+%%% スクリーン
+<ChangeBlendMode: Screen>
+<ChangeBlendMode: 3>
+<合成方法の変更: スクリーン>
+
+%% SEの演奏
+%%% デフォルト設定(90, 100, 0)
+<McPlaySe: Attack1>
+<移動コマンドSEの演奏: Attack1>
+
+%%% 音量50, ピッチ80, 位相-30
+<McPlaySE: Attack2, 50, 80, -30>
+
+%%% デフォルト値の確認
+<McPlaySE: Attack2, 50, 80>
+
+<McPlaySE: Attack2, 50>
+
+%% スクリプト
+<McScript: console.log("今日も一日がんばるぞい！");>
+<移動コマンドスクリプト: console.log("今日も一日がんばるぞい！");>

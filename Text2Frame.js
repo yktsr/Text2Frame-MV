@@ -5733,12 +5733,29 @@ if (typeof PluginManager === 'undefined') {
       return getMovementRoute505(parameters)
     }
 
-    const getMovePlaySe = function (name, volume, pitch, pan) {
+    const getMcPlaySeEvent = function (name, volume, pitch, pan) {
+      let param_volume = 90
+      let param_pitch = 100
+      let param_pan = 0
+
+      if (typeof (volume) === 'number') {
+        param_volume = volume
+      }
+
+      if (typeof (pitch) === 'number') {
+        param_pitch = pitch
+      }
+
+      if (typeof (pan) === 'number') {
+        param_pan = pan
+      }
+
       const parameters = {
         code: 44,
-        parameters: [{ name, volume, pitch, pan }],
+        parameters: [{ name, volume: param_volume, pitch: param_pitch, pan: param_pan }],
         indent: null
       }
+
       return getMovementRoute505(parameters)
     }
 
@@ -6136,7 +6153,7 @@ if (typeof PluginManager === 'undefined') {
       const one_step_forward = text.match(/<OneStepForward>/i) || text.match(/<一歩前進>/)
       const one_step_backward = text.match(/<OneStepBackward>/i) || text.match(/<一歩後退>/)
       const jump = text.match(/<Jump\s*:\s*([^\s].*)>/i) || text.match(/<ジャンプ\s*:\s*([^\s].*)>/i)
-      const move_wait = text.match(/<MoveWait\s*:\s*([^\s].*)>/i) || text.match(/<移動ウェイト\s*:\s*([^\s].*)>/i)
+      const mc_wait = text.match(/<McWait\s*:\s*([^\s].*)>/i) || text.match(/<移動コマンドウェイト\s*:\s*([^\s].*)>/i)
       const turn_down = text.match(/<TurnDown>/i) || text.match(/<下を向く>/)
       const turn_left = text.match(/<TurnLeft>/i) || text.match(/<左を向く>/)
       const turn_right = text.match(/<TurnRight>/i) || text.match(/<右を向く>/)
@@ -6169,8 +6186,8 @@ if (typeof PluginManager === 'undefined') {
         text.match(/<ChangeOpacity\s*:\s*([^\s].*)>/i) || text.match(/<不透明度の変更\s*:\s*([^\s].*)>/i)
       const change_blend_mode =
         text.match(/<ChangeBlendMode\s*:\s*([^\s].*)>/i) || text.match(/<合成方法の変更\s*:\s*([^\s].*)>/i)
-      const move_play_se = text.match(/<MovePlaySe\s*:\s*([^\s].*)>/i) || text.match(/<移動SEの演奏\s*:\s*([^\s].*)>/i)
-      const move_script = text.match(/<MoveScript\s*:\s*([^\s].*)>/i) || text.match(/<移動スクリプト\s*:\s*([^\s].*)>/i)
+      const mc_play_se = text.match(/<McPlaySe *: *([^ ].+)>/i) || text.match(/<移動コマンドSEの演奏 *: *([^ ].+)>/)
+      const mc_script = text.match(/<McScript\s*:\s*([^\s].*)>/i) || text.match(/<移動コマンドスクリプト\s*:\s*([^\s].*)>/i)
       const get_on_off_vehicle = text.match(/<GetOnOffVehicle>/i) || text.match(/<乗り物の乗降>/)
       const change_transparency =
         text.match(/<ChangeTransparency\s*:\s*([^\s].*)>/i) || text.match(/<透明状態の変更\s*:\s*([^\s].*)>/i)
@@ -7214,6 +7231,8 @@ if (typeof PluginManager === 'undefined') {
       const checkBoxOffList = ['false', 'off', 'オフ', '0']
       const checkBoxWaitList = ['wait for completion', '完了までウェイト', 'wait']
       const checkBoxPurchaseOnlyList = ['purchase only', '購入のみ']
+      const checkBoxRepeatList = ['repeat', 'repeat movements', '動作を繰り返す']
+      const checkBoxSkipList = ['skip', 'skip if cannot move', '移動できない場合は飛ばす']
       const radioButtonOnList = ['true', 'on', 'オン', '0']
       const radioButtonOffList = ['false', 'off', 'オフ', '1']
       const radioButtonDisableList = ['disable', '0', '禁止']
@@ -7289,6 +7308,10 @@ if (typeof PluginManager === 'undefined') {
         } else if (checkBoxWaitList.includes(checkBoxValue)) {
           return true
         } else if (checkBoxPurchaseOnlyList.includes(checkBoxValue)) {
+          return true
+        } else if (checkBoxRepeatList.includes(checkBoxValue)) {
+          return true
+        } else if (checkBoxSkipList.includes(checkBoxValue)) {
           return true
         } else if (checkBoxOffList.includes(checkBoxValue)) {
           return false
@@ -7783,9 +7806,19 @@ if (typeof PluginManager === 'undefined') {
 
       // change profile
       if (change_profile) {
-        const params = change_profile[1].split(',').map((s) => s.trim().toLowerCase())
+        const params = change_profile[1].split(',').map((s) => s.trim())
         const actorId = parseInt(params[0])
-        const profile = params[1]
+        const firstLine = params[1] === undefined ? '' : String(params[1])
+        const secondLine = params[2] === undefined ? '' : String(params[2])
+        const isNewlineCharacter = firstLine.includes('\\n')
+        let profile = ''
+
+        // 1行目に改行コードがある、または２行目が省略されている場合は1行目のみを出力
+        if (isNewlineCharacter || secondLine === '') {
+          profile = firstLine
+        } else {
+          profile = firstLine + '\n' + secondLine
+        }
 
         return [getChangeProfile(actorId, profile)]
       }
@@ -7793,12 +7826,17 @@ if (typeof PluginManager === 'undefined') {
       // transfer player
       if (transfer_player) {
         const params = transfer_player[1].split(',').map((s) => s.trim().toLowerCase())
-        const location = getLocationValue(params[0])
-        const mapId = parseInt(params[1])
-        const mapX = parseInt(params[2])
-        const mapY = parseInt(params[3])
-        const direction = getDirectionValue(params[4])
-        const fade = getFadeValue(params[5])
+        // 位置(params[0])を正規表現で取得
+        const regex = /(.*?)\[(\d+)]\[(\d+)]\[(\d+)]/
+        const matches = params[0].match(regex)
+        // 取得チェック
+        if (!matches) throw new Error('Syntax error. / 文法エラーです。:' + params[0])
+        const location = getLocationValue(matches[1])
+        const mapId = parseInt(matches[2])
+        const mapX = parseInt(matches[3])
+        const mapY = parseInt(matches[4])
+        const direction = getDirectionValue(params[1])
+        const fade = getFadeValue(params[2])
 
         return [getTransferPlayer(location, mapId, mapX, mapY, direction, fade)]
       }
@@ -7807,10 +7845,15 @@ if (typeof PluginManager === 'undefined') {
       if (set_vehicle_location) {
         const params = set_vehicle_location[1].split(',').map((s) => s.trim().toLowerCase())
         const vehicle = getVehicleValue(params[0])
-        const location = getLocationValue(params[1])
-        const mapId = parseInt(params[2])
-        const mapX = parseInt(params[3])
-        const mapY = parseInt(params[4])
+        // 位置(params[0])を正規表現で取得
+        const regex = /(.*?)\[(\d+)]\[(\d+)]\[(\d+)]/
+        const matches = params[1].match(regex)
+        // 取得チェック
+        if (!matches) throw new Error('Syntax error. / 文法エラーです。:' + params[1])
+        const location = getLocationValue(matches[1])
+        const mapId = parseInt(matches[2])
+        const mapX = parseInt(matches[3])
+        const mapY = parseInt(matches[4])
 
         return [getSetVehicleLocation(vehicle, location, mapId, mapX, mapY)]
       }
@@ -7855,9 +7898,9 @@ if (typeof PluginManager === 'undefined') {
       if (set_movement_route) {
         const params = set_movement_route[1].split(',').map((s) => s.trim().toLowerCase())
         const target = getCharacterValue(params[0])
-        const repeat = getCheckBoxValue(params[1])
-        const skippable = getCheckBoxValue(params[2])
-        const wait = getCheckBoxValue(params[3])
+        const repeat = params[1] === undefined ? false : getCheckBoxValue(params[1])
+        const skippable = params[2] === undefined ? false : getCheckBoxValue(params[2])
+        const wait = params[3] === undefined ? false : getCheckBoxValue(params[3])
 
         return [getMovementRoute(target, repeat, skippable, wait)]
       }
@@ -7936,9 +7979,9 @@ if (typeof PluginManager === 'undefined') {
         return [getJump(x, y)]
       }
 
-      // move wait
-      if (move_wait) {
-        const params = move_wait[1].split(',').map((s) => s.trim().toLowerCase())
+      // mc wait
+      if (mc_wait) {
+        const params = mc_wait[1].split(',').map((s) => s.trim().toLowerCase())
         const wait = parseInt(params[0])
 
         return [getMoveWait(wait)]
@@ -8106,20 +8149,37 @@ if (typeof PluginManager === 'undefined') {
         return [getChangeBlendMode(blendMode)]
       }
 
-      // move play se
-      if (move_play_se) {
-        const params = move_play_se[1].split(',').map((s) => s.trim())
-        const name = params[0]
-        const volume = parseInt(params[1])
-        const pitch = parseInt(params[2])
-        const pan = parseInt(params[3])
-
-        return [getMovePlaySe(name, volume, pitch, pan)]
+      // mc play se
+      if (mc_play_se) {
+        if (mc_play_se[1]) {
+          const params = mc_play_se[1].replace(/ /g, '').split(',')
+          let name = 'Attack1'
+          let volume = 90
+          let pitch = 100
+          let pan = 0
+          if (params[0]) {
+            name = params[0]
+          }
+          if (Number(params[1]) || Number(params[1]) === 0) {
+            volume = Number(params[1])
+          }
+          if (Number(params[2]) || Number(params[2]) === 0) {
+            pitch = Number(params[2])
+          }
+          if (Number(params[3]) || Number(params[3]) === 0) {
+            pan = Number(params[3])
+          }
+          if (name.toUpperCase() === 'NONE' || name === 'なし') {
+            return [getMcPlaySeEvent('', volume, pitch, pan)]
+          } else {
+            return [getMcPlaySeEvent(name, volume, pitch, pan)]
+          }
+        }
       }
 
-      // move script
-      if (move_script) {
-        const params = move_script[1].split(',').map((s) => s.trim().toLowerCase())
+      // mc script
+      if (mc_script) {
+        const params = mc_script[1].split(',').map((s) => s.trim().toLowerCase())
         const script = params[0]
 
         return [getMoveScript(script)]
@@ -8569,6 +8629,8 @@ if (typeof PluginManager === 'undefined') {
       const IF_WIN_CODE = 601
       const IF_ESCAPE_CODE = 602
       const IF_LOSE_CODE = 603
+      const MOVEMENT_ROUTE_CODE = 205
+      const MOVEMENT_COMMANDS_CODE = 505
 
       // イベントコマンド追加
       events.forEach((current_frame) => {
@@ -8658,6 +8720,8 @@ if (typeof PluginManager === 'undefined') {
           block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, index: 0 })
         } else if (current_frame.code === BATTLE_PROCESSING_CODE) {
           block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, winCode: false })
+        } else if (current_frame.code === MOVEMENT_ROUTE_CODE) {
+          block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length })
         }
 
         // ショップの処理
@@ -8670,6 +8734,20 @@ if (typeof PluginManager === 'undefined') {
             previous_frame.parameters[2] = current_frame.parameters[2]
             previous_frame.parameters[3] = current_frame.parameters[3]
             events.pop()
+          }
+        }
+
+        // 移動ルートの設定
+        if (current_frame.code === MOVEMENT_COMMANDS_CODE) {
+          const current_movement_route = block_stack.slice(-1)[0].event
+          // 205 => parameters => list配下に移動コマンドのparametersを追加
+          // イベントエディターの表示用の値に使用されている模様
+          if (current_movement_route.code === 205) {
+            // list配下のcode0を一旦削除し、移動コマンドのparametersを追加した後に再度追加
+            const movement_command_parameters = current_frame.parameters[0]
+            const movement_command_end = current_movement_route.parameters[1].list.pop()
+            current_movement_route.parameters[1].list.push(movement_command_parameters)
+            current_movement_route.parameters[1].list.push(movement_command_end)
           }
         }
 
@@ -8721,36 +8799,6 @@ if (typeof PluginManager === 'undefined') {
       return out_events
     }
 
-    // 表示用のデータを作成
-    const createDisplayData = function (events) {
-      const out_events = JSON.parse(JSON.stringify(events))
-      const SET_MOVEMENT_ROUTE_DISPLAY_CODE = 205
-      const SET_MOVEMENT_ROUTE_CODE = 505
-      const code205Index = []
-      const code505Data = []
-      let code205Count = -1
-
-      events.forEach(function (event, index) {
-        // 205(表示用)のindexを格納
-        if (event.code === SET_MOVEMENT_ROUTE_DISPLAY_CODE) {
-          code205Count++
-          code205Index[code205Count] = index
-          code505Data[code205Count] = []
-        }
-        // 205(表示用)にpushする用の505のデータを格納
-        if (event.code === SET_MOVEMENT_ROUTE_CODE && code205Count >= 0) { code505Data[code205Count].push(event.parameters[0]) }
-      })
-
-      // 205(表示用)に505のデータを格納
-      code205Index.forEach(function (code205Index, index) {
-        const bottomCode = { code: 0 }
-        code505Data[index].push(bottomCode)
-        out_events[code205Index].parameters[1].list = code505Data[index]
-      })
-
-      return out_events
-    }
-
     let scenario_text = readText(Laurus.Text2Frame.TextPath)
     scenario_text = uniformNewLineCode(scenario_text)
     scenario_text = eraseCommentOutLines(scenario_text, Laurus.Text2Frame.CommentOutChar)
@@ -8787,7 +8835,6 @@ if (typeof PluginManager === 'undefined') {
 
     event_command_list = completeLackedBottomEvent(event_command_list)
     event_command_list = autoIndent(event_command_list)
-    event_command_list = createDisplayData(event_command_list)
     event_command_list.push(getCommandBottomEvent())
 
     switch (Laurus.Text2Frame.ExecMode) {
