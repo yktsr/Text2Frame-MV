@@ -7845,10 +7845,15 @@ if (typeof PluginManager === 'undefined') {
       if (set_vehicle_location) {
         const params = set_vehicle_location[1].split(',').map((s) => s.trim().toLowerCase())
         const vehicle = getVehicleValue(params[0])
-        const location = getLocationValue(params[1])
-        const mapId = parseInt(params[2])
-        const mapX = parseInt(params[3])
-        const mapY = parseInt(params[4])
+        // 位置(params[0])を正規表現で取得
+        const regex = /(.*?)\[(\d+)]\[(\d+)]\[(\d+)]/
+        const matches = params[1].match(regex)
+        // 取得チェック
+        if (!matches) throw new Error('Syntax error. / 文法エラーです。:' + params[1])
+        const location = getLocationValue(matches[1])
+        const mapId = parseInt(matches[2])
+        const mapX = parseInt(matches[3])
+        const mapY = parseInt(matches[4])
 
         return [getSetVehicleLocation(vehicle, location, mapId, mapX, mapY)]
       }
