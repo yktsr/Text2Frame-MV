@@ -1,0 +1,20 @@
+% 例: アクターID3のプロフィールを変更
+%     プロフィール1行目：アクター3
+%     プロフィール2行目：初期キャラクター
+<ChangeProfile: 3, アクター3, 初期キャラクター>
+<プロフィールの変更: 3, アクター3, 初期キャラクター>
+
+% アクターID2桁, プロフィールが英語
+<ChangeProfile: 10, Actor 10, Initial character>
+
+% プロフィールが1行
+<プロフィールの変更: 1, アクター1>
+
+% プロフィールがなし
+<ChangeProfile: 1>
+
+% 1行目に改行コードがあり、2行目を省略
+<ChangeProfile: 1, test\nAbC>
+
+% 1行目に改行コードがあり、2行目を省略しない
+<ChangeProfile: 1, test\nAbC, 2Gyoume>
