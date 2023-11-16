@@ -83,6 +83,7 @@ describe('Text2Frame Test', function() {
     {title: "Move Picture MZ", infile: "./test/69-move-picture-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/69-expected_move-picture-mz.json"},
     {title: "Conditional Branch/Button-MZ", infile: "./test/70-if-else-button-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/70-expected_if-else-button-mz.json"},
     {title: "Control Variables/Last-MZ", infile: "./test/71-control-variables-last-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/71-expected_control-variables-last-mz.json"},
+    {title: "Movement / Set Event Location", infile: "./test/movement/set-event-location.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_set-event-location.json"},
     {title: "Movement / Set Vehicle Location", infile: "./test/movement/set-vehicle-location.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_set-vehicle-location.json"},
     {title: "Movement / Transfer Player", infile: "./test/movement/transfer-player.txt", mapfile: "./data/Map001.json", expfile: "./test/movement/expected_transfer-player.json"},
     {title: "Actor / Change Profile", infile: "./test/actor/change-profile.txt", mapfile: "./data/Map001.json", expfile: "./test/actor/expected_change-profile.json"},

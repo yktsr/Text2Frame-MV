@@ -7137,7 +7137,7 @@ if (typeof PluginManager === 'undefined') {
       // 場所/Location
       const locationDirectList = ['direct', '0', '直接指定']
       const locationEventVariablesList = ['withvariables', '変数で指定']
-      const locationExchangeList = ['exchange', '2', '他のイベントと交換']
+      const locationExchangeList = ['exchange', '2', '交換']
       const troopRandomEncountList = ['random', '2', 'ランダム']
       const locationDesignationList = ['character', '2', 'キャラクターで指定', 'キャラクター']
       const directionRetainList = ['retain', '0', 'そのまま']
@@ -7862,10 +7862,23 @@ if (typeof PluginManager === 'undefined') {
       if (set_event_location) {
         const params = set_event_location[1].split(',').map((s) => s.trim().toLowerCase())
         const event = getCharacterValue(params[0])
-        const location = getLocationValue(params[1])
-        const mapX = parseInt(params[2])
-        const mapY = parseInt(params[3])
-        const direction = getDirectionValue(params[4])
+        // 位置(params[1])を正規表現で取得
+        const regex = /(.*?)\[(.*?)](\[(\d+)])?(\[(\d+)])?/
+        const matches = params[1].match(regex)
+        // 取得チェック
+        if (!matches) throw new Error('Syntax error. / 文法エラーです。:' + params[1])
+
+        const location = getLocationValue(matches[1])
+        let mapX
+        let mapY
+        if (location === 0 || location === 1) {
+          mapX = parseInt(matches[2])
+          mapY = parseInt(matches[4])
+        } else if (location === 2) {
+          mapX = getCharacterValue(matches[2])
+          mapY = 0
+        }
+        const direction = getDirectionValue(params[2])
 
         return [getSetEventLocation(event, location, mapX, mapY, direction)]
       }
