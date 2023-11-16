@@ -1,0 +1,41 @@
+% 例1: マップID1のX座標10,Y座標20に移動 向き：そのまま フェード：黒
+<TransferPlayer: Direct[1][10][20], Retain, Black>
+<場所移動: 直接指定[1][10][20], そのまま, 黒>
+
+
+% 例2: 変数1のマップID、変数2のX座標,変数3のY座標に移動 向き:下 フェード：白
+<TransferPlayer: WithVariables[1][2][3], Down, White>
+<場所移動: 変数で指定[1][2][3], 下, 白>
+
+
+% 直接指定と変数指定の桁確認
+<TransferPlayer: Direct[10][1][2], Retain, Black>
+
+<TransferPlayer: WithVariables[10][20][30], Down, White>
+
+
+% 向きとフェードの網羅
+%% そのまま, 黒
+<TransferPlayer: Direct[1][2][3], Retain, Black>
+<TransferPlayer: Direct[1][2][3], 0, 0>
+<TransferPlayer: Direct[1][2][3], そのまま, 黒>
+
+%% 下, 白
+<TransferPlayer: Direct[1][2][3], Down, White>
+<TransferPlayer: Direct[1][2][3], 2, 1>
+<TransferPlayer: Direct[1][2][3], 下, 白>
+
+%% 左, なし
+<TransferPlayer: Direct[1][2][3], Left, None>
+<TransferPlayer: Direct[1][2][3], 4, 2>
+<TransferPlayer: Direct[1][2][3], 左, なし>
+
+%% 右, 黒
+<TransferPlayer: Direct[1][2][3], Right, Black>
+<TransferPlayer: Direct[1][2][3], 6, Black>
+<TransferPlayer: Direct[1][2][3], 右, Black>
+
+%% 上, 黒
+<TransferPlayer: Direct[1][2][3], Up, Black>
+<TransferPlayer: Direct[1][2][3], 8, Black>
+<TransferPlayer: Direct[1][2][3], 上, Black>
