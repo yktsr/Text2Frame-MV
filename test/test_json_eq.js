@@ -115,6 +115,7 @@ describe('Text2Frame Test', function() {
     {title: "character / Erase Event", infile: "./test/character/erase-event.txt", mapfile: "./data/Map001.json", expfile: "./test/character/expected_erase-event.json"},
     {title: "Screen / Tint Screen", infile: "./test/screen/tint-screen.txt", mapfile: "./data/Map001.json", expfile: "./test/screen/expected_tint-screen.json"},
     {title: "Screen / Flash Screen", infile: "./test/screen/flash-screen.txt", mapfile: "./data/Map001.json", expfile: "./test/screen/expected_flash-screen.json"},
+    {title: "Screen / Shake Screen", infile: "./test/screen/shake-screen.txt", mapfile: "./data/Map001.json", expfile: "./test/screen/expected_shake-screen.json"},
     {title: "Battle/Show Battle Animation", infile: "./test/battle/show-battle-animation.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_show-battle-animation.json"},
     {title: "Battle/Force Action", infile: "./test/battle/force-action.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_force-action.json"},
     {title: "Map/Get Location Info", infile: "./test/map/get-location-info.txt", mapfile: "./data/Map001.json", expfile: "./test/map/expected_get-location-info.json"},
