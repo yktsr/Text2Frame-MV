@@ -5499,11 +5499,7 @@ if (typeof PluginManager === 'undefined') {
     }
 
     const getScrollMap = function (direction, distance, speed, waitForCompletion) {
-      if (waitForCompletion === 'mv') {
-        return { code: 204, indent: 0, parameters: [direction, distance, speed] }
-      } else {
-        return { code: 204, indent: 0, parameters: [direction, distance, speed, waitForCompletion] }
-      }
+      return { code: 204, indent: 0, parameters: [direction, distance, speed, waitForCompletion] }
     }
 
     const getMovementRoute = function (target, repeat, skippable, wait) {
@@ -7174,14 +7170,16 @@ if (typeof PluginManager === 'undefined') {
       const blendModeMultiplyList = ['multiply', '2', '乗算']
       const blendModeScreenList = ['screen', '3', 'スクリーン']
       // 能力値
-      const actorMaxHpList = ['maxhp', 0, '最大hp']
-      const actorMaxMpList = ['maxmp', 1, '最大mp']
-      const actorAttackList = ['attack', 2, '攻撃力']
-      const actorDefenceList = ['defence', 3, '防御力']
-      const actorMAttackList = ['m.attack', 4, '魔法力']
-      const actorMDefenceList = ['m.defence', 5, '魔法防御']
-      const actorAgilityList = ['agility', 6, '敏捷性']
-      const actorLuckList = ['luck', 7, '運']
+      const actorMaxHpList = ['maxhp', '0', '最大hp']
+      const actorMaxMpList = ['maxmp', '1', '最大mp']
+      const actorAttackList = ['attack', '2', '攻撃力']
+      const actorDefenseList = ['defense', '3', '防御力']
+      const actorMAttackList = ['m.attack', '4', '魔法力']
+      const actorMDefenseList = ['m.defense', '5', '魔法防御']
+      const actorAgilityList = ['agility', '6', '敏捷性']
+      const actorLuckList = ['luck', '7', '運']
+      // 装備
+      const equipmentItemList = ['none', 'なし', '0']
 
       // キャラクター
       const characterPlayerList = ['player', '-1', 'プレイヤー']
@@ -7501,16 +7499,25 @@ if (typeof PluginManager === 'undefined') {
           return 1
         } else if (actorAttackList.includes(actorParameter)) {
           return 2
-        } else if (actorDefenceList.includes(actorParameter)) {
+        } else if (actorDefenseList.includes(actorParameter)) {
           return 3
         } else if (actorMAttackList.includes(actorParameter)) {
           return 4
-        } else if (actorMDefenceList.includes(actorParameter)) {
+        } else if (actorMDefenseList.includes(actorParameter)) {
           return 5
         } else if (actorAgilityList.includes(actorParameter)) {
           return 6
         } else if (actorLuckList.includes(actorParameter)) {
           return 7
+        } else {
+          throw new Error('Syntax error. / 文法エラーです。:' + text.replace(/</g, '  ').replace(/>/g, '  '))
+        }
+      }
+      const getChangeEquipmentItemValue = (equipmentItem) => {
+        if (equipmentItemList.includes(equipmentItem)) {
+          return 0
+        } else if (!isNaN(parseInt(equipmentItem))) {
+          return parseInt(equipmentItem)
         } else {
           throw new Error('Syntax error. / 文法エラーです。:' + text.replace(/</g, '  ').replace(/>/g, '  '))
         }
@@ -7786,7 +7793,7 @@ if (typeof PluginManager === 'undefined') {
         const params = change_equipment[1].split(',').map((s) => s.trim().toLowerCase())
         const actorId = parseInt(params[0])
         const equipmentType = parseInt(params[1])
-        const equipmentItem = parseInt(params[2])
+        const equipmentItem = getChangeEquipmentItemValue(params[2])
 
         return [getChangeEquipment(actorId, equipmentType, equipmentItem)]
       }
@@ -7795,7 +7802,7 @@ if (typeof PluginManager === 'undefined') {
       if (change_name) {
         const params = change_name[1].split(',').map((s) => s.trim().toLowerCase())
         const actorId = parseInt(params[0])
-        const name = params[1]
+        const name = params[1] === undefined ? '' : params[1]
 
         return [getChangeName(actorId, name)]
       }
@@ -7805,7 +7812,7 @@ if (typeof PluginManager === 'undefined') {
         const params = change_class[1].split(',').map((s) => s.trim().toLowerCase())
         const actorId = parseInt(params[0])
         const classId = parseInt(params[1])
-        const saveExpFlg = getCheckBoxValue(params[2])
+        const saveExpFlg = params[2] === undefined ? false : getCheckBoxValue(params[2])
 
         return [getChangeClass(actorId, classId, saveExpFlg)]
       }
@@ -7814,7 +7821,7 @@ if (typeof PluginManager === 'undefined') {
       if (change_nickname) {
         const params = change_nickname[1].split(',').map((s) => s.trim().toLowerCase())
         const actorId = parseInt(params[0])
-        const nickname = params[1]
+        const nickname = params[1] === undefined ? '' : params[1]
 
         return [getChangeNickname(actorId, nickname)]
       }
@@ -8231,7 +8238,7 @@ if (typeof PluginManager === 'undefined') {
         const params = show_animation[1].split(',').map((s) => s.trim().toLowerCase())
         const character = getCharacterValue(params[0])
         const animationId = parseInt(params[1])
-        const waitForCompletion = getCheckBoxValue(params[2])
+        const waitForCompletion = params[2] === undefined ? false : getCheckBoxValue(params[2])
 
         return [getShowAnimation(character, animationId, waitForCompletion)]
       }

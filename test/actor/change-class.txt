@@ -6,7 +6,7 @@
 <ChangeClass: 3, 2, Save EXP>
 <職業の変更: 3, 2, 経験値の保存>
 
-% 経験値の保存がOFnF
+% 経験値の保存がOFF
 <changeclass: 1, 1, false>
 <ChangeClass: 1, 1, 0>
 <ChangeClass: 1, 1, オフ>
@@ -23,4 +23,3 @@
 <職業の変更: 10, 20, 1>
 <職業の変更: 10, 20, オン>
 <職業の変更: 10, 20, on>
-
