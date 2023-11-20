@@ -7233,6 +7233,11 @@ if (typeof PluginManager === 'undefined') {
       const checkBoxPurchaseOnlyList = ['purchase only', '購入のみ']
       const checkBoxRepeatList = ['repeat', 'repeat movements', '動作を繰り返す']
       const checkBoxSkipList = ['skip', 'skip if cannot move', '移動できない場合は飛ばす']
+      const checkBoxEquipmentList = ['include equipment', '装備品を含む']
+      const checkBoxInitializeList = ['initialize', '初期化']
+      const checkBoxKnockoutList = ['allow knockout', '戦闘不能を許可']
+      const checkBoxLevelUpList = ['show level up', 'レベルアップを表示']
+      const checkBoxSaveExpList = ['save exp', '経験値の保存', 'save level', 'レベルの保存']
       const radioButtonOnList = ['true', 'on', 'オン', '0']
       const radioButtonOffList = ['false', 'off', 'オフ', '1']
       const radioButtonDisableList = ['disable', '0', '禁止']
@@ -7312,6 +7317,16 @@ if (typeof PluginManager === 'undefined') {
         } else if (checkBoxRepeatList.includes(checkBoxValue)) {
           return true
         } else if (checkBoxSkipList.includes(checkBoxValue)) {
+          return true
+        } else if (checkBoxEquipmentList.includes(checkBoxValue)) {
+          return true
+        } else if (checkBoxInitializeList.includes(checkBoxValue)) {
+          return true
+        } else if (checkBoxKnockoutList.includes(checkBoxValue)) {
+          return true
+        } else if (checkBoxLevelUpList.includes(checkBoxValue)) {
+          return true
+        } else if (checkBoxSaveExpList.includes(checkBoxValue)) {
           return true
         } else if (checkBoxOffList.includes(checkBoxValue)) {
           return false
@@ -7648,7 +7663,7 @@ if (typeof PluginManager === 'undefined') {
         const weaponId = parseInt(params[0])
         const operation = getIncreaseOrDecrease(params[1])
         const { operand, operandValue } = getConstantOrVariable(params[2])
-        const includeEquipmentFlg = getCheckBoxValue(params[3])
+        const includeEquipmentFlg = params[3] === undefined ? false : getCheckBoxValue(params[3])
 
         return [getChangeWeapons(weaponId, operation, operand, operandValue, includeEquipmentFlg)]
       }
@@ -7659,7 +7674,7 @@ if (typeof PluginManager === 'undefined') {
         const armorId = parseInt(params[0])
         const operation = getIncreaseOrDecrease(params[1])
         const { operand, operandValue } = getConstantOrVariable(params[2])
-        const includeEquipmentFlg = getCheckBoxValue(params[3])
+        const includeEquipmentFlg = params[3] === undefined ? false : getCheckBoxValue(params[3])
 
         return [getChangeArmors(armorId, operation, operand, operandValue, includeEquipmentFlg)]
       }
@@ -7669,7 +7684,7 @@ if (typeof PluginManager === 'undefined') {
         const params = change_party_member[1].split(',').map((s) => s.trim().toLowerCase())
         const actorId = parseInt(params[0])
         const operation = getAddOrRemove(params[1])
-        const includeEquipmentFlg = getCheckBoxValue(params[2])
+        const includeEquipmentFlg = params[2] === undefined ? false : getCheckBoxValue(params[2])
 
         return [getChangePartyMember(actorId, operation, includeEquipmentFlg)]
       }
@@ -7680,7 +7695,7 @@ if (typeof PluginManager === 'undefined') {
         const { actor, actorValue } = getFixedOrVariable(params[0])
         const operation = getIncreaseOrDecrease(params[1])
         const { operand, operandValue } = getConstantOrVariable(params[2])
-        const allowDeathFlg = getCheckBoxValue(params[3])
+        const allowDeathFlg = params[3] === undefined ? false : getCheckBoxValue(params[3])
 
         return [getChangeHp(actor, actorValue, operation, operand, operandValue, allowDeathFlg)]
       }
@@ -7729,7 +7744,7 @@ if (typeof PluginManager === 'undefined') {
         const { actor, actorValue } = getFixedOrVariable(params[0])
         const operation = getIncreaseOrDecrease(params[1])
         const { operand, operandValue } = getConstantOrVariable(params[2])
-        const showLevelUpFlg = getCheckBoxValue(params[3])
+        const showLevelUpFlg = params[3] === undefined ? false : getCheckBoxValue(params[3])
 
         return [getChangeExp(actor, actorValue, operation, operand, operandValue, showLevelUpFlg)]
       }
@@ -7740,7 +7755,7 @@ if (typeof PluginManager === 'undefined') {
         const { actor, actorValue } = getFixedOrVariable(params[0])
         const operation = getIncreaseOrDecrease(params[1])
         const { operand, operandValue } = getConstantOrVariable(params[2])
-        const showLevelUpFlg = getCheckBoxValue(params[3])
+        const showLevelUpFlg = params[3] === undefined ? false : getCheckBoxValue(params[3])
 
         return [getChangeLevel(actor, actorValue, operation, operand, operandValue, showLevelUpFlg)]
       }
