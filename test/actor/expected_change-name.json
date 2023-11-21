@@ -1,0 +1,58 @@
+{
+  "events": [
+    null,
+    {
+      "pages": [
+        {
+          "list": [
+            {
+              "code": 320,
+              "indent": 0,
+              "parameters": [
+                1,
+                "アクター1"
+              ]
+            },
+            {
+              "code": 320,
+              "indent": 0,
+              "parameters": [
+                1,
+                "アクター1"
+              ]
+            },
+            {
+              "code": 320,
+              "indent": 0,
+              "parameters": [
+                10,
+                "アクター10"
+              ]
+            },
+            {
+              "code": 320,
+              "indent": 0,
+              "parameters": [
+                1,
+                "actor1"
+              ]
+            },
+            {
+              "code": 320,
+              "indent": 0,
+              "parameters": [
+                1,
+                ""
+              ]
+            },
+            {
+              "code": 0,
+              "indent": 0,
+              "parameters": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+<GatherFollowers>
+<隊列メンバーの集合>
