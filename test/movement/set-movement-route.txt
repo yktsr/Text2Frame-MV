@@ -206,6 +206,10 @@
 <ChangeImage: Actor1, 0>
 <画像の変更: Actor1, 0>
 
+%%% 画像イメージをNoneに
+<ChangeImage: None, 0>
+<画像の変更: なし>
+
 %% 不透明度の変更, 0と255
 <ChangeOpacity: 0>
 <不透明度の変更: 255>
@@ -243,6 +247,10 @@
 <McPlaySE: Attack2, 50, 80>
 
 <McPlaySE: Attack2, 50>
+
+%%% （ほぼないだろうが）SEにNoneを設定
+<McPlaySE: None>
+<McPlaySE: なし>
 
 %% スクリプト
 <McScript: console.log("今日も一日がんばるぞい！");>
