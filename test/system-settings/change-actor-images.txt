@@ -1,0 +1,10 @@
+% 例: アクターID1の画像を以下に変更
+% ・「Actor1.png」の2番目の顔
+% ・「Actor2.png」の4番目の歩行キャラ
+% ・「Actor1_1.png」の戦闘キャラ
+<ChangeActorImages: 1, Actor1, 2, Actor2, 4, Actor1_1>
+<アクターの画像変更: 1, Actor1, 2, Actor2, 4, Actor1_1>
+
+2桁, なし
+<ChangeActorImages: 10, None, 0, None, 0, None>
+<ChangeActorImages: 10, なし, 0, なし, 0, なし>

@@ -121,6 +121,7 @@ describe('Text2Frame Test', function() {
     {title: "System Settings / Change Victory ME", infile: "./test/system-settings/change-victory-me.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-victory-me.json"},
     {title: "System Settings / Change Defeat ME", infile: "./test/system-settings/change-defeat-me.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-defeat-me.json"},
     {title: "System Settings / Change Vehicle BGM", infile: "./test/system-settings/change-vehicle-bgm.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-vehicle-bgm.json"},
+    {title: "System Settings / Change Actor Image", infile: "./test/system-settings/change-actor-image.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-actor-image.json"},
     {title: "Battle/Show Battle Animation", infile: "./test/battle/show-battle-animation.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_show-battle-animation.json"},
     {title: "Battle/Force Action", infile: "./test/battle/force-action.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_force-action.json"},
     {title: "Map/Get Location Info", infile: "./test/map/get-location-info.txt", mapfile: "./data/Map001.json", expfile: "./test/map/expected_get-location-info.json"},
