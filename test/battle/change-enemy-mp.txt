@@ -1,0 +1,15 @@
+% 例1: #1の敵のMPを10増やす
+<ChangeEnemyMp: 1, Increase, 10>
+<敵キャラのMP増減: 1, 増やす, 10>
+<ChangeEnemyMp: 1, +, 10>
+
+% 例2: 敵グループ全体のMPを20減らす
+<ChangeEnemyMp: Entire Troop, Decrease, Variables[20]>`
+<敵キャラのMP増減: 敵グループ全体, 減らす, 変数[20]>`
+<ChangeEnemyMp: Entire Troop, -, V[20]>`
+
+
+<ChangeEnemyMp: 8, +, 1>
+
+
+<ChangeEnemyMp: 4, +, V[1]>
