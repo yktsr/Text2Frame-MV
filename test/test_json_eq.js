@@ -137,6 +137,11 @@ describe('Text2Frame Test', function() {
     {title: "Scene Control / Open Save Screen", infile: "./test/scene-control/open-save-screen.txt", mapfile: "./data/Map001.json", expfile: "./test/scene-control/expected_open-save-screen.json"},
     {title: "Scene Control / Game Over", infile: "./test/scene-control/game-over.txt", mapfile: "./data/Map001.json", expfile: "./test/scene-control/expected_game-over.json"},
     {title: "Scene Control / Return to Title Screen", infile: "./test/scene-control/return-to-title-screen.txt", mapfile: "./data/Map001.json", expfile: "./test/scene-control/expected_return-to-title-screen.json"},
+    {title: "System Settings / Change Save Access", infile: "./test/system-settings/change-save-access.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-save-access.json"},
+    {title: "System Settings / Change Menu Access", infile: "./test/system-settings/change-menu-access.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-menu-access.json"},
+    {title: "System Settings / Change Encounter", infile: "./test/system-settings/change-encounter.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-encounter.json"},
+    {title: "System Settings / Change Formation Access", infile: "./test/system-settings/change-formation-access.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-formation-access.json"},
+    {title: "System Settings / Change Window Color", infile: "./test/system-settings/change-window-color.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-window-color.json"},
     {title: "Plugin Command MZ", infile: "./test/73-plugin-command-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/73-expected_plugin-command-mz.json"},
   ];
 

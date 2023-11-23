@@ -1,0 +1,7 @@
+<ChangeWindowColor: -255, 100, 150>
+<ウィンドウカラーの変更: -255, 100, 150>
+
+
+<ChangeWindowColor: 255, -255, 255>
+
+<ChangeWindowColor: 0, 0, 0>
