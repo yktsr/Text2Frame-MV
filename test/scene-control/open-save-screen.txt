@@ -1,0 +1,2 @@
+<OpenSaveScreen>
+<セーブ画面を開く>

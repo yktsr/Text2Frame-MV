@@ -132,6 +132,11 @@ describe('Text2Frame Test', function() {
     {title: "Map / Change Parallax", infile: "./test/map/change-parallax.txt", mapfile: "./data/Map001.json", expfile: "./test/map/expected_change-parallax.json"},
     {title: "Scene Control/Battle Processing", infile: "./test/scene-control/battle-processing.txt", mapfile: "./data/Map001.json", expfile: "./test/scene-control/expected_battle-processing.json"},
     {title: "Scene Control/Shop Processing", infile: "./test/scene-control/shop-processing.txt", mapfile: "./data/Map001.json", expfile: "./test/scene-control/expected_shop-processing.json"},
+    {title: "Scene Control / Name Input Processing", infile: "./test/scene-control/name-input-processing.txt", mapfile: "./data/Map001.json", expfile: "./test/scene-control/expected_name-input-processing.json"},
+    {title: "Scene Control / Open Menu Screen", infile: "./test/scene-control/open-menu-screen.txt", mapfile: "./data/Map001.json", expfile: "./test/scene-control/expected_open-menu-screen.json"},
+    {title: "Scene Control / Open Save Screen", infile: "./test/scene-control/open-save-screen.txt", mapfile: "./data/Map001.json", expfile: "./test/scene-control/expected_open-save-screen.json"},
+    {title: "Scene Control / Game Over", infile: "./test/scene-control/game-over.txt", mapfile: "./data/Map001.json", expfile: "./test/scene-control/expected_game-over.json"},
+    {title: "Scene Control / Return to Title Screen", infile: "./test/scene-control/return-to-title-screen.txt", mapfile: "./data/Map001.json", expfile: "./test/scene-control/expected_return-to-title-screen.json"},
     {title: "Plugin Command MZ", infile: "./test/73-plugin-command-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/73-expected_plugin-command-mz.json"},
   ];
 
