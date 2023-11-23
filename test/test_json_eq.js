@@ -125,8 +125,14 @@ describe('Text2Frame Test', function() {
     {title: "System Settings / Change Vehicle Image", infile: "./test/system-settings/change-vehicle-image.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-vehicle-image.json"},
     {title: "Battle / Change Enemy HP", infile: "./test/battle/change-enemy-hp.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_change-enemy-hp.json"},
     {title: "Battle / Change Enemy MP", infile: "./test/battle/change-enemy-mp.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_change-enemy-mp.json"},
+    {title: "Battle / Change Enemy TP", infile: "./test/battle/change-enemy-tp.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_change-enemy-tp.json"},
+    {title: "Battle / Change Enemy State", infile: "./test/battle/change-enemy-state.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_change-enemy-state.json"},
+    {title: "Battle / Enemy Recover All", infile: "./test/battle/enemy-recover-all.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_enemy-recover-all.json"},
+    {title: "Battle / Enemy Appear", infile: "./test/battle/enemy-appear.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_enemy-appear.json"},
+    {title: "Battle / Enemy Transform", infile: "./test/battle/enemy-transform.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_enemy-transform.json"},
     {title: "Battle/Show Battle Animation", infile: "./test/battle/show-battle-animation.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_show-battle-animation.json"},
     {title: "Battle/Force Action", infile: "./test/battle/force-action.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_force-action.json"},
+    {title: "Battle / Abort Battle", infile: "./test/battle/abort-battle.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_abort-battle.json"},
     {title: "Map/Get Location Info", infile: "./test/map/get-location-info.txt", mapfile: "./data/Map001.json", expfile: "./test/map/expected_get-location-info.json"},
     {title: "Map / Change Battle Back", infile: "./test/map/change-battle-back.txt", mapfile: "./data/Map001.json", expfile: "./test/map/expected_change-battle-back.json"},
     {title: "Map / Change Parallax", infile: "./test/map/change-parallax.txt", mapfile: "./data/Map001.json", expfile: "./test/map/expected_change-parallax.json"},
@@ -143,7 +149,7 @@ describe('Text2Frame Test', function() {
     {title: "System Settings / Change Formation Access", infile: "./test/system-settings/change-formation-access.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-formation-access.json"},
     {title: "System Settings / Change Window Color", infile: "./test/system-settings/change-window-color.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-window-color.json"},
     {title: "Map / Change Map Name Display", infile: "./test/map/change-map-name-display.txt", mapfile: "./data/Map001.json", expfile: "./test/map/expected_change-map-name-display.json"},
-    {title: "Map / Change Tileset", infile: "./test/map/change-tileset.txt", mapfile: "./data/Map001.json", expfile: "./test/map/expected_change-tileset.json"},
+    {title: "Map / Change Tileset", infile: "./test/map/change-tileset.txt", mapfile: "./data/Map001.json", expfile: "./test/map/expected_change-tileset.json"},    
     {title: "Plugin Command MZ", infile: "./test/73-plugin-command-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/73-expected_plugin-command-mz.json"},
   ];
 
