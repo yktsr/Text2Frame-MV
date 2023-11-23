@@ -142,6 +142,8 @@ describe('Text2Frame Test', function() {
     {title: "System Settings / Change Encounter", infile: "./test/system-settings/change-encounter.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-encounter.json"},
     {title: "System Settings / Change Formation Access", infile: "./test/system-settings/change-formation-access.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-formation-access.json"},
     {title: "System Settings / Change Window Color", infile: "./test/system-settings/change-window-color.txt", mapfile: "./data/Map001.json", expfile: "./test/system-settings/expected_change-window-color.json"},
+    {title: "Map / Change Map Name Display", infile: "./test/map/change-map-name-display.txt", mapfile: "./data/Map001.json", expfile: "./test/map/expected_change-map-name-display.json"},
+    {title: "Map / Change Tileset", infile: "./test/map/change-tileset.txt", mapfile: "./data/Map001.json", expfile: "./test/map/expected_change-tileset.json"},
     {title: "Plugin Command MZ", infile: "./test/73-plugin-command-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/73-expected_plugin-command-mz.json"},
   ];
 
