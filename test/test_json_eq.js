@@ -127,6 +127,7 @@ describe('Text2Frame Test', function() {
     {title: "Battle/Force Action", infile: "./test/battle/force-action.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_force-action.json"},
     {title: "Map/Get Location Info", infile: "./test/map/get-location-info.txt", mapfile: "./data/Map001.json", expfile: "./test/map/expected_get-location-info.json"},
     {title: "Map / Change Battle Back", infile: "./test/map/change-battle-back.txt", mapfile: "./data/Map001.json", expfile: "./test/map/expected_change-battle-back.json"},
+    {title: "Map / Change Parallax", infile: "./test/map/change-parallax.txt", mapfile: "./data/Map001.json", expfile: "./test/map/expected_change-parallax.json"},
     {title: "Scene Control/Battle Processing", infile: "./test/scene-control/battle-processing.txt", mapfile: "./data/Map001.json", expfile: "./test/scene-control/expected_battle-processing.json"},
     {title: "Scene Control/Shop Processing", infile: "./test/scene-control/shop-processing.txt", mapfile: "./data/Map001.json", expfile: "./test/scene-control/expected_shop-processing.json"},
     {title: "Plugin Command MZ", infile: "./test/73-plugin-command-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/73-expected_plugin-command-mz.json"},
