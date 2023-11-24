@@ -5,6 +5,6 @@
 <ChangeActorImages: 1, Actor1, 2, Actor2, 4, Actor1_1>
 <アクターの画像変更: 1, Actor1, 2, Actor2, 4, Actor1_1>
 
-2桁, なし
+% 2桁, なし
 <ChangeActorImages: 10, None, 0, None, 0, None>
 <ChangeActorImages: 10, なし, 0, なし, 0, なし>

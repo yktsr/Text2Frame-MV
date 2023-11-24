@@ -95,7 +95,7 @@
               "parameters": [
                 {
                   "name": "",
-                  "volume": 100,
+                  "volume": 90,
                   "pitch": 100,
                   "pan": 0
                 }
@@ -107,7 +107,7 @@
               "parameters": [
                 {
                   "name": "",
-                  "volume": 100,
+                  "volume": 90,
                   "pitch": 100,
                   "pan": 0
                 }
