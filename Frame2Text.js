@@ -926,9 +926,9 @@ if (typeof PluginManager === 'undefined') {
         const faceTag = EnglishTag ? `<Face: ${face}(${faceId})>` : `<顔: ${face}(${faceId})>`
         const backgroundTag = EnglishTag ? `<Background: ${background}>` : `<背景: ${background}>`
         const windowPositionTag = EnglishTag ? `<WindowPosition: ${windowPosition}>` : `<位置: ${windowPosition}>`
-        let nameTagStr = ""
+        let nameTagStr = ''
         if (name) {
-            nameTagStr = EnglishTag ? `<Name: ${name}>` : `<名前: ${name}>`
+          nameTagStr = EnglishTag ? `<Name: ${name}>` : `<名前: ${name}>`
         }
         const nameTag = name === undefined ? '' : nameTagStr
         text += indent + faceTag + backgroundTag + windowPositionTag + nameTag + newLine
@@ -2308,7 +2308,6 @@ if (typeof PluginManager === 'undefined') {
   }
 })()
 
-
 // developer mode
 if (typeof require.main !== 'undefined' && require.main === module) {
   const program = require('commander')
@@ -2326,7 +2325,7 @@ if (typeof require.main !== 'undefined' && require.main === module) {
     .parse()
     // .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
 
-  const options = program.opts();
+  const options = program.opts()
 
   Laurus.Frame2Text.IsDebug = options.verbose
   Laurus.Frame2Text.MapID = options.map_id
