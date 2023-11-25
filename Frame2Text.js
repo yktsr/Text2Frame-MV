@@ -810,7 +810,7 @@ if (typeof PluginManager === "undefined") {
       else if (target == 4) return EnglishTag ? "Index5" : "インデックス5";
       else if (target == 5) return EnglishTag ? "Index6" : "インデックス6";
       else if (target == 6) return EnglishTag ? "Index7" : "インデックス7";
-      else if (target == 6) return EnglishTag ? "Index8" : "インデックス8";
+      else if (target == 7) return EnglishTag ? "Index8" : "インデックス8";
       else return EnglishTag ? "LastTarget" : "ラストターゲット";
     };
     const getTimerValue = (timer) => {
