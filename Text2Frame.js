@@ -8969,22 +8969,23 @@ if (typeof require.main !== 'undefined' && require.main === module) {
     .option('-c, --common_event_id <name>', 'common event id')
     .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
     .option('-v, --verbose', 'debug mode', false)
-    .parse(process.argv)
+    .parse()
+  const options = program.opts()
 
-  Laurus.Text2Frame.IsDebug = program.verbose
-  Laurus.Text2Frame.TextPath = program.text_path
-  Laurus.Text2Frame.IsOverwrite = (program.overwrite === 'true')
+  Laurus.Text2Frame.IsDebug = options.verbose
+  Laurus.Text2Frame.TextPath = options.text_path
+  Laurus.Text2Frame.IsOverwrite = (options.overwrite === 'true')
 
-  if (program.mode === 'map') {
-    Laurus.Text2Frame.MapPath = program.output_path
-    Laurus.Text2Frame.EventID = program.event_id
-    Laurus.Text2Frame.PageID = program.page_id ? program.page_id : '1'
+  if (options.mode === 'map') {
+    Laurus.Text2Frame.MapPath = options.output_path
+    Laurus.Text2Frame.EventID = options.event_id
+    Laurus.Text2Frame.PageID = options.page_id ? options.page_id : '1'
     Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', ['IMPORT_MESSAGE_TO_EVENT'])
-  } else if (program.mode === 'common') {
-    Laurus.Text2Frame.CommonEventPath = program.output_path
-    Laurus.Text2Frame.CommonEventID = program.common_event_id
+  } else if (options.mode === 'common') {
+    Laurus.Text2Frame.CommonEventPath = options.output_path
+    Laurus.Text2Frame.CommonEventID = options.common_event_id
     Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', ['IMPORT_MESSAGE_TO_CE'])
-  } else if (program.mode === 'test') {
+  } else if (options.mode === 'test') {
     const folder_name = 'test'
     const file_name = 'basic.txt'
     const map_id = '1'
