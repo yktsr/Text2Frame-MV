@@ -5916,15 +5916,15 @@ if (typeof PluginManager === 'undefined') {
 
     const getChangeParallax = function (
       image,
-      loopHorizontaly,
+      loopHorizontally,
       loopVertically,
-      loopHorizontalyScroll,
+      loopHorizontallyScroll,
       loopVerticallyScroll
     ) {
       return {
         code: 284,
         indent: 0,
-        parameters: [image, loopHorizontaly, loopVertically, loopHorizontalyScroll, loopVerticallyScroll]
+        parameters: [image, loopHorizontally, loopVertically, loopHorizontallyScroll, loopVerticallyScroll]
       }
     }
 
@@ -6195,7 +6195,7 @@ if (typeof PluginManager === 'undefined') {
       const show_balloon_icon =
         text.match(/<ShowBalloonIcon\s*:\s*([^\s].*)>/i) || text.match(/<フキダシアイコンの表示\s*:\s*([^\s].*)>/i)
       const erase_event = text.match(/<EraseEvent>/i) || text.match(/<イベントの一時消去>/)
-      const tint_screen = text.match(/<TintScreen\s*:\s*([^\s].*)>/i) || text.match(/<画面の色調変更\s*:\s*([^\s].*)>/i)
+      const tint_screen = text.match(/<TintScreen\s*:?\s*([^\s]*.*)>/i) || text.match(/<画面の色調変更\s*:?\s*([^\s]*.*)>/i)
       const flash_screen =
         text.match(/<FlashScreen\s*:\s*([^\s].*)>/i) || text.match(/<画面のフラッシュ\s*:\s*([^\s].*)>/i)
       const shake_screen =
@@ -7236,6 +7236,8 @@ if (typeof PluginManager === 'undefined') {
       const checkBoxKnockoutList = ['allow knockout', '戦闘不能を許可']
       const checkBoxLevelUpList = ['show level up', 'レベルアップを表示']
       const checkBoxSaveExpList = ['save exp', '経験値の保存', 'save level', 'レベルの保存']
+      const checkBoxLoopHorizontallyList = ['loophorizontally', '横方向にループする']
+      const checkBoxLoopVerticallyList = ['loopvertically', '縦方向にループする']
       const radioButtonOnList = ['true', 'on', 'オン', '0']
       const radioButtonOffList = ['false', 'off', 'オフ', '1']
       const radioButtonDisableList = ['disable', '0', '禁止']
@@ -8149,8 +8151,8 @@ if (typeof PluginManager === 'undefined') {
       // change image
       if (change_image) {
         const params = change_image[1].split(',').map((s) => s.trim())
-        const image = params[0]
-        const imageId = parseInt(params[1])
+        const image = weatherNoneList.includes(params[0].toLowerCase()) ? '' : params[0]
+        const imageId = params[1] === undefined ? 0 : parseInt(params[1])
 
         return [getChangeImage(image, imageId)]
       }
@@ -8262,7 +8264,6 @@ if (typeof PluginManager === 'undefined') {
       if (tint_screen) {
         const params = tint_screen[1].split(',').map((s) => s.trim())
         if (params.length > 0) {
-          // let pic_no = Number(params[0]);
           const options = params
           return [getTintScreen(options)]
         } else {
@@ -8279,7 +8280,7 @@ if (typeof PluginManager === 'undefined') {
         const blue = parseInt(params[2])
         const intensity = parseInt(params[3])
         const frames = parseInt(params[4])
-        const waitForCompletion = getCheckBoxValue(params[5])
+        const waitForCompletion = params[5] === undefined ? false : getCheckBoxValue(params[5])
 
         return [getFlashScreen(red, green, blue, intensity, frames, waitForCompletion)]
       }
@@ -8290,7 +8291,7 @@ if (typeof PluginManager === 'undefined') {
         const power = parseInt(params[0])
         const speed = parseInt(params[1])
         const frames = parseInt(params[2])
-        const waitForCompletion = getCheckBoxValue(params[3])
+        const waitForCompletion = params[3] === undefined ? false : getCheckBoxValue(params[3])
 
         return [getShakeScreen(power, speed, frames, waitForCompletion)]
       }
@@ -8301,7 +8302,7 @@ if (typeof PluginManager === 'undefined') {
         const type = getWeatherTypeValue(params[0])
         const power = parseInt(params[1])
         const frames = parseInt(params[2])
-        const waitForCompletion = getCheckBoxValue(params[3])
+        const waitForCompletion = params[3] === undefined ? false : getCheckBoxValue(params[3])
 
         return [getSetWeatherEffect(type, power, frames, waitForCompletion)]
       }
@@ -8309,7 +8310,7 @@ if (typeof PluginManager === 'undefined') {
       // play movie
       if (play_movie) {
         const params = play_movie[1].split(',').map((s) => s.trim())
-        const fileName = params[0]
+        const fileName = weatherNoneList.includes(params[0].toLowerCase()) ? '' : params[0]
 
         return [getPlayMovie(fileName)]
       }
@@ -8387,10 +8388,10 @@ if (typeof PluginManager === 'undefined') {
       // change victory me
       if (change_victory_me) {
         const params = change_victory_me[1].split(',').map((s) => s.trim())
-        const name = params[0]
-        const volume = parseInt(params[1].toLowerCase())
-        const pitch = parseInt(params[2].toLowerCase())
-        const pan = parseInt(params[3].toLowerCase())
+        const name = weatherNoneList.includes(params[0].toLowerCase()) ? '' : params[0]
+        const volume = params[1] === undefined ? 90 : parseInt(params[1])
+        const pitch = params[2] === undefined ? 100 : parseInt(params[2])
+        const pan = params[3] === undefined ? 0 : parseInt(params[3])
 
         return [getChangeVictoryMe(name, volume, pitch, pan)]
       }
@@ -8398,10 +8399,10 @@ if (typeof PluginManager === 'undefined') {
       // change defeat me
       if (change_defeat_me) {
         const params = change_defeat_me[1].split(',').map((s) => s.trim())
-        const name = params[0]
-        const volume = parseInt(params[1].toLowerCase())
-        const pitch = parseInt(params[2].toLowerCase())
-        const pan = parseInt(params[3].toLowerCase())
+        const name = weatherNoneList.includes(params[0].toLowerCase()) ? '' : params[0]
+        const volume = params[1] === undefined ? 90 : parseInt(params[1])
+        const pitch = params[2] === undefined ? 100 : parseInt(params[2])
+        const pan = params[3] === undefined ? 0 : parseInt(params[3])
 
         return [getChangeDefeatMe(name, volume, pitch, pan)]
       }
@@ -8410,10 +8411,10 @@ if (typeof PluginManager === 'undefined') {
       if (change_vehicle_bgm) {
         const params = change_vehicle_bgm[1].split(',').map((s) => s.trim())
         const vehicle = getVehicleValue(params[0].toLowerCase())
-        const name = params[1]
-        const volume = parseInt(params[2].toLowerCase())
-        const pitch = parseInt(params[3].toLowerCase())
-        const pan = parseInt(params[4].toLowerCase())
+        const name = weatherNoneList.includes(params[1].toLowerCase()) ? '' : params[1]
+        const volume = params[2] === undefined ? 90 : parseInt(params[2])
+        const pitch = params[3] === undefined ? 100 : parseInt(params[3])
+        const pan = params[4] === undefined ? 0 : parseInt(params[4])
 
         return [getChangeVehicleBgm(vehicle, name, volume, pitch, pan)]
       }
@@ -8464,11 +8465,11 @@ if (typeof PluginManager === 'undefined') {
       if (change_actor_images) {
         const params = change_actor_images[1].split(',').map((s) => s.trim())
         const actorId = parseInt(params[0])
-        const faceName = String(params[1])
+        const faceName = weatherNoneList.includes(params[1].toLowerCase()) ? '' : String(params[1])
         const faceId = parseInt(params[2])
-        const characterName = String(params[3])
+        const characterName = weatherNoneList.includes(params[3].toLowerCase()) ? '' : String(params[3])
         const characterId = parseInt(params[4])
-        const battlerName = String(params[5])
+        const battlerName = weatherNoneList.includes(params[5].toLowerCase()) ? '' : String(params[5])
 
         return [getChangeActorImages(actorId, faceName, faceId, characterName, characterId, battlerName)]
       }
@@ -8477,8 +8478,8 @@ if (typeof PluginManager === 'undefined') {
       if (change_vehicle_image) {
         const params = change_vehicle_image[1].split(',').map((s) => s.trim())
         const vehicle = getVehicleValue(params[0].toLowerCase())
-        const vehicleName = String(params[1])
-        const vehicleId = parseInt(params[2])
+        const vehicleName = weatherNoneList.includes(params[1].toLowerCase()) ? '' : String(params[1])
+        const vehicleId = params[2] === undefined ? 0 : parseInt(params[2])
 
         return [getChangeVehicleImage(vehicle, vehicleName, vehicleId)]
       }
@@ -8502,8 +8503,8 @@ if (typeof PluginManager === 'undefined') {
       // change battle background
       if (change_battle_background) {
         const params = change_battle_background[1].split(',').map((s) => s.trim())
-        const battleBackGround1 = String(params[0])
-        const battleBackGround2 = String(params[1])
+        const battleBackGround1 = weatherNoneList.includes(params[0].toLowerCase()) ? '' : String(params[0])
+        const battleBackGround2 = weatherNoneList.includes(params[1].toLowerCase()) ? '' : String(params[1])
 
         return [getChangeBattleBackGround(battleBackGround1, battleBackGround2)]
       }
@@ -8511,13 +8512,40 @@ if (typeof PluginManager === 'undefined') {
       // change parallax
       if (change_parallax) {
         const params = change_parallax[1].split(',').map((s) => s.trim())
-        const image = String(params[0])
-        const loopHorizontaly = getCheckBoxValue(params[1].toLowerCase())
-        const loopVertically = getCheckBoxValue(params[2].toLowerCase())
-        const loopHorizontalyScroll = parseInt(params[3].toLowerCase())
-        const loopVerticallyScroll = parseInt(params[4].toLowerCase())
+        const image = weatherNoneList.includes(params[0].toLowerCase()) ? '' : String(params[0])
+        // オプション1(params[1])とオプション2(params[2])を正規表現で取得
+        const regex = /(.*?)\[(-?\d+)]/
+        const matches1 = params[1] === undefined ? undefined : params[1].match(regex)
+        const matches2 = params[2] === undefined ? undefined : params[2].match(regex)
 
-        return [getChangeParallax(image, loopHorizontaly, loopVertically, loopHorizontalyScroll, loopVerticallyScroll)]
+        let loopHorizontally = false
+        let loopVertically = false
+        let loopHorizontallyScroll = 0
+        let loopVerticallyScroll = 0
+
+        // オプション1の引数を反映
+        if (matches1 !== undefined) {
+          if (checkBoxLoopHorizontallyList.includes(matches1[1].toLowerCase())) {
+            loopHorizontally = true
+            loopHorizontallyScroll = parseInt(matches1[2])
+          } else if (checkBoxLoopVerticallyList.includes(matches1[1].toLowerCase())) {
+            loopVertically = true
+            loopVerticallyScroll = parseInt(matches1[2])
+          }
+        }
+
+        // オプション2の引数を反映
+        if (matches2 !== undefined) {
+          if (checkBoxLoopHorizontallyList.includes(matches2[1].toLowerCase())) {
+            loopHorizontally = true
+            loopHorizontallyScroll = parseInt(matches2[2])
+          } else if (checkBoxLoopVerticallyList.includes(matches2[1].toLowerCase())) {
+            loopVertically = true
+            loopVerticallyScroll = parseInt(matches2[2])
+          }
+        }
+
+        return [getChangeParallax(image, loopHorizontally, loopVertically, loopHorizontallyScroll, loopVerticallyScroll)]
       }
 
       // get_location_info
@@ -8542,7 +8570,7 @@ if (typeof PluginManager === 'undefined') {
         const enemy = getEnemyTargetValue(params[0])
         const operation = getIncreaseOrDecrease(params[1])
         const { operand, operandValue } = getConstantOrVariable(params[2])
-        const allowDeath = getCheckBoxValue(params[3])
+        const allowDeath = params[3] === undefined ? false : getCheckBoxValue(params[3])
 
         return [getChangeEnemyHp(enemy, operation, operand, operandValue, allowDeath)]
       }

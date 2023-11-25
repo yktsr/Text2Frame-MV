@@ -1,0 +1,21 @@
+% 例1: #1の敵のHPを10増やす
+<ChangeEnemyHp: 1, Increase, 10>
+<敵キャラのHP増減: 1, 増やす, 10>
+<ChangeEnemyHp: 1, +, 10>
+
+% 例2: 敵グループ全体のHPを変数ID20の値分減らす 戦闘不能を許可
+<ChangeEnemyHp: Entire Troop, Decrease, Variables[20], Allow Knockout>
+<敵キャラのHP増減: 敵グループ全体, 減らす, 変数[20], 戦闘不能を許可>
+<ChangeEnemyHp: Entire Troop, -, V[20], true>
+
+% 敵指定の境界値8, 変数の省略系と一桁, 戦闘不能を許可しない
+<ChangeEnemyHp: 8, -, V[1]>
+<ChangeEnemyHp: 8, -, V[1], false>
+<ChangeEnemyHp: 8, -, V[1], 0>
+<ChangeEnemyHp: 8, -, V[1], オフ>
+<ChangeEnemyHp: 8, -, V[1], OFF>
+
+% 戦闘不能を許可, 固定値１桁
+<ChangeEnemyHp: 4, -, 1, ON>
+<ChangeEnemyHp: 4, -, 1, 1>
+<ChangeEnemyHp: 4, -, 1, オン>

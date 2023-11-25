@@ -1,0 +1,19 @@
+% 例: ファイル名「Victory1.ogg」,音量90,ピッチ100,位相0に変更
+<ChangeVictoryMe: Victory1, 90, 100, 0>
+<勝利MEの変更: Victory1, 90, 100, 0>
+<ChangeVictoryMe: Victory1>
+
+% 境界値
+<ChangeVictoryMe: Inn, 0, 150, -100>
+
+<ChangeVictoryMe: Inn, 100, 50, 100>
+
+% 省略のバリエーション
+<ChangeVictoryMe: Inn, 100, 50>
+
+<ChangeVictoryMe: Inn, 100>
+
+
+% なし
+<ChangeVictoryMe: None>
+<勝利MEの変更: なし>

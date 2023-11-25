@@ -1989,6 +1989,22 @@
                       "indent": null
                     },
                     {
+                      "code": 41,
+                      "parameters": [
+                        "",
+                        0
+                      ],
+                      "indent": null
+                    },
+                    {
+                      "code": 41,
+                      "parameters": [
+                        "",
+                        0
+                      ],
+                      "indent": null
+                    },
+                    {
                       "code": 42,
                       "parameters": [
                         0
@@ -2140,6 +2156,30 @@
                         {
                           "name": "Attack2",
                           "volume": 50,
+                          "pitch": 100,
+                          "pan": 0
+                        }
+                      ],
+                      "indent": null
+                    },
+                    {
+                      "code": 44,
+                      "parameters": [
+                        {
+                          "name": "",
+                          "volume": 90,
+                          "pitch": 100,
+                          "pan": 0
+                        }
+                      ],
+                      "indent": null
+                    },
+                    {
+                      "code": 44,
+                      "parameters": [
+                        {
+                          "name": "",
+                          "volume": 90,
                           "pitch": 100,
                           "pan": 0
                         }
@@ -2752,6 +2792,34 @@
               "indent": 0,
               "parameters": [
                 {
+                  "code": 41,
+                  "parameters": [
+                    "",
+                    0
+                  ],
+                  "indent": null
+                }
+              ]
+            },
+            {
+              "code": 505,
+              "indent": 0,
+              "parameters": [
+                {
+                  "code": 41,
+                  "parameters": [
+                    "",
+                    0
+                  ],
+                  "indent": null
+                }
+              ]
+            },
+            {
+              "code": 505,
+              "indent": 0,
+              "parameters": [
+                {
                   "code": 42,
                   "parameters": [
                     0
@@ -3011,6 +3079,42 @@
                     {
                       "name": "Attack2",
                       "volume": 50,
+                      "pitch": 100,
+                      "pan": 0
+                    }
+                  ],
+                  "indent": null
+                }
+              ]
+            },
+            {
+              "code": 505,
+              "indent": 0,
+              "parameters": [
+                {
+                  "code": 44,
+                  "parameters": [
+                    {
+                      "name": "",
+                      "volume": 90,
+                      "pitch": 100,
+                      "pan": 0
+                    }
+                  ],
+                  "indent": null
+                }
+              ]
+            },
+            {
+              "code": 505,
+              "indent": 0,
+              "parameters": [
+                {
+                  "code": 44,
+                  "parameters": [
+                    {
+                      "name": "",
+                      "volume": 90,
                       "pitch": 100,
                       "pan": 0
                     }

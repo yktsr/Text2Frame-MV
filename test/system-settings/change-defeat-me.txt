@@ -1,0 +1,19 @@
+% 例: ファイル名「Defeat1.ogg」,音量90,ピッチ100,位相0に変更
+<ChangeDefeatMe: Defeat1, 90, 100, 0>
+<敗北MEの変更: Defeat1, 90, 100, 0>
+<ChangeDefeatMe: Defeat1>
+
+% 境界値
+<ChangeDefeatMe: Inn, 0, 150, -100>
+
+<ChangeDefeatMe: Inn, 100, 50, 100>
+
+% 省略のバリエーション
+<ChangeDefeatMe: Inn, 100, 50>
+
+<ChangeDefeatMe: Inn, 100>
+
+
+% なし
+<ChangeDefeatMe: None>
+<敗北MEの変更: なし>
