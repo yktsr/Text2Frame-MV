@@ -756,10 +756,10 @@ if (typeof PluginManager === 'undefined') {
       else if (easing === 3) { return EnglishTag ? `${easingStr}[Slow start and end]` : `${easingStr}[ゆっくり始まってゆっくり終わる]` } else return EnglishTag ? `${easingStr}[Constant speed]` : `${easingStr}[一定速度]`
     }
     const getBackgroundValue = (background) => {
-      if (background === 0) return EnglishTag ? 'Window' : 'ウィンドウ'
+      if (background === 0) return EnglishTag ? 'Window' : 'ウインドウ'
       else if (background === 1) return EnglishTag ? 'Dim' : '暗くする'
       else if (background === 2) return EnglishTag ? 'Transparent' : '透明'
-      else return EnglishTag ? 'Window' : 'ウィンドウ'
+      else return EnglishTag ? 'Window' : 'ウインドウ'
     }
     const getWindowPositionValue = (windowPosition) => {
       if (windowPosition === 0) return EnglishTag ? 'Top' : '上'
@@ -926,7 +926,10 @@ if (typeof PluginManager === 'undefined') {
         const faceTag = EnglishTag ? `<Face: ${face}(${faceId})>` : `<顔: ${face}(${faceId})>`
         const backgroundTag = EnglishTag ? `<Background: ${background}>` : `<背景: ${background}>`
         const windowPositionTag = EnglishTag ? `<WindowPosition: ${windowPosition}>` : `<位置: ${windowPosition}>`
-        const nameTagStr = EnglishTag ? `<Name: ${name}>` : `<名前: ${name}>`
+        let nameTagStr = ""
+        if (name) {
+            nameTagStr = EnglishTag ? `<Name: ${name}>` : `<名前: ${name}>`
+        }
         const nameTag = name === undefined ? '' : nameTagStr
         text += indent + faceTag + backgroundTag + windowPositionTag + nameTag + newLine
       }
