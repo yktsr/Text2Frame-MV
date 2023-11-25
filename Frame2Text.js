@@ -375,10 +375,10 @@ if (typeof PluginManager === 'undefined') {
     Laurus.Frame2Text.EventID = String(Laurus.Frame2Text.Parameters['Default EventID'])
     Laurus.Frame2Text.PageID = String(Laurus.Frame2Text.Parameters['Default PageID'])
     Laurus.Frame2Text.CommentOutChar = String(Laurus.Frame2Text.Parameters['Comment Out Char'])
-    Laurus.Frame2Text.IsDebug = String(Laurus.Frame2Text.Parameters.IsDebug) == 'true'
-    Laurus.Frame2Text.DisplayMsg = String(Laurus.Frame2Text.Parameters.DisplayMsg) == 'true'
-    Laurus.Frame2Text.DisplayWarning = String(Laurus.Frame2Text.Parameters.DisplayWarning) == 'true'
-    Laurus.Frame2Text.EnglishTag = String(Laurus.Frame2Text.Parameters.EnglishTag) == 'true'
+    Laurus.Frame2Text.IsDebug = String(Laurus.Frame2Text.Parameters.IsDebug) === 'true'
+    Laurus.Frame2Text.DisplayMsg = String(Laurus.Frame2Text.Parameters.DisplayMsg) === 'true'
+    Laurus.Frame2Text.DisplayWarning = String(Laurus.Frame2Text.Parameters.DisplayWarning) === 'true'
+    Laurus.Frame2Text.EnglishTag = String(Laurus.Frame2Text.Parameters.EnglishTag) === 'true'
     Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
     Laurus.Frame2Text.MapPath = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Frame2Text.MapID).slice(
       -3
@@ -453,7 +453,7 @@ if (typeof PluginManager === 'undefined') {
         addMessage(args[1])
         addMessage(args[2])
         addMessage(args.length)
-        if (args.length == 3) {
+        if (args.length === 3) {
           Laurus.Frame2Text.ExecMode = 'EXPORT_CE_TO_MESSAGE'
           Laurus.Frame2Text.FileFolder = args[0]
           Laurus.Frame2Text.FileName = args[1]
@@ -562,252 +562,252 @@ if (typeof PluginManager === 'undefined') {
     const baseIndent = 4
     // 関数
     const getOnOffRadioButtonValue = (checkBoxValue) => {
-      if (checkBoxValue == 0) return EnglishTag ? 'ON' : 'オン'
-      else if (checkBoxValue == 1) return EnglishTag ? 'OFF' : 'オフ'
+      if (checkBoxValue === 0) return EnglishTag ? 'ON' : 'オン'
+      else if (checkBoxValue === 1) return EnglishTag ? 'OFF' : 'オフ'
       else return EnglishTag ? 'ON' : 'オン'
     }
     const getIncreaseOrDecrease = (operationValue) => {
-      if (operationValue == 0) return EnglishTag ? 'Increase' : '増やす'
-      else if (operationValue == 1) return EnglishTag ? 'Decrease' : '減らす'
+      if (operationValue === 0) return EnglishTag ? 'Increase' : '増やす'
+      else if (operationValue === 1) return EnglishTag ? 'Decrease' : '減らす'
       else return EnglishTag ? 'Increase' : '増やす'
     }
     const getConstantOrVariable = (operandType, operandValue) => {
       const variablesText = EnglishTag ? 'Variables[' + operandValue + ']' : '変数[' + operandValue + ']'
-      if (operandType == 0) return Number(operandValue)
-      else if (operandType == 1) return variablesText
+      if (operandType === 0) return Number(operandValue)
+      else if (operandType === 1) return variablesText
       else return Number(operandValue)
     }
     const getEnemyOrActor = (subjectType, subjectValue) => {
       const actorsText = EnglishTag ? 'Actors[' + subjectValue + ']' : 'アクター[' + subjectValue + ']'
-      if (subjectType == 0) return Number(subjectValue) + 1
-      else if (subjectType == 1) return actorsText
+      if (subjectType === 0) return Number(subjectValue) + 1
+      else if (subjectType === 1) return actorsText
       else return Number(subjectValue)
     }
     const getFixedOrVariable = (operandType, operandValue) => {
       const variablesText = EnglishTag ? 'Variables[' + operandValue + ']' : '変数[' + operandValue + ']'
-      if (operandType == 0) return Number(operandValue)
-      else if (operandType == 1) return variablesText
+      if (operandType === 0) return Number(operandValue)
+      else if (operandType === 1) return variablesText
       else return Number(operandValue)
     }
     const getCheckBoxValue = (checkBoxValue) => {
-      if (checkBoxValue == 0) return EnglishTag ? 'false' : 'OFF'
-      else if (checkBoxValue == 1) return EnglishTag ? 'true' : 'ON'
+      if (checkBoxValue === 0) return EnglishTag ? 'false' : 'OFF'
+      else if (checkBoxValue === 1) return EnglishTag ? 'true' : 'ON'
       else return EnglishTag ? 'false' : 'OFF'
     }
     const getAddOrRemove = (operationType) => {
-      if (operationType == 0) return EnglishTag ? 'Add' : '加える'
-      else if (operationType == 1) return EnglishTag ? 'Remove' : '外す'
+      if (operationType === 0) return EnglishTag ? 'Add' : '加える'
+      else if (operationType === 1) return EnglishTag ? 'Remove' : '外す'
       else return EnglishTag ? 'Add' : '加える'
     }
     const getDisableEnable = (radioButton) => {
-      if (radioButton == 0) return EnglishTag ? 'Disable' : '禁止'
-      else if (radioButton == 1) return EnglishTag ? 'Enable' : '許可'
+      if (radioButton === 0) return EnglishTag ? 'Disable' : '禁止'
+      else if (radioButton === 1) return EnglishTag ? 'Enable' : '許可'
       else return EnglishTag ? 'Disable' : '禁止'
     }
     const getActorParameterValue = (actorParameter) => {
-      if (actorParameter == 0) return EnglishTag ? 'MaxHP' : '最大HP'
-      else if (actorParameter == 1) return EnglishTag ? 'MaxMP' : '最大MP'
-      else if (actorParameter == 2) return EnglishTag ? 'Attack' : '攻撃力'
-      else if (actorParameter == 3) return EnglishTag ? 'Defense' : '防御力'
-      else if (actorParameter == 4) return EnglishTag ? 'M.Attack' : '魔法力'
-      else if (actorParameter == 5) return EnglishTag ? 'M.Defense' : '魔法防御'
-      else if (actorParameter == 6) return EnglishTag ? 'Agility' : '敏捷性'
-      else if (actorParameter == 7) return EnglishTag ? 'Luck' : '運'
+      if (actorParameter === 0) return EnglishTag ? 'MaxHP' : '最大HP'
+      else if (actorParameter === 1) return EnglishTag ? 'MaxMP' : '最大MP'
+      else if (actorParameter === 2) return EnglishTag ? 'Attack' : '攻撃力'
+      else if (actorParameter === 3) return EnglishTag ? 'Defense' : '防御力'
+      else if (actorParameter === 4) return EnglishTag ? 'M.Attack' : '魔法力'
+      else if (actorParameter === 5) return EnglishTag ? 'M.Defense' : '魔法防御'
+      else if (actorParameter === 6) return EnglishTag ? 'Agility' : '敏捷性'
+      else if (actorParameter === 7) return EnglishTag ? 'Luck' : '運'
       else return EnglishTag ? 'MaxHP' : '最大HP'
     }
     const getLearnOrForgot = (operationType) => {
-      if (operationType == 0) return EnglishTag ? 'Learn' : '覚える'
-      else if (operationType == 1) return EnglishTag ? 'Forgot' : '忘れる'
+      if (operationType === 0) return EnglishTag ? 'Learn' : '覚える'
+      else if (operationType === 1) return EnglishTag ? 'Forgot' : '忘れる'
       else return EnglishTag ? 'Learn' : '覚える'
     }
     const getDirectOrVariablesValue = (location) => {
-      if (location == 0) return EnglishTag ? 'Direct' : '直接指定'
-      else if (location == 1) return EnglishTag ? 'Variables' : '変数の指定'
-      else if (location == 2) return EnglishTag ? 'Exchange' : '他のイベントと交換'
+      if (location === 0) return EnglishTag ? 'Direct' : '直接指定'
+      else if (location === 1) return EnglishTag ? 'Variables' : '変数の指定'
+      else if (location === 2) return EnglishTag ? 'Exchange' : '他のイベントと交換'
       else return EnglishTag ? 'Direct' : '直接指定'
     }
     const getDirectOrVariablesOrRandomValue = (location) => {
-      if (location == 0) return EnglishTag ? 'Direct' : '直接指定'
-      else if (location == 1) return EnglishTag ? 'Variables' : '変数の指定'
-      else if (location == 2) return EnglishTag ? 'Random' : 'ランダム'
+      if (location === 0) return EnglishTag ? 'Direct' : '直接指定'
+      else if (location === 1) return EnglishTag ? 'Variables' : '変数の指定'
+      else if (location === 2) return EnglishTag ? 'Random' : 'ランダム'
       else return EnglishTag ? 'Direct' : '直接指定'
     }
     const getDirectOrVariablesOrCharacterValue = (location) => {
-      if (location == 0) return EnglishTag ? 'Direct' : '直接指定'
-      else if (location == 1) return EnglishTag ? 'Variables' : '変数の指定'
-      else if (location == 2) return EnglishTag ? 'Character' : 'キャラクターで指定'
+      if (location === 0) return EnglishTag ? 'Direct' : '直接指定'
+      else if (location === 1) return EnglishTag ? 'Variables' : '変数の指定'
+      else if (location === 2) return EnglishTag ? 'Character' : 'キャラクターで指定'
       else return EnglishTag ? 'Direct' : '直接指定'
     }
     const getItemOrWeaponOrArmorValue = (location) => {
-      if (location == 0) return EnglishTag ? 'Item' : 'アイテム'
-      else if (location == 1) return EnglishTag ? 'Weapon' : '武器'
-      else if (location == 2) return EnglishTag ? 'Armor' : '防具'
+      if (location === 0) return EnglishTag ? 'Item' : 'アイテム'
+      else if (location === 1) return EnglishTag ? 'Weapon' : '武器'
+      else if (location === 2) return EnglishTag ? 'Armor' : '防具'
       else return EnglishTag ? 'Item' : 'アイテム'
     }
     const getStandardOrSpecifyValue = (location) => {
-      if (location == 0) return EnglishTag ? 'Standard' : '標準'
-      else if (location == 1) return EnglishTag ? 'Specify' : '指定'
+      if (location === 0) return EnglishTag ? 'Standard' : '標準'
+      else if (location === 1) return EnglishTag ? 'Specify' : '指定'
       else return EnglishTag ? 'Standard' : '標準'
     }
     const getDirectionValue = (direction) => {
-      if (direction == 0) return EnglishTag ? 'Retain' : 'そのまま'
-      else if (direction == 2) return EnglishTag ? 'Down' : '下'
-      else if (direction == 4) return EnglishTag ? 'Left' : '左'
-      else if (direction == 6) return EnglishTag ? 'Right' : '右'
-      else if (direction == 8) return EnglishTag ? 'Up' : '上'
+      if (direction === 0) return EnglishTag ? 'Retain' : 'そのまま'
+      else if (direction === 2) return EnglishTag ? 'Down' : '下'
+      else if (direction === 4) return EnglishTag ? 'Left' : '左'
+      else if (direction === 6) return EnglishTag ? 'Right' : '右'
+      else if (direction === 8) return EnglishTag ? 'Up' : '上'
       else return EnglishTag ? 'Retain' : 'そのまま'
     }
     const getFadeValue = (fade) => {
-      if (fade == 0) return EnglishTag ? 'Black' : '黒'
-      else if (fade == 1) return EnglishTag ? 'White' : '白'
-      else if (fade == 2) return EnglishTag ? 'None' : 'なし'
+      if (fade === 0) return EnglishTag ? 'Black' : '黒'
+      else if (fade === 1) return EnglishTag ? 'White' : '白'
+      else if (fade === 2) return EnglishTag ? 'None' : 'なし'
       else return EnglishTag ? 'Black' : '黒'
     }
     const getVehicleValue = (vehicle) => {
-      if (vehicle == 0) return EnglishTag ? 'Boat' : '小型船'
-      else if (vehicle == 1) return EnglishTag ? 'Ship' : '大型船'
-      else if (vehicle == 2) return EnglishTag ? 'Airship' : '飛行船'
+      if (vehicle === 0) return EnglishTag ? 'Boat' : '小型船'
+      else if (vehicle === 1) return EnglishTag ? 'Ship' : '大型船'
+      else if (vehicle === 2) return EnglishTag ? 'Airship' : '飛行船'
       else return EnglishTag ? 'Boat' : '小型船'
     }
     const getEventValue = (event) => {
-      if (event == -1) return EnglishTag ? 'Player' : 'プレイヤー'
-      if (event == 0) return EnglishTag ? 'ThisEvent' : 'このイベント'
+      if (event === -1) return EnglishTag ? 'Player' : 'プレイヤー'
+      if (event === 0) return EnglishTag ? 'ThisEvent' : 'このイベント'
       else return event
     }
     const getSpeedValue = (speed) => {
-      if (speed == 1) return EnglishTag ? 'x8slower' : '1/8倍速'
-      else if (speed == 2) return EnglishTag ? 'x4slower' : '1/4倍速'
-      else if (speed == 3) return EnglishTag ? 'x2slower' : '1/2倍速'
-      else if (speed == 4) return EnglishTag ? 'Normal' : '標準速'
-      else if (speed == 5) return EnglishTag ? 'x2faster' : '2倍速'
-      else if (speed == 6) EnglishTag ? 'x4faster' : '4倍速'
+      if (speed === 1) return EnglishTag ? 'x8slower' : '1/8倍速'
+      else if (speed === 2) return EnglishTag ? 'x4slower' : '1/4倍速'
+      else if (speed === 3) return EnglishTag ? 'x2slower' : '1/2倍速'
+      else if (speed === 4) return EnglishTag ? 'Normal' : '標準速'
+      else if (speed === 5) return EnglishTag ? 'x2faster' : '2倍速'
+      else if (speed === 6) EnglishTag ? 'x4faster' : '4倍速'
       else return EnglishTag ? 'x8slower' : '1/8倍速'
     }
     const getFrequencyValue = (frequency) => {
-      if (frequency == 1) return EnglishTag ? 'Lowest' : '最低'
-      else if (frequency == 2) return EnglishTag ? 'Lower' : '低'
-      else if (frequency == 3) return EnglishTag ? 'Normal' : '標準'
-      else if (frequency == 4) return EnglishTag ? 'Higher' : '高'
-      else if (frequency == 5) return EnglishTag ? 'Highest' : '最高'
+      if (frequency === 1) return EnglishTag ? 'Lowest' : '最低'
+      else if (frequency === 2) return EnglishTag ? 'Lower' : '低'
+      else if (frequency === 3) return EnglishTag ? 'Normal' : '標準'
+      else if (frequency === 4) return EnglishTag ? 'Higher' : '高'
+      else if (frequency === 5) return EnglishTag ? 'Highest' : '最高'
       else return EnglishTag ? 'Lowest' : '最低'
     }
     const getBalloonIconValue = (balloonIcon) => {
-      if (balloonIcon == 1) return EnglishTag ? 'Exclamation' : 'びっくり'
-      else if (balloonIcon == 2) return EnglishTag ? 'Question' : 'はてな'
-      else if (balloonIcon == 3) return EnglishTag ? 'Musicnote' : '音符'
-      else if (balloonIcon == 4) return EnglishTag ? 'Heart' : 'ハート'
-      else if (balloonIcon == 5) return EnglishTag ? 'Anger' : '怒り'
-      else if (balloonIcon == 6) return EnglishTag ? 'Sweat' : '汗'
-      else if (balloonIcon == 7) return EnglishTag ? 'Flustration' : 'くしゃくしゃ'
-      else if (balloonIcon == 8) return EnglishTag ? 'Silence' : '沈黙'
-      else if (balloonIcon == 9) return EnglishTag ? 'Lightbulb' : '電球'
-      else if (balloonIcon == 10) return EnglishTag ? 'zzz' : 'zzz'
-      else if (balloonIcon == 11) return EnglishTag ? 'Userdefined1' : 'ユーザー定義1'
-      else if (balloonIcon == 12) return EnglishTag ? 'Userdefined2' : 'ユーザー定義2'
-      else if (balloonIcon == 13) return EnglishTag ? 'Userdefined3' : 'ユーザー定義3'
-      else if (balloonIcon == 14) return EnglishTag ? 'Userdefined4' : 'ユーザー定義4'
-      else if (balloonIcon == 15) return EnglishTag ? 'Userdefined5' : 'ユーザー定義5'
+      if (balloonIcon === 1) return EnglishTag ? 'Exclamation' : 'びっくり'
+      else if (balloonIcon === 2) return EnglishTag ? 'Question' : 'はてな'
+      else if (balloonIcon === 3) return EnglishTag ? 'Musicnote' : '音符'
+      else if (balloonIcon === 4) return EnglishTag ? 'Heart' : 'ハート'
+      else if (balloonIcon === 5) return EnglishTag ? 'Anger' : '怒り'
+      else if (balloonIcon === 6) return EnglishTag ? 'Sweat' : '汗'
+      else if (balloonIcon === 7) return EnglishTag ? 'Flustration' : 'くしゃくしゃ'
+      else if (balloonIcon === 8) return EnglishTag ? 'Silence' : '沈黙'
+      else if (balloonIcon === 9) return EnglishTag ? 'Lightbulb' : '電球'
+      else if (balloonIcon === 10) return EnglishTag ? 'zzz' : 'zzz'
+      else if (balloonIcon === 11) return EnglishTag ? 'Userdefined1' : 'ユーザー定義1'
+      else if (balloonIcon === 12) return EnglishTag ? 'Userdefined2' : 'ユーザー定義2'
+      else if (balloonIcon === 13) return EnglishTag ? 'Userdefined3' : 'ユーザー定義3'
+      else if (balloonIcon === 14) return EnglishTag ? 'Userdefined4' : 'ユーザー定義4'
+      else if (balloonIcon === 15) return EnglishTag ? 'Userdefined5' : 'ユーザー定義5'
       else return EnglishTag ? 'Exclamation' : 'びっくり'
     }
     const getPositionValue = (position, direct, x, y) => {
       const positionUpperLeft = EnglishTag ? 'Upper Left' : '左上'
       const positionCenter = EnglishTag ? 'Center' : '中央'
       const variablesString = EnglishTag ? 'Variables' : '変数'
-      const positionString = position == 0 ? positionUpperLeft : positionCenter
-      if (position == 0 && x == 0 && y == 0) return ''
-      else if (direct == 0) return `Position[${positionString}][${x}][${y}]`
-      else if (direct == 1) return `Position[${positionString}][${variablesString}[${x}]][${variablesString}[${y}]]`
+      const positionString = position === 0 ? positionUpperLeft : positionCenter
+      if (position === 0 && x === 0 && y === 0) return ''
+      else if (direct === 0) return `Position[${positionString}][${x}][${y}]`
+      else if (direct === 1) return `Position[${positionString}][${variablesString}[${x}]][${variablesString}[${y}]]`
     }
     const getScaleValue = (width, Height) => {
       const scaleStr = EnglishTag ? 'Scale' : '拡大率'
-      if (width == 100 && Height == 100) return ''
+      if (width === 100 && Height === 100) return ''
       else return `${scaleStr}[${width}][${Height}]`
     }
     const getBlendModeValue = (blendMode) => {
-      if (blendMode == 0) return EnglishTag ? 'Normal' : '通常'
-      else if (blendMode == 1) return EnglishTag ? 'Additive' : '加算'
-      else if (blendMode == 2) return EnglishTag ? 'Multiply' : '乗算'
-      else if (blendMode == 3) return EnglishTag ? 'Screen' : 'スクリーン'
+      if (blendMode === 0) return EnglishTag ? 'Normal' : '通常'
+      else if (blendMode === 1) return EnglishTag ? 'Additive' : '加算'
+      else if (blendMode === 2) return EnglishTag ? 'Multiply' : '乗算'
+      else if (blendMode === 3) return EnglishTag ? 'Screen' : 'スクリーン'
       else return EnglishTag ? 'Normal' : '通常'
     }
     const getBlendValue = (opcity, blendMode) => {
       const blendStr = EnglishTag ? 'Blend' : '合成'
       const blendModeValue = getBlendModeValue(blendMode)
-      if (opcity == 255 && blendMode == 0) return ''
+      if (opcity === 255 && blendMode === 0) return ''
       else return `${blendStr}[${opcity}][${blendModeValue}]`
     }
     const getColorToneValue = (red, green, blue, gray) => {
       const colorToneStr = EnglishTag ? 'ColorTone' : '色調'
-      if (red == 0 && green == 0 && blue == 0 && gray == 0) return EnglishTag ? 'ColorTone[Normal]' : '色調[通常]'
-      else if (red == -68 && green == -68 && blue == -68 && gray == 0) { return EnglishTag ? 'ColorTone[Dark]' : '色調[ダーク]' } else if (red == 34 && green == -34 && blue == -68 && gray == 170) { return EnglishTag ? 'ColorTone[Sepia]' : '色調[セピア]' } else if (red == 68 && green == -34 && blue == -34 && gray == 0) { return EnglishTag ? 'ColorTone[Sunset]' : '色調[夕暮れ]' } else if (red == -68 && green == -68 && blue == 0 && gray == 68) { return EnglishTag ? 'ColorTone[Night]' : '色調[夜]' } else return `${colorToneStr}[${red}][${green}][${blue}][${gray}]`
+      if (red === 0 && green === 0 && blue === 0 && gray === 0) return EnglishTag ? 'ColorTone[Normal]' : '色調[通常]'
+      else if (red === -68 && green === -68 && blue === -68 && gray === 0) { return EnglishTag ? 'ColorTone[Dark]' : '色調[ダーク]' } else if (red === 34 && green === -34 && blue === -68 && gray === 170) { return EnglishTag ? 'ColorTone[Sepia]' : '色調[セピア]' } else if (red === 68 && green === -34 && blue === -34 && gray === 0) { return EnglishTag ? 'ColorTone[Sunset]' : '色調[夕暮れ]' } else if (red === -68 && green === -68 && blue === 0 && gray === 68) { return EnglishTag ? 'ColorTone[Night]' : '色調[夜]' } else return `${colorToneStr}[${red}][${green}][${blue}][${gray}]`
     }
     const getDurationValue = (duration, waitForCompletion) => {
       const waitStr = EnglishTag ? 'Wait for Completion' : '完了までウェイト'
       const durationStr = EnglishTag ? 'Duration' : '時間'
       const wait = waitForCompletion ? waitStr : ''
-      if (duration == 60 && waitForCompletion == true) return `${durationStr}[${duration}][${wait}]`
+      if (duration === 60 && waitForCompletion === true) return `${durationStr}[${duration}][${wait}]`
       else return `${durationStr}[${duration}][${wait}]`
     }
     const getEasingValue = (easing) => {
       const easingStr = EnglishTag ? 'Easing' : 'イージング'
-      if (easing == 0) return EnglishTag ? `${easingStr}[Constant speed]` : `${easingStr}[一定速度]`
-      else if (easing == 1) return EnglishTag ? `${easingStr}[Slow start]` : `${easingStr}[ゆっくり始まる]`
-      else if (easing == 2) return EnglishTag ? `${easingStr}[Slow end]` : `${easingStr}[ゆっくり終わる]`
-      else if (easing == 3) { return EnglishTag ? `${easingStr}[Slow start and end]` : `${easingStr}[ゆっくり始まってゆっくり終わる]` } else return EnglishTag ? `${easingStr}[Constant speed]` : `${easingStr}[一定速度]`
+      if (easing === 0) return EnglishTag ? `${easingStr}[Constant speed]` : `${easingStr}[一定速度]`
+      else if (easing === 1) return EnglishTag ? `${easingStr}[Slow start]` : `${easingStr}[ゆっくり始まる]`
+      else if (easing === 2) return EnglishTag ? `${easingStr}[Slow end]` : `${easingStr}[ゆっくり終わる]`
+      else if (easing === 3) { return EnglishTag ? `${easingStr}[Slow start and end]` : `${easingStr}[ゆっくり始まってゆっくり終わる]` } else return EnglishTag ? `${easingStr}[Constant speed]` : `${easingStr}[一定速度]`
     }
     const getBackgroundValue = (background) => {
-      if (background == 0) return EnglishTag ? 'Window' : 'ウィンドウ'
-      else if (background == 1) return EnglishTag ? 'Dim' : '暗くする'
-      else if (background == 2) return EnglishTag ? 'Transparent' : '透明'
+      if (background === 0) return EnglishTag ? 'Window' : 'ウィンドウ'
+      else if (background === 1) return EnglishTag ? 'Dim' : '暗くする'
+      else if (background === 2) return EnglishTag ? 'Transparent' : '透明'
       else return EnglishTag ? 'Window' : 'ウィンドウ'
     }
     const getWindowPositionValue = (windowPosition) => {
-      if (windowPosition == 0) return EnglishTag ? 'Top' : '上'
-      else if (windowPosition == 1) return EnglishTag ? 'Middle' : '中'
-      else if (windowPosition == 2) return EnglishTag ? 'Bottom' : '下'
+      if (windowPosition === 0) return EnglishTag ? 'Top' : '上'
+      else if (windowPosition === 1) return EnglishTag ? 'Middle' : '中'
+      else if (windowPosition === 2) return EnglishTag ? 'Bottom' : '下'
       else return EnglishTag ? 'Top' : '上'
     }
     const getChoiceWindowPositionValue = (windowPosition) => {
-      if (windowPosition == 0) return EnglishTag ? 'Left' : '左'
-      else if (windowPosition == 1) return EnglishTag ? 'Middle' : '中'
-      else if (windowPosition == 2) return EnglishTag ? 'Right' : '右'
+      if (windowPosition === 0) return EnglishTag ? 'Left' : '左'
+      else if (windowPosition === 1) return EnglishTag ? 'Middle' : '中'
+      else if (windowPosition === 2) return EnglishTag ? 'Right' : '右'
       else return EnglishTag ? 'Right' : '右'
     }
     const getDefaultChoiceValue = (defaultChoice) => {
-      if (defaultChoice == -1) return EnglishTag ? 'None' : 'なし'
+      if (defaultChoice === -1) return EnglishTag ? 'None' : 'なし'
       else return defaultChoice + 1
     }
     const getCancelChoiceValue = (cancelChoice) => {
-      if (cancelChoice == -2) return EnglishTag ? 'Branch' : '分岐'
-      else if (cancelChoice == -1) return EnglishTag ? 'Disallow' : '禁止'
+      if (cancelChoice === -2) return EnglishTag ? 'Branch' : '分岐'
+      else if (cancelChoice === -1) return EnglishTag ? 'Disallow' : '禁止'
       else return cancelChoice + 1
     }
     const getLocationInfoTypeValue = (infoType) => {
-      if (infoType == 0) return EnglishTag ? 'Terraintag' : '地形タグ'
-      else if (infoType == 1) return EnglishTag ? 'EventId' : 'イベントid'
-      else if (infoType == 2) return EnglishTag ? 'Layer1' : 'レイヤー1'
-      else if (infoType == 3) return EnglishTag ? 'Layer2' : 'レイヤー2'
-      else if (infoType == 4) return EnglishTag ? 'Layer3' : 'レイヤー3'
-      else if (infoType == 5) return EnglishTag ? 'Layer4' : 'レイヤー4'
-      else if (infoType == 6) return EnglishTag ? 'RegionId' : 'リージョンid'
+      if (infoType === 0) return EnglishTag ? 'Terraintag' : '地形タグ'
+      else if (infoType === 1) return EnglishTag ? 'EventId' : 'イベントid'
+      else if (infoType === 2) return EnglishTag ? 'Layer1' : 'レイヤー1'
+      else if (infoType === 3) return EnglishTag ? 'Layer2' : 'レイヤー2'
+      else if (infoType === 4) return EnglishTag ? 'Layer3' : 'レイヤー3'
+      else if (infoType === 5) return EnglishTag ? 'Layer4' : 'レイヤー4'
+      else if (infoType === 6) return EnglishTag ? 'RegionId' : 'リージョンid'
       else return EnglishTag ? 'Terraintag' : '地形タグ'
     }
     const getActionTarget = (target) => {
-      if (target == -2) return EnglishTag ? 'LastTarget' : 'ラストターゲット'
-      else if (target == -1) return EnglishTag ? 'Random' : 'ランダム'
-      else if (target == 0) return EnglishTag ? 'Index1' : 'インデックス1'
-      else if (target == 1) return EnglishTag ? 'Index2' : 'インデックス2'
-      else if (target == 2) return EnglishTag ? 'Index3' : 'インデックス3'
-      else if (target == 3) return EnglishTag ? 'Index4' : 'インデックス4'
-      else if (target == 4) return EnglishTag ? 'Index5' : 'インデックス5'
-      else if (target == 5) return EnglishTag ? 'Index6' : 'インデックス6'
-      else if (target == 6) return EnglishTag ? 'Index7' : 'インデックス7'
-      else if (target == 7) return EnglishTag ? 'Index8' : 'インデックス8'
+      if (target === -2) return EnglishTag ? 'LastTarget' : 'ラストターゲット'
+      else if (target === -1) return EnglishTag ? 'Random' : 'ランダム'
+      else if (target === 0) return EnglishTag ? 'Index1' : 'インデックス1'
+      else if (target === 1) return EnglishTag ? 'Index2' : 'インデックス2'
+      else if (target === 2) return EnglishTag ? 'Index3' : 'インデックス3'
+      else if (target === 3) return EnglishTag ? 'Index4' : 'インデックス4'
+      else if (target === 4) return EnglishTag ? 'Index5' : 'インデックス5'
+      else if (target === 5) return EnglishTag ? 'Index6' : 'インデックス6'
+      else if (target === 6) return EnglishTag ? 'Index7' : 'インデックス7'
+      else if (target === 7) return EnglishTag ? 'Index8' : 'インデックス8'
       else return EnglishTag ? 'LastTarget' : 'ラストターゲット'
     }
     const getTimerValue = (timer) => {
-      if (timer == 0) return EnglishTag ? 'Start' : '始動'
-      else if (timer == 1) return EnglishTag ? 'Stop' : '停止'
+      if (timer === 0) return EnglishTag ? 'Start' : '始動'
+      else if (timer === 1) return EnglishTag ? 'Stop' : '停止'
       else return EnglishTag ? 'Start' : '始動'
     }
     const getIndent = (indentValue) => {
@@ -815,93 +815,93 @@ if (typeof PluginManager === 'undefined') {
       return indent
     }
     const getWeatherTypeValue = (weather) => {
-      if (weather == 'none') return EnglishTag ? 'None' : 'なし'
-      else if (weather == 'rain') return EnglishTag ? 'Rain' : '雨'
-      else if (weather == 'storm') return EnglishTag ? 'Storm' : '嵐'
-      else if (weather == 'snow') return EnglishTag ? 'Snow' : '雪'
+      if (weather === 'none') return EnglishTag ? 'None' : 'なし'
+      else if (weather === 'rain') return EnglishTag ? 'Rain' : '雨'
+      else if (weather === 'storm') return EnglishTag ? 'Storm' : '嵐'
+      else if (weather === 'snow') return EnglishTag ? 'Snow' : '雪'
       else return EnglishTag ? 'None' : 'なし'
     }
     const getControlVariablesTag = (operation) => {
-      if (operation == 0) return EnglishTag ? '<Set: ' : '<代入: '
-      else if (operation == 1) return EnglishTag ? '<Add: ' : '<加算: '
-      else if (operation == 2) return EnglishTag ? '<Sub: ' : '<減算: '
-      else if (operation == 3) return EnglishTag ? '<Mul: ' : '<乗算: '
-      else if (operation == 4) return EnglishTag ? '<Div: ' : '<除算: '
-      else if (operation == 5) return EnglishTag ? '<Mod: ' : '<剰余: '
+      if (operation === 0) return EnglishTag ? '<Set: ' : '<代入: '
+      else if (operation === 1) return EnglishTag ? '<Add: ' : '<加算: '
+      else if (operation === 2) return EnglishTag ? '<Sub: ' : '<減算: '
+      else if (operation === 3) return EnglishTag ? '<Mul: ' : '<乗算: '
+      else if (operation === 4) return EnglishTag ? '<Div: ' : '<除算: '
+      else if (operation === 5) return EnglishTag ? '<Mod: ' : '<剰余: '
       else return EnglishTag ? '<Set: ' : '<代入: '
     }
     const getGameData = (gameData) => {
-      if (gameData == 0) return EnglishTag ? 'Item' : 'アイテム'
-      else if (gameData == 1) return EnglishTag ? 'Weapon' : '武器'
-      else if (gameData == 2) return EnglishTag ? 'Armor' : '防具'
-      else if (gameData == 3) return EnglishTag ? 'Actor' : 'アクター'
-      else if (gameData == 4) return EnglishTag ? 'Enemy' : '敵キャラ'
-      else if (gameData == 5) return EnglishTag ? 'Character' : 'キャラクター'
-      else if (gameData == 6) return EnglishTag ? 'Party' : 'パーティ'
-      else if (gameData == 7) return EnglishTag ? 'その他' : 'その他'
-      else if (gameData == 8) return EnglishTag ? 'Last' : '直前'
+      if (gameData === 0) return EnglishTag ? 'Item' : 'アイテム'
+      else if (gameData === 1) return EnglishTag ? 'Weapon' : '武器'
+      else if (gameData === 2) return EnglishTag ? 'Armor' : '防具'
+      else if (gameData === 3) return EnglishTag ? 'Actor' : 'アクター'
+      else if (gameData === 4) return EnglishTag ? 'Enemy' : '敵キャラ'
+      else if (gameData === 5) return EnglishTag ? 'Character' : 'キャラクター'
+      else if (gameData === 6) return EnglishTag ? 'Party' : 'パーティ'
+      else if (gameData === 7) return EnglishTag ? 'その他' : 'その他'
+      else if (gameData === 8) return EnglishTag ? 'Last' : '直前'
       else return EnglishTag ? 'Item' : 'アイテム'
     }
     const getGameDataActorParameter = (actorParameter) => {
-      if (actorParameter == 0) return EnglishTag ? 'Level' : 'レベル'
-      else if (actorParameter == 1) return EnglishTag ? 'Exp' : '経験値'
-      else if (actorParameter == 2) return EnglishTag ? 'HP' : 'HP'
-      else if (actorParameter == 3) return EnglishTag ? 'MP' : 'MP'
-      else if (actorParameter == 4) return EnglishTag ? 'MaxHp' : '最大HP'
-      else if (actorParameter == 5) return EnglishTag ? 'MaxMP' : '最大MP'
-      else if (actorParameter == 6) return EnglishTag ? 'Attack' : '攻撃力'
-      else if (actorParameter == 7) return EnglishTag ? 'Defense' : '防御力'
-      else if (actorParameter == 8) return EnglishTag ? 'M.Attack' : '魔法攻撃力'
-      else if (actorParameter == 9) return EnglishTag ? 'M.Defense' : '魔法防御力'
-      else if (actorParameter == 10) return EnglishTag ? 'Agility' : '敏捷性'
-      else if (actorParameter == 11) return EnglishTag ? 'Luck' : '運'
+      if (actorParameter === 0) return EnglishTag ? 'Level' : 'レベル'
+      else if (actorParameter === 1) return EnglishTag ? 'Exp' : '経験値'
+      else if (actorParameter === 2) return EnglishTag ? 'HP' : 'HP'
+      else if (actorParameter === 3) return EnglishTag ? 'MP' : 'MP'
+      else if (actorParameter === 4) return EnglishTag ? 'MaxHp' : '最大HP'
+      else if (actorParameter === 5) return EnglishTag ? 'MaxMP' : '最大MP'
+      else if (actorParameter === 6) return EnglishTag ? 'Attack' : '攻撃力'
+      else if (actorParameter === 7) return EnglishTag ? 'Defense' : '防御力'
+      else if (actorParameter === 8) return EnglishTag ? 'M.Attack' : '魔法攻撃力'
+      else if (actorParameter === 9) return EnglishTag ? 'M.Defense' : '魔法防御力'
+      else if (actorParameter === 10) return EnglishTag ? 'Agility' : '敏捷性'
+      else if (actorParameter === 11) return EnglishTag ? 'Luck' : '運'
       else return EnglishTag ? 'Level' : 'レベル'
     }
     const getGameDataEnemyParameter = (actorParameter) => {
-      if (actorParameter == 0) return EnglishTag ? 'HP' : 'HP'
-      else if (actorParameter == 1) return EnglishTag ? 'MP' : 'MP'
-      else if (actorParameter == 2) return EnglishTag ? 'MaxHp' : '最大HP'
-      else if (actorParameter == 3) return EnglishTag ? 'MaxMP' : '最大MP'
-      else if (actorParameter == 4) return EnglishTag ? 'Attack' : '攻撃力'
-      else if (actorParameter == 5) return EnglishTag ? 'Defense' : '防御力'
-      else if (actorParameter == 6) return EnglishTag ? 'M.Attack' : '魔法攻撃力'
-      else if (actorParameter == 7) return EnglishTag ? 'M.Defense' : '魔法防御力'
-      else if (actorParameter == 8) return EnglishTag ? 'Agility' : '敏捷性'
-      else if (actorParameter == 9) return EnglishTag ? 'Luck' : '運'
+      if (actorParameter === 0) return EnglishTag ? 'HP' : 'HP'
+      else if (actorParameter === 1) return EnglishTag ? 'MP' : 'MP'
+      else if (actorParameter === 2) return EnglishTag ? 'MaxHp' : '最大HP'
+      else if (actorParameter === 3) return EnglishTag ? 'MaxMP' : '最大MP'
+      else if (actorParameter === 4) return EnglishTag ? 'Attack' : '攻撃力'
+      else if (actorParameter === 5) return EnglishTag ? 'Defense' : '防御力'
+      else if (actorParameter === 6) return EnglishTag ? 'M.Attack' : '魔法攻撃力'
+      else if (actorParameter === 7) return EnglishTag ? 'M.Defense' : '魔法防御力'
+      else if (actorParameter === 8) return EnglishTag ? 'Agility' : '敏捷性'
+      else if (actorParameter === 9) return EnglishTag ? 'Luck' : '運'
       else return EnglishTag ? 'HP' : 'HP'
     }
     const getGameDataReference = (reference) => {
-      if (reference == 0) return EnglishTag ? 'MapX' : 'マップX'
-      else if (reference == 1) return EnglishTag ? 'MapY' : 'マップY'
-      else if (reference == 2) return EnglishTag ? 'Direction' : '方向'
-      else if (reference == 3) return EnglishTag ? 'ScreenX' : '画面X'
-      else if (reference == 4) return EnglishTag ? 'ScreenY' : '画面Y'
+      if (reference === 0) return EnglishTag ? 'MapX' : 'マップX'
+      else if (reference === 1) return EnglishTag ? 'MapY' : 'マップY'
+      else if (reference === 2) return EnglishTag ? 'Direction' : '方向'
+      else if (reference === 3) return EnglishTag ? 'ScreenX' : '画面X'
+      else if (reference === 4) return EnglishTag ? 'ScreenY' : '画面Y'
       else return EnglishTag ? 'MapX' : 'マップX'
     }
     const getGameDataLast = (last) => {
-      if (last == 0) return EnglishTag ? 'Last Used Skill ID' : '直前に使用したスキルのID'
-      else if (last == 1) return EnglishTag ? 'Last Used Item ID' : '直前に使用したアイテムのID'
-      else if (last == 2) return EnglishTag ? 'Last Actor ID to Act' : '直前に行動したアクターのID'
-      else if (last == 3) return EnglishTag ? 'Last Enemy Index to Act' : '直前に行動した敵キャラのインデックス'
-      else if (last == 4) return EnglishTag ? 'Last Target Actor ID' : '直前に対象となったアクターのID'
-      else if (last == 5) return EnglishTag ? 'Last Target Enemy Index' : '直前に対象となった敵キャラのインデックス'
+      if (last === 0) return EnglishTag ? 'Last Used Skill ID' : '直前に使用したスキルのID'
+      else if (last === 1) return EnglishTag ? 'Last Used Item ID' : '直前に使用したアイテムのID'
+      else if (last === 2) return EnglishTag ? 'Last Actor ID to Act' : '直前に行動したアクターのID'
+      else if (last === 3) return EnglishTag ? 'Last Enemy Index to Act' : '直前に行動した敵キャラのインデックス'
+      else if (last === 4) return EnglishTag ? 'Last Target Actor ID' : '直前に対象となったアクターのID'
+      else if (last === 5) return EnglishTag ? 'Last Target Enemy Index' : '直前に対象となった敵キャラのインデックス'
       else return EnglishTag ? 'MapX' : 'マップX'
     }
     const getGameDataOther = (other) => {
-      if (other == 0) return EnglishTag ? 'MapId' : 'マップid'
-      else if (other == 1) return EnglishTag ? 'PartyMembers' : 'パーティ人数'
-      else if (other == 2) return EnglishTag ? 'gold' : '所持金'
-      else if (other == 3) return EnglishTag ? 'steps' : '歩数'
-      else if (other == 4) return EnglishTag ? 'PlayTime' : 'プレイ時間'
-      else if (other == 5) return EnglishTag ? 'timer' : 'タイマー'
-      else if (other == 6) return EnglishTag ? 'SaveCount' : 'セーブ回数'
-      else if (other == 7) return EnglishTag ? 'BattleCount' : '戦闘回数'
-      else if (other == 8) return EnglishTag ? 'WinCount' : '勝利回数'
-      else if (other == 9) return EnglishTag ? 'EscapeCount' : '逃走回数'
+      if (other === 0) return EnglishTag ? 'MapId' : 'マップid'
+      else if (other === 1) return EnglishTag ? 'PartyMembers' : 'パーティ人数'
+      else if (other === 2) return EnglishTag ? 'gold' : '所持金'
+      else if (other === 3) return EnglishTag ? 'steps' : '歩数'
+      else if (other === 4) return EnglishTag ? 'PlayTime' : 'プレイ時間'
+      else if (other === 5) return EnglishTag ? 'timer' : 'タイマー'
+      else if (other === 6) return EnglishTag ? 'SaveCount' : 'セーブ回数'
+      else if (other === 7) return EnglishTag ? 'BattleCount' : '戦闘回数'
+      else if (other === 8) return EnglishTag ? 'WinCount' : '勝利回数'
+      else if (other === 9) return EnglishTag ? 'EscapeCount' : '逃走回数'
       else return EnglishTag ? 'PartyMembers' : 'パーティ人数'
     }
     const getEnemyTarget = (enemy) => {
-      if (enemy == -1) return EnglishTag ? 'EntireTroop' : '敵グループ全体'
+      if (enemy === -1) return EnglishTag ? 'EntireTroop' : '敵グループ全体'
       else return Number(enemy) + 1
     }
 
@@ -916,7 +916,7 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       // メッセージ
       /** ********************************************** */
-      if (event.code == 101) {
+      if (event.code === 101) {
         const face = event.parameters[0]
         const faceId = event.parameters[1]
         const background = getBackgroundValue(event.parameters[2])
@@ -927,15 +927,15 @@ if (typeof PluginManager === 'undefined') {
         const backgroundTag = EnglishTag ? `<Background: ${background}>` : `<背景: ${background}>`
         const windowPositionTag = EnglishTag ? `<WindowPosition: ${windowPosition}>` : `<位置: ${windowPosition}>`
         const nameTagStr = EnglishTag ? `<Name: ${name}>` : `<名前: ${name}>`
-        const nameTag = name == undefined ? '' : nameTagStr
+        const nameTag = name === undefined ? '' : nameTagStr
         text += indent + faceTag + backgroundTag + windowPositionTag + nameTag + newLine
       }
-      if (event.code == 401) {
+      if (event.code === 401) {
         const showText = event.parameters[0]
         // テキストはindentを入れない
         text += showText + newLine
       }
-      if (event.code == 102) {
+      if (event.code === 102) {
         const background = getBackgroundValue(event.parameters[4]) + comma
         const windowPosition = getChoiceWindowPositionValue(event.parameters[3]) + comma
         const defaultChoice = getDefaultChoiceValue(event.parameters[2]) + comma
@@ -943,36 +943,36 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ShowChoices: ' : '<選択肢の表示: '
         text += indent + tag + background + windowPosition + defaultChoice + cancelChoice + '>' + newLine
       }
-      if (event.code == 402) {
+      if (event.code === 402) {
         const choice = event.parameters[1]
         const tag = EnglishTag ? '<When: ' : '<選択肢: '
         text += indent + tag + choice + '>' + newLine
       }
-      if (event.code == 403) {
+      if (event.code === 403) {
         const tag = EnglishTag ? '<WhenCancel>' : '<キャンセルのとき>'
         text += indent + tag + newLine
       }
-      if (event.code == 404) {
+      if (event.code === 404) {
         const tag = EnglishTag ? '<End>' : '<分岐修了>'
         text += indent + tag + newLine
       }
-      if (event.code == 103) {
+      if (event.code === 103) {
         const variableId = event.parameters[0]
         const digits = event.parameters[1]
         const tag = EnglishTag ? '<InputNumber: ' : '<数値入力の処理: '
         text += indent + tag + variableId + ', ' + digits + '>' + newLine
       }
-      if (event.code == 104) {
+      if (event.code === 104) {
         const variableId = event.parameters[0]
         const itemTypeValue = event.parameters[1]
         let itemType
-        if (itemTypeValue == 1) {
+        if (itemTypeValue === 1) {
           itemType = 'Regular Item'
-        } else if (itemTypeValue == 2) {
+        } else if (itemTypeValue === 2) {
           itemType = 'Key Item'
-        } else if (itemTypeValue == 3) {
+        } else if (itemTypeValue === 3) {
           itemType = 'Hidden Item A'
-        } else if (itemTypeValue == 4) {
+        } else if (itemTypeValue === 4) {
           itemType = 'Hidden Item B'
         } else {
           itemType = 'Key Item'
@@ -980,14 +980,14 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<SelectItem: ' : '<アイテム選択の処理: '
         text += indent + tag + variableId + ', ' + itemType + '>' + newLine
       }
-      if (event.code == 105) {
+      if (event.code === 105) {
         const speed = event.parameters[0] + comma
         const noFastForward = getCheckBoxValue(event.parameters[1])
         const tag = EnglishTag ? '<ShowScrollingText: ' : '<文章のスクロール表示: '
         const tagEnd = EnglishTag ? '</ShowScrollingText>' : '</文章のスクロール表示>'
         text += indent + tag + speed + noFastForward + '>' + newLine + tagEnd + newLine
       }
-      if (event.code == 405) {
+      if (event.code === 405) {
         const scrollingText = event.parameters[0]
         const tagEnd = '</ShowScrollingText>'
         if (text.endsWith(tagEnd + newLine)) {
@@ -1000,18 +1000,18 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       // ゲーム進行
       /** ********************************************** */
-      if (event.code == 121) {
+      if (event.code === 121) {
         const switchId1 = event.parameters[0]
         const switchId2 = event.parameters[1]
         const operation = getOnOffRadioButtonValue(event.parameters[2])
         const tag = EnglishTag ? '<Switch: ' : '<スイッチ: '
-        if (switchId1 == switchId2) {
+        if (switchId1 === switchId2) {
           text += indent + tag + switchId1 + comma + operation + '>' + newLine
         } else {
           text += indent + tag + switchId1 + '-' + switchId2 + comma + operation + '>' + newLine
         }
       }
-      if (event.code == 122) {
+      if (event.code === 122) {
         const param1 = event.parameters[0]
         const param2 = event.parameters[1]
         const param3 = event.parameters[2]
@@ -1023,30 +1023,30 @@ if (typeof PluginManager === 'undefined') {
         const variableId2 = param2
         const tag = getControlVariablesTag(param3)
         // 変数・単独/範囲
-        if (event.parameters.length == 5 && param4 !== 4) {
+        if (event.parameters.length === 5 && param4 !== 4) {
           const operandValue = getFixedOrVariable(param4, param5)
-          if (variableId1 == variableId2) {
+          if (variableId1 === variableId2) {
             text += indent + tag + variableId1 + comma + operandValue + '>' + newLine
           } else {
             text += indent + tag + variableId1 + '-' + variableId2 + comma + operandValue + '>' + newLine
           }
         }
         // スクリプト
-        if (event.parameters.length == 5 && param4 == 4) {
+        if (event.parameters.length === 5 && param4 === 4) {
           const scriptStr = EnglishTag ? 'Script' : 'スクリプト'
           const script = `${scriptStr}[${param5}]`
-          if (variableId1 == variableId2) {
+          if (variableId1 === variableId2) {
             text += indent + tag + variableId1 + comma + script + '>' + newLine
           } else {
             text += indent + tag + variableId1 + '-' + variableId2 + comma + script + '>' + newLine
           }
         }
         // 変数・乱数
-        if (event.parameters.length == 6) {
+        if (event.parameters.length === 6) {
           const randomStr = EnglishTag ? 'random' : '乱数'
           const random1 = `[${param5}]`
           const random2 = `[${param6}]`
-          if (variableId1 == variableId2) {
+          if (variableId1 === variableId2) {
             text += indent + tag + variableId1 + comma + randomStr + random1 + random2 + '>' + newLine
           } else {
             text +=
@@ -1054,86 +1054,86 @@ if (typeof PluginManager === 'undefined') {
           }
         }
         // ゲームデータ
-        if (event.parameters.length == 7) {
+        if (event.parameters.length === 7) {
           const gameDataStr = EnglishTag ? 'GameData' : 'ゲームデータ'
           const gameDataParam1Str = getGameData(param5)
           const gameDataParam1 = `[${gameDataParam1Str}]`
           // ゲームデータ・アイテム・武器・防具
-          if (param5 == 0 || param5 == 1 || param5 == 2) {
+          if (param5 === 0 || param5 === 1 || param5 === 2) {
             const gameDataParam2 = `[${param6}]`
             const gameData = gameDataStr + gameDataParam1 + gameDataParam2
-            if (variableId1 == variableId2) {
+            if (variableId1 === variableId2) {
               text += indent + tag + variableId1 + comma + gameData + '>' + newLine
             } else {
               text += indent + tag + variableId1 + '-' + variableId2 + comma + gameData + '>' + newLine
             }
           }
           // ゲームデータ・アクター
-          if (param5 == 3) {
+          if (param5 === 3) {
             const gameDataParam2 = `[${param6}]`
             const gameDataParam3Str = getGameDataActorParameter(param7)
             const gameDataParam3 = `[${gameDataParam3Str}]`
             const gameData = gameDataStr + gameDataParam1 + gameDataParam2 + gameDataParam3
-            if (variableId1 == variableId2) {
+            if (variableId1 === variableId2) {
               text += indent + tag + variableId1 + comma + gameData + '>' + newLine
             } else {
               text += indent + tag + variableId1 + '-' + variableId2 + comma + gameData + '>' + newLine
             }
           }
           // ゲームデータ・敵キャラ
-          if (param5 == 4) {
+          if (param5 === 4) {
             const gameDataParam2Value = Number(param6) + 1
             const gameDataParam2 = `[${gameDataParam2Value}]`
             const gameDataParam3Str = getGameDataEnemyParameter(param7)
             const gameDataParam3 = `[${gameDataParam3Str}]`
             const gameData = gameDataStr + gameDataParam1 + gameDataParam2 + gameDataParam3
-            if (variableId1 == variableId2) {
+            if (variableId1 === variableId2) {
               text += indent + tag + variableId1 + comma + gameData + '>' + newLine
             } else {
               text += indent + tag + variableId1 + '-' + variableId2 + comma + gameData + '>' + newLine
             }
           }
           // ゲームデータ・キャラクター
-          if (param5 == 5) {
+          if (param5 === 5) {
             const gameDataParam2Value = getEventValue(param6)
             const gameDataParam2 = `[${gameDataParam2Value}]`
             const gameDataParam3Str = getGameDataReference(param7)
             const gameDataParam3 = `[${gameDataParam3Str}]`
             const gameData = gameDataStr + gameDataParam1 + gameDataParam2 + gameDataParam3
-            if (variableId1 == variableId2) {
+            if (variableId1 === variableId2) {
               text += indent + tag + variableId1 + comma + gameData + '>' + newLine
             } else {
               text += indent + tag + variableId1 + '-' + variableId2 + comma + gameData + '>' + newLine
             }
           }
           // ゲームデータ・パーティ
-          if (param5 == 6) {
+          if (param5 === 6) {
             const gameDataParam2Value = Number(param6) + 1
             const gameDataParam2 = `[${gameDataParam2Value}]`
             const gameData = gameDataStr + gameDataParam1 + gameDataParam2
-            if (variableId1 == variableId2) {
+            if (variableId1 === variableId2) {
               text += indent + tag + variableId1 + comma + gameData + '>' + newLine
             } else {
               text += indent + tag + variableId1 + '-' + variableId2 + comma + gameData + '>' + newLine
             }
           }
           // ゲームデータ・その他
-          if (param5 == 7) {
+          if (param5 === 7) {
             const gameDataParam1Str = getGameDataOther(param6)
             const gameDataParam1 = `[${gameDataParam1Str}]`
             const gameData = gameDataStr + gameDataParam1
-            if (variableId1 == variableId2) {
+            if (variableId1 === variableId2) {
               text += indent + tag + variableId1 + comma + gameData + '>' + newLine
             } else {
               text += indent + tag + variableId1 + '-' + variableId2 + comma + gameData + '>' + newLine
             }
           }
           // ゲームデータ・直前
-          if (param5 == 8) {
+          if (param5 === 8) {
             const gameDataParam2Value = getGameDataLast(param6)
             const gameDataParam2 = `[${gameDataParam2Value}]`
             const gameData = gameDataStr + gameDataParam1 + gameDataParam2
-            if (variableId1 == variableId2) {
+            if (variableId1 === variableId2) {
               text += indent + tag + variableId1 + comma + gameData + '>' + newLine
             } else {
               text += indent + tag + variableId1 + '-' + variableId2 + comma + gameData + '>' + newLine
@@ -1141,21 +1141,21 @@ if (typeof PluginManager === 'undefined') {
           }
         }
       }
-      if (event.code == 123) {
+      if (event.code === 123) {
         const selfSwitchValue = event.parameters[0] + comma
         const operationValue = event.parameters[1]
         const operation = getOnOffRadioButtonValue(operationValue)
         const tag = EnglishTag ? '<SelfSwitch: ' : '<セルフスイッチ: '
         text += indent + tag + selfSwitchValue + operation + '>' + newLine
       }
-      if (event.code == 124) {
+      if (event.code === 124) {
         const operation = getTimerValue(event.parameters[0])
         const time = event.parameters[1]
         const minutes = Math.floor(time / 60)
         const seconds = time % 60
 
         const tag = EnglishTag ? '<Timer: ' : '<タイマー: '
-        if (event.parameters[0] == 0) {
+        if (event.parameters[0] === 0) {
           text += indent + tag + operation + comma + minutes + comma + seconds + '>' + newLine
         } else {
           text += indent + tag + operation + '>' + newLine
@@ -1165,22 +1165,22 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       // フロー制御
       /** ********************************************** */
-      if (event.code == 108) {
+      if (event.code === 108) {
         const comment = event.parameters[0]
         const tag = EnglishTag ? '<Comment>' : '<注釈>'
         const tagEnd = EnglishTag ? '</comment>' : '</注釈>'
         text += indent + tag + newLine + comment + newLine + tagEnd + newLine
       }
-      if (event.code == 408) {
+      if (event.code === 408) {
         const comment = event.parameters[0]
         const textSlice = text.slice(-11)
         const tagEnd = EnglishTag ? '</comment>' : '</注釈>'
-        if (textSlice == tagEnd + newLine) {
+        if (textSlice === tagEnd + newLine) {
           const tmpText = text.slice(0, -11)
           text = tmpText + comment + newLine + tagEnd + newLine
         }
       }
-      if (event.code == 111) {
+      if (event.code === 111) {
         const param1 = event.parameters[0]
         const param2 = event.parameters[1]
         const param3 = event.parameters[2]
@@ -1188,46 +1188,46 @@ if (typeof PluginManager === 'undefined') {
         const param5 = event.parameters[4]
         const tag = EnglishTag ? '<If: ' : '<条件分岐: '
         // 0.スイッチ
-        if (param1 == 0) {
+        if (param1 === 0) {
           const switchId = EnglishTag ? `Switches[${param2}]` + comma : `スイッチ[${param2}]` + comma
           const isSwitch = getOnOffRadioButtonValue(param3)
           text += indent + tag + switchId + isSwitch + '>' + newLine
         }
         // 1.変数
-        if (param1 == 1) {
+        if (param1 === 1) {
           const variableId = EnglishTag ? `Variables[${param2}]` + comma : `変数[${param2}]` + comma
 
           // 定数or変数
           let constant
-          if (param3 == 0) constant = param4
-          else if (param3 == 1) constant = EnglishTag ? `Variables[${param4}]` : `変数[${param4}]`
+          if (param3 === 0) constant = param4
+          else if (param3 === 1) constant = EnglishTag ? `Variables[${param4}]` : `変数[${param4}]`
           else constant = param4
 
           // 比較演算子
           let condition
-          if (param5 == 0) condition = EnglishTag ? '==' : '＝'
-          else if (param5 == 1) condition = EnglishTag ? '>=' : '≧'
-          else if (param5 == 2) condition = EnglishTag ? '<=' : '≦'
-          else if (param5 == 3) condition = EnglishTag ? '>' : '＞'
-          else if (param5 == 4) condition = EnglishTag ? '<' : '＜'
-          else if (param5 == 5) condition = EnglishTag ? '!=' : '≠'
+          if (param5 === 0) condition = EnglishTag ? '==' : '＝'
+          else if (param5 === 1) condition = EnglishTag ? '>=' : '≧'
+          else if (param5 === 2) condition = EnglishTag ? '<=' : '≦'
+          else if (param5 === 3) condition = EnglishTag ? '>' : '＞'
+          else if (param5 === 4) condition = EnglishTag ? '<' : '＜'
+          else if (param5 === 5) condition = EnglishTag ? '!=' : '≠'
           else condition = EnglishTag ? '==' : '＝'
           condition += comma
           text += indent + tag + variableId + condition + constant + '>' + newLine
         }
         // 2.セルフスイッチ
-        if (param1 == 2) {
+        if (param1 === 2) {
           const selfSwitches = EnglishTag ? `SelfSwitches[${param2}]` + comma : `セルフスイッチ[${param2}]` + comma
           const isSwitch = getOnOffRadioButtonValue(param3)
           text += indent + tag + selfSwitches + isSwitch + '>' + newLine
         }
         // 3.タイマー
-        if (param1 == 3) {
+        if (param1 === 3) {
           const timer = EnglishTag ? 'Timer' + comma : 'タイマー' + comma
           // 比較演算子
           let condition
-          if (param3 == 0) condition = EnglishTag ? '>=' : '≧'
-          else if (param3 == 1) condition = EnglishTag ? '<=' : '≦'
+          if (param3 === 0) condition = EnglishTag ? '>=' : '≧'
+          else if (param3 === 1) condition = EnglishTag ? '<=' : '≦'
           else condition = EnglishTag ? '>=' : '≧'
           condition += comma
           // 分
@@ -1237,7 +1237,7 @@ if (typeof PluginManager === 'undefined') {
           text += indent + tag + timer + condition + minutes + seconds + '>' + newLine
         }
         // 4.アクター
-        if (param1 == 4) {
+        if (param1 === 4) {
           const actorId = EnglishTag ? `Actors[${param2}]` + comma : `アクター[${param2}]` + comma
           switch (param3) {
             // パーティにいる
@@ -1295,7 +1295,7 @@ if (typeof PluginManager === 'undefined') {
           }
         }
         // 5.敵キャラ
-        if (param1 == 5) {
+        if (param1 === 5) {
           const enemyNumber = Number(param2) + 1
           const actorId = EnglishTag ? `Enemies[${enemyNumber}]` + comma : `敵キャラ[${enemyNumber}]` + comma
           switch (param3) {
@@ -1319,26 +1319,26 @@ if (typeof PluginManager === 'undefined') {
           }
         }
         // 6.キャラクター
-        if (param1 == 6) {
+        if (param1 === 6) {
           const character = getEventValue(param2)
           const charactersStr = EnglishTag ? `Characters[${character}]` + comma : `キャラクター[${character}]` + comma
           const facing = getDirectionValue(param3)
           text += indent + tag + charactersStr + facing + '>' + newLine
         }
         // 13.乗り物
-        if (param1 == 13) {
+        if (param1 === 13) {
           const vehicleStr = EnglishTag ? 'Vehicle' + comma : '乗り物' + comma
           const vehicle = getVehicleValue(param2)
           text += indent + tag + vehicleStr + vehicle + '>' + newLine
         }
         // 7.お金
-        if (param1 == 7) {
+        if (param1 === 7) {
           const goldStr = EnglishTag ? 'Gold' + comma : 'お金' + comma
           // 比較演算子
           let condition
-          if (param3 == 0) condition = EnglishTag ? '>=' : '≧'
-          else if (param3 == 1) condition = EnglishTag ? '<=' : '≦'
-          else if (param3 == 2) condition = EnglishTag ? '<' : '＜'
+          if (param3 === 0) condition = EnglishTag ? '>=' : '≧'
+          else if (param3 === 1) condition = EnglishTag ? '<=' : '≦'
+          else if (param3 === 2) condition = EnglishTag ? '<' : '＜'
           else condition = EnglishTag ? '>=' : '≧'
           condition += comma
           const gold = param2
@@ -1346,12 +1346,12 @@ if (typeof PluginManager === 'undefined') {
           text += indent + tag + goldStr + condition + gold + '>' + newLine
         }
         // 8.アイテム
-        if (param1 == 8) {
+        if (param1 === 8) {
           const itemStr = EnglishTag ? `Items[${param2}]` : `アイテム[${param2}]`
           text += indent + tag + itemStr + '>' + newLine
         }
         // 9.武器
-        if (param1 == 9) {
+        if (param1 === 9) {
           const weaponStr = EnglishTag ? `Weapons[${param2}]` : `武器[${param2}]`
           let includeEquipment
           if (param3) includeEquipment = EnglishTag ? comma + 'Include Equipment' : comma + '装備品を含む'
@@ -1359,7 +1359,7 @@ if (typeof PluginManager === 'undefined') {
           text += indent + tag + weaponStr + includeEquipment + '>' + newLine
         }
         // 10.防具
-        if (param1 == 10) {
+        if (param1 === 10) {
           const armorStr = EnglishTag ? `Armors[${param2}]` : `防具[${param2}]`
           let includeEquipment
           if (param3) includeEquipment = EnglishTag ? comma + 'Include Equipment' : comma + '装備品を含む'
@@ -1367,15 +1367,15 @@ if (typeof PluginManager === 'undefined') {
           text += indent + tag + armorStr + includeEquipment + '>' + newLine
         }
         // 11.ボタン
-        if (param1 == 11) {
+        if (param1 === 11) {
           const buttonStr = EnglishTag ? 'Button' + comma : 'ボタン' + comma
           const button = param2
           if (param3) {
             // MZ
             let buttonState
-            if (param3 == 0) buttonState = EnglishTag ? 'is being pressed' : 'が押されている'
-            else if (param3 == 1) buttonState = EnglishTag ? 'is being triggered' : 'がトリガーされている'
-            else if (param3 == 2) buttonState = EnglishTag ? 'is being repeated' : 'がリピートされている'
+            if (param3 === 0) buttonState = EnglishTag ? 'is being pressed' : 'が押されている'
+            else if (param3 === 1) buttonState = EnglishTag ? 'is being triggered' : 'がトリガーされている'
+            else if (param3 === 2) buttonState = EnglishTag ? 'is being repeated' : 'がリピートされている'
             else buttonState = EnglishTag ? 'is being pressed' : 'が押されている'
             text += indent + tag + buttonStr + button + comma + buttonState + '>' + newLine
           } else {
@@ -1384,47 +1384,47 @@ if (typeof PluginManager === 'undefined') {
           }
         }
         // 12.スクリプト
-        if (param1 == 12) {
+        if (param1 === 12) {
           const scriptStr = EnglishTag ? 'Script' + comma : 'スクリプト' + comma
           const script = param2
           text += indent + tag + scriptStr + script + '>' + newLine
         }
       }
-      if (event.code == 411) {
+      if (event.code === 411) {
         const tag = EnglishTag ? '<Else>' : 'それ以外のとき'
         text += indent + tag + newLine
       }
-      if (event.code == 412) {
+      if (event.code === 412) {
         const tag = EnglishTag ? '<End>' : '<分岐修了>'
         text += indent + tag + newLine
       }
-      if (event.code == 112) {
+      if (event.code === 112) {
         const tag = EnglishTag ? '<Loop>' : '<ループ>'
         text += indent + tag + newLine
       }
-      if (event.code == 413) {
+      if (event.code === 413) {
         const tag = EnglishTag ? '<RepeatAbove>' : '<以上繰り返し>'
         text += indent + tag + newLine
       }
-      if (event.code == 113) {
+      if (event.code === 113) {
         const tag = EnglishTag ? '<BreakLoop>' : '<ループの中断>'
         text += indent + tag + newLine
       }
-      if (event.code == 115) {
+      if (event.code === 115) {
         const tag = EnglishTag ? '<ExitEventProcessing>' : '<イベント処理の中断>'
         text += indent + tag + newLine
       }
-      if (event.code == 117) {
+      if (event.code === 117) {
         const CommonEventId = event.parameters[0]
         const tag = EnglishTag ? '<CommonEvent: ' : '<コモンイベント: '
         text += indent + tag + CommonEventId + '>' + newLine
       }
-      if (event.code == 118) {
+      if (event.code === 118) {
         const label = event.parameters[0]
         const tag = EnglishTag ? '<Label: ' : '<ラベル: '
         text += indent + tag + label + '>' + newLine
       }
-      if (event.code == 119) {
+      if (event.code === 119) {
         const label = event.parameters[0]
         const tag = EnglishTag ? '<JumpToLabel: ' : '<ラベルジャンプ: '
         text += indent + tag + label + '>' + newLine
@@ -1433,20 +1433,20 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       // パーティ
       /** ********************************************** */
-      if (event.code == 125) {
+      if (event.code === 125) {
         const operation = getIncreaseOrDecrease(event.parameters[0]) + comma
         const operandValue = getConstantOrVariable(event.parameters[1], event.parameters[2])
         const tag = EnglishTag ? '<ChangeGold: ' : '<所持金の増減: '
         text += indent + tag + operation + operandValue + '>' + newLine
       }
-      if (event.code == 126) {
+      if (event.code === 126) {
         const itemId = event.parameters[0] + comma
         const operation = getIncreaseOrDecrease(event.parameters[1]) + comma
         const operandValue = getConstantOrVariable(event.parameters[2], event.parameters[3])
         const tag = EnglishTag ? '<ChangeItems: ' : '<アイテムの増減: '
         text += indent + tag + itemId + operation + operandValue + '>' + newLine
       }
-      if (event.code == 127) {
+      if (event.code === 127) {
         const weaponId = event.parameters[0] + comma
         const operation = getIncreaseOrDecrease(event.parameters[1]) + comma
         const operandValue = getConstantOrVariable(event.parameters[2], event.parameters[3]) + comma
@@ -1454,7 +1454,7 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ChangeWeapons: ' : '<武器の増減: '
         text += indent + tag + weaponId + operation + operandValue + includeEquipmentFlg + '>' + newLine
       }
-      if (event.code == 128) {
+      if (event.code === 128) {
         const armorId = event.parameters[0] + comma
         const operation = getIncreaseOrDecrease(event.parameters[1]) + comma
         const operandValue = getConstantOrVariable(event.parameters[2], event.parameters[3]) + comma
@@ -1462,7 +1462,7 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ChangeArmors: ' : '<防具の増減: '
         text += indent + tag + armorId + operation + operandValue + includeEquipmentFlg + '>' + newLine
       }
-      if (event.code == 129) {
+      if (event.code === 129) {
         const actorId = event.parameters[0] + comma
         const operation = getAddOrRemove(event.parameters[1]) + comma
         const initialize = getCheckBoxValue(event.parameters[2])
@@ -1473,7 +1473,7 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       // アクター
       /** ********************************************** */
-      if (event.code == 311) {
+      if (event.code === 311) {
         const actorValue = getFixedOrVariable(event.parameters[0], event.parameters[1]) + comma
         const operation = getIncreaseOrDecrease(event.parameters[2]) + comma
         const operandValue = getConstantOrVariable(event.parameters[3], event.parameters[4]) + comma
@@ -1481,33 +1481,33 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ChangeHp: ' : '<HPの増減: '
         text += indent + tag + actorValue + operation + operandValue + allowDeathFlg + '>' + newLine
       }
-      if (event.code == 312) {
+      if (event.code === 312) {
         const actorValue = getFixedOrVariable(event.parameters[0], event.parameters[1]) + comma
         const operation = getIncreaseOrDecrease(event.parameters[2]) + comma
         const operandValue = getConstantOrVariable(event.parameters[3], event.parameters[4]) + comma
         const tag = EnglishTag ? '<ChangeMp: ' : '<MPの増減: '
         text += indent + tag + actorValue + operation + operandValue + '>' + newLine
       }
-      if (event.code == 326) {
+      if (event.code === 326) {
         const actorValue = getFixedOrVariable(event.parameters[0], event.parameters[1]) + comma
         const operation = getIncreaseOrDecrease(event.parameters[2]) + comma
         const operandValue = getConstantOrVariable(event.parameters[3], event.parameters[4]) + comma
         const tag = EnglishTag ? '<ChangeTp: ' : '<TPの増減: '
         text += indent + tag + actorValue + operation + operandValue + '>' + newLine
       }
-      if (event.code == 313) {
+      if (event.code === 313) {
         const actorValue = getFixedOrVariable(event.parameters[0], event.parameters[1]) + comma
         const operation = getAddOrRemove(event.parameters[2]) + comma
         const stateId = event.parameters[3]
         const tag = EnglishTag ? '<ChangeState: ' : '<ステートの変更: '
         text += indent + tag + actorValue + operation + stateId + '>' + newLine
       }
-      if (event.code == 314) {
+      if (event.code === 314) {
         const actorValue = getFixedOrVariable(event.parameters[0], event.parameters[1])
         const tag = EnglishTag ? '<RecoverAll: ' : '<全回復: '
         text += indent + tag + actorValue + '>' + newLine
       }
-      if (event.code == 315) {
+      if (event.code === 315) {
         const actorValue = getFixedOrVariable(event.parameters[0], event.parameters[1]) + comma
         const operation = getIncreaseOrDecrease(event.parameters[2]) + comma
         const operandValue = getConstantOrVariable(event.parameters[3], event.parameters[4]) + comma
@@ -1515,7 +1515,7 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ChangeExp: ' : '<経験値の増減: '
         text += indent + tag + actorValue + operation + operandValue + showLevelUpFlg + '>' + newLine
       }
-      if (event.code == 316) {
+      if (event.code === 316) {
         const actorValue = getFixedOrVariable(event.parameters[0], event.parameters[1]) + comma
         const operation = getIncreaseOrDecrease(event.parameters[2]) + comma
         const operandValue = getConstantOrVariable(event.parameters[3], event.parameters[4]) + comma
@@ -1523,7 +1523,7 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ChangeLevel: ' : '<レベルの増減: '
         text += indent + tag + actorValue + operation + operandValue + showLevelUpFlg + '>' + newLine
       }
-      if (event.code == 317) {
+      if (event.code === 317) {
         const actorValue = getFixedOrVariable(event.parameters[0], event.parameters[1]) + comma
         const parameter = getActorParameterValue(event.parameters[2]) + comma
         const operation = getIncreaseOrDecrease(event.parameters[3]) + comma
@@ -1531,40 +1531,40 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ChangeParameter: ' : '<能力値の増減: '
         text += indent + tag + actorValue + parameter + operation + operandValue + '>' + newLine
       }
-      if (event.code == 318) {
+      if (event.code === 318) {
         const actorValue = getFixedOrVariable(event.parameters[0], event.parameters[1]) + comma
         const operation = getLearnOrForgot(event.parameters[2]) + comma
         const skillId = event.parameters[3]
         const tag = EnglishTag ? '<ChangeSkill: ' : '<スキルの増減: '
         text += indent + tag + actorValue + operation + skillId + '>' + newLine
       }
-      if (event.code == 319) {
+      if (event.code === 319) {
         const actorId = event.parameters[0] + comma
         const equipmentTypeId = event.parameters[1] + comma
         const equipmentItemId = event.parameters[2]
         const tag = EnglishTag ? '<ChangeEquipment: ' : '<装備の変更: '
         text += indent + tag + actorId + equipmentTypeId + equipmentItemId + '>' + newLine
       }
-      if (event.code == 320) {
+      if (event.code === 320) {
         const actorId = event.parameters[0] + comma
         const name = event.parameters[1]
         const tag = EnglishTag ? '<ChangeName: ' : '<名前の変更: '
         text += indent + tag + actorId + name + '>' + newLine
       }
-      if (event.code == 321) {
+      if (event.code === 321) {
         const actorId = event.parameters[0] + comma
         const classId = event.parameters[1] + comma
         const saveExpFlg = getCheckBoxValue(event.parameters[2])
         const tag = EnglishTag ? '<ChangeClass: ' : '<職業の変更: '
         text += indent + tag + actorId + classId + saveExpFlg + '>' + newLine
       }
-      if (event.code == 324) {
+      if (event.code === 324) {
         const actorId = event.parameters[0] + comma
         const nickname = event.parameters[1]
         const tag = EnglishTag ? '<ChangeNickname: ' : '<二つ名の変更: '
         text += indent + tag + actorId + nickname + '>' + newLine
       }
-      if (event.code == 325) {
+      if (event.code === 325) {
         const actorId = event.parameters[0] + comma
         const profile = event.parameters[1]
         const replaceProfile = profile.replace('\n', '\\n')
@@ -1575,7 +1575,7 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       // 移動
       /** ********************************************** */
-      if (event.code == 201) {
+      if (event.code === 201) {
         const location = getDirectOrVariablesValue(event.parameters[0]) + comma
         const mapId = event.parameters[1] + comma
         const mapX = event.parameters[2] + comma
@@ -1585,7 +1585,7 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<TransferPlayer: ' : '<場所移動: '
         text += indent + tag + location + mapId + mapX + mapY + direction + fade + '>' + newLine
       }
-      if (event.code == 202) {
+      if (event.code === 202) {
         const vehicle = getVehicleValue(event.parameters[0]) + comma
         const location = getDirectOrVariablesValue(event.parameters[1]) + comma
         const mapId = event.parameters[2] + comma
@@ -1594,7 +1594,7 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<SetVehicleLocation: ' : '<乗り物の位置設定: '
         text += indent + tag + vehicle + location + mapId + mapX + mapY + '>' + newLine
       }
-      if (event.code == 203) {
+      if (event.code === 203) {
         const eventValue = getEventValue(event.parameters[0]) + comma
         const location = getDirectOrVariablesValue(event.parameters[1]) + comma
         const mapX = event.parameters[2] + comma
@@ -1603,17 +1603,17 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<SetEventLocation: ' : '<イベントの位置設定: '
         text += indent + tag + eventValue + location + mapX + mapY + direction + '>' + newLine
       }
-      if (event.code == 204) {
+      if (event.code === 204) {
         const direction = getDirectionValue(event.parameters[0]) + comma
         const distance = event.parameters[1] + comma
         const speed = getSpeedValue(event.parameters[2]) + comma
         const tmpWaitForCompletion = getCheckBoxValue(event.parameters[3]) + comma
-        const waitForCompletion = tmpWaitForCompletion == undefined ? '' : tmpWaitForCompletion
+        const waitForCompletion = tmpWaitForCompletion === undefined ? '' : tmpWaitForCompletion
         const tag = EnglishTag ? '<ScrollMap: ' : '<マップのスクロール: '
         text += indent + tag + direction + distance + speed + waitForCompletion + '>' + newLine
       }
       // 移動ルートの設定
-      if (event.code == 205) {
+      if (event.code === 205) {
         const target = getEventValue(event.parameters[0]) + comma
         const repeat = getCheckBoxValue(event.parameters[1].repeat) + comma
         const skippable = getCheckBoxValue(event.parameters[1].skippable) + comma
@@ -1622,7 +1622,7 @@ if (typeof PluginManager === 'undefined') {
         text += indent + tag + target + repeat + skippable + wait + '>' + newLine
       }
       // 移動ルートの設定(移動コマンド)
-      if (event.code == 505) {
+      if (event.code === 505) {
         const movement = event.parameters[0]
         const correctMoveIndent = event.indent + 1
         const moveIndent = space.repeat(correctMoveIndent * baseIndent)
@@ -1673,81 +1673,81 @@ if (typeof PluginManager === 'undefined') {
         const code44tag = EnglishTag ? '<MovePlaySe: ' : '<移動SEの演奏: '
         const code45tag = EnglishTag ? '<MoveScript: ' : '<移動スクリプト: '
 
-        if (movement.code == 1) text += moveIndent + code1tag + newLine
-        else if (movement.code == 2) text += moveIndent + code2tag + newLine
-        else if (movement.code == 3) text += moveIndent + code3tag + newLine
-        else if (movement.code == 4) text += moveIndent + code4tag + newLine
-        else if (movement.code == 5) text += moveIndent + code5tag + newLine
-        else if (movement.code == 6) text += moveIndent + code6tag + newLine
-        else if (movement.code == 7) text += moveIndent + code7tag + newLine
-        else if (movement.code == 8) text += moveIndent + code8tag + newLine
-        else if (movement.code == 9) text += moveIndent + code9tag + newLine
-        else if (movement.code == 10) text += moveIndent + code10tag + newLine
-        else if (movement.code == 11) text += moveIndent + code11tag + newLine
-        else if (movement.code == 12) text += moveIndent + code12tag + newLine
-        else if (movement.code == 13) text += moveIndent + code13tag + newLine
-        else if (movement.code == 14) {
+        if (movement.code === 1) text += moveIndent + code1tag + newLine
+        else if (movement.code === 2) text += moveIndent + code2tag + newLine
+        else if (movement.code === 3) text += moveIndent + code3tag + newLine
+        else if (movement.code === 4) text += moveIndent + code4tag + newLine
+        else if (movement.code === 5) text += moveIndent + code5tag + newLine
+        else if (movement.code === 6) text += moveIndent + code6tag + newLine
+        else if (movement.code === 7) text += moveIndent + code7tag + newLine
+        else if (movement.code === 8) text += moveIndent + code8tag + newLine
+        else if (movement.code === 9) text += moveIndent + code9tag + newLine
+        else if (movement.code === 10) text += moveIndent + code10tag + newLine
+        else if (movement.code === 11) text += moveIndent + code11tag + newLine
+        else if (movement.code === 12) text += moveIndent + code12tag + newLine
+        else if (movement.code === 13) text += moveIndent + code13tag + newLine
+        else if (movement.code === 14) {
           const x = movement.parameters[0] + comma
           const y = movement.parameters[1]
           text += moveIndent + code14tag + x + y + '>' + newLine
-        } else if (movement.code == 15) {
+        } else if (movement.code === 15) {
           const wait = movement.parameters[0]
           text += moveIndent + code15tag + wait + '>' + newLine
-        } else if (movement.code == 16) text += moveIndent + code16tag + newLine
-        else if (movement.code == 17) text += moveIndent + code17tag + newLine
-        else if (movement.code == 18) text += moveIndent + code18tag + newLine
-        else if (movement.code == 19) text += moveIndent + code19tag + newLine
-        else if (movement.code == 20) text += moveIndent + code20tag + newLine
-        else if (movement.code == 21) text += moveIndent + code21tag + newLine
-        else if (movement.code == 22) text += moveIndent + code22tag + newLine
-        else if (movement.code == 23) text += moveIndent + code23tag + newLine
-        else if (movement.code == 24) text += moveIndent + code24tag + newLine
-        else if (movement.code == 25) text += moveIndent + code25tag + newLine
-        else if (movement.code == 26) text += moveIndent + code26tag + newLine
-        else if (movement.code == 27) {
+        } else if (movement.code === 16) text += moveIndent + code16tag + newLine
+        else if (movement.code === 17) text += moveIndent + code17tag + newLine
+        else if (movement.code === 18) text += moveIndent + code18tag + newLine
+        else if (movement.code === 19) text += moveIndent + code19tag + newLine
+        else if (movement.code === 20) text += moveIndent + code20tag + newLine
+        else if (movement.code === 21) text += moveIndent + code21tag + newLine
+        else if (movement.code === 22) text += moveIndent + code22tag + newLine
+        else if (movement.code === 23) text += moveIndent + code23tag + newLine
+        else if (movement.code === 24) text += moveIndent + code24tag + newLine
+        else if (movement.code === 25) text += moveIndent + code25tag + newLine
+        else if (movement.code === 26) text += moveIndent + code26tag + newLine
+        else if (movement.code === 27) {
           const switchId = movement.parameters[0]
           text += moveIndent + code27tag + switchId + '>' + newLine
-        } else if (movement.code == 28) {
+        } else if (movement.code === 28) {
           const switchId = movement.parameters[0]
           text += moveIndent + code28tag + switchId + '>' + newLine
-        } else if (movement.code == 29) {
+        } else if (movement.code === 29) {
           const speed = getSpeedValue(movement.parameters[0])
           text += moveIndent + code29tag + speed + '>' + newLine
-        } else if (movement.code == 30) {
+        } else if (movement.code === 30) {
           const frequency = getFrequencyValue(movement.parameters[0])
           text += moveIndent + code30tag + frequency + '>' + newLine
-        } else if (movement.code == 31) text += moveIndent + code31tag + newLine
-        else if (movement.code == 32) text += moveIndent + code32tag + newLine
-        else if (movement.code == 33) text += moveIndent + code33tag + newLine
-        else if (movement.code == 34) text += moveIndent + code34tag + newLine
-        else if (movement.code == 35) text += moveIndent + code35tag + newLine
-        else if (movement.code == 36) text += moveIndent + code36tag + newLine
-        else if (movement.code == 37) text += moveIndent + code37tag + newLine
-        else if (movement.code == 38) text += moveIndent + code38tag + newLine
-        else if (movement.code == 39) text += moveIndent + code39tag + newLine
-        else if (movement.code == 40) text += moveIndent + code40tag + newLine
-        else if (movement.code == 41) {
+        } else if (movement.code === 31) text += moveIndent + code31tag + newLine
+        else if (movement.code === 32) text += moveIndent + code32tag + newLine
+        else if (movement.code === 33) text += moveIndent + code33tag + newLine
+        else if (movement.code === 34) text += moveIndent + code34tag + newLine
+        else if (movement.code === 35) text += moveIndent + code35tag + newLine
+        else if (movement.code === 36) text += moveIndent + code36tag + newLine
+        else if (movement.code === 37) text += moveIndent + code37tag + newLine
+        else if (movement.code === 38) text += moveIndent + code38tag + newLine
+        else if (movement.code === 39) text += moveIndent + code39tag + newLine
+        else if (movement.code === 40) text += moveIndent + code40tag + newLine
+        else if (movement.code === 41) {
           const image = movement.parameters[0] + comma
           const imageId = movement.parameters[1]
           text += moveIndent + code41tag + image + imageId + '>' + newLine
-        } else if (movement.code == 42) {
+        } else if (movement.code === 42) {
           const opacity = movement.parameters[0]
           text += moveIndent + code42tag + opacity + '>' + newLine
-        } else if (movement.code == 43) {
+        } else if (movement.code === 43) {
           const blendMode = getBlendModeValue(movement.parameters[0])
           text += moveIndent + code43tag + blendMode + '>' + newLine
-        } else if (movement.code == 44) {
+        } else if (movement.code === 44) {
           const image = movement.parameters[0].name + comma
           const volume = movement.parameters[0].volume + comma
           const pitch = movement.parameters[0].pitch + comma
           const pan = movement.parameters[0].pan
           text += moveIndent + code44tag + image + volume + pitch + pan + '>' + newLine
-        } else if (movement.code == 45) {
+        } else if (movement.code === 45) {
           const script = movement.parameters[0]
           text += moveIndent + code45tag + script + '>' + newLine
         }
       }
-      if (event.code == 206) {
+      if (event.code === 206) {
         const tag = EnglishTag ? '<GetOnOffVehicle>' : '<乗り物の乗降>'
         text += indent + tag + newLine
       }
@@ -1755,37 +1755,37 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       // キャラクター
       /** ********************************************** */
-      if (event.code == 211) {
+      if (event.code === 211) {
         const transparencyValue = event.parameters[0]
         const transparency = getOnOffRadioButtonValue(transparencyValue)
         const tag = EnglishTag ? '<ChangeTransparency: ' : '<透明状態の変更: '
         text += indent + tag + transparency + '>' + newLine
       }
-      if (event.code == 216) {
+      if (event.code === 216) {
         const playerFollowersValue = event.parameters[0]
         const playerFollowers = getOnOffRadioButtonValue(playerFollowersValue)
         const tag = EnglishTag ? '<ChangePlayerFollowers: ' : '<隊列歩行の変更: '
         text += indent + tag + playerFollowers + '>' + newLine
       }
-      if (event.code == 217) {
+      if (event.code === 217) {
         const tag = EnglishTag ? '<GatherFollowers>' : '<隊列メンバーの集合>'
         text += indent + tag + newLine
       }
-      if (event.code == 212) {
+      if (event.code === 212) {
         const character = getEventValue(event.parameters[0]) + comma
         const animationId = event.parameters[1] + comma
         const waitForCompletion = getCheckBoxValue(event.parameters[2])
         const tag = EnglishTag ? '<ShowAnimation: ' : '<アニメーションの表示: '
         text += indent + tag + character + animationId + waitForCompletion + '>' + newLine
       }
-      if (event.code == 213) {
+      if (event.code === 213) {
         const character = getEventValue(event.parameters[0]) + comma
         const balloonIcon = getBalloonIconValue(event.parameters[1]) + comma
         const waitForCompletion = getCheckBoxValue(event.parameters[2])
         const tag = EnglishTag ? '<ShowBalloonIcon: ' : '<フキダシアイコンの表示: '
         text += indent + tag + character + balloonIcon + waitForCompletion + '>' + newLine
       }
-      if (event.code == 214) {
+      if (event.code === 214) {
         const tag = EnglishTag ? '<EraseEvent>' : '<イベントの一時消去>'
         text += indent + tag + newLine
       }
@@ -1793,33 +1793,33 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       // 画面
       /** ********************************************** */
-      if (event.code == 221) {
+      if (event.code === 221) {
         const tag = EnglishTag ? '<Fadeout>' : '<フェードアウト>'
         text += indent + tag + newLine
       }
-      if (event.code == 222) {
+      if (event.code === 222) {
         const tag = EnglishTag ? '<Fadein>' : '<フェードイン>'
         text += indent + tag + newLine
       }
-      if (event.code == 230) {
+      if (event.code === 230) {
         const duration = event.parameters[0]
         const tag = EnglishTag ? '<Wait: ' : '<ウェイト: '
         text += indent + tag + duration + '>' + newLine
       }
-      if (event.code == 223) {
+      if (event.code === 223) {
         const tmpColorTone = getColorToneValue(
           event.parameters[0][0],
           event.parameters[0][1],
           event.parameters[0][2],
           event.parameters[0][3]
         )
-        const colorTone = tmpColorTone == '' ? '' : comma + tmpColorTone
+        const colorTone = tmpColorTone === '' ? '' : comma + tmpColorTone
         const tmpDuration = getDurationValue(event.parameters[1], event.parameters[2])
-        const duration = tmpDuration == '' ? '' : tmpDuration
+        const duration = tmpDuration === '' ? '' : tmpDuration
         const tag = EnglishTag ? '<TintScreen: ' : '<画面の色調変更: '
         text += indent + tag + duration + colorTone + '>' + newLine
       }
-      if (event.code == 224) {
+      if (event.code === 224) {
         const red = event.parameters[0][0] + comma
         const green = event.parameters[0][1] + comma
         const blue = event.parameters[0][2] + comma
@@ -1829,7 +1829,7 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<FlashScreen: ' : '<画面のフラッシュ: '
         text += indent + tag + red + green + blue + gray + duration + waitForCompletion + '>' + newLine
       }
-      if (event.code == 225) {
+      if (event.code === 225) {
         const power = event.parameters[0] + comma
         const speed = event.parameters[1] + comma
         const duration = event.parameters[2] + comma
@@ -1837,7 +1837,7 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ShakeScreen: ' : '<画面のシェイク: '
         text += indent + tag + power + speed + duration + waitForCompletion + '>' + newLine
       }
-      if (event.code == 236) {
+      if (event.code === 236) {
         const type = getWeatherTypeValue(event.parameters[0]) + comma
         const power = event.parameters[1] + comma
         const duration = event.parameters[2] + comma
@@ -1849,7 +1849,7 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       // ピクチャ
       /** ********************************************** */
-      if (event.code == 231) {
+      if (event.code === 231) {
         const pictureNumber = event.parameters[0] + comma
         const image = event.parameters[1] + comma
         const tmpPosition = getPositionValue(
@@ -1858,15 +1858,15 @@ if (typeof PluginManager === 'undefined') {
           event.parameters[4],
           event.parameters[5]
         )
-        const position = tmpPosition == '' ? '' : tmpPosition + comma
+        const position = tmpPosition === '' ? '' : tmpPosition + comma
         const tmpScale = getScaleValue(event.parameters[6], event.parameters[7])
-        const scale = tmpScale == '' ? '' : tmpScale + comma
+        const scale = tmpScale === '' ? '' : tmpScale + comma
         const tmpBlend = getBlendValue(event.parameters[8], event.parameters[9])
-        const blend = tmpBlend == '' ? '' : tmpBlend
+        const blend = tmpBlend === '' ? '' : tmpBlend
         const tag = EnglishTag ? '<ShowPicture: ' : '<ピクチャの表示: '
         text += indent + tag + pictureNumber + image + position + scale + blend + '>' + newLine
       }
-      if (event.code == 232) {
+      if (event.code === 232) {
         const pictureNumber = event.parameters[0]
         const tmpPosition = getPositionValue(
           event.parameters[2],
@@ -1874,25 +1874,25 @@ if (typeof PluginManager === 'undefined') {
           event.parameters[4],
           event.parameters[5]
         )
-        const position = tmpPosition == '' ? '' : comma + tmpPosition
+        const position = tmpPosition === '' ? '' : comma + tmpPosition
         const tmpScale = getScaleValue(event.parameters[6], event.parameters[7])
-        const scale = tmpScale == '' ? '' : comma + tmpScale
+        const scale = tmpScale === '' ? '' : comma + tmpScale
         const tmpBlend = getBlendValue(event.parameters[8], event.parameters[9])
-        const blend = tmpBlend == '' ? '' : comma + tmpBlend
+        const blend = tmpBlend === '' ? '' : comma + tmpBlend
         const tmpDuration = getDurationValue(event.parameters[10], event.parameters[11])
-        const duration = tmpDuration == '' ? '' : comma + tmpDuration
+        const duration = tmpDuration === '' ? '' : comma + tmpDuration
         const tmpEasing = getEasingValue(event.parameters[12])
-        const easing = tmpEasing == '' ? '' : comma + tmpEasing
+        const easing = tmpEasing === '' ? '' : comma + tmpEasing
         const tag = EnglishTag ? '<MovePicture: ' : '<ピクチャの移動: '
         text += indent + tag + pictureNumber + duration + position + scale + blend + easing + '>' + newLine
       }
-      if (event.code == 233) {
+      if (event.code === 233) {
         const pictureNumber = event.parameters[0] + comma
         const rotationSpeed = event.parameters[1]
         const tag = EnglishTag ? '<RotatePicture: ' : '<ピクチャの回転: '
         text += indent + tag + pictureNumber + rotationSpeed + '>' + newLine
       }
-      if (event.code == 234) {
+      if (event.code === 234) {
         const pictureNumber = event.parameters[0]
         const tmpColorTone = getColorToneValue(
           event.parameters[1][0],
@@ -1900,14 +1900,14 @@ if (typeof PluginManager === 'undefined') {
           event.parameters[1][2],
           event.parameters[1][3]
         )
-        const colorTone = tmpColorTone == '' ? '' : comma + tmpColorTone
+        const colorTone = tmpColorTone === '' ? '' : comma + tmpColorTone
         const tmpDuration = getDurationValue(event.parameters[2], event.parameters[3])
-        const duration = tmpDuration == '' ? '' : comma + tmpDuration
+        const duration = tmpDuration === '' ? '' : comma + tmpDuration
         const tag = EnglishTag ? '<TintPicture: ' : '<ピクチャの色調変更: '
         text += indent + tag + pictureNumber + duration + colorTone + '>' + newLine
       }
 
-      if (event.code == 235) {
+      if (event.code === 235) {
         const pictureNumber = event.parameters[0]
         const tag = EnglishTag ? '<ErasePicture: ' : '<ピクチャの消去: '
         text += indent + tag + pictureNumber + '>' + newLine
@@ -1916,78 +1916,78 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       // オーディオ・ビデオ
       /** ********************************************** */
-      if (event.code == 241) {
+      if (event.code === 241) {
         const image = event.parameters[0].name
         const volume = event.parameters[0].volume + comma
         const pitch = event.parameters[0].pitch + comma
         const pan = event.parameters[0].pan
         const tag = EnglishTag ? '<PlayBGM: ' : '<BGMの演奏: '
-        if (volume == 90 && pitch == 100 && pan == 0) {
+        if (volume === 90 && pitch === 100 && pan === 0) {
           text += indent + tag + image + '>' + newLine
         } else {
           text += indent + tag + image + comma + volume + pitch + pan + '>' + newLine
         }
       }
-      if (event.code == 242) {
+      if (event.code === 242) {
         const duration = event.parameters[0]
         const tag = EnglishTag ? '<FadeoutBGM: ' : '<BGMのフェードアウト: '
         text += indent + tag + duration + '>' + newLine
       }
-      if (event.code == 243) {
+      if (event.code === 243) {
         const tag = EnglishTag ? '<SaveBGM>' : '<BGMの保存>'
         text += indent + tag + newLine
       }
-      if (event.code == 244) {
+      if (event.code === 244) {
         const tag = EnglishTag ? '<ReplayBGM>' : '<BGMの再開>'
         text += indent + tag + newLine
       }
-      if (event.code == 245) {
+      if (event.code === 245) {
         const image = event.parameters[0].name
         const volume = event.parameters[0].volume + comma
         const pitch = event.parameters[0].pitch + comma
         const pan = event.parameters[0].pan
         const tag = EnglishTag ? '<PlayBGS: ' : '<BGSの演奏: '
-        if (volume == 90 && pitch == 100 && pan == 0) {
+        if (volume === 90 && pitch === 100 && pan === 0) {
           text += indent + tag + image + '>' + newLine
         } else {
           text += indent + tag + image + comma + volume + pitch + pan + '>' + newLine
         }
       }
-      if (event.code == 249) {
+      if (event.code === 249) {
         const image = event.parameters[0].name
         const volume = event.parameters[0].volume + comma
         const pitch = event.parameters[0].pitch + comma
         const pan = event.parameters[0].pan
         const tag = EnglishTag ? '<PlayME: ' : '<MEの演奏: '
-        if (volume == 90 && pitch == 100 && pan == 0) {
+        if (volume === 90 && pitch === 100 && pan === 0) {
           text += indent + tag + image + '>' + newLine
         } else {
           text += indent + tag + image + comma + volume + pitch + pan + '>' + newLine
         }
       }
-      if (event.code == 250) {
+      if (event.code === 250) {
         const image = event.parameters[0].name
         const volume = event.parameters[0].volume + comma
         const pitch = event.parameters[0].pitch + comma
         const pan = event.parameters[0].pan
         const tag = EnglishTag ? '<PlaySE: ' : '<SEの演奏: '
-        if (volume == 90 && pitch == 100 && pan == 0) {
+        if (volume === 90 && pitch === 100 && pan === 0) {
           text += indent + tag + image + '>' + newLine
         } else {
           text += indent + tag + image + comma + volume + pitch + pan + '>' + newLine
         }
       }
 
-      if (event.code == 246) {
+      if (event.code === 246) {
         const duration = event.parameters[0]
         const tag = EnglishTag ? '<FadeoutBGS: ' : '<BGSのフェードアウト: '
         text += indent + tag + duration + '>' + newLine
       }
-      if (event.code == 251) {
+      if (event.code === 251) {
         const tag = EnglishTag ? '<StopSE>' : '<SEの停止>'
         text += indent + tag + newLine
       }
-      if (event.code == 261) {
+      if (event.code === 261) {
         const movie = event.parameters[0]
         const tag = EnglishTag ? '<PlayMovie: ' : '<ムービーの再生: '
         text += indent + tag + movie + '>' + newLine
@@ -1996,7 +1996,7 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       // システム設定
       /** ********************************************** */
-      if (event.code == 132) {
+      if (event.code === 132) {
         const name = event.parameters[0].name + comma
         const volume = event.parameters[0].volume + comma
         const pitch = event.parameters[0].pitch + comma
@@ -2004,7 +2004,7 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ChangeBattleBGM: ' : '<戦闘曲の変更: '
         text += indent + tag + name + volume + pitch + pan + '>' + newLine
       }
-      if (event.code == 133) {
+      if (event.code === 133) {
         const name = event.parameters[0].name + comma
         const volume = event.parameters[0].volume + comma
         const pitch = event.parameters[0].pitch + comma
@@ -2012,7 +2012,7 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ChangeVictoryMe: ' : '<勝利MEの変更: '
         text += indent + tag + name + volume + pitch + pan + '>' + newLine
       }
-      if (event.code == 139) {
+      if (event.code === 139) {
         const name = event.parameters[0].name + comma
         const volume = event.parameters[0].volume + comma
         const pitch = event.parameters[0].pitch + comma
@@ -2020,7 +2020,7 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ChangeDefeatMe: ' : '<敗北MEの変更: '
         text += indent + tag + name + volume + pitch + pan + '>' + newLine
       }
-      if (event.code == 140) {
+      if (event.code === 140) {
         const vehicle = getVehicleValue(event.parameters[0]) + comma
         const name = event.parameters[1].name + comma
         const volume = event.parameters[1].volume + comma
@@ -2029,34 +2029,34 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ChangeVehicleBgm: ' : '<乗り物BGMの変更: '
         text += indent + tag + vehicle + name + volume + pitch + pan + '>' + newLine
       }
-      if (event.code == 134) {
+      if (event.code === 134) {
         const save = getDisableEnable(event.parameters[0])
         const tag = EnglishTag ? '<ChangeSaveAccess: ' : '<セーブ禁止の変更: '
         text += indent + tag + save + '>' + newLine
       }
-      if (event.code == 135) {
+      if (event.code === 135) {
         const menu = getDisableEnable(event.parameters[0])
         const tag = EnglishTag ? '<ChangeMenuAccess: ' : '<メニュー禁止の変更: '
         text += indent + tag + menu + '>' + newLine
       }
-      if (event.code == 136) {
+      if (event.code === 136) {
         const encounter = getDisableEnable(event.parameters[0])
         const tag = EnglishTag ? '<ChangeEncounter: ' : '<エンカウント禁止の変更: '
         text += indent + tag + encounter + '>' + newLine
       }
-      if (event.code == 137) {
+      if (event.code === 137) {
         const formation = getDisableEnable(event.parameters[0])
         const tag = EnglishTag ? '<ChangeFormationAccess: ' : '<並び変え禁止の変更: '
         text += indent + tag + formation + '>' + newLine
       }
-      if (event.code == 138) {
+      if (event.code === 138) {
         const red = event.parameters[0][0] + comma
         const green = event.parameters[0][1] + comma
         const blue = event.parameters[0][2]
         const tag = EnglishTag ? '<ChangeWindowColor: ' : '<ウィンドウカラーの変更: '
         text += indent + tag + red + green + blue + '>' + newLine
       }
-      if (event.code == 322) {
+      if (event.code === 322) {
         const face = event.parameters[0] + comma
         const faceId = event.parameters[1] + comma
         const character = event.parameters[2] + comma
@@ -2066,7 +2066,7 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ChangeActorImages: ' : '<アクターの画像変更: '
         text += indent + tag + face + faceId + character + characterId + battler + battlerId + '>' + newLine
       }
-      if (event.code == 323) {
+      if (event.code === 323) {
         const vehicle = getVehicleValue(event.parameters[0]) + comma
         const image = event.parameters[1] + comma
         const imageId = event.parameters[2]
@@ -2077,24 +2077,24 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       // マップ
       /** ********************************************** */
-      if (event.code == 281) {
+      if (event.code === 281) {
         const mapNameDisplayValue = event.parameters[0]
         const mapNameDisplay = getOnOffRadioButtonValue(mapNameDisplayValue)
         const tag = EnglishTag ? '<ChangeMapNameDisplay: ' : '<マップ名表示の変更: '
         text += indent + tag + mapNameDisplay + '>' + newLine
       }
-      if (event.code == 282) {
+      if (event.code === 282) {
         const tilesetId = event.parameters[0]
         const tag = EnglishTag ? '<ChangeTileset: ' : '<タイルセットの変更: '
         text += indent + tag + tilesetId + '>' + newLine
       }
-      if (event.code == 283) {
+      if (event.code === 283) {
         const battleBackGround1 = event.parameters[0] + comma
         const battleBackGround2 = event.parameters[1]
         const tag = EnglishTag ? '<ChangeBattleBackGround: ' : '<戦闘背景の変更: '
         text += indent + tag + battleBackGround1 + battleBackGround2 + '>' + newLine
       }
-      if (event.code == 284) {
+      if (event.code === 284) {
         const image = event.parameters[0] + comma
         const loopHorizontaly = event.parameters[1] + comma
         const loopVertically = event.parameters[2] + comma
@@ -2112,7 +2112,7 @@ if (typeof PluginManager === 'undefined') {
           '>' +
           newLine
       }
-      if (event.code == 285) {
+      if (event.code === 285) {
         const variableId = event.parameters[0] + comma
         const infoType = getLocationInfoTypeValue(event.parameters[1]) + comma
         const location = getDirectOrVariablesOrCharacterValue(event.parameters[2]) + comma
@@ -2125,7 +2125,7 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       // シーン制御
       /** ********************************************** */
-      if (event.code == 301) {
+      if (event.code === 301) {
         const troop = getDirectOrVariablesOrRandomValue(event.parameters[0]) + comma
         const troopValue = event.parameters[1] + comma
         const canEscape = getCheckBoxValue(event.parameters[2]) + comma
@@ -2133,11 +2133,11 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<BattleProcessing: ' : '<戦闘の処理: '
         text += indent + tag + troop + troopValue + canEscape + canLose + '>' + newLine
       }
-      if (event.code == 601) text += EnglishTag ? '<IfWin>' + newLine : '<勝ったとき>' + newLine
-      if (event.code == 602) text += EnglishTag ? '<IfEscape>' + newLine : '<逃げたとき>' + newLine
-      if (event.code == 603) text += EnglishTag ? '<IfLose>' + newLine : '<負けたとき>' + newLine
-      if (event.code == 604) text += EnglishTag ? '<IfEnd>' + newLine : '<戦闘処理分岐終了>' + newLine
-      if (event.code == 302) {
+      if (event.code === 601) text += EnglishTag ? '<IfWin>' + newLine : '<勝ったとき>' + newLine
+      if (event.code === 602) text += EnglishTag ? '<IfEscape>' + newLine : '<逃げたとき>' + newLine
+      if (event.code === 603) text += EnglishTag ? '<IfLose>' + newLine : '<負けたとき>' + newLine
+      if (event.code === 604) text += EnglishTag ? '<IfEnd>' + newLine : '<戦闘処理分岐終了>' + newLine
+      if (event.code === 302) {
         const merchandise = getItemOrWeaponOrArmorValue(event.parameters[0]) + comma
         const merchandiseId = event.parameters[1] + comma
         const price = getStandardOrSpecifyValue(event.parameters[2]) + comma
@@ -2146,7 +2146,7 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ShopProcessing: ' : '<ショップの処理: '
         text += indent + tag + merchandise + merchandiseId + price + priceValue + purchaseOnly + '>' + newLine
       }
-      if (event.code == 605) {
+      if (event.code === 605) {
         const merchandise = getItemOrWeaponOrArmorValue(event.parameters[0]) + comma
         const merchandiseId = event.parameters[1] + comma
         const price = getStandardOrSpecifyValue(event.parameters[2]) + comma
@@ -2154,25 +2154,25 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ShopProcessingSecondLineOnwards: ' : '<ショップの処理2行目以降: '
         text += indent + tag + merchandise + merchandiseId + price + priceValue + '>' + newLine
       }
-      if (event.code == 303) {
+      if (event.code === 303) {
         const actorId = event.parameters[0] + comma
         const maxCharacter = event.parameters[1]
         const tag = EnglishTag ? '<NameInputProcessing: ' : '<名前入力の処理: '
         text += indent + tag + actorId + maxCharacter + '>' + newLine
       }
-      if (event.code == 351) {
+      if (event.code === 351) {
         const tag = EnglishTag ? '<OpenMenuScreen>' : '<メニュー画面を開く>'
         text += indent + tag + newLine
       }
-      if (event.code == 352) {
+      if (event.code === 352) {
         const tag = EnglishTag ? '<OpenSaveScreen>' : '<セーブ画面を開く>'
         text += indent + tag + newLine
       }
-      if (event.code == 353) {
+      if (event.code === 353) {
         const tag = EnglishTag ? '<GameOver>' : '<ゲームオーバー>'
         text += indent + tag + newLine
       }
-      if (event.code == 354) {
+      if (event.code === 354) {
         const tag = EnglishTag ? '<ReturnToTitleScreen>' : '<タイトル画面に戻す>'
         text += indent + tag + newLine
       }
@@ -2180,7 +2180,7 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       // バトル
       /** ********************************************** */
-      if (event.code == 331) {
+      if (event.code === 331) {
         const enemy = getEnemyTarget(event.parameters[0]) + comma
         const operation = getIncreaseOrDecrease(event.parameters[1]) + comma
         const operandValue = getConstantOrVariable(event.parameters[2], event.parameters[3]) + comma
@@ -2188,48 +2188,48 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<ChangeEnemyHp: ' : '<敵キャラのHP増減: '
         text += indent + tag + enemy + operation + operandValue + allowDeath + '>' + newLine
       }
-      if (event.code == 332) {
+      if (event.code === 332) {
         const enemy = getEnemyTarget(event.parameters[0]) + comma
         const operation = getIncreaseOrDecrease(event.parameters[1]) + comma
         const operandValue = getConstantOrVariable(event.parameters[2], event.parameters[3])
         const tag = EnglishTag ? '<ChangeEnemyMp: ' : '<敵キャラのMP増減: '
         text += indent + tag + enemy + operation + operandValue + '>' + newLine
       }
-      if (event.code == 342) {
+      if (event.code === 342) {
         const enemy = getEnemyTarget(event.parameters[0]) + comma
         const operation = getIncreaseOrDecrease(event.parameters[1]) + comma
         const operandValue = getConstantOrVariable(event.parameters[2], event.parameters[3])
         const tag = EnglishTag ? '<ChangeEnemyTp: ' : '<敵キャラのTP増減: '
         text += indent + tag + enemy + operation + operandValue + '>' + newLine
       }
-      if (event.code == 333) {
+      if (event.code === 333) {
         const enemy = getEnemyTarget(event.parameters[0]) + comma
         const operation = getAddOrRemove(event.parameters[1]) + comma
         const stateId = event.parameters[2]
         const tag = EnglishTag ? '<ChangeEnemyState: ' : '<敵キャラのステート変更: '
         text += indent + tag + enemy + operation + stateId + '>' + newLine
       }
-      if (event.code == 334) {
+      if (event.code === 334) {
         const enemy = getEnemyTarget(event.parameters[0])
         const tag = EnglishTag ? '<EnemyRecoverAll: ' : '<敵キャラの全回復: '
         text += indent + tag + enemy + '>' + newLine
       }
-      if (event.code == 335) {
+      if (event.code === 335) {
         const enemy = getEnemyTarget(event.parameters[0])
         const tag = EnglishTag ? '<EnemyAppear: ' : '<敵キャラの出現: '
         text += indent + tag + enemy + '>' + newLine
       }
-      if (event.code == 336) {
+      if (event.code === 336) {
         const enemy = getEnemyTarget(event.parameters[0]) + comma
         const enemyId = event.parameters[1]
         const tag = EnglishTag ? '<EnemyTransform: ' : '<敵キャラの変身: '
         text += indent + tag + enemy + enemyId + '>' + newLine
       }
-      if (event.code == 337) {
+      if (event.code === 337) {
         const enemy = getEnemyTarget(event.parameters[0]) + comma
         const animationId = event.parameters[1] + comma
         const tag = EnglishTag ? '<ShowBattleAnimation: ' : '<戦闘アニメーションの表示: '
-        if (event.parameters[2] == undefined) {
+        if (event.parameters[2] === undefined) {
           // MZ
           text += indent + tag + enemy + animationId + 'MZ' + '>' + newLine
         } else {
@@ -2237,14 +2237,14 @@ if (typeof PluginManager === 'undefined') {
           text += indent + tag + enemy + animationId + 'MV' + '>' + newLine
         }
       }
-      if (event.code == 339) {
+      if (event.code === 339) {
         const subjectValue = getEnemyOrActor(event.parameters[0], event.parameters[1]) + comma
         const skillId = event.parameters[2] + comma
         const target = getActionTarget(event.parameters[3])
         const tag = EnglishTag ? '<ForceAction: ' : '<戦闘行動の強制: '
         text += indent + tag + subjectValue + skillId + target + '>' + newLine
       }
-      if (event.code == 340) {
+      if (event.code === 340) {
         const tag = EnglishTag ? '<AbortBattle>' : '<バトルの中断>'
         text += indent + tag + newLine
       }
@@ -2253,13 +2253,13 @@ if (typeof PluginManager === 'undefined') {
       // 上級
       /** ********************************************** */
       // スクリプトタグはindentを入れない(取り込み時におかしくなる)
-      if (event.code == 355) {
+      if (event.code === 355) {
         const scriptText = event.parameters[0] + newLine
         const tag = EnglishTag ? '<Script>' + newLine : '<スクリプト>' + newLine
         const tagEnd = EnglishTag ? '</Script>' + newLine : '</スクリプト>' + newLine
         text += tag + scriptText + tagEnd
       }
-      if (event.code == 655) {
+      if (event.code === 655) {
         const scriptText = event.parameters[0] + newLine
         const tagEnd = EnglishTag ? '</Script>' + newLine : '</スクリプト>' + newLine
         if (text.endsWith(tagEnd)) {
@@ -2269,13 +2269,13 @@ if (typeof PluginManager === 'undefined') {
         }
       }
       // プラグインコマンド(MV)
-      if (event.code == 356) {
+      if (event.code === 356) {
         const pluginText = event.parameters[0]
         const tag = EnglishTag ? '<PluginCommand: ' : '<プラグインコマンド: '
         text += indent + tag + pluginText + '>' + newLine
       }
       // プラグインコマンド(MZ)
-      if (event.code == 357) {
+      if (event.code === 357) {
         const pluginName = event.parameters[0] + comma
         const functionName = event.parameters[1] + comma
         const commandName = event.parameters[2]
@@ -2284,7 +2284,7 @@ if (typeof PluginManager === 'undefined') {
           const value = `[${event.parameters[3][name]}]`
           nameValueList += comma + `${name}${value}`
         }
-        nameValueList = nameValueList == undefined ? '' : nameValueList
+        nameValueList = nameValueList === undefined ? '' : nameValueList
         const tag = EnglishTag ? '<PluginCommandMZ: ' : '<プラグインコマンドMZ: '
         text += indent + tag + pluginName + functionName + commandName + nameValueList + '>' + newLine
       }
