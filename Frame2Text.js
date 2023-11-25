@@ -1249,49 +1249,57 @@ if (typeof PluginManager === "undefined") {
           const actorId = EnglishTag ? `Actors[${param2}]` + comma : `アクター[${param2}]` + comma;
           switch (param3) {
             //パーティにいる
-            case 0:
+            case 0: {
               const inTheParty = EnglishTag ? "in the party" : "パーティにいる";
               text += indent + tag + actorId + inTheParty + ">" + newLine;
               break;
+            }
             //名前
-            case 1:
+            case 1: {
               const nameStr = EnglishTag ? "Name" + comma : "名前" + comma;
               const nameValue = param4;
               text += indent + tag + actorId + nameStr + nameValue + ">" + newLine;
               break;
+            }
             //職業
-            case 2:
+            case 2: {
               const classStr = EnglishTag ? "Class" + comma : "職業" + comma;
               const classId = param4;
               text += indent + tag + actorId + classStr + classId + ">" + newLine;
               break;
+            }
             //スキル
-            case 3:
+            case 3: {
               const skillStr = EnglishTag ? "Skill" + comma : "スキル" + comma;
               const skillId = param4;
               text += indent + tag + actorId + skillStr + skillId + ">" + newLine;
               break;
+            }
             //武器
-            case 4:
+            case 4: {
               const weaponStr = EnglishTag ? "Weapon" + comma : "武器" + comma;
               const weaponId = param4;
               text += indent + tag + actorId + weaponStr + weaponId + ">" + newLine;
               break;
+            }
             //防具
-            case 5:
+            case 5: {
               const armorStr = EnglishTag ? "Armor" + comma : "防具" + comma;
               const armorId = param4;
               text += indent + tag + actorId + armorStr + armorId + ">" + newLine;
               break;
+            }
             //ステート
-            case 6:
+            case 6: {
               const stateStr = EnglishTag ? "State" + comma : "ステート" + comma;
               const stateId = param4;
               text += indent + tag + actorId + stateStr + stateId + ">" + newLine;
               break;
-            default:
+            }
+            default: {
               const defaultInTheParty = EnglishTag ? "in the party" : "パーティにいる";
               text += indent + tag + actorId + defaultInTheParty + ">" + newLine;
+            }
           }
         }
         //5.敵キャラ
@@ -1300,19 +1308,22 @@ if (typeof PluginManager === "undefined") {
           const actorId = EnglishTag ? `Enemies[${enemyNumber}]` + comma : `敵キャラ[${enemyNumber}]` + comma;
           switch (param3) {
             //出現
-            case 0:
+            case 0: {
               const appeared = EnglishTag ? "Appeared" : "出現している";
               text += indent + tag + actorId + appeared + ">" + newLine;
               break;
+            }
             //ステート
-            case 1:
+            case 1: {
               const stateStr = EnglishTag ? "State" + comma : "ステート" + comma;
               const stateId = param4;
               text += indent + tag + actorId + stateStr + stateId + ">" + newLine;
               break;
-            default:
+            }
+            default: {
               const breakAppeared = EnglishTag ? "Appeared" + comma : "出現している" + comma;
               text += indent + tag + actorId + breakAppeared + ">" + newLine;
+            }
           }
         }
         //6.キャラクター
