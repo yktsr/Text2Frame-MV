@@ -680,7 +680,7 @@ if (typeof PluginManager === 'undefined') {
       else if (speed === 3) return EnglishTag ? 'x2slower' : '1/2倍速'
       else if (speed === 4) return EnglishTag ? 'Normal' : '標準速'
       else if (speed === 5) return EnglishTag ? 'x2faster' : '2倍速'
-      else if (speed === 6) EnglishTag ? 'x4faster' : '4倍速'
+      else if (speed === 6) return EnglishTag ? 'x4faster' : '4倍速'
       else return EnglishTag ? 'x8slower' : '1/8倍速'
     }
     const getFrequencyValue = (frequency) => {
