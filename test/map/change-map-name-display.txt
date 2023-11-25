@@ -1,0 +1,11 @@
+<ChangeMapNameDisplay: ON>
+<マップ名表示の変更: オン>
+<マップ名表示の変更: true>
+<マップ名表示の変更: 0>
+
+<CHangeMapNameDisplay: OFF>
+<マップ名表示の変更: オフ>
+<マップ名表示の変更: false>
+<マップ名表示の変更: 1>
+
+
