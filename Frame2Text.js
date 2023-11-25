@@ -329,7 +329,7 @@
 
 /* global Game_Interpreter, $gameMessage, process, PluginManager */
 
-var Laurus = Laurus || {}
+var Laurus = Laurus || {} // eslint-disable-line no-var, no-use-before-define
 Laurus.Frame2Text = {}
 
 if (typeof PluginManager === 'undefined') {
