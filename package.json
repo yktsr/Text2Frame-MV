@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "mocha --inline-diffs test",
-    "lint": "eslint --max-warnings=0 Text2Frame.js",
+    "lint": "eslint --max-warnings=0 Text2Frame.js Frame2Text.js",
     "debug": "node Text2Frame.js"
   },
   "repository": {
