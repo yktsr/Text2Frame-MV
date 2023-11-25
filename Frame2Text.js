@@ -163,7 +163,8 @@
  *
  */
 
-/*: ja
+/* eslint-disable spaced-comment */
+/*:ja
  * @target MZ
  * @plugindesc イベントコマンドからテキストファイル(.txtファイルなど)に変換するための開発支援プラグインです。ツクールMV・MZの両方に対応しています。※Text2Frameの逆の処理
  * @author InazumaSoft
@@ -324,6 +325,7 @@
  * テキストファイルの文字コードはUTF-8にのみ対応しています。
  *
  */
+/* eslint-enable spaced-comment */
 
 /* global Game_Interpreter, $gameMessage, process, PluginManager */
 
