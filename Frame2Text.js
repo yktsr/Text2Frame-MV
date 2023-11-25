@@ -2304,3 +2304,82 @@ if (typeof PluginManager === 'undefined') {
     console.log(EnglishMessage + '\n' + JapaneseMessage)
   }
 })()
+
+
+// developer mode
+if (typeof require.main !== 'undefined' && require.main === module) {
+  const program = require('commander')
+  program
+    .version('0.0.1')
+    .usage('[options]')
+    .option('-m, --mode <map|common|test>', 'output mode', /^(map|common|test)$/i)
+    .option('-i, --input_path <name>', 'input map data path')
+    .option('-o, --output_path <name>', 'output file path')
+    .option('-e, --event_id <name>', 'event file id')
+    .option('-p, --page_id <name>', 'page id', '1')
+    .option('-c, --common_event_id <name>', 'common event id')
+    .option('-v, --verbose', 'debug mode', false)
+    .option('-w, --english_tag <true/false>', 'english tag', 'true')
+    .parse()
+    // .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
+
+  const options = program.opts();
+
+  Laurus.Frame2Text.IsDebug = options.verbose
+  Laurus.Frame2Text.MapID = options.map_id
+  Laurus.Frame2Text.EventID = options.event_id
+  Laurus.Frame2Text.PageID = options.page_id
+  Laurus.Frame2Text.TextPath = options.output_path
+  Laurus.Frame2Text.FileName = options.output_path
+  Laurus.Frame2Text.MapPath = options.input_path
+  Laurus.Frame2Text.CommonEventPath = options.input_path
+  Laurus.Frame2Text.CommonEventID = options.common_event_id
+  // Laurus.Frame2Text.IsOverwrite = (options.overwrite === 'true')
+
+  if (options.mode === 'map') {
+    Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', ['EXPORT_EVENT_TO_MESSAGE'])
+  } else if (options.mode === 'common') {
+    Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', ['EXPORT_CE_TO_MESSAGE'])
+  } else if (options.mode === 'test') {
+    const folder_name = 'test'
+    const file_name = 'frame2text.txt'
+    const map_id = '1'
+    const event_id = '1'
+    const page_id = '1'
+    // const overwrite = 'true'
+    Game_Interpreter.prototype.pluginCommandFrame2Text('EXPORT_EVENT_TO_MESSAGE', [
+      folder_name,
+      file_name,
+      map_id,
+      event_id,
+      page_id
+    ])
+  } else {
+    console.log('===== Manual =====')
+    console.log(`
+    NAME
+       Frame2Text - Simple decompiler to convert event to text.
+    SYNOPSIS
+        node Frame2Text.js
+        node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
+        node Frame2Text.js --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
+        node Frame2Text.js --mode test
+    DESCRIPTION
+        node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
+          マップイベントのテキスト出力モードです。
+          読み込むマップファイル、出力テキストファイル、イベントID、ページIDを指定します。
+          test/expected_basic.json を読み込み、 test/tmp.txt に書き出すコマンド例は以下です。
+
+          例1：$ node Frame2Text.js --mode map --input_path test/expected_basic.json --output_path test/tmp.txt --event_id 1 --page_id 1
+          例2：$ node Frame2Text.js -m map -i test/expected_basic.json -o test/tmp.txt -e 1 -p 1
+
+        node Frame2Text.js --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
+          コモンイベントへのテキスト出力モードです。
+          読み込むコモンイベントファイル、出力テキストイベント、コモンイベントIDを引数で指定します。
+          data/CommonEvents.json を読み込み、 test/tmp.txt に上書きするコマンド例は以下です。
+
+          例1：$ node Frame2Text.js --mode common --input_path data/CommonEvents.json --common_event_id 1 --output_path test/tmp.txt
+          例2：$ node Frame2Text.js -m common -i data/CommonEvents.json -c 1 -o test/tmp.txt
+    `)
+  }
+}
