@@ -1,0 +1,7 @@
+<ChangeFormationAccess: Disable>
+<並び変え禁止の変更: 禁止>
+<並び変え禁止の変更: 0>
+
+<ChangeFormationAccess: Enable>
+<並び変え禁止の変更: 許可>
+<並び変え禁止の変更: 1>

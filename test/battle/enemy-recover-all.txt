@@ -1,0 +1,10 @@
+% 例1: #1の敵を全回復
+<EnemyRecoverAll: 1>
+<敵キャラの全回復: 1>
+
+% 例2: すべての敵を全回復
+<EnemyRecoverAll: Entire Troop>
+<敵キャラの全回復: 敵グループ全体>
+
+% #の最大値
+<EnemyRecoverAll: 8>
