@@ -904,15 +904,24 @@ if (typeof PluginManager === 'undefined') {
       if (enemy === -1) return EnglishTag ? 'EntireTroop' : '敵グループ全体'
       else return Number(enemy) + 1
     }
+    const getNone = (name) => {
+      if (name === '') return EnglishTag ? 'None' : 'なし'
+      else return name
+    }
 
     // 出力するテキスト変数
     let text = ''
-    // EnglishTagを別変数に代入
+    // Laurus.Frame2Text.EnglishTagの値を別変数に代入
     const EnglishTag = Laurus.Frame2Text.EnglishTag
     // イベントコード毎にループ
     map_events.forEach(function (event) {
       // インデント
       const indent = getIndent(event.indent)
+      // 改行とインデントを追加する関数
+      const addNewLineIndent = (indent) => {
+        // 最初のタグだけ改行を入れない
+        text += text === '' ? indent : newLine + indent
+      }
       /** ********************************************** */
       // メッセージ
       /** ********************************************** */
@@ -926,17 +935,16 @@ if (typeof PluginManager === 'undefined') {
         const faceTag = EnglishTag ? `<Face: ${face}(${faceId})>` : `<顔: ${face}(${faceId})>`
         const backgroundTag = EnglishTag ? `<Background: ${background}>` : `<背景: ${background}>`
         const windowPositionTag = EnglishTag ? `<WindowPosition: ${windowPosition}>` : `<位置: ${windowPosition}>`
-        let nameTagStr = ''
-        if (name) {
-          nameTagStr = EnglishTag ? `<Name: ${name}>` : `<名前: ${name}>`
-        }
-        const nameTag = name === undefined ? '' : nameTagStr
-        text += indent + faceTag + backgroundTag + windowPositionTag + nameTag + newLine
+        const nameTagStr = EnglishTag ? `<Name: ${name}>` : `<名前: ${name}>`
+        const nameTag = name === '' || name === undefined ? '' : nameTagStr
+
+        addNewLineIndent(indent)
+        text += faceTag + backgroundTag + windowPositionTag + nameTag
       }
       if (event.code === 401) {
         const showText = event.parameters[0]
         // テキストはindentを入れない
-        text += showText + newLine
+        text += newLine + showText
       }
       if (event.code === 102) {
         const background = getBackgroundValue(event.parameters[4]) + comma
@@ -1172,15 +1180,19 @@ if (typeof PluginManager === 'undefined') {
         const comment = event.parameters[0]
         const tag = EnglishTag ? '<Comment>' : '<注釈>'
         const tagEnd = EnglishTag ? '</comment>' : '</注釈>'
-        text += indent + tag + newLine + comment + newLine + tagEnd + newLine
+        addNewLineIndent(indent)
+        text += tag + newLine + comment + newLine + tagEnd
       }
       if (event.code === 408) {
         const comment = event.parameters[0]
-        const textSlice = text.slice(-11)
         const tagEnd = EnglishTag ? '</comment>' : '</注釈>'
-        if (textSlice === tagEnd + newLine) {
-          const tmpText = text.slice(0, -11)
-          text = tmpText + comment + newLine + tagEnd + newLine
+        const tagEndLength = tagEnd.length
+        const textSlice = text.slice(-tagEndLength)
+        if (textSlice === tagEnd) {
+          const tmpText = text.slice(0, -tagEndLength)
+          // addNewLineIndent(indent)
+          // text = tmpText + comment + newLine + tagEnd
+          text = tmpText + comment + newLine + tagEnd
         }
       }
       if (event.code === 111) {
@@ -1395,42 +1407,51 @@ if (typeof PluginManager === 'undefined') {
       }
       if (event.code === 411) {
         const tag = EnglishTag ? '<Else>' : 'それ以外のとき'
-        text += indent + tag + newLine
+        addNewLineIndent(indent)
+        text += tag
       }
       if (event.code === 412) {
         const tag = EnglishTag ? '<End>' : '<分岐修了>'
-        text += indent + tag + newLine
+        addNewLineIndent(indent)
+        text += tag
       }
       if (event.code === 112) {
         const tag = EnglishTag ? '<Loop>' : '<ループ>'
-        text += indent + tag + newLine
+        addNewLineIndent(indent)
+        text += tag
       }
       if (event.code === 413) {
         const tag = EnglishTag ? '<RepeatAbove>' : '<以上繰り返し>'
-        text += indent + tag + newLine
+        addNewLineIndent(indent)
+        text += tag
       }
       if (event.code === 113) {
         const tag = EnglishTag ? '<BreakLoop>' : '<ループの中断>'
-        text += indent + tag + newLine
+        addNewLineIndent(indent)
+        text += tag
       }
       if (event.code === 115) {
         const tag = EnglishTag ? '<ExitEventProcessing>' : '<イベント処理の中断>'
-        text += indent + tag + newLine
+        addNewLineIndent(indent)
+        text += tag
       }
       if (event.code === 117) {
         const CommonEventId = event.parameters[0]
         const tag = EnglishTag ? '<CommonEvent: ' : '<コモンイベント: '
-        text += indent + tag + CommonEventId + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + CommonEventId + '>'
       }
       if (event.code === 118) {
         const label = event.parameters[0]
         const tag = EnglishTag ? '<Label: ' : '<ラベル: '
-        text += indent + tag + label + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + label + '>'
       }
       if (event.code === 119) {
         const label = event.parameters[0]
         const tag = EnglishTag ? '<JumpToLabel: ' : '<ラベルジャンプ: '
-        text += indent + tag + label + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + label + '>'
       }
 
       /** ********************************************** */
@@ -1798,16 +1819,19 @@ if (typeof PluginManager === 'undefined') {
       /** ********************************************** */
       if (event.code === 221) {
         const tag = EnglishTag ? '<Fadeout>' : '<フェードアウト>'
-        text += indent + tag + newLine
+        addNewLineIndent(indent)
+        text += tag
       }
       if (event.code === 222) {
         const tag = EnglishTag ? '<Fadein>' : '<フェードイン>'
-        text += indent + tag + newLine
+        addNewLineIndent(indent)
+        text += tag
       }
       if (event.code === 230) {
         const duration = event.parameters[0]
         const tag = EnglishTag ? '<Wait: ' : '<ウェイト: '
-        text += indent + tag + duration + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + duration + '>'
       }
       if (event.code === 223) {
         const tmpColorTone = getColorToneValue(
@@ -1920,92 +1944,87 @@ if (typeof PluginManager === 'undefined') {
       // オーディオ・ビデオ
       /** ********************************************** */
       if (event.code === 241) {
-        const image = event.parameters[0].name
+        const image = getNone(event.parameters[0].name)
         const volume = event.parameters[0].volume + comma
         const pitch = event.parameters[0].pitch + comma
         const pan = event.parameters[0].pan
         const tag = EnglishTag ? '<PlayBGM: ' : '<BGMの演奏: '
-        if (volume === 90 && pitch === 100 && pan === 0) {
-          text += indent + tag + image + '>' + newLine
-        } else {
-          text += indent + tag + image + comma + volume + pitch + pan + '>' + newLine
-        }
+        addNewLineIndent(indent)
+        text += tag + image + comma + volume + pitch + pan + '>'
       }
       if (event.code === 242) {
         const duration = event.parameters[0]
         const tag = EnglishTag ? '<FadeoutBGM: ' : '<BGMのフェードアウト: '
-        text += indent + tag + duration + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + duration + '>'
       }
       if (event.code === 243) {
         const tag = EnglishTag ? '<SaveBGM>' : '<BGMの保存>'
-        text += indent + tag + newLine
+        addNewLineIndent(indent)
+        text += tag
       }
       if (event.code === 244) {
         const tag = EnglishTag ? '<ReplayBGM>' : '<BGMの再開>'
-        text += indent + tag + newLine
+        addNewLineIndent(indent)
+        text += tag
       }
       if (event.code === 245) {
-        const image = event.parameters[0].name
+        const image = getNone(event.parameters[0].name)
         const volume = event.parameters[0].volume + comma
         const pitch = event.parameters[0].pitch + comma
         const pan = event.parameters[0].pan
         const tag = EnglishTag ? '<PlayBGS: ' : '<BGSの演奏: '
-        if (volume === 90 && pitch === 100 && pan === 0) {
-          text += indent + tag + image + '>' + newLine
-        } else {
-          text += indent + tag + image + comma + volume + pitch + pan + '>' + newLine
-        }
+        addNewLineIndent(indent)
+        text += tag + image + comma + volume + pitch + pan + '>'
       }
       if (event.code === 249) {
-        const image = event.parameters[0].name
+        const image = getNone(event.parameters[0].name)
         const volume = event.parameters[0].volume + comma
         const pitch = event.parameters[0].pitch + comma
         const pan = event.parameters[0].pan
         const tag = EnglishTag ? '<PlayME: ' : '<MEの演奏: '
-        if (volume === 90 && pitch === 100 && pan === 0) {
-          text += indent + tag + image + '>' + newLine
-        } else {
-          text += indent + tag + image + comma + volume + pitch + pan + '>' + newLine
-        }
+        addNewLineIndent(indent)
+        text += tag + image + comma + volume + pitch + pan + '>'
       }
       if (event.code === 250) {
-        const image = event.parameters[0].name
+        const image = getNone(event.parameters[0].name)
         const volume = event.parameters[0].volume + comma
         const pitch = event.parameters[0].pitch + comma
         const pan = event.parameters[0].pan
         const tag = EnglishTag ? '<PlaySE: ' : '<SEの演奏: '
-        if (volume === 90 && pitch === 100 && pan === 0) {
-          text += indent + tag + image + '>' + newLine
-        } else {
-          text += indent + tag + image + comma + volume + pitch + pan + '>' + newLine
-        }
+        addNewLineIndent(indent)
+        text += tag + image + comma + volume + pitch + pan + '>'
       }
 
       if (event.code === 246) {
         const duration = event.parameters[0]
         const tag = EnglishTag ? '<FadeoutBGS: ' : '<BGSのフェードアウト: '
-        text += indent + tag + duration + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + duration + '>'
       }
       if (event.code === 251) {
         const tag = EnglishTag ? '<StopSE>' : '<SEの停止>'
-        text += indent + tag + newLine
+        addNewLineIndent(indent)
+        text += tag
       }
       if (event.code === 261) {
         const movie = event.parameters[0]
         const tag = EnglishTag ? '<PlayMovie: ' : '<ムービーの再生: '
-        text += indent + tag + movie + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + movie + '>'
       }
 
       /** ********************************************** */
       // システム設定
       /** ********************************************** */
       if (event.code === 132) {
-        const name = event.parameters[0].name + comma
+        const name = getNone(event.parameters[0].name) + comma
         const volume = event.parameters[0].volume + comma
         const pitch = event.parameters[0].pitch + comma
         const pan = event.parameters[0].pan
         const tag = EnglishTag ? '<ChangeBattleBGM: ' : '<戦闘曲の変更: '
-        text += indent + tag + name + volume + pitch + pan + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + name + volume + pitch + pan + '>'
       }
       if (event.code === 133) {
         const name = event.parameters[0].name + comma
@@ -2013,7 +2032,8 @@ if (typeof PluginManager === 'undefined') {
         const pitch = event.parameters[0].pitch + comma
         const pan = event.parameters[0].pan
         const tag = EnglishTag ? '<ChangeVictoryMe: ' : '<勝利MEの変更: '
-        text += indent + tag + name + volume + pitch + pan + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + name + volume + pitch + pan + '>'
       }
       if (event.code === 139) {
         const name = event.parameters[0].name + comma
@@ -2021,7 +2041,8 @@ if (typeof PluginManager === 'undefined') {
         const pitch = event.parameters[0].pitch + comma
         const pan = event.parameters[0].pan
         const tag = EnglishTag ? '<ChangeDefeatMe: ' : '<敗北MEの変更: '
-        text += indent + tag + name + volume + pitch + pan + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + name + volume + pitch + pan + '>'
       }
       if (event.code === 140) {
         const vehicle = getVehicleValue(event.parameters[0]) + comma
@@ -2030,34 +2051,40 @@ if (typeof PluginManager === 'undefined') {
         const pitch = event.parameters[1].pitch + comma
         const pan = event.parameters[1].pan
         const tag = EnglishTag ? '<ChangeVehicleBgm: ' : '<乗り物BGMの変更: '
-        text += indent + tag + vehicle + name + volume + pitch + pan + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + vehicle + name + volume + pitch + pan + '>'
       }
       if (event.code === 134) {
         const save = getDisableEnable(event.parameters[0])
         const tag = EnglishTag ? '<ChangeSaveAccess: ' : '<セーブ禁止の変更: '
-        text += indent + tag + save + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + save + '>'
       }
       if (event.code === 135) {
         const menu = getDisableEnable(event.parameters[0])
         const tag = EnglishTag ? '<ChangeMenuAccess: ' : '<メニュー禁止の変更: '
-        text += indent + tag + menu + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + menu + '>'
       }
       if (event.code === 136) {
         const encounter = getDisableEnable(event.parameters[0])
         const tag = EnglishTag ? '<ChangeEncounter: ' : '<エンカウント禁止の変更: '
-        text += indent + tag + encounter + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + encounter + '>'
       }
       if (event.code === 137) {
         const formation = getDisableEnable(event.parameters[0])
         const tag = EnglishTag ? '<ChangeFormationAccess: ' : '<並び変え禁止の変更: '
-        text += indent + tag + formation + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + formation + '>'
       }
       if (event.code === 138) {
         const red = event.parameters[0][0] + comma
         const green = event.parameters[0][1] + comma
         const blue = event.parameters[0][2]
         const tag = EnglishTag ? '<ChangeWindowColor: ' : '<ウィンドウカラーの変更: '
-        text += indent + tag + red + green + blue + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + red + green + blue + '>'
       }
       if (event.code === 322) {
         const face = event.parameters[0] + comma
@@ -2067,14 +2094,16 @@ if (typeof PluginManager === 'undefined') {
         const battler = event.parameters[4] + comma
         const battlerId = event.parameters[5]
         const tag = EnglishTag ? '<ChangeActorImages: ' : '<アクターの画像変更: '
-        text += indent + tag + face + faceId + character + characterId + battler + battlerId + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + face + faceId + character + characterId + battler + battlerId + '>'
       }
       if (event.code === 323) {
         const vehicle = getVehicleValue(event.parameters[0]) + comma
         const image = event.parameters[1] + comma
         const imageId = event.parameters[2]
         const tag = EnglishTag ? '<ChangeVehicleImage: ' : '<乗り物の画像変更: '
-        text += indent + tag + vehicle + image + imageId + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + vehicle + image + imageId + '>'
       }
 
       /** ********************************************** */
@@ -2260,6 +2289,7 @@ if (typeof PluginManager === 'undefined') {
         const scriptText = event.parameters[0] + newLine
         const tag = EnglishTag ? '<Script>' + newLine : '<スクリプト>' + newLine
         const tagEnd = EnglishTag ? '</Script>' + newLine : '</スクリプト>' + newLine
+        addNewLineIndent(indent)
         text += tag + scriptText + tagEnd
       }
       if (event.code === 655) {
@@ -2268,6 +2298,7 @@ if (typeof PluginManager === 'undefined') {
         if (text.endsWith(tagEnd)) {
           const tagEndDeleteText = text.slice(0, -1 * (tagEnd.length + 1)) + newLine
           const tmpText = tagEndDeleteText + scriptText + tagEnd
+          addNewLineIndent(indent)
           text = tmpText
         }
       }
@@ -2275,7 +2306,8 @@ if (typeof PluginManager === 'undefined') {
       if (event.code === 356) {
         const pluginText = event.parameters[0]
         const tag = EnglishTag ? '<PluginCommand: ' : '<プラグインコマンド: '
-        text += indent + tag + pluginText + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + pluginText + '>'
       }
       // プラグインコマンド(MZ)
       if (event.code === 357) {
@@ -2289,7 +2321,8 @@ if (typeof PluginManager === 'undefined') {
         }
         nameValueList = nameValueList === undefined ? '' : nameValueList
         const tag = EnglishTag ? '<PluginCommandMZ: ' : '<プラグインコマンドMZ: '
-        text += indent + tag + pluginName + functionName + commandName + nameValueList + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + pluginName + functionName + commandName + nameValueList + '>'
       }
     })
 
