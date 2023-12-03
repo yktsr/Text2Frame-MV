@@ -6,7 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 2.2.0 2023/08/31: 全てのタグ追加
+// 2.2.0 2023/12/03: 未実装の全てのタグ追加
 // 2.1.0 2023/03/24: タグ追加
 // ・数値入力の処理タグ追加
 // ・アイテム選択の処理タグ追加
@@ -1990,12 +1990,12 @@
  * - チェックオン: "Initialize", "初期化", "true", "1", "オン", "ON"
  * - チェックオフ: "false", "0", "オフ", "OFF", 省略
  *
- * 例1: ID6のアクターを加える。 初期化
+ * 例1: ID6のアクターをパーティに加える。 初期化
  *   <ChangePartyMember: 6, Add, Initialize>
  *   <ChangePartyMember: 6, +, true>
  *   <メンバーの入れ替え: 6, 加える, 初期化>
  *
- * 例2: ID2のアクターを外す。
+ * 例2: ID2のアクターをパーティから外す。
  *   <ChangePartyMember: 2, Remove>
  *   <ChangePartyMember: 2, ->
  *   <メンバーの入れ替え: 2, 外す>
@@ -3477,7 +3477,6 @@
  * 例1: アイテムID1を標準価格に設定。購入のみではない
  *  ---
  *  <ShopProcessing>
- *  <ShopProcessing: false>
  *  <Merchandise: Item, 1, standard>
  *  ---
  *  または
