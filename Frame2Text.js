@@ -592,6 +592,8 @@ if (typeof PluginManager === 'undefined') {
     const getCheckBoxValue = (checkBoxValue) => {
       if (checkBoxValue === 0) return EnglishTag ? 'false' : 'OFF'
       else if (checkBoxValue === 1) return EnglishTag ? 'true' : 'ON'
+      else if (checkBoxValue === false) return EnglishTag ? 'false' : 'OFF'
+      else if (checkBoxValue === true) return EnglishTag ? 'true' : 'ON'
       else return EnglishTag ? 'false' : 'OFF'
     }
     const getAddOrRemove = (operationType) => {
@@ -811,7 +813,9 @@ if (typeof PluginManager === 'undefined') {
       else return EnglishTag ? 'Start' : '始動'
     }
     const getIndent = (indentValue) => {
-      const indent = space.repeat(indentValue * baseIndent)
+      // 一旦indent無し
+      // const indent = space.repeat(indentValue * baseIndent)
+      const indent = ''
       return indent
     }
     const getWeatherTypeValue = (weather) => {
@@ -952,26 +956,31 @@ if (typeof PluginManager === 'undefined') {
         const defaultChoice = getDefaultChoiceValue(event.parameters[2]) + comma
         const cancelChoice = getCancelChoiceValue(event.parameters[1])
         const tag = EnglishTag ? '<ShowChoices: ' : '<選択肢の表示: '
-        text += indent + tag + background + windowPosition + defaultChoice + cancelChoice + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + background + windowPosition + defaultChoice + cancelChoice + '>'
       }
       if (event.code === 402) {
         const choice = event.parameters[1]
         const tag = EnglishTag ? '<When: ' : '<選択肢: '
-        text += indent + tag + choice + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + choice + '>'
       }
       if (event.code === 403) {
         const tag = EnglishTag ? '<WhenCancel>' : '<キャンセルのとき>'
-        text += indent + tag + newLine
+        addNewLineIndent(indent)
+        text += tag
       }
       if (event.code === 404) {
-        const tag = EnglishTag ? '<End>' : '<分岐修了>'
-        text += indent + tag + newLine
+        const tag = EnglishTag ? '<End>' : '<分岐終了>'
+        addNewLineIndent(indent)
+        text += tag
       }
       if (event.code === 103) {
         const variableId = event.parameters[0]
         const digits = event.parameters[1]
         const tag = EnglishTag ? '<InputNumber: ' : '<数値入力の処理: '
-        text += indent + tag + variableId + ', ' + digits + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + variableId + ', ' + digits + '>'
       }
       if (event.code === 104) {
         const variableId = event.parameters[0]
@@ -989,21 +998,23 @@ if (typeof PluginManager === 'undefined') {
           itemType = 'Key Item'
         }
         const tag = EnglishTag ? '<SelectItem: ' : '<アイテム選択の処理: '
-        text += indent + tag + variableId + ', ' + itemType + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + variableId + ', ' + itemType + '>'
       }
       if (event.code === 105) {
         const speed = event.parameters[0] + comma
         const noFastForward = getCheckBoxValue(event.parameters[1])
         const tag = EnglishTag ? '<ShowScrollingText: ' : '<文章のスクロール表示: '
         const tagEnd = EnglishTag ? '</ShowScrollingText>' : '</文章のスクロール表示>'
-        text += indent + tag + speed + noFastForward + '>' + newLine + tagEnd + newLine
+        addNewLineIndent(indent)
+        text += tag + speed + noFastForward + '>' + newLine + tagEnd
       }
       if (event.code === 405) {
         const scrollingText = event.parameters[0]
-        const tagEnd = '</ShowScrollingText>'
-        if (text.endsWith(tagEnd + newLine)) {
+        const tagEnd = EnglishTag ? '</ShowScrollingText>' : '</文章のスクロール表示>'
+        if (text.endsWith(tagEnd)) {
           const tagEndDeleteText = text.slice(0, -1 * (tagEnd.length + 1))
-          const tmpText = tagEndDeleteText + scrollingText + newLine + tagEnd + newLine
+          const tmpText = tagEndDeleteText + newLine + scrollingText + newLine + tagEnd
           text = tmpText
         }
       }
@@ -1016,10 +1027,11 @@ if (typeof PluginManager === 'undefined') {
         const switchId2 = event.parameters[1]
         const operation = getOnOffRadioButtonValue(event.parameters[2])
         const tag = EnglishTag ? '<Switch: ' : '<スイッチ: '
+        addNewLineIndent(indent)
         if (switchId1 === switchId2) {
-          text += indent + tag + switchId1 + comma + operation + '>' + newLine
+          text += tag + switchId1 + comma + operation + '>'
         } else {
-          text += indent + tag + switchId1 + '-' + switchId2 + comma + operation + '>' + newLine
+          text += tag + switchId1 + '-' + switchId2 + comma + operation + '>'
         }
       }
       if (event.code === 122) {
@@ -1033,13 +1045,14 @@ if (typeof PluginManager === 'undefined') {
         const variableId1 = param1
         const variableId2 = param2
         const tag = getControlVariablesTag(param3)
+        addNewLineIndent(indent)
         // 変数・単独/範囲
         if (event.parameters.length === 5 && param4 !== 4) {
           const operandValue = getFixedOrVariable(param4, param5)
           if (variableId1 === variableId2) {
-            text += indent + tag + variableId1 + comma + operandValue + '>' + newLine
+            text += tag + variableId1 + comma + operandValue + '>'
           } else {
-            text += indent + tag + variableId1 + '-' + variableId2 + comma + operandValue + '>' + newLine
+            text += tag + variableId1 + '-' + variableId2 + comma + operandValue + '>'
           }
         }
         // スクリプト
@@ -1047,9 +1060,9 @@ if (typeof PluginManager === 'undefined') {
           const scriptStr = EnglishTag ? 'Script' : 'スクリプト'
           const script = `${scriptStr}[${param5}]`
           if (variableId1 === variableId2) {
-            text += indent + tag + variableId1 + comma + script + '>' + newLine
+            text += tag + variableId1 + comma + script + '>'
           } else {
-            text += indent + tag + variableId1 + '-' + variableId2 + comma + script + '>' + newLine
+            text += tag + variableId1 + '-' + variableId2 + comma + script + '>'
           }
         }
         // 変数・乱数
@@ -1058,10 +1071,9 @@ if (typeof PluginManager === 'undefined') {
           const random1 = `[${param5}]`
           const random2 = `[${param6}]`
           if (variableId1 === variableId2) {
-            text += indent + tag + variableId1 + comma + randomStr + random1 + random2 + '>' + newLine
+            text += tag + variableId1 + comma + randomStr + random1 + random2 + '>'
           } else {
-            text +=
-              indent + tag + variableId1 + '-' + variableId2 + comma + randomStr + random1 + random2 + '>' + newLine
+            text += tag + variableId1 + '-' + variableId2 + comma + randomStr + random1 + random2 + '>'
           }
         }
         // ゲームデータ
@@ -1074,9 +1086,9 @@ if (typeof PluginManager === 'undefined') {
             const gameDataParam2 = `[${param6}]`
             const gameData = gameDataStr + gameDataParam1 + gameDataParam2
             if (variableId1 === variableId2) {
-              text += indent + tag + variableId1 + comma + gameData + '>' + newLine
+              text += tag + variableId1 + comma + gameData + '>'
             } else {
-              text += indent + tag + variableId1 + '-' + variableId2 + comma + gameData + '>' + newLine
+              text += tag + variableId1 + '-' + variableId2 + comma + gameData + '>'
             }
           }
           // ゲームデータ・アクター
@@ -1086,9 +1098,9 @@ if (typeof PluginManager === 'undefined') {
             const gameDataParam3 = `[${gameDataParam3Str}]`
             const gameData = gameDataStr + gameDataParam1 + gameDataParam2 + gameDataParam3
             if (variableId1 === variableId2) {
-              text += indent + tag + variableId1 + comma + gameData + '>' + newLine
+              text += tag + variableId1 + comma + gameData + '>'
             } else {
-              text += indent + tag + variableId1 + '-' + variableId2 + comma + gameData + '>' + newLine
+              text += tag + variableId1 + '-' + variableId2 + comma + gameData + '>'
             }
           }
           // ゲームデータ・敵キャラ
@@ -1099,9 +1111,9 @@ if (typeof PluginManager === 'undefined') {
             const gameDataParam3 = `[${gameDataParam3Str}]`
             const gameData = gameDataStr + gameDataParam1 + gameDataParam2 + gameDataParam3
             if (variableId1 === variableId2) {
-              text += indent + tag + variableId1 + comma + gameData + '>' + newLine
+              text += tag + variableId1 + comma + gameData + '>'
             } else {
-              text += indent + tag + variableId1 + '-' + variableId2 + comma + gameData + '>' + newLine
+              text += tag + variableId1 + '-' + variableId2 + comma + gameData + '>'
             }
           }
           // ゲームデータ・キャラクター
@@ -1112,9 +1124,9 @@ if (typeof PluginManager === 'undefined') {
             const gameDataParam3 = `[${gameDataParam3Str}]`
             const gameData = gameDataStr + gameDataParam1 + gameDataParam2 + gameDataParam3
             if (variableId1 === variableId2) {
-              text += indent + tag + variableId1 + comma + gameData + '>' + newLine
+              text += tag + variableId1 + comma + gameData + '>'
             } else {
-              text += indent + tag + variableId1 + '-' + variableId2 + comma + gameData + '>' + newLine
+              text += tag + variableId1 + '-' + variableId2 + comma + gameData + '>'
             }
           }
           // ゲームデータ・パーティ
@@ -1123,9 +1135,9 @@ if (typeof PluginManager === 'undefined') {
             const gameDataParam2 = `[${gameDataParam2Value}]`
             const gameData = gameDataStr + gameDataParam1 + gameDataParam2
             if (variableId1 === variableId2) {
-              text += indent + tag + variableId1 + comma + gameData + '>' + newLine
+              text += tag + variableId1 + comma + gameData + '>'
             } else {
-              text += indent + tag + variableId1 + '-' + variableId2 + comma + gameData + '>' + newLine
+              text += tag + variableId1 + '-' + variableId2 + comma + gameData + '>'
             }
           }
           // ゲームデータ・その他
@@ -1134,9 +1146,9 @@ if (typeof PluginManager === 'undefined') {
             const gameDataParam1 = `[${gameDataParam1Str}]`
             const gameData = gameDataStr + gameDataParam1
             if (variableId1 === variableId2) {
-              text += indent + tag + variableId1 + comma + gameData + '>' + newLine
+              text += tag + variableId1 + comma + gameData + '>'
             } else {
-              text += indent + tag + variableId1 + '-' + variableId2 + comma + gameData + '>' + newLine
+              text += tag + variableId1 + '-' + variableId2 + comma + gameData + '>'
             }
           }
           // ゲームデータ・直前
@@ -1145,9 +1157,9 @@ if (typeof PluginManager === 'undefined') {
             const gameDataParam2 = `[${gameDataParam2Value}]`
             const gameData = gameDataStr + gameDataParam1 + gameDataParam2
             if (variableId1 === variableId2) {
-              text += indent + tag + variableId1 + comma + gameData + '>' + newLine
+              text += tag + variableId1 + comma + gameData + '>'
             } else {
-              text += indent + tag + variableId1 + '-' + variableId2 + comma + gameData + '>' + newLine
+              text += tag + variableId1 + '-' + variableId2 + comma + gameData + '>'
             }
           }
         }
@@ -1157,7 +1169,8 @@ if (typeof PluginManager === 'undefined') {
         const operationValue = event.parameters[1]
         const operation = getOnOffRadioButtonValue(operationValue)
         const tag = EnglishTag ? '<SelfSwitch: ' : '<セルフスイッチ: '
-        text += indent + tag + selfSwitchValue + operation + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + selfSwitchValue + operation + '>'
       }
       if (event.code === 124) {
         const operation = getTimerValue(event.parameters[0])
@@ -1166,10 +1179,11 @@ if (typeof PluginManager === 'undefined') {
         const seconds = time % 60
 
         const tag = EnglishTag ? '<Timer: ' : '<タイマー: '
+        addNewLineIndent(indent)
         if (event.parameters[0] === 0) {
-          text += indent + tag + operation + comma + minutes + comma + seconds + '>' + newLine
+          text += tag + operation + comma + minutes + comma + seconds + '>'
         } else {
-          text += indent + tag + operation + '>' + newLine
+          text += tag + operation + '>'
         }
       }
 
@@ -1190,8 +1204,6 @@ if (typeof PluginManager === 'undefined') {
         const textSlice = text.slice(-tagEndLength)
         if (textSlice === tagEnd) {
           const tmpText = text.slice(0, -tagEndLength)
-          // addNewLineIndent(indent)
-          // text = tmpText + comment + newLine + tagEnd
           text = tmpText + comment + newLine + tagEnd
         }
       }
@@ -1202,11 +1214,12 @@ if (typeof PluginManager === 'undefined') {
         const param4 = event.parameters[3]
         const param5 = event.parameters[4]
         const tag = EnglishTag ? '<If: ' : '<条件分岐: '
+        addNewLineIndent(indent)
         // 0.スイッチ
         if (param1 === 0) {
           const switchId = EnglishTag ? `Switches[${param2}]` + comma : `スイッチ[${param2}]` + comma
           const isSwitch = getOnOffRadioButtonValue(param3)
-          text += indent + tag + switchId + isSwitch + '>' + newLine
+          text += tag + switchId + isSwitch + '>'
         }
         // 1.変数
         if (param1 === 1) {
@@ -1228,13 +1241,13 @@ if (typeof PluginManager === 'undefined') {
           else if (param5 === 5) condition = EnglishTag ? '!=' : '≠'
           else condition = EnglishTag ? '==' : '＝'
           condition += comma
-          text += indent + tag + variableId + condition + constant + '>' + newLine
+          text += tag + variableId + condition + constant + '>'
         }
         // 2.セルフスイッチ
         if (param1 === 2) {
           const selfSwitches = EnglishTag ? `SelfSwitches[${param2}]` + comma : `セルフスイッチ[${param2}]` + comma
           const isSwitch = getOnOffRadioButtonValue(param3)
-          text += indent + tag + selfSwitches + isSwitch + '>' + newLine
+          text += tag + selfSwitches + isSwitch + '>'
         }
         // 3.タイマー
         if (param1 === 3) {
@@ -1249,7 +1262,7 @@ if (typeof PluginManager === 'undefined') {
           const minutes = Math.floor(param2 / 60) + comma
           // 秒
           const seconds = param2 % 60
-          text += indent + tag + timer + condition + minutes + seconds + '>' + newLine
+          text += tag + timer + condition + minutes + seconds + '>'
         }
         // 4.アクター
         if (param1 === 4) {
@@ -1258,54 +1271,54 @@ if (typeof PluginManager === 'undefined') {
             // パーティにいる
             case 0: {
               const inTheParty = EnglishTag ? 'in the party' : 'パーティにいる'
-              text += indent + tag + actorId + inTheParty + '>' + newLine
+              text += tag + actorId + inTheParty + '>'
               break
             }
             // 名前
             case 1: {
               const nameStr = EnglishTag ? 'Name' + comma : '名前' + comma
               const nameValue = param4
-              text += indent + tag + actorId + nameStr + nameValue + '>' + newLine
+              text += tag + actorId + nameStr + nameValue + '>'
               break
             }
             // 職業
             case 2: {
               const classStr = EnglishTag ? 'Class' + comma : '職業' + comma
               const classId = param4
-              text += indent + tag + actorId + classStr + classId + '>' + newLine
+              text += tag + actorId + classStr + classId + '>'
               break
             }
             // スキル
             case 3: {
               const skillStr = EnglishTag ? 'Skill' + comma : 'スキル' + comma
               const skillId = param4
-              text += indent + tag + actorId + skillStr + skillId + '>' + newLine
+              text += tag + actorId + skillStr + skillId + '>'
               break
             }
             // 武器
             case 4: {
               const weaponStr = EnglishTag ? 'Weapon' + comma : '武器' + comma
               const weaponId = param4
-              text += indent + tag + actorId + weaponStr + weaponId + '>' + newLine
+              text += tag + actorId + weaponStr + weaponId + '>'
               break
             }
             // 防具
             case 5: {
               const armorStr = EnglishTag ? 'Armor' + comma : '防具' + comma
               const armorId = param4
-              text += indent + tag + actorId + armorStr + armorId + '>' + newLine
+              text += tag + actorId + armorStr + armorId + '>'
               break
             }
             // ステート
             case 6: {
               const stateStr = EnglishTag ? 'State' + comma : 'ステート' + comma
               const stateId = param4
-              text += indent + tag + actorId + stateStr + stateId + '>' + newLine
+              text += tag + actorId + stateStr + stateId + '>'
               break
             }
             default: {
               const defaultInTheParty = EnglishTag ? 'in the party' : 'パーティにいる'
-              text += indent + tag + actorId + defaultInTheParty + '>' + newLine
+              text += tag + actorId + defaultInTheParty + '>'
             }
           }
         }
@@ -1317,19 +1330,19 @@ if (typeof PluginManager === 'undefined') {
             // 出現
             case 0: {
               const appeared = EnglishTag ? 'Appeared' : '出現している'
-              text += indent + tag + actorId + appeared + '>' + newLine
+              text += tag + actorId + appeared + '>'
               break
             }
             // ステート
             case 1: {
               const stateStr = EnglishTag ? 'State' + comma : 'ステート' + comma
               const stateId = param4
-              text += indent + tag + actorId + stateStr + stateId + '>' + newLine
+              text += tag + actorId + stateStr + stateId + '>'
               break
             }
             default: {
               const breakAppeared = EnglishTag ? 'Appeared' + comma : '出現している' + comma
-              text += indent + tag + actorId + breakAppeared + '>' + newLine
+              text += tag + actorId + breakAppeared + '>'
             }
           }
         }
@@ -1338,13 +1351,13 @@ if (typeof PluginManager === 'undefined') {
           const character = getEventValue(param2)
           const charactersStr = EnglishTag ? `Characters[${character}]` + comma : `キャラクター[${character}]` + comma
           const facing = getDirectionValue(param3)
-          text += indent + tag + charactersStr + facing + '>' + newLine
+          text += tag + charactersStr + facing + '>'
         }
         // 13.乗り物
         if (param1 === 13) {
           const vehicleStr = EnglishTag ? 'Vehicle' + comma : '乗り物' + comma
           const vehicle = getVehicleValue(param2)
-          text += indent + tag + vehicleStr + vehicle + '>' + newLine
+          text += tag + vehicleStr + vehicle + '>'
         }
         // 7.お金
         if (param1 === 7) {
@@ -1358,12 +1371,12 @@ if (typeof PluginManager === 'undefined') {
           condition += comma
           const gold = param2
 
-          text += indent + tag + goldStr + condition + gold + '>' + newLine
+          text += tag + goldStr + condition + gold + '>'
         }
         // 8.アイテム
         if (param1 === 8) {
           const itemStr = EnglishTag ? `Items[${param2}]` : `アイテム[${param2}]`
-          text += indent + tag + itemStr + '>' + newLine
+          text += tag + itemStr + '>'
         }
         // 9.武器
         if (param1 === 9) {
@@ -1371,7 +1384,7 @@ if (typeof PluginManager === 'undefined') {
           let includeEquipment
           if (param3) includeEquipment = EnglishTag ? comma + 'Include Equipment' : comma + '装備品を含む'
           else includeEquipment = ''
-          text += indent + tag + weaponStr + includeEquipment + '>' + newLine
+          text += tag + weaponStr + includeEquipment + '>'
         }
         // 10.防具
         if (param1 === 10) {
@@ -1379,7 +1392,7 @@ if (typeof PluginManager === 'undefined') {
           let includeEquipment
           if (param3) includeEquipment = EnglishTag ? comma + 'Include Equipment' : comma + '装備品を含む'
           else includeEquipment = ''
-          text += indent + tag + armorStr + includeEquipment + '>' + newLine
+          text += tag + armorStr + includeEquipment + '>'
         }
         // 11.ボタン
         if (param1 === 11) {
@@ -1392,26 +1405,26 @@ if (typeof PluginManager === 'undefined') {
             else if (param3 === 1) buttonState = EnglishTag ? 'is being triggered' : 'がトリガーされている'
             else if (param3 === 2) buttonState = EnglishTag ? 'is being repeated' : 'がリピートされている'
             else buttonState = EnglishTag ? 'is being pressed' : 'が押されている'
-            text += indent + tag + buttonStr + button + comma + buttonState + '>' + newLine
+            text += tag + buttonStr + button + comma + buttonState + '>'
           } else {
             // MV
-            text += indent + tag + buttonStr + button + '>' + newLine
+            text += tag + buttonStr + button + '>'
           }
         }
         // 12.スクリプト
         if (param1 === 12) {
           const scriptStr = EnglishTag ? 'Script' + comma : 'スクリプト' + comma
           const script = param2
-          text += indent + tag + scriptStr + script + '>' + newLine
+          text += tag + scriptStr + script + '>'
         }
       }
       if (event.code === 411) {
-        const tag = EnglishTag ? '<Else>' : 'それ以外のとき'
+        const tag = EnglishTag ? '<Else>' : '<それ以外のとき>'
         addNewLineIndent(indent)
         text += tag
       }
       if (event.code === 412) {
-        const tag = EnglishTag ? '<End>' : '<分岐修了>'
+        const tag = EnglishTag ? '<End>' : '<分岐終了>'
         addNewLineIndent(indent)
         text += tag
       }
