@@ -139,6 +139,20 @@
 アイザック
 <End>
 
+<ShowChoices: 透明, 右, None, 2>
+<When: Alice>
+アリス
+<When: Bob>
+ボブ
+<When: Carol>
+キャロル
+<When: Dave>
+デイブ
+<When: Eve>
+イブ
+<When: Isaac>
+アイザック
+<End>
 
 %% ケース5: 引数の数が可変なのでその動作確認.(デフォルト値が入るか確認)
 <ShowChoices: Dim>
