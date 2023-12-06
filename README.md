@@ -79,7 +79,7 @@ Simple compiler to convert text to event.
 
 
 ## 追加機能のタグ
-「文章の表示」以外にも、いくつかのイベントコマンドにも対応しています。
+「文章の表示」以外にも、他のすべてのイベントコマンドにも対応しています。
 以下のタグをメッセージの間に挟むことで、そのタグがイベントコマンドに置き換わります。
 例えば、
 ```
@@ -89,8 +89,13 @@ Simple compiler to convert text to event.
 ```
 とすることで、「今日も一日がんばるぞい！」というメッセージの前に、「変数の操作(変数1に定数2を代入する)」と「コモンイベント(ID3)」のイベントコマンドが組み込まれます。
 
+全てのタグの詳細は[wikiの文法ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%86%E3%82%AD%E3%82%B9%E3%83%88%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9)や
+また、プラグイン本体のヘルプ文にも詳細を記しています。
 
-### 組み込めるイベントコマンドの早見表
+
+### よく使われるイベントコマンドの早見表
+以下に、よく使われるイベントコマンドに絞って早見表を記載しています。ここに記載しているもの以外にも、すべてのイベントコマンドに対応しています。
+
 |イベントコマンド|タグ(いずれか)|意味|
 |:-|:-|:-|
 |メッセージウィンドウの顔|<Face: Actor1(0)><br><FC: Actor1(0)><br><顔: Actor1(0)>|ウインドウに表示される顔をActor1.pngの位置0(一番左上)に変更する。|
@@ -141,9 +146,6 @@ Simple compiler to convert text to event.
 |スクリプト|<script><br>console.log("ぞい！");<br></script>|"console.log("ぞい！");"をスクリプトイベントとして組み込む。|
 |プラグインコマンド|<PluginCommand: IMPORT_MESSAGE_TO_EVENT><br><プラグインコマンド: IMPORT_MESSAGE_TO_EVENT><br><PC: IMPORT_MESSAGE_TO_EVENT>|"IMPORT_MESSAGE_TO_EVENT"をプラグインコマンドとして組み込む。|
 
-タグの詳細は[wikiの文法ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%86%E3%82%AD%E3%82%B9%E3%83%88%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9)や
-また、プラグイン本体のヘルプ文にも詳細を記しています。
-
 
 ## Author/連絡先
 * [@kryptos_nv](https://twitter.com/kryptos_nv)
@@ -151,7 +153,7 @@ Simple compiler to convert text to event.
 ## Contributor
 * [@Asyun3i9t](https://twitter.com/Asyun3i9t)
 [http://taikai-kobo.hatenablog.com/]
-
+* inazumasoft:Shick
 
 ## Development
 ### Install dependencies

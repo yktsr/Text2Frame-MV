@@ -1,0 +1,6 @@
+% 例: #1の敵をエネミーID2に変身
+<EnemyTransform: 1, 2>
+<敵キャラの変身: 1, 2>
+
+
+<EnemyTransform: 8, 10>

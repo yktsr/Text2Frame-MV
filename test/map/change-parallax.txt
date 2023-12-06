@@ -1,0 +1,22 @@
+% 例1: 遠景背景を「BlueSky.png」に変更する。ループはしない
+<ChangeParallax: BlueSky>
+<遠景の変更: BlueSky>
+
+% 例2: 遠景背景を「BlueSky.png」に変更する。 横方向にスクロール速度10 縦方向にスクロール速度-25
+<ChangeParallax: BlueSky, LoopHorizontally[10], LoopVertically[-25]>
+<遠景の変更: BlueSky, 横方向にループする[10], 縦方向にループする[-25]>
+
+% 別の画像, 横方向に-32, 縦方向に32
+<ChangeParallax: Clouds, LoopHorizontally[-32], LoopVertically[32]>
+<ChangeParallax: Clouds, LoopVertically[32], LoopHorizontally[-32]>
+
+% 片方だけ設定, 横方向に1
+<ChangeParallax: Clouds, LoopHorizontally[1]>
+
+% 片方向だけ設定, 縦方向に0
+<ChangeParallax: Clouds, LoopVertically[0]>
+
+% ファイル名をなしに
+<ChangeParallax: None>
+<ChangeParallax: なし>
+

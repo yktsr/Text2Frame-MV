@@ -1,0 +1,49 @@
+% 例1: このイベントをX座標10,Y座標20に設定 向き：そのまま
+<SetEventLocation: This Event, Direct[10][20], Retain>
+<イベントの位置設定: このイベント, 直接指定[10][20], そのまま>
+
+% 例2: EV012を変数2のX座標,変数3のY座標に設定 向き：上
+<SetEventLocation: 12, WithVariables[2][3], Up>
+<イベントの位置設定: 12, 変数で指定[2][3], 上>
+
+% 例3: EV012をこのイベントと交換 向き：上
+<SetEventLocation: 12, Exchange[This Event], Up>
+<イベントの位置設定: 12, 交換[このイベント], 上>
+<SetEventLocation: 12, Exchange[0], Up>
+
+
+% いろいろな桁数, 向きはすべてそのまま
+<SetEventLocation: 1, Direct[2][3], Retain>
+
+<SetEventLocation: 1, withVariables[10][20], Retain>
+
+<SetEventLocation: 1, EXCHANGE[2], Retain>
+
+<SetEventLocation: 1, exchange[10], Retain>
+
+
+% 向きのチェック
+%% そのまま
+<seteventLocation: 1, Direct[0][0], retain>
+<SetEventLocation: 1, Direct[0][0], 0>
+<SetEventLocation: 1, Direct[0][0], そのまま>
+
+%% 下
+<SetEventLocation: 1, Direct[0][0], down>
+<SetEventLocation: 1, Direct[0][0], 2>
+<SetEventLocation: 1, Direct[0][0], 下>
+
+% 左
+<SetEventLocation: 1, Direct[0][0], left>
+<SetEventLocation: 1, Direct[0][0], 4>
+<SetEventLocation: 1, Direct[0][0], 左>
+
+% 右
+<SetEventLocation: 1, Direct[0][0], RIGHT>
+<SetEventLocation: 1, Direct[0][0], 6>
+<SetEventLocation: 1, Direct[0][0], 右>
+
+% 上
+<SetEventLocation: 1, Direct[0][0], Up>
+<SetEventLocation: 1, Direct[0][0], 8>
+<SetEventLocation: 1, Direct[0][0], 上>

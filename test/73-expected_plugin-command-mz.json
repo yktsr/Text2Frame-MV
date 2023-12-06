@@ -5,494 +5,612 @@
       "pages": [
         {
           "list": [
-	    {
-	      "code": 357,
-	      "indent": 0,
-	      "parameters": [
-		"Text2Frame",
-		"IMPORT_MESSAGE_TO_EVENT",
-		"イベントにインポート",
-		{
-		  "FileFolder": "text",
-		  "FileName": "message.txt",
-		  "MapID": "1",
-		  "EventID": "2",
-		  "PageID": "3",
-		  "IsOverwrite": "false"
-		}
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み元フォルダ名 = text"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み元ファイル名 = message.txt"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み先マップID = 1"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み先イベントID = 2"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み先ページID = 3"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"【取り扱い注意】上書きする = false"
-	      ]
-	    },
-	    {
-	      "code": 357,
-	      "indent": 0,
-	      "parameters": [
-		"Text2Frame",
-		"IMPORT_MESSAGE_TO_EVENT",
-		"イベントにインポート",
-		{
-		  "FileFolder": "text",
-		  "FileName": "message.txt",
-		  "MapID": "1",
-		  "EventID": "2",
-		  "PageID": "3",
-		  "IsOverwrite": "false"
-		}
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み元フォルダ名 = text"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み元ファイル名 = message.txt"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み先マップID = 1"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み先イベントID = 2"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み先ページID = 3"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"【取り扱い注意】上書きする = false"
-	      ]
-	    },
-	    {
-	      "code": 357,
-	      "indent": 0,
-	      "parameters": [
-		"Text2Frame",
-		"IMPORT_MESSAGE_TO_EVENT",
-		"イベントにインポート",
-		{
-		  "FileFolder": "text",
-		  "FileName": "message.txt",
-		  "MapID": "1",
-		  "EventID": "2",
-		  "PageID": "3",
-		  "IsOverwrite": "false"
-		}
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み元フォルダ名 = text"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み元ファイル名 = message.txt"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み先マップID = 1"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み先イベントID = 2"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み先ページID = 3"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"【取り扱い注意】上書きする = false"
-	      ]
-	    },
-	    {
-	      "code": 357,
-	      "indent": 0,
-	      "parameters": [
-		"Text2Frame",
-		"IMPORT_MESSAGE_TO_CE",
-		"コモンイベントにインポート",
-		{
-		  "FileFolder": "text",
-		  "FileName": "message.txt",
-		  "CommonEventID": "1",
-		  "IsOverwrite": "false"
-		}
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み元フォルダ名 = text"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み元ファイル名 = message.txt"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み先コモンイベントID = 1"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"【取り扱い注意】上書きする = false"
-	      ]
-	    },
-	    {
-	      "code": 357,
-	      "indent": 0,
-	      "parameters": [
-		"Text2Frame",
-		"IMPORT_MESSAGE_TO_CE",
-		"コモンイベントにインポート",
-		{
-		  "FileFolder": "text",
-		  "FileName": "message.txt",
-		  "CommonEventID": "1",
-		  "IsOverwrite": "false"
-		}
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み元フォルダ名 = text"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み元ファイル名 = message.txt"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み先コモンイベントID = 1"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"【取り扱い注意】上書きする = false"
-	      ]
-	    },
-	    {
-	      "code": 357,
-	      "indent": 0,
-	      "parameters": [
-		"Text2Frame",
-		"IMPORT_MESSAGE_TO_CE",
-		"コモンイベントにインポート",
-		{
-		  "FileFolder": "text",
-		  "FileName": "message.txt",
-		  "CommonEventID": "1",
-		  "IsOverwrite": "false"
-		}
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み元フォルダ名 = text"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み元ファイル名 = message.txt"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"取り込み先コモンイベントID = 1"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"【取り扱い注意】上書きする = false"
-	      ]
-	    },
             {
-"code": 357,
-	      "indent": 0,
-	      "parameters": [
-		"Text2Frame",
-		"IMPORT_MESSAGE_TO_EVENT",
-		"イベントにインポート",
-		{
-		  "FileFolder": "text",
-		  "FileName": "message.txt",
-		  "MapID": "1",
-		  "EventID": "2",
-		  "PageID": "3",
-		  "IsOverwrite": "false"
-		}
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"FileFolder = text"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"FileName = message.txt"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"MapID = 1"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"EventID = 2"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"PageID = 3"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"IsOverwrite = false"
-	      ]
-	    },
+              "code": 357,
+              "indent": 0,
+              "parameters": [
+                "Text2Frame",
+                "IMPORT_MESSAGE_TO_EVENT",
+                "イベントにインポート",
+                {
+                  "FileFolder": "text",
+                  "FileName": "message.txt",
+                  "MapID": "1",
+                  "EventID": "2",
+                  "PageID": "3",
+                  "IsOverwrite": "false"
+                }
+              ]
+            },
             {
-"code": 357,
-	      "indent": 0,
-	      "parameters": [
-		"Text2Frame",
-		"IMPORT_MESSAGE_TO_EVENT",
-		"イベントにインポート",
-		{
-		  "FileFolder": "text",
-		  "FileName": "message.txt",
-		  "MapID": "1",
-		  "EventID": "2",
-		  "PageID": "3",
-		  "IsOverwrite": "false"
-		}
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"FileFolder = text"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"FileName = message.txt"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"MapID = 1"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"EventID = 2"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"PageID = 3"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"IsOverwrite = false"
-	      ]
-	    },
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み元フォルダ名 = text"
+              ]
+            },
             {
-"code": 357,
-	      "indent": 0,
-	      "parameters": [
-		"Text2Frame",
-		"IMPORT_MESSAGE_TO_EVENT",
-		"イベントにインポート",
-		{
-		  "FileFolder": "text",
-		  "FileName": "message.txt",
-		  "MapID": "1",
-		  "EventID": "2",
-		  "PageID": "3",
-		  "IsOverwrite": "false"
-		}
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"FileFolder = text"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"FileName = message.txt"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"MapID = 1"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"EventID = 2"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"PageID = 3"
-	      ]
-	    },
-	    {
-	      "code": 657,
-	      "indent": 0,
-	      "parameters": [
-		"IsOverwrite = false"
-	      ]
-	    },
-	    {
-	      "code": 0,
-	      "indent": 0,
-	      "parameters": []
-	    }
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み元ファイル名 = message.txt"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先マップID = 1"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先イベントID = 2"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先ページID = 3"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "【取り扱い注意】上書きする = false"
+              ]
+            },
+            {
+              "code": 357,
+              "indent": 0,
+              "parameters": [
+                "Text2Frame",
+                "IMPORT_MESSAGE_TO_EVENT",
+                "イベントにインポート",
+                {
+                  "FileFolder": "text",
+                  "FileName": "message.txt",
+                  "MapID": "1",
+                  "EventID": "2",
+                  "PageID": "3",
+                  "IsOverwrite": "false"
+                }
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み元フォルダ名 = text"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み元ファイル名 = message.txt"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先マップID = 1"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先イベントID = 2"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先ページID = 3"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "【取り扱い注意】上書きする = false"
+              ]
+            },
+            {
+              "code": 357,
+              "indent": 0,
+              "parameters": [
+                "Text2Frame",
+                "IMPORT_MESSAGE_TO_EVENT",
+                "イベントにインポート",
+                {
+                  "FileFolder": "text",
+                  "FileName": "message.txt",
+                  "MapID": "1",
+                  "EventID": "2",
+                  "PageID": "3",
+                  "IsOverwrite": "false"
+                }
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み元フォルダ名 = text"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み元ファイル名 = message.txt"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先マップID = 1"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先イベントID = 2"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先ページID = 3"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "【取り扱い注意】上書きする = false"
+              ]
+            },
+            {
+              "code": 357,
+              "indent": 0,
+              "parameters": [
+                "Text2Frame",
+                "IMPORT_MESSAGE_TO_CE",
+                "コモンイベントにインポート",
+                {
+                  "FileFolder": "text",
+                  "FileName": "message.txt",
+                  "CommonEventID": "1",
+                  "IsOverwrite": "false"
+                }
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み元フォルダ名 = text"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み元ファイル名 = message.txt"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先コモンイベントID = 1"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "【取り扱い注意】上書きする = false"
+              ]
+            },
+            {
+              "code": 357,
+              "indent": 0,
+              "parameters": [
+                "Text2Frame",
+                "IMPORT_MESSAGE_TO_CE",
+                "コモンイベントにインポート",
+                {
+                  "FileFolder": "text",
+                  "FileName": "message.txt",
+                  "CommonEventID": "1",
+                  "IsOverwrite": "false"
+                }
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み元フォルダ名 = text"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み元ファイル名 = message.txt"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先コモンイベントID = 1"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "【取り扱い注意】上書きする = false"
+              ]
+            },
+            {
+              "code": 357,
+              "indent": 0,
+              "parameters": [
+                "Text2Frame",
+                "IMPORT_MESSAGE_TO_CE",
+                "コモンイベントにインポート",
+                {
+                  "FileFolder": "text",
+                  "FileName": "message.txt",
+                  "CommonEventID": "1",
+                  "IsOverwrite": "false"
+                }
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み元フォルダ名 = text"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み元ファイル名 = message.txt"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先コモンイベントID = 1"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "【取り扱い注意】上書きする = false"
+              ]
+            },
+            {
+              "code": 357,
+              "indent": 0,
+              "parameters": [
+                "Text2Frame",
+                "IMPORT_MESSAGE_TO_EVENT",
+                "イベントにインポート",
+                {
+                  "FileFolder": "text",
+                  "FileName": "message.txt",
+                  "MapID": "1",
+                  "EventID": "2",
+                  "PageID": "3",
+                  "IsOverwrite": "false"
+                }
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "FileFolder = text"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "FileName = message.txt"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "MapID = 1"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "EventID = 2"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "PageID = 3"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "IsOverwrite = false"
+              ]
+            },
+            {
+              "code": 357,
+              "indent": 0,
+              "parameters": [
+                "Text2Frame",
+                "IMPORT_MESSAGE_TO_EVENT",
+                "イベントにインポート",
+                {
+                  "FileFolder": "text",
+                  "FileName": "message.txt",
+                  "MapID": "1",
+                  "EventID": "2",
+                  "PageID": "3",
+                  "IsOverwrite": "false"
+                }
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "FileFolder = text"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "FileName = message.txt"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "MapID = 1"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "EventID = 2"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "PageID = 3"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "IsOverwrite = false"
+              ]
+            },
+            {
+              "code": 357,
+              "indent": 0,
+              "parameters": [
+                "Text2Frame",
+                "IMPORT_MESSAGE_TO_EVENT",
+                "イベントにインポート",
+                {
+                  "FileFolder": "text",
+                  "FileName": "message.txt",
+                  "MapID": "1",
+                  "EventID": "2",
+                  "PageID": "3",
+                  "IsOverwrite": "false"
+                }
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "FileFolder = text"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "FileName = message.txt"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "MapID = 1"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "EventID = 2"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "PageID = 3"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "IsOverwrite = false"
+              ]
+            },
+            {
+              "code": 357,
+              "indent": 0,
+              "parameters": [
+                "Text2Frame",
+                "IMPORT_MESSAGE_TO_EVENT",
+                "イベントにインポート",
+                {
+                  "FileFolder": "",
+                  "FileName": "",
+                  "MapID": "1",
+                  "EventID": "2",
+                  "PageID": "3",
+                  "IsOverwrite": "false"
+                }
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "FileFolder = "
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "FileName = "
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "MapID = 1"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "EventID = 2"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "PageID = 3"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "IsOverwrite = false"
+              ]
+            },
+            {
+              "code": 357,
+              "indent": 0,
+              "parameters": [
+                "Text2Frame",
+                "IMPORT_MESSAGE_TO_EVENT",
+                "イベントにインポート",
+                {
+                  "FileFolder": "",
+                  "FileName": "",
+                  "MapID": "1",
+                  "EventID": "2",
+                  "PageID": "3",
+                  "IsOverwrite": "false"
+                }
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み元フォルダ名 = "
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み元ファイル名 = "
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先マップID = 1"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先イベントID = 2"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "取り込み先ページID = 3"
+              ]
+            },
+            {
+              "code": 657,
+              "indent": 0,
+              "parameters": [
+                "【取り扱い注意】上書きする = false"
+              ]
+            },
+            {
+              "code": 0,
+              "indent": 0,
+              "parameters": []
+            }
           ]
         }
       ]

@@ -1,0 +1,109 @@
+% 例1: 敵グループID1とエンカウント 逃走不可 敗北不可
+<BattleProcessing: 1>
+<戦闘の処理: 1>
+
+% 例2: 変数ID5の敵グループとエンカウント 逃走可 敗北可
+<BattleProcessing: Variables[5]>
+<IfWin>
+勝った！
+<IfEscape>
+逃げた！
+<IfLose>
+負けた！
+<End>
+
+<戦闘の処理: 変数[5]>
+<勝ったとき>
+勝った！
+<逃げたとき>
+逃げた！
+<負けたとき>
+負けた！
+<分岐終了>
+
+
+% 例3: ランダムな敵グループとエンカウント 逃走不可 敗北可能
+<BattleProcessing: Random>
+<IfWin>
+勝った！
+<IfLose>
+負けた！
+<End>
+
+<戦闘の処理: ランダム>
+<勝ったとき>
+勝った！
+<負けたとき>
+負けた！
+<分岐終了>
+
+
+% 敵グループID10と、戦闘. 逃走不可、敗北可
+<BattleProcessing: 10>
+<IfWin>
+勝った時の処理(メッセージ1)
+
+勝った時の処理(メッセージ2)
+
+<IfLose>
+負けた時の処理(メッセージ1)
+
+% ブロック内もコメントアウトはちゃんとコメントアウトされること
+% また、別のタグも使えること
+<=: 1, 2>
+<CommonEvent: 3>
+今日も一日がんばるぞい！
+<End>
+
+
+% 変数10と、戦闘. 逃走可、敗北不可
+% 逃走可があってIfWinを省略した場合、ツクールイベント側に空のIfWinのブロックを追加すること
+<BattleProcessing: V[10]>
+<IfEscape>
+逃げた！
+<End>
+
+% 逃走可だけあったとき、両方可能だったときも同様に、IfWinを省略されても、ツクール側では空のIfWinのブロックを入れてあげること
+<BattleProcessing: 変数[10]>
+<IfLose>
+負けた！
+<End>
+
+<BattleProcessing: V[10]>
+<IfEscape>
+逃げた！
+<IfLose>
+負けた！
+<End>
+
+
+% 入れ子の処理
+<BattleProcessing: 1>
+<IfWin>
+勝った！
+  <BattleProcessing: 1>
+  <IfWin>
+勝って勝った！
+  <IfLose>
+勝って負けた！
+    <If: Switches[1], ON>
+今日も一日がんばるぞい！
+    <Else>
+今日も一日がんばるぞい！
+    <End>
+  <End>
+<IfEscape>
+逃げた！
+  <BattleProcessing: 1>
+  <IfWin>
+逃げたあとに勝った！
+  <IfLose>
+逃げたあとに負けた！
+  <End>
+<IfLose>
+負けた
+  <BattleProcessing: 1>
+  <IfEscape>
+負けたあとに逃げた
+  <End>
+<End>
