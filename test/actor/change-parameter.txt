@@ -1,0 +1,39 @@
+% 例1: アクターID5の最大HPを10増やす
+<ChangeParameter: 5, MaxHp, Increase, 10>
+<ChangeParameter: 5, 0, +, 10>
+<能力値の増減: 5, 最大HP, 増やす, 10>
+
+% 例2: 変数ID2のアクターの魔法力を変数ID4の分減らす
+<ChangeParameter: Variables[2], M.Attack, Decrease, Variables[4]>
+<ChangeParameter: Variables[2], 4, -, Variables[4]>
+<能力値の増減: 変数[2], 魔法力, 減らす, 変数[4]>
+
+% アクターがパーティ全体, 最大MP, +, 変数2桁,
+<ChangeParameter: Entire Party, MaxMP, Increase, Variables[10]>
+<ChangeParameter: 0, 1, +, V[10]>
+<能力値の増減: パーティ全体, 最大MP, 増やす, 変数[10]>
+
+% アクターが2桁の変数, 攻撃力
+<ChangeParameter: Variables[10], Attack, +, 2>
+<ChangeParameter: Variables[10], 2, +, 2>
+<ChangeParameter: Variables[10], 攻撃力, +, 2>
+
+% アクターIDが二桁, 防御力
+<ChangeParameter: 10, Defense, +, 2>
+<ChangeParameter: 10, 3, +, 2>
+<ChangeParameter: 10, 防御力, +, 2>
+
+% 魔法防御
+<ChangeParameter: 1, M.Defense, +, 2>
+<ChangeParameter: 1, 5, +, 2>
+<ChangeParameter: 1, 魔法防御, +, 2>
+
+% 敏捷性
+<ChangeParameter: 1, Agility, +, 2>
+<ChangeParameter: 1, 6, +, 2>
+<ChangeParameter: 1, 敏捷性, +, 2>
+
+% 運
+<ChangeParameter: 1, Luck, +, 2>
+<ChangeParameter: 1, 7, +, 2>
+<ChangeParameter: 1, 運, +, 2>

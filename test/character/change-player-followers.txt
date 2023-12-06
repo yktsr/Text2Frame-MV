@@ -1,0 +1,9 @@
+<ChangePlayerFollowers: ON>
+<ChangePlayerFollowers: true>
+<隊列歩行の変更: オン>
+<ChangePlayerFollowers: 0>
+
+<ChangePlayerFollowers: OFF>
+<changeplayerFollowers: false>
+<隊列歩行の変更: オフ>
+<ChangePlayerFollowers: 1>

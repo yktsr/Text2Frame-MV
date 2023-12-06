@@ -1,0 +1,7 @@
+% 例: SampleMovie.webmを再生する場合
+<PlayMovie: SampleMovie>
+<ムービーの再生: SampleMovie>
+
+% なし
+<PlayMovie: None>
+<ムービーの再生: なし>

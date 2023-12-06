@@ -1,0 +1,25 @@
+% 例1: アクターID3の職業を職業ID2に変更 経験値の保存をしない
+<ChangeClass: 3, 2>
+<職業の変更: 3, 2, オフ>
+
+% 例2: アクターID3の職業を職業ID2に変更 経験値の保存をする
+<ChangeClass: 3, 2, Save EXP>
+<職業の変更: 3, 2, 経験値の保存>
+
+% 経験値の保存がOFF
+<changeclass: 1, 1, false>
+<ChangeClass: 1, 1, 0>
+<ChangeClass: 1, 1, オフ>
+<ChangeClass: 1, 1, OFF>
+<ChangeClass: 1, 1>
+
+
+% 二桁と、経験値の保存がON
+<ChangeClass: 10, 20, save exp>
+<職業の変更: 10, 20, 経験値の保存>
+<ChangeClass: 10, 20, Save Level>
+<職業の変更: 10, 20, レベルの保存>
+<ChangeClass: 10, 20, true>
+<職業の変更: 10, 20, 1>
+<職業の変更: 10, 20, オン>
+<職業の変更: 10, 20, on>

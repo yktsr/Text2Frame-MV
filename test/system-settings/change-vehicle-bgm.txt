@@ -1,0 +1,20 @@
+% 例: ファイル名「Ship1.ogg」,音量90,ピッチ100,位相0に変更
+<ChangeVehicleBgm: Boat, Ship1, 90, 100, 0>
+<乗り物BGMの変更: 小型船, Ship1, 90, 100, 0>
+<ChangeVehicleBgm: 0, Ship1>
+
+% 境界値1, 大型船
+<ChangeVehicleBgm: Ship, Ship2, 0, 150, -100>
+
+% 境界値2, 大型船
+<ChangeVehicleBgm: 大型船, Ship2, 100, 50, 100>
+
+% 省略のバリエーション1, 大型船
+<ChangeVehicleBgm: 1, Ship2, 100, 50>
+
+% 省略のバリエーション1, 飛行船
+<ChangeVehicleBgm: Airship, Ship2, 100>
+
+% なし, 飛行船
+<ChangeVehicleBgm: 飛行船, None>
+<乗り物BGMの変更: 2, なし>

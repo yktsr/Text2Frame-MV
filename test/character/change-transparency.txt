@@ -1,0 +1,10 @@
+<ChangeTransparency: true>
+<透明状態の変更: オン>
+<ChangeTransparency: 0>
+<透明状態の変更: ON>
+
+
+<ChangeTransparency: false>
+<透明状態の変更: オフ>
+<ChangeTransparency: 1>
+<透明状態の変更: OFF>

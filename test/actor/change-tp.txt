@@ -1,0 +1,22 @@
+% 例1: アクターID4のTPを2増やす
+<ChangeTp: 4, Increase, 2>
+<ChangeTp: 4, +, 2>
+<TPの増減: 4, 増やす, 2>
+
+% 例2: 変数ID5のアクターのTPを変数ID2の分減らす
+<ChangeTp: Variables[5], Decrease, Variables[2]>
+<ChangeTp: V[5], -, V[2]>
+<TPの増減: 変数[5], 減らす, 変数[2]>
+
+
+%パーティ全体, 二桁
+<ChangeTp: Entire Party, +, V[10]>
+<ChangeTp: パーティ全体, +, V[10]>
+<ChangeTp: 0, +, V[10]>
+
+
+% アクターで2桁
+<ChangeTp: 20, +, 10>
+
+% アクターを変数二桁
+<ChangeTp: V[10], +, 20>

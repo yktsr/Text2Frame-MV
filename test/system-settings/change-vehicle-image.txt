@@ -1,0 +1,15 @@
+% 例: 小型船の画像を「Vehicle.png」の5番目に変更
+<ChangeVehicleImage: Boat, Vehicle, 5>
+<乗り物の画像変更: 小型船, Vehicle, 5>
+<乗り物の画像変更: 0, Vehicle, 5>
+
+
+% 大型船, Actor1に
+<ChangeVehicleImage: Ship, Actor1, 0>
+<ChangeVehicleImage: 大型船, Actor1, 0>
+<ChangeVehicleImage: 1, Actor1, 0>
+
+% 飛行船, なしに
+<ChangeVehicleImage: Airship, None>
+<ChangeVehicleImage: 飛行船, None>
+<ChangeVehicleImage: 2, None>

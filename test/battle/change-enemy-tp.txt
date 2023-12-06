@@ -1,0 +1,15 @@
+% 例1: #1の敵のTPを10増やす
+<ChangeEnemyTp: 1, Increase, 10>
+<敵キャラのTP増減: 1, 増やす, 10>
+<ChangeEnemyTp: 1, +, 10>
+
+% 例2: 敵グループ全体のTPを20減らす
+<ChangeEnemyTp: Entire Troop, Decrease, Variables[20]>
+<敵キャラのTP増減: 敵グループ全体, 減らす, 変数[20]>
+<ChangeEnemyTp: Entire Troop, -, V[20]>
+
+% #の最大値, 1桁
+<ChangeEnemyTp: 8, +, 1>
+
+% 人桁変数
+<ChangeEnemyTp: 8, +, V[1]>

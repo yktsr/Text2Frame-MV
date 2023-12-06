@@ -1,0 +1,30 @@
+% 例1: アクターID4のHPを2増やす
+<ChangeHp: 4, Increase, 2>
+<ChangeHp: 4, +, 2>
+<HPの増減: 4, 増やす, 2>
+
+% 例2: 変数ID5のアクターのHPを変数ID2の分減らす 戦闘不能を許可
+<ChangeHp: Variables[5], Decrease, Variables[2], Allow Knockout>
+<ChangeHp: Variables[5], -, V[2], true>
+<HPの増減: 変数[5], 減らす, 変数[2], 戦闘不能を許可>
+
+
+% アクターがパーティ全体, オペランドが二桁
+<ChangeHp: Entire Party, increase, 20>
+<HPの増減: パーティ全体, 増やす, 20>
+
+
+% アクターが二桁, 減少で、戦闘不能を許可を網羅
+<changehp: 10, decrease, variables[20], allow knockout>
+<ChangeHp: 10, decrease, variables[20], 戦闘不能を許可>
+<ChangeHp: 10, decrease, variables[20], true>
+<ChangeHp: 10, decrease, variaBles[20], 1>
+<ChangeHp: 10, decrease, variables[20], オン>
+<ChangeHp: 10, decrease, variables[20], ON>
+
+% アクターが変数二桁
+<ChangeHp: V[20], decrease, 1, false>
+<ChangeHp: V[20], decrease, 1, 0>
+<ChangeHp: V[20], decrease, 1, オフ>
+<ChangeHp: V[20], decrease, 1, OFF>
+<ChangeHp: V[20], decrease, 1>
