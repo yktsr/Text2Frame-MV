@@ -8359,8 +8359,8 @@ if (typeof PluginManager === 'undefined') {
         if (!matches) throw new Error('Syntax error. / 文法エラーです。:' + params[1])
 
         const location = getLocationValue(matches[1])
-        let mapX
-        let mapY
+        let mapX = 0
+        let mapY = 0
         if (location === 0 || location === 1) {
           mapX = parseInt(matches[2])
           mapY = parseInt(matches[4])
