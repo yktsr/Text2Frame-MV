@@ -1,0 +1,20 @@
+% 例1: アクターID1にステートID4のステートを付加する
+<ChangeState: 1, Add, 4>
+<ChangeState: 1, +, 4>
+<ステートの変更: 1, 付加, 4>
+
+% 例2: 変数ID3のアクターのステートID2のステートを解除する
+<ChangeState: Variables[3], remove, 2>
+<ChangeState: V[3], Remove, 2>
+<ステートの変更: 変数[3], 解除, 2>
+
+
+% パーティ全体
+<ChangeState: Entire Party, Add, 4>
+<ChangeState: 0, +, 4>
+<ステートの変更: パーティ全体, 付加, 4>
+
+% 二桁
+<ChangeState: 10, +, 10>
+
+<ChangeState: V[10], +, 10>

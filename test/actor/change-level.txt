@@ -1,0 +1,26 @@
+% 例1: アクターID3のレベルを1増やす レベルアップを表示
+<ChangeLevel: 3, Increase, 1, Show Level Up>
+<ChangeLevel: 3, +, 1, true>
+<レベルの増減: 3, 増やす, 1, レベルアップを表示>
+
+%例2: 変数ID1のアクターのレベルを変数ID3の分減らす
+<ChangeLevel: Variables[1], Decrease, Variables[3]>
+<ChangeLevel: V[1], -, V[3]>
+<レベルの増減: 変数[1], 減らす, 変数[3]>
+
+% 2桁, チェックリスト ON
+<Changelevel: 10, Increase, 10, show level up>
+<Changelevel: 10, Increase, 10, 1>
+<ChangeLevel: 10, Increase, 10, ON>
+<ChangeLevel: 10, Increase, 10, オン>
+
+% 変数2桁, チェックリストOFF
+<ChangeLevel: V[10], Increase, V[20], false>
+<ChangeLevel: V[10], Increase, V[20], 0>
+<ChangeLevel: V[10], Increase, V[20], オフ>
+<ChangeLevel: V[10], Increase, V[20], OFF>
+
+% アクター全体
+<Changelevel: Entire Party, Increase, 10, show level up>
+<Changelevel: パーティ全体, Increase, 10, show level up>
+<Changelevel: 0, Increase, 10, show level up>

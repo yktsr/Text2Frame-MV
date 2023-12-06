@@ -1,0 +1,6 @@
+% 例: アクターID1の名前入力を最大文字数8で行う
+<NameInputProcessing: 1, 8>
+<名前入力の処理: 1, 8>
+
+% 2桁
+<NameInputProcessing: 10, 14>

@@ -1,0 +1,35 @@
+% 例1: 防具ID1を2つ増やす
+<ChangeArmors: 1, Increase, 2>
+<防具の増減: 1, +, 2>
+<防具の増減: 1, 増やす, 2>
+
+% 例2: 防具ID2を3つ減らす 装備品を含む
+<ChangeArmors: 2, Decrease, 3, Include Equipment>
+<ChangeArmors: 2, -, 3, true>
+<防具の増減: 2, 減らす, 3, 装備品を含む>
+
+% 例3: 防具ID3を変数4だけ減らす 装備品を含まない
+<ChangeArmors: 3, Decrease, Variables[4]>
+<ChangeArmors: 3, -, V[4], false>
+<防具の増減: 3, 減らす, 変数[4], オフ>
+
+
+% 二桁
+<ChangeArmors: 10, Increase, 20>
+<ChangeArmors: 10, Increase, V[20]>
+
+% オプション
+% - チェックオン: `Include Equipment`, `装備品を含む`, `true`, `1`, `オン`, `ON`
+% - チェックオフ: `false`, `0`, `オフ`, `OFF`, 省略
+<ChangeArmors: 10, -, V[20], include equipment>
+<ChangeArmors: 10, -, V[20], 装備品を含む>
+<ChangeArmors: 10, -, V[20], true>
+<ChangeArmors: 10, -, V[20], 1>
+<ChangeArmors: 10, -, V[20], オン>
+<ChangeArmors: 10, -, V[20], ON>
+
+<ChangeArmors: 10, -, V[20], false>
+<ChangeArmors: 10, -, V[20], 0>
+<ChangeArmors: 10, -, V[20], オフ>
+<ChangeArmors: 10, -, V[20], OFF>
+<ChangeArmors: 10, -, V[20]>

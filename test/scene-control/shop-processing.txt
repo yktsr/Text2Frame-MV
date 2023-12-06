@@ -1,0 +1,59 @@
+例1 アイテムID1を標準価格に設定 購入のみではない
+
+<ShopProcessing>
+<Merchandise: Item, 1>
+
+<ショップの処理: オフ>
+<商品: アイテム, 1, 標準>
+
+例2: 複数の商品を設定 購入のみ
+武器ID4 価格500
+防具ID6 価格1200
+
+<ShopProcessing: Purchase Only>
+<Merchandise: weapon, 4, 500>
+<Merchandise: armor, 6, 1200>
+
+<ショップの処理: 購入のみ>
+<商品: 武器, 4, 500>
+<商品: 防具, 6, 1200>
+
+
+% ショップで、購入のみがON
+% アイテムID10 標準価格
+<ShopProcessing: Purchase Only>
+<Merchandise: Item, 10, standard>
+
+<ショップの処理: 購入のみ>
+<Merchandise: Item, 10>
+
+<ShopProcessing: true>
+<Merchandise: Item, 10, STANDARD>
+
+<ShopProcessing: 1>
+<Merchandise: Item, 10, 標準>
+
+<ShopProcessing: オン>
+<merchandise: Item, 10, standard>
+
+<ShopProcessing: ON>
+<MErchandise: Item, 10, Standard>
+
+
+
+% ショップで購入のみがON
+% 商品なし
+<ShopProcessing: Purchase Only>
+<ShopProcessing: true>
+<ShopProcessing: 1>
+<ShopProcessing: オン>
+<ShopProcessing: ON>
+
+% ショップで購入のみがOFF
+% 商品: アイテム ID100, 1000
+% 商品: 武器 ID22, 標準
+% 商品: 防具 ID33, 標準
+<ShopProcessing>
+<Merchandise: 0, 100, 1000>
+<Merchandise: 1, 22>
+<Merchandise: 2, 33>

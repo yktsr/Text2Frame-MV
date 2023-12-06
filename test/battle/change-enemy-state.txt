@@ -1,0 +1,13 @@
+% 例1: #1の敵にステートID4のステートを付加する
+<ChangeEnemyState: 1, Add, 4>
+<敵キャラのステート変更: 1, 付加, 4>
+<ChangeEnemyState: 1, +, 4>
+
+
+% 例2: 敵グループ全体のステートID6のステートを解除する
+<ChangeEnemyState: Entire Troop, Remove, 6>
+<敵キャラのステート変更: 敵グループ全体, 解除, 6>
+<ChangeEnemyState: Entire Troop, -, 6>
+
+% #の最大値, 2桁
+<ChangeEnemyState: 8, Add, 10>
