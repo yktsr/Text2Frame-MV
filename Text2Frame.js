@@ -9258,7 +9258,7 @@ if (typeof PluginManager === 'undefined') {
           const current_movement_route = block_stack.slice(-1)[0].event
           // 205 => parameters => list配下に移動コマンドのparametersを追加
           // イベントエディターの表示用の値に使用されている模様
-          if (current_movement_route.code === 205) {
+          if (current_movement_route.code === MOVEMENT_ROUTE_CODE) {
             // list配下のcode0を一旦削除し、移動コマンドのparametersを追加した後に再度追加
             const movement_command_parameters = current_frame.parameters[0]
             const movement_command_end = current_movement_route.parameters[1].list.pop()
