@@ -82,3 +82,12 @@
 <MovePicture: 1, Blend[1][Normal]>
 <MovePicture: 1, Blend[254][Normal]>
 <MovePicture: 1, Blend[255][Normal]>
+
+% 拡大率の境界値のチェック
+<MovePicture: 1, Scale[0][0]>
+<MovePicture: 1, Scale[1][1]>
+
+% 時間の境界値のチェック
+% 0はツクールの仕様上ないのでチェックしない
+% おそらく入れてしまうとゲーム実行時にゼロ割てきなことがおきて止まる
+<MovePicture: 1, Duration[1][Wait for Completion]>

@@ -63,3 +63,7 @@
 <ShowPicture: 1, Book, Blend[1][Normal]>
 <ShowPicture: 1, Book, Blend[254][Normal]>
 <ShowPicture: 1, Book, Blend[255][Normal]>
+
+% 拡大率の境界値のチェック
+<ShowPicture: 1, Book, Scale[0][0]>
+<ShowPicture: 1, Book, Scale[1][1]>
