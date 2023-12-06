@@ -7494,6 +7494,7 @@ if (typeof PluginManager === 'undefined') {
             case 'none':
             case 'なし':
               default_choice = -1
+              exist_default_choice = true
               return
           }
           if (!isNaN(Number(p))) {
