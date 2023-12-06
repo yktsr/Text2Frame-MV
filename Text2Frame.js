@@ -4409,6 +4409,10 @@ if (typeof PluginManager === 'undefined') {
         .join('\n')
     }
 
+    const getValidNumberOrDefault = function (value, defaultValue = 0) {
+      return isNaN(value) || value === '' ? defaultValue : Number(value)
+    }
+
     /*************************************************************************************************************/
     const getBackground = function (background) {
       switch (background.toUpperCase()) {
@@ -5290,13 +5294,13 @@ if (typeof PluginManager === 'undefined') {
           }
           case 'scale':
           case '拡大率': {
-            out.width = Number(values[0]) || 100
-            out.height = Number(values[1]) || 100
+            out.width = getValidNumberOrDefault(values[0], 100)
+            out.height = getValidNumberOrDefault(values[1], 100)
             break
           }
           case 'blend':
           case '合成': {
-            out.opacity = Number(values[0]) || 255
+            out.opacity = getValidNumberOrDefault(values[0], 255)
             out.blend_mode =
               {
                 normal: 0,
@@ -5312,7 +5316,7 @@ if (typeof PluginManager === 'undefined') {
           }
           case 'duration':
           case '時間': {
-            out.duration = Number(values[0]) || 60
+            out.duration = getValidNumberOrDefault(values[0], 60)
             if (typeof (values[1]) === 'undefined' || values[1] === '') {
               out.wait = false
             }
