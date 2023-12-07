@@ -624,13 +624,13 @@ if (typeof PluginManager === 'undefined') {
     }
     const getDirectOrVariablesValue = (location) => {
       if (location === 0) return EnglishTag ? 'Direct' : '直接指定'
-      else if (location === 1) return EnglishTag ? 'Variables' : '変数の指定'
-      else if (location === 2) return EnglishTag ? 'Exchange' : '他のイベントと交換'
+      else if (location === 1) return EnglishTag ? 'Variables' : '変数で指定'
+      else if (location === 2) return EnglishTag ? 'Exchange' : '交換'
       else return EnglishTag ? 'Direct' : '直接指定'
     }
     const getDirectOrVariablesOrRandomValue = (location) => {
       if (location === 0) return EnglishTag ? 'Direct' : '直接指定'
-      else if (location === 1) return EnglishTag ? 'Variables' : '変数の指定'
+      else if (location === 1) return EnglishTag ? 'Variables' : '変数で指定'
       else if (location === 2) return EnglishTag ? 'Random' : 'ランダム'
       else return EnglishTag ? 'Direct' : '直接指定'
     }
@@ -673,7 +673,7 @@ if (typeof PluginManager === 'undefined') {
     }
     const getEventValue = (event) => {
       if (event === -1) return EnglishTag ? 'Player' : 'プレイヤー'
-      if (event === 0) return EnglishTag ? 'ThisEvent' : 'このイベント'
+      if (event === 0) return EnglishTag ? 'This Event' : 'このイベント'
       else return event
     }
     const getSpeedValue = (speed) => {
@@ -1613,41 +1613,54 @@ if (typeof PluginManager === 'undefined') {
       // 移動
       /** ********************************************** */
       if (event.code === 201) {
-        const location = getDirectOrVariablesValue(event.parameters[0]) + comma
-        const mapId = event.parameters[1] + comma
-        const mapX = event.parameters[2] + comma
-        const mapY = event.parameters[3] + comma
+        const location = getDirectOrVariablesValue(event.parameters[0])
+        const mapId = event.parameters[1]
+        const mapX = event.parameters[2]
+        const mapY = event.parameters[3]
+        const locationStr = `${location}[${mapId}][${mapX}][${mapY}]` + comma
         const direction = getDirectionValue(event.parameters[4]) + comma
         const fade = getFadeValue(event.parameters[5])
         const tag = EnglishTag ? '<TransferPlayer: ' : '<場所移動: '
-        text += indent + tag + location + mapId + mapX + mapY + direction + fade + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + locationStr + direction + fade + '>'
       }
       if (event.code === 202) {
         const vehicle = getVehicleValue(event.parameters[0]) + comma
-        const location = getDirectOrVariablesValue(event.parameters[1]) + comma
-        const mapId = event.parameters[2] + comma
-        const mapX = event.parameters[3] + comma
+        const location = getDirectOrVariablesValue(event.parameters[1])
+        const mapId = event.parameters[2]
+        const mapX = event.parameters[3]
         const mapY = event.parameters[4]
+        const locationStr = `${location}[${mapId}][${mapX}][${mapY}]`
         const tag = EnglishTag ? '<SetVehicleLocation: ' : '<乗り物の位置設定: '
-        text += indent + tag + vehicle + location + mapId + mapX + mapY + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + vehicle + locationStr + '>'
       }
       if (event.code === 203) {
         const eventValue = getEventValue(event.parameters[0]) + comma
-        const location = getDirectOrVariablesValue(event.parameters[1]) + comma
-        const mapX = event.parameters[2] + comma
-        const mapY = event.parameters[3] + comma
+        const location = getDirectOrVariablesValue(event.parameters[1])
+        const mapY = event.parameters[3]
+        let locationStr = ''
+        if (event.parameters[1] === 2) {
+          const eventId = getEventValue(event.parameters[2])
+          locationStr = `${location}[${eventId}]` + comma
+        } else {
+          const mapX = event.parameters[2]
+          locationStr = `${location}[${mapX}][${mapY}]` + comma
+        }
         const direction = getDirectionValue(event.parameters[4])
+        addNewLineIndent(indent)
         const tag = EnglishTag ? '<SetEventLocation: ' : '<イベントの位置設定: '
-        text += indent + tag + eventValue + location + mapX + mapY + direction + '>' + newLine
+        text += tag + eventValue + locationStr + direction + '>'
       }
       if (event.code === 204) {
         const direction = getDirectionValue(event.parameters[0]) + comma
         const distance = event.parameters[1] + comma
         const speed = getSpeedValue(event.parameters[2]) + comma
-        const tmpWaitForCompletion = getCheckBoxValue(event.parameters[3]) + comma
+        const tmpWaitForCompletion = getCheckBoxValue(event.parameters[3])
         const waitForCompletion = tmpWaitForCompletion === undefined ? '' : tmpWaitForCompletion
         const tag = EnglishTag ? '<ScrollMap: ' : '<マップのスクロール: '
-        text += indent + tag + direction + distance + speed + waitForCompletion + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + direction + distance + speed + waitForCompletion + '>'
       }
       // 移動ルートの設定
       if (event.code === 205) {
@@ -1655,8 +1668,9 @@ if (typeof PluginManager === 'undefined') {
         const repeat = getCheckBoxValue(event.parameters[1].repeat) + comma
         const skippable = getCheckBoxValue(event.parameters[1].skippable) + comma
         const wait = getCheckBoxValue(event.parameters[1].wait)
-        const tag = '<SetMovementRoute: '
-        text += indent + tag + target + repeat + skippable + wait + '>' + newLine
+        const tag = EnglishTag ? '<SetMovementRoute: ' : '<移動ルートの設定: '
+        addNewLineIndent(indent)
+        text += tag + target + repeat + skippable + wait + '>'
       }
       // 移動ルートの設定(移動コマンド)
       if (event.code === 505) {
@@ -1678,7 +1692,7 @@ if (typeof PluginManager === 'undefined') {
         const code12tag = EnglishTag ? '<OneStepForward>' : '<一歩前進>'
         const code13tag = EnglishTag ? '<OneStepBackward>' : '<一歩後退>'
         const code14tag = EnglishTag ? '<Jump: ' : '<ジャンプ: '
-        const code15tag = EnglishTag ? '<MoveWait: ' : '<移動ウェイト: '
+        const code15tag = EnglishTag ? '<McWait: ' : '<移動コマンドウェイト: '
         const code16tag = EnglishTag ? '<TurnDown>' : '<下を向く>'
         const code17tag = EnglishTag ? '<TurnLeft>' : '<左を向く>'
         const code18tag = EnglishTag ? '<TurnRight>' : '<右を向く>'
@@ -1707,81 +1721,82 @@ if (typeof PluginManager === 'undefined') {
         const code41tag = EnglishTag ? '<ChangeImage: ' : '<画像の変更: '
         const code42tag = EnglishTag ? '<ChangeOpacity: ' : '<不透明度の変更: '
         const code43tag = EnglishTag ? '<ChangeBlendMode: ' : '<合成方法の変更: '
-        const code44tag = EnglishTag ? '<MovePlaySe: ' : '<移動SEの演奏: '
-        const code45tag = EnglishTag ? '<MoveScript: ' : '<移動スクリプト: '
+        const code44tag = EnglishTag ? '<McPlaySe: ' : '<移動コマンドSEの演奏: '
+        const code45tag = EnglishTag ? '<McScript: ' : '<移動コマンドスクリプト: '
 
-        if (movement.code === 1) text += moveIndent + code1tag + newLine
-        else if (movement.code === 2) text += moveIndent + code2tag + newLine
-        else if (movement.code === 3) text += moveIndent + code3tag + newLine
-        else if (movement.code === 4) text += moveIndent + code4tag + newLine
-        else if (movement.code === 5) text += moveIndent + code5tag + newLine
-        else if (movement.code === 6) text += moveIndent + code6tag + newLine
-        else if (movement.code === 7) text += moveIndent + code7tag + newLine
-        else if (movement.code === 8) text += moveIndent + code8tag + newLine
-        else if (movement.code === 9) text += moveIndent + code9tag + newLine
-        else if (movement.code === 10) text += moveIndent + code10tag + newLine
-        else if (movement.code === 11) text += moveIndent + code11tag + newLine
-        else if (movement.code === 12) text += moveIndent + code12tag + newLine
-        else if (movement.code === 13) text += moveIndent + code13tag + newLine
+        addNewLineIndent(moveIndent)
+        if (movement.code === 1) text += code1tag
+        else if (movement.code === 2) text += code2tag
+        else if (movement.code === 3) text += code3tag
+        else if (movement.code === 4) text += code4tag
+        else if (movement.code === 5) text += code5tag
+        else if (movement.code === 6) text += code6tag
+        else if (movement.code === 7) text += code7tag
+        else if (movement.code === 8) text += code8tag
+        else if (movement.code === 9) text += code9tag
+        else if (movement.code === 10) text += code10tag
+        else if (movement.code === 11) text += code11tag
+        else if (movement.code === 12) text += code12tag
+        else if (movement.code === 13) text += code13tag
         else if (movement.code === 14) {
           const x = movement.parameters[0] + comma
           const y = movement.parameters[1]
-          text += moveIndent + code14tag + x + y + '>' + newLine
+          text += code14tag + x + y + '>'
         } else if (movement.code === 15) {
           const wait = movement.parameters[0]
-          text += moveIndent + code15tag + wait + '>' + newLine
-        } else if (movement.code === 16) text += moveIndent + code16tag + newLine
-        else if (movement.code === 17) text += moveIndent + code17tag + newLine
-        else if (movement.code === 18) text += moveIndent + code18tag + newLine
-        else if (movement.code === 19) text += moveIndent + code19tag + newLine
-        else if (movement.code === 20) text += moveIndent + code20tag + newLine
-        else if (movement.code === 21) text += moveIndent + code21tag + newLine
-        else if (movement.code === 22) text += moveIndent + code22tag + newLine
-        else if (movement.code === 23) text += moveIndent + code23tag + newLine
-        else if (movement.code === 24) text += moveIndent + code24tag + newLine
-        else if (movement.code === 25) text += moveIndent + code25tag + newLine
-        else if (movement.code === 26) text += moveIndent + code26tag + newLine
+          text += code15tag + wait + '>'
+        } else if (movement.code === 16) text += code16tag
+        else if (movement.code === 17) text += code17tag
+        else if (movement.code === 18) text += code18tag
+        else if (movement.code === 19) text += code19tag
+        else if (movement.code === 20) text += code20tag
+        else if (movement.code === 21) text += code21tag
+        else if (movement.code === 22) text += code22tag
+        else if (movement.code === 23) text += code23tag
+        else if (movement.code === 24) text += code24tag
+        else if (movement.code === 25) text += code25tag
+        else if (movement.code === 26) text += code26tag
         else if (movement.code === 27) {
           const switchId = movement.parameters[0]
-          text += moveIndent + code27tag + switchId + '>' + newLine
+          text += code27tag + switchId + '>'
         } else if (movement.code === 28) {
           const switchId = movement.parameters[0]
-          text += moveIndent + code28tag + switchId + '>' + newLine
+          text += code28tag + switchId + '>'
         } else if (movement.code === 29) {
           const speed = getSpeedValue(movement.parameters[0])
-          text += moveIndent + code29tag + speed + '>' + newLine
+          text += code29tag + speed + '>'
         } else if (movement.code === 30) {
           const frequency = getFrequencyValue(movement.parameters[0])
-          text += moveIndent + code30tag + frequency + '>' + newLine
-        } else if (movement.code === 31) text += moveIndent + code31tag + newLine
-        else if (movement.code === 32) text += moveIndent + code32tag + newLine
-        else if (movement.code === 33) text += moveIndent + code33tag + newLine
-        else if (movement.code === 34) text += moveIndent + code34tag + newLine
-        else if (movement.code === 35) text += moveIndent + code35tag + newLine
-        else if (movement.code === 36) text += moveIndent + code36tag + newLine
-        else if (movement.code === 37) text += moveIndent + code37tag + newLine
-        else if (movement.code === 38) text += moveIndent + code38tag + newLine
-        else if (movement.code === 39) text += moveIndent + code39tag + newLine
-        else if (movement.code === 40) text += moveIndent + code40tag + newLine
+          text += code30tag + frequency + '>'
+        } else if (movement.code === 31) text += code31tag
+        else if (movement.code === 32) text += code32tag
+        else if (movement.code === 33) text += code33tag
+        else if (movement.code === 34) text += code34tag
+        else if (movement.code === 35) text += code35tag
+        else if (movement.code === 36) text += code36tag
+        else if (movement.code === 37) text += code37tag
+        else if (movement.code === 38) text += code38tag
+        else if (movement.code === 39) text += code39tag
+        else if (movement.code === 40) text += code40tag
         else if (movement.code === 41) {
           const image = movement.parameters[0] + comma
           const imageId = movement.parameters[1]
-          text += moveIndent + code41tag + image + imageId + '>' + newLine
+          text += code41tag + image + imageId + '>'
         } else if (movement.code === 42) {
           const opacity = movement.parameters[0]
-          text += moveIndent + code42tag + opacity + '>' + newLine
+          text += code42tag + opacity + '>'
         } else if (movement.code === 43) {
           const blendMode = getBlendModeValue(movement.parameters[0])
-          text += moveIndent + code43tag + blendMode + '>' + newLine
+          text += code43tag + blendMode + '>'
         } else if (movement.code === 44) {
-          const image = movement.parameters[0].name + comma
+          const image = getNone(movement.parameters[0].name) + comma
           const volume = movement.parameters[0].volume + comma
           const pitch = movement.parameters[0].pitch + comma
           const pan = movement.parameters[0].pan
-          text += moveIndent + code44tag + image + volume + pitch + pan + '>' + newLine
+          text += code44tag + image + volume + pitch + pan + '>'
         } else if (movement.code === 45) {
           const script = movement.parameters[0]
-          text += moveIndent + code45tag + script + '>' + newLine
+          text += code45tag + script + '>'
         }
       }
       if (event.code === 206) {
