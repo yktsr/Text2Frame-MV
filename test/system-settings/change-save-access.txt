@@ -1,0 +1,7 @@
+<ChangeSaveAccess: Disable>
+<セーブ禁止の変更: 禁止>
+<セーブ禁止の変更: 0>
+
+<ChangeSaveAccess: Enable>
+<ChangeSaveAccess: 許可>
+<ChangeSaveAccess: 1>

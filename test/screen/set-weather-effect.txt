@@ -1,0 +1,23 @@
+% 例: 天候は雨、強さ5、60フレームかけて天候を変更する 完了までウェイト
+<SetWeatherEffect: Rain, 5, 60, Wait for Completion>
+<天候の設定: 雨, 5, 60, 完了までウェイト>
+
+% 天候はなし, 強さ1, 5フレーム, 完了までウェイト
+<SetWeatherEffect: None, 1, 5, Wait for Completion>
+<SetWeatherEffect: none, 1, 5, 完了までウェイト>
+<SetWeatherEffect: なし, 1, 5, Wait>
+<SetWeatherEffect: なし, 1, 5, true>
+<SetWeatherEffect: なし, 1, 5, 1>
+<SetWeatherEffect: なし, 1, 5, ON>
+<SetWeatherEffect: なし, 1, 5, オン>
+
+% 天候は嵐, 強さ9, 100フレーム, 完了までウェイトしない
+<SetWeatherEffect: storm, 9, 100, false>
+<SetWeatherEffect: 嵐, 9, 100, 0>
+<SetWeatherEffect: 嵐, 9, 100, OFF>
+<SetWeatherEffect: 嵐, 9, 100, オフ>
+<SetWeatherEffect: Storm, 9, 100>
+
+% 天候は雪
+<SetWeatherEffect: Snow, 5, 60, wait>
+<SetWeatherEffect: 雪, 5, 60, wait>

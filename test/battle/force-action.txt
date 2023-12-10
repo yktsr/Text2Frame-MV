@@ -1,0 +1,52 @@
+% 例1: #1の敵にスキルID2をインデックス3を対象に強制する
+<ForceAction: 1, 2, Index 3>
+<戦闘行動の強制: 1, 2, インデックス３>
+
+% 例2: アクター4にスキルID7をラストターゲットを対象に強制する
+<ForceAction: Actors[4], 7, Last Target>
+<戦闘行動の強制: アクター[4], 7, ラストターゲット>
+
+% 例3: アクター10にスキル20をランダムなターゲットを対象に強制する
+<ForceAction: Actors[10], 20, Random>
+<戦闘行動の強制: アクター[10], 20, ランダム>
+
+% インデックスやターゲットを網羅
+<ForceAction: 2, 10, -1>
+<ForceAction: 3, 10, -1>
+<ForceAction: 4, 10, -1>
+<ForceAction: 5, 10, -1>
+<ForceAction: 6, 10, 0>
+<ForceAction: 7, 10, 0>
+<ForceAction: 8, 10, 0>
+
+<ForceAction: 1, 10, Index 1>
+<ForceAction: 1, 10, 1>
+<ForceAction: 1, 10, インデックス１>
+
+<ForceAction: 1, 10, Index 2>
+<ForceAction: 1, 10, 2>
+<ForceAction: 1, 10, インデックス２>
+
+<ForceAction: 1, 10, Index 3>
+<ForceAction: 1, 10, 3>
+<ForceAction: 1, 10, インデックス３>
+
+<ForceAction: 1, 10, Index 4>
+<ForceAction: 1, 10, 4>
+<ForceAction: 1, 10, インデックス４>
+
+<ForceAction: 1, 10, Index 5>
+<ForceAction: 1, 10, 5>
+<ForceAction: 1, 10, インデックス５>
+
+<ForceAction: 1, 10, Index 6>
+<ForceAction: 1, 10, 6>
+<ForceAction: 1, 10, インデックス６>
+
+<ForceAction: 1, 10, Index 7>
+<ForceAction: 1, 10, 7>
+<ForceAction: 1, 10, インデックス７>
+
+<ForceAction: 1, 10, Index 8>
+<ForceAction: 1, 10, 8>
+<ForceAction: 1, 10, インデックス８>

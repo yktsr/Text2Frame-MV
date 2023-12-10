@@ -1,0 +1,59 @@
+% 例1: 変数ID1に、現在のマップのX座標10,Y座標20の地形タグの値を格納する
+<GetLocationInfo: 1, Terrain Tag, Direct[10][20]>
+<指定位置の情報取得: 1, 地形タグ, 直接指定[10][20]>
+
+
+% 例2: 変数ID2に、現在のマップのX座標を変数4で、Y座標を5で指定しレイヤー1のタイルIDを格納する。
+<GetLocationInfo: 2, Layer 1, WithVariables[4][5]>
+<指定位置の情報取得: 2, レイヤー１, 変数で指定[4][5]>
+
+
+% 例3: 変数ID3に、このイベントのリージョンIDの値を格納する
+<GetLocationInfo: 3, Region ID, Character[This Event]>
+<指定位置の情報取得: 3, リージョンid, キャラクター[このイベント]>
+
+
+
+% 情報タイプリストを網羅, 変数IDは10, 直接指定[1][2]
+<GetLocationInfo: 10, Terrain Tag, Direct[1][2]>
+<GetLocationInfo: 10, 0, Direct[1][2]>
+<GetLocationInfo: 10, 地形タグ, Direct[1][2]>
+
+<GetLocationInfo: 10, Event ID, Direct[1][2]>
+<GetLocationInfo: 10, 1, Direct[1][2]>
+<GetLocationInfo: 10, イベントID, Direct[1][2]>
+
+<GetLocationInfo: 10, Layer 1, Direct[1][2]>
+<GetLocationInfo: 10, 2, Direct[1][2]>
+<GetLocationInfo: 10, レイヤー１, Direct[1][2]>
+
+<GetLocationInfo: 10, Layer 2, Direct[1][2]>
+<GetLocationInfo: 10, 3, Direct[1][2]>
+<GetLocationInfo: 10, レイヤー２, Direct[1][2]>
+
+<GetLocationInfo: 10, Layer 3, Direct[1][2]>
+<GetLocationInfo: 10, 4, Direct[1][2]>
+<GetLocationInfo: 10, レイヤー３, Direct[1][2]>
+
+<GetLocationInfo: 10, Layer 4, Direct[1][2]>
+<GetLocationInfo: 10, 5, Direct[1][2]>
+<GetLocationInfo: 10, レイヤー４, Direct[1][2]>
+
+<GetLocationInfo: 10, Region ID, Direct[1][2]>
+<GetLocationInfo: 10, 6, Direct[1][2]>
+<GetLocationInfo: 10, リージョンID, Direct[1][2]>
+
+
+% 変数で指定の2桁を確認
+<GetLocationInfo: 1, Terrain Tag, WithVariables[40][50]>
+
+% キャラクターで指定する場合を網羅
+<GetLocationInfo: 3, Region ID, Character[Player]>
+<GetLocationInfo: 3, Region ID, Character[プレイヤー]>
+<GetLocationInfo: 3, Region ID, Character[-1]>
+
+<GetLocationInfo: 3, Region ID, Character[This Event]>
+<GetLocationInfo: 3, Region ID, Character[このイベント]>
+<GetLocationInfo: 3, Region ID, Character[0]>
+
+<GetLocationInfo: 3, Region ID, Character[10]>

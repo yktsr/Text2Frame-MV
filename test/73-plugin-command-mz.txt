@@ -12,3 +12,8 @@
 <PluginCommandMZ: Text2Frame, IMPORT_MESSAGE_TO_EVENT, イベントにインポート, FileFolder[text], FileName[message.txt], MapID[1], EventID[2], PageID[3], IsOverwrite[false]>
 <プラグインコマンドMZ: Text2Frame, IMPORT_MESSAGE_TO_EVENT, イベントにインポート, FileFolder[text], FileName[message.txt], MapID[1], EventID[2], PageID[3], IsOverwrite[false]>
 <PCZ: Text2Frame, IMPORT_MESSAGE_TO_EVENT, イベントにインポート, FileFolder[text], FileName[message.txt], MapID[1], EventID[2], PageID[3], IsOverwrite[false]>
+
+% 引数が空、注釈無の場合
+<PCZ: Text2Frame, IMPORT_MESSAGE_TO_EVENT, イベントにインポート, FileFolder[], FileName[], MapID[1], EventID[2], PageID[3], IsOverwrite[false]>
+% 引数が空、注釈有の場合
+<PCZ: Text2Frame, IMPORT_MESSAGE_TO_EVENT, イベントにインポート, FileFolder[][取り込み元フォルダ名], FileName[][取り込み元ファイル名], MapID[1][取り込み先マップID], EventID[2][取り込み先イベントID], PageID[3][取り込み先ページID], IsOverwrite[false][【取り扱い注意】上書きする]>

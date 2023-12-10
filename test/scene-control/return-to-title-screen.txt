@@ -1,0 +1,2 @@
+<ReturnToTitleScreen>
+<タイトル画面に戻す>

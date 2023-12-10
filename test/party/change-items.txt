@@ -1,0 +1,15 @@
+% 例1: アイテムID3を4つ増やす
+<ChangeItems: 3, Increase, 4>
+<ChangeItems: 3, +, 4>
+<アイテムの増減: 3, 増やす, 4>
+
+% 例2: アイテムID3を変数ID2の値分減らす
+<ChangeItems: 3, decrease, Variables[2]>
+<ChangeItems: 3, -, V[2]>
+<アイテムの増減: 3, 減らす, 変数[2]>
+
+
+% 二桁以上を確かめる
+<ChangeItems: 30, Increase, 40>
+
+<ChangeItems: 30, -, Variables[20]>

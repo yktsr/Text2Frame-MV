@@ -1,0 +1,20 @@
+% 例: 強さ5、速さ8で60フレームかけて画面をシェイクする 完了までウェイト
+<ShakeScreen: 5, 8, 60, Wait for Completion>
+<画面のシェイク: 5, 8, 60, 完了までウェイト>
+
+
+% 境界値1, 完了までウェイト
+<ShakeScreen: 1, 1, 1, Wait for Completion>
+<ShakeScreen: 1, 1, 1, 完了までウェイト>
+<ShakeScreen: 1, 1, 1, Wait>
+<ShakeScreen: 1, 1, 1, true>
+<ShakeScreen: 1, 1, 1, 1>
+<ShakeScreen: 1, 1, 1, ON>
+<ShakeScreen: 1, 1, 1, オン>
+
+% 境界値2, 完了までウェイトしない
+<ShakeScreen: 9, 9, 100>
+<ShakeScreen: 9, 9, 100, false>
+<ShakeScreen: 9, 9, 100, 0>
+<ShakeScreen: 9, 9, 100, オフ>
+<ShakeScreen: 9, 9, 100, OFF>

@@ -1,0 +1,19 @@
+% 例1: #1の敵にアニメーションID2を表示
+<ShowBattleAnimation: 1, 2>
+<戦闘アニメーションの表示: 1, 2>
+
+
+% 例2: 敵グループ全体にアニメーションID2を表示
+<ShowBattleAnimation: Entire Troop, 2>
+<戦闘アニメーションの表示: 敵グループ全体, 2>
+
+% アニメーションID二桁の確認
+<showbattleAnimation: 2, 10>
+
+% 敵IDを全て確認
+<ShowBattleAnimation: 3, 2>
+<ShowBattleAnimation: 4, 2>
+<ShowBattleAnimation: 5, 2>
+<ShowBattleAnimation: 6, 2>
+<ShowBattleAnimation: 7, 2>
+<ShowBattleAnimation: 8, 2>

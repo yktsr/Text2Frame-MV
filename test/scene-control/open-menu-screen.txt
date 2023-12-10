@@ -1,0 +1,2 @@
+<OpenMenuScreen>
+<メニュー画面を開く>

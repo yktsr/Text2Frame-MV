@@ -1,0 +1,14 @@
+% 例: 戦闘背景1(下半分)を「Desert.png」,戦闘背景2(上半分)を「Cliff.png」に戦闘背景を変更する
+<ChangeBattleBackGround: Desert, Cliff>
+<戦闘背景の変更: Desert, Cliff>
+
+% 別の画像ファイル
+<ChangeBattleBackGround: Ship, Ship>
+
+% 下半分 なし
+<ChangeBattleBackGround: None, Ship>
+<ChangeBattleBackGround: なし, Ship>
+
+% 上半分 なし
+<ChangeBattleBackGround: Ship, None>
+<ChangeBattleBackGround: Ship, なし>

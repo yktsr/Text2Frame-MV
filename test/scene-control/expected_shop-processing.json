@@ -1,0 +1,284 @@
+{
+  "events": [
+    null,
+    {
+      "pages": [
+        {
+          "list": [
+            {
+              "code": 101,
+              "indent": 0,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 0,
+              "parameters": [
+                "例1 アイテムID1を標準価格に設定 購入のみではない"
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                0,
+                1,
+                0,
+                0,
+                false
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                0,
+                1,
+                0,
+                0,
+                false
+              ]
+            },
+            {
+              "code": 101,
+              "indent": 0,
+              "parameters": [
+                "",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 0,
+              "parameters": [
+                "例2: 複数の商品を設定 購入のみ"
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 0,
+              "parameters": [
+                "武器ID4 価格500"
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 0,
+              "parameters": [
+                "防具ID6 価格1200"
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                1,
+                4,
+                1,
+                500,
+                true
+              ]
+            },
+            {
+              "code": 605,
+              "indent": 0,
+              "parameters": [
+                2,
+                6,
+                1,
+                1200
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                1,
+                4,
+                1,
+                500,
+                true
+              ]
+            },
+            {
+              "code": 605,
+              "indent": 0,
+              "parameters": [
+                2,
+                6,
+                1,
+                1200
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                0,
+                10,
+                0,
+                0,
+                true
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                0,
+                10,
+                0,
+                0,
+                true
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                0,
+                10,
+                0,
+                0,
+                true
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                0,
+                10,
+                0,
+                0,
+                true
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                0,
+                10,
+                0,
+                0,
+                true
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                0,
+                10,
+                0,
+                0,
+                true
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                0,
+                0,
+                0,
+                0,
+                true
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                0,
+                0,
+                0,
+                0,
+                true
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                0,
+                0,
+                0,
+                0,
+                true
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                0,
+                0,
+                0,
+                0,
+                true
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                0,
+                0,
+                0,
+                0,
+                true
+              ]
+            },
+            {
+              "code": 302,
+              "indent": 0,
+              "parameters": [
+                0,
+                100,
+                1,
+                1000,
+                false
+              ]
+            },
+            {
+              "code": 605,
+              "indent": 0,
+              "parameters": [
+                1,
+                22,
+                0,
+                0
+              ]
+            },
+            {
+              "code": 605,
+              "indent": 0,
+              "parameters": [
+                2,
+                33,
+                0,
+                0
+              ]
+            },
+            {
+              "code": 0,
+              "indent": 0,
+              "parameters": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

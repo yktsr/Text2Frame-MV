@@ -1,0 +1,22 @@
+% 例1: アクターID6を加える 初期化
+<ChangePartyMember: 6, Add, Initialize>
+<ChangePartyMember: 6, +, true>
+<メンバーの入れ替え: 6, 加える, 初期化>
+
+% 例2: アクターID2を外す
+<ChangePartyMember: 2, Remove>
+<ChangePartyMember: 2, ->
+<メンバーの入れ替え: 2, 外す>
+
+% 二桁や、オプションの網羅
+% - チェックオン: `Initialize`, `初期化`, `true`, `1`, `オン`, `ON`
+% - チェックオフ: `false`, `0`, `オフ`, `OFF`, 省略
+<ChangePartyMember: 10, Add, 1>
+<ChangePartyMember: 10, Add, オン>
+<ChangePartyMember: 10, Add, ON>
+
+<ChangePartyMember: 10, Add, false>
+<ChangePartyMember: 10, Add, 0>
+<ChangePartyMember: 10, Add, オフ>
+<ChangePartyMember: 10, Add, OFF>
+<ChangePartyMember: 10, Add>
