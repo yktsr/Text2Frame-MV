@@ -155,8 +155,9 @@ Simple compiler to convert text to event.
 
 ## Contributor
 * [@Asyun3i9t](https://twitter.com/Asyun3i9t)
-[http://taikai-kobo.hatenablog.com/]
+  * [http://taikai-kobo.hatenablog.com/](http://taikai-kobo.hatenablog.com/)
 * inazumasoft:Shick
+  * [https://ci-en.net/creator/12715](https://ci-en.net/creator/12715)
 
 ## Development
 ### Install dependencies
