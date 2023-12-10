@@ -6,7 +6,10 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 2.2.0 2023/12/03: #102 未実装の全てのタグ追加
+// 2.2.0 2023/12/08:
+// ・#102 未実装の全てのタグ追加
+// ・#112 選択肢の表示において、デフォルトの選択肢をNoneまたはなしに設定してかつ、選択肢をキャンセルした時の処理に選択肢番号を整数で指定している場合に、選択肢をキャンセルした時の処理が設定されない不具合の修正
+// ・#113 ピクチャの表示やピクチャの移動において、幅・高さ・不透明度に0を設定すると誤って255に変換されてしまう不具合の修正
 // 2.1.0 2023/03/24: タグ追加
 // ・数値入力の処理タグ追加
 // ・アイテム選択の処理タグ追加
@@ -71,188 +74,12 @@
 // [GitHub] : https://github.com/yktsr/
 //= ============================================================================
 
-/*:
- *: @target MZ
- * @plugindesc Simple compiler to convert text to event command.
- * @author Yuki Katsura, えーしゅん
- *
- * @command IMPORT_MESSAGE_TO_EVENT
- * @text Import message to event
- * @desc Import a message to the event. Specify the source file information and the map, event, page ID, etc. to be imported.
- *
- * @arg FileFolder
- * @text Scenario Folder Name
- * @desc Setting of the folder name which the text file is stored. Default is "text".
- * @type string
- * @default text
- *
- * @arg FileName
- * @text Scenario File Name
- * @desc setting of text file name. Default is "message.txt".
- * @type string
- * @default message.txt
- *
- * @arg MapID
- * @text MapID
- * @desc Map ID of the output destination. Default is "1". It means that it is taken in the map ID 1.
- * @type number
- * @default 1
- *
- * @arg EventID
- * @text EventID
- * @desc setting of the eventID of the output destination. Default is "2". It means that it is taken in the event ID 2.
- * @type number
- * @default 2
- *
- * @arg PageID
- * @text PageID
- * @desc page ID of the output destination. Default is "1". It means that it is taken in the page ID 1.
- * @type number
- * @default 1
- *
- * @arg IsOverwrite
- * @text !!!Is overwrite!!!
- * @desc text is added to the end of event, this param can change it to overwrite. Default is false.
- * @default false
- * @type select
- * @option true(!!!overwrite!!!)
- * @value true
- * @option false(don't overwrite)
- * @value false
- * @default false
- *
- * @command IMPORT_MESSAGE_TO_CE
- * @text Import message to a common event.
- * @desc Import a message to a common event. Specify the source file information, the common event ID of the destination, etc.
- *
- * @arg FileFolder
- * @text Scenario Folder Name
- * @desc Setting of the folder name which the text file is stored. Default is "text".
- * @type string
- * @default text
- *
- * @arg FileName
- * @text Scenario File Name
- * @desc setting of text file name. Default is "message.txt".
- * @type string
- * @default message.txt
- *
- * @arg CommonEventID
- * @text Common Event ID
- * @desc setting of the common event ID of the output destination. Default is "1". It means that it is taken in the common event 1.
- * @type common_event
- * @default 1
- *
- * @arg IsOverwrite
- * @text !!!Is overwrite!!!
- * @desc text is added to the end of event, this param can change it to overwrite. Default is false.
- * @default false
- * @type select
- * @option true(!!!overwrite!!!)
- * @value true
- * @option false(don't overwrite)
- * @value false
- * @default false
- *
- * @param Default Window Position
- * @text Window Position
- * @desc Default setting of window position. Default is "Bottom". Command line mode can overwrite this option.
- * @type select
- * @option Top
- * @option Middle
- * @option Bottom
- * @default Bottom
- *
- * @param Default Background
- * @text Background
- * @desc Default setting of background. Default is "Window". Command line mode can overweite this option.
- * @type select
- * @option Window
- * @option Dim
- * @option Transparent
- * @default Window
- *
- * @param Default Scenario Folder
- * @text Scenario Folder Name
- * @desc Default setting of the folder name which the text file is stored. Default is "text".
- * @default text
- * @require 1
- * @dir text
- * @type string
- *
- * @param Default Scenario File
- * @text Scenario File Name
- * @desc Default setting of text file name. Default is "message.txt".
- * @default message.txt
- * @require 1
- * @dir text
- * @type string
- *
- * @param Default Common Event ID
- * @text Common Event ID
- * @desc Default setting of the common event ID of the output destination. Default is "1". It means that it is taken in the common event 1.
- * @default 1
- * @type common_event
- *
- * @param Default MapID
- * @text MapID
- * @desc Default setting of the map ID of the output destination. Default is "1". It means that it is taken in the map ID 1.
- * @default 1
- * @type number
- *
- * @param Default EventID
- * @text EventID
- * @desc Default setting of the eventID of the output destination. Default is "1". It means that it is taken in the event ID 2.
- * @default 2
- * @type number
- *
- * @param Default PageID
- * @text PageID
- * @desc page ID of the output destination. Default is "1". It means that it is taken in the page ID 1.
- * @default 1
- * @type number
- *
- * @param IsOverwrite
- * @text IsOverwrite
- * @desc In the default case, text is added to the end of event, this param can change it to overwrite. Default is false.
- * @default false
- * @type boolean
- *
- * @param Comment Out Char
- * @text Comment Out Char
- * @desc If this charactor is placed at the beginning of a line, this line is not taken. Default is %.
- * @default %
- * @type string
- *
- * @param IsDebug
- * @text IsDebug
- * @desc Detail log is outputted to console log (F8). Default is false.
- * @default false
- * @type boolean
- *
- * @param DisplayMsg
- * @text DisplayMsg
- * @desc Display messages when execution.
- * @default true
- * @type boolean
- *
- * @param DisplayWarning
- * @text DisplayWarning
- * @desc Display warnings when execution.
- * @default true
- * @type boolean
- *
- * @help
- * Update Soon.
- * Please see wiki.
- * https://github.com/yktsr/Text2Frame-MV/wiki
- */
-
 /* eslint-disable spaced-comment */
-/*:ja
+/*:
  * @target MZ
  * @plugindesc テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、開発支援プラグインです。ツクールMV・MZの両方に対応しています。
  * @author Yuki Katsura, えーしゅん
+ * @url https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Text2Frame.js
  *
  * @command IMPORT_MESSAGE_TO_EVENT
  * @text イベントにインポート
@@ -732,7 +559,7 @@
  * 例えば、
  *
  * ↓↓↓↓↓ここから例文4↓↓↓↓↓
- * <=: 1, 2>
+ * <Set: 1, 2>
  * <CommonEvent: 3>
  * 今日も一日がんばるぞい！
  * ↑↑↑↑↑ここまで例文4↑↑↑↑↑
@@ -3114,7 +2941,7 @@
  *  色調変更にかける時間と色調はオプションとして指定でき、
  *  指定しない場合はデフォルト値が設定されます。
  *
- *  "TintPicture"は"画面の色調変更"で代替できます。
+ *  "TintScreen"は"画面の色調変更"で代替できます。
  *
  *  オプションの指定方法を述べる前にいくつか具体例を記します。
  *  例1: 以下のデフォルト設定でピクチャの色調を変更する。
@@ -4152,6 +3979,7 @@
  * この方の貢献が非常に大きいです。感謝いたします。
  *
  *  inazumasoft:Shick 様
+ *  https://ci-en.net/creator/12715
  *
  * --------------------------------------
  * 連絡先
