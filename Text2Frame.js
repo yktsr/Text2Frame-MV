@@ -4048,57 +4048,6 @@ if (typeof PluginManager === 'undefined') {
     Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`
   }
 
-  const addMessage = function (text) {
-    if (Laurus.Text2Frame.DisplayMsg) {
-      $gameMessage.add(text)
-    }
-  }
-
-  const addWarning = function (warning) {
-    if (Laurus.Text2Frame.DisplayWarning) {
-      $gameMessage.add(warning)
-    }
-  }
-
-  const getDefaultPage = function () {
-    return {
-      conditions: {
-        actorId: 1,
-        actorValid: false,
-        itemId: 1,
-        itemValid: false,
-        selfSwitchCh: 'A',
-        selfSwitchValid: false,
-        switch1Id: 1,
-        switch1Valid: false,
-        switch2Id: 1,
-        switch2Valid: false,
-        variableId: 1,
-        variableValid: false,
-        variableValue: 0
-      },
-      directionFix: false,
-      image: { characterIndex: 0, characterName: '', direction: 2, pattern: 0, tileId: 0 },
-      list: [
-        { code: 0, indent: 0, parameters: [] }
-      ],
-      moveFrequency: 3,
-      moveRoute: {
-        list: [{ code: 0, parameters: [] }],
-        repeat: true,
-        skippable: false,
-        wait: false
-      },
-      moveSpeed: 3,
-      moveType: 0,
-      priorityType: 0,
-      stepAnime: false,
-      through: false,
-      trigger: 0,
-      walkAnime: true
-    }
-  }
-
   //= ============================================================================
   // Game_Interpreter
   //= ============================================================================
@@ -4132,6 +4081,57 @@ if (typeof PluginManager === 'undefined') {
   }
 
   Game_Interpreter.prototype.pluginCommandText2Frame = function (command, args) {
+    const addMessage = function (text) {
+      if (Laurus.Text2Frame.DisplayMsg) {
+        $gameMessage.add(text)
+      }
+    }
+
+    const addWarning = function (warning) {
+      if (Laurus.Text2Frame.DisplayWarning) {
+        $gameMessage.add(warning)
+      }
+    }
+
+    const getDefaultPage = function () {
+      return {
+        conditions: {
+          actorId: 1,
+          actorValid: false,
+          itemId: 1,
+          itemValid: false,
+          selfSwitchCh: 'A',
+          selfSwitchValid: false,
+          switch1Id: 1,
+          switch1Valid: false,
+          switch2Id: 1,
+          switch2Valid: false,
+          variableId: 1,
+          variableValid: false,
+          variableValue: 0
+        },
+        directionFix: false,
+        image: { characterIndex: 0, characterName: '', direction: 2, pattern: 0, tileId: 0 },
+        list: [
+          { code: 0, indent: 0, parameters: [] }
+        ],
+        moveFrequency: 3,
+        moveRoute: {
+          list: [{ code: 0, parameters: [] }],
+          repeat: true,
+          skippable: false,
+          wait: false
+        },
+        moveSpeed: 3,
+        moveType: 0,
+        priorityType: 0,
+        stepAnime: false,
+        through: false,
+        trigger: 0,
+        walkAnime: true
+      }
+    }
+
     Laurus.Text2Frame.ExecMode = command.toUpperCase()
     switch (Laurus.Text2Frame.ExecMode) {
       // for custom plugin command
