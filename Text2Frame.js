@@ -9148,42 +9148,53 @@ if (typeof PluginManager === 'undefined') {
       return out_events
     }
 
-    let scenario_text = readText(Laurus.Text2Frame.TextPath)
-    scenario_text = uniformNewLineCode(scenario_text)
-    scenario_text = eraseCommentOutLines(scenario_text, Laurus.Text2Frame.CommentOutChar)
-    let block_map = {};
+    const convert = function (text) {
+      let scenario_text = uniformNewLineCode(text)
+      scenario_text = eraseCommentOutLines(scenario_text, Laurus.Text2Frame.CommentOutChar)
+      let block_map = {};
 
-    ['script', 'comment', 'scrolling'].forEach(function (block_name) {
-      const t = getBlockStatement(scenario_text, block_name)
-      scenario_text = t.scenario_text
-      block_map = Object.assign(block_map, t.block_map)
-    })
+      ['script', 'comment', 'scrolling'].forEach(function (block_name) {
+        const t = getBlockStatement(scenario_text, block_name)
+        scenario_text = t.scenario_text
+        block_map = Object.assign(block_map, t.block_map)
+      })
 
-    const text_lines = scenario_text.split('\n')
-    let event_command_list = []
-    let previous_text = ''
-    let window_frame = null
-    let block_stack = []
-    for (let i = 0; i < text_lines.length; i++) {
-      const text = text_lines[i]
+      const text_lines = scenario_text.split('\n')
+      let event_command_list = []
+      let previous_text = ''
+      let window_frame = null
+      let block_stack = []
+      for (let i = 0; i < text_lines.length; i++) {
+        const text = text_lines[i]
 
-      if (text) {
-        let previous_frame = window_frame
-        if (previous_frame === null) {
-          previous_frame = event_command_list.slice(-1)[0]
+        if (text) {
+          let previous_frame = window_frame
+          if (previous_frame === null) {
+            previous_frame = event_command_list.slice(-1)[0]
+          }
+          const return_obj = getEvents(text, previous_text, window_frame, previous_frame, block_stack, block_map)
+          window_frame = return_obj.window_frame
+          const new_event_command_list = return_obj.event_command_list
+          block_stack = return_obj.block_stack
+          event_command_list = event_command_list.concat(new_event_command_list)
         }
-        const return_obj = getEvents(text, previous_text, window_frame, previous_frame, block_stack)
-        window_frame = return_obj.window_frame
-        const new_event_command_list = return_obj.event_command_list
-        block_stack = return_obj.block_stack
-        event_command_list = event_command_list.concat(new_event_command_list)
+        logger.log(i, text)
+        previous_text = text
       }
-      logger.log(i, text)
-      previous_text = text
+
+      event_command_list = completeLackedBottomEvent(event_command_list)
+      event_command_list = autoIndent(event_command_list)
+      return event_command_list
     }
 
-    event_command_list = completeLackedBottomEvent(event_command_list)
-    event_command_list = autoIndent(event_command_list)
+    module.exports = { convert }
+
+    if (Laurus.Text2Frame.TextPath === undefined) {
+      return
+    }
+
+    const scenario_text = readText(Laurus.Text2Frame.TextPath)
+    const event_command_list = convert(scenario_text)
     event_command_list.push(getCommandBottomEvent())
 
     switch (Laurus.Text2Frame.ExecMode) {
@@ -9250,6 +9261,9 @@ if (typeof PluginManager === 'undefined') {
         '**セーブせずに**プロジェクトファイルを開き直してください'
     )
   }
+
+  // export convert func.
+  Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [0])
 })()
 
 // developer mode
