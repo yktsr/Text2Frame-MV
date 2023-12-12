@@ -6299,7 +6299,7 @@ if (typeof PluginManager === 'undefined') {
       return events.concat(bottom)
     }
 
-    const _getEvents = function (text, frame_param, block_stack) {
+    const _getEvents = function (text, frame_param, block_stack, block_map) {
       const face = text.match(/<face *: *(.+?)>/i) || text.match(/<FC *: *(.+?)>/i) || text.match(/<顔 *: *(.+?)>/i)
       const window_position =
         text.match(/<windowposition *: *(.+?)>/i) || text.match(/<WP *: *(.+?)>/i) || text.match(/<位置 *: *(.+?)>/i)
@@ -8960,9 +8960,9 @@ if (typeof PluginManager === 'undefined') {
       return event_command_list
     }
 
-    const getEvents = function (text, previous_text, window_frame, previous_frame, block_stack) {
+    const getEvents = function (text, previous_text, window_frame, previous_frame, block_stack, block_map) {
       let event_command_list = []
-      const events = _getEvents(text, window_frame, block_stack)
+      const events = _getEvents(text, window_frame, block_stack, block_map)
       const PRE_CODE = 101
       const CHOICE_CODE = 102
       const TEXT_CODE = 401
