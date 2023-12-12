@@ -4024,7 +4024,7 @@ if (typeof PluginManager === 'undefined') {
     Laurus.Text2Frame.PageID = '1'
     Laurus.Text2Frame.IsOverwrite = true
     Laurus.Text2Frame.CommentOutChar = '%'
-    Laurus.Text2Frame.IsDebug = true
+    Laurus.Text2Frame.IsDebug = false
     Laurus.Text2Frame.DisplayMsg = true
     Laurus.Text2Frame.DisplayWarning = true
   } else {
