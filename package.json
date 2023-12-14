@@ -3,6 +3,7 @@
   "version": "1.4.0",
   "description": "Simple compiler to convert text to event.",
   "main": "Text2Frame.js",
+  "types": "esm.d.ts",
   "directories": {
     "test": "test"
   },
