@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "mocha --inline-diffs test",
+    "test": "mocha --inline-diffs --reporter-option maxDiffSize=0 test",
     "lint": "eslint --max-warnings=0 Text2Frame.js",
     "debug": "node Text2Frame.js"
   },
@@ -25,5 +25,10 @@
     "eslint-config-standard": "^17.1.0",
     "mocha": ">=10.2.0",
     "sinon": ">=9.0.2"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "rollup": "^4.8.0"
   }
 }
