@@ -3998,20 +3998,10 @@ Laurus.Text2Frame = {}
 
 if (typeof PluginManager === 'undefined') {
   // for test
-  /* eslint-disable no-global-assign */
-  Game_Interpreter = {}
-  Game_Interpreter.prototype = {}
-  $gameMessage = {}
-  $gameMessage.add = function () {}
-  /* eslint-enable no-global-assign */
 }
 
 (function () {
   'use strict'
-  const fs = require('fs')
-  const path = require('path')
-  const PATH_SEP = path.sep
-  const BASE_PATH = path.dirname(process.mainModule.filename)
 
   if (typeof PluginManager === 'undefined') {
     Laurus.Text2Frame.WindowPosition = 'Bottom'
@@ -4027,7 +4017,18 @@ if (typeof PluginManager === 'undefined') {
     Laurus.Text2Frame.IsDebug = false
     Laurus.Text2Frame.DisplayMsg = true
     Laurus.Text2Frame.DisplayWarning = true
+    Laurus.Text2Frame.TextPath = 'dummy'
+    Laurus.Text2Frame.MapPath = 'dummy'
+    Laurus.Text2Frame.CommonEventPath = 'dummy'
+
+    globalThis.Game_Interpreter = {}
+    Game_Interpreter.prototype = {}
+    globalThis.$gameMessage = {}
+    $gameMessage.add = function () {}
   } else {
+    const path = require('path')
+    const PATH_SEP = path.sep
+    const BASE_PATH = path.dirname(process.mainModule.filename)
     // for default plugin command
     Laurus.Text2Frame.Parameters = PluginManager.parameters('Text2Frame')
     Laurus.Text2Frame.WindowPosition = String(Laurus.Text2Frame.Parameters['Default Window Position'])
@@ -4044,8 +4045,8 @@ if (typeof PluginManager === 'undefined') {
     Laurus.Text2Frame.DisplayMsg = (String(Laurus.Text2Frame.Parameters.DisplayMsg) === 'true')
     Laurus.Text2Frame.DisplayWarning = (String(Laurus.Text2Frame.Parameters.DisplayWarning) === 'true')
     Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
-    Laurus.Text2Frame.MapPath = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
-    Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`
+    Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
+    Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
   }
 
   //= ============================================================================
@@ -4151,10 +4152,6 @@ if (typeof PluginManager === 'undefined') {
           Laurus.Text2Frame.PageID = args[4]
         }
         if (args[5] && args[5].toLowerCase() === 'true') Laurus.Text2Frame.IsOverwrite = true
-        if (args[0] || args[1]) {
-          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
-          Laurus.Text2Frame.MapPath = `${BASE_PATH}${path.sep}data${path.sep}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
-        }
         break
       case 'IMPORT_MESSAGE_TO_CE' :
       case 'メッセージをコモンイベントにインポート' :
@@ -4165,12 +4162,10 @@ if (typeof PluginManager === 'undefined') {
           Laurus.Text2Frame.FileName = args[1]
           Laurus.Text2Frame.CommonEventID = args[2]
           Laurus.Text2Frame.IsOverwrite = (args[3] === 'true')
-          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
-          Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`
         }
         break
       case 'COMMAND_LINE' :
-        Laurus.Text2Frame.ExecMode = args[0]
+      case 'LIBRARY_EXPORT' :
         break
       default:
         return
@@ -4188,6 +4183,7 @@ if (typeof PluginManager === 'undefined') {
     }
 
     const readText = function (filepath) {
+      const fs = require('fs')
       try {
         return fs.readFileSync(filepath, { encoding: 'utf8' })
       } catch (e) {
@@ -4213,6 +4209,7 @@ if (typeof PluginManager === 'undefined') {
     }
 
     const writeData = function (filepath, jsonData) {
+      const fs = require('fs')
       try {
         fs.writeFileSync(filepath, JSON.stringify(jsonData, null, '  '), { encoding: 'utf8' })
       } catch (e) {
@@ -9187,9 +9184,8 @@ if (typeof PluginManager === 'undefined') {
       return event_command_list
     }
 
-    module.exports = { convert }
-
-    if (Laurus.Text2Frame.TextPath === undefined) {
+    Laurus.Text2Frame.export = { convert }
+    if (Laurus.Text2Frame.ExecMode === 'LIBRARY_EXPORT') {
       return
     }
 
@@ -9263,13 +9259,17 @@ if (typeof PluginManager === 'undefined') {
   }
 
   // export convert func.
-  Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [0])
+  Game_Interpreter.prototype.pluginCommandText2Frame('LIBRARY_EXPORT', [0])
 })()
+
+if (typeof module !== 'undefined') {
+  module.exports = Laurus.Text2Frame.export
+}
 
 // developer mode
 //
 // $ node Text2Frame.js
-if (typeof require.main !== 'undefined' && require.main === module) {
+if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && require.main === module) {
   const program = require('commander')
   program
     .version('0.0.1')
