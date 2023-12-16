@@ -18,12 +18,14 @@ Simple compiler to convert text to event.
 高度な使い方やプラグインパラメータの詳細は[wiki](https://github.com/yktsr/Text2Frame-MV/wiki)を参照してください。
 
 ***デモ/Quick Start***
+
 1. シナリオファイルを作成します
 1. text/message.txtとして保存します
-1. イベントコマンド（メッセージをイベントへインポート）を作成します
+1. プラグインコマンドを実行するイベントを作成します
+1. プラグインコマンドを設定します
 1. 書き出し先のイベントを作成します
-1. イベントのタイルを踏み、実行します
-1. プロジェクトを開き直します
+1. プラグインコマンドをテストで実行します
+1. プロジェクトをリロードするか、開き直します
 
 より詳細な手順は[wiki](https://github.com/yktsr/Text2Frame-MV/wiki)を参照してください。
 
@@ -61,6 +63,76 @@ Simple compiler to convert text to event.
 ![./introduce_WindowPosition.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_namebox.png)
 
 
+## イベントコマンドを組み込むタグ
+「文章の表示」以外にも、他のすべてのイベントコマンドにも対応しています。
+以下のタグをメッセージの間に挟むことで、そのタグがイベントコマンドに置き換わります。
+例えば、
+```
+<Set: 1, 2>
+<CommonEvent: 3>
+今日も一日がんばるぞい！
+```
+とすることで、「今日も一日がんばるぞい！」というメッセージの前に、「変数の操作(変数1に定数2を代入する)」と「コモンイベント(ID3)」のイベントコマンドが組み込まれます。
+
+全てのタグの詳細は[wikiの文法ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%86%E3%82%AD%E3%82%B9%E3%83%88%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9)や
+プラグイン本体のヘルプ文に記載しています。
+
+
+### よく使われるイベントコマンドの早見表
+以下に、よく使われるイベントコマンドに絞って早見表を記載しています。ここに記載しているもの以外にも、すべてのイベントコマンドに対応しています。
+
+|イベントコマンド|タグ|詳細|
+|:-|:-|:-|
+|選択肢の表示|\<ShowChoices\><br><When: はい><br>選択肢1を選んだ時の処理<br><When: いいえ><br>選択肢2を選んだ時の処理<br>\<End\>|「はい」と「いいえ」の選択肢を表示する。|
+|スイッチの操作(ON)| <Switch: 1, ON> | スイッチ1をONにする。|
+|スイッチの操作(OFF)| <Switch: 1, OFF> | スイッチ1をOFFにする。|
+|変数の操作(代入)| <Set: 1, 2> |変数1に定数2を代入する。|
+|変数の操作(加算)| <Add: 1, V[20]>|変数1に変数20の値を加算する。|
+|変数の操作(減算)| <Sub: 1, R\[50\]\[100\]>|変数1に最小値50最大値50の乱数を減算する。|
+|変数の操作(乗算)| <Mul: 1-10, GD\[Item\]\[2\]>|変数1~10にID2のアイテムの所持数を乗算する。|
+|変数の操作(除算)| <Div: 1, GD\[BattleCount\]\> |変数1に戦闘回数を除算する。|
+|変数の操作(剰余)| <Mod: 1-10, SC\[$dataMap.width;\]>|変数1〜10に"$dataMap.width"の値の剰余を代入する。|
+|セルフスイッチの操作(ON)|<SelfSwitch: A, ON>|セルフスイッチAをONにする。|
+|セルフスイッチの操作(OFF)|<SelfSwitch: A, OFF>|セルフスイッチAをOFFにする。|
+|条件分岐|<If: Switch[1], ON><br>条件を満たしている時の処理<br>\<Else\><br>条件を満たしていない時の処理<br>\<End\>|「スイッチ1がONの場合」という条件で処理を分岐する。|
+|ループ|\<Loop\><br>ループしたい処理<br>\<RepeatAbove\>|処理をループする。|
+|ループの中断|\<BreakLoop\>|ループ処理を該当箇所で中断する。|
+|コモンイベント|<CommonEvent: 1>|ID1のコモンイベントを挿入する。|
+|ラベルを設定する|\<Label: サンプル\>|"サンプル"というラベルを設定する。|
+|ラベルジャンプ|\<JumpToLabel: サンプル\>|"サンプル"というラベルへ処理をジャンプする。|
+|注釈|\<comment\><br>今日も一日がんばるぞい！<br>\</comment\>|"今日も一日がんばるぞい！"という注釈を挿入する。|
+|所持金の増減|<ChangeGold: Increase, 100>|所持金を100増やす。|
+|アイテムの増減|<ChangeItems: 3, Increase, 4>|IDが3のアイテムを4つ増やす。|
+|武器の増減|<ChangeWeapons: 1, Increase, 2>|IDが1の武器を2つ増やす。|
+|防具の増減|<ChangeArmors: 1, Increase, 2>|IDが1の防具を2つ増やす。|
+|場所移動|<TransferPlayer: Direct[1][10][20], Retain, Black>|向きがそのままで、フェードが黒で、IDが1のマップのX座標10,Y座標20に移動。|
+|ピクチャの表示|<ShowPicture: 1, Castle, Scale[50][55]>|幅50%, 高さ55%でCastle.pngの番号1の画像を表示する。|
+|ピクチャの移動|<MovePicture: 1, Position[Center][200][Variables[3]]>|原点は中央で、X座標は200,Y座標は変数3の位置に番号1の画像を移動する。|
+|ピクチャの回転|<RotatePicture: 1, -30>|速度が-30で番号1のピクチャを回転する|
+|ピクチャの色調変更|<TintPicture: 1, Duration[60], ColorTone[0][100][255][50]>|赤0, 緑100, 青255, グレイ50に、60フレーム(1秒)かけて番号1のピクチャの色調を変更する。|
+|ピクチャの消去|<ErasePicture: 1>|番号1のピクチャを削除する。|
+|ウェイト|<Wait: 60>|60フレーム(1秒)のウェイトを挿入する。|
+|画面のフェードアウト|\<FadeOut\>|画面のフェードアウトを挿入する。|
+|画面のフェードイン|\<FadeIn\>|画面のフェードインを挿入する。|
+|画面の色調変更|<TintScreen: Duration[60], ColorTone[0][100][255][50]>|赤0, 緑100, 青255, グレイ50に、60フレーム(1秒)かけて画面の色調を変更する。|
+|画面のフラッシュ|<FlashScreen: 50, 100, 150, 170, 60>|赤50, 緑100, 青150, 強さ170で60フレーム(1秒)かけてフラッシュする。|
+|画面のシェイク|<ShakeScreen: 5, 8, 60>|強さ5、速さ8で60フレームかけて画面をシェイクする。|
+|BGMの演奏|<PlayBGM: Battle1, 90, 100, 0>|BGMをBattle1に、音量90,ピッチ100, 位相0で変更する。|
+|BGMのフェードアウト|<FadeoutBGM: 10>|10秒かけてBGMをフェードアウトする。|
+|BGSの演奏|<PlayBGS: City, 90, 100, 0>|BGSをCityに、音量90,ピッチ100, 位相0で変更する。|
+|BGSのフェードアウト|<FadeoutBGS: 20>|10秒かけてBGSをフェードアウトする。|
+|MEの演奏|<PlayME: Curse1, 90, 100, 0>|Curse1をMEとして、音量90,ピッチ100, 位相0で演奏する。|
+|SEの演奏|<PlaySE: Attack1, 90, 100, 0>|Attack1をSEとして、音量90,ピッチ100, 位相0で演奏する。|
+|SEの停止|\<StopSE\>|SEの停止イベントを挿入する。|
+|戦闘の処理|<BattleProcessing: 1>|敵グループ1と戦闘する。|
+|戦闘の処理（負けイベント）|<BattleProcessing: 1><br>\<IfWin\><br>勝利した時の処理<br>\<IfLose\><br>敗北したときの処理<br>\<End\>|敵グループ1と敗北可能でエンカウント。|
+|セーブ画面を開く|\<OpenSaveScreen\>|セーブ画面を開く。|
+|スクリプト|<script><br>console.log("ぞい！");<br></script>|"console.log("ぞい！");"をスクリプトイベントとして組み込む。|
+|プラグインコマンド|<PluginCommand: IMPORT_MESSAGE_TO_EVENT>|"IMPORT_MESSAGE_TO_EVENT"をプラグインコマンドとして組み込む。|
+
+より具体的かつその他のイベントコマンドのサンプルは、[動作確認用テキスト文例ページ](https://github.com/yktsr/Text2Frame-MV/wiki/動作確認テキスト)を参照してください。
+
+
 ## その他の機能
 ### コメントアウト
 取り込みたい文章の行の先頭に「%」を記載すると、それはコメントと見なされ、取り込まれません。
@@ -78,80 +150,14 @@ Simple compiler to convert text to event.
 詳細は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3)を参照してください。
 
 
-## 追加機能のタグ
-「文章の表示」以外にも、いくつかのイベントコマンドにも対応しています。
-以下のタグをメッセージの間に挟むことで、そのタグがイベントコマンドに置き換わります。
-例えば、
-```
-<=: 1, 2>
-<CommonEvent: 3>
-今日も一日がんばるぞい！
-```
-とすることで、「今日も一日がんばるぞい！」というメッセージの前に、「変数の操作(変数1に定数2を代入する)」と「コモンイベント(ID3)」のイベントコマンドが組み込まれます。
-
-
-### 組み込めるイベントコマンドの早見表
-|イベントコマンド|タグ(いずれか)|意味|
-|:-|:-|:-|
-|メッセージウィンドウの顔|<Face: Actor1(0)><br><FC: Actor1(0)><br><顔: Actor1(0)>|ウインドウに表示される顔をActor1.pngの位置0(一番左上)に変更する。|
-|メッセージウィンドウの位置|<WindowPosition: Top><br><WP: Top><br><位置: 上>|ウインドウの位置を上に変更する。|
-|メッセージウィンドウの背景|<Background: Dim><br><BG: Dim><br><背景:暗く>|ウインドウの背景を暗くする。|
-|選択肢の表示|\<ShowChoices\><br><When: はい><br>選択肢1を選んだ時の処理<br><When: いいえ><br>選択肢2を選んだ時の処理<br>\<End\>|「はい」と「いいえ」の選択肢を表示する|
-|数値入力の処理|<InputNumber: 1, 2><br><INN: 1, 2><br><数値入力の処理: 1, 2>|変数1に桁数2で数値入力する。|
-|アイテム選択の処理|<SelectItem: 1, Regular Item><br><SI: 1, REGULAR ITEM><br><アイテム選択の処理: 1, 通常アイテム>|通常アイテムの一覧を表示し選択されたアイテムのIDを変数1に代入する。|
-|文章のスクロール表示|<ShowScrollingText: 2, OFF><br>世界は魔王によって滅ぼされた。<br>しかし、勇者は立ち上がった。<br>\</ShowScrollingText\>|速度を"2"で文章をスクロール|
-|スイッチの操作(ON)| <Switch: 1, ON><br><SW: 1, true><br><スイッチ: 1, オン> | スイッチ1をONにする。|
-|スイッチの操作(OFF)| <Switch: 1, OFF><br><SW: 1, false><br><スイッチ: 1, オフ> | スイッチ1をOFFにする。|
-|変数の操作<br>(代入, 単一, 定数)| <Set: 1, 2><br><=: 1, 2><br><代入: 1, 2> |変数1に定数2を代入する。|
-|変数の操作<br>(加算, 範囲, 変数)| <Add: 1, Variables[20]><br><+: 1, V[20]><br><加算: 1, 変数[20]>|変数1~10に変数20の値を加算する。|
-|変数の操作<br>(減算, 単一, 乱数)| <Sub: 1, Random\[50\]\[100\]><br><-: 1, R\[50\]\[100\]><br><減算: 1, 乱数\[50\]\[100\]>|変数1に最小値50最大値50の乱数を減算する。|
-|変数の操作<br>(乗算, 範囲, ゲームデータ)| <Mul: 1-10, GameData\[Item\]\[2\]><br><*: 1-10, GD\[Item\]\[2\]><br><乗算: 1-10, ゲームデータ\[アイテム\]\[2\]>|変数1~10にID2のアイテムの所持数を乗算する。|
-|変数の操作<br>(除算, 単一, ゲームデータ)| <Div: 1, GameData\[BattleCount\]><br></: 1, GD\[BattleCount\]\><br><除算: 1, ゲームデータ\[戦闘回数\]> |変数1に戦闘回数を除算する。|
-|変数の操作<br>(剰余, 範囲, スクリプト| <Mod: 1-10, Script\[$dataMap.width;\]><br><%: 1-10, SC\[$dataMap.width;\]><br><剰余: 1-10, スクリプト\[$dataMap.width;\]>|変数1〜10に"$dataMap.width"の値の剰余を代入する。|
-|セルフスイッチの操作(ON)|<SelfSwitch: A, ON><br><SSW: A, ON><br><セルフスイッチ: A, ON>|セルフスイッチAをONにする。|
-|セルフスイッチの操作(OFF)|<SelfSwitch: A, OFF><br><SSW: A, OFF><br><セルフスイッチ: A, OFF>|セルフスイッチAをOFFにする。|
-|タイマーの操作<br>(開始)|<Timer: Start, 1, 10><br><タイマー: スタート, 1, 10>|タイマーを1分10秒で開始する。|
-|タイマーの操作<br>(停止)|<Timer: Stop><br><タイマー: ストップ>|タイマーを停止する。|
-|条件分岐|<If: Switch[1], ON><br>条件を満たしている時の処理<br>\<Else\><br>条件を満たしていない時の処理<br>\<End\>|「スイッチ1がONの場合」という条件で処理を分岐する。|
-|ループ|\<Loop\><br>ループしたい処理<br>\<RepeatAbove\>|処理をループする。|
-|ループの中断|\<BreakLoop\><br> <ループの中断><br>\<BL\>|ループ処理を該当箇所で中断する。|
-|イベント処理の中断|\<ExitEventProcessing\><br>\<イベント処理の中断\><br>\<EEP\>|イベントを該当箇所で中断する。|
-|コモンイベント|<CommonEvent: 1><br><CE: 1><br><コモンイベント: 1>|ID1のコモンイベントを挿入する。|
-|ラベルを設定する|\<Label: サンプル\><br>\<ラベル: サンプル\>|"サンプル"というラベルを設定する。|
-|ラベルジャンプ|\<JumpToLabel: サンプル\><br>\<ラベルジャンプ: サンプル\><br>\<JTL: サンプル\>|"サンプル"というラベルへ処理をジャンプする。|
-|注釈|\<comment\><br>今日も一日がんばるぞい！<br>\</comment\>|"今日も一日がんばるぞい！"という注釈を挿入する。<br>(コメントアウト機能とは違ってイベントコマンドとして組み込まれる)|
-|ピクチャの表示|<ShowPicture: 1, Castle, Scale[50][55]><br><ピクチャの表示: 1, Castle, 拡大率[50][55]><br><SP: 1, Castle, Scale[50][55]>|幅50%, 高さ55%でCastle.pngの番号1の画像を表示する。|
-|ピクチャの移動|<MovePicture: 1, Position[Center][Variables[2]][Variables[3]]><br><ピクチャの移動: 1, 位置[中央][変数[2]][変数[3]]><br><MP: 1, Position[Center][V[2]][V[3]]>|原点は中央で、X座標は変数2,Y座標は変数3の位置に番号1の画像を移動する。|
-|ピクチャの回転|<RotatePicture: 1, -30><br><ピクチャの回転: 1, -30><br><RP: 1, -30>|速度が-30で番号1のピクチャを回転する|
-|ピクチャの色調変更|<TintPicture: 1, ColorTone[0][255][255][0]><br><ピクチャの色調変更: 1, 色調[0][255][255][0]><br><TP: 1, CT[0][255][255][0]>|赤0, 緑255, 青255, グレイ0に番号1のピクチャの色調を変更する。|
-|ピクチャの消去|<ErasePicture: 1><br><ピクチャの消去: 1><br><EP: 1>|番号1のピクチャを削除する。|
-|ウェイト|<Wait: 60><br><ウェイト: 60>|60フレーム(1秒)のウェイトを挿入する。|
-|画面のフェードアウト|\<FadeOut\><br>\<FO\><br>\<フェードアウト\>|画面のフェードアウトを挿入する。|
-|画面のフェードイン|\<FadeIn\><br>\<FI\><br>\<フェードイン\>|画面のフェードインを挿入する。|
-|BGMの演奏|<PlayBGM: Battle1, 90, 100, 0><br><BGMの演奏: Battle1, 90, 100, 0>|BGMをBattle1に、音量90,ピッチ100, 位相0で変更する。|
-|BGMのフェードアウト|<FadeoutBGM: 10><br><BGMのフェードアウト: 10>|10秒かけてBGMをフェードアウトする。|
-|BGMの保存|\<SaveBGM\><br><BGMの保存>|BGMの保存イベントを挿入する。|
-|BGMの再開|\<ReplayBGM\><br><BGMの再開>|BGMの再開イベントを挿入する。|
-|BGSの演奏|<PlayBGS: City, 90, 100, 0><br><BGSの演奏: City, 90, 100, 0>|BGSをCityに、音量90,ピッチ100, 位相0で変更する。|
-|BGSのフェードアウト|<FadeoutBGS: 20><br><BGSのフェードアウト>|10秒かけてBGSをフェードアウトする。|
-|MEの演奏|<PlayME: Curse1, 90, 100, 0><br><MEの演奏: Curse1>|Curse1をMEとして、音量90,ピッチ100, 位相0で演奏する。|
-|SEの演奏|<PlaySE: Attack1, 90, 100, 0><br><SEの演奏: Attack1, 90, 100, 0>|Attack1をSEとして、音量90,ピッチ100, 位相0で演奏する。|
-|SEの停止|\<StopSE\><br><SEの停止>|SEの停止イベントを挿入する。|
-|戦闘曲の変更|<ChangeBattleBGM: Battle2, 90, 100, 0><br><戦闘曲の変更: Battle2, 90, 100, 0>|戦闘BGMをBattle2に、音量90,ピッチ100, 位相0で変更する。|
-|スクリプト|<script><br>console.log("ぞい！");<br></script>|"console.log("ぞい！");"をスクリプトイベントとして組み込む。|
-|プラグインコマンド|<PluginCommand: IMPORT_MESSAGE_TO_EVENT><br><プラグインコマンド: IMPORT_MESSAGE_TO_EVENT><br><PC: IMPORT_MESSAGE_TO_EVENT>|"IMPORT_MESSAGE_TO_EVENT"をプラグインコマンドとして組み込む。|
-
-タグの詳細は[wikiの文法ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%86%E3%82%AD%E3%82%B9%E3%83%88%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9)や
-また、プラグイン本体のヘルプ文にも詳細を記しています。
-
-
 ## Author/連絡先
 * [@kryptos_nv](https://twitter.com/kryptos_nv)
 
 ## Contributor
 * [@Asyun3i9t](https://twitter.com/Asyun3i9t)
-[http://taikai-kobo.hatenablog.com/]
-
+  * [大海工房](http://taikai-kobo.hatenablog.com/)
+* inazumasoft:Shick
+  * [いなずまそふと制作支援部](https://ci-en.net/creator/12715)
 
 ## Development
 ### Install dependencies
