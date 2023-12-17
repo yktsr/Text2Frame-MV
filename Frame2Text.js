@@ -587,6 +587,7 @@ if (typeof PluginManager === 'undefined') {
       const variablesText = EnglishTag ? 'Variables[' + operandValue + ']' : '変数[' + operandValue + ']'
       if (operandType === 0) return Number(operandValue)
       else if (operandType === 1) return variablesText
+      else if (operandType === 2) return EnglishTag ? 'Random' : 'ランダム'
       else return Number(operandValue)
     }
     const getCheckBoxValue = (checkBoxValue) => {
@@ -646,9 +647,9 @@ if (typeof PluginManager === 'undefined') {
       else if (location === 2) return EnglishTag ? 'Armor' : '防具'
       else return EnglishTag ? 'Item' : 'アイテム'
     }
-    const getStandardOrSpecifyValue = (location) => {
-      if (location === 0) return EnglishTag ? 'Standard' : '標準'
-      else if (location === 1) return EnglishTag ? 'Specify' : '指定'
+    const getStandardOrSpecifyValue = (price, priceValue) => {
+      if (price === 0) return EnglishTag ? 'Standard' : '標準'
+      else if (price === 1) return priceValue
       else return EnglishTag ? 'Standard' : '標準'
     }
     const getDirectionValue = (direction) => {
@@ -2036,7 +2037,7 @@ if (typeof PluginManager === 'undefined') {
         text += tag
       }
       if (event.code === 261) {
-        const movie = event.parameters[0]
+        const movie = getNone(event.parameters[0])
         const tag = EnglishTag ? '<PlayMovie: ' : '<ムービーの再生: '
         addNewLineIndent(indent)
         text += tag + movie + '>'
@@ -2186,33 +2187,48 @@ if (typeof PluginManager === 'undefined') {
       // シーン制御
       /** ********************************************** */
       if (event.code === 301) {
-        const troop = getDirectOrVariablesOrRandomValue(event.parameters[0]) + comma
-        const troopValue = event.parameters[1] + comma
-        const canEscape = getCheckBoxValue(event.parameters[2]) + comma
-        const canLose = getCheckBoxValue(event.parameters[3])
+        const troop = getFixedOrVariable(event.parameters[0], event.parameters[1])
         const tag = EnglishTag ? '<BattleProcessing: ' : '<戦闘の処理: '
-        text += indent + tag + troop + troopValue + canEscape + canLose + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + troop + '>'
       }
-      if (event.code === 601) text += EnglishTag ? '<IfWin>' + newLine : '<勝ったとき>' + newLine
-      if (event.code === 602) text += EnglishTag ? '<IfEscape>' + newLine : '<逃げたとき>' + newLine
-      if (event.code === 603) text += EnglishTag ? '<IfLose>' + newLine : '<負けたとき>' + newLine
-      if (event.code === 604) text += EnglishTag ? '<IfEnd>' + newLine : '<戦闘処理分岐終了>' + newLine
+      if (event.code === 601) {
+        addNewLineIndent(indent)
+        text += EnglishTag ? '<IfWin>' + newLine : '<勝ったとき>'
+      }
+      if (event.code === 602) {
+        addNewLineIndent(indent)
+        text += EnglishTag ? '<IfEscape>' + newLine : '<逃げたとき>'
+      }
+      if (event.code === 603) {
+        addNewLineIndent(indent)
+        text += EnglishTag ? '<IfLose>' + newLine : '<負けたとき>'
+      }
+      if (event.code === 604) {
+        addNewLineIndent(indent)
+        text += EnglishTag ? '<End>' + newLine : '<分岐終了>'
+      }
       if (event.code === 302) {
         const merchandise = getItemOrWeaponOrArmorValue(event.parameters[0]) + comma
         const merchandiseId = event.parameters[1] + comma
-        const price = getStandardOrSpecifyValue(event.parameters[2]) + comma
-        const priceValue = event.parameters[3] + comma
+        const priceValue = getStandardOrSpecifyValue(event.parameters[2], event.parameters[3])
         const purchaseOnly = getCheckBoxValue(event.parameters[4])
         const tag = EnglishTag ? '<ShopProcessing: ' : '<ショップの処理: '
-        text += indent + tag + merchandise + merchandiseId + price + priceValue + purchaseOnly + '>' + newLine
+        addNewLineIndent(indent)
+        text += tag + purchaseOnly + '>'
+        // 一つ目の商品
+        const tag2 = EnglishTag ? '<Merchandise: ' : '<商品: '
+        addNewLineIndent(indent)
+        text += tag2 + merchandise + merchandiseId + priceValue + '>'
       }
       if (event.code === 605) {
         const merchandise = getItemOrWeaponOrArmorValue(event.parameters[0]) + comma
         const merchandiseId = event.parameters[1] + comma
-        const price = getStandardOrSpecifyValue(event.parameters[2]) + comma
-        const priceValue = event.parameters[3]
-        const tag = EnglishTag ? '<ShopProcessingSecondLineOnwards: ' : '<ショップの処理2行目以降: '
-        text += indent + tag + merchandise + merchandiseId + price + priceValue + '>' + newLine
+        const priceValue = getStandardOrSpecifyValue(event.parameters[2], event.parameters[3])
+        // 二つ目以降の商品
+        const tag = EnglishTag ? '<Merchandise: ' : '<商品: '
+        addNewLineIndent(indent)
+        text += tag + merchandise + merchandiseId + priceValue + '>'
       }
       if (event.code === 303) {
         const actorId = event.parameters[0] + comma
