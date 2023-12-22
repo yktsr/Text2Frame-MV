@@ -599,6 +599,23 @@ if (typeof PluginManager === 'undefined') {
       else if (checkBoxValue === true) return EnglishTag ? 'true' : 'ON'
       else return EnglishTag ? 'false' : 'OFF'
     }
+    const getCheckBoxOnOffValue = (checkBoxValue) => {
+      if (checkBoxValue === 0) return EnglishTag ? 'OFF' : 'オフ'
+      else if (checkBoxValue === 1) return EnglishTag ? 'ON' : 'オン'
+      else if (checkBoxValue === false) return EnglishTag ? 'OFF' : 'オフ'
+      else if (checkBoxValue === true) return EnglishTag ? 'ON' : 'オン'
+      else return EnglishTag ? 'OFF' : 'オフ'
+    }
+    const getCheckBoxIncludeEquipmentValue = (checkBoxValue) => {
+      if (checkBoxValue === false) return EnglishTag ? 'OFF' : 'オフ'
+      else if (checkBoxValue === true) return EnglishTag ? 'Include Equipment' : '装備品を含む'
+      else return EnglishTag ? 'OFF' : 'オフ'
+    }
+    const getCheckBoxInitializeValue = (checkBoxValue) => {
+      if (checkBoxValue === false) return EnglishTag ? 'OFF' : 'オフ'
+      else if (checkBoxValue === true) return EnglishTag ? 'Initialize' : '初期化'
+      else return EnglishTag ? 'OFF' : 'オフ'
+    }
     const getAddOrRemove = (operationType) => {
       if (operationType === 0) return EnglishTag ? 'Add' : '加える'
       else if (operationType === 1) return EnglishTag ? 'Remove' : '外す'
@@ -986,15 +1003,15 @@ if (typeof PluginManager === 'undefined') {
         const itemTypeValue = event.parameters[1]
         let itemType
         if (itemTypeValue === 1) {
-          itemType = 'Regular Item'
+          itemType = EnglishTag ? 'Regular Item' : '通常アイテム'
         } else if (itemTypeValue === 2) {
-          itemType = 'Key Item'
+          itemType = EnglishTag ? 'Key Item' : '大事なもの'
         } else if (itemTypeValue === 3) {
-          itemType = 'Hidden Item A'
+          itemType = EnglishTag ? 'Hidden Item A' : '隠しアイテムA'
         } else if (itemTypeValue === 4) {
-          itemType = 'Hidden Item B'
+          itemType = EnglishTag ? 'Hidden Item B' : '隠しアイテムB'
         } else {
-          itemType = 'Key Item'
+          itemType = EnglishTag ? 'Key Item' : '大事なもの'
         }
         const tag = EnglishTag ? '<SelectItem: ' : '<アイテム選択の処理: '
         addNewLineIndent(indent)
@@ -1002,7 +1019,7 @@ if (typeof PluginManager === 'undefined') {
       }
       if (event.code === 105) {
         const speed = event.parameters[0] + comma
-        const noFastForward = getCheckBoxValue(event.parameters[1])
+        const noFastForward = getCheckBoxOnOffValue(event.parameters[1])
         const tag = EnglishTag ? '<ShowScrollingText: ' : '<文章のスクロール表示: '
         const tagEnd = EnglishTag ? '</ShowScrollingText>' : '</文章のスクロール表示>'
         addNewLineIndent(indent)
@@ -1396,17 +1413,29 @@ if (typeof PluginManager === 'undefined') {
         // 11.ボタン
         if (param1 === 11) {
           const buttonStr = EnglishTag ? 'Button' + comma : 'ボタン' + comma
-          const button = param2
+          const button = ((param2) => {
+            if (param2 === 'ok') return EnglishTag ? 'OK' : '決定'
+            else if (param2 === 'cancel') return EnglishTag ? 'Cancel' : 'キャンセル'
+            else if (param2 === 'shift') return EnglishTag ? 'Shift' : 'シフト'
+            else if (param2 === 'down') return EnglishTag ? 'Down' : '下'
+            else if (param2 === 'left') return EnglishTag ? 'Left' : '左'
+            else if (param2 === 'right') return EnglishTag ? 'Right' : '右'
+            else if (param2 === 'up') return EnglishTag ? 'Up' : '上'
+            else if (param2 === 'pageup') return EnglishTag ? 'Pageup' : 'ページアップ'
+            else if (param2 === 'pagedown') return EnglishTag ? 'Pagedown' : 'ページダウン'
+            else return EnglishTag ? 'OK' : '決定'
+          })(param2)
           if (param3) {
-            // MZ
-            let buttonState
-            if (param3 === 0) buttonState = EnglishTag ? 'is being pressed' : 'が押されている'
-            else if (param3 === 1) buttonState = EnglishTag ? 'is being triggered' : 'がトリガーされている'
-            else if (param3 === 2) buttonState = EnglishTag ? 'is being repeated' : 'がリピートされている'
-            else buttonState = EnglishTag ? 'is being pressed' : 'が押されている'
+            // MZ(ボタンの押し方を省略しない)
+            const buttonState = ((param3) => {
+              if (param3 === 0) return EnglishTag ? 'is being pressed' : 'が押されている'
+              else if (param3 === 1) return EnglishTag ? 'is being triggered' : 'がトリガーされている'
+              else if (param3 === 2) return EnglishTag ? 'is being repeated' : 'がリピートされている'
+              else return EnglishTag ? 'is being pressed' : 'が押されている'
+            })(param3)
             text += tag + buttonStr + button + comma + buttonState + '>'
           } else {
-            // MV
+            // MV(ボタンの押し方を省略)
             text += tag + buttonStr + button + '>'
           }
         }
@@ -1488,7 +1517,7 @@ if (typeof PluginManager === 'undefined') {
         const weaponId = event.parameters[0] + comma
         const operation = getIncreaseOrDecrease(event.parameters[1]) + comma
         const operandValue = getConstantOrVariable(event.parameters[2], event.parameters[3]) + comma
-        const includeEquipmentFlg = getCheckBoxValue(event.parameters[4])
+        const includeEquipmentFlg = getCheckBoxIncludeEquipmentValue(event.parameters[4])
         const tag = EnglishTag ? '<ChangeWeapons: ' : '<武器の増減: '
         addNewLineIndent(indent)
         text += tag + weaponId + operation + operandValue + includeEquipmentFlg + '>'
@@ -1497,7 +1526,7 @@ if (typeof PluginManager === 'undefined') {
         const armorId = event.parameters[0] + comma
         const operation = getIncreaseOrDecrease(event.parameters[1]) + comma
         const operandValue = getConstantOrVariable(event.parameters[2], event.parameters[3]) + comma
-        const includeEquipmentFlg = getCheckBoxValue(event.parameters[4])
+        const includeEquipmentFlg = getCheckBoxIncludeEquipmentValue(event.parameters[4])
         const tag = EnglishTag ? '<ChangeArmors: ' : '<防具の増減: '
         addNewLineIndent(indent)
         text += tag + armorId + operation + operandValue + includeEquipmentFlg + '>'
@@ -1505,7 +1534,7 @@ if (typeof PluginManager === 'undefined') {
       if (event.code === 129) {
         const actorId = event.parameters[0] + comma
         const operation = getAddOrRemove(event.parameters[1]) + comma
-        const initialize = getCheckBoxValue(event.parameters[2])
+        const initialize = getCheckBoxInitializeValue(event.parameters[2])
         const tag = EnglishTag ? '<ChangePartyMember: ' : '<メンバーの入れ替え: '
         addNewLineIndent(indent)
         text += tag + actorId + operation + initialize + '>'
