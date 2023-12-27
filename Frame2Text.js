@@ -3,291 +3,114 @@
 // ----------------------------------------------------------------------------
 // (C)2023
 // This software is released under the MIT License.
-// http://
+// http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
 // 0.1.0 2023/09/25 新規作成
 //= ============================================================================
 
-/*:
- *: @target MZ
- * @plugindesc This is a development support plugin for converting event commands to text files.
- * @author InazumaSoft
- *
- * @command EXPORT_EVENT_TO_MESSAGE
- * @text Export event to message
- * @desc Import a message to the event. Specify the source file information and the map, event, page ID, etc. to be imported.
- *
- * @arg FileFolder
- * @text Scenario Folder Name
- * @desc Setting of the folder name which the text file is stored. Default is "text".
- * @type string
- * @default text
- *
- * @arg FileName
- * @text Scenario File Name
- * @desc setting of text file name. Default is "message.txt".
- * @type string
- * @default message.txt
- *
- * @arg MapID
- * @text MapID
- * @desc Map ID of the output destination. Default is "1". It means that it is taken in the map ID 1.
- * @type number
- * @default 1
- *
- * @arg EventID
- * @text EventID
- * @desc setting of the eventID of the output destination. Default is "2". It means that it is taken in the event ID 2.
- * @type number
- * @default 2
- *
- * @arg PageID
- * @text PageID
- * @desc page ID of the output destination. Default is "1". It means that it is taken in the page ID 1.
- * @type number
- * @default 1
- *
- * @command EXPORT_CE_TO_MESSAGE
- * @text Export common event to message.
- * @desc Import a message to a common event. Specify the source file information, the common event ID of the destination, etc.
- *
- * @arg FileFolder
- * @text Scenario Folder Name
- * @desc Setting of the folder name which the text file is stored. Default is "text".
- * @type string
- * @default text
- *
- * @arg FileName
- * @text Scenario File Name
- * @desc setting of text file name. Default is "message.txt".
- * @type string
- * @default message.txt
- *
- * @arg CommonEventID
- * @text Common Event ID
- * @desc setting of the common event ID of the output destination. Default is "1". It means that it is taken in the common event 1.
- * @type common_event
- * @default 1
- *
- * @param Default Window Position
- * @text Window Position
- * @desc Default setting of window position. Default is "Bottom". Command line mode can overwrite this option.
- * @type select
- * @option Top
- * @option Middle
- * @option Bottom
- * @default Bottom
- *
- * @param Default Background
- * @text Background
- * @desc Default setting of background. Default is "Window". Command line mode can overweite this option.
- * @type select
- * @option Window
- * @option Dim
- * @option Transparent
- * @default Window
- *
- * @param Default Scenario Folder
- * @text Scenario Folder Name
- * @desc Default setting of the folder name which the text file is stored. Default is "text".
- * @default text
- * @require 1
- * @dir text
- * @type string
- *
- * @param Default Scenario File
- * @text Scenario File Name
- * @desc Default setting of text file name. Default is "message.txt".
- * @default message.txt
- * @require 1
- * @dir text
- * @type string
- *
- * @param Default Common Event ID
- * @text Common Event ID
- * @desc Default setting of the common event ID of the output destination. Default is "1". It means that it is taken in the common event 1.
- * @default 1
- * @type common_event
- *
- * @param Default MapID
- * @text MapID
- * @desc Default setting of the map ID of the output destination. Default is "1". It means that it is taken in the map ID 1.
- * @default 1
- * @type number
- *
- * @param Default EventID
- * @text EventID
- * @desc Default setting of the eventID of the output destination. Default is "1". It means that it is taken in the event ID 2.
- * @default 2
- * @type number
- *
- * @param Default PageID
- * @text PageID
- * @desc page ID of the output destination. Default is "1". It means that it is taken in the page ID 1.
- * @default 1
- * @type number
- *
- * @param Comment Out Char
- * @text Comment Out Char
- * @desc If this charactor is placed at the beginning of a line, this line is not taken. Default is %.
- * @default %
- * @type string
- *
- * @param IsDebug
- * @text IsDebug
- * @desc Detail log is outputted to console log (F8). Default is false.
- * @default false
- * @type boolean
- *
- * @param DisplayMsg
- * @text DisplayMsg
- * @desc Display messages when execution.
- * @default true
- * @type boolean
- *
- * @param DisplayWarning
- * @text DisplayWarning
- * @desc Display warnings when execution.
- * @default true
- * @type boolean
- *
- * @param EnglishTag
- * @text EnglishTag
- * @desc Language of tags and parameters when outputting files. The default value is true (English).
- * @default true
- * @type boolean
- *
- * @help
- *
- *
- */
-
 /* eslint-disable spaced-comment */
-/*:ja
+/*:
  * @target MZ
- * @plugindesc イベントコマンドからテキストファイル(.txtファイルなど)に変換するための開発支援プラグインです。ツクールMV・MZの両方に対応しています。※Text2Frameの逆の処理
- * @author InazumaSoft
+ * @plugindesc イベントコマンドをテキストファイル(.txtファイルなど)に出力するための開発支援プラグインです。ツクールMV・MZの両方に対応しています。
+ * @author inazumasoft:Shick
+ * @url https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Frame2Text.js
  *
  * @command EXPORT_EVENT_TO_MESSAGE
- * @text イベントをメッセージにエクスポート
- * @desc イベントにメッセージをインポートします。取り込み元ファイルの情報や、取り込み先のマップ・イベント・ページID等を指定します。
+ * @text イベントをエクスポート
+ * @desc テキストにイベントをエクスポートします。出力するマップ・イベント・ページIDや、出力先のファイルの情報を指定します。
  *
  * @arg FileFolder
- * @text 取り込み元フォルダ名
- * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @text 出力先フォルダ名
+ * @desc テキストファイルを出力するフォルダ名を設定します。デフォルトはtextです。
  * @type string
  * @default text
  *
  * @arg FileName
- * @text 取り込み元ファイル名
- * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @text 出力先ファイル名
+ * @desc 出力するテキストファイルのファイル名を設定します。デフォルトはmessage.txtです。
  * @type string
  * @default message.txt
  *
  * @arg MapID
- * @text 取り込み先マップID
- * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。
+ * @text 出力するマップID
+ * @desc 出力するマップのIDを設定します。デフォルト値は1です。
  * @type number
  * @default 1
  *
  * @arg EventID
- * @text 取り込み先イベントID
- * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。
+ * @text 出力するイベントID
+ * @desc 出力するイベントのIDを設定します。デフォルト値は2です。
  * @type number
  * @default 2
  *
  * @arg PageID
- * @text 取り込み先ページID
- * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。
+ * @text 出力するページID
+ * @desc 出力するページのIDを設定します。デフォルト値は1です。
  * @type number
  * @default 1
  *
  * @command EXPORT_CE_TO_MESSAGE
- * @text コモンイベントをメッセージにエクスポート
- * @desc コモンイベントにメッセージをインポートします。取り込み元ファイルの情報や、取り込み先のコモンイベントID等を指定します。
+ * @text コモンイベントをエクスポート
+ * @desc テキストにコモンイベントをエクスポートします。出力するコモンイベントのIDや、出力先のファイルの情報を指定します。
  *
  * @arg FileFolder
- * @text 取り込み元フォルダ名
- * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @text 出力先フォルダ名
+ * @desc テキストファイルを出力するフォルダ名を設定します。デフォルトはtextです。
  * @type string
  * @default text
  *
  * @arg FileName
- * @text 取り込み元ファイル名
- * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @text 出力先ファイル名
+ * @desc 出力するテキストファイルのファイル名を設定します。デフォルトはmessage.txtです。
  * @type string
  * @default message.txt
  *
  * @arg CommonEventID
- * @text 取り込み先コモンイベントID
- * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。
+ * @text 出力するコモンイベントID
+ * @desc 出力するコモンイベントIDを設定します。デフォルト値は1です。
  * @type common_event
  * @default 1
  *
- * @param Default Window Position
- * @text 位置のデフォルト値
- * @desc テキストフレームの表示位置デフォルト値を設定します。デフォルトは下です。個別に指定した場合は上書きされます。
- * @type select
- * @option 上
- * @option 中
- * @option 下
- * @default 下
- *
- * @param Default Background
- * @text 背景のデフォルト値
- * @desc テキストフレームの背景デフォルト値を設定します。デフォルトはウインドウです。個別に指定した場合は上書きされます。
- * @type select
- * @option ウインドウ
- * @option 暗くする
- * @option 透明
- * @default ウインドウ
- *
  * @param Default Scenario Folder
- * @text 取り込み元フォルダ名
- * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。(MZでは無視されます)
+ * @text 出力フォルダ名
+ * @desc シナリオファイルを出力するフォルダ名を設定します。デフォルトはtextです。(MZでは無視されます)
  * @default text
  * @require 1
  * @dir text
  * @type string
  *
  * @param Default Scenario File
- * @text 取り込み元ファイル名
- * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。(MZでは無視されます)
+ * @text 出力ファイル名
+ * @desc 出力するシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。(MZでは無視されます)
  * @default message.txt
  * @require 1
  * @dir text
  * @type string
  *
  * @param Default Common Event ID
- * @text 取り込み先コモンイベントID
- * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。(MZでは無視されます)
+ * @text 出力するコモンイベントID
+ * @desc 出力するコモンイベントのIDを設定します。デフォルト値は1です。(MZでは無視されます)
  * @default 1
  * @type common_event
  *
  * @param Default MapID
- * @text 取り込み先マップID
- * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。(MZでは無視されます)
+ * @text 出力するマップID
+ * @desc 出力するマップのIDを設定します。デフォルト値は1です。(MZでは無視されます)
  * @default 1
  * @type number
  *
  * @param Default EventID
- * @text 取り込み先イベントID
- * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。(MZでは無視されます)
+ * @text 出力するイベントID
+ * @desc 出力するイベントのIDを設定します。デフォルト値は2です。(MZでは無視されます)
  * @default 2
  * @type number
  *
  * @param Default PageID
- * @text 取り込み先ページID
- * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。(MZでは無視されます)
+ * @text 出力するページID
+ * @desc 出力するページのIDを設定します。デフォルト値は1です。(MZでは無視されます)
  * @default 1
  * @type number
- *
- * @param Comment Out Char
- * @text コメントアウト記号
- * @desc 行頭に置いた場合、その行をコメントとして処理する記号を定義します。デフォルト値は「％」（半角パーセント）です。
- * @default %
- * @type string
  *
  * @param IsDebug
  * @text デバッグモードを利用する
@@ -314,8 +137,125 @@
  * @type boolean
  *
  * @help
+ * 本プラグインはイベントコマンドをテキストファイル(.txtファイルなど)に
+ * 出力するための開発支援プラグインです。
+ *
+ * Text2Frameの逆の処理を行うプラグインであり、
+ * 既存のイベントをテキストに出力して管理したい場合や、
+ * Text2Frameで一度取り込んだイベントをイベントエディターで編集した後に
+ * 再度テキストに出力したい時に使用するプラグインです。
  *
  *
+ *
+ * -------------------------------------
+ * ツクールMVでの実行方法
+ * -------------------------------------
+ * 1. プロジェクトの最上位フォルダ(dataやimgのあるところ)にフォルダを作成する。
+ *
+ * 2. テキストファイルに出力したいマップID, イベントID, ページID、コモンイベントIDをメモしておきます。
+ *    ・マップIDは画面左のマップを、右クリック→「編集」として出るウィンドウの左上に記載されています。
+ *    ・イベントIDはイベントをダブルクリックして出るイベントエディターの左上に記載されています。
+ *    ・ページIDはイベントエディターのイベントの名前の下に記載されています。
+ *    ・コモンイベントIDはデータベースのコモンイベントのデータリストから確認できます。
+ *
+ * 3. プラグインの管理画面から本プラグインのパラメータを下記の通り編集します。
+ *  ・「出力フォルダ名」に1.で作成したフォルダ名を入力。
+ *      (デフォルトはtextです)
+ *  ・「出力ファイル名」に出力したいテキストファイル名を入力。
+ *      (デフォルトはmessage.txtです)
+ *  ・「出力するコモンイベントID」に2.でメモしたコモンイベントIDを入力。
+ *      (デフォルトで1です)
+ *  ・「出力するマップID」に2.でメモしたマップIDを入力。
+ *      (デフォルトは1です)
+ *  ・「出力するイベントID」に2.でメモしたイベントIDを入力。
+ *      (デフォルトは2です)
+ *  ・「出力するページID」に2.でメモしたページIDを入力。
+ *      (デフォルトで1です)
+ *  ・「英語タグ」にテキストに出力される言語をtrueかfalseで入力。
+ *      (デフォルトでtrue(英語)です)
+ *      例)trueの場合 ：<Name: ***>
+ *         falseの場合：<名前: ***>
+ *
+ * 4. 以下のうちいずれかを記述したプラグインコマンドを作成する。
+ *  【マップのイベントを出力したい場合】
+ *    EXPORT_EVENT_TO_MESSAGE
+ *    イベントをメッセージにエクスポ－ト
+ *     上記どちらかのプラグインコマンドを記載する
+ *  【コモンイベントを出力したい場合】
+ *    EXPORT_CE_TO_MESSAGE
+ *    コモンイベントをメッセージにエクスポート
+ *     上記どちらかのプラグインコマンドを記載する
+ *
+ * 5. 作成したイベントコマンドをテストプレイかイベントテストで実行する。
+ *    【成功した場合】
+ *      出力されたMapID、EventID、PageID、Common EventIDや
+ *      フォルダ、ファイル名のメッセージが表示されます。
+ *    【失敗した場合】
+ *      「Save failed./ 保存に失敗しました ファイルが開いていないか確認してください」
+ *      というメッセージが表示された場合は、指定したフォルダが作成されているかの確認と
+ *      指定したファイルが開いていないかを確認してください。
+ *
+ * --------------------------------------
+ * ツクールMVでのプラグインコマンドの引数
+ * --------------------------------------
+ * ツクールMVでのプラグインコマンドに引数を設定することにより、
+ * プラグインパラメータで指定したテキストファイルやマップIDとは違うパラメータで実行ができます。
+ *
+ * 例1:マップIDが1, イベントIDが2, ページIDが3をtext/message.txtに出力する
+ *   EXPORT_EVENT_TO_MESSAGE text message.txt 1 2 3
+ *   イベントをメッセージにエクスポ－ト text message.txt 1 2 3
+ *
+ * 例2:IDが3のコモンイベントをtext/message.txtに出力する
+ *   EXPORT_CE_TO_MESSAGE text message.txt 3
+ *   コモンイベントをメッセージにエクスポート text message.txt 3
+ *
+ * -------------------------------------
+ * ツクールMZでの実行方法
+ * -------------------------------------
+ * 1. プロジェクトの最上位フォルダ(dataやimgのあるところ)にフォルダを作成する。
+ *
+ * 2. テキストファイルに出力したいマップID, イベントID, ページID、コモンイベントIDをメモしておきます。
+ *    ・マップIDは画面左のマップを、右クリック→「編集」として出るウィンドウの左上に記載されています。
+ *    ・イベントIDはイベントをダブルクリックして出るイベントエディターの左上に記載されています。
+ *    ・ページIDはイベントエディターのイベントの名前の下に記載されています。
+ *    ・コモンイベントIDはデータベースのコモンイベントのデータリストから確認できます。
+ *
+ * 3. プラグインの管理画面から本プラグインのパラメータを下記の通り編集します。
+ *  ・「英語タグ」にテキストに出力される言語をtrueかfalseで入力。
+ *      (デフォルトでtrue(英語)です)
+ *      例)trueの場合 ：<Name: ***>
+ *         falseの場合：<名前: ***>
+ *
+ * 4. 以下の手順でプラグインコマンドを作成する。
+ *  【マップのイベントを出力したい場合】
+ *   ・「イベントをエクスポート」を選択。
+ *   ・「出力フォルダ名」に1.で作成したフォルダ名を入力。
+ *       (デフォルトはtextです)
+ *   ・「出力ファイル名」に出力したいテキストファイル名を入力。
+ *       (デフォルトはmessage.txtです)
+ *   ・「出力するマップID」に2.でメモしたマップIDを入力。
+ *       (デフォルトは1です)
+ *   ・「出力するイベントID」に2.でメモしたイベントIDを入力。
+ *       (デフォルトは2です)
+ *   ・「出力するページID」に2.でメモしたページIDを入力。
+ *       (デフォルトで1です)
+ *  【コモンイベントを出力したい場合】
+ *   ・「コモンイベントをエクスポート」を選択。
+ *   ・「出力フォルダ名」に1.で作成したフォルダ名を入力。
+ *       (デフォルトはtextです)
+ *   ・「出力ファイル名」に出力したいテキストファイル名を入力。
+ *       (デフォルトはmessage.txtです)
+ *   ・「出力するコモンイベントID」に2.でメモしたコモンイベントIDを入力。
+ *       (デフォルトで1です)
+ *
+ * 5. 作成したイベントコマンドをテストプレイかイベントテストで実行する。
+ *    【成功した場合】
+ *      出力されたMapID、EventID、PageID、Common EventIDや
+ *      フォルダ、ファイル名のメッセージが表示されます。
+ *    【失敗した場合】
+ *      「Save failed./ 保存に失敗しました ファイルが開いていないか確認してください」
+ *      というメッセージが表示された場合は、指定したフォルダが作成されているかの確認と
+ *      指定したファイルが開いていないかを確認してください。
  *
  * --------------------------------------
  * 注意事項
@@ -323,7 +263,6 @@
  * プラグイン作者は、いかなる場合も破損したプロジェクトの復元には
  * 応じられませんのでご注意ください。
  * テキストファイルの文字コードはUTF-8にのみ対応しています。
- *
  */
 /* eslint-enable spaced-comment */
 
@@ -350,15 +289,15 @@ if (typeof PluginManager === 'undefined') {
   const BASE_PATH = path.dirname(process.mainModule.filename)
 
   if (typeof PluginManager === 'undefined') {
-    Laurus.Frame2Text.WindowPosition = 'Bottom'
-    Laurus.Frame2Text.Background = 'Window'
+    // Laurus.Frame2Text.WindowPosition = 'Bottom'
+    // Laurus.Frame2Text.Background = 'Window'
     Laurus.Frame2Text.FileFolder = 'test'
     Laurus.Frame2Text.FileName = 'basic.txt'
     Laurus.Frame2Text.CommonEventID = '1'
     Laurus.Frame2Text.MapID = '1'
     Laurus.Frame2Text.EventID = '1'
     Laurus.Frame2Text.PageID = '1'
-    Laurus.Frame2Text.CommentOutChar = '%'
+    // Laurus.Frame2Text.CommentOutChar = '%'
     Laurus.Frame2Text.IsDebug = true
     Laurus.Frame2Text.DisplayMsg = true
     Laurus.Frame2Text.DisplayWarning = true
@@ -366,15 +305,15 @@ if (typeof PluginManager === 'undefined') {
   } else {
     // for default plugin command
     Laurus.Frame2Text.Parameters = PluginManager.parameters('Frame2Text')
-    Laurus.Frame2Text.WindowPosition = String(Laurus.Frame2Text.Parameters['Default Window Position'])
-    Laurus.Frame2Text.Background = String(Laurus.Frame2Text.Parameters['Default Background'])
+    // Laurus.Frame2Text.WindowPosition = String(Laurus.Frame2Text.Parameters['Default Window Position'])
+    // Laurus.Frame2Text.Background = String(Laurus.Frame2Text.Parameters['Default Background'])
     Laurus.Frame2Text.FileFolder = String(Laurus.Frame2Text.Parameters['Default Scenario Folder'])
     Laurus.Frame2Text.FileName = String(Laurus.Frame2Text.Parameters['Default Scenario File'])
     Laurus.Frame2Text.CommonEventID = String(Laurus.Frame2Text.Parameters['Default Common Event ID'])
     Laurus.Frame2Text.MapID = String(Laurus.Frame2Text.Parameters['Default MapID'])
     Laurus.Frame2Text.EventID = String(Laurus.Frame2Text.Parameters['Default EventID'])
     Laurus.Frame2Text.PageID = String(Laurus.Frame2Text.Parameters['Default PageID'])
-    Laurus.Frame2Text.CommentOutChar = String(Laurus.Frame2Text.Parameters['Comment Out Char'])
+    // Laurus.Frame2Text.CommentOutChar = String(Laurus.Frame2Text.Parameters['Comment Out Char'])
     Laurus.Frame2Text.IsDebug = String(Laurus.Frame2Text.Parameters.IsDebug) === 'true'
     Laurus.Frame2Text.DisplayMsg = String(Laurus.Frame2Text.Parameters.DisplayMsg) === 'true'
     Laurus.Frame2Text.DisplayWarning = String(Laurus.Frame2Text.Parameters.DisplayWarning) === 'true'
@@ -449,10 +388,6 @@ if (typeof PluginManager === 'undefined') {
         break
       case 'EXPORT_CE_TO_MESSAGE':
       case 'コモンイベントをメッセージにエクスポート':
-        addMessage(args[0])
-        addMessage(args[1])
-        addMessage(args[2])
-        addMessage(args.length)
         if (args.length === 3) {
           Laurus.Frame2Text.ExecMode = 'EXPORT_CE_TO_MESSAGE'
           Laurus.Frame2Text.FileFolder = args[0]
@@ -461,7 +396,7 @@ if (typeof PluginManager === 'undefined') {
           Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
           Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${path.sep}data${path.sep}CommonEvents.json`
         }
-        addMessage('=====> Common EventID :' + Laurus.Frame2Text.CommonEventID)
+        addMessage('=====> Common EventID: ' + Laurus.Frame2Text.CommonEventID)
         break
       case 'COMMAND_LINE':
         Laurus.Frame2Text.ExecMode = args[0]
@@ -652,18 +587,18 @@ if (typeof PluginManager === 'undefined') {
     }
     const getLearnOrForgot = (operationType) => {
       if (operationType === 0) return EnglishTag ? 'Learn' : '覚える'
-      else if (operationType === 1) return EnglishTag ? 'Forgot' : '忘れる'
+      else if (operationType === 1) return EnglishTag ? 'Forget' : '忘れる'
       else return EnglishTag ? 'Learn' : '覚える'
     }
     const getDirectOrVariablesValue = (location) => {
       if (location === 0) return EnglishTag ? 'Direct' : '直接指定'
-      else if (location === 1) return EnglishTag ? 'Variables' : '変数で指定'
+      else if (location === 1) return EnglishTag ? 'WithVariables' : '変数で指定'
       else if (location === 2) return EnglishTag ? 'Exchange' : '交換'
       else return EnglishTag ? 'Direct' : '直接指定'
     }
     const getDirectOrVariablesOrCharacterValue = (location) => {
       if (location === 0) return EnglishTag ? 'Direct' : '直接指定'
-      else if (location === 1) return EnglishTag ? 'Variables' : '変数で指定'
+      else if (location === 1) return EnglishTag ? 'WithVariables' : '変数で指定'
       else if (location === 2) return EnglishTag ? 'Character' : 'キャラクター'
       else return EnglishTag ? 'Direct' : '直接指定'
     }
@@ -703,14 +638,19 @@ if (typeof PluginManager === 'undefined') {
       if (event === 0) return EnglishTag ? 'This Event' : 'このイベント'
       else return event
     }
+    const getEventValue2 = (event) => {
+      if (event === -1) return EnglishTag ? 'Player' : 'プレイヤー'
+      if (event === 0) return EnglishTag ? 'ThisEvent' : 'このイベント'
+      else return event
+    }
     const getSpeedValue = (speed) => {
-      if (speed === 1) return EnglishTag ? 'x8slower' : '1/8倍速'
-      else if (speed === 2) return EnglishTag ? 'x4slower' : '1/4倍速'
-      else if (speed === 3) return EnglishTag ? 'x2slower' : '1/2倍速'
+      if (speed === 1) return EnglishTag ? 'x8 slower' : '1/8倍速'
+      else if (speed === 2) return EnglishTag ? 'x4 slower' : '1/4倍速'
+      else if (speed === 3) return EnglishTag ? 'x2 slower' : '1/2倍速'
       else if (speed === 4) return EnglishTag ? 'Normal' : '標準速'
-      else if (speed === 5) return EnglishTag ? 'x2faster' : '2倍速'
-      else if (speed === 6) return EnglishTag ? 'x4faster' : '4倍速'
-      else return EnglishTag ? 'x8slower' : '1/8倍速'
+      else if (speed === 5) return EnglishTag ? 'x2 faster' : '2倍速'
+      else if (speed === 6) return EnglishTag ? 'x4 faster' : '4倍速'
+      else return EnglishTag ? 'x8 slower' : '1/8倍速'
     }
     const getFrequencyValue = (frequency) => {
       if (frequency === 1) return EnglishTag ? 'Lowest' : '最低'
@@ -723,19 +663,19 @@ if (typeof PluginManager === 'undefined') {
     const getBalloonIconValue = (balloonIcon) => {
       if (balloonIcon === 1) return EnglishTag ? 'Exclamation' : 'びっくり'
       else if (balloonIcon === 2) return EnglishTag ? 'Question' : 'はてな'
-      else if (balloonIcon === 3) return EnglishTag ? 'Musicnote' : '音符'
+      else if (balloonIcon === 3) return EnglishTag ? 'Music note' : '音符'
       else if (balloonIcon === 4) return EnglishTag ? 'Heart' : 'ハート'
       else if (balloonIcon === 5) return EnglishTag ? 'Anger' : '怒り'
       else if (balloonIcon === 6) return EnglishTag ? 'Sweat' : '汗'
       else if (balloonIcon === 7) return EnglishTag ? 'Flustration' : 'くしゃくしゃ'
       else if (balloonIcon === 8) return EnglishTag ? 'Silence' : '沈黙'
-      else if (balloonIcon === 9) return EnglishTag ? 'Lightbulb' : '電球'
+      else if (balloonIcon === 9) return EnglishTag ? 'Light bulb' : '電球'
       else if (balloonIcon === 10) return EnglishTag ? 'zzz' : 'zzz'
-      else if (balloonIcon === 11) return EnglishTag ? 'Userdefined1' : 'ユーザー定義1'
-      else if (balloonIcon === 12) return EnglishTag ? 'Userdefined2' : 'ユーザー定義2'
-      else if (balloonIcon === 13) return EnglishTag ? 'Userdefined3' : 'ユーザー定義3'
-      else if (balloonIcon === 14) return EnglishTag ? 'Userdefined4' : 'ユーザー定義4'
-      else if (balloonIcon === 15) return EnglishTag ? 'Userdefined5' : 'ユーザー定義5'
+      else if (balloonIcon === 11) return EnglishTag ? 'User-defined1' : 'ユーザー定義1'
+      else if (balloonIcon === 12) return EnglishTag ? 'User-defined2' : 'ユーザー定義2'
+      else if (balloonIcon === 13) return EnglishTag ? 'User-defined3' : 'ユーザー定義3'
+      else if (balloonIcon === 14) return EnglishTag ? 'User-defined4' : 'ユーザー定義4'
+      else if (balloonIcon === 15) return EnglishTag ? 'User-defined5' : 'ユーザー定義5'
       else return EnglishTag ? 'Exclamation' : 'びっくり'
     }
     const getPositionValue = (position, direct, x, y) => {
@@ -780,7 +720,8 @@ if (typeof PluginManager === 'undefined') {
       if (easing === 0) return EnglishTag ? `${easingStr}[Constant speed]` : `${easingStr}[一定速度]`
       else if (easing === 1) return EnglishTag ? `${easingStr}[Slow start]` : `${easingStr}[ゆっくり始まる]`
       else if (easing === 2) return EnglishTag ? `${easingStr}[Slow end]` : `${easingStr}[ゆっくり終わる]`
-      else if (easing === 3) { return EnglishTag ? `${easingStr}[Slow start and end]` : `${easingStr}[ゆっくり始まってゆっくり終わる]` } else return EnglishTag ? `${easingStr}[Constant speed]` : `${easingStr}[一定速度]`
+      else if (easing === 3) return EnglishTag ? `${easingStr}[Slow start and end]` : `${easingStr}[ゆっくり始まってゆっくり終わる]`
+      else return EnglishTag ? `${easingStr}[Constant speed]` : `${easingStr}[一定速度]`
     }
     const getBackgroundValue = (background) => {
       if (background === 0) return EnglishTag ? 'Window' : 'ウインドウ'
@@ -912,7 +853,7 @@ if (typeof PluginManager === 'undefined') {
       else if (last === 3) return EnglishTag ? 'Last Enemy Index to Act' : '直前に行動した敵キャラのインデックス'
       else if (last === 4) return EnglishTag ? 'Last Target Actor ID' : '直前に対象となったアクターのID'
       else if (last === 5) return EnglishTag ? 'Last Target Enemy Index' : '直前に対象となった敵キャラのインデックス'
-      else return EnglishTag ? 'MapX' : 'マップX'
+      else return EnglishTag ? 'Last Used Skill ID' : '直前に使用したスキルのID'
     }
     const getGameDataOther = (other) => {
       if (other === 0) return EnglishTag ? 'MapId' : 'マップid'
@@ -1145,7 +1086,7 @@ if (typeof PluginManager === 'undefined') {
           }
           // ゲームデータ・キャラクター
           if (param5 === 5) {
-            const gameDataParam2Value = getEventValue(param6)
+            const gameDataParam2Value = getEventValue2(param6)
             const gameDataParam2 = `[${gameDataParam2Value}]`
             const gameDataParam3Str = getGameDataReference(param7)
             const gameDataParam3 = `[${gameDataParam3Str}]`
@@ -1208,8 +1149,10 @@ if (typeof PluginManager === 'undefined') {
         const tag = EnglishTag ? '<Timer: ' : '<タイマー: '
         addNewLineIndent(indent)
         if (event.parameters[0] === 0) {
+          // スタート
           text += tag + operation + comma + minutes + comma + seconds + '>'
         } else {
+          // ストップ
           text += tag + operation + '>'
         }
       }
@@ -1727,7 +1670,6 @@ if (typeof PluginManager === 'undefined') {
         const distance = event.parameters[1] + comma
         const speed = getSpeedValue(event.parameters[2]) + comma
         const waitForCompletion = getCheckBoxWaitforCompletionValue(event.parameters[3])
-        // const waitForCompletion = tmpWaitForCompletion === undefined ? '' : tmpWaitForCompletion
         const tag = EnglishTag ? '<ScrollMap: ' : '<マップのスクロール: '
         addNewLineIndent(indent)
         text += tag + direction + distance + speed + waitForCompletion + '>'
@@ -2494,8 +2436,8 @@ if (typeof PluginManager === 'undefined') {
     /** ********************************************** */
     // 出力メッセージ
     /** ********************************************** */
-    const EnglishMessage = `Exported to ${Laurus.Frame2Text.FileName}`
-    const JapaneseMessage = `${Laurus.Frame2Text.FileName}にエクスポートしました`
+    const EnglishMessage = `Exported to ${Laurus.Frame2Text.FileFolder}/${Laurus.Frame2Text.FileName}`
+    const JapaneseMessage = `${Laurus.Frame2Text.FileFolder}/${Laurus.Frame2Text.FileName}にエクスポートしました`
     addMessage(EnglishMessage + '\n' + JapaneseMessage)
     console.log(EnglishMessage + '\n' + JapaneseMessage)
   }
