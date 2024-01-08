@@ -3,25 +3,6 @@ const expect = chai.expect;
 const sinon = require("sinon");
 const fs = require('fs');
 
-// Game_Interpreter = {};
-// Game_Interpreter.prototype = {};
-// $gameMessage = {};
-// $gameMessage.add = function(){};
-
-//  PluginManager = {};
-//  PluginManager.parameters = function(str){return {
-//    "Default Window Position" : 'Bottom',
-//    "Default Background"      : 'Window',
-//    "Default Scenario Folder" : '',
-//    "Default Scenario File"   : '',
-//    "Default Common Event ID" : '1',
-//    "Default MapID"           : '1',
-//    "Default EventID"         : '1',
-//    "IsOverwrite"             : 'true',
-//    "Comment Out Char"        : '%',
-//    "IsDebug"                 : 'false'
-//  };};
-
 const text2frame = require('../Text2Frame.js');
 
 describe('Text2Frame Test', function() {
@@ -44,8 +25,8 @@ describe('Text2Frame Test', function() {
         readFileSyncStub.onCall(count).returns(test_input);
         readFileSyncStub.onCall(count+1).returns(test_map_data);
 
-        const folder_name = 'test';
-        const file_name   = 'test';
+        const folder_name = '';
+        const file_name   = '';
         const map_id      = '1';
         const event_id    = '1';
         const page_id     = '1';
