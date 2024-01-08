@@ -3993,17 +3993,36 @@
 
 /* global Game_Interpreter, $gameMessage, process, PluginManager */
 
-var Laurus = Laurus || {} // eslint-disable-line no-var, no-use-before-define
-Laurus.Text2Frame = {}
-
-if (typeof PluginManager === 'undefined') {
-  // for test
-}
-
 (function () {
   'use strict'
 
+  // for MZ plugin command
+  if (typeof PluginManager !== 'undefined' && PluginManager.registerCommand) {
+    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_EVENT', function (args) {
+      const file_folder = args.FileFolder
+      const file_name = args.FileName
+      const map_id = args.MapID
+      const event_id = args.EventID
+      const page_id = args.PageID
+      const is_overwrite = args.IsOverwrite
+      this.pluginCommand('IMPORT_MESSAGE_TO_EVENT',
+        [file_folder, file_name, map_id, event_id, page_id, is_overwrite])
+    })
+    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_CE', function (args) {
+      const file_folder = args.FileFolder
+      const file_name = args.FileName
+      const common_event_id = args.CommonEventID
+      const is_overwrite = args.IsOverwrite
+      this.pluginCommand('IMPORT_MESSAGE_TO_CE',
+        [file_folder, file_name, common_event_id, is_overwrite])
+    })
+  }
+
+  var Laurus = typeof Laurus !== 'undefined' ? Laurus : {} // eslint-disable-line no-var, no-use-before-define
+  Laurus.Text2Frame = {}
+
   if (typeof PluginManager === 'undefined') {
+    // for test, command line
     Laurus.Text2Frame.WindowPosition = 'Bottom'
     Laurus.Text2Frame.Background = 'Window'
     Laurus.Text2Frame.FileFolder = 'test'
@@ -4026,9 +4045,6 @@ if (typeof PluginManager === 'undefined') {
     globalThis.$gameMessage = {}
     $gameMessage.add = function () {}
   } else {
-    const path = require('path')
-    const PATH_SEP = path.sep
-    const BASE_PATH = path.dirname(process.mainModule.filename)
     // for default plugin command
     Laurus.Text2Frame.Parameters = PluginManager.parameters('Text2Frame')
     Laurus.Text2Frame.WindowPosition = String(Laurus.Text2Frame.Parameters['Default Window Position'])
@@ -4044,35 +4060,16 @@ if (typeof PluginManager === 'undefined') {
     Laurus.Text2Frame.IsDebug = (String(Laurus.Text2Frame.Parameters.IsDebug) === 'true')
     Laurus.Text2Frame.DisplayMsg = (String(Laurus.Text2Frame.Parameters.DisplayMsg) === 'true')
     Laurus.Text2Frame.DisplayWarning = (String(Laurus.Text2Frame.Parameters.DisplayWarning) === 'true')
+    let PATH_SEP = '/'
+    let BASE_PATH = '.'
+    if (typeof require !== 'undefined') {
+      const path = require('path')
+      PATH_SEP = path.sep
+      BASE_PATH = path.dirname(process.mainModule.filename)
+    }
     Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
     Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
     Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
-  }
-
-  //= ============================================================================
-  // Game_Interpreter
-  //= ============================================================================
-
-  // for MZ plugin command
-  if (typeof PluginManager !== 'undefined' && PluginManager.registerCommand) {
-    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_EVENT', function (args) {
-      const file_folder = args.FileFolder
-      const file_name = args.FileName
-      const map_id = args.MapID
-      const event_id = args.EventID
-      const page_id = args.PageID
-      const is_overwrite = args.IsOverwrite
-      this.pluginCommand('IMPORT_MESSAGE_TO_EVENT',
-        [file_folder, file_name, map_id, event_id, page_id, is_overwrite])
-    })
-    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_CE', function (args) {
-      const file_folder = args.FileFolder
-      const file_name = args.FileName
-      const common_event_id = args.CommonEventID
-      const is_overwrite = args.IsOverwrite
-      this.pluginCommand('IMPORT_MESSAGE_TO_CE',
-        [file_folder, file_name, common_event_id, is_overwrite])
-    })
   }
 
   const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand
@@ -4165,6 +4162,8 @@ if (typeof PluginManager === 'undefined') {
         }
         break
       case 'COMMAND_LINE' :
+        Laurus.Text2Frame = Object.assign(Laurus.Text2Frame, args[0])
+        break
       case 'LIBRARY_EXPORT' :
         break
       default:
@@ -9260,11 +9259,10 @@ if (typeof PluginManager === 'undefined') {
 
   // export convert func.
   Game_Interpreter.prototype.pluginCommandText2Frame('LIBRARY_EXPORT', [0])
+  if (typeof module !== 'undefined') {
+    module.exports = Laurus.Text2Frame.export
+  }
 })()
-
-if (typeof module !== 'undefined') {
-  module.exports = Laurus.Text2Frame.export
-}
 
 // developer mode
 //
