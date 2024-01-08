@@ -9270,9 +9270,9 @@
 if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && require.main === module) {
   const program = require('commander')
   program
-    .version('0.0.1')
+    .version('2.2.1')
     .usage('[options]')
-    .option('-m, --mode <map|common|test>', 'output mode', /^(map|common|test)$/i)
+    .option('-m, --mode <map|common|compile|test>', 'output mode', /^(map|common|compile|test)$/i)
     .option('-t, --text_path <name>', 'text file path')
     .option('-o, --output_path <name>', 'output file path')
     .option('-e, --event_id <name>', 'event file id')
@@ -9281,49 +9281,17 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
     .option('-v, --verbose', 'debug mode', false)
     .parse()
-  const options = program.opts()
 
-  Laurus.Text2Frame.IsDebug = options.verbose
-  Laurus.Text2Frame.TextPath = options.text_path
-  Laurus.Text2Frame.IsOverwrite = (options.overwrite === 'true')
-
-  if (options.mode === 'map') {
-    Laurus.Text2Frame.MapPath = options.output_path
-    Laurus.Text2Frame.EventID = options.event_id
-    Laurus.Text2Frame.PageID = options.page_id ? options.page_id : '1'
-    Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', ['IMPORT_MESSAGE_TO_EVENT'])
-  } else if (options.mode === 'common') {
-    Laurus.Text2Frame.CommonEventPath = options.output_path
-    Laurus.Text2Frame.CommonEventID = options.common_event_id
-    Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', ['IMPORT_MESSAGE_TO_CE'])
-  } else if (options.mode === 'test') {
-    const folder_name = 'test'
-    const file_name = 'basic.txt'
-    const map_id = '1'
-    const event_id = '1'
-    const page_id = '1'
-    const overwrite = 'true'
-    Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT', [
-      folder_name,
-      file_name,
-      map_id,
-      event_id,
-      page_id,
-      overwrite
-    ])
-  } else {
-    console.log('===== Manual =====')
-    console.log(`
+  const help_text = `
+===== Manual =====
     NAME
        Text2Frame - Simple compiler to convert text to event command.
     SYNOPSIS
-        node Text2Frame.js
         node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
         node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
+        node Text2Frame.js --mode compile
         node Text2Frame.js --verbose --mode test
     DESCRIPTION
-        node Text2Frame.js
-          テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
         node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
           マップへのイベント出力モードです。
           読み込むファイル、出力マップ、上書きの有無を引数で指定します。
@@ -9339,6 +9307,69 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
           例1：$ node Text2Frame.js --mode common --text_path test/basic.txt --output_path data/CommonEvents.json --common_event_id 1 --overwrite true
           例2：$ node Text2Frame.js -m common -t test/basic.txt -o data/CommonEvents.json -c 1 -w true
-    `)
+
+        node Text2Frame.js --mode compile
+          コンパイルモードです。
+          変換したいテキストファイルをパイプで与えると、対応したイベントに変換されたJSONを、標準出力に出力します。
+          このモードでは、Map.json / CommonEvent.jsonの形式へフォーマットされず、イベントに変換したJSONのみが出力されるため、
+          Map.json/CommonEvent.json への組み込みは各自で行う必要があります。
+
+          例1: $ cat test/basic.txt | node Text2Frame.js --mode compile
+
+        node Text2Frame.js --mode test
+          テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
+
+`
+  program.addHelpText('after', help_text)
+  const options = program.opts()
+  if (!['map', 'common', 'compile', 'test'].includes(options.mode)) {
+    program.help()
+    process.exit(0)
+  }
+
+  if (options.mode === 'map') {
+    const Text2Frame = {
+      IsDebug: options.verbose,
+      TextPath: options.text_path,
+      IsOverwrite: (options.overwrite === 'true'),
+      ExecMode: 'IMPORT_MESSAGE_TO_EVENT',
+      MapPath: options.output_path,
+      EventID: options.event_id,
+      PageID: options.page_id ? options.page_id : '1'
+    }
+    Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [Text2Frame])
+  } else if (options.mode === 'common') {
+    const Text2Frame = {
+      IsDebug: options.verbose,
+      TextPath: options.text_path,
+      IsOverwrite: (options.overwrite === 'true'),
+      ExecMode: 'IMPORT_MESSAGE_TO_CE',
+      CommonEventPath: options.output_path,
+      CommonEventID: options.common_event_id
+    }
+    Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [Text2Frame])
+  } else if (options.mode === 'compile') {
+    process.stdin.setEncoding('utf8')
+    let data = ''
+    process.stdin.on('readable', () => {
+      let chunk
+      while ((chunk = process.stdin.read()) !== null) {
+        data += chunk
+      }
+    })
+    process.stdin.on('end', () => {
+      console.log(JSON.stringify(module.exports.compile(data), null, 2))
+    })
+  } else if (options.mode === 'test') {
+    const Text2Frame = {
+      IsDebug: options.verbose,
+      MapID: '1',
+      EventID: '1',
+      PageID: '1',
+      IsOverwrite: true,
+      TextPath: 'test/basic.txt',
+      MapPath: 'data/Map001.json'
+    }
+    Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [Text2Frame])
   }
 }
