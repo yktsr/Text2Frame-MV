@@ -9144,7 +9144,7 @@
       return out_events
     }
 
-    const convert = function (text) {
+    const compile = function (text) {
       let scenario_text = uniformNewLineCode(text)
       scenario_text = eraseCommentOutLines(scenario_text, Laurus.Text2Frame.CommentOutChar)
       let block_map = {};
@@ -9183,13 +9183,13 @@
       return event_command_list
     }
 
-    Laurus.Text2Frame.export = { convert }
+    Laurus.Text2Frame.export = { compile }
     if (Laurus.Text2Frame.ExecMode === 'LIBRARY_EXPORT') {
       return
     }
 
     const scenario_text = readText(Laurus.Text2Frame.TextPath)
-    const event_command_list = convert(scenario_text)
+    const event_command_list = compile(scenario_text)
     event_command_list.push(getCommandBottomEvent())
 
     switch (Laurus.Text2Frame.ExecMode) {
