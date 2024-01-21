@@ -2512,22 +2512,22 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   } else if (options.mode === 'common') {
     Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', ['EXPORT_CE_TO_MESSAGE'])
   } else if (options.mode === 'decompile') {
-     process.stdin.setEncoding('utf8')
-     let data = ''
-     process.stdin.on('readable', () => {
-       let chunk
-       while ((chunk = process.stdin.read()) !== null) {
-         data += chunk
-       }
-     })
-     process.stdin.on('end', () => {
-       // console.log(JSON.parse(data))
-       JSON.parse(data).events.filter(event => event !== null).forEach(function (event){
-         event.pages.forEach(function (p){
-           console.log(module.exports.decompile(p.list))
-         })
-       })
-     })
+    process.stdin.setEncoding('utf8')
+    let data = ''
+    process.stdin.on('readable', () => {
+      let chunk
+      while ((chunk = process.stdin.read()) !== null) {
+        data += chunk
+      }
+    })
+    process.stdin.on('end', () => {
+      // console.log(JSON.parse(data))
+      JSON.parse(data).events.filter(event => event !== null).forEach(function (event) {
+        event.pages.forEach(function (p) {
+          console.log(module.exports.decompile(p.list))
+        })
+      })
+    })
   } else if (options.mode === 'test') {
     const folder_name = 'test'
     const file_name = 'frame2text.txt'
