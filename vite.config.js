@@ -28,7 +28,13 @@ export default defineConfig({
         "cjs", // CommonJS
         "umd", // ブラウザ向け
       ],
-      fileName: (format) => `Text2Frame.${format}.js`,
+      fileName: (format) => {
+        if (format === 'es') {
+          return `Text2Frame.${format}.mjs`;
+        } else {
+          return `Text2Frame.${format}.js`;
+        }
+      }
     },
     rollupOptions: {
       plugins: [removeDeveloperMode(), resolve(), commonjs({ transformMixedEsModules: true })],
