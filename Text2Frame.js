@@ -4136,6 +4136,15 @@
     }
 
     Laurus.Text2Frame.ExecMode = command.toUpperCase()
+
+    let PATH_SEP = '/'
+    let BASE_PATH = '.'
+    if (typeof require !== 'undefined') {
+      const path = require('path')
+      PATH_SEP = path.sep
+      BASE_PATH = path.dirname(process.mainModule.filename)
+    }
+
     switch (Laurus.Text2Frame.ExecMode) {
       // for custom plugin command
       case 'IMPORT_MESSAGE_TO_EVENT' :
@@ -4154,6 +4163,10 @@
           Laurus.Text2Frame.PageID = args[4]
         }
         if (args[5] && args[5].toLowerCase() === 'true') Laurus.Text2Frame.IsOverwrite = true
+        if (args[0] || args[1]) {
+          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
+          Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
+        }
         break
       case 'IMPORT_MESSAGE_TO_CE' :
       case 'メッセージをコモンイベントにインポート' :
@@ -4164,6 +4177,8 @@
           Laurus.Text2Frame.FileName = args[1]
           Laurus.Text2Frame.CommonEventID = args[2]
           Laurus.Text2Frame.IsOverwrite = (args[3] === 'true')
+          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
+          Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
         }
         break
       case 'COMMAND_LINE' :
