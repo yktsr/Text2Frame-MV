@@ -4106,7 +4106,7 @@
         BASE_PATH = path.dirname(process.mainModule.filename)
       }
 
-       return {path_sep: PATH_SEP, base_path: BASE_PATH}
+      return { path_sep: PATH_SEP, base_path: BASE_PATH }
     }
 
     const getDefaultPage = function () {
@@ -4169,7 +4169,7 @@
         }
         if (args[5] && args[5].toLowerCase() === 'true') Laurus.Text2Frame.IsOverwrite = true
         if (args[0] || args[1]) {
-          const {PATH_SEP, BASE_PATH} = getDirParams()
+          const { PATH_SEP, BASE_PATH } = getDirParams()
           Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
           Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
         }
@@ -4183,7 +4183,7 @@
           Laurus.Text2Frame.FileName = args[1]
           Laurus.Text2Frame.CommonEventID = args[2]
           Laurus.Text2Frame.IsOverwrite = (args[3] === 'true')
-          const {PATH_SEP, BASE_PATH} = getDirParams()
+          const { PATH_SEP, BASE_PATH } = getDirParams()
           Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
           Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
         }
