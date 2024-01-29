@@ -4121,7 +4121,7 @@
         BASE_PATH = path.dirname(process.mainModule.filename)
       }
 
-      return { PATH_SEP: PATH_SEP, BASE_PATH: BASE_PATH }
+      return { PATH_SEP, BASE_PATH }
     }
 
     const getDefaultPage = function () {
