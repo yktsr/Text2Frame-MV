@@ -4008,6 +4008,12 @@
  * 以下の連絡先まで連絡してください。
  * [Twitter]: https://twitter.com/Asyun3i9t/
  * [GitHub] : https://github.com/yktsr/
+ *
+ * --------------------------------------
+ * Version
+ * --------------------------------------
+ * 2.2.1
+ * build: 843c2600afe1a2b96b8825217cb2ba1c8b26867e
  */
 /* eslint-enable spaced-comment */
 
