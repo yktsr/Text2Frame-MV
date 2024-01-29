@@ -129,6 +129,16 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
           $gameMessage.add(warning);
         }
       };
+      const getDirParams = function() {
+        let PATH_SEP = "/";
+        let BASE_PATH = ".";
+        if (typeof commonjsRequire !== "undefined") {
+          const path = require$$1;
+          PATH_SEP = path.sep;
+          BASE_PATH = path.dirname(process.mainModule.filename);
+        }
+        return { path_sep: PATH_SEP, base_path: BASE_PATH };
+      };
       const getDefaultPage = function() {
         return {
           conditions: {
@@ -168,13 +178,6 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         };
       };
       Laurus.Text2Frame.ExecMode = command.toUpperCase();
-      let PATH_SEP = "/";
-      let BASE_PATH = ".";
-      if (typeof commonjsRequire !== "undefined") {
-        const path = require$$1;
-        PATH_SEP = path.sep;
-        BASE_PATH = path.dirname(process.mainModule.filename);
-      }
       switch (Laurus.Text2Frame.ExecMode) {
         case "IMPORT_MESSAGE_TO_EVENT":
         case "メッセージをイベントにインポート":
@@ -198,6 +201,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
           if (args[5] && args[5].toLowerCase() === "true")
             Laurus.Text2Frame.IsOverwrite = true;
           if (args[0] || args[1]) {
+            const { PATH_SEP, BASE_PATH } = getDirParams();
             Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
             Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${("000" + Laurus.Text2Frame.MapID).slice(-3)}.json`;
           }
@@ -211,6 +215,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
             Laurus.Text2Frame.FileName = args[1];
             Laurus.Text2Frame.CommonEventID = args[2];
             Laurus.Text2Frame.IsOverwrite = args[3] === "true";
+            const { PATH_SEP, BASE_PATH } = getDirParams();
             Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
             Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`;
           }
