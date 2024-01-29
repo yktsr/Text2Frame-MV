@@ -1,8 +1,9 @@
 {
   "name": "Text2Frame-MV",
-  "version": "1.4.0",
+  "version": "2.2.1",
   "description": "Simple compiler to convert text to event.",
   "main": "Text2Frame.js",
+  "types": "esm.d.ts",
   "directories": {
     "test": "test"
   },
@@ -12,6 +13,7 @@
     "test_frame2text": "mocha --inline-diffs test/test_frame2text.js",
     "lint": "eslint --max-warnings=0 Text2Frame.js Frame2Text.js",
     "debug": "node Text2Frame.js"
+    "build": "vite build"
   },
   "repository": {
     "type": "git",
@@ -27,5 +29,10 @@
     "eslint-config-standard": "^17.1.0",
     "mocha": ">=10.2.0",
     "sinon": ">=9.0.2"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "vite": "^5.0.11"
   }
 }
