@@ -230,6 +230,44 @@ Please restart RPG Maker MV(Editor) WITHOUT save.
 **セーブせずに**プロジェクトファイルを開き直してください
 ```
 
+### How to use the Text2Frame module as an ES Module and as a CommonJS module:
+### npm install
+```
+$ npm install 'yktsr/Text2Frame-MV'
+```
+
+### Using as an ES Module
+```
+$ cat examples/commonjs.js
+const TF = require("Text2Frame-MV/Text2Frame.cjs.js")
+
+const date = new Date().toLocaleString()
+const text = `<comment>
+for common js module:
+出力日時: ${date}
+</comment>`
+
+console.log(TF.compile(text))
+
+$ node examples/commonjs.js
+```
+
+### Using as an ES Module
+```
+$ cat examples/esmodules.mjs
+import TF from "Text2Frame-MV/Text2Frame.es.mjs"
+
+const date = new Date().toLocaleString()
+const text = `<comment>
+for ES Module:
+出力日時: ${date}
+</comment>`
+
+console.log(TF.compile(text))
+
+$ node examples/esmodules.mjs
+```
+
 ### Lint check
 ```
 $ npm run lint
