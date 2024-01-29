@@ -2468,7 +2468,7 @@
     // 出力メッセージ
     /** ********************************************** */
     const EnglishMessage = `Exported to ${Laurus.Frame2Text.TextPath}`
-    const JapaneseMessage = `${Laurus.Frame2Text.TextPath}にエクスポートしました`
+    const JapaneseMessage = `${Laurus.Frame2Text.TextPath} にエクスポートしました`
     addMessage(EnglishMessage + '\n' + JapaneseMessage)
     console.log(EnglishMessage + '\n' + JapaneseMessage)
   }
@@ -2496,7 +2496,46 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-w, --english_tag <true/false>', 'english tag', 'true')
     .parse()
 
+  const help_text = `
+===== Manual =====
+    NAME
+       Frame2Text - Simple decompiler to convert event to text.
+    SYNOPSIS
+        node Frame2Text.js
+        node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
+        node Frame2Text.js --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
+        node Frame2Text.js --mode test
+    DESCRIPTION
+        node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
+          マップイベントのテキスト出力モードです。
+          読み込むマップファイル、出力テキストファイル、イベントID、ページIDを指定します。
+          test/expected_basic.json を読み込み、 test/tmp.txt に書き出すコマンド例は以下です。
+
+          例1：$ node Frame2Text.js --mode map --input_path test/expected_basic.json --output_path test/tmp.txt --event_id 1 --page_id 1
+          例2：$ node Frame2Text.js -m map -i test/expected_basic.json -o test/tmp.txt -e 1 -p 1
+
+        node Frame2Text.js --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
+          コモンイベントへのテキスト出力モードです。
+          読み込むコモンイベントファイル、出力テキストイベント、コモンイベントIDを引数で指定します。
+          data/CommonEvents.json を読み込み、 test/tmp.txt に上書きするコマンド例は以下です。
+
+          例1：$ node Frame2Text.js --mode common --input_path data/CommonEvents.json --common_event_id 1 --output_path test/tmp.txt
+          例2：$ node Frame2Text.js -m common -i data/CommonEvents.json -c 1 -o test/tmp.txt
+
+        node Frame2Text.js --mode decompile
+           デコンパイルモードです。
+           変換したいイベントをパイプで与えると、対応したテキストファイルに変換し、標準出力に出力します。
+           このモードでは、Map.json / CommonEvent.json 単位で変換され、イベントやページ番号は無視されます。
+           例1: $ cat data/Map001.json | node Frame2Text.js --mode decompile
+`
+
+  program.addHelpText('after', help_text)
   const options = program.opts()
+
+  if (!['map', 'common', 'decompile', 'test'].includes(options.mode)) {
+    program.help()
+    process.exit(0)
+  }
 
   if (options.mode === 'map') {
     const Frame2Text = {
@@ -2534,7 +2573,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       }
     })
     process.stdin.on('end', () => {
-      // console.log(JSON.parse(data))
       JSON.parse(data).events.filter(event => event !== null).forEach(function (event) {
         event.pages.forEach(function (p) {
           console.log(module.exports.decompile(p.list))
@@ -2554,38 +2592,5 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       event_id,
       page_id
     ])
-  } else {
-    console.log('===== Manual =====')
-    console.log(`
-    NAME
-       Frame2Text - Simple decompiler to convert event to text.
-    SYNOPSIS
-        node Frame2Text.js
-        node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
-        node Frame2Text.js --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
-        node Frame2Text.js --mode test
-    DESCRIPTION
-        node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
-          マップイベントのテキスト出力モードです。
-          読み込むマップファイル、出力テキストファイル、イベントID、ページIDを指定します。
-          test/expected_basic.json を読み込み、 test/tmp.txt に書き出すコマンド例は以下です。
-
-          例1：$ node Frame2Text.js --mode map --input_path test/expected_basic.json --output_path test/tmp.txt --event_id 1 --page_id 1
-          例2：$ node Frame2Text.js -m map -i test/expected_basic.json -o test/tmp.txt -e 1 -p 1
-
-        node Frame2Text.js --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
-          コモンイベントへのテキスト出力モードです。
-          読み込むコモンイベントファイル、出力テキストイベント、コモンイベントIDを引数で指定します。
-          data/CommonEvents.json を読み込み、 test/tmp.txt に上書きするコマンド例は以下です。
-
-          例1：$ node Frame2Text.js --mode common --input_path data/CommonEvents.json --common_event_id 1 --output_path test/tmp.txt
-          例2：$ node Frame2Text.js -m common -i data/CommonEvents.json -c 1 -o test/tmp.txt
-
-        node Frame2Text.js --mode decompile
-           デコンパイルモードです。
-           変換したいイベントをパイプで与えると、対応したテキストファイルに変換し、標準出力に出力します。
-           このモードでは、Map.json / CommonEvent.json 単位で変換され、イベントやページ番号は無視されます。
-           例1: $ cat data/Map001.json | node Frame2Text.js --mode decompile
-    `)
   }
 }
