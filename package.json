@@ -12,7 +12,7 @@
     "test_text2frame": "mocha --inline-diffs test/test_json_eq.js",
     "test_frame2text": "mocha --inline-diffs test/test_frame2text.js",
     "lint": "eslint --max-warnings=0 Text2Frame.js Frame2Text.js",
-    "debug": "node Text2Frame.js"
+    "debug": "node Text2Frame.js",
     "build": "vite build"
   },
   "repository": {
