@@ -149,6 +149,12 @@ Simple compiler to convert text to event.
 
 詳細は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3)を参照してください。
 
+## 逆変換プラグイン Frame2Text
+RPGツクールMV/MZのイベントコマンドを、Text2Frameの記法に則ったテキストにエクスポートするプラグインである、Frame2Textも公開しています。
+
+Frame2Textのダウンロードは[ここ](https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Frame2Text.js)からお願いします。
+
+また、詳細な使い方は[Frame2Textの紹介ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E9%80%86%E5%A4%89%E6%8F%9B%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3Frame2Text)かプラグイン本体のヘルプドキュメントを参照してください。
 
 ## Author/連絡先
 * [@kryptos_nv](https://twitter.com/kryptos_nv)
@@ -168,19 +174,29 @@ $ npm run build --if-present
 
 ### Show help
 ```
-$ npm run debug
-===== Manual =====
+Usage: Text2Frame [options]
 
+Options:
+  -V, --version                         output the version number
+  -m, --mode <map|common|compile|test>  output mode
+  -t, --text_path <name>                text file path
+  -o, --output_path <name>              output file path
+  -e, --event_id <name>                 event file id
+  -p, --page_id <name>                  page id
+  -c, --common_event_id <name>          common event id
+  -w, --overwrite <true/false>          overwrite mode (default: "false")
+  -v, --verbose                         debug mode (default: false)
+  -h, --help                            display help for command
+
+===== Manual =====
     NAME
        Text2Frame - Simple compiler to convert text to event command.
     SYNOPSIS
-        node Text2Frame.js
         node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
         node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
+        node Text2Frame.js --mode compile
         node Text2Frame.js --verbose --mode test
     DESCRIPTION
-        node Text2Frame.js
-          テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
         node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
           マップへのイベント出力モードです。
           読み込むファイル、出力マップ、上書きの有無を引数で指定します。
@@ -196,6 +212,17 @@ $ npm run debug
 
           例1：$ node Text2Frame.js --mode common --text_path test/basic.txt --output_path data/CommonEvents.json --common_event_id 1 --overwrite true
           例2：$ node Text2Frame.js -m common -t test/basic.txt -o data/CommonEvents.json -c 1 -w true
+
+        node Text2Frame.js --mode compile
+          コンパイルモードです。
+          変換したいテキストファイルをパイプで与えると、対応したイベントに変換されたJSONを、標準出力に出力します。
+          このモードでは、Map.json / CommonEvent.jsonの形式へフォーマットされず、イベントに変換したJSONのみが出力されるため、
+          Map.json/CommonEvent.json への組み込みは各自で行う必要があります。
+
+          例1: $ cat test/basic.txt | node Text2Frame.js --mode compile
+
+        node Text2Frame.js --mode test
+          テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
 ```
 
 ### Run Text2frame.js with command line
@@ -207,6 +234,44 @@ $ npm run debug -- --mode map --text_path test/basic.txt --output_path data/Map0
 
 Please restart RPG Maker MV(Editor) WITHOUT save.
 **セーブせずに**プロジェクトファイルを開き直してください
+```
+
+### How to use the Text2Frame module as an ES Module and as a CommonJS module:
+### npm install
+```
+$ npm install 'yktsr/Text2Frame-MV'
+```
+
+### Using as an ES Module
+```
+$ cat examples/commonjs.js
+const TF = require("Text2Frame-MV/Text2Frame.cjs.js")
+
+const date = new Date().toLocaleString()
+const text = `<comment>
+for common js module:
+出力日時: ${date}
+</comment>`
+
+console.log(TF.compile(text))
+
+$ node examples/commonjs.js
+```
+
+### Using as an ES Module
+```
+$ cat examples/esmodules.mjs
+import TF from "Text2Frame-MV/Text2Frame.es.mjs"
+
+const date = new Date().toLocaleString()
+const text = `<comment>
+for ES Module:
+出力日時: ${date}
+</comment>`
+
+console.log(TF.compile(text))
+
+$ node examples/esmodules.mjs
 ```
 
 ### Lint check
