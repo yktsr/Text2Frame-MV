@@ -67,3 +67,11 @@
 % 拡大率の境界値のチェック
 <ShowPicture: 1, Book, Scale[0][0]>
 <ShowPicture: 1, Book, Scale[1][1]>
+
+
+% 位置のX座標とY座標に負の値を設定する場合のチェック
+%% ピクチャ番号15に、Book.pngを、左上を基準として、X座標は-1, Y座標は-2として表示
+<MovePicture: 15, Book, Position[Upper Left][-1][-2]>
+
+%% ピクチャ番号15, Book.pngを、中心を基準として、X座標は-30, Y座標は-400
+<MovePicture: 15, Book, Position[Center][-30][-400]>
