@@ -138,7 +138,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
           PATH_SEP = path.sep;
           BASE_PATH = path.dirname(process.mainModule.filename);
         }
-        return { path_sep: PATH_SEP, base_path: BASE_PATH };
+        return { PATH_SEP, BASE_PATH };
       };
       const getDefaultPage = function() {
         return {
@@ -1074,7 +1074,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
               if (origin.toLowerCase() === "center" || origin === "中央") {
                 out.origin = 1;
               }
-              const constant_regexp = /^[0-9]+$/;
+              const constant_regexp = /^-?[0-9]+$/;
               const variable_regexp = /(?:variables|v|変数)\[([0-9]+)\]/i;
               const x = values[1] || "0";
               if (x.match(constant_regexp)) {
