@@ -5138,7 +5138,7 @@
             if (origin.toLowerCase() === 'center' || origin === '中央') {
               out.origin = 1
             }
-            const constant_regexp = /^[0-9]+$/
+            const constant_regexp = /^-?[0-9]+$/
             const variable_regexp = /(?:variables|v|変数)\[([0-9]+)\]/i
             const x = values[1] || '0'
             if (x.match(constant_regexp)) {
