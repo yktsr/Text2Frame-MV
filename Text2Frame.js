@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.2.2 2024/02/27:
+// ・#123 ピクチャの表示・移動において基点の座標にマイナスを設定できない不具合を修正
 // 2.2.1 2024/01/08:
 // ・#117 中核の変換処理をESModule化し、compile関数を通じて外部のJavascriptプログラムから呼び出せるようにリファクタ
 //   - コマンドライン上で、パイプでテキストファイルを受け取って、標準出力へイベントに変換されたJSONを書き出すcompileモードの追加
@@ -5138,7 +5140,7 @@
             if (origin.toLowerCase() === 'center' || origin === '中央') {
               out.origin = 1
             }
-            const constant_regexp = /^[0-9]+$/
+            const constant_regexp = /^-?[0-9]+$/
             const variable_regexp = /(?:variables|v|変数)\[([0-9]+)\]/i
             const x = values[1] || '0'
             if (x.match(constant_regexp)) {
