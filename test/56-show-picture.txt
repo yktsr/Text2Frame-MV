@@ -75,3 +75,10 @@
 
 %% ピクチャ番号15, Book.pngを、中心を基準として、X座標は-30, Y座標は-400
 <ShowPicture: 15, Book, Position[Center][-30][-400]>
+
+% Positionに[0][0]を入れた時の確認
+<ShowPicture: 25, Book, Position[Upper Left][0][0]>
+
+% Positionに[-0][-0]を入れた時の確認
+<ShowPicture: 25, Book, Position[Upper Left][-0][-0]>
+

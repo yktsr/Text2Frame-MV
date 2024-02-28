@@ -98,3 +98,9 @@
 
 %% ピクチャ番号15, 中心を基準として、X座標は-30, Y座標は-400
 <MovePicture: 15, Position[Center][-30][-400]>
+
+% Positionに[0][0]を入れた時の確認
+<MovePicture: 25, Position[Upper Left][0][0]>
+
+% Positionに[-0][-0]を入れた時の確認
+<MovePicture: 25, Position[Upper Left][-0][-0]>
