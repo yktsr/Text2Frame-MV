@@ -17,3 +17,45 @@
 <PCZ: Text2Frame, IMPORT_MESSAGE_TO_EVENT, イベントにインポート, FileFolder[], FileName[], MapID[1], EventID[2], PageID[3], IsOverwrite[false]>
 % 引数が空、注釈有の場合
 <PCZ: Text2Frame, IMPORT_MESSAGE_TO_EVENT, イベントにインポート, FileFolder[][取り込み元フォルダ名], FileName[][取り込み元ファイル名], MapID[1][取り込み先マップID], EventID[2][取り込み先イベントID], PageID[3][取り込み先ページID], IsOverwrite[false][【取り扱い注意】上書きする]>
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 以下、2024年8月25日に発行されたIssue#125に対応するためのテストケース
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% マルチライン文字列のコマンド
+<PCZ: TestCasePluginCommand, FUNC_WITH_MULTI_LINE, マルチライン文字列コマンド, multiline_string_arg[　　今日も　　\n一日\n　がんばるぞい！][マルチライン文字列0]>
+
+% オブジェクトのコマンド
+<PCZ: TestCasePluginCommand, FUNC_WITH_OBJECT, オブジェクトコマンド, struct_arg[{"param_string":"ほげほげ","param_number":11111,"param_boolean":true}][オブジェクト0]>
+
+% 配列のコマンド
+<PCZ: TestCasePluginCommand, FUNC_WITH_ARRAY, 配列コマンド, string_array_arg[["今日も","　一日","頑張るぞい！"]][文字列配列], number_array_arg[[1,2,3,4]][数値配列], bool_array_arg[true, false, true][ブール配列]>
+
+% 複雑なコマンド
+<PCZ: TestCasePluginCommand, FUNC_WITH_SOME_ARGS, 複雑なパターンのコマンド, string_arg[今日も一日がんばるぞい！][文字列0], number_arg[123456789][数値0], boolean_arg[false][ブール0], file_arg[img/battlebacks1/Clouds][ファイル名（拡張子なし）], struct_arg[{ "param_string":"あいうえお", "param_number": 1, "param_boolean": true, "param_multiline_string": "今日も\n一日\nがんばるぞい！", "param_struct": { "param_string": "かきくけこ", "param_number": 22222, "param_boolean":true, "param_multiline_string":"あいうえお\nかきくけこ\nさしすせそ\nたちつてと", "param_struct": { "param_multiline_string": "あいうえおかきくけこ\n　　　　　さしすせそ", "param_number_array": [111, 2222, 33333]}}}][オブジェクト1]
+
+
+% 最後の引数(オブジェクト1)の中身は以下の通りのJSONです。ツクールのJSON内では、以下のようにvalueが変換されるようです。
+% 文字列・数値・ブーリアンはすべて文字列に変換
+% オブジェクト: パースするとオブジェクトになる文字列
+% （ツクール上では、オブジェクトは再帰的にパースするような文字列のようです）
+% {
+% 	"param_string": "あいうえお",
+% 	"param_number": 1,
+% 	"param_boolean": true,
+% 	"param_multiline_string": "今日も\n一日\nがんばるぞい！",
+% 	"param_struct": {
+% 		"param_string": "かきくけこ",
+% 		"param_number": 22222,
+% 		"param_boolean": true,
+% 		"param_multiline_string": "あいうえお\nかきくけこ\nさしすせそ\nたちつてと",
+% 		"param_struct": {
+% 			"param_multiline_string": "あいうえおかきくけこ\n　　　　　さしすせそ",
+% 			"param_number_array": [
+% 				111,
+% 				2222,
+% 				33333
+% 			]
+% 		}
+% 	}
+% }
