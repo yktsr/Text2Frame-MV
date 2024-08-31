@@ -29,7 +29,7 @@
 <PCZ: TestCasePluginCommand, FUNC_WITH_OBJECT, オブジェクトコマンド, struct_arg[{"param_string":"ほげほげ","param_number":11111,"param_boolean":true}][オブジェクト0]>
 
 % 配列のコマンド
-<PCZ: TestCasePluginCommand, FUNC_WITH_ARRAY, 配列コマンド, string_array_arg[["今日も","　一日","頑張るぞい！"]][文字列配列], number_array_arg[[1,2,3,4]][数値配列], bool_array_arg[true, false, true][ブール配列]>
+<PCZ: TestCasePluginCommand, FUNC_WITH_ARRAY, 配列コマンド, string_array_arg[["今日も","　一日","頑張るぞい！"]][文字列配列], number_array_arg[[1,2,3,4]][数値配列], bool_array_arg[[true, false, true]][ブール配列]>
 
 % 複雑なコマンド
 <PCZ: TestCasePluginCommand, FUNC_WITH_SOME_ARGS, 複雑なパターンのコマンド, string_arg[今日も一日がんばるぞい！][文字列0], number_arg[123456789][数値0], boolean_arg[false][ブール0], file_arg[img/battlebacks1/Clouds][ファイル名（拡張子なし）], struct_arg[{ "param_string":"あいうえお", "param_number": 1, "param_boolean": true, "param_multiline_string": "今日も\n一日\nがんばるぞい！", "param_struct": { "param_string": "かきくけこ", "param_number": 22222, "param_boolean":true, "param_multiline_string":"あいうえお\nかきくけこ\nさしすせそ\nたちつてと", "param_struct": { "param_multiline_string": "あいうえおかきくけこ\n　　　　　さしすせそ", "param_number_array": [111, 2222, 33333]}}}][オブジェクト1]
