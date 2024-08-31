@@ -4376,6 +4376,41 @@
       return plugin_command
     }
 
+    // JSONオブジェクトのvalueをすべてString変換する補助関数
+    const replacer = function (key, value) {
+      if (typeof value === 'object' && value !== null) {
+        return value;
+      }
+      return String(value);
+    }
+
+    // MZのプラグインパラメータをパースする補助関数
+    const ParseMzArg = function (args_string) {
+      const args = []
+      let buffer = ''
+      let braceLevel = 0
+
+      for (let char of args_string) {
+        if (char === ',' && braceLevel === 0) {
+          args.push(buffer.trim())
+          buffer = ''
+        } else {
+          buffer += char
+          if (char === '[' || char === '{') {
+            braceLevel++
+          } else if (char === ']' || char === '}') {
+            braceLevel--
+          }
+        }
+      }
+
+      if (buffer) {
+        args.push(buffer.trim())
+      }
+
+      return args
+    }
+
     const getPluginCommandEventMZ = function (
       plugin_name, plugin_command, disp_plugin_command, args) {
       const plugin_args = {}
@@ -4392,7 +4427,13 @@
         if (matched) {
           const arg_name = matched[1] || ''
           const values = matched[2].slice(1, -1).split('][') || []
-          plugin_args[arg_name] = values[0] || ''
+
+          if(['struct_arg', 'bool_array_arg', 'number_array_arg'].includes(arg_name)) {
+            const json_obj = JSON.parse(values[0])
+            plugin_args[arg_name] = JSON.stringify(json_obj, replacer)
+          } else {
+            plugin_args[arg_name] = values[0] || ''
+          }
         }
       }
       return plugin_command_mz
@@ -4404,10 +4445,17 @@
       if (matched) {
         let arg_name = matched[1] || ''
         const values = matched[2].slice(1, -1).split('][') || []
-        const value = values[0] || ''
+        let value = values[0] || ''
+
+        if(['struct_arg', 'bool_array_arg', 'number_array_arg'].includes(arg_name)) {
+          const json_obj = JSON.parse(values[0])
+          value = JSON.stringify(json_obj, replacer)
+        }
+
         if (values[1]) {
           arg_name = values[1]
         }
+
         return { code: 657, indent: 0, parameters: [arg_name + ' = ' + value] }
       } else {
         throw new Error('Syntax error. / 文法エラーです。' +
@@ -6643,8 +6691,7 @@
 
       // Plugin Command MZ
       if (plugin_command_mz) {
-        console.log(plugin_command_mz)
-        const params = plugin_command_mz[1].split(',').map(s => s.trim())
+        const params = ParseMzArg(plugin_command_mz[1])
         const event_command_list = []
         if (params.length > 2) {
           const arg_plugin_name = params[0]
