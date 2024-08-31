@@ -4433,6 +4433,7 @@
             plugin_args[arg_name] = JSON.stringify(json_obj, replacer)
           } else {
             plugin_args[arg_name] = values[0] || ''
+            plugin_args[arg_name] = plugin_args[arg_name].replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\\\/g, '\\')
           }
         }
       }
@@ -4450,6 +4451,8 @@
         if(['struct_arg', 'bool_array_arg', 'number_array_arg'].includes(arg_name)) {
           const json_obj = JSON.parse(values[0])
           value = JSON.stringify(json_obj, replacer)
+        } else {
+          value = value.replace(/\\n/g, ' ').replace(/\\t/g, ' ').replace(/\\\\/g, ' ')
         }
 
         if (values[1]) {
