@@ -6643,6 +6643,7 @@
 
       // Plugin Command MZ
       if (plugin_command_mz) {
+        console.log(plugin_command_mz)
         const params = plugin_command_mz[1].split(',').map(s => s.trim())
         const event_command_list = []
         if (params.length > 2) {
@@ -9318,7 +9319,8 @@
 //
 // $ node Text2Frame.js
 if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && require.main === module) {
-  const program = require('commander')
+  const { Command } = require('commander')
+  const program = new Command()
   program
     .version('2.2.1')
     .usage('[options]')
