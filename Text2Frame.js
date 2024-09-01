@@ -4411,6 +4411,38 @@
       return args
     }
 
+    // NestされたJSONを処理する補助関数
+    const parseNestedJSON = function (jsonString) {
+      let jsonObject
+      try {
+        jsonObject = JSON.parse(jsonString)
+      } catch (error) {
+        return jsonString
+      }
+
+      for (const key in jsonObject) {
+        if (typeof jsonObject[key] === 'string') {
+          try {
+            jsonObject[key] = parseNestedJSON(jsonObject[key])
+          } catch (error) {
+            continue
+          }
+        }
+      }
+
+      return jsonObject
+    }
+
+    const stringifyNestedJSON = function (jsonObject) {
+      for (const key in jsonObject) {
+        if (typeof jsonObject[key] === 'object' && jsonObject[key] !== null) {
+          jsonObject[key] = stringifyNestedJSON(jsonObject[key])
+        }
+      }
+
+      return JSON.stringify(jsonObject, replacer)
+    }
+
     const getPluginCommandEventMZ = function (
       plugin_name, plugin_command, disp_plugin_command, args) {
       const plugin_args = {}
@@ -4428,9 +4460,9 @@
           const arg_name = matched[1] || ''
           const values = matched[2].slice(1, -1).split('][') || []
 
-          if(['struct_arg', 'bool_array_arg', 'number_array_arg'].includes(arg_name)) {
-            const json_obj = JSON.parse(values[0])
-            plugin_args[arg_name] = JSON.stringify(json_obj, replacer)
+          if (['struct_arg', 'bool_array_arg', 'number_array_arg'].includes(arg_name)) {
+            const json_obj = parseNestedJSON(values[0])
+            plugin_args[arg_name] = stringifyNestedJSON(json_obj)
           } else {
             plugin_args[arg_name] = values[0] || ''
             plugin_args[arg_name] = plugin_args[arg_name].replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\\\/g, '\\')
@@ -4448,9 +4480,9 @@
         const values = matched[2].slice(1, -1).split('][') || []
         let value = values[0] || ''
 
-        if(['struct_arg', 'bool_array_arg', 'number_array_arg'].includes(arg_name)) {
-          const json_obj = JSON.parse(values[0])
-          value = JSON.stringify(json_obj, replacer)
+        if (['struct_arg', 'bool_array_arg', 'number_array_arg'].includes(arg_name)) {
+          const json_obj = parseNestedJSON(values[0])
+          value = stringifyNestedJSON(json_obj)
         } else {
           value = value.replace(/\\n/g, ' ').replace(/\\t/g, ' ').replace(/\\\\/g, ' ')
         }
