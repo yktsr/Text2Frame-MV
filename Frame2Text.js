@@ -2482,7 +2482,8 @@
 
 // developer mode
 if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && require.main === module) {
-  const program = require('commander')
+  const { Command } = require('commander')
+  const program = new Command()
   program
     .version('1.0.0')
     .usage('[options]')
