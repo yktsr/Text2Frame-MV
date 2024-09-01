@@ -4379,9 +4379,9 @@
     // JSONオブジェクトのvalueをすべてString変換する補助関数
     const replacer = function (key, value) {
       if (typeof value === 'object' && value !== null) {
-        return value;
+        return value
       }
-      return String(value);
+      return String(value)
     }
 
     // MZのプラグインパラメータをパースする補助関数
@@ -4390,7 +4390,7 @@
       let buffer = ''
       let braceLevel = 0
 
-      for (let char of args_string) {
+      for (const char of args_string) {
         if (char === ',' && braceLevel === 0) {
           args.push(buffer.trim())
           buffer = ''
