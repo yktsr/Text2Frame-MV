@@ -4385,7 +4385,7 @@
     }
 
     // MZのプラグインパラメータをパースする補助関数
-    const ParseMzArg = function (args_string) {
+    const parseMzArg = function (args_string) {
       const args = []
       let buffer = ''
       let braceLevel = 0
@@ -6726,7 +6726,7 @@
 
       // Plugin Command MZ
       if (plugin_command_mz) {
-        const params = ParseMzArg(plugin_command_mz[1])
+        const params = parseMzArg(plugin_command_mz[1])
         const event_command_list = []
         if (params.length > 2) {
           const arg_plugin_name = params[0]
