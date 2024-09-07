@@ -901,6 +901,33 @@
       else return name
     }
 
+    // MZのプラグインパラメータをパースする補助関数
+    const parseMzArg = function (args_string) {
+      const args = []
+      let buffer = ''
+      let braceLevel = 0
+
+      for (const char of args_string) {
+        if (char === ',' && braceLevel === 0) {
+          args.push(buffer.trim())
+          buffer = ''
+        } else {
+          buffer += char
+          if (char === '[' || char === '{') {
+            braceLevel++
+          } else if (char === ']' || char === '}') {
+            braceLevel--
+          }
+        }
+      }
+
+      if (buffer) {
+        args.push(buffer.trim())
+      }
+
+      return args
+    }
+
     // 出力するテキスト変数
     // Laurus.Frame2Text.EnglishTagの値を別変数に代入
     const decompile = function (map_events, EnglishTag) {
@@ -2428,7 +2455,7 @@
           const parameters = event.parameters[0]
           const splitParameters = parameters.split(' ')
           const outParameters = `[${splitParameters[0]}]`
-          const lastIndex = text.lastIndexOf('\n')
+          const lastIndex = text.lastIndexOf('\n<')
           const extractedText = text.substring(lastIndex + 1)
           text = text.substring(0, lastIndex)
 
@@ -2436,13 +2463,14 @@
           mzCount++
           const parametersNum = 2 + mzCount
           // 357で出力したタグを,区切りで取得
-          const splitVal = extractedText.split(',')
+          const splitVal = parseMzArg(extractedText)
           if (splitVal[parametersNum].endsWith('>')) {
             // 最後の引数の場合は>が含まれている為、削除してから付け足す
             splitVal[parametersNum] = splitVal[parametersNum].slice(0, -1) + outParameters + '>'
           } else {
             splitVal[parametersNum] = splitVal[parametersNum] + outParameters
           }
+          splitVal[parametersNum] = splitVal[parametersNum].replace(/\n/g, '\\n')
           addNewLineIndent(indent)
           text += splitVal
         } else {
