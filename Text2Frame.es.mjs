@@ -2,8 +2,7 @@ function getDefaultExportFromCjs(x) {
   return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
 }
 function getAugmentedNamespace(n) {
-  if (n.__esModule)
-    return n;
+  if (n.__esModule) return n;
   var f = n.default;
   if (typeof f == "function") {
     var a = function a2() {
@@ -13,8 +12,7 @@ function getAugmentedNamespace(n) {
       return f.apply(this, arguments);
     };
     a.prototype = f.prototype;
-  } else
-    a = {};
+  } else a = {};
   Object.defineProperty(a, "__esModule", { value: true });
   Object.keys(n).forEach(function(k) {
     var d = Object.getOwnPropertyDescriptor(n, k);
@@ -182,14 +180,10 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         case "IMPORT_MESSAGE_TO_EVENT":
         case "メッセージをイベントにインポート":
           addMessage("import message to event. \n/ メッセージをイベントにインポートします。");
-          if (args[0])
-            Laurus.Text2Frame.FileFolder = args[0];
-          if (args[1])
-            Laurus.Text2Frame.FileName = args[1];
-          if (args[2])
-            Laurus.Text2Frame.MapID = args[2];
-          if (args[3])
-            Laurus.Text2Frame.EventID = args[3];
+          if (args[0]) Laurus.Text2Frame.FileFolder = args[0];
+          if (args[1]) Laurus.Text2Frame.FileName = args[1];
+          if (args[2]) Laurus.Text2Frame.MapID = args[2];
+          if (args[3]) Laurus.Text2Frame.EventID = args[3];
           if (args[4] && (args[4].toLowerCase() === "true" || args[4].toLowerCase() === "false")) {
             Laurus.Text2Frame.IsOverwrite = args[4].toLowerCase() === "true";
             addWarning("【警告】5番目の引数に上書き判定を設定することは非推奨に");
@@ -198,8 +192,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
           } else if (args[4]) {
             Laurus.Text2Frame.PageID = args[4];
           }
-          if (args[5] && args[5].toLowerCase() === "true")
-            Laurus.Text2Frame.IsOverwrite = true;
+          if (args[5] && args[5].toLowerCase() === "true") Laurus.Text2Frame.IsOverwrite = true;
           if (args[0] || args[1]) {
             const { PATH_SEP, BASE_PATH } = getDirParams();
             Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
@@ -361,6 +354,60 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         plugin_command.parameters[0] = text;
         return plugin_command;
       };
+      const replacer = function(key, value) {
+        if (typeof value === "object" && value !== null) {
+          return value;
+        }
+        return String(value);
+      };
+      const parseMzArg = function(args_string) {
+        const args2 = [];
+        let buffer = "";
+        let braceLevel = 0;
+        for (const char of args_string) {
+          if (char === "," && braceLevel === 0) {
+            args2.push(buffer.trim());
+            buffer = "";
+          } else {
+            buffer += char;
+            if (char === "[" || char === "{") {
+              braceLevel++;
+            } else if (char === "]" || char === "}") {
+              braceLevel--;
+            }
+          }
+        }
+        if (buffer) {
+          args2.push(buffer.trim());
+        }
+        return args2;
+      };
+      const parseNestedJSON = function(jsonString) {
+        let jsonObject;
+        try {
+          jsonObject = JSON.parse(jsonString);
+        } catch (error) {
+          return jsonString;
+        }
+        for (const key in jsonObject) {
+          if (typeof jsonObject[key] === "string") {
+            try {
+              jsonObject[key] = parseNestedJSON(jsonObject[key]);
+            } catch (error) {
+              continue;
+            }
+          }
+        }
+        return jsonObject;
+      };
+      const stringifyNestedJSON = function(jsonObject) {
+        for (const key in jsonObject) {
+          if (typeof jsonObject[key] === "object" && jsonObject[key] !== null) {
+            jsonObject[key] = stringifyNestedJSON(jsonObject[key]);
+          }
+        }
+        return JSON.stringify(jsonObject, replacer);
+      };
       const getPluginCommandEventMZ = function(plugin_name, plugin_command, disp_plugin_command, args2) {
         const plugin_args = {};
         const plugin_command_mz = {
@@ -379,7 +426,13 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
           if (matched) {
             const arg_name = matched[1] || "";
             const values = matched[2].slice(1, -1).split("][") || [];
-            plugin_args[arg_name] = values[0] || "";
+            if (["struct_arg", "bool_array_arg", "number_array_arg"].includes(arg_name)) {
+              const json_obj = parseNestedJSON(values[0]);
+              plugin_args[arg_name] = stringifyNestedJSON(json_obj);
+            } else {
+              plugin_args[arg_name] = values[0] || "";
+              plugin_args[arg_name] = plugin_args[arg_name].replace(/\\n/g, "\n").replace(/\\t/g, "	").replace(/\\\\/g, "\\");
+            }
           }
         }
         return plugin_command_mz;
@@ -390,7 +443,13 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         if (matched) {
           let arg_name = matched[1] || "";
           const values = matched[2].slice(1, -1).split("][") || [];
-          const value = values[0] || "";
+          let value = values[0] || "";
+          if (["struct_arg", "bool_array_arg", "number_array_arg"].includes(arg_name)) {
+            const json_obj = parseNestedJSON(values[0]);
+            value = stringifyNestedJSON(json_obj);
+          } else {
+            value = value.replace(/\\n/g, " ").replace(/\\t/g, " ").replace(/\\\\/g, " ");
+          }
           if (values[1]) {
             arg_name = values[1];
           }
@@ -1451,15 +1510,13 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
       const getIfWeaponParameters = function(weaponId, params) {
         weaponId = Math.max(Number(weaponId) || 1, 1);
         let include_equipment = false;
-        if (params[0])
-          include_equipment = true;
+        if (params[0]) include_equipment = true;
         return [9, weaponId, include_equipment];
       };
       const getIfArmorParameters = function(armorId, params) {
         armorId = Math.max(Number(armorId) || 1, 1);
         let include_equipment = false;
-        if (params[0])
-          include_equipment = true;
+        if (params[0]) include_equipment = true;
         return [10, armorId, include_equipment];
       };
       const getIfButtonParameters = function(params) {
@@ -2105,22 +2162,16 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         const LOOP_CODE = 112;
         const stack = events.reduce((s, e) => {
           const code = e.code;
-          if (code === IF_CODE)
-            s.push(IF_CODE);
-          else if (code === ELSE_CODE)
-            s.push(ELSE_CODE);
-          else if (code === BOTTOM_CODE)
-            s.pop();
+          if (code === IF_CODE) s.push(IF_CODE);
+          else if (code === ELSE_CODE) s.push(ELSE_CODE);
+          else if (code === BOTTOM_CODE) s.pop();
           return s;
         }, []);
         const bottom = stack.reduce((b, code) => {
           b.push(getCommandBottomEvent());
-          if (code === IF_CODE)
-            b.push(getEnd());
-          else if (code === ELSE_CODE)
-            b.push(getEnd());
-          else if (code === LOOP_CODE)
-            b.push(getRepeatAbove());
+          if (code === IF_CODE) b.push(getEnd());
+          else if (code === ELSE_CODE) b.push(getEnd());
+          else if (code === LOOP_CODE) b.push(getRepeatAbove());
           return b;
         }, []);
         return events.concat(bottom);
@@ -2304,7 +2355,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
           return [getPluginCommandEvent(plugin_command[1])];
         }
         if (plugin_command_mz) {
-          const params = plugin_command_mz[1].split(",").map((s) => s.trim());
+          const params = parseMzArg(plugin_command_mz[1]);
           const event_command_list3 = [];
           if (params.length > 2) {
             const arg_plugin_name = params[0];
@@ -3638,8 +3689,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
           const params = transfer_player[1].split(",").map((s) => s.trim().toLowerCase());
           const regex = /(.*?)\[(\d+)]\[(\d+)]\[(\d+)]/;
           const matches = params[0].match(regex);
-          if (!matches)
-            throw new Error("Syntax error. / 文法エラーです。:" + params[0]);
+          if (!matches) throw new Error("Syntax error. / 文法エラーです。:" + params[0]);
           const location = getLocationValue(matches[1]);
           const mapId = parseInt(matches[2]);
           const mapX = parseInt(matches[3]);
@@ -3653,8 +3703,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
           const vehicle = getVehicleValue(params[0]);
           const regex = /(.*?)\[(\d+)]\[(\d+)]\[(\d+)]/;
           const matches = params[1].match(regex);
-          if (!matches)
-            throw new Error("Syntax error. / 文法エラーです。:" + params[1]);
+          if (!matches) throw new Error("Syntax error. / 文法エラーです。:" + params[1]);
           const location = getLocationValue(matches[1]);
           const mapId = parseInt(matches[2]);
           const mapX = parseInt(matches[3]);
@@ -3666,8 +3715,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
           const event = getCharacterValue(params[0]);
           const regex = /(.*?)\[(.*?)](\[(\d+)])?(\[(\d+)])?/;
           const matches = params[1].match(regex);
-          if (!matches)
-            throw new Error("Syntax error. / 文法エラーです。:" + params[1]);
+          if (!matches) throw new Error("Syntax error. / 文法エラーです。:" + params[1]);
           const location = getLocationValue(matches[1]);
           let mapX = 0;
           let mapY = 0;
@@ -4116,8 +4164,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
           const infoType = getLocationInfoTypeValue(params[1]);
           const regex = /^(.*?)\[(.*?)](\[(\d+)])?/;
           const matches = params[2].match(regex);
-          if (!matches)
-            throw new Error("Syntax error. / 文法エラーです。:" + params[2]);
+          if (!matches) throw new Error("Syntax error. / 文法エラーです。:" + params[2]);
           const { locationType, locationX, locationY } = getLocationEvent(matches[1], matches[2], matches[4]);
           return [getGetLocationInfo(variableId, infoType, locationType, locationX, locationY)];
         }

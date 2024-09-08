@@ -1,11 +1,13 @@
 //= ============================================================================
 // Frame2Text.js
 // ----------------------------------------------------------------------------
-// (C)2023 Shick
+// (C)2023-2024 Shick
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.1 2024/09/07:
+// ・#125 プラグインコマンドMZを変換する際、オブジェクト型を取り扱えない不具合の修正
 // 1.0.0 2024/01/20 Initial Version
 // 0.1.0 2023/09/25 新規作成
 //= ============================================================================
@@ -278,6 +280,12 @@
  * プラグイン作者は、いかなる場合も破損したプロジェクトの復元には
  * 応じられませんのでご注意ください。
  * テキストファイルの文字コードはUTF-8にのみ対応しています。
+ *
+ * --------------------------------------
+ * Version
+ * --------------------------------------
+ * 1.0.1
+ * build: 81bc070a76bcd0246713b2872df90650ffc7ce70
  */
 /* eslint-enable spaced-comment */
 
@@ -899,6 +907,33 @@
     const getNone = (name) => {
       if (name === '') return EnglishTag ? 'None' : 'なし'
       else return name
+    }
+
+    // MZのプラグインパラメータをパースする補助関数
+    const parseMzArg = function (args_string) {
+      const args = []
+      let buffer = ''
+      let braceLevel = 0
+
+      for (const char of args_string) {
+        if (char === ',' && braceLevel === 0) {
+          args.push(buffer.trim())
+          buffer = ''
+        } else {
+          buffer += char
+          if (char === '[' || char === '{') {
+            braceLevel++
+          } else if (char === ']' || char === '}') {
+            braceLevel--
+          }
+        }
+      }
+
+      if (buffer) {
+        args.push(buffer.trim())
+      }
+
+      return args
     }
 
     // 出力するテキスト変数
@@ -2428,7 +2463,7 @@
           const parameters = event.parameters[0]
           const splitParameters = parameters.split(' ')
           const outParameters = `[${splitParameters[0]}]`
-          const lastIndex = text.lastIndexOf('\n')
+          const lastIndex = text.lastIndexOf('\n<')
           const extractedText = text.substring(lastIndex + 1)
           text = text.substring(0, lastIndex)
 
@@ -2436,13 +2471,14 @@
           mzCount++
           const parametersNum = 2 + mzCount
           // 357で出力したタグを,区切りで取得
-          const splitVal = extractedText.split(',')
+          const splitVal = parseMzArg(extractedText)
           if (splitVal[parametersNum].endsWith('>')) {
             // 最後の引数の場合は>が含まれている為、削除してから付け足す
             splitVal[parametersNum] = splitVal[parametersNum].slice(0, -1) + outParameters + '>'
           } else {
             splitVal[parametersNum] = splitVal[parametersNum] + outParameters
           }
+          splitVal[parametersNum] = splitVal[parametersNum].replace(/\n/g, '\\n')
           addNewLineIndent(indent)
           text += splitVal
         } else {
@@ -2482,7 +2518,8 @@
 
 // developer mode
 if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && require.main === module) {
-  const program = require('commander')
+  const { Command } = require('commander')
+  const program = new Command()
   program
     .version('1.0.0')
     .usage('[options]')

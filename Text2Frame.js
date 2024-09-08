@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.2.3 2024/09/07:
+// ・#125 プラグインコマンドMZを変換する際、オブジェクト型を取り扱えない不具合の修正
 // 2.2.2 2024/02/27:
 // ・#123 ピクチャの表示・移動において基点の座標にマイナスを設定できない不具合を修正
 // 2.2.1 2024/01/08:
@@ -3961,6 +3963,27 @@
  *  プラグインコマンドは以下のように設定します。
  *  <PCZ: TextPicture, set, テキストピクチャの設定, text[ほげ]>
  *
+ *  ・引数設定に関する詳細
+ *  引数の値として、基本的には以下の5つを入力することが可能です。
+ *  - 数値:
+ *    例えば `-1`, `0`, `1`, `1.1`, `2`,...
+ *  - 文字列:
+ *    例えば `今日も一日がんばるぞい！`
+ *  - ブーリアン:
+ *    例えば `true` or `false`
+ *          (他のタグにあるようなONやOFFのような代替記法はありません)
+ *  - 配列:
+ *    例えば`[1, 2, 3]` や`["a", "b", "c", "d"]`
+ *  - オブジェクト:
+ *    例えば `{"a": 1, "b": "hoge"}`
+ *
+ *  このうち、配列とオブジェクトのみ、JSONの記法に乗っ取って記入します。
+ *  例えば、以下の通りです。
+ *  - 例1: 引数array_argの値に文字列の配列を設定 :
+ *    `array_arg[["今日も", "一日", "がんばるぞい！"]]`
+ *  - 例2: 引数struct_arg の値に `{"a": 1, "b": "hoge"}`:
+ *    `struct_arg[{"a": 1, "b": "hoge"}]`
+ *
  *
  * --------------------------------------
  * 動作確認テキスト
@@ -4014,8 +4037,8 @@
  * --------------------------------------
  * Version
  * --------------------------------------
- * 2.2.1
- * build: 843c2600afe1a2b96b8825217cb2ba1c8b26867e
+ * 2.2.3
+ * build: 81bc070a76bcd0246713b2872df90650ffc7ce70
  */
 /* eslint-enable spaced-comment */
 
@@ -4376,6 +4399,73 @@
       return plugin_command
     }
 
+    // JSONオブジェクトのvalueをすべてString変換する補助関数
+    const replacer = function (key, value) {
+      if (typeof value === 'object' && value !== null) {
+        return value
+      }
+      return String(value)
+    }
+
+    // MZのプラグインパラメータをパースする補助関数
+    const parseMzArg = function (args_string) {
+      const args = []
+      let buffer = ''
+      let braceLevel = 0
+
+      for (const char of args_string) {
+        if (char === ',' && braceLevel === 0) {
+          args.push(buffer.trim())
+          buffer = ''
+        } else {
+          buffer += char
+          if (char === '[' || char === '{') {
+            braceLevel++
+          } else if (char === ']' || char === '}') {
+            braceLevel--
+          }
+        }
+      }
+
+      if (buffer) {
+        args.push(buffer.trim())
+      }
+
+      return args
+    }
+
+    // NestされたJSONを処理する補助関数
+    const parseNestedJSON = function (jsonString) {
+      let jsonObject
+      try {
+        jsonObject = JSON.parse(jsonString)
+      } catch (error) {
+        return jsonString
+      }
+
+      for (const key in jsonObject) {
+        if (typeof jsonObject[key] === 'string') {
+          try {
+            jsonObject[key] = parseNestedJSON(jsonObject[key])
+          } catch (error) {
+            continue
+          }
+        }
+      }
+
+      return jsonObject
+    }
+
+    const stringifyNestedJSON = function (jsonObject) {
+      for (const key in jsonObject) {
+        if (typeof jsonObject[key] === 'object' && jsonObject[key] !== null) {
+          jsonObject[key] = stringifyNestedJSON(jsonObject[key])
+        }
+      }
+
+      return JSON.stringify(jsonObject, replacer)
+    }
+
     const getPluginCommandEventMZ = function (
       plugin_name, plugin_command, disp_plugin_command, args) {
       const plugin_args = {}
@@ -4392,7 +4482,14 @@
         if (matched) {
           const arg_name = matched[1] || ''
           const values = matched[2].slice(1, -1).split('][') || []
-          plugin_args[arg_name] = values[0] || ''
+
+          if (['struct_arg', 'bool_array_arg', 'number_array_arg'].includes(arg_name)) {
+            const json_obj = parseNestedJSON(values[0])
+            plugin_args[arg_name] = stringifyNestedJSON(json_obj)
+          } else {
+            plugin_args[arg_name] = values[0] || ''
+            plugin_args[arg_name] = plugin_args[arg_name].replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\\\/g, '\\')
+          }
         }
       }
       return plugin_command_mz
@@ -4404,10 +4501,19 @@
       if (matched) {
         let arg_name = matched[1] || ''
         const values = matched[2].slice(1, -1).split('][') || []
-        const value = values[0] || ''
+        let value = values[0] || ''
+
+        if (['struct_arg', 'bool_array_arg', 'number_array_arg'].includes(arg_name)) {
+          const json_obj = parseNestedJSON(values[0])
+          value = stringifyNestedJSON(json_obj)
+        } else {
+          value = value.replace(/\\n/g, ' ').replace(/\\t/g, ' ').replace(/\\\\/g, ' ')
+        }
+
         if (values[1]) {
           arg_name = values[1]
         }
+
         return { code: 657, indent: 0, parameters: [arg_name + ' = ' + value] }
       } else {
         throw new Error('Syntax error. / 文法エラーです。' +
@@ -6643,7 +6749,7 @@
 
       // Plugin Command MZ
       if (plugin_command_mz) {
-        const params = plugin_command_mz[1].split(',').map(s => s.trim())
+        const params = parseMzArg(plugin_command_mz[1])
         const event_command_list = []
         if (params.length > 2) {
           const arg_plugin_name = params[0]
@@ -9318,7 +9424,8 @@
 //
 // $ node Text2Frame.js
 if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && require.main === module) {
-  const program = require('commander')
+  const { Command } = require('commander')
+  const program = new Command()
   program
     .version('2.2.1')
     .usage('[options]')
