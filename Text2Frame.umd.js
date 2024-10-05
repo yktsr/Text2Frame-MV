@@ -118,7 +118,12 @@
       const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
       Game_Interpreter.prototype.pluginCommand = function(command, args) {
         _Game_Interpreter_pluginCommand.apply(this, arguments);
-        this.pluginCommandText2Frame(command, args);
+        const isDevelopment = Utils.isOptionValid("test");
+        if (isDevelopment) {
+          this.pluginCommandText2Frame(command, args);
+        } else {
+          $gameMessage.add("Text2Frameは開発専用プラグインです。ゲーム書き出し後は本プラグインは動作しません。このメッセージが繰り返し表示される場合は、プラグインをOFFにして書き出してください。");
+        }
       };
       Game_Interpreter.prototype.pluginCommandText2Frame = function(command, args) {
         const addMessage = function(text) {
