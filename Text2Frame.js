@@ -4130,7 +4130,9 @@
     if (isDevelopment) {
       this.pluginCommandText2Frame(command, args)
     } else {
-      $gameMessage.add('Text2Frameは開発専用プラグインです。ゲーム書き出し後は本プラグインは動作しません。このメッセージが繰り返し表示される場合は、プラグインをOFFにして書き出してください。')
+      $gameMessage.add('Text2Frameは開発専用プラグインであり、デプロイメント後は')
+      $gameMessage.add('動作しません。このメッセージが繰り返し表示される場合は、')
+      $gameMessage.add('このプラグインをOFFにしてデプロイメントしてください。')
     }
   }
 
