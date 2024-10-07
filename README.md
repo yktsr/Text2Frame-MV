@@ -1,7 +1,8 @@
 # Text2Frame
 Simple compiler to convert text to event.
 
-![Node.js CI](https://github.com/yktsr/Text2Frame-MV/workflows/Node.js%20CI/badge.svg?branch=master)
+![Node.js CI](https://github.com/yktsr/Text2Frame-MV/actions/workflows/nodejs.yml/badge.svg)
+![CodeQL](https://github.com/yktsr/Text2Frame-MV/actions/workflows/github-code-scanning/codeql/badge.svg)
 
 テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、RPGツクールMV・MZ用の開発支援プラグインです。
 

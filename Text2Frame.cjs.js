@@ -115,7 +115,14 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
     const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
     Game_Interpreter.prototype.pluginCommand = function(command, args) {
       _Game_Interpreter_pluginCommand.apply(this, arguments);
-      this.pluginCommandText2Frame(command, args);
+      const isDevelopment = Utils.isOptionValid("test");
+      if (isDevelopment) {
+        this.pluginCommandText2Frame(command, args);
+      } else {
+        $gameMessage.add("Text2Frameは開発専用プラグインであり、デプロイメント後は");
+        $gameMessage.add("動作しません。このメッセージが繰り返し表示される場合は、");
+        $gameMessage.add("このプラグインをOFFにしてデプロイメントしてください。");
+      }
     };
     Game_Interpreter.prototype.pluginCommandText2Frame = function(command, args) {
       const addMessage = function(text) {
