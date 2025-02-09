@@ -39,7 +39,7 @@ Simple compiler to convert text to event.
 
 
 ## 導入方法
-1. [ここ](https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Text2Frame.js)からプラグイン本体をダウンロードします。
+1. [ここ](https://github.com/yktsr/Text2Frame-MV/releases)から Text2Frame.js をダウンロードします。
 1. 導入したいプロジェクトのプラグインフォルダに入れます。
 1. プラグインエディターからText2Frameのプラグインを有効にします。
 
