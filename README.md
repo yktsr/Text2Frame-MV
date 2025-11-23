@@ -4,6 +4,13 @@ Simple compiler to convert text to event.
 ![Node.js CI](https://github.com/yktsr/Text2Frame-MV/actions/workflows/nodejs.yml/badge.svg)
 ![CodeQL](https://github.com/yktsr/Text2Frame-MV/actions/workflows/github-code-scanning/codeql/badge.svg)
 
+[日本語](#japanese) | [English](#english)
+
+---
+
+<a name="japanese"></a>
+## 日本語
+
 テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、RPGツクールMV・MZ用の開発支援プラグインです。
 
 ## 最新版プラグインのダウンロード
@@ -242,42 +249,115 @@ Please restart RPG Maker MV(Editor) WITHOUT save.
 **セーブせずに**プロジェクトファイルを開き直してください
 ```
 
-### How to use the Text2Frame module as an ES Module and as a CommonJS module:
-### npm install
-```
+### Node.jsプロジェクトでのText2Frameモジュールの使用方法
+
+Text2FrameはNode.jsプロジェクトでライブラリとして使用することができます。
+CommonJS形式とES Module形式の両方をサポートしているため、プロジェクトの環境に合わせて選択できます。
+
+#### インストール方法
+
+npmを使用してGitHubリポジトリから直接インストールできます：
+
+```bash
 $ npm install 'yktsr/Text2Frame-MV'
 ```
 
-### Using as an ES Module
+または、package.jsonに以下を追加してください：
+
+```json
+{
+  "dependencies": {
+    "Text2Frame-MV": "yktsr/Text2Frame-MV"
+  }
+}
 ```
-$ cat examples/commonjs.js
+
+#### CommonJSモジュールとして使用する場合
+
+Node.jsの従来のrequire構文を使用する場合は、`.cjs.js`ファイルをインポートします。
+
+**examples/commonjs.js:**
+```javascript
 const TF = require("Text2Frame-MV/Text2Frame.cjs.js")
 
+// テキストからイベントコマンドのJSONを生成
 const date = new Date().toLocaleString()
 const text = `<comment>
-for common js module:
+CommonJSモジュールで使用
 出力日時: ${date}
-</comment>`
+</comment>
+<Wait: 60>
+こんにちは、世界！`
 
-console.log(TF.compile(text))
+// compile()メソッドでText2Frame記法をJSONに変換
+const eventCommands = TF.compile(text)
+console.log(JSON.stringify(eventCommands, null, 2))
+```
 
+**実行方法:**
+```bash
 $ node examples/commonjs.js
 ```
 
-### Using as an ES Module
-```
-$ cat examples/esmodules.mjs
+#### ES Moduleとして使用する場合
+
+モダンなJavaScriptのimport構文を使用する場合は、`.es.mjs`ファイルをインポートします。
+`.mjs`拡張子のファイルか、package.jsonで`"type": "module"`を指定する必要があります。
+
+**examples/esmodules.mjs:**
+```javascript
 import TF from "Text2Frame-MV/Text2Frame.es.mjs"
 
+// テキストからイベントコマンドのJSONを生成
 const date = new Date().toLocaleString()
 const text = `<comment>
-for ES Module:
+ES Moduleで使用
 出力日時: ${date}
-</comment>`
+</comment>
+<PlayBGM: Theme1, 90, 100, 0>
+今日も一日がんばるぞい！`
 
-console.log(TF.compile(text))
+// compile()メソッドでText2Frame記法をJSONに変換
+const eventCommands = TF.compile(text)
+console.log(JSON.stringify(eventCommands, null, 2))
+```
 
+**実行方法:**
+```bash
 $ node examples/esmodules.mjs
+```
+
+#### 主要なAPI
+
+Text2Frameモジュールは以下のメソッドを提供します：
+
+- **`TF.compile(text)`**: Text2Frame記法のテキストをRPGツクールMV/MZのイベントコマンドJSON配列に変換します
+- 戻り値: イベントコマンドのJSON配列（Map.jsonやCommonEvents.jsonに組み込み可能な形式）
+
+#### 実用的な使用例
+
+```javascript
+import TF from "Text2Frame-MV/Text2Frame.es.mjs"
+import fs from "fs"
+
+// テキストファイルを読み込む
+const scenarioText = fs.readFileSync("scenario/chapter1.txt", "utf-8")
+
+// Text2Frame記法をイベントコマンドに変換
+const eventCommands = TF.compile(scenarioText)
+
+// 既存のマップJSONを読み込む
+const mapData = JSON.parse(fs.readFileSync("data/Map001.json", "utf-8"))
+
+// イベントコマンドを指定のイベントに組み込む
+const eventId = 1
+const pageId = 0
+mapData.events[eventId].pages[pageId].list = eventCommands
+
+// マップJSONを保存
+fs.writeFileSync("data/Map001.json", JSON.stringify(mapData, null, 2))
+
+console.log("イベントコマンドの組み込みが完了しました！")
 ```
 
 ### Lint check
@@ -293,3 +373,366 @@ $ npm run test
 
 ## ライセンス
 MIT LICENSE
+
+---
+
+<a name="english"></a>
+## English
+
+A development support plugin for RPG Maker MV/MZ that easily converts text files (.txt files, etc.) into "Show Text" event commands.
+
+### Download Latest Plugin
+[![Download Text2Frame](https://img.shields.io/badge/Download-Text2Frame.js-blue)](https://github.com/yktsr/Text2Frame-MV/releases/download/2.2.4/Text2Frame.js)
+
+[![Download Frame2Text](https://img.shields.io/badge/Download-Frame2Text.js-blue)](https://github.com/yktsr/Text2Frame-MV/releases/download/2.2.4/Frame2Text.js)
+
+### Description
+![./introduce_Text2Frame_MV_MZ.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Text2Frame_MV_MZ.png)
+
+This plugin supports developers who want to edit dialogues in text editors **other than** RPG Maker MV/MZ and later import them as event commands.
+
+By executing a plugin command, you can load a text file and import it as event commands into RPG Maker MV/MZ map events or common events.
+
+This eliminates the need to edit lines, window display settings (position, background), and BGM directly in RPG Maker.
+
+For the most basic usage, see the demo below.
+For advanced usage and detailed plugin parameters, refer to the [wiki](https://github.com/yktsr/Text2Frame-MV/wiki).
+
+***Demo/Quick Start***
+
+1. Create a scenario file
+2. Save it as text/message.txt
+3. Create an event to execute the plugin command
+4. Configure the plugin command
+5. Create the destination event
+6. Execute the plugin command for testing
+7. Reload or reopen the project
+
+For more detailed instructions, refer to the [wiki](https://github.com/yktsr/Text2Frame-MV/wiki).
+
+![./basic_sample.gif](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/basic_sample.gif)
+
+### Installation
+1. Download Text2Frame.js from [here](https://github.com/yktsr/Text2Frame-MV/releases).
+2. Place it in the plugin folder of your project.
+3. Enable the Text2Frame plugin from the plugin editor.
+
+### Setting Face, Background, Position, and Name
+You can use tags to change message settings such as face, background, and position.
+These default values can be changed from the plugin options.
+
+#### Face Specification <Face: Face Name>
+You can specify the face to be displayed in the window.
+
+![./introduce_Face.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Face.png)
+
+#### Background Change <Background: Background Type>
+You can change the window background.
+
+![./introduce_Background.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Background.png)
+
+#### Position Change <Position: Position Type>
+You can change the window position.
+
+![./introduce_WindowPosition.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_WindowPosition.png)
+
+#### Name Setting (For MZ) <Name: ○○○○>
+You can specify the name to be displayed in the window.
+
+![./introduce_namebox.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_namebox.png)
+
+### Tags for Event Commands
+In addition to "Show Text", all other event commands are also supported.
+By inserting the following tags between messages, those tags will be replaced with event commands.
+For example:
+```
+<Set: 1, 2>
+<CommonEvent: 3>
+Let's do our best today!
+```
+This will insert "Control Variables (assign constant 2 to variable 1)" and "Common Event (ID 3)" event commands before the message "Let's do our best today!".
+
+For details on all tags, refer to the [wiki grammar page](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%86%E3%82%AD%E3%82%B9%E3%83%88%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9) or the help documentation in the plugin itself.
+
+### Quick Reference for Common Event Commands
+Below is a quick reference table for commonly used event commands. All event commands are supported beyond what is listed here.
+
+|Event Command|Tag|Details|
+|:-|:-|:-|
+|Show Choices|\<ShowChoices\><br><When: Yes><br>Process when choice 1 is selected<br><When: No><br>Process when choice 2 is selected<br>\<End\>|Display "Yes" and "No" choices.|
+|Control Switches (ON)| <Switch: 1, ON> | Turn switch 1 ON.|
+|Control Switches (OFF)| <Switch: 1, OFF> | Turn switch 1 OFF.|
+|Control Variables (Assign)| <Set: 1, 2> |Assign constant 2 to variable 1.|
+|Control Variables (Add)| <Add: 1, V[20]>|Add the value of variable 20 to variable 1.|
+|Control Variables (Subtract)| <Sub: 1, R\[50\]\[100\]>|Subtract a random number (min 50, max 100) from variable 1.|
+|Control Variables (Multiply)| <Mul: 1-10, GD\[Item\]\[2\]>|Multiply variables 1-10 by the number of items with ID 2.|
+|Control Variables (Divide)| <Div: 1, GD\[BattleCount\]\> |Divide variable 1 by the battle count.|
+|Control Variables (Modulo)| <Mod: 1-10, SC\[$dataMap.width;\]>|Assign the modulo of "$dataMap.width" to variables 1-10.|
+|Control Self Switch (ON)|<SelfSwitch: A, ON>|Turn self switch A ON.|
+|Control Self Switch (OFF)|<SelfSwitch: A, OFF>|Turn self switch A OFF.|
+|Conditional Branch|<If: Switch[1], ON><br>Process when condition is met<br>\<Else\><br>Process when condition is not met<br>\<End\>|Branch process based on "if switch 1 is ON".|
+|Loop|\<Loop\><br>Process to loop<br>\<RepeatAbove\>|Loop the process.|
+|Break Loop|\<BreakLoop\>|Break the loop at this point.|
+|Common Event|<CommonEvent: 1>|Insert common event with ID 1.|
+|Label|\<Label: Sample\>|Set a label named "Sample".|
+|Jump to Label|\<JumpToLabel: Sample\>|Jump to the label named "Sample".|
+|Comment|\<comment\><br>Let's do our best today!<br>\</comment\>|Insert a comment "Let's do our best today!".|
+|Change Gold|<ChangeGold: Increase, 100>|Increase gold by 100.|
+|Change Items|<ChangeItems: 3, Increase, 4>|Increase item with ID 3 by 4.|
+|Change Weapons|<ChangeWeapons: 1, Increase, 2>|Increase weapon with ID 1 by 2.|
+|Change Armors|<ChangeArmors: 1, Increase, 2>|Increase armor with ID 1 by 2.|
+|Transfer Player|<TransferPlayer: Direct[1][10][20], Retain, Black>|Transfer to map ID 1, X:10, Y:20 with retained direction and black fade.|
+|Show Picture|<ShowPicture: 1, Castle, Scale[50][55]>|Display Castle.png as picture 1 with 50% width and 55% height.|
+|Move Picture|<MovePicture: 1, Position[Center][200][Variables[3]]>|Move picture 1 to center origin, X:200, Y:variable 3.|
+|Rotate Picture|<RotatePicture: 1, -30>|Rotate picture 1 at speed -30.|
+|Tint Picture|<TintPicture: 1, Duration[60], ColorTone[0][100][255][50]>|Tint picture 1 to R:0, G:100, B:255, Gray:50 over 60 frames (1 second).|
+|Erase Picture|<ErasePicture: 1>|Erase picture 1.|
+|Wait|<Wait: 60>|Insert a wait of 60 frames (1 second).|
+|Fadeout Screen|\<FadeOut\>|Fade out the screen.|
+|Fadein Screen|\<FadeIn\>|Fade in the screen.|
+|Tint Screen|<TintScreen: Duration[60], ColorTone[0][100][255][50]>|Tint the screen to R:0, G:100, B:255, Gray:50 over 60 frames (1 second).|
+|Flash Screen|<FlashScreen: 50, 100, 150, 170, 60>|Flash the screen with R:50, G:100, B:150, intensity:170 over 60 frames (1 second).|
+|Shake Screen|<ShakeScreen: 5, 8, 60>|Shake the screen with power:5, speed:8 over 60 frames.|
+|Play BGM|<PlayBGM: Battle1, 90, 100, 0>|Play Battle1 as BGM with volume:90, pitch:100, pan:0.|
+|Fadeout BGM|<FadeoutBGM: 10>|Fade out BGM over 10 seconds.|
+|Play BGS|<PlayBGS: City, 90, 100, 0>|Play City as BGS with volume:90, pitch:100, pan:0.|
+|Fadeout BGS|<FadeoutBGS: 20>|Fade out BGS over 20 seconds.|
+|Play ME|<PlayME: Curse1, 90, 100, 0>|Play Curse1 as ME with volume:90, pitch:100, pan:0.|
+|Play SE|<PlaySE: Attack1, 90, 100, 0>|Play Attack1 as SE with volume:90, pitch:100, pan:0.|
+|Stop SE|\<StopSE\>|Stop SE.|
+|Battle Processing|<BattleProcessing: 1>|Battle with enemy troop 1.|
+|Battle Processing (Defeat Event)|<BattleProcessing: 1><br>\<IfWin\><br>Process on victory<br>\<IfLose\><br>Process on defeat<br>\<End\>|Battle with enemy troop 1 with defeat event.|
+|Open Save Screen|\<OpenSaveScreen\>|Open the save screen.|
+|Script|<script><br>console.log("Let's go!");<br></script>|Insert "console.log("Let's go!");" as a script event.|
+|Plugin Command|<PluginCommand: IMPORT_MESSAGE_TO_EVENT>|Insert "IMPORT_MESSAGE_TO_EVENT" as a plugin command.|
+
+For more specific examples and other event commands, refer to the [Test Text Examples page](https://github.com/yktsr/Text2Frame-MV/wiki/動作確認テキスト).
+
+### Other Features
+
+#### Comment Out
+If you write "%" at the beginning of a line, it will be treated as a comment and will not be imported.
+This comment-out symbol can be changed in the plugin parameters.
+For examples, refer to the [corresponding wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%86%E3%82%AD%E3%82%B9%E3%83%88%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9).
+
+#### Export to Common Events
+You can export not only to map events but also to common events.
+For examples, refer to the [corresponding wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%82%B3%E3%83%A2%E3%83%B3%E3%82%A4%E3%83%99%E3%83%B3%E3%83%88%E3%81%B8%E3%81%AE%E6%9B%B8%E3%81%8D%E5%87%BA%E3%81%97).
+
+#### Changing Default Values with Plugin Command Arguments (For MV)
+When you want to load multiple files or apply different options for each file, you can perform more advanced control using plugin command arguments.
+This feature is for RPG Maker MV. In RPG Maker MZ, you can set directly from the plugin command.
+
+For details, refer to the [corresponding wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3).
+
+### Reverse Conversion Plugin: Frame2Text
+Frame2Text is also available - a plugin that exports RPG Maker MV/MZ event commands to text following Text2Frame notation.
+
+Download Frame2Text from [here](https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Frame2Text.js).
+
+For detailed usage, refer to the [Frame2Text introduction page](https://github.com/yktsr/Text2Frame-MV/wiki/%E9%80%86%E5%A4%89%E6%8F%9B%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3Frame2Text) or the help documentation in the plugin itself.
+
+### Author/Contact
+* [@kryptos_nv](https://twitter.com/kryptos_nv)
+
+### Contributors
+* [@Asyun3i9t](https://twitter.com/Asyun3i9t)
+  * [Taikai Kobo](http://taikai-kobo.hatenablog.com/)
+* inazumasoft:Shick
+  * [Inazumasoft Production Support](https://ci-en.net/creator/12715)
+
+### Development
+
+#### Install dependencies
+```
+$ npm ci
+$ npm run build --if-present
+```
+
+#### Show help
+```
+Usage: Text2Frame [options]
+
+Options:
+  -V, --version                         output the version number
+  -m, --mode <map|common|compile|test>  output mode
+  -t, --text_path <name>                text file path
+  -o, --output_path <name>              output file path
+  -e, --event_id <name>                 event file id
+  -p, --page_id <name>                  page id
+  -c, --common_event_id <name>          common event id
+  -w, --overwrite <true/false>          overwrite mode (default: "false")
+  -v, --verbose                         debug mode (default: false)
+  -h, --help                            display help for command
+
+===== Manual =====
+    NAME
+       Text2Frame - Simple compiler to convert text to event command.
+    SYNOPSIS
+        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
+        node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
+        node Text2Frame.js --mode compile
+        node Text2Frame.js --verbose --mode test
+    DESCRIPTION
+        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
+          Map event output mode.
+          Specify the file to read, output map, and whether to overwrite with arguments.
+          Example commands to read test/basic.txt and overwrite data/Map001.json:
+
+          Example 1: $ node Text2Frame.js --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --page_id 1 --overwrite true
+          Example 2: $ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -p 1 -w true
+
+        node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
+          Common event output mode.
+          Specify the file to read, output common event, and whether to overwrite with arguments.
+          Example commands to read test/basic.txt and overwrite data/CommonEvents.json:
+
+          Example 1: $ node Text2Frame.js --mode common --text_path test/basic.txt --output_path data/CommonEvents.json --common_event_id 1 --overwrite true
+          Example 2: $ node Text2Frame.js -m common -t test/basic.txt -o data/CommonEvents.json -c 1 -w true
+
+        node Text2Frame.js --mode compile
+          Compile mode.
+          When you provide text to convert via pipe, it outputs JSON converted to corresponding events to stdout.
+          In this mode, it is not formatted as Map.json / CommonEvent.json, but only outputs JSON converted to events,
+          so you need to incorporate it into Map.json/CommonEvent.json yourself.
+
+          Example 1: $ cat test/basic.txt | node Text2Frame.js --mode compile
+
+        node Text2Frame.js --mode test
+          Test mode. Reads test/basic.txt and outputs to data/Map001.json.
+```
+
+#### Run Text2frame.js with command line
+```
+$ npm run debug -- --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --overwrite true
+
+> Text2Frame-MV@1.1.2 debug /home/yuki/github/Text2Frame-MV
+> node Text2Frame.js "--mode" "map" "--text_path" "test/basic.txt" "--output_path" "data/Map001.json" "--event_id" "1" "--overwrite" "true"
+
+Please restart RPG Maker MV(Editor) WITHOUT save.
+```
+
+#### Using Text2Frame Module in Node.js Projects
+
+Text2Frame can be used as a library in Node.js projects.
+It supports both CommonJS and ES Module formats, allowing you to choose based on your project environment.
+
+##### Installation
+
+You can install directly from the GitHub repository using npm:
+
+```bash
+$ npm install 'yktsr/Text2Frame-MV'
+```
+
+Or add the following to your package.json:
+
+```json
+{
+  "dependencies": {
+    "Text2Frame-MV": "yktsr/Text2Frame-MV"
+  }
+}
+```
+
+##### Using as a CommonJS Module
+
+If you're using traditional Node.js require syntax, import the `.cjs.js` file.
+
+**examples/commonjs.js:**
+```javascript
+const TF = require("Text2Frame-MV/Text2Frame.cjs.js")
+
+// Generate event command JSON from text
+const date = new Date().toLocaleString()
+const text = `<comment>
+Using CommonJS module
+Output date: ${date}
+</comment>
+<Wait: 60>
+Hello, World!`
+
+// Convert Text2Frame notation to JSON using compile() method
+const eventCommands = TF.compile(text)
+console.log(JSON.stringify(eventCommands, null, 2))
+```
+
+**How to run:**
+```bash
+$ node examples/commonjs.js
+```
+
+##### Using as an ES Module
+
+If you're using modern JavaScript import syntax, import the `.es.mjs` file.
+You need to either use `.mjs` file extension or specify `"type": "module"` in package.json.
+
+**examples/esmodules.mjs:**
+```javascript
+import TF from "Text2Frame-MV/Text2Frame.es.mjs"
+
+// Generate event command JSON from text
+const date = new Date().toLocaleString()
+const text = `<comment>
+Using ES Module
+Output date: ${date}
+</comment>
+<PlayBGM: Theme1, 90, 100, 0>
+Let's do our best today!`
+
+// Convert Text2Frame notation to JSON using compile() method
+const eventCommands = TF.compile(text)
+console.log(JSON.stringify(eventCommands, null, 2))
+```
+
+**How to run:**
+```bash
+$ node examples/esmodules.mjs
+```
+
+##### Main API
+
+The Text2Frame module provides the following methods:
+
+- **`TF.compile(text)`**: Converts Text2Frame notation text into RPG Maker MV/MZ event command JSON array
+- Return value: JSON array of event commands (format that can be incorporated into Map.json or CommonEvents.json)
+
+##### Practical Usage Example
+
+```javascript
+import TF from "Text2Frame-MV/Text2Frame.es.mjs"
+import fs from "fs"
+
+// Read text file
+const scenarioText = fs.readFileSync("scenario/chapter1.txt", "utf-8")
+
+// Convert Text2Frame notation to event commands
+const eventCommands = TF.compile(scenarioText)
+
+// Load existing map JSON
+const mapData = JSON.parse(fs.readFileSync("data/Map001.json", "utf-8"))
+
+// Incorporate event commands into specified event
+const eventId = 1
+const pageId = 0
+mapData.events[eventId].pages[pageId].list = eventCommands
+
+// Save map JSON
+fs.writeFileSync("data/Map001.json", JSON.stringify(mapData, null, 2))
+
+console.log("Event commands have been successfully incorporated!")
+```
+
+#### Lint check
+```
+$ npm run lint
+```
+
+#### Test
+```
+$ npm run test
+```
+
+### License
+MIT LICENSE
+
