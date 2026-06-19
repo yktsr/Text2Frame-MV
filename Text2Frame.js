@@ -168,6 +168,62 @@
  * @value false
  * @default false
  *
+ * @command DIFF_IMPORT_MESSAGE_TO_EVENT
+ * @text イベントに差分インポート
+ * @desc テキストと既存イベントコマンドを比較し、差分のみをイベントに適用します。
+ *
+ * @arg FileFolder
+ * @text 取り込み元フォルダ名
+ * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text 取り込み元ファイル名
+ * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @type string
+ * @default message.txt
+ *
+ * @arg MapID
+ * @text 取り込み先マップID
+ * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。
+ * @type number
+ * @default 1
+ *
+ * @arg EventID
+ * @text 取り込み先イベントID
+ * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。
+ * @type number
+ * @default 2
+ *
+ * @arg PageID
+ * @text 取り込み先ページID
+ * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。
+ * @type number
+ * @default 1
+ *
+ * @command DIFF_IMPORT_MESSAGE_TO_CE
+ * @text コモンイベントに差分インポート
+ * @desc テキストと既存コモンイベントコマンドを比較し、差分のみを適用します。
+ *
+ * @arg FileFolder
+ * @text 取り込み元フォルダ名
+ * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text 取り込み元ファイル名
+ * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @type string
+ * @default message.txt
+ *
+ * @arg CommonEventID
+ * @text 取り込み先コモンイベントID
+ * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。
+ * @type common_event
+ * @default 1
+ *
  * @param Default Window Position
  * @text 位置のデフォルト値
  * @desc テキストフレームの表示位置デフォルト値を設定します。デフォルトは下です。個別に指定した場合は上書きされます。
@@ -4069,6 +4125,22 @@
       this.pluginCommand('IMPORT_MESSAGE_TO_CE',
         [file_folder, file_name, common_event_id, is_overwrite])
     })
+    PluginManager.registerCommand('Text2Frame', 'DIFF_IMPORT_MESSAGE_TO_EVENT', function (args) {
+      const file_folder = args.FileFolder
+      const file_name = args.FileName
+      const map_id = args.MapID
+      const event_id = args.EventID
+      const page_id = args.PageID
+      this.pluginCommand('DIFF_IMPORT_MESSAGE_TO_EVENT',
+        [file_folder, file_name, map_id, event_id, page_id])
+    })
+    PluginManager.registerCommand('Text2Frame', 'DIFF_IMPORT_MESSAGE_TO_CE', function (args) {
+      const file_folder = args.FileFolder
+      const file_name = args.FileName
+      const common_event_id = args.CommonEventID
+      this.pluginCommand('DIFF_IMPORT_MESSAGE_TO_CE',
+        [file_folder, file_name, common_event_id])
+    })
   }
 
   var Laurus = typeof Laurus !== 'undefined' ? Laurus : {} // eslint-disable-line no-var, no-use-before-define
@@ -4238,6 +4310,31 @@
           Laurus.Text2Frame.FileName = args[1]
           Laurus.Text2Frame.CommonEventID = args[2]
           Laurus.Text2Frame.IsOverwrite = (args[3] === 'true')
+          const { PATH_SEP, BASE_PATH } = getDirParams()
+          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
+          Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
+        }
+        break
+      case 'DIFF_IMPORT_MESSAGE_TO_EVENT' :
+        addMessage('diff import message to event. \n/ 差分をイベントにインポートします。')
+        if (args[0]) Laurus.Text2Frame.FileFolder = args[0]
+        if (args[1]) Laurus.Text2Frame.FileName = args[1]
+        if (args[2]) Laurus.Text2Frame.MapID = args[2]
+        if (args[3]) Laurus.Text2Frame.EventID = args[3]
+        if (args[4]) Laurus.Text2Frame.PageID = args[4]
+        if (args[0] || args[1]) {
+          const { PATH_SEP, BASE_PATH } = getDirParams()
+          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
+          Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
+        }
+        break
+      case 'DIFF_IMPORT_MESSAGE_TO_CE' :
+        if (args.length === 3) {
+          addMessage('diff import message to common event. \n/ 差分をコモンイベントにインポートします。')
+          Laurus.Text2Frame.ExecMode = 'DIFF_IMPORT_MESSAGE_TO_CE'
+          Laurus.Text2Frame.FileFolder = args[0]
+          Laurus.Text2Frame.FileName = args[1]
+          Laurus.Text2Frame.CommonEventID = args[2]
           const { PATH_SEP, BASE_PATH } = getDirParams()
           Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
           Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
@@ -9348,7 +9445,129 @@
       return event_command_list
     }
 
-    Laurus.Text2Frame.export = { compile }
+    /* コマンドリストをブロック単位にグループ化する。
+     * 継続コード (401, 655, 408, 405) は直前のヘッドコマンドに属する。 */
+    const CONTINUATION_CODES = [401, 655, 408, 405]
+
+    const groupCommandsIntoBlocks = function (commands) {
+      const blocks = []
+      let current_block = []
+      for (let i = 0; i < commands.length; i++) {
+        const cmd = commands[i]
+        if (CONTINUATION_CODES.indexOf(cmd.code) !== -1) {
+          current_block.push(cmd)
+        } else {
+          if (current_block.length > 0) {
+            blocks.push(current_block)
+          }
+          current_block = [cmd]
+        }
+      }
+      if (current_block.length > 0) {
+        blocks.push(current_block)
+      }
+      return blocks
+    }
+
+    const flattenBlocks = function (blocks) {
+      return blocks.reduce(function (acc, block) { return acc.concat(block) }, [])
+    }
+
+    /* LCS (最長共通部分列) テーブルを計算する */
+    const lcsTable = function (a, b) {
+      const m = a.length
+      const n = b.length
+      const table = []
+      for (let i = 0; i <= m; i++) {
+        const row = []
+        for (let j = 0; j <= n; j++) {
+          row.push(0)
+        }
+        table.push(row)
+      }
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          if (JSON.stringify(a[i - 1]) === JSON.stringify(b[j - 1])) {
+            table[i][j] = table[i - 1][j - 1] + 1
+          } else {
+            table[i][j] = Math.max(table[i - 1][j], table[i][j - 1])
+          }
+        }
+      }
+      return table
+    }
+
+    /* LCS テーブルから差分リストをビルドする */
+    const buildDiffFromTable = function (table, a, b) {
+      const diff = []
+      let i = a.length
+      let j = b.length
+      while (i > 0 || j > 0) {
+        if (i === 0) {
+          diff.unshift({ type: 'added', block: b[j - 1] })
+          j--
+        } else if (j === 0) {
+          diff.unshift({ type: 'removed', block: a[i - 1] })
+          i--
+        } else if (JSON.stringify(a[i - 1]) === JSON.stringify(b[j - 1])) {
+          diff.unshift({ type: 'equal', block: a[i - 1] })
+          i--
+          j--
+        } else if (table[i - 1][j] >= table[i][j - 1]) {
+          diff.unshift({ type: 'removed', block: a[i - 1] })
+          i--
+        } else {
+          diff.unshift({ type: 'added', block: b[j - 1] })
+          j--
+        }
+      }
+      return diff
+    }
+
+    /* テキストから変換した新コマンドと既存コマンドを差分比較して適用する。
+     * existing_commands: 既存のイベントコマンドリスト
+     * new_commands: テキストから変換した新しいイベントコマンドリスト
+     * 戻り値: { commands: 適用後コマンドリスト(終端コードなし), warnings: 警告メッセージ配列 } */
+    const applyDiff = function (existing_commands, new_commands) {
+      const stripBottom = function (cmds) {
+        const copy = cmds.slice()
+        while (copy.length > 0 && copy[copy.length - 1].code === 0) {
+          copy.pop()
+        }
+        return copy
+      }
+
+      const existingStripped = stripBottom(existing_commands)
+      const newStripped = stripBottom(new_commands)
+
+      const existingBlocks = groupCommandsIntoBlocks(existingStripped)
+      const newBlocks = groupCommandsIntoBlocks(newStripped)
+
+      const table = lcsTable(existingBlocks, newBlocks)
+      const diff = buildDiffFromTable(table, existingBlocks, newBlocks)
+
+      const warnings = []
+      const resultBlocks = []
+      const DIFF_PREVIEW_LENGTH = 80
+
+      for (let idx = 0; idx < diff.length; idx++) {
+        const d = diff[idx]
+        if (d.type === 'equal' || d.type === 'added') {
+          resultBlocks.push(d.block)
+        } else if (d.type === 'removed') {
+          const full = JSON.stringify(d.block)
+          const preview = full.length > DIFF_PREVIEW_LENGTH ? full.substring(0, DIFF_PREVIEW_LENGTH) + '...' : full
+          warnings.push('Block removed / ブロックが削除されます: ' + preview)
+        }
+      }
+
+      return {
+        commands: flattenBlocks(resultBlocks),
+        warnings
+      }
+    }
+
+    Laurus.Text2Frame.export = { compile, applyDiff }
     if (Laurus.Text2Frame.ExecMode === 'LIBRARY_EXPORT') {
       return
     }
@@ -9406,6 +9625,57 @@
         }
         ce_events.pop()
         ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list)
+        writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
+        addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
+        break
+      }
+      case 'DIFF_IMPORT_MESSAGE_TO_EVENT': {
+        const map_data = readJsonData(Laurus.Text2Frame.MapPath)
+        if (!map_data.events[Laurus.Text2Frame.EventID]) {
+          throw new Error(
+            'EventID not found. / EventIDが見つかりません。\n' + 'Event ID: ' + Laurus.Text2Frame.EventID
+          )
+        }
+
+        const pageID = Number(Laurus.Text2Frame.PageID) - 1
+        while (!map_data.events[Laurus.Text2Frame.EventID].pages[pageID]) {
+          map_data.events[Laurus.Text2Frame.EventID].pages.push(getDefaultPage())
+        }
+
+        const existing_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list
+        const diff_result = applyDiff(existing_events, event_command_list)
+        for (let wi = 0; wi < diff_result.warnings.length; wi++) {
+          addWarning(diff_result.warnings[wi])
+        }
+        map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list =
+          diff_result.commands.concat([getCommandBottomEvent()])
+        writeData(Laurus.Text2Frame.MapPath, map_data)
+        addMessage(
+          'Success / 書き出し成功！\n' +
+            '======> MapID: ' +
+            Laurus.Text2Frame.MapID +
+            ' -> EventID: ' +
+            Laurus.Text2Frame.EventID +
+            ' -> PageID: ' +
+            Laurus.Text2Frame.PageID
+        )
+        break
+      }
+      case 'DIFF_IMPORT_MESSAGE_TO_CE': {
+        const ce_data = readJsonData(Laurus.Text2Frame.CommonEventPath)
+        if (ce_data.length - 1 < Laurus.Text2Frame.CommonEventID) {
+          throw new Error(
+            'Common Event not found. / コモンイベントが見つかりません。: ' + Laurus.Text2Frame.CommonEventID
+          )
+        }
+
+        const existing_ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list
+        const diff_ce_result = applyDiff(existing_ce_events, event_command_list)
+        for (let wi = 0; wi < diff_ce_result.warnings.length; wi++) {
+          addWarning(diff_ce_result.warnings[wi])
+        }
+        ce_data[Laurus.Text2Frame.CommonEventID].list =
+          diff_ce_result.commands.concat([getCommandBottomEvent()])
         writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break

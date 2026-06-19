@@ -9,6 +9,20 @@ namespace Text2FrameMV {
   export function compile(
     text: string
   ): { code: number; parameters: any[]; indent: number }[];
+
+  /**
+   * 既存のイベントコマンドリストとテキストから変換した新コマンドリストを比較し、差分のみを適用します。
+   * Compares existing event commands with newly compiled commands and applies only the differences.
+   * @param existing_commands 既存のイベントコマンドリスト（終端コード code:0 を含む）
+   * @param new_commands テキストから変換した新しいイベントコマンドリスト（終端コード code:0 を含む）
+   */
+  export function applyDiff(
+    existing_commands: { code: number; parameters: any[]; indent: number }[],
+    new_commands: { code: number; parameters: any[]; indent: number }[]
+  ): {
+    commands: { code: number; parameters: any[]; indent: number }[];
+    warnings: string[];
+  };
 }
 
 declare module "Text2Frame-MV" {
