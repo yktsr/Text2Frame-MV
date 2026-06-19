@@ -124,6 +124,7 @@ const tests = [
   {title: "Battle / Force Action", infile: "./test/battle/force-action.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_force-action.json"},
   {title: "Battle / Abort Battle", infile: "./test/battle/abort-battle.txt", mapfile: "./data/Map001.json", expfile: "./test/battle/expected_abort-battle.json"},
   {title: "Plugin Command MZ", infile: "./test/73-plugin-command-mz.txt", mapfile: "./data/Map001.json", expfile: "./test/73-expected_plugin-command-mz.json"},
+  {title: "Variable Substitution / Basic", infile: "./test/134-vars.txt", mapfile: "./data/Map001.json", expfile: "./test/134-expected_vars.json"},
 ];
 
 module.exports = tests;
