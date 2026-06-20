@@ -1,0 +1,4 @@
+% BGMを再開
+<ReplayBGM>
+<BGMの再開>
+<replaybgm>

@@ -1,0 +1,4 @@
+% プラグインコマンド(MV形式)
+<PluginCommand: import_message_to_event text basic.txt 1 8 true>
+<プラグインコマンド: import_message_to_event text basic.txt 1 8 true>
+<PC: import_message_to_event text basic.txt 1 8 true>

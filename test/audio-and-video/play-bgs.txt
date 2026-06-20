@@ -1,0 +1,21 @@
+% 例1: デフォルト設定で演奏
+<PlayBGS: City>
+<BGSの演奏: City>
+
+% 例2: 音量、ピッチ、位相を指定して演奏
+<PlayBGS: Darkness, 50, 80, 30>
+
+% 例3: フル設定
+<PlayBGS : City>
+<BGSの演奏 : City, 0, 50, 0>
+
+% 例4: なしに設定
+<PlayBGS: None>
+<PlayBGS : None, 91, 99, 1>
+<PlayBGS: なし>
+<BGSの演奏: None>
+<BGSの演奏: なし>
+
+% BGSの停止
+<StopBGS>
+<BGSの停止>

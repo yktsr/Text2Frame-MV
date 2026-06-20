@@ -1,0 +1,4 @@
+% BGMを保存
+<SaveBGM>
+<BGMの保存>
+<saveBGM>
