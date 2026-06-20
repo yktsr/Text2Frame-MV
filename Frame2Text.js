@@ -75,6 +75,62 @@
  * @type common_event
  * @default 1
  *
+ * @command SYNC_EVENT_TO_MESSAGE
+ * @text イベントをテキストに同期
+ * @desc JSONのイベントコマンドを正として、既存のテキストファイルに差分を書き込んで同期します。マップ・イベント・ページIDや、同期先ファイルの情報を指定します。
+ *
+ * @arg FileFolder
+ * @text 同期先フォルダ名
+ * @desc テキストファイルを出力するフォルダ名を設定します。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text 同期先ファイル名
+ * @desc 同期するテキストファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @type string
+ * @default message.txt
+ *
+ * @arg MapID
+ * @text 同期するマップID
+ * @desc 同期するマップのIDを設定します。デフォルト値は1です。
+ * @type number
+ * @default 1
+ *
+ * @arg EventID
+ * @text 同期するイベントID
+ * @desc 同期するイベントのIDを設定します。デフォルト値は2です。
+ * @type number
+ * @default 2
+ *
+ * @arg PageID
+ * @text 同期するページID
+ * @desc 同期するページのIDを設定します。デフォルト値は1です。
+ * @type number
+ * @default 1
+ *
+ * @command SYNC_CE_TO_MESSAGE
+ * @text コモンイベントをテキストに同期
+ * @desc JSONのコモンイベントコマンドを正として、既存のテキストファイルに差分を書き込んで同期します。コモンイベントIDや、同期先ファイルの情報を指定します。
+ *
+ * @arg FileFolder
+ * @text 同期先フォルダ名
+ * @desc テキストファイルを出力するフォルダ名を設定します。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text 同期先ファイル名
+ * @desc 同期するテキストファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @type string
+ * @default message.txt
+ *
+ * @arg CommonEventID
+ * @text 同期するコモンイベントID
+ * @desc 同期するコモンイベントIDを設定します。デフォルト値は1です。
+ * @type common_event
+ * @default 1
+ *
  * @param Default Scenario Folder
  * @text 出力フォルダ名
  * @desc シナリオファイルを出力するフォルダ名を設定します。デフォルトはtextです。(MZでは無視されます)
@@ -194,6 +250,14 @@
  *    EXPORT_CE_TO_MESSAGE
  *    コモンイベントをメッセージにエクスポート
  *     上記どちらかのプラグインコマンドを記載する
+ *  【マップのイベントをテキストと同期したい場合(差分書き込み)】
+ *    SYNC_EVENT_TO_MESSAGE
+ *    イベントをテキストに同期
+ *     上記どちらかのプラグインコマンドを記載する
+ *  【コモンイベントをテキストと同期したい場合(差分書き込み)】
+ *    SYNC_CE_TO_MESSAGE
+ *    コモンイベントをテキストに同期
+ *     上記どちらかのプラグインコマンドを記載する
  *
  * 5. 作成したイベントコマンドをテストプレイかイベントテストで実行する。
  *    【成功した場合】
@@ -220,6 +284,14 @@
  * 例2:IDが3のコモンイベントをtext/message.txtに出力する
  *   EXPORT_CE_TO_MESSAGE text message.txt 3
  *   コモンイベントをメッセージにエクスポート text message.txt 3
+ *
+ * 例3:マップIDが1, イベントIDが2, ページIDが3をtext/message.txtに差分同期する
+ *   SYNC_EVENT_TO_MESSAGE text message.txt 1 2 3
+ *   イベントをテキストに同期 text message.txt 1 2 3
+ *
+ * 例4:IDが3のコモンイベントをtext/message.txtに差分同期する
+ *   SYNC_CE_TO_MESSAGE text message.txt 3
+ *   コモンイベントをテキストに同期 text message.txt 3
  *
  * -------------------------------------
  * ツクールMZでの実行方法
@@ -263,6 +335,16 @@
  *       (デフォルトはmessage.txtです)
  *   ・「出力するコモンイベントID」に2.でメモしたコモンイベントIDを入力。
  *       (デフォルトで1です)
+ *  【マップのイベントをテキストと同期したい場合(差分書き込み)】
+ *   ・「イベントをテキストに同期」を選択。
+ *   ・引数はイベントをエクスポートと同じです。
+ *   ・既存のテキストファイルが存在する場合、JSONを正として差分のみ更新します。
+ *   ・既存のテキストファイルが存在しない場合は、エクスポートと同じ動作になります。
+ *  【コモンイベントをテキストと同期したい場合(差分書き込み)】
+ *   ・「コモンイベントをテキストに同期」を選択。
+ *   ・引数はコモンイベントをエクスポートと同じです。
+ *   ・既存のテキストファイルが存在する場合、JSONを正として差分のみ更新します。
+ *   ・既存のテキストファイルが存在しない場合は、エクスポートと同じ動作になります。
  *
  * 5. 作成したイベントコマンドをテストプレイかイベントテストで実行する。
  *    【成功した場合】
@@ -360,6 +442,20 @@
       const common_event_id = args.CommonEventID
       this.pluginCommand('EXPORT_CE_TO_MESSAGE', [file_folder, file_name, common_event_id])
     })
+    PluginManager.registerCommand('Frame2Text', 'SYNC_EVENT_TO_MESSAGE', function (args) {
+      const file_folder = args.FileFolder
+      const file_name = args.FileName
+      const map_id = args.MapID
+      const event_id = args.EventID
+      const page_id = args.PageID
+      this.pluginCommand('SYNC_EVENT_TO_MESSAGE', [file_folder, file_name, map_id, event_id, page_id])
+    })
+    PluginManager.registerCommand('Frame2Text', 'SYNC_CE_TO_MESSAGE', function (args) {
+      const file_folder = args.FileFolder
+      const file_name = args.FileName
+      const common_event_id = args.CommonEventID
+      this.pluginCommand('SYNC_CE_TO_MESSAGE', [file_folder, file_name, common_event_id])
+    })
   }
 
   const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand
@@ -419,6 +515,41 @@
           Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
           Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
         }
+        addMessage('=====> Common EventID: ' + Laurus.Frame2Text.CommonEventID)
+        break
+      case 'SYNC_EVENT_TO_MESSAGE':
+      case 'イベントをテキストに同期':
+        if (args[0]) Laurus.Frame2Text.FileFolder = args[0]
+        if (args[1]) Laurus.Frame2Text.FileName = args[1]
+        if (args[2]) Laurus.Frame2Text.MapID = args[2]
+        if (args[3]) Laurus.Frame2Text.EventID = args[3]
+        if (args[4]) Laurus.Frame2Text.PageID = args[4]
+        if (args[0] || args[1]) {
+          Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
+          Laurus.Frame2Text.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${(
+            '000' + Laurus.Frame2Text.MapID
+          ).slice(-3)}.json`
+        }
+        Laurus.Frame2Text.ExecMode = 'SYNC_EVENT_TO_MESSAGE'
+        addMessage(
+          '======> MapID: ' +
+            Laurus.Frame2Text.MapID +
+            ' -> EventID: ' +
+            Laurus.Frame2Text.EventID +
+            ' -> PageID: ' +
+            Laurus.Frame2Text.PageID
+        )
+        break
+      case 'SYNC_CE_TO_MESSAGE':
+      case 'コモンイベントをテキストに同期':
+        if (args.length === 3) {
+          Laurus.Frame2Text.FileFolder = args[0]
+          Laurus.Frame2Text.FileName = args[1]
+          Laurus.Frame2Text.CommonEventID = args[2]
+          Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
+          Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
+        }
+        Laurus.Frame2Text.ExecMode = 'SYNC_CE_TO_MESSAGE'
         addMessage('=====> Common EventID: ' + Laurus.Frame2Text.CommonEventID)
         break
       case 'COMMAND_LINE':
@@ -510,6 +641,32 @@
 
         const ce_events = ce_data[Laurus.Frame2Text.CommonEventID].list
         map_events = ce_events
+        break
+      }
+      // 同期モード: マップのイベントを読み込む
+      case 'SYNC_EVENT_TO_MESSAGE': {
+        const map_data = readJsonData(Laurus.Frame2Text.MapPath)
+        if (!map_data.events[Laurus.Frame2Text.EventID]) {
+          throw new Error(
+            'EventID not found. / EventIDが見つかりません。\n' + 'Event ID: ' + Laurus.Frame2Text.EventID
+          )
+        }
+        const pageID = Number(Laurus.Frame2Text.PageID) - 1
+        if (!map_data.events[Laurus.Frame2Text.EventID].pages[pageID]) {
+          throw new Error('PageID not found. / PageIDが見つかりません。\n' + 'Page ID: ' + Laurus.Frame2Text.PageID)
+        }
+        map_events = map_data.events[Laurus.Frame2Text.EventID].pages[pageID].list
+        break
+      }
+      // 同期モード: コモンイベントを読み込む
+      case 'SYNC_CE_TO_MESSAGE': {
+        const ce_data = readJsonData(Laurus.Frame2Text.CommonEventPath)
+        if (ce_data.length - 1 < Laurus.Frame2Text.CommonEventID) {
+          throw new Error(
+            'Common Event not found. / コモンイベントが見つかりません。: ' + Laurus.Frame2Text.CommonEventID
+          )
+        }
+        map_events = ce_data[Laurus.Frame2Text.CommonEventID].list
         break
       }
     }
@@ -2489,22 +2646,162 @@
       return text
     }
 
-    Laurus.Frame2Text.export = { decompile }
+    /** ******************************* */
+    // 同期(SYNC)モード用のヘルパー関数
+    /** ******************************* */
+
+    /* コマンドリストをブロック単位にグループ化する (Text2Frame の同関数と同じロジック) */
+    const SYNC_CONTINUATION_CODES = [401, 655, 408, 405]
+    const syncGroupCommandsIntoBlocks = function (commands) {
+      const blocks = []
+      let current_block = []
+      for (let i = 0; i < commands.length; i++) {
+        const cmd = commands[i]
+        if (cmd.code === 0) continue
+        if (SYNC_CONTINUATION_CODES.indexOf(cmd.code) !== -1) {
+          current_block.push(cmd)
+        } else {
+          if (current_block.length > 0) blocks.push(current_block)
+          current_block = [cmd]
+        }
+      }
+      if (current_block.length > 0) blocks.push(current_block)
+      return blocks
+    }
+
+    /* LCS テーブルを計算する */
+    const syncLcsTable = function (a, b) {
+      const m = a.length
+      const n = b.length
+      const table = []
+      for (let i = 0; i <= m; i++) {
+        const row = []
+        for (let j = 0; j <= n; j++) row.push(0)
+        table.push(row)
+      }
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          if (a[i - 1] === b[j - 1]) {
+            table[i][j] = table[i - 1][j - 1] + 1
+          } else {
+            table[i][j] = Math.max(table[i - 1][j], table[i][j - 1])
+          }
+        }
+      }
+      return table
+    }
+
+    /* LCS テーブルから差分リストをビルドする */
+    const syncBuildDiff = function (table, a, b) {
+      const diff = []
+      let i = a.length
+      let j = b.length
+      while (i > 0 || j > 0) {
+        if (i === 0) {
+          diff.unshift({ type: 'added', value: b[j - 1] })
+          j--
+        } else if (j === 0) {
+          diff.unshift({ type: 'removed', value: a[i - 1] })
+          i--
+        } else if (a[i - 1] === b[j - 1]) {
+          diff.unshift({ type: 'equal', value: a[i - 1] })
+          i--
+          j--
+        } else if (table[i - 1][j] >= table[i][j - 1]) {
+          diff.unshift({ type: 'removed', value: a[i - 1] })
+          i--
+        } else {
+          diff.unshift({ type: 'added', value: b[j - 1] })
+          j--
+        }
+      }
+      return diff
+    }
+
+    /* テキストの段落リストと新しい段落リストを差分比較して同期結果を返す。
+     * old_paragraphs: 既存テキストを空行で分割した段落リスト
+     * new_paragraphs: 現在のJSONをブロック単位でデコンパイルした段落リスト
+     * 戻り値: { paragraphs: 結果段落リスト, warnings: 警告メッセージ配列 } */
+    const applySyncDiff = function (old_paragraphs, new_paragraphs) {
+      const PREVIEW_LENGTH = 80
+      if (old_paragraphs.length === 0) {
+        return { paragraphs: new_paragraphs.slice(), warnings: [] }
+      }
+      const table = syncLcsTable(old_paragraphs, new_paragraphs)
+      const diff = syncBuildDiff(table, old_paragraphs, new_paragraphs)
+      const warnings = []
+      const result = []
+      for (let di = 0; di < diff.length; di++) {
+        const d = diff[di]
+        if (d.type === 'equal') {
+          result.push(d.value)
+        } else if (d.type === 'added') {
+          result.push(d.value)
+        } else {
+          const preview = d.value.length > PREVIEW_LENGTH ? d.value.substring(0, PREVIEW_LENGTH) + '...' : d.value
+          warnings.push('Block removed / ブロックが削除されます: ' + preview)
+        }
+      }
+      return { paragraphs: result, warnings }
+    }
+
+    Laurus.Frame2Text.export = { decompile, applySyncDiff }
     if (Laurus.Frame2Text.ExecMode === 'LIBRARY_EXPORT') {
       return
     }
-    const text = decompile(map_events, EnglishTag)
+
+    const addWarning = function (text) {
+      if (Laurus.Frame2Text.DisplayWarning) {
+        $gameMessage.add(text)
+      }
+    }
+
+    const isSyncMode =
+      Laurus.Frame2Text.ExecMode === 'SYNC_EVENT_TO_MESSAGE' ||
+      Laurus.Frame2Text.ExecMode === 'SYNC_CE_TO_MESSAGE'
+
+    let outputText
+    if (isSyncMode) {
+      /** ******************************* */
+      // 同期モード: 差分をテキストに書き込む
+      /** ******************************* */
+      // JSONのブロックをそれぞれデコンパイルして段落リストを生成
+      const currentBlocks = syncGroupCommandsIntoBlocks(map_events)
+      const new_paragraphs = currentBlocks.map(function (block) { return decompile(block, EnglishTag) })
+
+      // 既存のテキストファイルを読み込む (存在しない場合は空配列扱い)
+      let old_paragraphs = []
+      try {
+        const existing_text = readText(Laurus.Frame2Text.TextPath)
+        old_paragraphs = existing_text === '' ? [] : existing_text.split(/\n\n+/)
+      } catch (e) {
+        // ファイルが存在しない場合は初回エクスポートと同等の動作
+      }
+
+      const sync_result = applySyncDiff(old_paragraphs, new_paragraphs)
+      for (let wi = 0; wi < sync_result.warnings.length; wi++) {
+        addWarning(sync_result.warnings[wi])
+      }
+      outputText = sync_result.paragraphs.join('\n\n')
+    } else {
+      /** ******************************* */
+      // エクスポートモード: 全体を上書き
+      /** ******************************* */
+      outputText = decompile(map_events, EnglishTag)
+    }
 
     /** ********************************************** */
     // txtファイルを出力
     /** ********************************************** */
-    writeData(Laurus.Frame2Text.TextPath, text)
+    writeData(Laurus.Frame2Text.TextPath, outputText)
 
     /** ********************************************** */
     // 出力メッセージ
     /** ********************************************** */
-    const EnglishMessage = `Exported to ${Laurus.Frame2Text.TextPath}`
-    const JapaneseMessage = `${Laurus.Frame2Text.TextPath} にエクスポートしました`
+    const actionWord = isSyncMode ? 'Synced to' : 'Exported to'
+    const actionWordJa = isSyncMode ? 'に同期しました' : 'にエクスポートしました'
+    const EnglishMessage = `${actionWord} ${Laurus.Frame2Text.TextPath}`
+    const JapaneseMessage = `${Laurus.Frame2Text.TextPath} ${actionWordJa}`
     addMessage(EnglishMessage + '\n' + JapaneseMessage)
     console.log(EnglishMessage + '\n' + JapaneseMessage)
   }
