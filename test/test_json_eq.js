@@ -40,6 +40,15 @@ describe('Text2Frame Test', function() {
     ]);
   });
 
+  it('supports inline vars on #vars and #endvars lines', function() {
+    const input = '#vars hero=アレックス town=リンデル\nアレックス怒りの表情=Actors1(0)\n\nゲーム進行フラグ=1 #endvars\n<Face: ${アレックス怒りの表情}>\n${hero}は${town}へ向かった。\n<Switch: ${ゲーム進行フラグ}, ON>';
+    expect(text2frame.compile(input)).to.eql([
+      { code: 101, indent: 0, parameters: ['Actors1', 0, 0, 2, ''] },
+      { code: 401, indent: 0, parameters: ['アレックスはリンデルへ向かった。'] },
+      { code: 121, indent: 0, parameters: [1, 1, 0] }
+    ]);
+  });
+
   tests.forEach(function(test, index) {
     it(test.title, function(done) {
       fs.readFile(test.infile, 'utf8', function(err, test_input) {

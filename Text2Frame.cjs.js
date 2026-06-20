@@ -4399,17 +4399,28 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         return out_events;
       };
       const parseVarsBlock = function(scenario_text2) {
-        const vars_start_re = /^#vars[ \t]*$/m;
+        const vars_start_re = /^#vars([ \t]|$)/m;
         if (!vars_start_re.test(scenario_text2)) {
           return { vars: {}, scenario_text: scenario_text2 };
         }
-        const vars_block_re = /#vars[ \t]*\n([\s\S]*?)#endvars[ \t]*\n?/;
+        const vars_block_re = /#vars([ \t][^\n]*)?\n([\s\S]*?)([ \t]*|[^\n]+[ \t])#endvars[ \t]*\n?/;
         const match = scenario_text2.match(vars_block_re);
         if (!match) {
           throw new Error("Syntax error. #vars block is not closed with #endvars. / #varsブロックが#endvarsで閉じられていません。");
         }
-        const vars_content = match[1];
         const vars = {};
+        const parseInlineVars = function(text) {
+          for (const token of text.trim().split(/[ \t]+/)) {
+            if (!token) continue;
+            const var_match = token.match(/^([^=]+?)=(.*)$/);
+            if (!var_match) {
+              throw new Error("Syntax error in #vars block. / #varsブロック内の文法エラーです。: " + token);
+            }
+            vars[var_match[1]] = var_match[2];
+          }
+        };
+        if (match[1]) parseInlineVars(match[1]);
+        const vars_content = match[2];
         for (const line of vars_content.split("\n")) {
           const trimmed = line.trim();
           if (!trimmed) continue;
@@ -4419,6 +4430,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
           }
           vars[var_match[1].trim()] = var_match[2];
         }
+        if (match[3] && match[3].trim()) parseInlineVars(match[3]);
         return { vars, scenario_text: scenario_text2.replace(match[0], "") };
       };
       const substituteVars = function(scenario_text2, vars) {
