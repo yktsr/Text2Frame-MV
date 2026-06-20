@@ -31,6 +31,15 @@ describe('Text2Frame Test', function() {
     ]);
   });
 
+  it('supports unicode vars names and unicode line separators', function() {
+    const input = '#vars\u2028hero=アレックス\u2028town=リンデル\u2028アレックス怒りの表情=Actors1(0)\u2028\u2028ゲーム進行フラグ=1\u2028#endvars\u2028<Face: ${アレックス怒りの表情}>\u2028${hero}は${town}へ向かった。\u2028<Switch: ${ゲーム進行フラグ}, ON>';
+    expect(text2frame.compile(input)).to.eql([
+      { code: 101, indent: 0, parameters: ['Actors1', 0, 0, 2, ''] },
+      { code: 401, indent: 0, parameters: ['アレックスはリンデルへ向かった。'] },
+      { code: 121, indent: 0, parameters: [1, 1, 0] }
+    ]);
+  });
+
   tests.forEach(function(test, index) {
     it(test.title, function(done) {
       fs.readFile(test.infile, 'utf8', function(err, test_input) {
