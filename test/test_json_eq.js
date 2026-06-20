@@ -11,6 +11,26 @@ describe('Text2Frame Test', function() {
   const writeFileSyncStub = sinon.stub(fs, 'writeFileSync');
   const readFileSyncStub = sinon.stub(fs, 'readFileSync');
 
+  it('accepts case-insensitive switch tags', function() {
+    expect(text2frame.compile('<switch: 1, ON>')).to.eql([
+      { code: 121, indent: 0, parameters: [1, 1, 0] }
+    ]);
+    expect(text2frame.compile('<SWITCH: 2, OFF>')).to.eql([
+      { code: 121, indent: 0, parameters: [2, 2, 1] }
+    ]);
+  });
+
+  it('accepts case-insensitive face tags', function() {
+    expect(text2frame.compile('<face: Actor1(1)>\nhello')).to.eql([
+      { code: 101, indent: 0, parameters: ['Actor1', 1, 0, 2, ''] },
+      { code: 401, indent: 0, parameters: ['hello'] }
+    ]);
+    expect(text2frame.compile('<FACE: Actor1(2)>\nhello')).to.eql([
+      { code: 101, indent: 0, parameters: ['Actor1', 2, 0, 2, ''] },
+      { code: 401, indent: 0, parameters: ['hello'] }
+    ]);
+  });
+
   tests.forEach(function(test, index) {
     it(test.title, function(done) {
       fs.readFile(test.infile, 'utf8', function(err, test_input) {
