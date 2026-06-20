@@ -1,9 +1,6 @@
 const chai = require('chai')
 const expect = chai.expect
 
-const path = require('path')
-process.mainModule = { filename: path.join(process.cwd(), 'index.js') }
-
 Game_Interpreter = {}
 Game_Interpreter.prototype = {}
 $gameMessage = {}
