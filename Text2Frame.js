@@ -202,6 +202,16 @@
  * @type number
  * @default 1
  *
+ * @arg WriteBack
+ * @text テキストへ書き戻す
+ * @desc 差分適用後の結果をテキストファイルへ書き戻します。Frame2Textプラグインが必要です。デフォルトはfalseです。
+ * @type select
+ * @option true(書き戻す)
+ * @value true
+ * @option false(書き戻さない)
+ * @value false
+ * @default false
+ *
  * @command DIFF_IMPORT_MESSAGE_TO_CE
  * @text コモンイベントに差分インポート
  * @desc テキストと既存コモンイベントコマンドを比較し、差分のみを適用します。
@@ -223,6 +233,16 @@
  * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。
  * @type common_event
  * @default 1
+ *
+ * @arg WriteBack
+ * @text テキストへ書き戻す
+ * @desc 差分適用後の結果をテキストファイルへ書き戻します。Frame2Textプラグインが必要です。デフォルトはfalseです。
+ * @type select
+ * @option true(書き戻す)
+ * @value true
+ * @option false(書き戻さない)
+ * @value false
+ * @default false
  *
  * @param Default Window Position
  * @text 位置のデフォルト値
@@ -4131,15 +4151,17 @@
       const map_id = args.MapID
       const event_id = args.EventID
       const page_id = args.PageID
+      const write_back = args.WriteBack
       this.pluginCommand('DIFF_IMPORT_MESSAGE_TO_EVENT',
-        [file_folder, file_name, map_id, event_id, page_id])
+        [file_folder, file_name, map_id, event_id, page_id, write_back])
     })
     PluginManager.registerCommand('Text2Frame', 'DIFF_IMPORT_MESSAGE_TO_CE', function (args) {
       const file_folder = args.FileFolder
       const file_name = args.FileName
       const common_event_id = args.CommonEventID
+      const write_back = args.WriteBack
       this.pluginCommand('DIFF_IMPORT_MESSAGE_TO_CE',
-        [file_folder, file_name, common_event_id])
+        [file_folder, file_name, common_event_id, write_back])
     })
   }
 
@@ -4157,6 +4179,7 @@
     Laurus.Text2Frame.EventID = '1'
     Laurus.Text2Frame.PageID = '1'
     Laurus.Text2Frame.IsOverwrite = true
+    Laurus.Text2Frame.WriteBack = false
     Laurus.Text2Frame.CommentOutChar = '%'
     Laurus.Text2Frame.IsDebug = false
     Laurus.Text2Frame.DisplayMsg = true
@@ -4322,6 +4345,7 @@
         if (args[2]) Laurus.Text2Frame.MapID = args[2]
         if (args[3]) Laurus.Text2Frame.EventID = args[3]
         if (args[4]) Laurus.Text2Frame.PageID = args[4]
+        if (args[5] !== undefined) Laurus.Text2Frame.WriteBack = (args[5] === 'true' || args[5] === true)
         if (args[0] || args[1]) {
           const { PATH_SEP, BASE_PATH } = getDirParams()
           Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
@@ -4329,12 +4353,13 @@
         }
         break
       case 'DIFF_IMPORT_MESSAGE_TO_CE' :
-        if (args.length === 3) {
+        if (args.length === 3 || args.length === 4) {
           addMessage('diff import message to common event. \n/ 差分をコモンイベントにインポートします。')
           Laurus.Text2Frame.ExecMode = 'DIFF_IMPORT_MESSAGE_TO_CE'
           Laurus.Text2Frame.FileFolder = args[0]
           Laurus.Text2Frame.FileName = args[1]
           Laurus.Text2Frame.CommonEventID = args[2]
+          if (args[3] !== undefined) Laurus.Text2Frame.WriteBack = (args[3] === 'true' || args[3] === true)
           const { PATH_SEP, BASE_PATH } = getDirParams()
           Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
           Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
@@ -4390,6 +4415,17 @@
       const fs = require('fs')
       try {
         fs.writeFileSync(filepath, JSON.stringify(jsonData, null, '  '), { encoding: 'utf8' })
+      } catch (e) {
+        throw new Error(
+          'Save failed. / 保存に失敗しました。\n' + 'ファイルが開いていないか確認してください。\n' + filepath
+        )
+      }
+    }
+
+    const writeText = function (filepath, textData) {
+      const fs = require('fs')
+      try {
+        fs.writeFileSync(filepath, textData, { encoding: 'utf8' })
       } catch (e) {
         throw new Error(
           'Save failed. / 保存に失敗しました。\n' + 'ファイルが開いていないか確認してください。\n' + filepath
@@ -9568,6 +9604,26 @@
     }
 
     Laurus.Text2Frame.export = { compile, applyDiff }
+
+    /* 差分適用後のコマンドリストをテキストファイルへ書き戻す。
+     * Frame2Text プラグインの decompile 関数を使用します。
+     * Frame2Text が未ロードの場合は警告を表示します。 */
+    const writeBackToText = function (commands) {
+      const decompile =
+        typeof Laurus !== 'undefined' &&
+        Laurus.Frame2Text &&
+        Laurus.Frame2Text.export &&
+        Laurus.Frame2Text.export.decompile
+      if (!decompile) {
+        addWarning(
+          'WriteBack requires Frame2Text plugin. / WriteBack には Frame2Text プラグインが必要です。'
+        )
+        return
+      }
+      const text = decompile(commands)
+      writeText(Laurus.Text2Frame.TextPath, text)
+      addMessage('WriteBack success / テキストへの書き戻し成功！\n' + Laurus.Text2Frame.TextPath)
+    }
     if (Laurus.Text2Frame.ExecMode === 'LIBRARY_EXPORT') {
       return
     }
@@ -9650,6 +9706,9 @@
         map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list =
           diff_result.commands.concat([getCommandBottomEvent()])
         writeData(Laurus.Text2Frame.MapPath, map_data)
+        if (Laurus.Text2Frame.WriteBack) {
+          writeBackToText(diff_result.commands)
+        }
         addMessage(
           'Success / 書き出し成功！\n' +
             '======> MapID: ' +
@@ -9677,6 +9736,9 @@
         ce_data[Laurus.Text2Frame.CommonEventID].list =
           diff_ce_result.commands.concat([getCommandBottomEvent()])
         writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
+        if (Laurus.Text2Frame.WriteBack) {
+          writeBackToText(diff_ce_result.commands)
+        }
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break
       }
