@@ -4397,9 +4397,43 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         }, []);
         return out_events;
       };
+      const parseVarsBlock = function(scenario_text2) {
+        const vars_start_re = /^#vars[ \t]*$/m;
+        if (!vars_start_re.test(scenario_text2)) {
+          return { vars: {}, scenario_text: scenario_text2 };
+        }
+        const vars_block_re = /#vars[ \t]*\n([\s\S]*?)#endvars[ \t]*\n?/;
+        const match = scenario_text2.match(vars_block_re);
+        if (!match) {
+          throw new Error("Syntax error. #vars block is not closed with #endvars. / #varsブロックが#endvarsで閉じられていません。");
+        }
+        const vars_content = match[1];
+        const vars = {};
+        for (const line of vars_content.split("\n")) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          const var_match = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+          if (!var_match) {
+            throw new Error("Syntax error in #vars block. / #varsブロック内の文法エラーです。: " + line);
+          }
+          vars[var_match[1]] = var_match[2];
+        }
+        return { vars, scenario_text: scenario_text2.replace(match[0], "") };
+      };
+      const substituteVars = function(scenario_text2, vars) {
+        if (Object.keys(vars).length === 0) return scenario_text2;
+        return scenario_text2.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, function(full_match, name) {
+          if (!(name in vars)) {
+            throw new Error("Undefined variable. / 未定義の変数です。: " + name);
+          }
+          return vars[name];
+        });
+      };
       const compile = function(text) {
         let scenario_text2 = uniformNewLineCode(text);
         scenario_text2 = eraseCommentOutLines(scenario_text2, Laurus.Text2Frame.CommentOutChar);
+        const { vars, scenario_text: text_after_vars } = parseVarsBlock(scenario_text2);
+        scenario_text2 = substituteVars(text_after_vars, vars);
         let block_map = {};
         ["script", "comment", "scrolling"].forEach(function(block_name) {
           const t = getBlockStatement(scenario_text2, block_name);
