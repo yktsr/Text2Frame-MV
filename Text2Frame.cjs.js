@@ -273,7 +273,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         }
       };
       const uniformNewLineCode = function(text) {
-        return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+        return text.replace(/\r\n/g, "\n").replace(/[\r\u2028\u2029]/g, "\n");
       };
       const eraseCommentOutLines = function(scenario_text2, commentOutChar) {
         const re = new RegExp("^ *" + commentOutChar);
@@ -4413,17 +4413,18 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         for (const line of vars_content.split("\n")) {
           const trimmed = line.trim();
           if (!trimmed) continue;
-          const var_match = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+          const var_match = trimmed.match(/^([^=]+?)\s*=(.*)$/);
           if (!var_match) {
             throw new Error("Syntax error in #vars block. / #varsブロック内の文法エラーです。: " + line);
           }
-          vars[var_match[1]] = var_match[2];
+          vars[var_match[1].trim()] = var_match[2];
         }
         return { vars, scenario_text: scenario_text2.replace(match[0], "") };
       };
       const substituteVars = function(scenario_text2, vars) {
         if (Object.keys(vars).length === 0) return scenario_text2;
-        return scenario_text2.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, function(full_match, name) {
+        return scenario_text2.replace(/\$\{([^}]+)\}/g, function(full_match, name) {
+          name = name.trim();
           if (!(name in vars)) {
             throw new Error("Undefined variable. / 未定義の変数です。: " + name);
           }
