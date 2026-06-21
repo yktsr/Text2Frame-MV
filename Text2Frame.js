@@ -244,6 +244,40 @@
  * @value false
  * @default false
  *
+ * @command SYNC_EVENT_BIDIRECTIONAL
+ * @text イベントを双方向差分同期
+ * @desc 1回の実行でテキスト差分をJSONへ反映し、その結果をテキストへ同期します。
+ *
+ * @arg FileFolder
+ * @text 対象フォルダ名
+ * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text 対象ファイル名
+ * @desc 同期対象となるシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @type string
+ * @default message.txt
+ *
+ * @arg MapID
+ * @text 対象マップID
+ * @desc 対象となるマップのIDを設定します。デフォルト値は1です。
+ * @type number
+ * @default 1
+ *
+ * @arg EventID
+ * @text 対象イベントID
+ * @desc 対象となるイベントのIDを設定します。デフォルト値は2です。
+ * @type number
+ * @default 2
+ *
+ * @arg PageID
+ * @text 対象ページID
+ * @desc 対象となるページのIDを設定します。デフォルト値は1です。
+ * @type number
+ * @default 1
+ *
  * @param Default Window Position
  * @text 位置のデフォルト値
  * @desc テキストフレームの表示位置デフォルト値を設定します。デフォルトは下です。個別に指定した場合は上書きされます。
@@ -4163,6 +4197,15 @@
       this.pluginCommand('DIFF_IMPORT_MESSAGE_TO_CE',
         [file_folder, file_name, common_event_id, write_back])
     })
+    PluginManager.registerCommand('Text2Frame', 'SYNC_EVENT_BIDIRECTIONAL', function (args) {
+      const file_folder = args.FileFolder
+      const file_name = args.FileName
+      const map_id = args.MapID
+      const event_id = args.EventID
+      const page_id = args.PageID
+      this.pluginCommand('SYNC_EVENT_BIDIRECTIONAL',
+        [file_folder, file_name, map_id, event_id, page_id])
+    })
   }
 
   var Laurus = typeof Laurus !== 'undefined' ? Laurus : {} // eslint-disable-line no-var, no-use-before-define
@@ -4364,6 +4407,21 @@
           Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
           Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
         }
+        break
+      case 'SYNC_EVENT_BIDIRECTIONAL' :
+      case 'イベントを双方向差分同期' :
+        addMessage('bidirectional sync event. \n/ イベントを双方向差分同期します。')
+        if (args[0]) Laurus.Text2Frame.FileFolder = args[0]
+        if (args[1]) Laurus.Text2Frame.FileName = args[1]
+        if (args[2]) Laurus.Text2Frame.MapID = args[2]
+        if (args[3]) Laurus.Text2Frame.EventID = args[3]
+        if (args[4]) Laurus.Text2Frame.PageID = args[4]
+        if (args[0] || args[1]) {
+          const { PATH_SEP, BASE_PATH } = getDirParams()
+          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
+          Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
+        }
+        Laurus.Text2Frame.ExecMode = 'SYNC_EVENT_BIDIRECTIONAL'
         break
       case 'COMMAND_LINE' :
         Laurus.Text2Frame = Object.assign(Laurus.Text2Frame, args[0])
@@ -9625,6 +9683,33 @@
       addMessage('WriteBack success / テキストへの書き戻し成功！\n' + Laurus.Text2Frame.TextPath)
     }
     if (Laurus.Text2Frame.ExecMode === 'LIBRARY_EXPORT') {
+      return
+    }
+
+    if (Laurus.Text2Frame.ExecMode === 'SYNC_EVENT_BIDIRECTIONAL') {
+      if (typeof this.pluginCommandFrame2Text !== 'function') {
+        throw new Error(
+          'Frame2Text plugin is required. / SYNC_EVENT_BIDIRECTIONAL には Frame2Text プラグインが必要です。'
+        )
+      }
+
+      // Apply text edits first, then sync merged JSON back to text.
+      this.pluginCommandText2Frame('DIFF_IMPORT_MESSAGE_TO_EVENT', [
+        Laurus.Text2Frame.FileFolder,
+        Laurus.Text2Frame.FileName,
+        Laurus.Text2Frame.MapID,
+        Laurus.Text2Frame.EventID,
+        Laurus.Text2Frame.PageID,
+        false
+      ])
+
+      this.pluginCommandFrame2Text('SYNC_EVENT_TO_MESSAGE', [
+        Laurus.Text2Frame.FileFolder,
+        Laurus.Text2Frame.FileName,
+        Laurus.Text2Frame.MapID,
+        Laurus.Text2Frame.EventID,
+        Laurus.Text2Frame.PageID
+      ])
       return
     }
 

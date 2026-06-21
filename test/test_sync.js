@@ -66,6 +66,14 @@ describe('Sync (applySyncDiff) Test', function () {
     expect(result.paragraphs).to.eql(['Goodbye'])
   })
 
+  it('Preserves comment paragraphs even when absent from decompiled paragraphs', function () {
+    const old_paragraphs = ['% keep this memo', 'Hello']
+    const new_paragraphs = ['Hello']
+    const result = applySyncDiff(old_paragraphs, new_paragraphs)
+    expect(result.warnings).to.have.lengthOf(0)
+    expect(result.paragraphs).to.eql(['% keep this memo', 'Hello'])
+  })
+
   it('Modify paragraph: changed paragraph is replaced with new content', function () {
     const old_paragraphs = ['Hello', 'Goodbye']
     const new_paragraphs = ['Hi', 'Goodbye']
