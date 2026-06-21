@@ -2718,31 +2718,94 @@
       return diff
     }
 
+    const isCommentParagraph = function (paragraph) {
+      const lines = paragraph.split('\n').map(function (line) { return line.trim() }).filter(function (line) { return line !== '' })
+      return lines.length > 0 && lines.every(function (line) { return line.indexOf('%') === 0 })
+    }
+
+    const splitParagraphsWithSeparators = function (text) {
+      const paragraphs = []
+      const separators = []
+      if (text === '') {
+        return { paragraphs, separators }
+      }
+      const re = /\n\n+/g
+      let lastIndex = 0
+      let match
+      while ((match = re.exec(text)) !== null) {
+        paragraphs.push(text.slice(lastIndex, match.index))
+        separators.push(match[0])
+        lastIndex = match.index + match[0].length
+      }
+      paragraphs.push(text.slice(lastIndex))
+      return { paragraphs, separators }
+    }
+
+    const buildTextWithOldSeparators = function (paragraphs, trace, oldSeparators) {
+      if (paragraphs.length === 0) {
+        return ''
+      }
+      let output = paragraphs[0]
+      for (let i = 1; i < paragraphs.length; i++) {
+        let separator = '\n\n'
+        const prev = trace[i - 1]
+        const curr = trace[i]
+        if (
+          prev && curr &&
+          prev.source === 'old' && curr.source === 'old' &&
+          curr.oldIndex === prev.oldIndex + 1 &&
+          oldSeparators[prev.oldIndex] !== undefined
+        ) {
+          separator = oldSeparators[prev.oldIndex]
+        }
+        output += separator + paragraphs[i]
+      }
+      return output
+    }
+
     /* テキストの段落リストと新しい段落リストを差分比較して同期結果を返す。
      * old_paragraphs: 既存テキストを空行で分割した段落リスト
      * new_paragraphs: 現在のJSONをブロック単位でデコンパイルした段落リスト
-     * 戻り値: { paragraphs: 結果段落リスト, warnings: 警告メッセージ配列 } */
+     * 戻り値: { paragraphs: 結果段落リスト, warnings: 警告メッセージ配列, trace: 段落ソース情報 } */
     const applySyncDiff = function (old_paragraphs, new_paragraphs) {
       const PREVIEW_LENGTH = 80
       if (old_paragraphs.length === 0) {
-        return { paragraphs: new_paragraphs.slice(), warnings: [] }
+        return {
+          paragraphs: new_paragraphs.slice(),
+          warnings: [],
+          trace: new_paragraphs.map(function (_paragraph, newIndex) { return { source: 'new', newIndex } })
+        }
       }
       const table = syncLcsTable(old_paragraphs, new_paragraphs)
       const diff = syncBuildDiff(table, old_paragraphs, new_paragraphs)
       const warnings = []
       const result = []
+      const trace = []
+      let oldIndex = 0
+      let newIndex = 0
       for (let di = 0; di < diff.length; di++) {
         const d = diff[di]
         if (d.type === 'equal') {
           result.push(d.value)
+          trace.push({ source: 'old', oldIndex, newIndex })
+          oldIndex++
+          newIndex++
         } else if (d.type === 'added') {
           result.push(d.value)
+          trace.push({ source: 'new', newIndex })
+          newIndex++
         } else {
-          const preview = d.value.length > PREVIEW_LENGTH ? d.value.substring(0, PREVIEW_LENGTH) + '...' : d.value
-          warnings.push('Block removed / ブロックが削除されます: ' + preview)
+          if (isCommentParagraph(d.value)) {
+            result.push(d.value)
+            trace.push({ source: 'old', oldIndex })
+          } else {
+            const preview = d.value.length > PREVIEW_LENGTH ? d.value.substring(0, PREVIEW_LENGTH) + '...' : d.value
+            warnings.push('Block removed / ブロックが削除されます: ' + preview)
+          }
+          oldIndex++
         }
       }
-      return { paragraphs: result, warnings }
+      return { paragraphs: result, warnings, trace }
     }
 
     Laurus.Frame2Text.export = { decompile, applySyncDiff }
@@ -2771,9 +2834,12 @@
 
       // 既存のテキストファイルを読み込む (存在しない場合は空配列扱い)
       let old_paragraphs = []
+      let old_separators = []
       try {
         const existing_text = readText(Laurus.Frame2Text.TextPath)
-        old_paragraphs = existing_text === '' ? [] : existing_text.split(/\n\n+/)
+        const split_result = splitParagraphsWithSeparators(existing_text)
+        old_paragraphs = split_result.paragraphs
+        old_separators = split_result.separators
       } catch (e) {
         // ファイルが存在しない場合は初回エクスポートと同等の動作
       }
@@ -2782,7 +2848,7 @@
       for (let wi = 0; wi < sync_result.warnings.length; wi++) {
         addWarning(sync_result.warnings[wi])
       }
-      outputText = sync_result.paragraphs.join('\n\n')
+      outputText = buildTextWithOldSeparators(sync_result.paragraphs, sync_result.trace || [], old_separators)
     } else {
       /** ******************************* */
       // エクスポートモード: 全体を上書き
