@@ -169,6 +169,58 @@ Frame2Textのダウンロードは[ここ](https://raw.githubusercontent.com/ykt
 
 また、詳細な使い方は[Frame2Textの紹介ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E9%80%86%E5%A4%89%E6%8F%9B%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3Frame2Text)かプラグイン本体のヘルプドキュメントを参照してください。
 
+## フォルダ一括同期と英語化ワークフロー（CLI）
+
+Text2Frame/Frame2Text は、manifest を使ってフォルダ全体を一括処理できます。
+
+### 1. メタ情報付きテキスト
+
+batch-export で書き出すファイルは、先頭に YAML front matter を持ちます。
+
+```yaml
+---
+kind: event
+mapId: 1
+eventId: 1
+pageId: 1
+locale: en
+sourceLocale: ja
+key: map001_event001_page001
+---
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+Hello
+```
+
+### 2. manifest を用意する
+
+サンプルは [examples/batch-manifest.sample.json](examples/batch-manifest.sample.json) を参照してください。
+
+### 3. 一括 export（JSON -> text）
+
+```bash
+node Frame2Text.js --mode batch-export --manifest examples/batch-manifest.sample.json --english_tag true
+```
+
+### 4. 一括 import（text -> JSON）
+
+```bash
+node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json --strategy diff
+```
+
+### 5. 一括 sync（import + 再export）
+
+```bash
+node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json --strategy sync
+```
+
+### 英語化の固定フロー（推奨）
+
+1. ja を batch-export で出力
+2. text/en 配下を翻訳
+3. batch import(diff) で JSON へ反映
+4. batch sync で再整形し、コメント/改行を可能な限り維持
+5. 失敗レコードは CLI の JSON レポートで確認
+
 ## Author/連絡先
 * [@kryptos_nv](https://twitter.com/kryptos_nv)
 

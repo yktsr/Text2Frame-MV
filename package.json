@@ -8,7 +8,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "mocha test/test_json_eq.js && mocha --no-esm test/test_diff.js && mocha --no-esm test/test_diff_import_integration.js && mocha --no-esm test/test_bidirectional_sync_integration.js && mocha --no-esm test/test_sync.js && mocha --no-esm test/test_sync_format_preservation_integration.js",
+    "test": "mocha test/test_json_eq.js && mocha --no-esm test/test_diff.js && mocha --no-esm test/test_diff_import_integration.js && mocha --no-esm test/test_bidirectional_sync_integration.js && mocha --no-esm test/test_batch_command_integration.js && mocha --no-esm test/test_sync.js && mocha --no-esm test/test_sync_format_preservation_integration.js && mocha --no-esm test/test_front_matter.js",
     "test_text2frame": "mocha --inline-diffs test/test_json_eq.js",
     "test_frame2text": "mocha --reporter-options maxDiffSize=100000 --inline-diffs test/test_frame2text.js",
     "lint": "eslint --max-warnings=0 Text2Frame.js Frame2Text.js",

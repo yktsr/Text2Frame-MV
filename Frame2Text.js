@@ -2882,16 +2882,113 @@
 // developer mode
 if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && require.main === module) {
   const { Command } = require('commander')
+  const fs = require('fs')
+  const path = require('path')
+
+  const resolveFromRoot = function (rootDir, maybeRelativePath) {
+    if (!maybeRelativePath) {
+      return maybeRelativePath
+    }
+    return path.isAbsolute(maybeRelativePath)
+      ? maybeRelativePath
+      : path.resolve(rootDir, maybeRelativePath)
+  }
+
+  const toMapPath = function (mapId) {
+    return path.join('data', 'Map' + ('000' + String(mapId)).slice(-3) + '.json')
+  }
+
+  const renderFrontMatter = function (entry, kind) {
+    const lines = ['---']
+    lines.push('kind: ' + kind)
+    if (kind === 'event') {
+      lines.push('mapId: ' + String(entry.mapId))
+      lines.push('eventId: ' + String(entry.eventId))
+      lines.push('pageId: ' + String(entry.pageId || '1'))
+    } else {
+      lines.push('commonEventId: ' + String(entry.commonEventId))
+    }
+    if (entry.locale) {
+      lines.push('locale: ' + String(entry.locale))
+    }
+    if (entry.sourceLocale) {
+      lines.push('sourceLocale: ' + String(entry.sourceLocale))
+    }
+    if (entry.key) {
+      lines.push('key: ' + String(entry.key))
+    }
+    lines.push('---')
+    return lines.join('\n')
+  }
+
+  const exportByManifest = function (manifestPath, englishTag) {
+    const manifestAbs = path.resolve(manifestPath)
+    const rootDir = path.dirname(manifestAbs)
+    const manifest = JSON.parse(fs.readFileSync(manifestAbs, { encoding: 'utf8' }))
+    const entries = Array.isArray(manifest.entries) ? manifest.entries : []
+    const results = []
+
+    entries.forEach(function (entry, index) {
+      try {
+        const kind = String(entry.kind || 'event').toLowerCase()
+        const textPath = resolveFromRoot(rootDir, entry.textPath || entry.path)
+        if (!textPath) {
+          throw new Error('textPath is required')
+        }
+
+        let body = ''
+        if (kind === 'event') {
+          const mapId = entry.mapId
+          const eventId = entry.eventId
+          const pageId = Number(entry.pageId || '1') - 1
+          if (!mapId || !eventId) {
+            throw new Error('mapId and eventId are required for event entry')
+          }
+          const mapPath = resolveFromRoot(rootDir, entry.mapPath || toMapPath(mapId))
+          const mapData = JSON.parse(fs.readFileSync(mapPath, { encoding: 'utf8' }))
+          if (!mapData.events[eventId]) {
+            throw new Error('EventID not found: ' + eventId)
+          }
+          if (!mapData.events[eventId].pages[pageId]) {
+            throw new Error('PageID not found: ' + String(pageId + 1))
+          }
+          body = module.exports.decompile(mapData.events[eventId].pages[pageId].list, englishTag)
+        } else if (kind === 'common') {
+          const commonEventId = entry.commonEventId
+          if (!commonEventId) {
+            throw new Error('commonEventId is required for common entry')
+          }
+          const commonPath = resolveFromRoot(rootDir, entry.commonEventPath || path.join('data', 'CommonEvents.json'))
+          const commonData = JSON.parse(fs.readFileSync(commonPath, { encoding: 'utf8' }))
+          if (commonData.length - 1 < commonEventId) {
+            throw new Error('Common Event not found: ' + commonEventId)
+          }
+          body = module.exports.decompile(commonData[commonEventId].list, englishTag)
+        } else {
+          throw new Error('unknown kind: ' + kind)
+        }
+
+        const frontMatter = renderFrontMatter(entry, kind)
+        fs.writeFileSync(textPath, frontMatter + '\n' + body, { encoding: 'utf8' })
+        results.push({ index: index + 1, ok: true, textPath })
+      } catch (error) {
+        results.push({ index: index + 1, ok: false, textPath: entry.textPath || entry.path || '', error: error.message })
+      }
+    })
+    return results
+  }
+
   const program = new Command()
   program
     .version('1.0.0')
     .usage('[options]')
-    .option('-m, --mode <map|common|decompile|test>', 'output mode', /^(map|common|decompile|test)$/i)
+    .option('-m, --mode <map|common|decompile|test|batch-export>', 'output mode', /^(map|common|decompile|test|batch-export)$/i)
     .option('-i, --input_path <name>', 'input map data path')
     .option('-o, --output_path <name>', 'output file path')
     .option('-e, --event_id <name>', 'event file id')
     .option('-p, --page_id <name>', 'page id', '1')
     .option('-c, --common_event_id <name>', 'common event id')
+    .option('-f, --manifest <path>', 'batch manifest json path')
     .option('-v, --verbose', 'debug mode', false)
     .option('-w, --english_tag <true/false>', 'english tag', 'true')
     .parse()
@@ -2932,7 +3029,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   program.addHelpText('after', help_text)
   const options = program.opts()
 
-  if (!['map', 'common', 'decompile', 'test'].includes(options.mode)) {
+  if (!['map', 'common', 'decompile', 'test', 'batch-export'].includes(options.mode)) {
     program.help()
     process.exit(0)
   }
@@ -2992,5 +3089,16 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       event_id,
       page_id
     ])
+  } else if (options.mode === 'batch-export') {
+    if (!options.manifest) {
+      throw new Error('--manifest is required in batch-export mode.')
+    }
+    const englishTag = String(options.english_tag) === 'true'
+    const results = exportByManifest(options.manifest, englishTag)
+    const failures = results.filter(function (r) { return !r.ok })
+    console.log(JSON.stringify({ total: results.length, failed: failures.length, results }, null, 2))
+    if (failures.length > 0) {
+      process.exitCode = 1
+    }
   }
 }

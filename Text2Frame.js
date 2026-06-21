@@ -278,6 +278,28 @@
  * @type number
  * @default 1
  *
+ * @command BATCH
+ * @text manifestで一括反映
+ * @desc manifestで指定した複数テキストを一括で取り込みます。strategyでimport/diff/syncを選択できます。
+ *
+ * @arg ManifestPath
+ * @text manifestファイルパス
+ * @desc プロジェクトルートからの相対パス、または絶対パスを指定します。
+ * @type string
+ * @default examples/batch-manifest.sample.json
+ *
+ * @arg Strategy
+ * @text 一括反映戦略
+ * @desc import(単純反映) / diff(差分反映) / sync(差分反映+テキスト同期)
+ * @type select
+ * @option import
+ * @value import
+ * @option diff
+ * @value diff
+ * @option sync
+ * @value sync
+ * @default diff
+ *
  * @param Default Window Position
  * @text 位置のデフォルト値
  * @desc テキストフレームの表示位置デフォルト値を設定します。デフォルトは下です。個別に指定した場合は上書きされます。
@@ -4206,6 +4228,11 @@
       this.pluginCommand('SYNC_EVENT_BIDIRECTIONAL',
         [file_folder, file_name, map_id, event_id, page_id])
     })
+    PluginManager.registerCommand('Text2Frame', 'BATCH', function (args) {
+      const manifest_path = args.ManifestPath
+      const strategy = args.Strategy
+      this.pluginCommand('BATCH', [manifest_path, strategy])
+    })
   }
 
   var Laurus = typeof Laurus !== 'undefined' ? Laurus : {} // eslint-disable-line no-var, no-use-before-define
@@ -4227,6 +4254,8 @@
     Laurus.Text2Frame.IsDebug = false
     Laurus.Text2Frame.DisplayMsg = true
     Laurus.Text2Frame.DisplayWarning = true
+    Laurus.Text2Frame.ManifestPath = ''
+    Laurus.Text2Frame.BatchStrategy = 'diff'
     Laurus.Text2Frame.TextPath = 'dummy'
     Laurus.Text2Frame.MapPath = 'dummy'
     Laurus.Text2Frame.CommonEventPath = 'dummy'
@@ -4251,6 +4280,8 @@
     Laurus.Text2Frame.IsDebug = (String(Laurus.Text2Frame.Parameters.IsDebug) === 'true')
     Laurus.Text2Frame.DisplayMsg = (String(Laurus.Text2Frame.Parameters.DisplayMsg) === 'true')
     Laurus.Text2Frame.DisplayWarning = (String(Laurus.Text2Frame.Parameters.DisplayWarning) === 'true')
+    Laurus.Text2Frame.ManifestPath = ''
+    Laurus.Text2Frame.BatchStrategy = 'diff'
     let PATH_SEP = '/'
     let BASE_PATH = '.'
     if (typeof require !== 'undefined') {
@@ -4423,6 +4454,13 @@
         }
         Laurus.Text2Frame.ExecMode = 'SYNC_EVENT_BIDIRECTIONAL'
         break
+      case 'BATCH' :
+      case '一括反映' :
+        addMessage('batch import by manifest. \n/ manifestで一括反映します。')
+        Laurus.Text2Frame.ManifestPath = args[0] || Laurus.Text2Frame.ManifestPath
+        Laurus.Text2Frame.BatchStrategy = String(args[1] || Laurus.Text2Frame.BatchStrategy || 'diff').toLowerCase()
+        Laurus.Text2Frame.ExecMode = 'BATCH'
+        break
       case 'COMMAND_LINE' :
         Laurus.Text2Frame = Object.assign(Laurus.Text2Frame, args[0])
         break
@@ -4494,6 +4532,32 @@
     /* 改行コードを統一する関数 */
     const uniformNewLineCode = function (text) {
       return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+    }
+
+    const parseFrontMatter = function (text) {
+      const normalized = uniformNewLineCode(text)
+      if (normalized.indexOf('---\n') !== 0) {
+        return { meta: {}, body: text }
+      }
+      const endIndex = normalized.indexOf('\n---\n', 4)
+      if (endIndex < 0) {
+        return { meta: {}, body: text }
+      }
+
+      const header = normalized.slice(4, endIndex)
+      const body = normalized.slice(endIndex + 5)
+      const meta = {}
+      header.split('\n').forEach(function (line) {
+        const m = line.match(/^([A-Za-z0-9_]+)\s*:\s*(.*)$/)
+        if (!m) {
+          return
+        }
+        const key = m[1]
+        const raw = m[2].trim()
+        const unquoted = raw.replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1')
+        meta[key] = unquoted
+      })
+      return { meta, body }
     }
 
     /* コメントアウト行を削除する関数 */
@@ -9682,7 +9746,142 @@
       writeText(Laurus.Text2Frame.TextPath, text)
       addMessage('WriteBack success / テキストへの書き戻し成功！\n' + Laurus.Text2Frame.TextPath)
     }
+
+    const resolveFromRoot = function (rootDir, maybeRelativePath) {
+      if (!maybeRelativePath) {
+        return maybeRelativePath
+      }
+      const path = require('path')
+      return path.isAbsolute(maybeRelativePath)
+        ? maybeRelativePath
+        : path.resolve(rootDir, maybeRelativePath)
+    }
+
+    const runBatchByManifest = function (manifestPathArg, strategyArg) {
+      if (typeof require === 'undefined') {
+        throw new Error('BATCH command requires Node.js runtime.')
+      }
+      const fs = require('fs')
+      const path = require('path')
+
+      const { BASE_PATH } = getDirParams()
+      const manifestPath = resolveFromRoot(BASE_PATH, manifestPathArg)
+      if (!manifestPath) {
+        throw new Error('ManifestPath is required for BATCH command.')
+      }
+
+      const strategy = String(strategyArg || 'diff').toLowerCase()
+      if (!['import', 'diff', 'sync'].includes(strategy)) {
+        throw new Error('Unknown strategy: ' + strategy + ' (expected: import|diff|sync)')
+      }
+
+      if (strategy === 'sync' && typeof this.pluginCommandFrame2Text !== 'function') {
+        throw new Error('Frame2Text plugin is required for sync strategy in BATCH command.')
+      }
+
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, { encoding: 'utf8' }))
+      const manifestRootDir = path.dirname(manifestPath)
+      const entries = Array.isArray(manifest.entries) ? manifest.entries : []
+      const results = []
+
+      for (let index = 0; index < entries.length; index++) {
+        const entry = entries[index]
+        try {
+          const textPath = resolveFromRoot(manifestRootDir, entry.textPath || entry.path)
+          if (!textPath) {
+            throw new Error('textPath is required')
+          }
+
+          const parsed = parseFrontMatter(readText(textPath))
+          const meta = parsed.meta || {}
+          const kind = String(entry.kind || meta.kind || 'event').toLowerCase()
+
+          if (kind === 'event') {
+            const mapId = entry.mapId || meta.mapId
+            const eventId = entry.eventId || meta.eventId
+            const pageId = entry.pageId || meta.pageId || '1'
+            if (!eventId) {
+              throw new Error('eventId is required for event entry')
+            }
+            const defaultMapPath = mapId ? path.join('data', 'Map' + ('000' + String(mapId)).slice(-3) + '.json') : null
+            const mapPath =
+              resolveFromRoot(manifestRootDir, entry.mapPath) ||
+              resolveFromRoot(manifestRootDir, defaultMapPath)
+            if (!mapPath) {
+              throw new Error('mapPath or mapId is required for event entry')
+            }
+
+            this.pluginCommandText2Frame('COMMAND_LINE', [{
+              IsDebug: Laurus.Text2Frame.IsDebug,
+              TextPath: textPath,
+              MapPath: mapPath,
+              EventID: String(eventId),
+              PageID: String(pageId),
+              IsOverwrite: String(entry.overwrite).toLowerCase() === 'true',
+              ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT',
+              WriteBack: false
+            }])
+
+            if (strategy === 'sync') {
+              this.pluginCommandFrame2Text('COMMAND_LINE', [{
+                IsDebug: Laurus.Text2Frame.IsDebug,
+                TextPath: textPath,
+                MapPath: mapPath,
+                EventID: String(eventId),
+                PageID: String(pageId),
+                ExecMode: 'SYNC_EVENT_TO_MESSAGE'
+              }])
+            }
+          } else if (kind === 'common') {
+            const commonEventId = entry.commonEventId || meta.commonEventId
+            if (!commonEventId) {
+              throw new Error('commonEventId is required for common entry')
+            }
+            const commonEventPath =
+              resolveFromRoot(manifestRootDir, entry.commonEventPath) ||
+              resolveFromRoot(manifestRootDir, path.join('data', 'CommonEvents.json'))
+
+            this.pluginCommandText2Frame('COMMAND_LINE', [{
+              IsDebug: Laurus.Text2Frame.IsDebug,
+              TextPath: textPath,
+              CommonEventPath: commonEventPath,
+              CommonEventID: String(commonEventId),
+              IsOverwrite: String(entry.overwrite).toLowerCase() === 'true',
+              ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE',
+              WriteBack: false
+            }])
+
+            if (strategy === 'sync') {
+              this.pluginCommandFrame2Text('COMMAND_LINE', [{
+                IsDebug: Laurus.Text2Frame.IsDebug,
+                TextPath: textPath,
+                CommonEventPath: commonEventPath,
+                CommonEventID: String(commonEventId),
+                ExecMode: 'SYNC_CE_TO_MESSAGE'
+              }])
+            }
+          } else {
+            throw new Error('unknown kind: ' + kind)
+          }
+
+          results.push({ index: index + 1, ok: true, textPath })
+        } catch (error) {
+          results.push({ index: index + 1, ok: false, textPath: entry.textPath || entry.path || '', error: error.message })
+        }
+      }
+
+      const failures = results.filter(function (r) { return !r.ok })
+      console.log(JSON.stringify({ total: results.length, failed: failures.length, results }, null, 2))
+      if (failures.length > 0) {
+        throw new Error('BATCH completed with failures: ' + failures.length)
+      }
+    }
     if (Laurus.Text2Frame.ExecMode === 'LIBRARY_EXPORT') {
+      return
+    }
+
+    if (Laurus.Text2Frame.ExecMode === 'BATCH') {
+      runBatchByManifest.call(this, Laurus.Text2Frame.ManifestPath, Laurus.Text2Frame.BatchStrategy)
       return
     }
 
@@ -9714,7 +9913,8 @@
     }
 
     const scenario_text = readText(Laurus.Text2Frame.TextPath)
-    const event_command_list = compile(scenario_text)
+    const parsed = parseFrontMatter(scenario_text)
+    const event_command_list = compile(parsed.body)
     event_command_list.push(getCommandBottomEvent())
 
     switch (Laurus.Text2Frame.ExecMode) {
@@ -9851,16 +10051,61 @@
 // $ node Text2Frame.js
 if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && require.main === module) {
   const { Command } = require('commander')
+  const fs = require('fs')
+  const path = require('path')
+
+  const parseFrontMatterCli = function (text) {
+    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+    if (normalized.indexOf('---\n') !== 0) {
+      return { meta: {}, body: text }
+    }
+    const endIndex = normalized.indexOf('\n---\n', 4)
+    if (endIndex < 0) {
+      return { meta: {}, body: text }
+    }
+    const header = normalized.slice(4, endIndex)
+    const body = normalized.slice(endIndex + 5)
+    const meta = {}
+    header.split('\n').forEach(function (line) {
+      const m = line.match(/^([A-Za-z0-9_]+)\s*:\s*(.*)$/)
+      if (!m) return
+      meta[m[1]] = m[2].trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1')
+    })
+    return { meta, body }
+  }
+
+  const toMapPath = function (mapId) {
+    return path.join('data', 'Map' + ('000' + String(mapId)).slice(-3) + '.json')
+  }
+
+  const resolveFromRoot = function (rootDir, maybeRelativePath) {
+    if (!maybeRelativePath) {
+      return maybeRelativePath
+    }
+    return path.isAbsolute(maybeRelativePath)
+      ? maybeRelativePath
+      : path.resolve(rootDir, maybeRelativePath)
+  }
+
+  const boolFrom = function (value, defaultValue) {
+    if (value === undefined || value === null || value === '') {
+      return defaultValue
+    }
+    return String(value).toLowerCase() === 'true'
+  }
+
   const program = new Command()
   program
     .version('2.2.1')
     .usage('[options]')
-    .option('-m, --mode <map|common|compile|test>', 'output mode', /^(map|common|compile|test)$/i)
+    .option('-m, --mode <map|common|compile|test|batch>', 'output mode', /^(map|common|compile|test|batch)$/i)
     .option('-t, --text_path <name>', 'text file path')
     .option('-o, --output_path <name>', 'output file path')
     .option('-e, --event_id <name>', 'event file id')
     .option('-p, --page_id <name>', 'page id')
     .option('-c, --common_event_id <name>', 'common event id')
+    .option('-f, --manifest <path>', 'batch manifest json path')
+    .option('-s, --strategy <import|diff|sync>', 'batch strategy', /^(import|diff|sync)$/i, 'diff')
     .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
     .option('-v, --verbose', 'debug mode', false)
     .parse()
@@ -9905,7 +10150,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 `
   program.addHelpText('after', help_text)
   const options = program.opts()
-  if (!['map', 'common', 'compile', 'test'].includes(options.mode)) {
+  if (!['map', 'common', 'compile', 'test', 'batch'].includes(options.mode)) {
     program.help()
     process.exit(0)
   }
@@ -9941,8 +10186,121 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       }
     })
     process.stdin.on('end', () => {
-      console.log(JSON.stringify(module.exports.compile(data), null, 2))
+      console.log(JSON.stringify(module.exports.compile(parseFrontMatterCli(data).body), null, 2))
     })
+  } else if (options.mode === 'batch') {
+    if (!options.manifest) {
+      throw new Error('--manifest is required in batch mode.')
+    }
+    const manifestPath = path.resolve(options.manifest)
+    const manifestRootDir = path.dirname(manifestPath)
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, { encoding: 'utf8' }))
+    const entries = Array.isArray(manifest.entries) ? manifest.entries : []
+    const strategy = String(options.strategy || 'diff').toLowerCase()
+    const includeSync = strategy === 'sync'
+
+    if (includeSync) {
+      // Load Frame2Text bridge for one-shot sync mode.
+      require('./Frame2Text.js')
+    }
+
+    const results = []
+    entries.forEach(function (entry, index) {
+      try {
+        const textPath = resolveFromRoot(manifestRootDir, entry.textPath || entry.path)
+        if (!textPath) {
+          throw new Error('textPath is required')
+        }
+
+        const parsed = parseFrontMatterCli(fs.readFileSync(textPath, { encoding: 'utf8' }))
+        const meta = parsed.meta || {}
+        const kind = (entry.kind || meta.kind || 'event').toLowerCase()
+
+        if (kind === 'event') {
+          const mapId = entry.mapId || meta.mapId
+          const eventId = entry.eventId || meta.eventId
+          const pageId = entry.pageId || meta.pageId || '1'
+          if (!eventId) {
+            throw new Error('eventId is required for event entry')
+          }
+          const mapPath =
+            resolveFromRoot(manifestRootDir, entry.mapPath) ||
+            (mapId ? resolveFromRoot(manifestRootDir, toMapPath(mapId)) : null)
+          if (!mapPath) {
+            throw new Error('mapPath or mapId is required for event entry')
+          }
+
+          const cmd = {
+            IsDebug: options.verbose,
+            TextPath: textPath,
+            MapPath: mapPath,
+            EventID: String(eventId),
+            PageID: String(pageId),
+            IsOverwrite: boolFrom(entry.overwrite, false),
+            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT',
+            WriteBack: false
+          }
+          Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [cmd])
+
+          if (includeSync) {
+            if (typeof Game_Interpreter.prototype.pluginCommandFrame2Text !== 'function') {
+              throw new Error('Frame2Text bridge is not available for sync strategy')
+            }
+            Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', [{
+              IsDebug: options.verbose,
+              TextPath: textPath,
+              MapPath: mapPath,
+              EventID: String(eventId),
+              PageID: String(pageId),
+              ExecMode: 'SYNC_EVENT_TO_MESSAGE'
+            }])
+          }
+        } else if (kind === 'common') {
+          const commonEventId = entry.commonEventId || meta.commonEventId
+          if (!commonEventId) {
+            throw new Error('commonEventId is required for common entry')
+          }
+          const commonEventPath =
+            resolveFromRoot(manifestRootDir, entry.commonEventPath) ||
+            resolveFromRoot(manifestRootDir, path.join('data', 'CommonEvents.json'))
+          const cmd = {
+            IsDebug: options.verbose,
+            TextPath: textPath,
+            CommonEventPath: commonEventPath,
+            CommonEventID: String(commonEventId),
+            IsOverwrite: boolFrom(entry.overwrite, false),
+            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE',
+            WriteBack: false
+          }
+          Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [cmd])
+
+          if (includeSync) {
+            if (typeof Game_Interpreter.prototype.pluginCommandFrame2Text !== 'function') {
+              throw new Error('Frame2Text bridge is not available for sync strategy')
+            }
+            Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', [{
+              IsDebug: options.verbose,
+              TextPath: textPath,
+              CommonEventPath: commonEventPath,
+              CommonEventID: String(commonEventId),
+              ExecMode: 'SYNC_CE_TO_MESSAGE'
+            }])
+          }
+        } else {
+          throw new Error('unknown kind: ' + kind)
+        }
+
+        results.push({ index: index + 1, ok: true, textPath, locale: entry.locale || meta.locale || '' })
+      } catch (error) {
+        results.push({ index: index + 1, ok: false, textPath: entry.textPath || entry.path || '', error: error.message })
+      }
+    })
+
+    const failures = results.filter(function (r) { return !r.ok })
+    console.log(JSON.stringify({ total: results.length, failed: failures.length, results }, null, 2))
+    if (failures.length > 0) {
+      process.exitCode = 1
+    }
   } else if (options.mode === 'test') {
     const Text2Frame = {
       IsDebug: options.verbose,
