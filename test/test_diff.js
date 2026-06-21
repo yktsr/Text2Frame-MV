@@ -6,16 +6,16 @@ const text2frame = require('../Text2Frame.js')
 const compile = text2frame.compile
 const applyDiff = text2frame.applyDiff
 
-describe('Diff (applyDiff) Test', function () {
-  // Helper: produce a standard Show Message block
-  const msgBlock = function (text) {
-    return [
-      { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-      { code: 401, indent: 0, parameters: [text] }
-    ]
-  }
-  const bottom = { code: 0, indent: 0, parameters: [] }
+// Helper: produce a standard Show Message block
+const msgBlock = function (text) {
+  return [
+    { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+    { code: 401, indent: 0, parameters: [text] }
+  ]
+}
+const bottom = { code: 0, indent: 0, parameters: [] }
 
+describe('Diff (applyDiff) Test', function () {
   it('No change: identical input and existing produces same output', function () {
     const text = 'Hello'
     const existing = msgBlock('Hello').concat([bottom])
@@ -173,7 +173,7 @@ describe('WriteBack option Test', function () {
       Laurus.Frame2Text &&
       Laurus.Frame2Text.export &&
       Laurus.Frame2Text.export.decompile
-    expect(decompile).to.be.false
+    expect(decompile).to.equal(undefined)
 
     // Restore
     if (typeof Laurus !== 'undefined') {
