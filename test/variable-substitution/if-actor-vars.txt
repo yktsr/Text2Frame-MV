@@ -1,0 +1,10 @@
+#vars
+actor_id=2
+skill_id=40
+#endvars
+
+<If: Actors[${actor_id}], Skill, ${skill_id}>
+Matched actor skill.
+<Else>
+Not matched actor skill.
+<End>

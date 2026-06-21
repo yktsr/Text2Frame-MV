@@ -49,6 +49,11 @@ describe('Text2Frame Test', function() {
     ]);
   });
 
+  it('throws on undefined vars in substitution', function() {
+    const input = '#vars\nhero=Alex\n#endvars\n${hero} and ${town}';
+    expect(() => text2frame.compile(input)).to.throw('Undefined variable. / 未定義の変数です。: town');
+  });
+
   tests.forEach(function(test, index) {
     it(test.title, function(done) {
       fs.readFile(test.infile, 'utf8', function(err, test_input) {

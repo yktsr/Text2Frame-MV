@@ -1,0 +1,6 @@
+#vars
+var_id=15
+item_type=Key Item
+#endvars
+
+<SelectItem: ${var_id}, ${item_type}>

@@ -1,0 +1,6 @@
+#vars
+self_sw=B
+self_state=ON
+#endvars
+
+<SelfSwitch: ${self_sw}, ${self_state}>

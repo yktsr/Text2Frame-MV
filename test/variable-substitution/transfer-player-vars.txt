@@ -1,0 +1,7 @@
+#vars
+map_id=2
+x=15
+y=20
+#endvars
+
+<TransferPlayer: Direct[${map_id}][${x}][${y}], Down, White>

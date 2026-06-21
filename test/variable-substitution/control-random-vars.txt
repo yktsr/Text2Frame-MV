@@ -1,0 +1,7 @@
+#vars
+target_var=3
+rand_min=7
+rand_max=9
+#endvars
+
+<Set: ${target_var}, Random[${rand_min}][${rand_max}]>

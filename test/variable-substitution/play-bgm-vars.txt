@@ -1,0 +1,8 @@
+#vars
+bgm_name=Battle1
+volume=85
+pitch=110
+pan=20
+#endvars
+
+<PlayBGM: ${bgm_name}, ${volume}, ${pitch}, ${pan}>

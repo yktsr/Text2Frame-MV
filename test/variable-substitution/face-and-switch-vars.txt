@@ -1,0 +1,9 @@
+#vars
+face_file=Actor1
+face_index=1
+switch_id=5
+#endvars
+
+<Face: ${face_file}(${face_index})>
+Variableized face and switch test.
+<Switch: ${switch_id}, ON>

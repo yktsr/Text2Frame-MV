@@ -1,0 +1,12 @@
+#vars
+pic_id=3
+pic_name=Castle
+x_var=4
+y_var=5
+scale_w=90
+scale_h=95
+opacity=235
+blend_mode=Screen
+#endvars
+
+<ShowPicture: ${pic_id}, ${pic_name}, Position[Center][Variables[${x_var}]][Variables[${y_var}]], Scale[${scale_w}][${scale_h}], Blend[${opacity}][${blend_mode}]>

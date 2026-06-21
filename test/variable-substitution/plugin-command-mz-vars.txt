@@ -1,0 +1,10 @@
+#vars
+folder=text
+file=message.txt
+map_id=1
+event_id=2
+page_id=3
+overwrite=false
+#endvars
+
+<PluginCommandMZ: Text2Frame, IMPORT_MESSAGE_TO_EVENT, イベントにインポート, FileFolder[${folder}], FileName[${file}], MapID[${map_id}], EventID[${event_id}], PageID[${page_id}], IsOverwrite[${overwrite}]>
