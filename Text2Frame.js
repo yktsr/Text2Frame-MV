@@ -278,7 +278,7 @@
  * @type number
  * @default 1
  *
- * @command BATCH
+ * @command APPLY_MESSAGES_BY_MANIFEST
  * @text manifestで一括反映
  * @desc manifestで指定した複数テキストを一括で取り込みます。strategyでimport/diff/syncを選択できます。
  *
@@ -680,6 +680,11 @@
  * 例2:text/message.txtをIDが3のコモンイベントに上書きしてに取り込む。
  *   IMPORT_MESSAGE_TO_CE text message.txt 3 true
  *   メッセージをコモンイベントにインポート text message.txt 3 true
+ *
+ * 例3:manifestを使って一括反映する。
+ *   APPLY_MESSAGES_BY_MANIFEST examples/batch-manifest.sample.json diff
+ *   APPLY_MESSAGES_BY_MANIFEST examples/batch-manifest.sample.json import
+ *   APPLY_MESSAGES_BY_MANIFEST examples/batch-manifest.sample.json sync
  *
  * ◆ 旧版のプラグインコマンドの引数(非推奨)
  *  最新版(ツクールMZ対応後,ver2.0.0)と旧版(ツクールMZ対応前,ver1.4.1)では、
@@ -4228,10 +4233,10 @@
       this.pluginCommand('SYNC_EVENT_BIDIRECTIONAL',
         [file_folder, file_name, map_id, event_id, page_id])
     })
-    PluginManager.registerCommand('Text2Frame', 'BATCH', function (args) {
+    PluginManager.registerCommand('Text2Frame', 'APPLY_MESSAGES_BY_MANIFEST', function (args) {
       const manifest_path = args.ManifestPath
       const strategy = args.Strategy
-      this.pluginCommand('BATCH', [manifest_path, strategy])
+      this.pluginCommand('APPLY_MESSAGES_BY_MANIFEST', [manifest_path, strategy])
     })
   }
 
@@ -4454,12 +4459,13 @@
         }
         Laurus.Text2Frame.ExecMode = 'SYNC_EVENT_BIDIRECTIONAL'
         break
-      case 'BATCH' :
+      case 'APPLY_MESSAGES_BY_MANIFEST' :
       case '一括反映' :
+      case 'BATCH' : // backward compatibility
         addMessage('batch import by manifest. \n/ manifestで一括反映します。')
         Laurus.Text2Frame.ManifestPath = args[0] || Laurus.Text2Frame.ManifestPath
         Laurus.Text2Frame.BatchStrategy = String(args[1] || Laurus.Text2Frame.BatchStrategy || 'diff').toLowerCase()
-        Laurus.Text2Frame.ExecMode = 'BATCH'
+        Laurus.Text2Frame.ExecMode = 'APPLY_MESSAGES_BY_MANIFEST'
         break
       case 'COMMAND_LINE' :
         Laurus.Text2Frame = Object.assign(Laurus.Text2Frame, args[0])
@@ -9880,7 +9886,7 @@
       return
     }
 
-    if (Laurus.Text2Frame.ExecMode === 'BATCH') {
+    if (Laurus.Text2Frame.ExecMode === 'APPLY_MESSAGES_BY_MANIFEST') {
       runBatchByManifest.call(this, Laurus.Text2Frame.ManifestPath, Laurus.Text2Frame.BatchStrategy)
       return
     }
