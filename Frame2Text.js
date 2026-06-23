@@ -610,14 +610,14 @@
         const sourceLocale = args[3]
         const textBase = args[4]
         const englishTag = args[5]
-        
+
         let resolvedPath = manifestPath
         if (typeof require !== 'undefined') {
           const path = require('path')
           const fs = require('fs')
-          
+
           resolvedPath = path.isAbsolute(manifestPath) ? manifestPath : path.resolve(BASE_PATH, manifestPath)
-          
+
           if (!fs.existsSync(resolvedPath)) {
             addMessage('[BATCH_EXPORT] Manifest not found. Auto-generating...')
             const scanMapEvents = function (baseDir, loc, srcLoc, txtBase) {
@@ -645,15 +645,15 @@
                       pageId: String(pageId),
                       locale: loc,
                       sourceLocale: srcLoc,
-                      key: key,
-                      textPath: textPath
+                      key,
+                      textPath
                     })
                   })
                 })
               })
               return entries
             }
-            
+
             const scanCommonEvents = function (baseDir, loc, srcLoc, txtBase) {
               const entries = []
               const commonPath = path.join(baseDir, 'CommonEvents.json')
@@ -669,20 +669,20 @@
                   commonEventId: String(index),
                   locale: loc,
                   sourceLocale: srcLoc,
-                  key: key,
-                  textPath: textPath
+                  key,
+                  textPath
                 })
               })
               return entries
             }
-            
+
             const mapEntries = scanMapEvents(dataDir, locale, sourceLocale, textBase)
             const commonEntries = scanCommonEvents(dataDir, locale, sourceLocale, textBase)
             const manifestObj = {
               version: 1,
               entries: mapEntries.concat(commonEntries)
             }
-            
+
             const manifestDir = path.dirname(resolvedPath)
             if (!fs.existsSync(manifestDir)) {
               fs.mkdirSync(manifestDir, { recursive: true })
@@ -690,7 +690,7 @@
             fs.writeFileSync(resolvedPath, JSON.stringify(manifestObj, null, 2), 'utf8')
             addMessage('[BATCH_EXPORT] Manifest generated: ' + resolvedPath)
           }
-          
+
           Laurus.Frame2Text.ExecMode = 'BATCH_EXPORT'
           Laurus.Frame2Text.ManifestPath = resolvedPath
           Laurus.Frame2Text.EnglishTag = englishTag
@@ -699,7 +699,6 @@
         }
         break
       }
-        break
       case 'COMMAND_LINE':
         Laurus.Frame2Text = Object.assign(Laurus.Frame2Text, args[0])
         break
@@ -3129,41 +3128,41 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const entries = []
     const files = fs.readdirSync(dataDir)
     const mapFiles = files.filter(f => /^Map\d+\.json$/.test(f)).sort()
-    
+
     mapFiles.forEach(function (file) {
       const mapPath = path.join(dataDir, file)
       const match = file.match(/^Map(\d+)\.json$/)
       if (!match) return
-      
+
       const mapId = String(parseInt(match[1], 10))
       const mapData = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
-      
+
       if (!mapData.events || !Array.isArray(mapData.events)) return
-      
+
       mapData.events.forEach(function (event, eventIndex) {
         if (!event || !event.pages || !Array.isArray(event.pages)) return
-        
+
         const eventId = String(eventIndex)
-        
+
         event.pages.forEach(function (page, pageIndex) {
           const pageId = String(pageIndex + 1)
           const key = 'map' + String(mapId).padStart(3, '0') + '_event' + String(eventId).padStart(3, '0') + '_page' + pageId
           const textPath = textBaseDir + '/' + locale + '/' + key + '.txt'
-          
+
           entries.push({
             kind: 'event',
             mapId: String(mapId),
             eventId: String(eventId),
             pageId: String(pageId),
-            locale: locale,
-            sourceLocale: sourceLocale,
-            key: key,
-            textPath: textPath
+            locale,
+            sourceLocale,
+            key,
+            textPath
           })
         })
       })
     })
-    
+
     return entries
   }
 
@@ -3173,32 +3172,31 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   const scanCommonEvents = function (dataDir, locale, sourceLocale, textBaseDir) {
     const entries = []
     const commonPath = path.join(dataDir, 'CommonEvents.json')
-    
+
     if (!fs.existsSync(commonPath)) {
       return entries
     }
-    
+
     const commonData = JSON.parse(fs.readFileSync(commonPath, 'utf8'))
-    
+
     if (!Array.isArray(commonData)) return entries
-    
+
     commonData.forEach(function (commonEvent, index) {
       if (!commonEvent) return
-      
-      const commonEventId = String(index)
+
       const key = 'common' + String(index).padStart(3, '0')
       const textPath = textBaseDir + '/' + locale + '/' + key + '.txt'
-      
+
       entries.push({
         kind: 'common',
         commonEventId: String(index),
-        locale: locale,
-        sourceLocale: sourceLocale,
-        key: key,
-        textPath: textPath
+        locale,
+        sourceLocale,
+        key,
+        textPath
       })
     })
-    
+
     return entries
   }
 
@@ -3209,7 +3207,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const mapEntries = scanMapEvents(dataDir, locale, sourceLocale, textBaseDir)
     const commonEntries = scanCommonEvents(dataDir, locale, sourceLocale, textBaseDir)
     const allEntries = mapEntries.concat(commonEntries)
-    
+
     return {
       version: 1,
       entries: allEntries
@@ -3414,7 +3412,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     ])
   } else if (options.mode === 'batch-export') {
     let manifestPath = options.manifest
-    
+
     if (!manifestPath || !fs.existsSync(manifestPath)) {
       if (options.generateManifest || !manifestPath) {
         console.log('[batch-export] manifest not found or --generate-manifest option enabled. Auto-generating manifest...')
@@ -3422,13 +3420,13 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         const locale = options.locale
         const sourceLocale = options.sourceLocale
         const textBaseDir = options.textBase
-        
+
         if (!fs.existsSync(dataDir)) {
           throw new Error('Data directory not found: ' + dataDir)
         }
-        
+
         const manifestObj = generateManifestObject(dataDir, locale, sourceLocale, textBaseDir)
-        
+
         if (!manifestPath) {
           manifestPath = path.resolve('auto-manifest.json')
         } else {
@@ -3436,19 +3434,19 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             manifestPath = path.resolve(manifestPath)
           }
         }
-        
+
         const manifestDir = path.dirname(manifestPath)
         if (!fs.existsSync(manifestDir)) {
           fs.mkdirSync(manifestDir, { recursive: true })
         }
-        
+
         fs.writeFileSync(manifestPath, JSON.stringify(manifestObj, null, 2), 'utf8')
         console.log('[batch-export] manifest generated: ' + manifestPath + ' (entries: ' + manifestObj.entries.length + ')')
       } else {
         throw new Error('--manifest is required in batch-export mode or use --generate-manifest option')
       }
     }
-    
+
     const englishTag = String(options.english_tag) === 'true'
     const results = exportByManifest(manifestPath, englishTag)
     const failures = results.filter(function (r) { return !r.ok })
