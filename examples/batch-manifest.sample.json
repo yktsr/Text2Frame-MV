@@ -4,7 +4,9 @@
     {
       "kind": "event",
       "mapId": "1",
+      "mapName": "プロローグ",
       "eventId": "1",
+      "eventName": "村長との会話",
       "pageId": "1",
       "locale": "ja",
       "sourceLocale": "ja",
@@ -14,7 +16,9 @@
     {
       "kind": "event",
       "mapId": "1",
+      "mapName": "プロローグ",
       "eventId": "1",
+      "eventName": "村長との会話",
       "pageId": "1",
       "locale": "en",
       "sourceLocale": "ja",
@@ -24,6 +28,7 @@
     {
       "kind": "common",
       "commonEventId": "1",
+      "commonEventName": "共通イベント：オープニング",
       "locale": "ja",
       "sourceLocale": "ja",
       "key": "common001",
