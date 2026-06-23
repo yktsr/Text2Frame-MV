@@ -131,6 +131,48 @@
  * @type common_event
  * @default 1
  *
+ * @command BATCH_EXPORT
+ * @text マニフェストで一括エクスポート
+ * @desc マニフェストで指定した複数イベント/コモンイベントを一括テキスト出力します。マニフェストが存在しなければ自動生成します。
+ *
+ * @arg ManifestPath
+ * @text マニフェストファイルパス
+ * @desc プロジェクトルートからの相対パス、または絶対パスを指定します。存在しなければ自動生成します。
+ * @type string
+ * @default examples/auto-manifest.json
+ *
+ * @arg DataDir
+ * @text ゲームデータディレクトリ
+ * @desc マニフェスト自動生成時の対象ディレクトリです。デフォルトはdataです。
+ * @type string
+ * @default data
+ *
+ * @arg Locale
+ * @text ロケール
+ * @desc マニフェスト自動生成時のロケールです。デフォルトはjaです。
+ * @type string
+ * @default ja
+ *
+ * @arg SourceLocale
+ * @text ソースロケール
+ * @desc マニフェスト自動生成時のソースロケールです。デフォルトはjaです。
+ * @type string
+ * @default ja
+ *
+ * @arg TextBase
+ * @text テキストベースディレクトリ
+ * @desc マニフェスト自動生成時のテキストベースディレクトリです。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
+ * @arg EnglishTag
+ * @text 英語タグ有効化
+ * @desc trueのときコマンドタグを英語で出力します。デフォルト値はtrueです。
+ * @type select
+ * @option true
+ * @option false
+ * @default true
+ *
  * @param Default Scenario Folder
  * @text 出力フォルダ名
  * @desc シナリオファイルを出力するフォルダ名を設定します。デフォルトはtextです。(MZでは無視されます)
@@ -456,6 +498,15 @@
       const common_event_id = args.CommonEventID
       this.pluginCommand('SYNC_CE_TO_MESSAGE', [file_folder, file_name, common_event_id])
     })
+    PluginManager.registerCommand('Frame2Text', 'BATCH_EXPORT', function (args) {
+      const manifest_path = args.ManifestPath || 'examples/auto-manifest.json'
+      const data_dir = args.DataDir || 'data'
+      const locale = args.Locale || 'ja'
+      const source_locale = args.SourceLocale || 'ja'
+      const text_base = args.TextBase || 'text'
+      const english_tag = String(args.EnglishTag) === 'true'
+      this.pluginCommand('BATCH_EXPORT', [manifest_path, data_dir, locale, source_locale, text_base, english_tag])
+    })
   }
 
   const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand
@@ -551,6 +602,103 @@
         }
         Laurus.Frame2Text.ExecMode = 'SYNC_CE_TO_MESSAGE'
         addMessage('=====> Common EventID: ' + Laurus.Frame2Text.CommonEventID)
+        break
+      case 'BATCH_EXPORT': {
+        const manifestPath = args[0]
+        const dataDir = args[1]
+        const locale = args[2]
+        const sourceLocale = args[3]
+        const textBase = args[4]
+        const englishTag = args[5]
+        
+        let resolvedPath = manifestPath
+        if (typeof require !== 'undefined') {
+          const path = require('path')
+          const fs = require('fs')
+          
+          resolvedPath = path.isAbsolute(manifestPath) ? manifestPath : path.resolve(BASE_PATH, manifestPath)
+          
+          if (!fs.existsSync(resolvedPath)) {
+            addMessage('[BATCH_EXPORT] Manifest not found. Auto-generating...')
+            const scanMapEvents = function (baseDir, loc, srcLoc, txtBase) {
+              const entries = []
+              const files = fs.readdirSync(baseDir)
+              const mapFiles = files.filter(f => /^Map\d+\.json$/.test(f)).sort()
+              mapFiles.forEach(function (file) {
+                const mapPath = path.join(baseDir, file)
+                const match = file.match(/^Map(\d+)\.json$/)
+                if (!match) return
+                const mapId = String(parseInt(match[1], 10))
+                const mapData = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
+                if (!mapData.events || !Array.isArray(mapData.events)) return
+                mapData.events.forEach(function (event, eventIndex) {
+                  if (!event || !event.pages || !Array.isArray(event.pages)) return
+                  const eventId = String(eventIndex)
+                  event.pages.forEach(function (page, pageIndex) {
+                    const pageId = String(pageIndex + 1)
+                    const key = 'map' + String(mapId).padStart(3, '0') + '_event' + String(eventId).padStart(3, '0') + '_page' + pageId
+                    const textPath = txtBase + '/' + loc + '/' + key + '.txt'
+                    entries.push({
+                      kind: 'event',
+                      mapId: String(mapId),
+                      eventId: String(eventId),
+                      pageId: String(pageId),
+                      locale: loc,
+                      sourceLocale: srcLoc,
+                      key: key,
+                      textPath: textPath
+                    })
+                  })
+                })
+              })
+              return entries
+            }
+            
+            const scanCommonEvents = function (baseDir, loc, srcLoc, txtBase) {
+              const entries = []
+              const commonPath = path.join(baseDir, 'CommonEvents.json')
+              if (!fs.existsSync(commonPath)) return entries
+              const commonData = JSON.parse(fs.readFileSync(commonPath, 'utf8'))
+              if (!Array.isArray(commonData)) return entries
+              commonData.forEach(function (commonEvent, index) {
+                if (!commonEvent) return
+                const key = 'common' + String(index).padStart(3, '0')
+                const textPath = txtBase + '/' + loc + '/' + key + '.txt'
+                entries.push({
+                  kind: 'common',
+                  commonEventId: String(index),
+                  locale: loc,
+                  sourceLocale: srcLoc,
+                  key: key,
+                  textPath: textPath
+                })
+              })
+              return entries
+            }
+            
+            const mapEntries = scanMapEvents(dataDir, locale, sourceLocale, textBase)
+            const commonEntries = scanCommonEvents(dataDir, locale, sourceLocale, textBase)
+            const manifestObj = {
+              version: 1,
+              entries: mapEntries.concat(commonEntries)
+            }
+            
+            const manifestDir = path.dirname(resolvedPath)
+            if (!fs.existsSync(manifestDir)) {
+              fs.mkdirSync(manifestDir, { recursive: true })
+            }
+            fs.writeFileSync(resolvedPath, JSON.stringify(manifestObj, null, 2), 'utf8')
+            addMessage('[BATCH_EXPORT] Manifest generated: ' + resolvedPath)
+          }
+          
+          Laurus.Frame2Text.ExecMode = 'BATCH_EXPORT'
+          Laurus.Frame2Text.ManifestPath = resolvedPath
+          Laurus.Frame2Text.EnglishTag = englishTag
+        } else {
+          addMessage('[BATCH_EXPORT] Node.js environment not available')
+        }
+        break
+      }
         break
       case 'COMMAND_LINE':
         Laurus.Frame2Text = Object.assign(Laurus.Frame2Text, args[0])
@@ -667,6 +815,11 @@
           )
         }
         map_events = ce_data[Laurus.Frame2Text.CommonEventID].list
+        break
+      }
+      // BATCH_EXPORT モード: マニフェストを処理
+      case 'BATCH_EXPORT': {
+        // BATCH_EXPORT は特別処理のため、switch 外で処理
         break
       }
     }
@@ -2813,6 +2966,77 @@
       return
     }
 
+    // BATCH_EXPORT モード: マニフェストでバッチ処理
+    if (Laurus.Frame2Text.ExecMode === 'BATCH_EXPORT') {
+      if (typeof require !== 'undefined') {
+        const manifestPath = Laurus.Frame2Text.ManifestPath
+        const englishTag = Laurus.Frame2Text.EnglishTag
+        try {
+          const path = require('path')
+          const fs = require('fs')
+          const manifestAbs = path.isAbsolute(manifestPath) ? manifestPath : path.resolve(BASE_PATH, manifestPath)
+          const rootDir = path.dirname(manifestAbs)
+          const manifest = JSON.parse(fs.readFileSync(manifestAbs, { encoding: 'utf8' }))
+          const entries = Array.isArray(manifest.entries) ? manifest.entries : []
+          let successCount = 0
+          let errorCount = 0
+
+          entries.forEach(function (entry, index) {
+            try {
+              const kind = String(entry.kind || 'event').toLowerCase()
+              const textPathRel = entry.textPath || entry.path
+              if (!textPathRel) {
+                throw new Error('textPath is required')
+              }
+              const textPath = path.isAbsolute(textPathRel) ? textPathRel : path.resolve(rootDir, textPathRel)
+              const textDir = path.dirname(textPath)
+              if (!fs.existsSync(textDir)) {
+                fs.mkdirSync(textDir, { recursive: true })
+              }
+
+              let eventCommands = []
+              if (kind === 'event') {
+                const mapId = String(entry.mapId || 0).padStart(3, '0')
+                const mapPath = path.resolve(rootDir, '..', 'data', 'Map' + mapId + '.json')
+                const mapData = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
+                const eventId = Number(entry.eventId || 0)
+                const pageId = (Number(entry.pageId || 1) - 1)
+                if (!mapData.events[eventId] || !mapData.events[eventId].pages[pageId]) {
+                  throw new Error('Event not found: Map' + mapId + ', Event ' + eventId + ', Page ' + (pageId + 1))
+                }
+                eventCommands = mapData.events[eventId].pages[pageId].list || []
+              } else if (kind === 'common') {
+                const commonPath = path.resolve(rootDir, '..', 'data', 'CommonEvents.json')
+                const commonData = JSON.parse(fs.readFileSync(commonPath, 'utf8'))
+                const commonId = Number(entry.commonEventId || 0)
+                if (!commonData[commonId]) {
+                  throw new Error('Common Event not found: Common Event ' + commonId)
+                }
+                eventCommands = commonData[commonId].list || []
+              }
+
+              const outputText = decompile(eventCommands, englishTag)
+              fs.writeFileSync(textPath, outputText, 'utf8')
+              successCount++
+            } catch (e) {
+              errorCount++
+              console.error('[BATCH_EXPORT] Error processing entry ' + index + ': ' + String(e))
+              addMessage('[BATCH_EXPORT] Error: ' + String(e))
+            }
+          })
+
+          addMessage('[BATCH_EXPORT] Completed: ' + successCount + ' success, ' + errorCount + ' errors')
+          console.log('[BATCH_EXPORT] Completed: ' + successCount + ' success, ' + errorCount + ' errors')
+        } catch (e) {
+          addMessage('[BATCH_EXPORT] Fatal error: ' + String(e))
+          console.error('[BATCH_EXPORT] Fatal error: ' + String(e))
+        }
+      } else {
+        addMessage('[BATCH_EXPORT] Node.js environment not available')
+      }
+      return
+    }
+
     const addWarning = function (text) {
       if (Laurus.Frame2Text.DisplayWarning) {
         $gameMessage.add(text)
@@ -2896,6 +3120,100 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
   const toMapPath = function (mapId) {
     return path.join('data', 'Map' + ('000' + String(mapId)).slice(-3) + '.json')
+  }
+
+  /**
+   * Map*.json ファイルをスキャンしてイベントエントリを生成
+   */
+  const scanMapEvents = function (dataDir, locale, sourceLocale, textBaseDir) {
+    const entries = []
+    const files = fs.readdirSync(dataDir)
+    const mapFiles = files.filter(f => /^Map\d+\.json$/.test(f)).sort()
+    
+    mapFiles.forEach(function (file) {
+      const mapPath = path.join(dataDir, file)
+      const match = file.match(/^Map(\d+)\.json$/)
+      if (!match) return
+      
+      const mapId = String(parseInt(match[1], 10))
+      const mapData = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
+      
+      if (!mapData.events || !Array.isArray(mapData.events)) return
+      
+      mapData.events.forEach(function (event, eventIndex) {
+        if (!event || !event.pages || !Array.isArray(event.pages)) return
+        
+        const eventId = String(eventIndex)
+        
+        event.pages.forEach(function (page, pageIndex) {
+          const pageId = String(pageIndex + 1)
+          const key = 'map' + String(mapId).padStart(3, '0') + '_event' + String(eventId).padStart(3, '0') + '_page' + pageId
+          const textPath = textBaseDir + '/' + locale + '/' + key + '.txt'
+          
+          entries.push({
+            kind: 'event',
+            mapId: String(mapId),
+            eventId: String(eventId),
+            pageId: String(pageId),
+            locale: locale,
+            sourceLocale: sourceLocale,
+            key: key,
+            textPath: textPath
+          })
+        })
+      })
+    })
+    
+    return entries
+  }
+
+  /**
+   * CommonEvents.json をスキャンしてコモンイベントエントリを生成
+   */
+  const scanCommonEvents = function (dataDir, locale, sourceLocale, textBaseDir) {
+    const entries = []
+    const commonPath = path.join(dataDir, 'CommonEvents.json')
+    
+    if (!fs.existsSync(commonPath)) {
+      return entries
+    }
+    
+    const commonData = JSON.parse(fs.readFileSync(commonPath, 'utf8'))
+    
+    if (!Array.isArray(commonData)) return entries
+    
+    commonData.forEach(function (commonEvent, index) {
+      if (!commonEvent) return
+      
+      const commonEventId = String(index)
+      const key = 'common' + String(index).padStart(3, '0')
+      const textPath = textBaseDir + '/' + locale + '/' + key + '.txt'
+      
+      entries.push({
+        kind: 'common',
+        commonEventId: String(index),
+        locale: locale,
+        sourceLocale: sourceLocale,
+        key: key,
+        textPath: textPath
+      })
+    })
+    
+    return entries
+  }
+
+  /**
+   * manifest オブジェクトを生成
+   */
+  const generateManifestObject = function (dataDir, locale, sourceLocale, textBaseDir) {
+    const mapEntries = scanMapEvents(dataDir, locale, sourceLocale, textBaseDir)
+    const commonEntries = scanCommonEvents(dataDir, locale, sourceLocale, textBaseDir)
+    const allEntries = mapEntries.concat(commonEntries)
+    
+    return {
+      version: 1,
+      entries: allEntries
+    }
   }
 
   const renderFrontMatter = function (entry, kind) {
@@ -2989,6 +3307,11 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-p, --page_id <name>', 'page id', '1')
     .option('-c, --common_event_id <name>', 'common event id')
     .option('-f, --manifest <path>', 'batch manifest json path')
+    .option('-g, --generate-manifest', 'auto-generate manifest if not exists', false)
+    .option('-d, --data-dir <dir>', 'game data directory', 'data')
+    .option('-l, --locale <locale>', 'locale for generated manifest', 'ja')
+    .option('-s, --source-locale <locale>', 'source locale for generated manifest', 'ja')
+    .option('-t, --text-base <dir>', 'text base directory for generated manifest', 'text')
     .option('-v, --verbose', 'debug mode', false)
     .option('-w, --english_tag <true/false>', 'english tag', 'true')
     .parse()
@@ -3090,11 +3413,44 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       page_id
     ])
   } else if (options.mode === 'batch-export') {
-    if (!options.manifest) {
-      throw new Error('--manifest is required in batch-export mode.')
+    let manifestPath = options.manifest
+    
+    if (!manifestPath || !fs.existsSync(manifestPath)) {
+      if (options.generateManifest || !manifestPath) {
+        console.log('[batch-export] manifest not found or --generate-manifest option enabled. Auto-generating manifest...')
+        const dataDir = path.resolve(options.dataDir)
+        const locale = options.locale
+        const sourceLocale = options.sourceLocale
+        const textBaseDir = options.textBase
+        
+        if (!fs.existsSync(dataDir)) {
+          throw new Error('Data directory not found: ' + dataDir)
+        }
+        
+        const manifestObj = generateManifestObject(dataDir, locale, sourceLocale, textBaseDir)
+        
+        if (!manifestPath) {
+          manifestPath = path.resolve('auto-manifest.json')
+        } else {
+          if (!path.isAbsolute(manifestPath)) {
+            manifestPath = path.resolve(manifestPath)
+          }
+        }
+        
+        const manifestDir = path.dirname(manifestPath)
+        if (!fs.existsSync(manifestDir)) {
+          fs.mkdirSync(manifestDir, { recursive: true })
+        }
+        
+        fs.writeFileSync(manifestPath, JSON.stringify(manifestObj, null, 2), 'utf8')
+        console.log('[batch-export] manifest generated: ' + manifestPath + ' (entries: ' + manifestObj.entries.length + ')')
+      } else {
+        throw new Error('--manifest is required in batch-export mode or use --generate-manifest option')
+      }
     }
+    
     const englishTag = String(options.english_tag) === 'true'
-    const results = exportByManifest(options.manifest, englishTag)
+    const results = exportByManifest(manifestPath, englishTag)
     const failures = results.filter(function (r) { return !r.ok })
     console.log(JSON.stringify({ total: results.length, failed: failures.length, results }, null, 2))
     if (failures.length > 0) {
