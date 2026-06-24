@@ -3241,6 +3241,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const manifestAbs = path.resolve(manifestPath)
     const rootDir = path.dirname(manifestAbs)
     const manifest = JSON.parse(fs.readFileSync(manifestAbs, { encoding: 'utf8' }))
+    const manifestDataDir = manifest.dataDir
+      ? resolveFromRoot(rootDir, manifest.dataDir)
+      : null
     const entries = Array.isArray(manifest.entries) ? manifest.entries : []
     const results = []
 
@@ -3260,7 +3263,10 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           if (!mapId || !eventId) {
             throw new Error('mapId and eventId are required for event entry')
           }
-          const mapPath = resolveFromRoot(rootDir, entry.mapPath || toMapPath(mapId))
+          const defaultMapPath = manifestDataDir
+            ? path.join(manifestDataDir, 'Map' + ('000' + String(mapId)).slice(-3) + '.json')
+            : toMapPath(mapId)
+          const mapPath = resolveFromRoot(rootDir, entry.mapPath || defaultMapPath)
           const mapData = JSON.parse(fs.readFileSync(mapPath, { encoding: 'utf8' }))
           if (!mapData.events[eventId]) {
             throw new Error('EventID not found: ' + eventId)
@@ -3274,7 +3280,10 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           if (!commonEventId) {
             throw new Error('commonEventId is required for common entry')
           }
-          const commonPath = resolveFromRoot(rootDir, entry.commonEventPath || path.join('data', 'CommonEvents.json'))
+          const defaultCommonPath = manifestDataDir
+            ? path.join(manifestDataDir, 'CommonEvents.json')
+            : path.join('data', 'CommonEvents.json')
+          const commonPath = resolveFromRoot(rootDir, entry.commonEventPath || defaultCommonPath)
           const commonData = JSON.parse(fs.readFileSync(commonPath, { encoding: 'utf8' }))
           if (commonData.length - 1 < commonEventId) {
             throw new Error('Common Event not found: ' + commonEventId)
@@ -3439,6 +3448,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         if (!fs.existsSync(manifestDir)) {
           fs.mkdirSync(manifestDir, { recursive: true })
         }
+
+        // Persist source data directory so export resolves the same dataset used for generation.
+        manifestObj.dataDir = path.relative(manifestDir, dataDir)
 
         fs.writeFileSync(manifestPath, JSON.stringify(manifestObj, null, 2), 'utf8')
         console.log('[batch-export] manifest generated: ' + manifestPath + ' (entries: ' + manifestObj.entries.length + ')')
