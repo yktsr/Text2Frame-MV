@@ -1,0 +1,6 @@
+#vars
+hero=アレックス
+town=リンデル
+#endvars
+
+${hero}は${town}へ向かった。

@@ -1,0 +1,30 @@
+{
+  "events": [
+    null,
+    {
+      "pages": [
+        {
+          "list": [
+            {
+              "code": 241,
+              "indent": 0,
+              "parameters": [
+                {
+                  "name": "Battle1",
+                  "volume": 85,
+                  "pitch": 110,
+                  "pan": 20
+                }
+              ]
+            },
+            {
+              "code": 0,
+              "indent": 0,
+              "parameters": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

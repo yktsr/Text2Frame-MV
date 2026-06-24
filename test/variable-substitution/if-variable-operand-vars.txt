@@ -1,0 +1,11 @@
+#vars
+左辺変数=2
+比較演算子===
+右辺参照=Variables[1]
+#endvars
+
+<If: Variables[${左辺変数}], ${比較演算子}, ${右辺参照}>
+Variable-ref operand matched.
+<Else>
+Variable-ref operand not matched.
+<End>

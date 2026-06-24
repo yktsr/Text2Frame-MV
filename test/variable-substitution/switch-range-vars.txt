@@ -1,0 +1,6 @@
+#vars
+start_switch=10
+end_switch=12
+#endvars
+
+<Switch: ${start_switch}-${end_switch}, OFF>

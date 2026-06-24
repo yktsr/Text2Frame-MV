@@ -1,0 +1,8 @@
+#vars
+se_name=Attack1
+volume=70
+pitch=120
+pan=10
+#endvars
+
+<PlaySE: ${se_name}, ${volume}, ${pitch}, ${pan}>

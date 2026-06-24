@@ -1,0 +1,6 @@
+#vars
+var_id=20
+digits=10
+#endvars
+
+<InputNumber: ${var_id}, ${digits}>

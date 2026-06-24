@@ -1,0 +1,45 @@
+{
+  "events": [
+    null,
+    {
+      "pages": [
+        {
+          "list": [
+            {
+              "code": 101,
+              "indent": 0,
+              "parameters": [
+                "Actors1",
+                0,
+                0,
+                2,
+                ""
+              ]
+            },
+            {
+              "code": 401,
+              "indent": 0,
+              "parameters": [
+                "アレックスはリンデルへ向かった。"
+              ]
+            },
+            {
+              "code": 121,
+              "indent": 0,
+              "parameters": [
+                1,
+                1,
+                0
+              ]
+            },
+            {
+              "code": 0,
+              "indent": 0,
+              "parameters": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

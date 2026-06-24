@@ -1,0 +1,11 @@
+#vars
+var_id=5
+op=>=
+threshold=100
+#endvars
+
+<If: Variables[${var_id}], ${op}, ${threshold}>
+Variable condition matched.
+<Else>
+Variable condition not matched.
+<End>

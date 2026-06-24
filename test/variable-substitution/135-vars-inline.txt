@@ -1,0 +1,7 @@
+#vars hero=アレックス town=リンデル
+アレックス怒りの表情=Actors1(0)
+
+ゲーム進行フラグ=1 #endvars
+<Face: ${アレックス怒りの表情}>
+${hero}は${town}へ向かった。
+<Switch: ${ゲーム進行フラグ}, ON>
