@@ -1116,8 +1116,8 @@
       else return EnglishTag ? 'Start' : '始動'
     }
     const getIndent = (indentValue) => {
-      const indent = ''
-      return indent
+      const depth = typeof indentValue === 'number' && indentValue > 0 ? indentValue : 0
+      return '    '.repeat(depth)
     }
     const getWeatherTypeValue = (weather) => {
       if (weather === 'none') return EnglishTag ? 'None' : 'なし'
@@ -1247,19 +1247,35 @@
 
     // 出力するテキスト変数
     // Laurus.Frame2Text.EnglishTagの値を別変数に代入
-    const decompile = function (map_events, EnglishTag) {
+    // 整形(pretty)時にインデントを付与しないコード。
+    // 複数行の本文を持つもの(メッセージ本文/スクロール文/注釈/スクリプト)は
+    // 行頭の空白がそのまま本文として取り込まれ往復変換が壊れるため列0のままにする。
+    // 357/657(プラグインコマンドMZ)は657側で直前に出力した357タグを
+    // text.lastIndexOf('\n<') で探して引数注釈を差し込む。インデントを付けると
+    // '\n    <' となりこの探索が直前の別行を誤って掴み往復変換が壊れるため列0のままにする。
+    const RAW_CONTENT_CODES = [105, 108, 355, 357, 401, 405, 408, 655, 657]
+    const decompile = function (map_events, EnglishTag, options) {
       // イベントコード毎にループ
+      const pretty = !!(options && options.pretty)
       let text = ''
       map_events.forEach(function (event) {
         if (typeof event !== 'object') {
           return
         }
-        // インデント
-        const indent = getIndent(event.indent)
+        // インデント(整形時のみ。本文系コードは列0のまま)
+        const indent = pretty && RAW_CONTENT_CODES.indexOf(event.code) === -1 ? getIndent(event.indent) : ''
         // 改行とインデントを追加する関数
         const addNewLineIndent = (indent) => {
           // 最初のタグだけ改行を入れない
           text += text === '' ? indent : newLine + indent
+        }
+        // メッセージウィンドウの先頭に空行を入れて会話の区切りを見やすくする
+        const addMessageBlockStart = () => {
+          if (pretty && text !== '') {
+            text += newLine + newLine + indent
+          } else {
+            addNewLineIndent(indent)
+          }
         }
         /** ********************************************** */
         // メッセージ
@@ -1277,7 +1293,7 @@
           const nameTagStr = EnglishTag ? `<Name: ${name}>` : `<名前: ${name}>`
           const nameTag = name === '' || name === undefined ? '' : nameTagStr
 
-          addNewLineIndent(indent)
+          addMessageBlockStart()
           text += faceTag + backgroundTag + windowPositionTag + nameTag
         }
         if (event.code === 401) {
@@ -1341,7 +1357,7 @@
           const noFastForward = getCheckBoxOnOffValue(event.parameters[1])
           const tag = EnglishTag ? '<ShowScrollingText: ' : '<文章のスクロール表示: '
           const tagEnd = EnglishTag ? '</ShowScrollingText>' : '</文章のスクロール表示>'
-          addNewLineIndent(indent)
+          addMessageBlockStart()
           text += tag + speed + noFastForward + '>' + newLine + tagEnd
         }
         if (event.code === 405) {
@@ -2054,9 +2070,8 @@
         // 移動ルートの設定(移動コマンド)
         if (event.code === 505) {
           const movement = event.parameters[0]
-          // const correctMoveIndent = event.indent + 1
-          // const moveIndent = space.repeat(correctMoveIndent * baseIndent)
-          const moveIndent = ''
+          // 整形時は移動コマンドを親の移動ルート設定と同じ深さに揃える(非整形時は列0)
+          const moveIndent = indent
 
           const code1tag = EnglishTag ? '<MoveDown>' : '<下に移動>'
           const code2tag = EnglishTag ? '<MoveLeft>' : '<左に移動>'
@@ -3014,7 +3029,7 @@
                 eventCommands = commonData[commonId].list || []
               }
 
-              const outputText = decompile(eventCommands, englishTag)
+              const outputText = decompile(eventCommands, englishTag, { pretty: true })
               fs.writeFileSync(textPath, outputText, 'utf8')
               successCount++
             } catch (e) {
@@ -3076,7 +3091,7 @@
       /** ******************************* */
       // エクスポートモード: 全体を上書き
       /** ******************************* */
-      outputText = decompile(map_events, EnglishTag)
+      outputText = decompile(map_events, EnglishTag, { pretty: true })
     }
 
     /** ********************************************** */
@@ -3233,7 +3248,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     if (entry.key) {
       lines.push('key: ' + String(entry.key))
     }
-    lines.push('---')
+    lines.push('---\n\n')
     return lines.join('\n')
   }
 
@@ -3274,7 +3289,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           if (!mapData.events[eventId].pages[pageId]) {
             throw new Error('PageID not found: ' + String(pageId + 1))
           }
-          body = module.exports.decompile(mapData.events[eventId].pages[pageId].list, englishTag)
+          body = module.exports.decompile(mapData.events[eventId].pages[pageId].list, englishTag, { pretty: true })
         } else if (kind === 'common') {
           const commonEventId = entry.commonEventId
           if (!commonEventId) {
@@ -3288,7 +3303,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           if (commonData.length - 1 < commonEventId) {
             throw new Error('Common Event not found: ' + commonEventId)
           }
-          body = module.exports.decompile(commonData[commonEventId].list, englishTag)
+          body = module.exports.decompile(commonData[commonEventId].list, englishTag, { pretty: true })
         } else {
           throw new Error('unknown kind: ' + kind)
         }
