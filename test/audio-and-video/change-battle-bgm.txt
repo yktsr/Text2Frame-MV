@@ -1,9 +1,0 @@
-% 例1: フル設定で戦闘曲を変更
-<ChangeBattleBGM : Battle1, 91, 99, 1>
-<戦闘曲の変更 : Battle1>
-
-% 例2: なしに設定
-<ChangeBattleBGM: None>
-<ChangeBattleBGM: なし>
-<戦闘曲の変更: None>
-<戦闘曲の変更: なし>
