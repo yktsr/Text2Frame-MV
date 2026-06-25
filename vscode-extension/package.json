@@ -1,0 +1,99 @@
+{
+  "name": "text2frame-language-support",
+  "displayName": "Text2Frame Language Support",
+  "description": "Language support for Text2Frame visual novel scripts",
+  "version": "0.0.1",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:text2frame",
+    "onCommand:text2frame.deployCurrentFile",
+    "onCommand:text2frame.toggleDeployOnSave",
+    "workspaceContains:**/text/**/*.txt"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "text2frame",
+        "aliases": ["Text2Frame", "text2frame"],
+        "extensions": [".t2f", ".text2frame"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "text2frame",
+        "scopeName": "source.text2frame",
+        "path": "./syntaxes/text2frame.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "text2frame.deployCurrentFile",
+        "title": "Text2Frame: Deploy Current File / 現在のファイルをデプロイ",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "text2frame.toggleDeployOnSave",
+        "title": "Text2Frame: Toggle Deploy on Save / 保存時の自動デプロイを切替"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "text2frame.deployCurrentFile",
+          "when": "resourceLangId == text2frame || resourceExtname == .txt",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Text2Frame",
+      "properties": {
+        "text2frame.strategy": {
+          "type": "string",
+          "enum": ["diff", "import"],
+          "default": "diff",
+          "description": "Deploy strategy. diff = merge minimally; import = overwrite the event. / デプロイ方式。diff=最小マージ, import=イベント上書き。"
+        },
+        "text2frame.modulePath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional explicit path to Text2Frame.js / Text2Frame.cjs.js. Leave empty to auto-resolve (bundled lib, monorepo sibling, or workspace). / Text2Frame 本体のパス(空で自動解決)。"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile && npm run bundle-compiler",
+    "compile": "tsc -p ./",
+    "bundle-compiler": "node ./scripts/bundle-compiler.js",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.x",
+    "@typescript-eslint/parser": "^6.x",
+    "eslint": "^8.x",
+    "typescript": "^5.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yktsr/Text2Frame-MV.git",
+    "directory": "vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/yktsr/Text2Frame-MV/issues"
+  },
+  "homepage": "https://github.com/yktsr/Text2Frame-MV#readme"
+}
+
