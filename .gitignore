@@ -18,3 +18,8 @@ bin-release/
 # should NOT be excluded as they contain compiler settings and other important
 # information for Eclipse / Flash Builder.
 node_modules
+
+# VSCode extension (vscode-extension/) build outputs
+vscode-extension/out/
+vscode-extension/lib/
+*.vsix
