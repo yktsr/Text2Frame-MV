@@ -4320,6 +4320,10 @@
     }
 
     const addWarning = function (warning) {
+      // 翻訳/監視ツール用: _warnings が配列のときだけ警告を収集する(ゲーム内/テスト経路は不変)。
+      if (Array.isArray(Laurus.Text2Frame._warnings)) {
+        Laurus.Text2Frame._warnings.push(warning)
+      }
       if (Laurus.Text2Frame.DisplayWarning) {
         $gameMessage.add(warning)
       }
@@ -9731,7 +9735,129 @@
       }
     }
 
-    Laurus.Text2Frame.export = { compile, applyDiff }
+    // 監視ツール用: 対象データJSONの初回バックアップ(.bak が無いときだけ pristine 状態を退避)。
+    const backupOnce = function (fsLib, dataPath) {
+      try {
+        const bak = dataPath + '.bak'
+        if (fsLib.existsSync(dataPath) && !fsLib.existsSync(bak)) {
+          fsLib.copyFileSync(dataPath, bak)
+        }
+      } catch (e) {
+        // バックアップ失敗はデプロイを止めない。
+        addWarning('Backup failed / バックアップに失敗しました: ' + dataPath)
+      }
+    }
+
+    // 単一テキストファイルを単一データJSONへデプロイする再利用関数(CLI監視/VSCode拡張から呼ぶ)。
+    // フロントマター(kind/mapId/eventId/pageId/commonEventId)と opts をマージしてターゲットを解決。
+    // 戻り値: { ok, textPath, kind, target, dataPath, warnings: string[], error? }
+    const interpreter = this
+    const applyTextFile = function (opts) {
+      opts = opts || {}
+      const fsLib = require('fs')
+      const pathLib = require('path')
+      const { BASE_PATH } = getDirParams()
+      const textPath = resolveFromRoot(BASE_PATH, opts.textPath)
+      if (!textPath) {
+        return { ok: false, textPath: opts.textPath || '', warnings: [], error: 'textPath is required' }
+      }
+      const strategy = String(opts.strategy || 'diff').toLowerCase()
+      if (!['import', 'diff'].includes(strategy)) {
+        return { ok: false, textPath, warnings: [], error: 'Unknown strategy: ' + strategy + ' (expected: import|diff)' }
+      }
+
+      const prevWarnings = Laurus.Text2Frame._warnings
+      const prevQuiet = Laurus.Text2Frame._quiet
+      Laurus.Text2Frame._warnings = []
+      Laurus.Text2Frame._quiet = true
+      try {
+        const parsed = parseFrontMatter(readText(textPath))
+        const meta = parsed.meta || {}
+        const kind = String(opts.kind || meta.kind || 'event').toLowerCase()
+        const overwrite = String(opts.overwrite).toLowerCase() === 'true' || opts.overwrite === true
+
+        let dataPath
+        let target
+        if (kind === 'event') {
+          const mapId = opts.mapId || meta.mapId
+          const eventId = opts.eventId || meta.eventId
+          const pageId = opts.pageId || meta.pageId || '1'
+          if (!eventId) {
+            throw new Error('eventId is required for event entry')
+          }
+          const defaultMapPath = mapId
+            ? pathLib.join('data', 'Map' + ('000' + String(mapId)).slice(-3) + '.json')
+            : null
+          dataPath = resolveFromRoot(BASE_PATH, opts.mapPath) || resolveFromRoot(BASE_PATH, defaultMapPath)
+          if (!dataPath) {
+            throw new Error('mapPath or mapId is required for event entry')
+          }
+          target = { kind, mapId: mapId ? String(mapId) : undefined, eventId: String(eventId), pageId: String(pageId) }
+          if (opts.backup) {
+            backupOnce(fsLib, dataPath)
+          }
+          interpreter.pluginCommandText2Frame('COMMAND_LINE', [{
+            IsDebug: !!opts.isDebug,
+            TextPath: textPath,
+            MapPath: dataPath,
+            EventID: String(eventId),
+            PageID: String(pageId),
+            IsOverwrite: overwrite,
+            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT',
+            WriteBack: false
+          }])
+        } else if (kind === 'common') {
+          const commonEventId = opts.commonEventId || meta.commonEventId
+          if (!commonEventId) {
+            throw new Error('commonEventId is required for common entry')
+          }
+          dataPath =
+            resolveFromRoot(BASE_PATH, opts.commonEventPath) ||
+            resolveFromRoot(BASE_PATH, pathLib.join('data', 'CommonEvents.json'))
+          target = { kind, commonEventId: String(commonEventId) }
+          if (opts.backup) {
+            backupOnce(fsLib, dataPath)
+          }
+          interpreter.pluginCommandText2Frame('COMMAND_LINE', [{
+            IsDebug: !!opts.isDebug,
+            TextPath: textPath,
+            CommonEventPath: dataPath,
+            CommonEventID: String(commonEventId),
+            IsOverwrite: overwrite,
+            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE',
+            WriteBack: false
+          }])
+        } else {
+          throw new Error('unknown kind: ' + kind)
+        }
+
+        return { ok: true, textPath, kind, target, dataPath, warnings: Laurus.Text2Frame._warnings.slice() }
+      } catch (error) {
+        return {
+          ok: false,
+          textPath,
+          warnings: (Laurus.Text2Frame._warnings || []).slice(),
+          error: error.message
+        }
+      } finally {
+        Laurus.Text2Frame._warnings = prevWarnings
+        Laurus.Text2Frame._quiet = prevQuiet
+      }
+    }
+
+    // マニフェスト一括デプロイの再利用ラッパ。結果サマリを返し、冗長ログ/throw は抑制する。
+    const runBatch = function (opts) {
+      opts = opts || {}
+      const prevQuiet = Laurus.Text2Frame._quiet
+      Laurus.Text2Frame._quiet = true
+      try {
+        return runBatchByManifest.call(interpreter, opts.manifestPath, opts.strategy, true)
+      } finally {
+        Laurus.Text2Frame._quiet = prevQuiet
+      }
+    }
+
+    Laurus.Text2Frame.export = { compile, applyDiff, applyTextFile, runBatch }
 
     /* 差分適用後のコマンドリストをテキストファイルへ書き戻す。
      * Frame2Text プラグインの decompile 関数を使用します。
@@ -9763,7 +9889,7 @@
         : path.resolve(rootDir, maybeRelativePath)
     }
 
-    const runBatchByManifest = function (manifestPathArg, strategyArg) {
+    const runBatchByManifest = function (manifestPathArg, strategyArg, quiet) {
       if (typeof require === 'undefined') {
         throw new Error('BATCH command requires Node.js runtime.')
       }
@@ -9877,10 +10003,14 @@
       }
 
       const failures = results.filter(function (r) { return !r.ok })
-      console.log(JSON.stringify({ total: results.length, failed: failures.length, results }, null, 2))
-      if (failures.length > 0) {
-        throw new Error('BATCH completed with failures: ' + failures.length)
+      const summary = { total: results.length, failed: failures.length, results }
+      if (!quiet) {
+        console.log(JSON.stringify(summary, null, 2))
+        if (failures.length > 0) {
+          throw new Error('BATCH completed with failures: ' + failures.length)
+        }
       }
+      return summary
     }
     if (Laurus.Text2Frame.ExecMode === 'LIBRARY_EXPORT') {
       return
@@ -10039,10 +10169,13 @@
       'Please restart RPG Maker MV(Editor) WITHOUT save. \n' +
         '**セーブせずに**プロジェクトファイルを開き直してください'
     )
-    console.log(
-      'Please restart RPG Maker MV(Editor) WITHOUT save. \n' +
-        '**セーブせずに**プロジェクトファイルを開き直してください'
-    )
+    // _quiet 指定時(applyTextFile/runBatch 経由)は冗長な案内ログを抑制する。
+    if (!Laurus.Text2Frame._quiet) {
+      console.log(
+        'Please restart RPG Maker MV(Editor) WITHOUT save. \n' +
+          '**セーブせずに**プロジェクトファイルを開き直してください'
+      )
+    }
   }
 
   // export convert func.
@@ -10114,6 +10247,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-s, --strategy <import|diff|sync>', 'batch strategy', /^(import|diff|sync)$/i, 'diff')
     .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
     .option('-v, --verbose', 'debug mode', false)
+    .option('--watch', 'watch text files and redeploy on change (batch mode)', false)
+    .option('--debounce <ms>', 'debounce window for --watch', '250')
+    .option('--poll', 'force polling for --watch (recommended on network/WSL paths)', false)
     .parse()
 
   const help_text = `
@@ -10306,6 +10442,116 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     console.log(JSON.stringify({ total: results.length, failed: failures.length, results }, null, 2))
     if (failures.length > 0) {
       process.exitCode = 1
+    }
+
+    if (options.watch) {
+      let chokidar
+      try {
+        chokidar = require('chokidar')
+      } catch (e) {
+        throw new Error('chokidar is required for --watch. Run: npm install')
+      }
+
+      const watchStrategy = strategy === 'sync' ? 'diff' : strategy
+      if (strategy === 'sync') {
+        console.log('[watch] note: per-file redeploy uses "diff" strategy (sync runs only on the initial pass).')
+      }
+
+      const stamp = function () {
+        const d = new Date()
+        const pad = function (n) { return ('0' + n).slice(-2) }
+        return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds())
+      }
+
+      // テキスト絶対パス -> マニフェストエントリ(解決済みターゲット付き)のマップを構築。
+      const buildEntryMap = function () {
+        const mf = JSON.parse(fs.readFileSync(manifestPath, { encoding: 'utf8' }))
+        const es = Array.isArray(mf.entries) ? mf.entries : []
+        const map = {}
+        es.forEach(function (entry) {
+          const tp = resolveFromRoot(manifestRootDir, entry.textPath || entry.path)
+          if (tp) {
+            map[path.resolve(tp)] = entry
+          }
+        })
+        return map
+      }
+      let entryMap = buildEntryMap()
+
+      const deployOne = function (file) {
+        const entry = entryMap[path.resolve(file)] || {}
+        const mapPath =
+          resolveFromRoot(manifestRootDir, entry.mapPath) ||
+          (entry.mapId ? resolveFromRoot(manifestRootDir, toMapPath(entry.mapId)) : undefined)
+        const commonEventPath =
+          resolveFromRoot(manifestRootDir, entry.commonEventPath) ||
+          (entry.commonEventId ? resolveFromRoot(manifestRootDir, path.join('data', 'CommonEvents.json')) : undefined)
+        const res = module.exports.applyTextFile({
+          textPath: file,
+          kind: entry.kind,
+          mapId: entry.mapId,
+          eventId: entry.eventId,
+          pageId: entry.pageId,
+          commonEventId: entry.commonEventId,
+          mapPath,
+          commonEventPath,
+          strategy: watchStrategy,
+          overwrite: entry.overwrite,
+          backup: true,
+          isDebug: options.verbose
+        })
+        const rel = path.relative(process.cwd(), file)
+        if (res.ok) {
+          const tgt = res.dataPath ? path.relative(process.cwd(), res.dataPath) : '?'
+          const w = res.warnings.length ? '  (' + res.warnings.length + ' warnings)' : ''
+          console.log('[' + stamp() + '] DEPLOY ' + rel + ' -> ' + tgt + '  OK' + w)
+          res.warnings.forEach(function (warn) { console.log('[' + stamp() + ']   warn: ' + warn) })
+        } else {
+          console.log('[' + stamp() + '] DEPLOY ' + rel + '  FAIL  ' + res.error)
+        }
+      }
+
+      const timers = {}
+      const debounceMs = parseInt(options.debounce, 10) || 250
+      const scheduleDeploy = function (file) {
+        const key = path.resolve(file)
+        if (timers[key]) {
+          clearTimeout(timers[key])
+        }
+        timers[key] = setTimeout(function () {
+          delete timers[key]
+          deployOne(file)
+        }, debounceMs)
+      }
+
+      const usePolling = !!options.poll || /wsl\.localhost|[/\\]mnt[/\\]/.test(manifestPath)
+      const watcher = chokidar.watch(Object.keys(entryMap).concat([manifestPath]), {
+        usePolling,
+        interval: 300,
+        awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 50 },
+        ignoreInitial: true
+      })
+
+      console.log(
+        '[watch] watching ' + Object.keys(entryMap).length + ' text file(s). strategy=' + watchStrategy +
+        (usePolling ? ' (polling)' : '') + '. Press Ctrl-C to stop.'
+      )
+
+      watcher.on('change', function (file) {
+        if (path.resolve(file) === path.resolve(manifestPath)) {
+          console.log('[' + stamp() + '] manifest changed -> rescan + full redeploy')
+          entryMap = buildEntryMap()
+          watcher.add(Object.keys(entryMap))
+          Object.keys(entryMap).forEach(function (f) { scheduleDeploy(f) })
+          return
+        }
+        scheduleDeploy(file)
+      })
+
+      process.on('SIGINT', function () {
+        console.log('\n[watch] stopping...')
+        watcher.close().then(function () { process.exit(0) })
+      })
     }
   } else if (options.mode === 'test') {
     const Text2Frame = {
