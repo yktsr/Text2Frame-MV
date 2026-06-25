@@ -190,7 +190,8 @@
           if (typeof commonjsRequire !== "undefined") {
             const path = require$$0;
             PATH_SEP = path.sep;
-            BASE_PATH = path.dirname(process.mainModule.filename);
+            const mainFile = process.mainModule && process.mainModule.filename;
+            BASE_PATH = mainFile ? path.dirname(mainFile) : process.cwd();
           }
           return { PATH_SEP, BASE_PATH };
         };

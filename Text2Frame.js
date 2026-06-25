@@ -4336,7 +4336,10 @@
       if (typeof require !== 'undefined') {
         const path = require('path')
         PATH_SEP = path.sep
-        BASE_PATH = path.dirname(process.mainModule.filename)
+        // process.mainModule は環境によって undefined のことがある(VSCode 拡張ホスト等)。
+        // その場合は cwd にフォールバックする。絶対パス指定時は BASE_PATH を使わない。
+        const mainFile = process.mainModule && process.mainModule.filename
+        BASE_PATH = mainFile ? path.dirname(mainFile) : process.cwd()
       }
 
       return { PATH_SEP, BASE_PATH }
