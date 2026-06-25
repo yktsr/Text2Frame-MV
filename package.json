@@ -8,11 +8,12 @@
     "test": "test"
   },
   "scripts": {
-    "test": "mocha test/test_json_eq.js && mocha --no-esm test/test_diff.js && mocha --no-esm test/test_diff_import_integration.js && mocha --no-esm test/test_bidirectional_sync_integration.js && mocha --no-esm test/test_batch_command_integration.js && mocha --no-esm test/test_batch_export.js && mocha --no-esm test/test_sync.js && mocha --no-esm test/test_sync_format_preservation_integration.js && mocha --no-esm test/test_front_matter.js",
+    "test": "mocha test/test_json_eq.js && mocha --no-esm test/test_diff.js && mocha --no-esm test/test_diff_import_integration.js && mocha --no-esm test/test_bidirectional_sync_integration.js && mocha --no-esm test/test_batch_command_integration.js && mocha --no-esm test/test_batch_export.js && mocha --no-esm test/test_sync.js && mocha --no-esm test/test_sync_format_preservation_integration.js && mocha --no-esm test/test_front_matter.js && mocha --no-esm test/test_apply_text_file.js",
     "test_text2frame": "mocha --inline-diffs test/test_json_eq.js",
     "test_frame2text": "mocha --reporter-options maxDiffSize=100000 --inline-diffs test/test_frame2text.js",
     "test_batch_export": "mocha --no-esm test/test_batch_export.js",
     "lint": "eslint --max-warnings=0 Text2Frame.js Frame2Text.js",
+    "watch": "node Text2Frame.js -m batch -f auto-manifest.json --watch",
     "debug": "node Text2Frame.js",
     "build": "vite build"
   },
@@ -25,6 +26,7 @@
   "license": "MIT",
   "dependencies": {
     "chai": "^4.2.0",
+    "chokidar": "^3.6.0",
     "commander": ">=6.0.0",
     "eslint": ">=7.6.0",
     "eslint-config-standard": "^17.1.0",
