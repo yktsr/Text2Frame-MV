@@ -1254,12 +1254,21 @@
     // text.lastIndexOf('\n<') で探して引数注釈を差し込む。インデントを付けると
     // '\n    <' となりこの探索が直前の別行を誤って掴み往復変換が壊れるため列0のままにする。
     const RAW_CONTENT_CODES = [105, 108, 355, 357, 401, 405, 408, 655, 657]
+    // 翻訳抽出モード(translationOnly)で残す会話系イベントコード。
+    // 101/401: 文章の表示(顔・名前・位置・背景タグを含む), 102/402/403/404: 選択肢,
+    // 105/405: 文章のスクロール表示。これ以外(スイッチ・変数・移動等)は出力しない。
+    const CONVERSATION_CODES = [101, 401, 102, 402, 403, 404, 105, 405]
     const decompile = function (map_events, EnglishTag, options) {
       // イベントコード毎にループ
       const pretty = !!(options && options.pretty)
+      const translationOnly = !!(options && options.translationOnly)
       let text = ''
       map_events.forEach(function (event) {
         if (typeof event !== 'object') {
+          return
+        }
+        // 翻訳抽出モード: 会話系以外のイベントはスキップ(タグを削除)
+        if (translationOnly && CONVERSATION_CODES.indexOf(event.code) === -1) {
           return
         }
         // インデント(整形時のみ。本文系コードは列0のまま)

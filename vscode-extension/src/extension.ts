@@ -1,11 +1,25 @@
 import * as vscode from 'vscode';
-import { registerDeployFeature } from './deploy';
+import { registerDeployFeature, showCompiledJson } from './deploy';
+import { exportCurrentFile, exportCurrentFileForTranslation } from './exportText';
+import { deployAll, exportAll } from './batch';
+import { registerTreeView } from './tree';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Text2Frame Language Support is now active!');
 
     // Watch & Deploy: compile the current text file back into the RPG Maker data JSON.
     registerDeployFeature(context);
+    // Activity Bar tree (Maps / Events / Pages / Common Events).
+    registerTreeView(context);
+
+    // Export / batch / preview commands.
+    context.subscriptions.push(
+        vscode.commands.registerCommand('text2frame.exportCurrentFile', () => exportCurrentFile(context)),
+        vscode.commands.registerCommand('text2frame.exportForTranslation', () => exportCurrentFileForTranslation(context)),
+        vscode.commands.registerCommand('text2frame.showCompiledJson', () => showCompiledJson(context)),
+        vscode.commands.registerCommand('text2frame.deployAll', () => deployAll(context)),
+        vscode.commands.registerCommand('text2frame.exportAll', () => exportAll(context))
+    );
 
     // Register completion provider
     const completionProvider = vscode.languages.registerCompletionItemProvider(

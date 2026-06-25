@@ -13,9 +13,9 @@
   "main": "./out/extension.js",
   "activationEvents": [
     "onLanguage:text2frame",
-    "onCommand:text2frame.deployCurrentFile",
-    "onCommand:text2frame.toggleDeployOnSave",
-    "workspaceContains:**/text/**/*.txt"
+    "onView:text2frameExplorer",
+    "workspaceContains:**/text/**/*.txt",
+    "workspaceContains:**/data/Map*.json"
   ],
   "contributes": {
     "languages": [
@@ -42,14 +42,92 @@
       {
         "command": "text2frame.toggleDeployOnSave",
         "title": "Text2Frame: Toggle Deploy on Save / 保存時の自動デプロイを切替"
+      },
+      {
+        "command": "text2frame.exportCurrentFile",
+        "title": "Text2Frame: Export Current File from Data / データからテキストへ書き出し",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "text2frame.exportForTranslation",
+        "title": "Text2Frame: Export for Translation (conversation only) / 翻訳用に書き出し(会話のみ)"
+      },
+      {
+        "command": "text2frame.showCompiledJson",
+        "title": "Text2Frame: Show Compiled JSON / コンパイル結果JSONを表示",
+        "icon": "$(json)"
+      },
+      {
+        "command": "text2frame.deployAll",
+        "title": "Text2Frame: Deploy All / すべてデプロイ"
+      },
+      {
+        "command": "text2frame.exportAll",
+        "title": "Text2Frame: Export All / すべて書き出し"
+      },
+      {
+        "command": "text2frame.tree.refresh",
+        "title": "Text2Frame: Refresh / 更新",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "text2frame.tree.deploy",
+        "title": "Deploy / デプロイ",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "text2frame.tree.export",
+        "title": "Export / 書き出し",
+        "icon": "$(cloud-download)"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "text2frame",
+          "title": "Text2Frame",
+          "icon": "$(book)"
+        }
+      ]
+    },
+    "views": {
+      "text2frame": [
+        {
+          "id": "text2frameExplorer",
+          "name": "Maps / Common Events"
+        }
+      ]
+    },
     "menus": {
       "editor/title": [
         {
           "command": "text2frame.deployCurrentFile",
           "when": "resourceLangId == text2frame || resourceExtname == .txt",
           "group": "navigation"
+        },
+        {
+          "command": "text2frame.exportCurrentFile",
+          "when": "resourceLangId == text2frame || resourceExtname == .txt",
+          "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "text2frame.tree.refresh",
+          "when": "view == text2frameExplorer",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "text2frame.tree.deploy",
+          "when": "view == text2frameExplorer && (viewItem == text2frame.page || viewItem == text2frame.common)",
+          "group": "inline@2"
+        },
+        {
+          "command": "text2frame.tree.export",
+          "when": "view == text2frameExplorer && (viewItem == text2frame.page || viewItem == text2frame.common)",
+          "group": "inline@1"
         }
       ]
     },
@@ -65,7 +143,22 @@
         "text2frame.modulePath": {
           "type": "string",
           "default": "",
-          "description": "Optional explicit path to Text2Frame.js / Text2Frame.cjs.js. Leave empty to auto-resolve (bundled lib, monorepo sibling, or workspace). / Text2Frame 本体のパス(空で自動解決)。"
+          "description": "Optional explicit path to Text2Frame.js. Leave empty to auto-resolve (bundled lib, monorepo sibling, or workspace). / Text2Frame 本体のパス(空で自動解決)。"
+        },
+        "text2frame.englishTag": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use English tags when exporting (data -> text). / 書き出し時に英語タグを使う。"
+        },
+        "text2frame.locale": {
+          "type": "string",
+          "default": "ja",
+          "description": "Locale subfolder under the text base dir for export. / 書き出し先のロケールサブフォルダ。"
+        },
+        "text2frame.textBaseDir": {
+          "type": "string",
+          "default": "text",
+          "description": "Base directory (relative to workspace) for text files. / テキストの基準ディレクトリ。"
         }
       }
     }

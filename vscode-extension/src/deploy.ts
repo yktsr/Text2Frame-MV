@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { parseFrontMatter, isDeployable, loadModule, workspaceRootFor, frontMatterBody, resolveTarget } from './compiler';
+
+export { isDeployable };
 
 /**
  * Text2Frame "deploy" feature: compile the current text file back into the
@@ -19,15 +22,13 @@ interface ApplyResult {
     dataPath?: string;
     warnings: string[];
     error?: string;
+    errorLine?: number;
+    errorLineText?: string;
 }
 
 interface T2FModule {
     applyTextFile: (opts: { [key: string]: unknown }) => ApplyResult;
-}
-
-interface FrontMatter {
-    meta: { [key: string]: string };
-    hasFrontMatter: boolean;
+    compile?: (text: string) => unknown[];
 }
 
 let outputChannel: vscode.OutputChannel | undefined;
@@ -39,117 +40,14 @@ function getOutput(): vscode.OutputChannel {
     return outputChannel;
 }
 
-/** Parse the YAML-ish front matter block (same rules as the compiler). */
-function parseFrontMatter(text: string): FrontMatter {
-    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    if (normalized.indexOf('---\n') !== 0) {
-        return { meta: {}, hasFrontMatter: false };
-    }
-    const endIndex = normalized.indexOf('\n---\n', 4);
-    if (endIndex < 0) {
-        return { meta: {}, hasFrontMatter: false };
-    }
-    const header = normalized.slice(4, endIndex);
-    const meta: { [key: string]: string } = {};
-    header.split('\n').forEach((line) => {
-        const m = line.match(/^([A-Za-z0-9_]+)\s*:\s*(.*)$/);
-        if (!m) {
-            return;
-        }
-        const raw = m[2].trim();
-        meta[m[1]] = raw.replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1');
-    });
-    return { meta, hasFrontMatter: true };
-}
-
-/** A document is "deployable" when it carries Text2Frame front matter. */
-export function isDeployable(document: vscode.TextDocument): boolean {
-    if (document.uri.scheme !== 'file') {
-        return false;
-    }
-    return parseFrontMatter(document.getText()).hasFrontMatter;
-}
-
 /** Locate and load the compiler module that exports applyTextFile(). */
 function loadCompiler(context: vscode.ExtensionContext, workspaceRoot: string | undefined): { mod?: T2FModule; tried: string[] } {
-    const config = vscode.workspace.getConfiguration('text2frame');
-    const configured = config.get<string>('modulePath');
-    const extDir = context.extensionPath;
-
-    const candidates: string[] = [];
-    if (configured && configured.trim() !== '') {
-        candidates.push(path.isAbsolute(configured) || !workspaceRoot ? configured : path.join(workspaceRoot, configured));
-    }
-    // Prefer the RAW Text2Frame.js: it is the Node entry (exports applyTextFile)
-    // and works under require(). The bundled .cjs.js is browser-oriented and
-    // does not resolve Node builtins (require('path')) when run outside a bundler.
-    // Bundled copy (created at package time).
-    candidates.push(path.join(extDir, 'lib', 'Text2Frame.js'));
-    // Monorepo sibling (dev: extension lives at <repo>/vscode-extension).
-    candidates.push(path.join(extDir, '..', 'Text2Frame.js'));
-    // Fallback: the opened workspace itself.
-    if (workspaceRoot) {
-        candidates.push(path.join(workspaceRoot, 'Text2Frame.js'));
-        candidates.push(path.join(workspaceRoot, 'js', 'plugins', 'Text2Frame.js'));
-    }
-
-    for (const candidate of candidates) {
-        if (!candidate || !fs.existsSync(candidate)) {
-            continue;
-        }
-        try {
-            const resolved = require.resolve(candidate);
-            delete require.cache[resolved];
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const mod = require(resolved) as T2FModule;
-            if (mod && typeof mod.applyTextFile === 'function') {
-                return { mod, tried: candidates };
-            }
-        } catch (e) {
-            // Try the next candidate.
-        }
-    }
-    return { tried: candidates };
-}
-
-/** Resolve the deploy target (data file + ids) from front matter, against the workspace. */
-function resolveTarget(meta: { [key: string]: string }, workspaceRoot: string): { opts: { [key: string]: unknown }; label: string } {
-    const dataDir = path.join(workspaceRoot, 'data');
-    const kind = String(meta.kind || 'event').toLowerCase();
-
-    if (kind === 'common') {
-        const commonEventId = meta.commonEventId;
-        if (!commonEventId) {
-            throw new Error('commonEventId is missing in front matter');
-        }
-        const commonEventPath = meta.commonEventPath
-            ? path.resolve(workspaceRoot, meta.commonEventPath)
-            : path.join(dataDir, 'CommonEvents.json');
-        return {
-            opts: { kind: 'common', commonEventId, commonEventPath },
-            label: `CommonEvent ${commonEventId}`
-        };
-    }
-
-    // event
-    const mapId = meta.mapId;
-    const eventId = meta.eventId;
-    const pageId = meta.pageId || '1';
-    if (!eventId) {
-        throw new Error('eventId is missing in front matter');
-    }
-    let mapPath: string;
-    if (meta.mapPath) {
-        mapPath = path.resolve(workspaceRoot, meta.mapPath);
-    } else if (mapId) {
-        mapPath = path.join(dataDir, 'Map' + ('000' + String(mapId)).slice(-3) + '.json');
-    } else {
-        throw new Error('mapId or mapPath is missing in front matter');
-    }
-    return {
-        opts: { kind: 'event', mapId, eventId, pageId, mapPath },
-        label: `Map ${mapId || '?'} / Event ${eventId} / Page ${pageId}`
-    };
+    return loadModule<T2FModule>(
+        context,
+        workspaceRoot,
+        'Text2Frame.js',
+        (m) => !!m && typeof (m as T2FModule).applyTextFile === 'function'
+    );
 }
 
 /** Deploy a single document. Returns the structured result (or undefined when skipped). */
@@ -158,8 +56,7 @@ export function deployDocument(
     context: vscode.ExtensionContext,
     deployDiagnostics: vscode.DiagnosticCollection
 ): ApplyResult | undefined {
-    const folder = vscode.workspace.getWorkspaceFolder(document.uri);
-    const workspaceRoot = folder ? folder.uri.fsPath : (vscode.workspace.workspaceFolders?.[0]?.uri.fsPath);
+    const workspaceRoot = workspaceRootFor(document);
     if (!workspaceRoot) {
         vscode.window.showErrorMessage('Text2Frame: ワークスペースフォルダが見つかりません。');
         return undefined;
@@ -214,16 +111,100 @@ export function deployDocument(
         }
     } else {
         out.appendLine(`[${time}] FAIL  ${resolved.label}  <- ${path.basename(document.uri.fsPath)}  ${result.error}`);
-        setDeployDiagnostic(deployDiagnostics, document, result.error || 'deploy failed');
-        vscode.window.showErrorMessage('Text2Frame: デプロイ失敗 - ' + (result.error || ''));
+        setDeployDiagnostic(deployDiagnostics, document, result.error || 'deploy failed', result.errorLineText);
+        const firstLine = (result.error || 'deploy failed').split('\n')[0];
+        vscode.window.showErrorMessage('Text2Frame: デプロイ失敗 - ' + firstLine);
     }
     return result;
 }
 
-function setDeployDiagnostic(collection: vscode.DiagnosticCollection, document: vscode.TextDocument, message: string): void {
-    const range = new vscode.Range(0, 0, 0, Math.max(1, document.lineAt(0).text.length));
+/**
+ * Place an error diagnostic. When the compiler reports the offending line text
+ * (errorLineText), underline that exact line in the document; otherwise fall
+ * back to line 0. Line-text search is robust against the front-matter offset.
+ */
+function setDeployDiagnostic(
+    collection: vscode.DiagnosticCollection,
+    document: vscode.TextDocument,
+    message: string,
+    errorLineText?: string
+): void {
+    let lineNo = 0;
+    if (errorLineText && errorLineText.trim() !== '') {
+        for (let i = 0; i < document.lineCount; i++) {
+            if (document.lineAt(i).text === errorLineText) {
+                lineNo = i;
+                break;
+            }
+        }
+    }
+    const lineLen = document.lineAt(lineNo).text.length;
+    const range = new vscode.Range(lineNo, 0, lineNo, Math.max(1, lineLen));
     const diag = new vscode.Diagnostic(range, 'Text2Frame deploy: ' + message, vscode.DiagnosticSeverity.Error);
     collection.set(document.uri, [diag]);
+}
+
+/**
+ * Deploy a text file on disk (no editor needed). Used by the tree view and
+ * batch. Returns the structured result, or undefined if it cannot be attempted.
+ */
+export function deployFile(
+    context: vscode.ExtensionContext,
+    workspaceRoot: string,
+    filePath: string
+): ApplyResult | undefined {
+    let text: string;
+    try {
+        text = fs.readFileSync(filePath, 'utf8');
+    } catch (e) {
+        return { ok: false, textPath: filePath, warnings: [], error: 'cannot read ' + filePath };
+    }
+    const { meta, hasFrontMatter } = parseFrontMatter(text);
+    if (!hasFrontMatter) {
+        return { ok: false, textPath: filePath, warnings: [], error: 'no front matter' };
+    }
+    const { mod } = loadCompiler(context, workspaceRoot);
+    if (!mod) {
+        return { ok: false, textPath: filePath, warnings: [], error: 'Text2Frame.js not found' };
+    }
+    let resolved;
+    try {
+        resolved = resolveTarget(meta, workspaceRoot);
+    } catch (e) {
+        return { ok: false, textPath: filePath, warnings: [], error: e instanceof Error ? e.message : String(e) };
+    }
+    const strategy = vscode.workspace.getConfiguration('text2frame').get<string>('strategy') || 'diff';
+    return mod.applyTextFile({
+        textPath: filePath,
+        ...resolved.opts,
+        strategy,
+        overwrite: strategy === 'import',
+        backup: true
+    });
+}
+
+/** Command: compile the active text file and show the resulting event JSON in a preview. */
+export function showCompiledJson(context: vscode.ExtensionContext): void {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        vscode.window.showWarningMessage('Text2Frame: アクティブなエディタがありません。');
+        return;
+    }
+    const workspaceRoot = workspaceRootFor(editor.document);
+    const { mod } = loadCompiler(context, workspaceRoot);
+    if (!mod || typeof mod.compile !== 'function') {
+        vscode.window.showErrorMessage('Text2Frame: コンパイラ (Text2Frame.js) が見つかりません。');
+        return;
+    }
+    try {
+        const commands = mod.compile(frontMatterBody(editor.document.getText()));
+        const json = JSON.stringify(commands, null, 2);
+        vscode.workspace.openTextDocument({ language: 'json', content: json })
+            .then((doc) => vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Beside }));
+    } catch (e) {
+        const msg = e instanceof Error ? e.message.split('\n')[0] : String(e);
+        vscode.window.showErrorMessage('Text2Frame: コンパイルエラー - ' + msg);
+    }
 }
 
 /** Wire up commands, status bar, and deploy-on-save. Called from activate(). */

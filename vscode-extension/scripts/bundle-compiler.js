@@ -7,17 +7,19 @@ const path = require('path')
 
 const extDir = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(extDir, '..')
-const source = path.join(repoRoot, 'Text2Frame.js')
 const libDir = path.join(extDir, 'lib')
-const dest = path.join(libDir, 'Text2Frame.js')
-
-if (!fs.existsSync(source)) {
-  console.error('[bundle-compiler] Not found: ' + source)
-  process.exit(1)
-}
 
 if (!fs.existsSync(libDir)) {
   fs.mkdirSync(libDir, { recursive: true })
 }
-fs.copyFileSync(source, dest)
-console.log('[bundle-compiler] copied ' + path.relative(repoRoot, source) + ' -> ' + path.relative(repoRoot, dest))
+
+// Text2Frame.js (deploy/import) and Frame2Text.js (export) are both required.
+for (const name of ['Text2Frame.js', 'Frame2Text.js']) {
+  const source = path.join(repoRoot, name)
+  if (!fs.existsSync(source)) {
+    console.error('[bundle-compiler] Not found: ' + source)
+    process.exit(1)
+  }
+  fs.copyFileSync(source, path.join(libDir, name))
+  console.log('[bundle-compiler] copied ' + name + ' -> ' + path.relative(repoRoot, path.join(libDir, name)))
+}

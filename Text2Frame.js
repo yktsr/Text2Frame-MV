@@ -9601,7 +9601,18 @@
           if (previous_frame === null) {
             previous_frame = event_command_list.slice(-1)[0]
           }
-          const return_obj = getEvents(text, previous_text, window_frame, previous_frame, block_stack, block_map)
+          let return_obj
+          try {
+            return_obj = getEvents(text, previous_text, window_frame, previous_frame, block_stack, block_map)
+          } catch (e) {
+            // 文法エラーに行情報を付与(エディタ拡張が該当行に下線を引くため)。
+            if (e && e.t2fLine === undefined) {
+              e.t2fLine = i
+              e.t2fLineText = text
+              e.message = e.message + '\n(line ' + (i + 1) + ': ' + text + ')'
+            }
+            throw e
+          }
           window_frame = return_obj.window_frame
           const new_event_command_list = return_obj.event_command_list
           block_stack = return_obj.block_stack
@@ -9840,7 +9851,9 @@
           ok: false,
           textPath,
           warnings: (Laurus.Text2Frame._warnings || []).slice(),
-          error: error.message
+          error: error.message,
+          errorLine: error.t2fLine,
+          errorLineText: error.t2fLineText
         }
       } finally {
         Laurus.Text2Frame._warnings = prevWarnings
