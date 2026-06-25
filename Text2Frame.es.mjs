@@ -34,7 +34,7 @@ const __viteBrowserExternal$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Ob
   __proto__: null,
   default: __viteBrowserExternal
 }, Symbol.toStringTag, { value: "Module" }));
-const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1);
+const require$$0 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1);
 (function(module) {
   (function() {
     if (typeof PluginManager !== "undefined" && PluginManager.registerCommand) {
@@ -60,6 +60,44 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
           [file_folder, file_name, common_event_id, is_overwrite]
         );
       });
+      PluginManager.registerCommand("Text2Frame", "DIFF_IMPORT_MESSAGE_TO_EVENT", function(args) {
+        const file_folder = args.FileFolder;
+        const file_name = args.FileName;
+        const map_id = args.MapID;
+        const event_id = args.EventID;
+        const page_id = args.PageID;
+        const write_back = args.WriteBack;
+        this.pluginCommand(
+          "DIFF_IMPORT_MESSAGE_TO_EVENT",
+          [file_folder, file_name, map_id, event_id, page_id, write_back]
+        );
+      });
+      PluginManager.registerCommand("Text2Frame", "DIFF_IMPORT_MESSAGE_TO_CE", function(args) {
+        const file_folder = args.FileFolder;
+        const file_name = args.FileName;
+        const common_event_id = args.CommonEventID;
+        const write_back = args.WriteBack;
+        this.pluginCommand(
+          "DIFF_IMPORT_MESSAGE_TO_CE",
+          [file_folder, file_name, common_event_id, write_back]
+        );
+      });
+      PluginManager.registerCommand("Text2Frame", "SYNC_EVENT_BIDIRECTIONAL", function(args) {
+        const file_folder = args.FileFolder;
+        const file_name = args.FileName;
+        const map_id = args.MapID;
+        const event_id = args.EventID;
+        const page_id = args.PageID;
+        this.pluginCommand(
+          "SYNC_EVENT_BIDIRECTIONAL",
+          [file_folder, file_name, map_id, event_id, page_id]
+        );
+      });
+      PluginManager.registerCommand("Text2Frame", "APPLY_MESSAGES_BY_MANIFEST", function(args) {
+        const manifest_path = args.ManifestPath;
+        const strategy = args.Strategy;
+        this.pluginCommand("APPLY_MESSAGES_BY_MANIFEST", [manifest_path, strategy]);
+      });
     }
     var Laurus = typeof Laurus !== "undefined" ? Laurus : {};
     Laurus.Text2Frame = {};
@@ -73,10 +111,13 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
       Laurus.Text2Frame.EventID = "1";
       Laurus.Text2Frame.PageID = "1";
       Laurus.Text2Frame.IsOverwrite = true;
+      Laurus.Text2Frame.WriteBack = false;
       Laurus.Text2Frame.CommentOutChar = "%";
       Laurus.Text2Frame.IsDebug = false;
       Laurus.Text2Frame.DisplayMsg = true;
       Laurus.Text2Frame.DisplayWarning = true;
+      Laurus.Text2Frame.ManifestPath = "";
+      Laurus.Text2Frame.BatchStrategy = "diff";
       Laurus.Text2Frame.TextPath = "dummy";
       Laurus.Text2Frame.MapPath = "dummy";
       Laurus.Text2Frame.CommonEventPath = "dummy";
@@ -100,10 +141,12 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
       Laurus.Text2Frame.IsDebug = String(Laurus.Text2Frame.Parameters.IsDebug) === "true";
       Laurus.Text2Frame.DisplayMsg = String(Laurus.Text2Frame.Parameters.DisplayMsg) === "true";
       Laurus.Text2Frame.DisplayWarning = String(Laurus.Text2Frame.Parameters.DisplayWarning) === "true";
+      Laurus.Text2Frame.ManifestPath = "";
+      Laurus.Text2Frame.BatchStrategy = "diff";
       let PATH_SEP = "/";
       let BASE_PATH = ".";
       if (typeof commonjsRequire !== "undefined") {
-        const path = require$$1;
+        const path = require$$0;
         PATH_SEP = path.sep;
         BASE_PATH = path.dirname(process.mainModule.filename);
       }
@@ -130,6 +173,9 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         }
       };
       const addWarning = function(warning) {
+        if (Array.isArray(Laurus.Text2Frame._warnings)) {
+          Laurus.Text2Frame._warnings.push(warning);
+        }
         if (Laurus.Text2Frame.DisplayWarning) {
           $gameMessage.add(warning);
         }
@@ -138,7 +184,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         let PATH_SEP = "/";
         let BASE_PATH = ".";
         if (typeof commonjsRequire !== "undefined") {
-          const path = require$$1;
+          const path = require$$0;
           PATH_SEP = path.sep;
           BASE_PATH = path.dirname(process.mainModule.filename);
         }
@@ -220,6 +266,56 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
             Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`;
           }
           break;
+        case "DIFF_IMPORT_MESSAGE_TO_EVENT":
+          addMessage("diff import message to event. \n/ 差分をイベントにインポートします。");
+          if (args[0]) Laurus.Text2Frame.FileFolder = args[0];
+          if (args[1]) Laurus.Text2Frame.FileName = args[1];
+          if (args[2]) Laurus.Text2Frame.MapID = args[2];
+          if (args[3]) Laurus.Text2Frame.EventID = args[3];
+          if (args[4]) Laurus.Text2Frame.PageID = args[4];
+          if (args[5] !== void 0) Laurus.Text2Frame.WriteBack = args[5] === "true" || args[5] === true;
+          if (args[0] || args[1]) {
+            const { PATH_SEP, BASE_PATH } = getDirParams();
+            Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
+            Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${("000" + Laurus.Text2Frame.MapID).slice(-3)}.json`;
+          }
+          break;
+        case "DIFF_IMPORT_MESSAGE_TO_CE":
+          if (args.length === 3 || args.length === 4) {
+            addMessage("diff import message to common event. \n/ 差分をコモンイベントにインポートします。");
+            Laurus.Text2Frame.ExecMode = "DIFF_IMPORT_MESSAGE_TO_CE";
+            Laurus.Text2Frame.FileFolder = args[0];
+            Laurus.Text2Frame.FileName = args[1];
+            Laurus.Text2Frame.CommonEventID = args[2];
+            if (args[3] !== void 0) Laurus.Text2Frame.WriteBack = args[3] === "true" || args[3] === true;
+            const { PATH_SEP, BASE_PATH } = getDirParams();
+            Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
+            Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`;
+          }
+          break;
+        case "SYNC_EVENT_BIDIRECTIONAL":
+        case "イベントを双方向差分同期":
+          addMessage("bidirectional sync event. \n/ イベントを双方向差分同期します。");
+          if (args[0]) Laurus.Text2Frame.FileFolder = args[0];
+          if (args[1]) Laurus.Text2Frame.FileName = args[1];
+          if (args[2]) Laurus.Text2Frame.MapID = args[2];
+          if (args[3]) Laurus.Text2Frame.EventID = args[3];
+          if (args[4]) Laurus.Text2Frame.PageID = args[4];
+          if (args[0] || args[1]) {
+            const { PATH_SEP, BASE_PATH } = getDirParams();
+            Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
+            Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${("000" + Laurus.Text2Frame.MapID).slice(-3)}.json`;
+          }
+          Laurus.Text2Frame.ExecMode = "SYNC_EVENT_BIDIRECTIONAL";
+          break;
+        case "APPLY_MESSAGES_BY_MANIFEST":
+        case "一括反映":
+        case "BATCH":
+          addMessage("batch import by manifest. \n/ manifestで一括反映します。");
+          Laurus.Text2Frame.ManifestPath = args[0] || Laurus.Text2Frame.ManifestPath;
+          Laurus.Text2Frame.BatchStrategy = String(args[1] || Laurus.Text2Frame.BatchStrategy || "diff").toLowerCase();
+          Laurus.Text2Frame.ExecMode = "APPLY_MESSAGES_BY_MANIFEST";
+          break;
         case "COMMAND_LINE":
           Laurus.Text2Frame = Object.assign(Laurus.Text2Frame, args[0]);
           break;
@@ -238,7 +334,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         console.error(Array.prototype.join.call(arguments));
       };
       const readText = function(filepath) {
-        const fs = require$$1;
+        const fs = require$$0;
         try {
           return fs.readFileSync(filepath, { encoding: "utf8" });
         } catch (e) {
@@ -262,7 +358,7 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         }
       };
       const writeData = function(filepath, jsonData) {
-        const fs = require$$1;
+        const fs = require$$0;
         try {
           fs.writeFileSync(filepath, JSON.stringify(jsonData, null, "  "), { encoding: "utf8" });
         } catch (e) {
@@ -271,8 +367,42 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
           );
         }
       };
+      const writeText = function(filepath, textData) {
+        const fs = require$$0;
+        try {
+          fs.writeFileSync(filepath, textData, { encoding: "utf8" });
+        } catch (e) {
+          throw new Error(
+            "Save failed. / 保存に失敗しました。\nファイルが開いていないか確認してください。\n" + filepath
+          );
+        }
+      };
       const uniformNewLineCode = function(text) {
         return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      };
+      const parseFrontMatter = function(text) {
+        const normalized = uniformNewLineCode(text);
+        if (normalized.indexOf("---\n") !== 0) {
+          return { meta: {}, body: text };
+        }
+        const endIndex = normalized.indexOf("\n---\n", 4);
+        if (endIndex < 0) {
+          return { meta: {}, body: text };
+        }
+        const header = normalized.slice(4, endIndex);
+        const body = normalized.slice(endIndex + 5);
+        const meta = {};
+        header.split("\n").forEach(function(line) {
+          const m = line.match(/^([A-Za-z0-9_]+)\s*:\s*(.*)$/);
+          if (!m) {
+            return;
+          }
+          const key = m[1];
+          const raw = m[2].trim();
+          const unquoted = raw.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
+          meta[key] = unquoted;
+        });
+        return { meta, body };
       };
       const eraseCommentOutLines = function(scenario_text2, commentOutChar) {
         const re = new RegExp("^ *" + commentOutChar);
@@ -4431,12 +4561,377 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         event_command_list2 = autoIndent(event_command_list2);
         return event_command_list2;
       };
-      Laurus.Text2Frame.export = { compile };
+      const CONTINUATION_CODES = [401, 655, 408, 405];
+      const groupCommandsIntoBlocks = function(commands) {
+        const blocks = [];
+        let current_block = [];
+        for (let i = 0; i < commands.length; i++) {
+          const cmd = commands[i];
+          if (CONTINUATION_CODES.indexOf(cmd.code) !== -1) {
+            current_block.push(cmd);
+          } else {
+            if (current_block.length > 0) {
+              blocks.push(current_block);
+            }
+            current_block = [cmd];
+          }
+        }
+        if (current_block.length > 0) {
+          blocks.push(current_block);
+        }
+        return blocks;
+      };
+      const flattenBlocks = function(blocks) {
+        return blocks.reduce(function(acc, block) {
+          return acc.concat(block);
+        }, []);
+      };
+      const lcsTable = function(a, b) {
+        const m = a.length;
+        const n = b.length;
+        const table = [];
+        for (let i = 0; i <= m; i++) {
+          const row = [];
+          for (let j = 0; j <= n; j++) {
+            row.push(0);
+          }
+          table.push(row);
+        }
+        for (let i = 1; i <= m; i++) {
+          for (let j = 1; j <= n; j++) {
+            if (JSON.stringify(a[i - 1]) === JSON.stringify(b[j - 1])) {
+              table[i][j] = table[i - 1][j - 1] + 1;
+            } else {
+              table[i][j] = Math.max(table[i - 1][j], table[i][j - 1]);
+            }
+          }
+        }
+        return table;
+      };
+      const buildDiffFromTable = function(table, a, b) {
+        const diff = [];
+        let i = a.length;
+        let j = b.length;
+        while (i > 0 || j > 0) {
+          if (i === 0) {
+            diff.unshift({ type: "added", block: b[j - 1] });
+            j--;
+          } else if (j === 0) {
+            diff.unshift({ type: "removed", block: a[i - 1] });
+            i--;
+          } else if (JSON.stringify(a[i - 1]) === JSON.stringify(b[j - 1])) {
+            diff.unshift({ type: "equal", block: a[i - 1] });
+            i--;
+            j--;
+          } else if (table[i - 1][j] >= table[i][j - 1]) {
+            diff.unshift({ type: "removed", block: a[i - 1] });
+            i--;
+          } else {
+            diff.unshift({ type: "added", block: b[j - 1] });
+            j--;
+          }
+        }
+        return diff;
+      };
+      const applyDiff = function(existing_commands, new_commands) {
+        const stripBottom = function(cmds) {
+          const copy = cmds.slice();
+          while (copy.length > 0 && copy[copy.length - 1].code === 0) {
+            copy.pop();
+          }
+          return copy;
+        };
+        const existingStripped = stripBottom(existing_commands);
+        const newStripped = stripBottom(new_commands);
+        const existingBlocks = groupCommandsIntoBlocks(existingStripped);
+        const newBlocks = groupCommandsIntoBlocks(newStripped);
+        const table = lcsTable(existingBlocks, newBlocks);
+        const diff = buildDiffFromTable(table, existingBlocks, newBlocks);
+        const warnings = [];
+        const resultBlocks = [];
+        const DIFF_PREVIEW_LENGTH = 80;
+        for (let idx = 0; idx < diff.length; idx++) {
+          const d = diff[idx];
+          if (d.type === "equal" || d.type === "added") {
+            resultBlocks.push(d.block);
+          } else if (d.type === "removed") {
+            const full = JSON.stringify(d.block);
+            const preview = full.length > DIFF_PREVIEW_LENGTH ? full.substring(0, DIFF_PREVIEW_LENGTH) + "..." : full;
+            warnings.push("Block removed / ブロックが削除されます: " + preview);
+          }
+        }
+        return {
+          commands: flattenBlocks(resultBlocks),
+          warnings
+        };
+      };
+      const backupOnce = function(fsLib, dataPath) {
+        try {
+          const bak = dataPath + ".bak";
+          if (fsLib.existsSync(dataPath) && !fsLib.existsSync(bak)) {
+            fsLib.copyFileSync(dataPath, bak);
+          }
+        } catch (e) {
+          addWarning("Backup failed / バックアップに失敗しました: " + dataPath);
+        }
+      };
+      const interpreter = this;
+      const applyTextFile = function(opts) {
+        opts = opts || {};
+        const fsLib = require$$0;
+        const pathLib = require$$0;
+        const { BASE_PATH } = getDirParams();
+        const textPath = resolveFromRoot(BASE_PATH, opts.textPath);
+        if (!textPath) {
+          return { ok: false, textPath: opts.textPath || "", warnings: [], error: "textPath is required" };
+        }
+        const strategy = String(opts.strategy || "diff").toLowerCase();
+        if (!["import", "diff"].includes(strategy)) {
+          return { ok: false, textPath, warnings: [], error: "Unknown strategy: " + strategy + " (expected: import|diff)" };
+        }
+        const prevWarnings = Laurus.Text2Frame._warnings;
+        const prevQuiet = Laurus.Text2Frame._quiet;
+        Laurus.Text2Frame._warnings = [];
+        Laurus.Text2Frame._quiet = true;
+        try {
+          const parsed2 = parseFrontMatter(readText(textPath));
+          const meta = parsed2.meta || {};
+          const kind = String(opts.kind || meta.kind || "event").toLowerCase();
+          const overwrite = String(opts.overwrite).toLowerCase() === "true" || opts.overwrite === true;
+          let dataPath;
+          let target;
+          if (kind === "event") {
+            const mapId = opts.mapId || meta.mapId;
+            const eventId = opts.eventId || meta.eventId;
+            const pageId = opts.pageId || meta.pageId || "1";
+            if (!eventId) {
+              throw new Error("eventId is required for event entry");
+            }
+            const defaultMapPath = mapId ? pathLib.join("data", "Map" + ("000" + String(mapId)).slice(-3) + ".json") : null;
+            dataPath = resolveFromRoot(BASE_PATH, opts.mapPath) || resolveFromRoot(BASE_PATH, defaultMapPath);
+            if (!dataPath) {
+              throw new Error("mapPath or mapId is required for event entry");
+            }
+            target = { kind, mapId: mapId ? String(mapId) : void 0, eventId: String(eventId), pageId: String(pageId) };
+            if (opts.backup) {
+              backupOnce(fsLib, dataPath);
+            }
+            interpreter.pluginCommandText2Frame("COMMAND_LINE", [{
+              IsDebug: !!opts.isDebug,
+              TextPath: textPath,
+              MapPath: dataPath,
+              EventID: String(eventId),
+              PageID: String(pageId),
+              IsOverwrite: overwrite,
+              ExecMode: strategy === "import" ? "IMPORT_MESSAGE_TO_EVENT" : "DIFF_IMPORT_MESSAGE_TO_EVENT",
+              WriteBack: false
+            }]);
+          } else if (kind === "common") {
+            const commonEventId = opts.commonEventId || meta.commonEventId;
+            if (!commonEventId) {
+              throw new Error("commonEventId is required for common entry");
+            }
+            dataPath = resolveFromRoot(BASE_PATH, opts.commonEventPath) || resolveFromRoot(BASE_PATH, pathLib.join("data", "CommonEvents.json"));
+            target = { kind, commonEventId: String(commonEventId) };
+            if (opts.backup) {
+              backupOnce(fsLib, dataPath);
+            }
+            interpreter.pluginCommandText2Frame("COMMAND_LINE", [{
+              IsDebug: !!opts.isDebug,
+              TextPath: textPath,
+              CommonEventPath: dataPath,
+              CommonEventID: String(commonEventId),
+              IsOverwrite: overwrite,
+              ExecMode: strategy === "import" ? "IMPORT_MESSAGE_TO_CE" : "DIFF_IMPORT_MESSAGE_TO_CE",
+              WriteBack: false
+            }]);
+          } else {
+            throw new Error("unknown kind: " + kind);
+          }
+          return { ok: true, textPath, kind, target, dataPath, warnings: Laurus.Text2Frame._warnings.slice() };
+        } catch (error) {
+          return {
+            ok: false,
+            textPath,
+            warnings: (Laurus.Text2Frame._warnings || []).slice(),
+            error: error.message
+          };
+        } finally {
+          Laurus.Text2Frame._warnings = prevWarnings;
+          Laurus.Text2Frame._quiet = prevQuiet;
+        }
+      };
+      const runBatch = function(opts) {
+        opts = opts || {};
+        const prevQuiet = Laurus.Text2Frame._quiet;
+        Laurus.Text2Frame._quiet = true;
+        try {
+          return runBatchByManifest.call(interpreter, opts.manifestPath, opts.strategy, true);
+        } finally {
+          Laurus.Text2Frame._quiet = prevQuiet;
+        }
+      };
+      Laurus.Text2Frame.export = { compile, applyDiff, applyTextFile, runBatch };
+      const writeBackToText = function(commands) {
+        const decompile = typeof Laurus !== "undefined" && Laurus.Frame2Text && Laurus.Frame2Text.export && Laurus.Frame2Text.export.decompile;
+        if (!decompile) {
+          addWarning(
+            "WriteBack requires Frame2Text plugin. / WriteBack には Frame2Text プラグインが必要です。"
+          );
+          return;
+        }
+        const text = decompile(commands);
+        writeText(Laurus.Text2Frame.TextPath, text);
+        addMessage("WriteBack success / テキストへの書き戻し成功！\n" + Laurus.Text2Frame.TextPath);
+      };
+      const resolveFromRoot = function(rootDir, maybeRelativePath) {
+        if (!maybeRelativePath) {
+          return maybeRelativePath;
+        }
+        const path = require$$0;
+        return path.isAbsolute(maybeRelativePath) ? maybeRelativePath : path.resolve(rootDir, maybeRelativePath);
+      };
+      const runBatchByManifest = function(manifestPathArg, strategyArg, quiet) {
+        if (typeof commonjsRequire === "undefined") {
+          throw new Error("BATCH command requires Node.js runtime.");
+        }
+        const fs = require$$0;
+        const path = require$$0;
+        const { BASE_PATH } = getDirParams();
+        const manifestPath = resolveFromRoot(BASE_PATH, manifestPathArg);
+        if (!manifestPath) {
+          throw new Error("ManifestPath is required for BATCH command.");
+        }
+        const strategy = String(strategyArg || "diff").toLowerCase();
+        if (!["import", "diff", "sync"].includes(strategy)) {
+          throw new Error("Unknown strategy: " + strategy + " (expected: import|diff|sync)");
+        }
+        if (strategy === "sync" && typeof this.pluginCommandFrame2Text !== "function") {
+          throw new Error("Frame2Text plugin is required for sync strategy in BATCH command.");
+        }
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, { encoding: "utf8" }));
+        const manifestRootDir = path.dirname(manifestPath);
+        const entries = Array.isArray(manifest.entries) ? manifest.entries : [];
+        const results = [];
+        for (let index = 0; index < entries.length; index++) {
+          const entry = entries[index];
+          try {
+            const textPath = resolveFromRoot(manifestRootDir, entry.textPath || entry.path);
+            if (!textPath) {
+              throw new Error("textPath is required");
+            }
+            const parsed2 = parseFrontMatter(readText(textPath));
+            const meta = parsed2.meta || {};
+            const kind = String(entry.kind || meta.kind || "event").toLowerCase();
+            if (kind === "event") {
+              const mapId = entry.mapId || meta.mapId;
+              const eventId = entry.eventId || meta.eventId;
+              const pageId = entry.pageId || meta.pageId || "1";
+              if (!eventId) {
+                throw new Error("eventId is required for event entry");
+              }
+              const defaultMapPath = mapId ? path.join("data", "Map" + ("000" + String(mapId)).slice(-3) + ".json") : null;
+              const mapPath = resolveFromRoot(manifestRootDir, entry.mapPath) || resolveFromRoot(manifestRootDir, defaultMapPath);
+              if (!mapPath) {
+                throw new Error("mapPath or mapId is required for event entry");
+              }
+              this.pluginCommandText2Frame("COMMAND_LINE", [{
+                IsDebug: Laurus.Text2Frame.IsDebug,
+                TextPath: textPath,
+                MapPath: mapPath,
+                EventID: String(eventId),
+                PageID: String(pageId),
+                IsOverwrite: String(entry.overwrite).toLowerCase() === "true",
+                ExecMode: strategy === "import" ? "IMPORT_MESSAGE_TO_EVENT" : "DIFF_IMPORT_MESSAGE_TO_EVENT",
+                WriteBack: false
+              }]);
+              if (strategy === "sync") {
+                this.pluginCommandFrame2Text("COMMAND_LINE", [{
+                  IsDebug: Laurus.Text2Frame.IsDebug,
+                  TextPath: textPath,
+                  MapPath: mapPath,
+                  EventID: String(eventId),
+                  PageID: String(pageId),
+                  ExecMode: "SYNC_EVENT_TO_MESSAGE"
+                }]);
+              }
+            } else if (kind === "common") {
+              const commonEventId = entry.commonEventId || meta.commonEventId;
+              if (!commonEventId) {
+                throw new Error("commonEventId is required for common entry");
+              }
+              const commonEventPath = resolveFromRoot(manifestRootDir, entry.commonEventPath) || resolveFromRoot(manifestRootDir, path.join("data", "CommonEvents.json"));
+              this.pluginCommandText2Frame("COMMAND_LINE", [{
+                IsDebug: Laurus.Text2Frame.IsDebug,
+                TextPath: textPath,
+                CommonEventPath: commonEventPath,
+                CommonEventID: String(commonEventId),
+                IsOverwrite: String(entry.overwrite).toLowerCase() === "true",
+                ExecMode: strategy === "import" ? "IMPORT_MESSAGE_TO_CE" : "DIFF_IMPORT_MESSAGE_TO_CE",
+                WriteBack: false
+              }]);
+              if (strategy === "sync") {
+                this.pluginCommandFrame2Text("COMMAND_LINE", [{
+                  IsDebug: Laurus.Text2Frame.IsDebug,
+                  TextPath: textPath,
+                  CommonEventPath: commonEventPath,
+                  CommonEventID: String(commonEventId),
+                  ExecMode: "SYNC_CE_TO_MESSAGE"
+                }]);
+              }
+            } else {
+              throw new Error("unknown kind: " + kind);
+            }
+            results.push({ index: index + 1, ok: true, textPath });
+          } catch (error) {
+            results.push({ index: index + 1, ok: false, textPath: entry.textPath || entry.path || "", error: error.message });
+          }
+        }
+        const failures = results.filter(function(r) {
+          return !r.ok;
+        });
+        const summary = { total: results.length, failed: failures.length, results };
+        if (!quiet) {
+          console.log(JSON.stringify(summary, null, 2));
+          if (failures.length > 0) {
+            throw new Error("BATCH completed with failures: " + failures.length);
+          }
+        }
+        return summary;
+      };
       if (Laurus.Text2Frame.ExecMode === "LIBRARY_EXPORT") {
         return;
       }
+      if (Laurus.Text2Frame.ExecMode === "APPLY_MESSAGES_BY_MANIFEST") {
+        runBatchByManifest.call(this, Laurus.Text2Frame.ManifestPath, Laurus.Text2Frame.BatchStrategy);
+        return;
+      }
+      if (Laurus.Text2Frame.ExecMode === "SYNC_EVENT_BIDIRECTIONAL") {
+        if (typeof this.pluginCommandFrame2Text !== "function") {
+          throw new Error(
+            "Frame2Text plugin is required. / SYNC_EVENT_BIDIRECTIONAL には Frame2Text プラグインが必要です。"
+          );
+        }
+        this.pluginCommandText2Frame("DIFF_IMPORT_MESSAGE_TO_EVENT", [
+          Laurus.Text2Frame.FileFolder,
+          Laurus.Text2Frame.FileName,
+          Laurus.Text2Frame.MapID,
+          Laurus.Text2Frame.EventID,
+          Laurus.Text2Frame.PageID,
+          false
+        ]);
+        this.pluginCommandFrame2Text("SYNC_EVENT_TO_MESSAGE", [
+          Laurus.Text2Frame.FileFolder,
+          Laurus.Text2Frame.FileName,
+          Laurus.Text2Frame.MapID,
+          Laurus.Text2Frame.EventID,
+          Laurus.Text2Frame.PageID
+        ]);
+        return;
+      }
       const scenario_text = readText(Laurus.Text2Frame.TextPath);
-      const event_command_list = compile(scenario_text);
+      const parsed = parseFrontMatter(scenario_text);
+      const event_command_list = compile(parsed.body);
       event_command_list.push(getCommandBottomEvent());
       switch (Laurus.Text2Frame.ExecMode) {
         case "IMPORT_MESSAGE_TO_EVENT":
@@ -4482,14 +4977,62 @@ const require$$1 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
           addMessage("Success / 書き出し成功！\n=====> Common EventID :" + Laurus.Text2Frame.CommonEventID);
           break;
         }
+        case "DIFF_IMPORT_MESSAGE_TO_EVENT": {
+          const map_data = readJsonData(Laurus.Text2Frame.MapPath);
+          if (!map_data.events[Laurus.Text2Frame.EventID]) {
+            throw new Error(
+              "EventID not found. / EventIDが見つかりません。\nEvent ID: " + Laurus.Text2Frame.EventID
+            );
+          }
+          const pageID = Number(Laurus.Text2Frame.PageID) - 1;
+          while (!map_data.events[Laurus.Text2Frame.EventID].pages[pageID]) {
+            map_data.events[Laurus.Text2Frame.EventID].pages.push(getDefaultPage());
+          }
+          const existing_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list;
+          const diff_result = applyDiff(existing_events, event_command_list);
+          for (let wi = 0; wi < diff_result.warnings.length; wi++) {
+            addWarning(diff_result.warnings[wi]);
+          }
+          map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list = diff_result.commands.concat([getCommandBottomEvent()]);
+          writeData(Laurus.Text2Frame.MapPath, map_data);
+          if (Laurus.Text2Frame.WriteBack) {
+            writeBackToText(diff_result.commands);
+          }
+          addMessage(
+            "Success / 書き出し成功！\n======> MapID: " + Laurus.Text2Frame.MapID + " -> EventID: " + Laurus.Text2Frame.EventID + " -> PageID: " + Laurus.Text2Frame.PageID
+          );
+          break;
+        }
+        case "DIFF_IMPORT_MESSAGE_TO_CE": {
+          const ce_data = readJsonData(Laurus.Text2Frame.CommonEventPath);
+          if (ce_data.length - 1 < Laurus.Text2Frame.CommonEventID) {
+            throw new Error(
+              "Common Event not found. / コモンイベントが見つかりません。: " + Laurus.Text2Frame.CommonEventID
+            );
+          }
+          const existing_ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list;
+          const diff_ce_result = applyDiff(existing_ce_events, event_command_list);
+          for (let wi = 0; wi < diff_ce_result.warnings.length; wi++) {
+            addWarning(diff_ce_result.warnings[wi]);
+          }
+          ce_data[Laurus.Text2Frame.CommonEventID].list = diff_ce_result.commands.concat([getCommandBottomEvent()]);
+          writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
+          if (Laurus.Text2Frame.WriteBack) {
+            writeBackToText(diff_ce_result.commands);
+          }
+          addMessage("Success / 書き出し成功！\n=====> Common EventID :" + Laurus.Text2Frame.CommonEventID);
+          break;
+        }
       }
       addMessage("\n");
       addMessage(
         "Please restart RPG Maker MV(Editor) WITHOUT save. \n**セーブせずに**プロジェクトファイルを開き直してください"
       );
-      console.log(
-        "Please restart RPG Maker MV(Editor) WITHOUT save. \n**セーブせずに**プロジェクトファイルを開き直してください"
-      );
+      if (!Laurus.Text2Frame._quiet) {
+        console.log(
+          "Please restart RPG Maker MV(Editor) WITHOUT save. \n**セーブせずに**プロジェクトファイルを開き直してください"
+        );
+      }
     };
     Game_Interpreter.prototype.pluginCommandText2Frame("LIBRARY_EXPORT", [0]);
     {
