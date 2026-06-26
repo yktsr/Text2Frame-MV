@@ -88,8 +88,13 @@ export function loadModule<T>(
         candidates.push(path.join(workspaceRoot, 'js', 'plugins', filename));
     }
 
+    const tried: string[] = [];
     for (const candidate of candidates) {
-        if (!candidate || !fs.existsSync(candidate)) {
+        if (!candidate) {
+            continue;
+        }
+        if (!fs.existsSync(candidate)) {
+            tried.push('missing: ' + candidate);
             continue;
         }
         try {
@@ -98,13 +103,14 @@ export function loadModule<T>(
             // eslint-disable-next-line @typescript-eslint/no-var-requires
             const mod = require(resolved);
             if (validate(mod)) {
-                return { mod: mod as T, tried: candidates };
+                return { mod: mod as T, tried };
             }
+            tried.push('loaded-but-invalid (no expected export): ' + candidate);
         } catch (e) {
-            // Try the next candidate.
+            tried.push('require-failed: ' + candidate + ' — ' + (e instanceof Error ? e.message : String(e)));
         }
     }
-    return { tried: candidates };
+    return { tried };
 }
 
 /** Resolve the workspace root for a document (or the first workspace folder). */

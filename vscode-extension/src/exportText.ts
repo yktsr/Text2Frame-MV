@@ -122,8 +122,11 @@ export function exportToTextFile(
 ): ExportResult {
     const { mod, tried } = loadFrame2Text(context, workspaceRoot);
     if (!mod) {
-        const msg = 'Frame2Text.js が見つかりません。設定 text2frame.modulePath で本体の場所を指定してください。';
-        getOutput().appendLine('[export] Frame2Text not found. tried:\n  ' + tried.join('\n  '));
+        const out = getOutput();
+        out.appendLine('[export] Frame2Text could not be loaded. Candidates:');
+        tried.forEach((t) => out.appendLine('  - ' + t));
+        out.show(true);
+        const msg = 'Frame2Text.js を読み込めませんでした(詳細は出力 "Text2Frame Export")。設定 text2frame.modulePath で本体の場所を指定してください。';
         return { ok: false, error: msg };
     }
     try {
