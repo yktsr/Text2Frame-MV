@@ -455,7 +455,8 @@
     if (typeof require !== 'undefined') {
       const path = require('path')
       PATH_SEP = path.sep
-      BASE_PATH = path.dirname(process.mainModule.filename)
+      const mainFile = process.mainModule && process.mainModule.filename
+      BASE_PATH = mainFile ? path.dirname(mainFile) : process.cwd()
     }
     Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
     Laurus.Frame2Text.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Frame2Text.MapID).slice(
@@ -527,7 +528,9 @@
     if (typeof require !== 'undefined') {
       const path = require('path')
       PATH_SEP = path.sep
-      BASE_PATH = path.dirname(process.mainModule.filename)
+      // process.mainModule は環境によって undefined のことがある(VSCode 拡張ホスト等)。
+      const mainFile = process.mainModule && process.mainModule.filename
+      BASE_PATH = mainFile ? path.dirname(mainFile) : process.cwd()
     }
 
     Laurus.Frame2Text.ExecMode = command.toUpperCase()
