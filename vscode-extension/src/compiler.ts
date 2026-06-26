@@ -113,6 +113,43 @@ export function loadModule<T>(
     return { tried };
 }
 
+/**
+ * Data-change guard: remember the data file's mtime whenever the extension
+ * writes it (deploy) or pulls from it (export), so a later deploy can detect
+ * that the JSON changed externally (e.g. edited in RPG Maker) and avoid
+ * silently overwriting it.
+ */
+function mtimeKey(dataPath: string): string {
+    return 't2f.dataMtime:' + dataPath;
+}
+
+export function dataMtime(dataPath: string): number | undefined {
+    try {
+        return fs.statSync(dataPath).mtimeMs;
+    } catch (e) {
+        return undefined;
+    }
+}
+
+export function recordDataState(context: vscode.ExtensionContext, dataPath: string): void {
+    const m = dataMtime(dataPath);
+    if (m !== undefined) {
+        context.workspaceState.update(mtimeKey(dataPath), m);
+    }
+}
+
+export function dataChangedExternally(context: vscode.ExtensionContext, dataPath: string): boolean {
+    const baseline = context.workspaceState.get<number>(mtimeKey(dataPath));
+    if (baseline === undefined) {
+        return false; // no baseline yet → cannot tell, allow
+    }
+    const current = dataMtime(dataPath);
+    if (current === undefined) {
+        return false; // file missing → let the deploy path report it
+    }
+    return current > baseline + 1; // small epsilon for fs timestamp precision
+}
+
 /** Resolve the workspace root for a document (or the first workspace folder). */
 export function workspaceRootFor(document?: vscode.TextDocument): string | undefined {
     if (document) {

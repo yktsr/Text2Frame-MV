@@ -6,7 +6,8 @@ import {
     loadModule,
     workspaceRootFor,
     mapPathFor,
-    commonEventsPathFor
+    commonEventsPathFor,
+    recordDataState
 } from './compiler';
 
 /**
@@ -146,6 +147,14 @@ export function exportToTextFile(
             fs.mkdirSync(dir, { recursive: true });
         }
         fs.writeFileSync(target.textPath, header + '\n' + body + '\n', 'utf8');
+        // Record the data baseline: after a pull, text matches data, so a later
+        // deploy should not flag this data file as externally changed.
+        const dataPath = target.kind === 'common'
+            ? commonEventsPathFor(workspaceRoot)
+            : (target.mapId ? mapPathFor(workspaceRoot, target.mapId) : undefined);
+        if (dataPath) {
+            recordDataState(context, dataPath);
+        }
         return { ok: true, textPath: target.textPath };
     } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : String(e) };

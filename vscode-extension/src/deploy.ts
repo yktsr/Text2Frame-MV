@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, isDeployable, loadModule, workspaceRootFor, frontMatterBody, resolveTarget } from './compiler';
+import { parseFrontMatter, isDeployable, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState } from './compiler';
 import { exportToTextFile, ExportTarget } from './exportText';
 
 export { isDeployable };
@@ -52,11 +52,11 @@ function loadCompiler(context: vscode.ExtensionContext, workspaceRoot: string | 
 }
 
 /** Deploy a single document. Returns the structured result (or undefined when skipped). */
-export function deployDocument(
+export async function deployDocument(
     document: vscode.TextDocument,
     context: vscode.ExtensionContext,
     deployDiagnostics: vscode.DiagnosticCollection
-): ApplyResult | undefined {
+): Promise<ApplyResult | undefined> {
     const workspaceRoot = workspaceRootFor(document);
     if (!workspaceRoot) {
         vscode.window.showErrorMessage('Text2Frame: ワークスペースフォルダが見つかりません。');
@@ -90,6 +90,50 @@ export function deployDocument(
 
     const config = vscode.workspace.getConfiguration('text2frame');
     const strategy = config.get<string>('strategy') || 'diff';
+    const dataPath = (resolved.opts.mapPath || resolved.opts.commonEventPath) as string;
+    const out = getOutput();
+    const time = new Date().toLocaleTimeString();
+
+    // Data-change guard: the JSON changed externally since we last wrote/pulled it.
+    // Overwriting it with (possibly stale) text would lose those changes.
+    if (dataPath && dataChangedExternally(context, dataPath)) {
+        const choice = await vscode.window.showWarningMessage(
+            `Text2Frame: ${path.basename(dataPath)} が外部で更新されています。テキストで上書きすると失われる可能性があります。`,
+            { modal: true },
+            '上書きする',
+            '先に取り込む(pull)'
+        );
+        if (choice === '先に取り込む(pull)') {
+            const pullTarget: ExportTarget = {
+                kind: meta.kind === 'common' ? 'common' : 'event',
+                mapId: meta.mapId,
+                eventId: meta.eventId,
+                pageId: meta.pageId || '1',
+                commonEventId: meta.commonEventId,
+                textPath: document.uri.fsPath,
+                frontMatterSource: document.getText()
+            };
+            const ex = exportToTextFile(context, workspaceRoot, pullTarget);
+            recordDataState(context, dataPath);
+            if (ex.ok) {
+                vscode.window.showInformationMessage('Text2Frame: データを取り込みました。内容を確認して保存し直してください。');
+            } else {
+                vscode.window.showErrorMessage('Text2Frame: 取り込み失敗 - ' + (ex.error || ''));
+            }
+            return undefined;
+        }
+        if (choice !== '上書きする') {
+            out.appendLine(`[${time}] CANCELLED (external change) ${path.basename(dataPath)}`);
+            return undefined;
+        }
+        // Snapshot the about-to-be-overwritten data so it can be recovered.
+        try {
+            fs.copyFileSync(dataPath, dataPath + '.conflict.bak');
+            out.appendLine(`[${time}] saved conflict backup: ${path.basename(dataPath)}.conflict.bak`);
+        } catch (e) {
+            // best effort
+        }
+    }
 
     const result = mod.applyTextFile({
         textPath: document.uri.fsPath,
@@ -99,9 +143,8 @@ export function deployDocument(
         backup: true
     });
 
-    const out = getOutput();
-    const time = new Date().toLocaleTimeString();
     if (result.ok) {
+        recordDataState(context, dataPath);
         deployDiagnostics.delete(document.uri);
         out.appendLine(`[${time}] OK  ${resolved.label}  <- ${path.basename(document.uri.fsPath)}` +
             (result.warnings.length ? `  (${result.warnings.length} warnings)` : ''));
@@ -193,13 +236,20 @@ export function deployFile(
         return { ok: false, textPath: filePath, warnings: [], error: e instanceof Error ? e.message : String(e) };
     }
     const strategy = vscode.workspace.getConfiguration('text2frame').get<string>('strategy') || 'diff';
-    return mod.applyTextFile({
+    const result = mod.applyTextFile({
         textPath: filePath,
         ...resolved.opts,
         strategy,
         overwrite: strategy === 'import',
         backup: true
     });
+    if (result && result.ok) {
+        const dataPath = (resolved.opts.mapPath || resolved.opts.commonEventPath) as string;
+        if (dataPath) {
+            recordDataState(context, dataPath);
+        }
+    }
+    return result;
 }
 
 /** Command: compile the active text file and show the resulting event JSON in a preview. */
@@ -279,7 +329,7 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
         }
         timers.set(key, setTimeout(() => {
             timers.delete(key);
-            flashResult(deployDocument(document, context, deployDiagnostics));
+            deployDocument(document, context, deployDiagnostics).then(flashResult);
         }, 250));
     };
 
@@ -293,7 +343,7 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
                 return;
             }
             editor.document.save().then(() => {
-                flashResult(deployDocument(editor.document, context, deployDiagnostics));
+                deployDocument(editor.document, context, deployDiagnostics).then(flashResult);
             });
         }),
         vscode.commands.registerCommand('text2frame.toggleDeployOnSave', () => {
