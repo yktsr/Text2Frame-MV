@@ -138,37 +138,37 @@
           "type": "string",
           "enum": ["diff", "import"],
           "default": "diff",
-          "description": "Deploy strategy. diff = merge minimally; import = overwrite the event. / デプロイ方式。diff=最小マージ, import=イベント上書き。"
+          "description": "デプロイ方式。diff=最小マージ、import=イベントを上書き。 / Deploy strategy: diff = merge minimally, import = overwrite the event."
         },
-        "text2frame.syncOnSave": {
+        "text2frame.normalizeAfterDeploy": {
           "type": "boolean",
           "default": false,
-          "description": "After deploy-on-save, re-export the data back to the text file (normalize / keep in sync). The saved file is rewritten and the editor reloads. / 保存時デプロイ後にデータからテキストへ書き戻して同期(保存ファイルは正規化され再読込されます)。"
+          "description": "保存時デプロイの後、データからテキストへ書き戻してテキストを正準形に整形します(保存ファイルが書き換わり、エディタが再読込されます)。外部変更の取り込みではありません。 / After deploy-on-save, re-export data back to the text file to normalize it (the saved file is rewritten and the editor reloads). This does not pull external changes."
         },
         "text2frame.modulePath": {
           "type": "string",
           "default": "",
-          "description": "Optional explicit path to Text2Frame.js. Leave empty to auto-resolve (bundled lib, monorepo sibling, or workspace). / Text2Frame 本体のパス(空で自動解決)。"
+          "description": "Text2Frame 本体(Text2Frame.js)のパスを明示指定。空なら自動解決(同梱lib→モノレポ兄弟→ワークスペース)。 / Explicit path to Text2Frame.js. Empty = auto-resolve (bundled lib, monorepo sibling, or workspace)."
         },
         "text2frame.englishTag": {
           "type": "boolean",
           "default": true,
-          "description": "Use English tags when exporting (data -> text). / 書き出し時に英語タグを使う。"
+          "description": "書き出し(データ→テキスト)時に英語タグを使う。 / Use English tags when exporting (data -> text)."
         },
         "text2frame.locale": {
           "type": "string",
           "default": "ja",
-          "description": "Locale subfolder under the text base dir for export. / 書き出し先のロケールサブフォルダ。"
+          "description": "書き出し先のロケールサブフォルダ(テキスト基準ディレクトリ配下)。 / Locale subfolder under the text base dir for export."
         },
         "text2frame.textBaseDir": {
           "type": "string",
           "default": "text",
-          "description": "Base directory (relative to workspace) for text files. / テキストの基準ディレクトリ。"
+          "description": "テキストファイルの基準ディレクトリ(ワークスペース相対)。 / Base directory (relative to workspace) for text files."
         },
         "text2frame.dataDir": {
           "type": "string",
           "default": "data",
-          "description": "RPG Maker data directory (relative to workspace) holding Map###.json / CommonEvents.json. / データフォルダ(ワークスペース相対)。"
+          "description": "Map###.json / CommonEvents.json を置くデータフォルダ(ワークスペース相対)。 / RPG Maker data directory (relative to workspace) holding Map###.json / CommonEvents.json."
         }
       }
     }

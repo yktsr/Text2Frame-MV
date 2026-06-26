@@ -153,8 +153,8 @@ export async function deployDocument(
             vscode.window.showWarningMessage(`Text2Frame: デプロイ完了 (${result.warnings.length} 件の警告)`, '詳細')
                 .then((pick) => { if (pick) { out.show(true); } });
         }
-        // Sync-back: re-export the merged data to text (normalize), keeping front matter.
-        if (vscode.workspace.getConfiguration('text2frame').get<boolean>('syncOnSave', false)) {
+        // Normalize: re-export the merged data to text (canonical form), keeping front matter.
+        if (vscode.workspace.getConfiguration('text2frame').get<boolean>('normalizeAfterDeploy', false)) {
             const syncTarget: ExportTarget = {
                 kind: meta.kind === 'common' ? 'common' : 'event',
                 mapId: meta.mapId,
@@ -166,9 +166,9 @@ export async function deployDocument(
             };
             const ex = exportToTextFile(context, workspaceRoot, syncTarget);
             if (ex.ok) {
-                out.appendLine(`[${time}] SYNC -> ${path.basename(document.uri.fsPath)}`);
+                out.appendLine(`[${time}] NORMALIZE -> ${path.basename(document.uri.fsPath)}`);
             } else {
-                out.appendLine(`[${time}] SYNC failed: ${ex.error}`);
+                out.appendLine(`[${time}] NORMALIZE failed: ${ex.error}`);
             }
         }
     } else {
