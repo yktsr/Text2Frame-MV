@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { parseFrontMatter, isDeployable, loadModule, workspaceRootFor, frontMatterBody, resolveTarget } from './compiler';
+import { exportToTextFile, ExportTarget } from './exportText';
 
 export { isDeployable };
 
@@ -108,6 +109,24 @@ export function deployDocument(
         if (result.warnings.length) {
             vscode.window.showWarningMessage(`Text2Frame: デプロイ完了 (${result.warnings.length} 件の警告)`, '詳細')
                 .then((pick) => { if (pick) { out.show(true); } });
+        }
+        // Sync-back: re-export the merged data to text (normalize), keeping front matter.
+        if (vscode.workspace.getConfiguration('text2frame').get<boolean>('syncOnSave', false)) {
+            const syncTarget: ExportTarget = {
+                kind: meta.kind === 'common' ? 'common' : 'event',
+                mapId: meta.mapId,
+                eventId: meta.eventId,
+                pageId: meta.pageId || '1',
+                commonEventId: meta.commonEventId,
+                textPath: document.uri.fsPath,
+                frontMatterSource: document.getText()
+            };
+            const ex = exportToTextFile(context, workspaceRoot, syncTarget);
+            if (ex.ok) {
+                out.appendLine(`[${time}] SYNC -> ${path.basename(document.uri.fsPath)}`);
+            } else {
+                out.appendLine(`[${time}] SYNC failed: ${ex.error}`);
+            }
         }
     } else {
         out.appendLine(`[${time}] FAIL  ${resolved.label}  <- ${path.basename(document.uri.fsPath)}  ${result.error}`);

@@ -140,6 +140,11 @@
           "default": "diff",
           "description": "Deploy strategy. diff = merge minimally; import = overwrite the event. / デプロイ方式。diff=最小マージ, import=イベント上書き。"
         },
+        "text2frame.syncOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "After deploy-on-save, re-export the data back to the text file (normalize / keep in sync). The saved file is rewritten and the editor reloads. / 保存時デプロイ後にデータからテキストへ書き戻して同期(保存ファイルは正規化され再読込されます)。"
+        },
         "text2frame.modulePath": {
           "type": "string",
           "default": "",

@@ -82,7 +82,9 @@ commonEventId: 3
 | 設定キー | 既定値 | 説明 |
 | --- | --- | --- |
 | `text2frame.strategy` | `diff` | `diff`＝最小マージ、`import`＝イベントを上書き |
+| `text2frame.syncOnSave` | `false` | 保存時デプロイ後にデータからテキストへ書き戻して同期(正規化)。保存ファイルが書き換わりエディタが再読込されます |
 | `text2frame.modulePath` | （空） | `Text2Frame.js` のパスを明示指定（空なら自動解決） |
+| `text2frame.dataDir` | `data` | データフォルダ(ワークスペース相対) |
 
 ### 動作要件
 
