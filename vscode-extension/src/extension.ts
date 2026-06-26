@@ -3,6 +3,25 @@ import { registerDeployFeature, showCompiledJson } from './deploy';
 import { exportCurrentFile, exportCurrentFileForTranslation } from './exportText';
 import { deployAll, exportAll } from './batch';
 import { registerTreeView } from './tree';
+import { parseFrontMatter } from './compiler';
+
+/**
+ * Treat a .txt file that carries Text2Frame front matter as the `text2frame`
+ * language, so highlighting / completion / hover / diagnostics apply without
+ * renaming files to .t2f. Only front-matter .txt files are affected.
+ */
+function maybeAssignLanguage(document: vscode.TextDocument): void {
+    if (document.languageId === 'text2frame' || document.uri.scheme !== 'file') {
+        return;
+    }
+    if (!document.fileName.toLowerCase().endsWith('.txt')) {
+        return;
+    }
+    if (!parseFrontMatter(document.getText()).hasFrontMatter) {
+        return;
+    }
+    vscode.languages.setTextDocumentLanguage(document, 'text2frame');
+}
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Text2Frame Language Support is now active!');
@@ -11,6 +30,13 @@ export function activate(context: vscode.ExtensionContext) {
     registerDeployFeature(context);
     // Activity Bar tree (Maps / Events / Pages / Common Events).
     registerTreeView(context);
+
+    // Auto-assign the text2frame language to front-matter .txt files (open now + later).
+    vscode.workspace.textDocuments.forEach(maybeAssignLanguage);
+    context.subscriptions.push(
+        vscode.workspace.onDidOpenTextDocument(maybeAssignLanguage),
+        vscode.workspace.onDidSaveTextDocument(maybeAssignLanguage)
+    );
 
     // Export / batch / preview commands.
     context.subscriptions.push(
