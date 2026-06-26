@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { workspaceRootFor } from './compiler';
+import { workspaceRootFor, dataDirFor } from './compiler';
 import { exportToTextFile, ExportTarget } from './exportText';
 import { deployFile } from './deploy';
 
@@ -63,10 +63,13 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
 
     getChildren(element?: T2FNode): T2FNode[] {
         const root = workspaceRootFor();
-        if (!root || !fs.existsSync(path.join(root, 'data'))) {
+        if (!root) {
             return [];
         }
-        const dataDir = path.join(root, 'data');
+        const dataDir = dataDirFor(root);
+        if (!fs.existsSync(dataDir)) {
+            return [];
+        }
 
         if (!element) {
             const nodes: T2FNode[] = [];

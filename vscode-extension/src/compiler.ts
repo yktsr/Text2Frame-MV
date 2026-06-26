@@ -118,13 +118,19 @@ export function workspaceRootFor(document?: vscode.TextDocument): string | undef
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 }
 
-/** data/Map###.json path from a map id, under the workspace data dir. */
+/** Absolute data directory for a workspace (configurable via text2frame.dataDir, default "data"). */
+export function dataDirFor(workspaceRoot: string): string {
+    const configured = vscode.workspace.getConfiguration('text2frame').get<string>('dataDir', 'data') || 'data';
+    return path.resolve(workspaceRoot, configured);
+}
+
+/** Map###.json path from a map id, under the workspace data dir. */
 export function mapPathFor(workspaceRoot: string, mapId: string | number): string {
-    return path.join(workspaceRoot, 'data', 'Map' + ('000' + String(mapId)).slice(-3) + '.json');
+    return path.join(dataDirFor(workspaceRoot), 'Map' + ('000' + String(mapId)).slice(-3) + '.json');
 }
 
 export function commonEventsPathFor(workspaceRoot: string): string {
-    return path.join(workspaceRoot, 'data', 'CommonEvents.json');
+    return path.join(dataDirFor(workspaceRoot), 'CommonEvents.json');
 }
 
 /**

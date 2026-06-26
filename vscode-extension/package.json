@@ -159,6 +159,11 @@
           "type": "string",
           "default": "text",
           "description": "Base directory (relative to workspace) for text files. / テキストの基準ディレクトリ。"
+        },
+        "text2frame.dataDir": {
+          "type": "string",
+          "default": "data",
+          "description": "RPG Maker data directory (relative to workspace) holding Map###.json / CommonEvents.json. / データフォルダ(ワークスペース相対)。"
         }
       }
     }

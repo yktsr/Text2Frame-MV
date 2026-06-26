@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule } from './compiler';
+import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor } from './compiler';
 import { exportToTextFile, ExportTarget } from './exportText';
 
 /**
@@ -106,9 +106,9 @@ export function exportAll(context: vscode.ExtensionContext): void {
         vscode.window.showErrorMessage('Text2Frame: ワークスペースフォルダが見つかりません。');
         return;
     }
-    const dataDir = path.join(root, 'data');
+    const dataDir = dataDirFor(root);
     if (!fs.existsSync(dataDir)) {
-        vscode.window.showErrorMessage('Text2Frame: data/ フォルダが見つかりません。');
+        vscode.window.showErrorMessage('Text2Frame: データフォルダが見つかりません: ' + dataDir);
         return;
     }
     const locale = localeSetting();
