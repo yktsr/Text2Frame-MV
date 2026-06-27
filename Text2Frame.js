@@ -9807,15 +9807,39 @@
       const warnings = []
       const resultBlocks = []
       const DIFF_PREVIEW_LENGTH = 80
+      const previewOf = function (block) {
+        const full = JSON.stringify(block)
+        return full.length > DIFF_PREVIEW_LENGTH ? full.substring(0, DIFF_PREVIEW_LENGTH) + '...' : full
+      }
 
-      for (let idx = 0; idx < diff.length; idx++) {
-        const d = diff[idx]
-        if (d.type === 'equal' || d.type === 'added') {
-          resultBlocks.push(d.block)
-        } else if (d.type === 'removed') {
-          const full = JSON.stringify(d.block)
-          const preview = full.length > DIFF_PREVIEW_LENGTH ? full.substring(0, DIFF_PREVIEW_LENGTH) + '...' : full
-          warnings.push('Block removed / ブロックが削除されます: ' + preview)
+      // LCS では「内容変更」が removed(旧)+added(新) のペアとして現れる。非 equal の
+      // 連続領域内で removed と added をペアにし、ペアは「変更」、余った removed だけを
+      // 「削除」として警告する(変更を削除と誤警告しないため)。結果リストの構築順
+      // (equal/added を出現順に push、removed は除外)は従来と同一。
+      let idx = 0
+      while (idx < diff.length) {
+        if (diff[idx].type === 'equal') {
+          resultBlocks.push(diff[idx].block)
+          idx++
+          continue
+        }
+        const removedBlocks = []
+        const addedBlocks = []
+        while (idx < diff.length && diff[idx].type !== 'equal') {
+          if (diff[idx].type === 'added') {
+            resultBlocks.push(diff[idx].block)
+            addedBlocks.push(diff[idx].block)
+          } else {
+            removedBlocks.push(diff[idx].block)
+          }
+          idx++
+        }
+        const changed = Math.min(removedBlocks.length, addedBlocks.length)
+        for (let k = 0; k < changed; k++) {
+          warnings.push('Block changed / ブロックが変更されます: ' + previewOf(removedBlocks[k]) + ' -> ' + previewOf(addedBlocks[k]))
+        }
+        for (let k = changed; k < removedBlocks.length; k++) {
+          warnings.push('Block removed / ブロックが削除されます: ' + previewOf(removedBlocks[k]))
         }
       }
 

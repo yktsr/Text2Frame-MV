@@ -40,8 +40,10 @@ describe('Diff (applyDiff) Test', function () {
     const existing = msgBlock('Hello').concat(msgBlock('Goodbye')).concat([bottom])
     const new_commands = compile(text).concat([bottom])
     const result = applyDiff(existing, new_commands)
-    // "Hello" block removed → 1 warning; "Hi" block added
+    // "Hello" -> "Hi" is a modification, not a removal: warn as "changed".
     expect(result.warnings).to.have.lengthOf(1)
+    expect(result.warnings[0]).to.include('Block changed')
+    expect(result.warnings[0]).to.not.include('Block removed')
     const expected = msgBlock('Hi').concat(msgBlock('Goodbye')).concat([bottom])
     expect(result.commands.concat([bottom])).to.eql(expected)
   })

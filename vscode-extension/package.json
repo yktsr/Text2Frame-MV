@@ -66,6 +66,14 @@
         "title": "Text2Frame: すべてのゲームイベントをテキストに書き出す / Export All"
       },
       {
+        "command": "text2frame.createTranslationSet",
+        "title": "Text2Frame: 翻訳セットを作成 (targetLocale) / Create Translation Set"
+      },
+      {
+        "command": "text2frame.deployTranslationSet",
+        "title": "Text2Frame: 翻訳をゲームに反映 (targetLocale) / Deploy Translation"
+      },
+      {
         "command": "text2frame.tree.refresh",
         "title": "Text2Frame: 更新 / Refresh",
         "icon": "$(refresh)"
@@ -141,6 +149,16 @@
           "command": "text2frame.exportAll",
           "when": "view == text2frameExplorer",
           "group": "1_batch@2"
+        },
+        {
+          "command": "text2frame.createTranslationSet",
+          "when": "view == text2frameExplorer",
+          "group": "2_translation@1"
+        },
+        {
+          "command": "text2frame.deployTranslationSet",
+          "when": "view == text2frameExplorer",
+          "group": "2_translation@2"
         }
       ],
       "commandPalette": [
@@ -199,6 +217,16 @@
           "type": "string",
           "default": "",
           "description": "Text2Frame 本体(Text2Frame.js)のパスを明示指定。通常指定する必要はありません。空なら自動解決されます。 / Explicit path to Text2Frame.js. Empty = auto-resolve."
+        },
+        "text2frame.sourceLocale": {
+          "type": "string",
+          "default": "ja",
+          "description": "翻訳元の言語(原文)。翻訳セット作成時の front matter に記録される。 / Source language for the translation set."
+        },
+        "text2frame.targetLocale": {
+          "type": "string",
+          "default": "en",
+          "description": "翻訳先の言語。翻訳セット作成・デプロイの対象サブフォルダ (textBaseDir/<targetLocale>) になる。 / Target language; the text2frame.textBaseDir/<targetLocale> subfolder used by Create/Deploy Translation."
         }
       }
     }
