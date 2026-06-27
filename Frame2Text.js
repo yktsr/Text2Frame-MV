@@ -1311,7 +1311,10 @@
         if (event.code === 401) {
           const showText = event.parameters[0]
           addNewLineIndent(indent)
-          text += showText
+          // 空のメッセージ行は <br> マーカーにする。素の空行は「ウィンドウ区切り」と
+          // 解釈されるため(空行+平文=新ウィンドウ)、空401をそのまま空行で出すと
+          // 往復で失われたりウィンドウが分割される。<br> は compile が空401へ戻す。
+          text += (showText === '') ? '<br>' : showText
         }
         if (event.code === 102) {
           const background = getBackgroundValue(event.parameters[4]) + comma

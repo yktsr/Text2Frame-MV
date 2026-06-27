@@ -9413,6 +9413,12 @@
         return [getAbortBattle()]
       }
 
+      // 空のメッセージ行マーカー。decompile が空401を <br> として出力する。
+      // 通常のテキスト行(401)と同じ経路に乗せ、空文字の401として復元する。
+      if (text.match(/^\s*<br>\s*$/i)) {
+        return [getTextFrameEvent('')]
+      }
+
       if (text.match(/\S/g)) {
         logger.log('push: ', text)
         event_command_list.push(getTextFrameEvent(text))
