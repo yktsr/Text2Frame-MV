@@ -31,6 +31,9 @@ export interface ExportTarget {
     /** Reuse this file's existing front matter header if present. */
     frontMatterSource?: string;
     translationOnly?: boolean;
+    /** Optional locale metadata (informational; ignored on deploy). */
+    locale?: string;
+    sourceLocale?: string;
 }
 
 export interface ExportResult {
@@ -65,6 +68,13 @@ function renderFrontMatter(target: ExportTarget, version?: string): string {
     const lines = ['---'];
     // 来歴: 書き出しに使った変換スクリプトのバージョン(import 時は無視される)。
     lines.push(`generator: text2frame-mv@${version || 'unknown'}`);
+    // 翻訳メタ(任意・情報用。import 時は無視される)。
+    if (target.sourceLocale) {
+        lines.push(`sourceLocale: ${target.sourceLocale}`);
+    }
+    if (target.locale) {
+        lines.push(`locale: ${target.locale}`);
+    }
     lines.push(`kind: ${target.kind}`);
     if (target.kind === 'common') {
         lines.push(`commonEventId: ${target.commonEventId}`);
