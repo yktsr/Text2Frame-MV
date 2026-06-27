@@ -58,9 +58,12 @@ export function isDeployable(document: vscode.TextDocument): boolean {
 
 /**
  * Locate and load a compiler module by filename (Text2Frame.js / Frame2Text.js).
- * Resolution order: configured modulePath dir -> bundled lib/ -> monorepo sibling
- * -> workspace root -> workspace js/plugins. Returns the first module that
- * passes `validate` (e.g. exports applyTextFile / decompile).
+ * Resolution order: configured modulePath dir -> monorepo sibling (../, dev)
+ * -> bundled lib/ (packaged .vsix) -> workspace root -> workspace js/plugins.
+ * Returns the first module that passes `validate` (e.g. exports applyTextFile /
+ * decompile). The sibling precedes lib/ so editing the raw compiler during F5
+ * development takes effect without re-bundling; packaged installs have no ../
+ * sibling and fall through to the self-contained lib/ copy.
  *
  * The RAW .js files are the Node entry points; the browser-oriented .cjs.js
  * bundles do not resolve Node builtins when run outside a bundler.
@@ -81,8 +84,11 @@ export function loadModule<T>(
         const base = path.isAbsolute(configured) || !workspaceRoot ? configured : path.join(workspaceRoot, configured);
         candidates.push(path.join(path.dirname(base), filename));
     }
-    candidates.push(path.join(extDir, 'lib', filename));
+    // 開発(モノレポ F5)では生ファイル ../Text2Frame.js を優先する。こうすると
+    // 本体を編集しても再バンドル無しで反映される。パッケージ版(.vsix)では ../ に
+    // 本体が無いため次の同梱 lib/ にフォールバックする。
     candidates.push(path.join(extDir, '..', filename));
+    candidates.push(path.join(extDir, 'lib', filename));
     if (workspaceRoot) {
         candidates.push(path.join(workspaceRoot, filename));
         candidates.push(path.join(workspaceRoot, 'js', 'plugins', filename));
