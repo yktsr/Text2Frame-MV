@@ -71,10 +71,32 @@ const stripTail = (list) => {
 // MV→MZ 正規化なので、末尾の空 "" 第5引数は同一とみなす(実際の名前差は保持)。
 // --strict=true で無効化(生の差分を見る)。
 const strict = String(opts.strict) === 'true'
+// 無害な MV/MZ フォーマット差を吸収する(意味は同一)。--strict=true で全て無効化。
+//   101 文章   : MV=4 / MZ=5(末尾=空名前 "")
+//   124 タイマー: 停止時の秒数省略 [op] と [op,0] は同一
+//   204 スクロール: MV=3 / MZ=4(末尾 wait=false)
+//   205 移動ルート: ルート内コマンドの indent(0/null)は RPG ツクールが無視する
 const normalizeCmd = (c) => {
-  if (!strict && c && c.code === 101 && Array.isArray(c.parameters) &&
-      c.parameters.length === 5 && c.parameters[4] === '') {
+  if (strict || !c || !Array.isArray(c.parameters)) return c
+  if (c.code === 101 && c.parameters.length === 5 && c.parameters[4] === '') {
     return Object.assign({}, c, { parameters: c.parameters.slice(0, 4) })
+  }
+  if (c.code === 124 && c.parameters.length === 2 && c.parameters[1] === 0) {
+    return Object.assign({}, c, { parameters: c.parameters.slice(0, 1) })
+  }
+  if (c.code === 204 && c.parameters.length === 4 && c.parameters[3] === false) {
+    return Object.assign({}, c, { parameters: c.parameters.slice(0, 3) })
+  }
+  if (c.code === 205 && c.parameters[1] && Array.isArray(c.parameters[1].list)) {
+    const route = c.parameters[1]
+    const list = route.list.map((rc) =>
+      (rc && Object.prototype.hasOwnProperty.call(rc, 'indent')) ? Object.assign({}, rc, { indent: null }) : rc)
+    return Object.assign({}, c, { parameters: [c.parameters[0], Object.assign({}, route, { list })] })
+  }
+  // 505 移動ルートの個別ステップ: parameters[0] はルートコマンド。その indent も無意味
+  if (c.code === 505 && c.parameters[0] && typeof c.parameters[0] === 'object' &&
+      Object.prototype.hasOwnProperty.call(c.parameters[0], 'indent')) {
+    return Object.assign({}, c, { parameters: [Object.assign({}, c.parameters[0], { indent: null })].concat(c.parameters.slice(1)) })
   }
   return c
 }
@@ -183,14 +205,19 @@ for (const t of targets) {
   if (listsEqual(snapshot[t.key], list)) {
     identical++
   } else {
+    const a = norm(snapshot[t.key])
+    const b = norm(list)
     const i = firstDiffIndex(snapshot[t.key], list)
+    const bc = (i >= 0 && a[i]) ? a[i].code : 'end'
+    const ac = (i >= 0 && b[i]) ? b[i].code : 'end'
     mismatches.push({
       key: t.key,
       reason: 'list differs at index ' + i,
-      lenBefore: norm(snapshot[t.key]).length,
-      lenAfter: norm(list).length,
-      before: i >= 0 ? canon(norm(snapshot[t.key])[i]) : '(end)',
-      after: i >= 0 ? canon(norm(list)[i]) : '(end)'
+      lenBefore: a.length,
+      lenAfter: b.length,
+      family: bc + '->' + ac + (a.length !== b.length ? ' (len change)' : ' (same len)'),
+      before: i >= 0 ? canon(a[i]) : '(end)',
+      after: i >= 0 ? canon(b[i]) : '(end)'
     })
   }
 }
@@ -207,6 +234,12 @@ if (deployFails.length) {
   deployFails.slice(0, maxDiffs).forEach((f) => console.log('FAIL ' + f.key + '  ' + f.error + (f.line ? '  @ ' + f.line : '')))
 }
 if (mismatches.length) {
+  const fam = {}
+  mismatches.forEach((d) => { const f = d.family || 'unknown'; fam[f] = (fam[f] || 0) + 1 })
+  console.log('\n--- mismatch families (by first-diff code) ---')
+  Object.keys(fam).sort((x, y) => fam[y] - fam[x]).forEach((f) => console.log('  ' + fam[f] + '\t' + f))
+}
+if (mismatches.length && maxDiffs > 0) {
   console.log('\n--- mismatches (first ' + Math.min(maxDiffs, mismatches.length) + ') ---')
   mismatches.slice(0, maxDiffs).forEach((d) => {
     console.log('DIFF ' + d.key + '  ' + d.reason + (d.lenBefore !== undefined ? '  (len ' + d.lenBefore + '->' + d.lenAfter + ')' : ''))
