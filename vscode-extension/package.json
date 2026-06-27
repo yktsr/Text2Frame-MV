@@ -36,25 +36,25 @@
     "commands": [
       {
         "command": "text2frame.deployCurrentFile",
-        "title": "Text2Frame: 現在のファイルをデプロイ / Deploy Current File",
+        "title": "Text2Frame: 現在のファイルをゲームに反映 / Deploy Current File",
         "icon": "$(rocket)"
       },
       {
         "command": "text2frame.toggleDeployOnSave",
-        "title": "Text2Frame: 保存時の自動デプロイを切替 / Toggle Deploy on Save"
+        "title": "Text2Frame: 保存時に自動でゲームに反映する / Toggle Deploy on Save"
       },
       {
         "command": "text2frame.exportCurrentFile",
-        "title": "Frame2Text: データからテキストへ書き出し / Export Current File from Data",
+        "title": "Frame2Text: ゲームからテキストへ書き出し / Export Current File from Data",
         "icon": "$(cloud-download)"
       },
       {
         "command": "text2frame.exportForTranslation",
-        "title": "Text2Frame: 翻訳用に書き出し(会話のみ) / Export for Translation (conversation only)"
+        "title": "Text2Frame: 会話イベントのみ書き出し / Export for Translation (conversation only)"
       },
       {
         "command": "text2frame.showCompiledJson",
-        "title": "Text2Frame: コンパイル結果JSONを表示 / Show Compiled JSON",
+        "title": "Text2Frame: コンパイル結果を表示 / Show Compiled JSON",
         "icon": "$(json)"
       },
       {
