@@ -153,6 +153,20 @@ describe('choice / branch compile invariants', function () {
     expect(function () { text2frame.compile('<WhenCancel>\nhi') }).to.throw(/WhenCancel/)
   })
 
+  it('resolves <End> as choice-end (404), not if-end (412), when the last When branch ends with a SetMovementRoute', function () {
+    const body = [
+      '<ShowChoices: Window, Right, 1, 2>',
+      '<When: はい>',
+      '<TransferPlayer: Direct[6][15][11], Retain, Black>',
+      '<When: いいえ>',
+      '<SetMovementRoute: Player, OFF, OFF, Wait for Completion>',
+      '<End>'
+    ].join('\n')
+    const cmds = text2frame.compile(body)
+    expect(cmds.some(function (c) { return c.code === 404 })).to.equal(true)
+    expect(cmds.some(function (c) { return c.code === 412 })).to.equal(false)
+  })
+
   it('compiles a Skip(109) block: <Skip> body <SkipEnd> -> 109, body indent+1, {0}, 409', function () {
     const body = ['<Skip>', '<Switch: 43, ON>', '<SkipEnd>'].join('\n')
     const cmds = text2frame.compile(body)

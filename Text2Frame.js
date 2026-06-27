@@ -7670,9 +7670,17 @@
 
       // Conditional Branch (End)
       if (conditional_branch_end) {
-        const current_block = block_stack.slice(-1)[0]
         const CHOICE_CODE = 102
         const BATTLE_PROCESSING_CODE = 301
+        const MOVEMENT_ROUTE_CODE = 205
+        // 末尾が移動ルート(205)なら、その分岐は既に終わっている。閉じ判定の前に
+        // 取り除く(<When>分岐の末尾が<SetMovementRoute>のとき、選択肢が隠れて
+        // <End> が選択肢終了(404)ではなく分岐終了(412)と誤判定されるのを防ぐ)。
+        // block_stack は呼び出し元と共有参照なので、ここでの pop で後続の閉じ処理も整合する。
+        while (block_stack.length > 0 && block_stack[block_stack.length - 1].code === MOVEMENT_ROUTE_CODE) {
+          block_stack.pop()
+        }
+        const current_block = block_stack.slice(-1)[0]
 
         if (Boolean(current_block) && current_block.code === CHOICE_CODE) {
           return [getBlockEnd(), getShowChoiceEnd()]
