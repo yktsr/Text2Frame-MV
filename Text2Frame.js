@@ -9411,8 +9411,10 @@
       const MOVEMENT_COMMANDS_CODE = 505
 
       // --- ブロックノード(選択肢/分岐/戦闘/移動ルート)の小さな型付きモデル ---
-      // block_stack の各要素は { code, event, indent, ...(index|winCode) }。
-      // 種別(code)で入れ子を判別し、不変条件を requireTopBlock で検証する。
+      // block_stack の各要素は { code, event, indent, ...(index|winCode) }。種別(code)で
+      // 入れ子を判別する。requireTopBlock は「親を書き換える」構文(When/WhenCancel/戦闘分岐)
+      // の不変条件検証に使う。ループ/BreakLoop 等の「単に出力するだけ」の構文は、テキスト
+      // コンパイラが意図的に寛容なため強制しない(タグ単体での変換も許す)。
       const topBlock = () => block_stack[block_stack.length - 1]
       const requireTopBlock = (codes, tag) => {
         const top = topBlock()
@@ -9532,7 +9534,9 @@
         // ショップの処理
         if (current_frame.code === MERCHANDISE_CODE) {
           // 最初のCODE605の商品のみCODE302に反映し、CODE605を削除 ※商品ID0で判断する
-          if (previous_frame.code === SHOP_PROCESSING_CODE && previous_frame.parameters[1] === 0) {
+          // (2件目以降の605は previous_frame が605になるため何もしない。先頭フレーム等で
+          //  previous_frame が無い場合に落ちないようガードする。)
+          if (previous_frame && previous_frame.code === SHOP_PROCESSING_CODE && previous_frame.parameters[1] === 0) {
             // 商品タイプ,商品ID,価格タイプ,価格を反映
             previous_frame.parameters[0] = current_frame.parameters[0]
             previous_frame.parameters[1] = current_frame.parameters[1]
@@ -9542,12 +9546,14 @@
           }
         }
 
-        // 移動ルートの設定
+        // 移動ルートの設定: 505 は移動ルート(205)の内側のときだけ親へ取り込む。
+        // (寛容: 205 が無い場合は何もしない。スタックが空でも落ちないようガードする。)
         if (current_frame.code === MOVEMENT_COMMANDS_CODE) {
-          const current_movement_route = block_stack.slice(-1)[0].event
-          // 205 => parameters => list配下に移動コマンドのparametersを追加
-          // イベントエディターの表示用の値に使用されている模様
-          if (current_movement_route.code === MOVEMENT_ROUTE_CODE) {
+          const top = topBlock()
+          if (top && top.code === MOVEMENT_ROUTE_CODE) {
+            const current_movement_route = top.event
+            // 205 => parameters => list配下に移動コマンドのparametersを追加
+            // (イベントエディターの表示用の値に使用されている模様)
             // list配下のcode0を一旦削除し、移動コマンドのparametersを追加した後に再度追加
             const movement_command_parameters = current_frame.parameters[0]
             const movement_command_end = current_movement_route.parameters[1].list.pop()
