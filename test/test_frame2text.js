@@ -99,3 +99,34 @@ describe("Skip(109) round-trip", function () {
       .to.eql([[109, 0], [121, 1], [0, 1], [409, 0]]);
   });
 });
+
+describe("empty message line (<br>) round-trip", function () {
+  function rt(list) {
+    const body = frame2text.decompile(list, true, { pretty: true });
+    const cmds = text2frame.compile(body);
+    const stripped = (cmds.length && cmds[cmds.length - 1].code === 0) ? cmds.slice(0, -1) : cmds;
+    return { body: body, codes: stripped.map(function (c) { return c.code; }), cmds: stripped };
+  }
+  it("preserves a Show Text whose only line is empty (101 + empty 401)", function () {
+    const list = [
+      { code: 101, indent: 0, parameters: ["", 0, 2, 2] },
+      { code: 401, indent: 0, parameters: [""] },
+      { code: 235, indent: 0, parameters: [50] }
+    ];
+    const r = rt(list);
+    expect(r.body).to.match(/<br>/);
+    expect(r.codes).to.eql([101, 401, 235]);
+    expect(r.cmds[1].parameters[0]).to.equal("");
+  });
+  it("preserves an empty line in the middle of a message (does not split the window)", function () {
+    const list = [
+      { code: 101, indent: 0, parameters: ["", 0, 0, 2] },
+      { code: 401, indent: 0, parameters: ["A"] },
+      { code: 401, indent: 0, parameters: [""] },
+      { code: 401, indent: 0, parameters: ["B"] }
+    ];
+    const r = rt(list);
+    expect(r.codes).to.eql([101, 401, 401, 401]); // one window, three lines (no extra 101)
+    expect(r.cmds.map(function (c) { return c.parameters[0]; })).to.eql(["", "A", "", "B"]);
+  });
+});

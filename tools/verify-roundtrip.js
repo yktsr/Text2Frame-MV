@@ -87,6 +87,9 @@ const normalizeCmd = (c) => {
   if (c.code === 204 && c.parameters.length === 4 && c.parameters[3] === false) {
     return Object.assign({}, c, { parameters: c.parameters.slice(0, 3) })
   }
+  if (c.code === 232 && c.parameters.length === 13 && c.parameters[12] === 0) {
+    return Object.assign({}, c, { parameters: c.parameters.slice(0, 12) }) // Move Picture MV(12)/MZ(13: easing)
+  }
   if (c.code === 205 && c.parameters[1] && Array.isArray(c.parameters[1].list)) {
     const route = c.parameters[1]
     const list = route.list.map((rc) =>
