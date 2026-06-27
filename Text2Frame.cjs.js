@@ -4405,6 +4405,10 @@ const require$$0 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
             return { window_frame: null, event_command_list: event_command_list2, block_stack };
           }
           const current_frame = events[0];
+          const top_block = block_stack.slice(-1)[0];
+          if (top_block && top_block.code === MOVEMENT_ROUTE_CODE && current_frame.code !== MOVEMENT_COMMANDS_CODE) {
+            block_stack.pop();
+          }
           if (current_frame.code === PRE_CODE) {
             window_frame = current_frame;
             return { window_frame, event_command_list: event_command_list2, block_stack };
@@ -4431,10 +4435,8 @@ const require$$0 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
             }
             current_frame.parameters[0] = current_index;
             block_stack.slice(-1)[0].index += 1;
-            if (current_choice) {
-              if (Array.isArray(current_choice.parameters)) {
-                current_choice.parameters[0].push(current_frame.parameters[1]);
-              }
+            if (current_choice && current_choice.code === CHOICE_CODE && Array.isArray(current_choice.parameters[0])) {
+              current_choice.parameters[0].push(current_frame.parameters[1]);
             }
           } else if (current_frame.code === WHEN_CANCEL_CODE) {
             const current_index = block_stack.slice(-1)[0].index;
