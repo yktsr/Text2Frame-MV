@@ -32,7 +32,7 @@ function strategySetting(): string {
 }
 
 /** Recursively collect *.txt files under a directory. */
-function walkTextFiles(dir: string): string[] {
+export function walkTextFiles(dir: string): string[] {
     const result: string[] = [];
     if (!fs.existsSync(dir)) {
         return result;

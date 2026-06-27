@@ -90,6 +90,10 @@ commonEventId: 3
 | `text2frame.normalizeAfterDeploy` | `false` | 保存時デプロイ後、データからテキストへ書き戻して正準形に整形。保存ファイルが書き換わりエディタが再読込されます(外部変更の取り込みではありません) |
 | `text2frame.modulePath` | （空） | `Text2Frame.js` のパスを明示指定（空なら自動解決） |
 | `text2frame.dataDir` | `data` | データフォルダ(ワークスペース相対) |
+| `text2frame.textBaseDir` | `text` | テキストの基準フォルダ(ワークスペース相対) |
+| `text2frame.locale` | `ja` | 「すべて書き出す」の出力先サブフォルダ |
+| `text2frame.sourceLocale` | `ja` | 翻訳元(原文)の言語 |
+| `text2frame.targetLocale` | `en` | 翻訳先の言語(翻訳セットの対象サブフォルダ) |
 
 ### 動作要件
 
@@ -103,6 +107,25 @@ commonEventId: 3
 2. 拡張に同梱した `lib\Text2Frame.js`（パッケージ版）
 3. モノレポ兄弟 `..\Text2Frame.js`（開発時）
 4. 開いているワークスペース内の `Text2Frame.js`（`js\plugins\Text2Frame.js` も探索）
+
+---
+
+## 🌐 翻訳ワークフロー（VS Code だけで完結）
+
+原文(`sourceLocale`、既定 `ja`)を別言語(`targetLocale`、既定 `en`)へ翻訳し、
+ゲームへ戻すまでをコマンド2つで行えます。
+
+1. **翻訳セットを作成** — コマンドパレット →「Text2Frame: 翻訳セットを作成 / Create Translation Set」
+   - `data` を走査し、`text/<targetLocale>/<key>.txt` を生成します。
+   - 本文は**原文と同じ内容**、front matter に `locale` / `sourceLocale` が付きます（デプロイ先 `mapId`/`eventId`/`pageId` は原文と同一）。
+   - **既存ファイルは上書きしません**（翻訳の途中で再実行しても安全）。
+2. **翻訳する** — `text/<targetLocale>/` 配下の本文・選択肢ラベルを編集します。
+   - front matter とタグ（`<Face..>` 等）、空行マーカー `<br>` は触らないでください。
+3. **ゲームへ反映** — コマンドパレット →「Text2Frame: 翻訳をゲームに反映 / Deploy Translation」
+   - `text/<targetLocale>/` **のみ**を取り込みます（原文 `ja` を巻き込みません）。
+   - 方式は `text2frame.strategy`（`diff`＝最小マージ / `import`＝全上書き）に従います。
+
+> 個別ファイルを編集中に保存→即反映したい場合は、従来どおり「保存時に自動反映」を有効にすれば、front matter のルーティングでそのイベントへデプロイされます。
 
 ---
 
