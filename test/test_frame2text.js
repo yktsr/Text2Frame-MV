@@ -81,3 +81,21 @@ describe('Frame2Text Test', function() {
     })
   });
 })
+
+describe("Skip(109) round-trip", function () {
+  it("preserves a Skip block through decompile -> compile", function () {
+    const list = [
+      { code: 109, indent: 0, parameters: [] },
+      { code: 121, indent: 1, parameters: [43, 43, 0] },
+      { code: 0, indent: 1, parameters: [] },
+      { code: 409, indent: 0, parameters: [] }
+    ];
+    const body = frame2text.decompile(list, true, { pretty: true });
+    expect(body).to.match(/<Skip>/);
+    expect(body).to.match(/<SkipEnd>/);
+    const cmds = text2frame.compile(body);
+    const stripped = (cmds.length && cmds[cmds.length - 1].code === 0) ? cmds.slice(0, -1) : cmds;
+    expect(stripped.map(function (c) { return [c.code, c.indent]; }))
+      .to.eql([[109, 0], [121, 1], [0, 1], [409, 0]]);
+  });
+});

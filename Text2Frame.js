@@ -6072,6 +6072,16 @@
       return { code: 113, indent: 0, parameters: [] }
     }
 
+    // Skip(109): 分岐をスキップするコアコマンド。本体は保存されるが実行されない。
+    // 409 はハンドラの無い終端マーカー。108/408・102/404 と同型のブロック構造で往復する。
+    const getSkip = function () {
+      return { code: 109, indent: 0, parameters: [] }
+    }
+
+    const getSkipEnd = function () {
+      return { code: 409, indent: 0, parameters: [] }
+    }
+
     const getBlockEnd = function () {
       return { code: 0, indent: 0, parameters: [] }
     }
@@ -6803,6 +6813,8 @@
       const loop = text.match(/\s*<loop>/i) || text.match(/\s*<ループ>/)
       const repeat_above = text.match(/<repeatabove>/i) || text.match(/\s*<以上繰り返し>/) || text.match(/\s*<ra>/i)
       const break_loop = text.match(/<breakloop>/i) || text.match(/<ループの中断>/) || text.match(/<BL>/i)
+      const skip_branch_end = text.match(/<skipend>/i) || text.match(/<スキップ終了>/)
+      const skip_branch = text.match(/\s*<skip>/i) || text.match(/\s*<スキップ>/)
       const exit_event_processing =
         text.match(/<ExitEventProcessing>/i) || text.match(/<イベント処理の中断>/) || text.match(/<EEP>/i)
       const label = text.match(/<label\s*:\s*(\S+)\s*>/i) || text.match(/<ラベル\s*:\s*(\S+)\s*>/i)
@@ -7687,6 +7699,17 @@
       // Break Loop
       if (break_loop) {
         return [getBreakLoop()]
+      }
+
+      // Skip End (409): スキップされた分岐の直後に置かれる終端マーカー。
+      // 分岐本体を {code:0} で閉じてから 409 を出す(<End> と同型)。skip より先に判定。
+      if (skip_branch_end) {
+        return [getBlockEnd(), getSkipEnd()]
+      }
+
+      // Skip (109): 分岐開始。本体(indent+1)は autoIndent が 109 を開始タグ扱いで字下げする。
+      if (skip_branch) {
+        return [getSkip()]
       }
 
       // Exit Event Processing
@@ -9574,6 +9597,7 @@
       const LOOP_CODE = 112
       const WHEN_CODE = 402
       const WHEN_CANCEL_CODE = 403
+      const SKIP_CODE = 109
       // イベントコマンド追加
       const IF_WIN_CODE = 601
       const IF_ESCAPE_CODE = 602
@@ -9591,6 +9615,7 @@
             case ELSE_CODE:
             case LOOP_CODE:
             case WHEN_CODE:
+            case SKIP_CODE:
             case IF_WIN_CODE:
             case IF_ESCAPE_CODE:
             case IF_LOSE_CODE:
