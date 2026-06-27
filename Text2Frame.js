@@ -8962,8 +8962,9 @@
 
       // mc script
       if (mc_script) {
-        const params = mc_script[1].split(',').map((s) => s.trim().toLowerCase())
-        const script = params[0]
+        // スクリプト本文は verbatim(カンマ分割や小文字化をしない。JS式に , や
+        // 大文字が含まれるため、従来の split(',')+toLowerCase は内容を破壊していた)。
+        const script = mc_script[1].trim()
 
         return [getMoveScript(script)]
       }
@@ -9419,7 +9420,10 @@
         return [getTextFrameEvent('')]
       }
 
-      if (text.match(/\S/g)) {
+      // ASCII の半角スペース/タブ「のみ」の行はインデント/区切りとして無視するが、
+      // 全角スペース(U+3000)等「見える空白」を含む行は本文として保持する
+      // (従来の \S 判定は U+3000 を空白扱いして本文を脱落させていた)。
+      if (/[^ \t]/.test(text)) {
         logger.log('push: ', text)
         event_command_list.push(getTextFrameEvent(text))
       }
