@@ -17,6 +17,7 @@ import {
 
 interface Frame2TextModule {
     decompile: (list: unknown[], englishTag: boolean, options?: { pretty?: boolean; translationOnly?: boolean }) => string;
+    VERSION?: string;
 }
 
 export interface ExportTarget {
@@ -60,8 +61,11 @@ function englishTagSetting(): boolean {
 }
 
 /** Build a minimal front matter header from a target. */
-function renderFrontMatter(target: ExportTarget): string {
-    const lines = ['---', `kind: ${target.kind}`];
+function renderFrontMatter(target: ExportTarget, version?: string): string {
+    const lines = ['---'];
+    // 来歴: 書き出しに使った変換スクリプトのバージョン(import 時は無視される)。
+    lines.push(`generator: text2frame-mv@${version || 'unknown'}`);
+    lines.push(`kind: ${target.kind}`);
     if (target.kind === 'common') {
         lines.push(`commonEventId: ${target.commonEventId}`);
     } else {
@@ -139,7 +143,7 @@ export function exportToTextFile(
             header = existingFrontMatterHeader(target.frontMatterSource);
         }
         if (!header) {
-            header = renderFrontMatter(target);
+            header = renderFrontMatter(target, mod.VERSION);
         }
 
         const dir = path.dirname(target.textPath);

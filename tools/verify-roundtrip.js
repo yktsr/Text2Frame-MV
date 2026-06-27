@@ -94,7 +94,7 @@ const mapFile = (mapId) => path.join(dataDir, 'Map' + pad3(mapId) + '.json')
 const cePath = path.join(dataDir, 'CommonEvents.json')
 
 const renderFrontMatter = (t) => {
-  const lines = ['---', 'kind: ' + t.kind]
+  const lines = ['---', 'generator: text2frame-mv@' + (f2t.VERSION || 'unknown'), 'kind: ' + t.kind]
   if (t.kind === 'common') {
     lines.push('commonEventId: ' + t.commonEventId)
   } else {
