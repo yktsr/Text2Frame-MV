@@ -2988,7 +2988,10 @@
       return { paragraphs: result, warnings, trace }
     }
 
-    Laurus.Frame2Text.export = { decompile, applySyncDiff }
+    // 書き出し主体のバージョン(リリース時に package.json と揃えて更新する)。
+    // 書き出したテキストのフロントマターに generator: text2frame-mv@<VERSION> として埋める。
+    const VERSION = '2.2.1'
+    Laurus.Frame2Text.export = { decompile, applySyncDiff, VERSION }
     if (Laurus.Frame2Text.ExecMode === 'LIBRARY_EXPORT') {
       return
     }
@@ -3244,6 +3247,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
   const renderFrontMatter = function (entry, kind) {
     const lines = ['---']
+    // 来歴: 書き出しに使った変換スクリプトのバージョン(import 時は無視される)。
+    lines.push('generator: text2frame-mv@' + (module.exports && module.exports.VERSION ? module.exports.VERSION : 'unknown'))
     lines.push('kind: ' + kind)
     if (kind === 'event') {
       lines.push('mapId: ' + String(entry.mapId))
