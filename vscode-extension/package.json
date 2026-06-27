@@ -59,11 +59,11 @@
       },
       {
         "command": "text2frame.deployAll",
-        "title": "Text2Frame: すべてデプロイ / Deploy All"
+        "title": "Text2Frame: すべてのテキストをゲームに反映する / Deploy All"
       },
       {
         "command": "text2frame.exportAll",
-        "title": "Text2Frame: すべて書き出し / Export All"
+        "title": "Text2Frame: すべてのゲームイベントをテキストに書き出す / Export All"
       },
       {
         "command": "text2frame.tree.refresh",
@@ -101,6 +101,11 @@
     "menus": {
       "editor/title": [
         {
+          "command": "text2frame.toggleDeployOnSave",
+          "when": "resourceLangId == text2frame || resourceExtname == .txt",
+          "group": "1_text2frame@3"
+        },
+	{
           "command": "text2frame.deployCurrentFile",
           "when": "resourceLangId == text2frame || resourceExtname == .txt",
           "group": "navigation@1"
@@ -111,19 +116,14 @@
           "group": "navigation@2"
         },
         {
-          "command": "text2frame.showCompiledJson",
-          "when": "resourceLangId == text2frame || resourceExtname == .txt",
-          "group": "1_text2frame@1"
-        },
-        {
           "command": "text2frame.exportForTranslation",
           "when": "resourceLangId == text2frame || resourceExtname == .txt",
           "group": "1_text2frame@2"
         },
         {
-          "command": "text2frame.toggleDeployOnSave",
+          "command": "text2frame.showCompiledJson",
           "when": "resourceLangId == text2frame || resourceExtname == .txt",
-          "group": "1_text2frame@3"
+          "group": "1_text2frame@1"
         }
       ],
       "view/title": [
@@ -168,37 +168,37 @@
           "type": "string",
           "enum": ["diff", "import"],
           "default": "diff",
-          "description": "デプロイ方式。diff=最小マージ、import=イベントを上書き。 / Deploy strategy: diff = merge minimally, import = overwrite the event."
+          "description": "書き出し方式。diff=最小差分マージ、import=イベントをすべて上書き。 / Deploy strategy: diff = merge minimally, import = overwrite the event."
         },
         "text2frame.normalizeAfterDeploy": {
           "type": "boolean",
           "default": false,
-          "description": "保存時デプロイの後、データからテキストへ書き戻してテキストを正準形に整形します(保存ファイルが書き換わり、エディタが再読込されます)。外部変更の取り込みではありません。 / After deploy-on-save, re-export data back to the text file to normalize it (the saved file is rewritten and the editor reloads). This does not pull external changes."
-        },
-        "text2frame.modulePath": {
-          "type": "string",
-          "default": "",
-          "description": "Text2Frame 本体(Text2Frame.js)のパスを明示指定。空なら自動解決(同梱lib→モノレポ兄弟→ワークスペース)。 / Explicit path to Text2Frame.js. Empty = auto-resolve (bundled lib, monorepo sibling, or workspace)."
+          "description": "テキストからゲームへ反映後、再度ゲームからテキストへ書き戻してテキストを標準形に自動整形する。/ After deploy-on-save, re-export data back to the text file to normalize it (the saved file is rewritten and the editor reloads). "
         },
         "text2frame.englishTag": {
           "type": "boolean",
           "default": true,
-          "description": "書き出し(データ→テキスト)時に英語タグを使う。 / Use English tags when exporting (data -> text)."
+          "description": "テキスト書き出し時に英語タグを使う。 / Use English tags when exporting (data -> text)."
         },
         "text2frame.locale": {
           "type": "string",
           "default": "ja",
-          "description": "書き出し先のロケールサブフォルダ(テキスト基準ディレクトリ配下)。 / Locale subfolder under the text base dir for export."
+          "description": "書き出し先のサブフォルダ名を指定する。 / Locale subfolder under the text base dir for export."
         },
         "text2frame.textBaseDir": {
           "type": "string",
           "default": "text",
-          "description": "テキストファイルの基準ディレクトリ(ワークスペース相対)。 / Base directory (relative to workspace) for text files."
+          "description": "テキストファイルの保存されているディレクトリを指定する。 / Base directory (relative to workspace) for text files."
         },
         "text2frame.dataDir": {
           "type": "string",
           "default": "data",
-          "description": "Map###.json / CommonEvents.json を置くデータフォルダ(ワークスペース相対)。 / RPG Maker data directory (relative to workspace) holding Map###.json / CommonEvents.json."
+          "description": "Map###.json / CommonEvents.json が保存されているディレクトリを指定する。 / RPG Maker data directory (relative to workspace) holding Map###.json / CommonEvents.json."
+        },
+        "text2frame.modulePath": {
+          "type": "string",
+          "default": "",
+          "description": "Text2Frame 本体(Text2Frame.js)のパスを明示指定。通常指定する必要はありません。空なら自動解決されます。 / Explicit path to Text2Frame.js. Empty = auto-resolve."
         }
       }
     }
