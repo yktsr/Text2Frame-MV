@@ -9428,6 +9428,19 @@
           return { window_frame: null, event_command_list, block_stack }
         }
         const current_frame = events[0]
+
+        // 移動ルート(205)は明示的な終了タグが無く、後続の505のみを取り込む。
+        // 505以外のフレームが来たらスタックに残った205を閉じる(でないと後続の
+        // <When>等がスタック最上位を205と誤認して落ちる)。
+        const top_block = block_stack.slice(-1)[0]
+        if (
+          top_block &&
+          top_block.code === MOVEMENT_ROUTE_CODE &&
+          current_frame.code !== MOVEMENT_COMMANDS_CODE
+        ) {
+          block_stack.pop()
+        }
+
         if (current_frame.code === PRE_CODE) {
           // 401になるまで遅延する
           window_frame = current_frame
@@ -9459,11 +9472,9 @@
           }
           current_frame.parameters[0] = current_index
           block_stack.slice(-1)[0].index += 1
-          if (current_choice) {
-            // if block の中で when を書いている
-            if (Array.isArray(current_choice.parameters)) {
-              current_choice.parameters[0].push(current_frame.parameters[1])
-            }
+          // 最上位が選択肢(102)で parameters[0] が配列のときだけ選択肢文字列を追加。
+          if (current_choice && current_choice.code === CHOICE_CODE && Array.isArray(current_choice.parameters[0])) {
+            current_choice.parameters[0].push(current_frame.parameters[1])
           }
         } else if (current_frame.code === WHEN_CANCEL_CODE) {
           const current_index = block_stack.slice(-1)[0].index
