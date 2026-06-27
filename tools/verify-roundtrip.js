@@ -66,10 +66,23 @@ const stripTail = (list) => {
   }
   return list
 }
-const listsEqual = (a, b) => canon(stripTail(a)) === canon(stripTail(b))
+// 101(文章の表示)は MV=4引数 / MZ=5引数(第5=名前ボックス)。compile は常に MZ 形式
+// (空名前は "")で出力するため、MV データとの往復で末尾に "" が増える。これは無害な
+// MV→MZ 正規化なので、末尾の空 "" 第5引数は同一とみなす(実際の名前差は保持)。
+// --strict=true で無効化(生の差分を見る)。
+const strict = String(opts.strict) === 'true'
+const normalizeCmd = (c) => {
+  if (!strict && c && c.code === 101 && Array.isArray(c.parameters) &&
+      c.parameters.length === 5 && c.parameters[4] === '') {
+    return Object.assign({}, c, { parameters: c.parameters.slice(0, 4) })
+  }
+  return c
+}
+const norm = (list) => stripTail(list).map(normalizeCmd)
+const listsEqual = (a, b) => canon(norm(a)) === canon(norm(b))
 const firstDiffIndex = (a, b) => {
-  const x = stripTail(a)
-  const y = stripTail(b)
+  const x = norm(a)
+  const y = norm(b)
   const n = Math.max(x.length, y.length)
   for (let i = 0; i < n; i++) {
     if (canon(x[i]) !== canon(y[i])) return i
@@ -174,10 +187,10 @@ for (const t of targets) {
     mismatches.push({
       key: t.key,
       reason: 'list differs at index ' + i,
-      lenBefore: stripTail(snapshot[t.key]).length,
-      lenAfter: stripTail(list).length,
-      before: i >= 0 ? canon(stripTail(snapshot[t.key])[i]) : '(end)',
-      after: i >= 0 ? canon(stripTail(list)[i]) : '(end)'
+      lenBefore: norm(snapshot[t.key]).length,
+      lenAfter: norm(list).length,
+      before: i >= 0 ? canon(norm(snapshot[t.key])[i]) : '(end)',
+      after: i >= 0 ? canon(norm(list)[i]) : '(end)'
     })
   }
 }
