@@ -2,13 +2,25 @@
   "name": "text2frame-language-support",
   "displayName": "Text2Frame Language Support",
   "description": "Language support for Text2Frame visual novel scripts",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "publisher": "yktsr",
   "license": "MIT",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Programming Languages"
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "RPG Maker",
+    "RPGツクール",
+    "MV",
+    "MZ",
+    "Text2Frame",
+    "localization",
+    "translation"
   ],
   "main": "./out/extension.js",
   "activationEvents": [
