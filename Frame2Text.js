@@ -1338,6 +1338,17 @@
           addNewLineIndent(indent)
           text += tag
         }
+        // Skip(109)/その終端マーカー(409)。本体は通常コマンドとして字下げ出力される。
+        if (event.code === 109) {
+          const tag = EnglishTag ? '<Skip>' : '<スキップ>'
+          addNewLineIndent(indent)
+          text += tag
+        }
+        if (event.code === 409) {
+          const tag = EnglishTag ? '<SkipEnd>' : '<スキップ終了>'
+          addNewLineIndent(indent)
+          text += tag
+        }
         if (event.code === 103) {
           const variableId = event.parameters[0]
           const digits = event.parameters[1]

@@ -152,4 +152,14 @@ describe('choice / branch compile invariants', function () {
   it('reports a clear error for <WhenCancel> without an enclosing <ShowChoices>', function () {
     expect(function () { text2frame.compile('<WhenCancel>\nhi') }).to.throw(/WhenCancel/)
   })
+
+  it('compiles a Skip(109) block: <Skip> body <SkipEnd> -> 109, body indent+1, {0}, 409', function () {
+    const body = ['<Skip>', '<Switch: 43, ON>', '<SkipEnd>'].join('\n')
+    const cmds = text2frame.compile(body)
+    expect(cmds.slice(0, 4).map(function (c) { return c.code })).to.eql([109, 121, 0, 409])
+    const byCode = function (code) { return cmds.find(function (c) { return c.code === code }) }
+    expect(byCode(109).indent).to.equal(0)
+    expect(byCode(121).indent).to.equal(1) // body is indented under <Skip>
+    expect(byCode(409).indent).to.equal(0)
+  })
 })
