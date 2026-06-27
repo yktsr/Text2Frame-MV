@@ -13,6 +13,8 @@ RPG ツクール MV/MZ 用プラグイン **Text2Frame** のスクリプトを�
 | 📖 ホバー説明 | タグにカーソルを合わせると使用例と説明を表示 |
 | 🔍 診断 | 閉じ忘れの `<` `>`、空タグをリアルタイムに検出 |
 | 🚀 Watch & Deploy | 編集中のテキストをゲームデータ JSON へ即反映（下記参照） |
+| 📤 書き出し / 一括 | データ→テキストの書き出し、`text/` 一括デプロイ・一括書き出し |
+| 🌐 翻訳ワークフロー | 翻訳セットの作成→編集→反映を VS Code だけで完結（下記参照） |
 
 ---
 
@@ -30,6 +32,12 @@ RPG ツクール MV/MZ 用プラグイン **Text2Frame** のスクリプトを�
 | --- | --- |
 | `Text2Frame: Deploy Current File` | 現在のファイルを今すぐデプロイ |
 | `Text2Frame: Toggle Deploy on Save` | 保存時の自動デプロイを ON / OFF 切り替え |
+| `Frame2Text: Export Current File from Data` | 現在のファイルをデータから書き出し（取り込み） |
+| `Text2Frame: Export for Translation` | 現在のファイルの会話のみを `*.translation.txt` に書き出し |
+| `Text2Frame: Deploy All` | `text/` 配下のフロントマター付き .txt をすべて反映 |
+| `Text2Frame: Export All` | すべてのイベント/コモンを `text/<locale>/` へ書き出し |
+| `Text2Frame: Create Translation Set` | 翻訳セットを `text/<targetLocale>/` に作成（後述） |
+| `Text2Frame: Deploy Translation` | `text/<targetLocale>/` のみをデータへ反映（後述） |
 
 ステータスバーに現在の状態と直近の結果が表示されます。
 
@@ -78,6 +86,8 @@ commonEventId: 3
 - 最初の書き込み前に、対象 JSON のオリジナルを `*.bak` として 1 度だけ退避します。
 - 文法エラー時は書き込まずに中断し、エラーを通知します。
 - 差分の警告・エラーは通知と **Text2Frame Deploy** 出力チャンネルに表示されます。
+  - `diff` 方式では、ブロックの**内容変更**は「`Block changed / ブロックが変更されます`」、
+    テキストから消えて**削除されるブロックのみ**「`Block removed / ブロックが削除されます`」と報告されます。
 
 > ⚠️ デプロイは稼働中の `data/` JSON を直接書き換えます。反映を確認するときは
 > RPG ツクールのエディタを **保存せずに** 開き直してください。
