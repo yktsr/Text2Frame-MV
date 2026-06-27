@@ -130,3 +130,31 @@ describe("empty message line (<br>) round-trip", function () {
     expect(r.cmds.map(function (c) { return c.parameters[0]; })).to.eql(["", "A", "", "B"]);
   });
 });
+
+describe("long-tail round-trip fixes", function () {
+  function rt(list) {
+    const body = frame2text.decompile(list, true, { pretty: true });
+    const cmds = text2frame.compile(body);
+    return (cmds.length && cmds[cmds.length - 1].code === 0) ? cmds.slice(0, -1) : cmds;
+  }
+  it("preserves a move-route Script (45) containing commas and mixed case verbatim", function () {
+    const script = "this.moveTowardCharacter({x: 22, y: 12})";
+    const route = { list: [{ code: 45, indent: null, parameters: [script] }, { code: 0, indent: null }], repeat: false, skippable: false, wait: false };
+    const list = [
+      { code: 205, indent: 0, parameters: [-1, route] },
+      { code: 505, indent: 0, parameters: [{ code: 45, indent: null, parameters: [script] }] }
+    ];
+    const cmds = rt(list);
+    const mc = cmds.find(function (c) { return c.code === 505; });
+    expect(mc.parameters[0].parameters[0]).to.equal(script);
+  });
+  it("preserves a message line of full-width spaces (not dropped as blank)", function () {
+    const list = [
+      { code: 101, indent: 0, parameters: ["", 0, 0, 2] },
+      { code: 401, indent: 0, parameters: ["　　　　"] }
+    ];
+    const cmds = rt(list);
+    const line = cmds.find(function (c) { return c.code === 401; });
+    expect(line.parameters[0]).to.equal("　　　　");
+  });
+});
