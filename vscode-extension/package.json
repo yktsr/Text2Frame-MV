@@ -45,7 +45,7 @@
       },
       {
         "command": "text2frame.exportCurrentFile",
-        "title": "Text2Frame: データからテキストへ書き出し / Export Current File from Data",
+        "title": "Frame2Text: データからテキストへ書き出し / Export Current File from Data",
         "icon": "$(cloud-download)"
       },
       {
@@ -103,12 +103,27 @@
         {
           "command": "text2frame.deployCurrentFile",
           "when": "resourceLangId == text2frame || resourceExtname == .txt",
-          "group": "navigation"
+          "group": "navigation@1"
         },
         {
           "command": "text2frame.exportCurrentFile",
           "when": "resourceLangId == text2frame || resourceExtname == .txt",
-          "group": "navigation"
+          "group": "navigation@2"
+        },
+        {
+          "command": "text2frame.showCompiledJson",
+          "when": "resourceLangId == text2frame || resourceExtname == .txt",
+          "group": "1_text2frame@1"
+        },
+        {
+          "command": "text2frame.exportForTranslation",
+          "when": "resourceLangId == text2frame || resourceExtname == .txt",
+          "group": "1_text2frame@2"
+        },
+        {
+          "command": "text2frame.toggleDeployOnSave",
+          "when": "resourceLangId == text2frame || resourceExtname == .txt",
+          "group": "1_text2frame@3"
         }
       ],
       "view/title": [
@@ -116,7 +131,22 @@
           "command": "text2frame.tree.refresh",
           "when": "view == text2frameExplorer",
           "group": "navigation"
+        },
+        {
+          "command": "text2frame.deployAll",
+          "when": "view == text2frameExplorer",
+          "group": "1_batch@1"
+        },
+        {
+          "command": "text2frame.exportAll",
+          "when": "view == text2frameExplorer",
+          "group": "1_batch@2"
         }
+      ],
+      "commandPalette": [
+        { "command": "text2frame.tree.deploy", "when": "false" },
+        { "command": "text2frame.tree.export", "when": "false" },
+        { "command": "text2frame.tree.refresh", "when": "false" }
       ],
       "view/item/context": [
         {
