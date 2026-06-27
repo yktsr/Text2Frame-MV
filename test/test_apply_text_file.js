@@ -129,3 +129,27 @@ describe('applyTextFile / runBatch (deploy core) Test', function () {
     expect(summary.failed).to.equal(0)
   })
 })
+
+describe('choice / branch compile invariants', function () {
+  it('compiles choices that follow a SetMovementRoute (205 block is closed before the next When)', function () {
+    const body = [
+      '<ShowChoices: Window, Right, 1, 2>',
+      '<When: はい>',
+      '<SetMovementRoute: This Event, OFF, OFF, Wait for Completion>',
+      '<When: いいえ>',
+      '<End>'
+    ].join('\n')
+    const cmds = text2frame.compile(body)
+    const choice = cmds.find(function (c) { return c.code === 102 })
+    expect(choice.parameters[0]).to.eql(['はい', 'いいえ'])
+    expect(cmds.filter(function (c) { return c.code === 402 })).to.have.lengthOf(2)
+  })
+
+  it('reports a clear error for <When> without an enclosing <ShowChoices>', function () {
+    expect(function () { text2frame.compile('<When: はい>\nhi') }).to.throw(/When/)
+  })
+
+  it('reports a clear error for <WhenCancel> without an enclosing <ShowChoices>', function () {
+    expect(function () { text2frame.compile('<WhenCancel>\nhi') }).to.throw(/WhenCancel/)
+  })
+})

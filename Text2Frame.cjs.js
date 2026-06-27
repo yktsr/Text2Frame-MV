@@ -4394,6 +4394,17 @@ const require$$0 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
         const IF_LOSE_CODE = 603;
         const MOVEMENT_ROUTE_CODE = 205;
         const MOVEMENT_COMMANDS_CODE = 505;
+        const topBlock = () => block_stack[block_stack.length - 1];
+        const requireTopBlock = (codes, tag) => {
+          const top = topBlock();
+          if (!top || codes.indexOf(top.code) === -1) {
+            throw new Error("Syntax error. / 文法エラーです。\n" + tag + " に対応する開始タグがありません。");
+          }
+          return top;
+        };
+        const pushBlock = (event, extra) => {
+          block_stack.push(Object.assign({ code: event.code, event, indent: block_stack.length }, extra || {}));
+        };
         events.forEach((current_frame) => {
           if (current_frame.code === IF_END_CODE || current_frame.code === CHOICE_END_CODE || current_frame.code === IF_IFEND_CODE) {
             block_stack.pop();
@@ -4428,48 +4439,47 @@ const require$$0 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1
               event_command_list2.push(getPretextEvent());
             }
           } else if (current_frame.code === WHEN_CODE) {
-            const current_index = block_stack.slice(-1)[0].index;
-            const current_choice = block_stack.slice(-1)[0].event;
-            if (current_index !== 0) {
+            const choice = requireTopBlock([CHOICE_CODE], "<When>");
+            if (choice.index !== 0) {
               event_command_list2.push(getBlockEnd());
             }
-            current_frame.parameters[0] = current_index;
-            block_stack.slice(-1)[0].index += 1;
-            if (current_choice && current_choice.code === CHOICE_CODE && Array.isArray(current_choice.parameters[0])) {
-              current_choice.parameters[0].push(current_frame.parameters[1]);
+            current_frame.parameters[0] = choice.index;
+            choice.index += 1;
+            if (Array.isArray(choice.event.parameters[0])) {
+              choice.event.parameters[0].push(current_frame.parameters[1]);
             }
           } else if (current_frame.code === WHEN_CANCEL_CODE) {
-            const current_index = block_stack.slice(-1)[0].index;
-            if (current_index !== 0) {
+            const choice = requireTopBlock([CHOICE_CODE], "<WhenCancel>");
+            if (choice.index !== 0) {
               event_command_list2.push(getBlockEnd());
             }
-            block_stack.slice(-1)[0].index += 1;
+            choice.index += 1;
           } else if (current_frame.code === IF_WIN_CODE) {
-            block_stack.slice(-1)[0].winCode = true;
+            requireTopBlock([BATTLE_PROCESSING_CODE], "戦闘の勝利分岐").winCode = true;
           } else if (current_frame.code === IF_ESCAPE_CODE) {
-            if (block_stack.slice(-1)[0].winCode === false) {
+            const battle = requireTopBlock([BATTLE_PROCESSING_CODE], "戦闘の逃走分岐");
+            if (battle.winCode === false) {
               event_command_list2.push(getIfWin());
-              block_stack.slice(-1)[0].winCode = true;
+              battle.winCode = true;
             }
-            const current_event = block_stack.slice(-1)[0].event;
             event_command_list2.push(getBlockEnd());
-            current_event.parameters[2] = true;
+            battle.event.parameters[2] = true;
           } else if (current_frame.code === IF_LOSE_CODE) {
-            if (block_stack.slice(-1)[0].winCode === false) {
+            const battle = requireTopBlock([BATTLE_PROCESSING_CODE], "戦闘の敗北分岐");
+            if (battle.winCode === false) {
               event_command_list2.push(getIfWin());
-              block_stack.slice(-1)[0].winCode = true;
+              battle.winCode = true;
             }
-            const current_event = block_stack.slice(-1)[0].event;
             event_command_list2.push(getBlockEnd());
-            current_event.parameters[3] = true;
+            battle.event.parameters[3] = true;
           } else if (current_frame.code === CHOICE_CODE) {
-            block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, index: 0 });
+            pushBlock(current_frame, { index: 0 });
           } else if (current_frame.code === IF_CODE) {
-            block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, index: 0 });
+            pushBlock(current_frame, { index: 0 });
           } else if (current_frame.code === BATTLE_PROCESSING_CODE) {
-            block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, winCode: false });
+            pushBlock(current_frame, { winCode: false });
           } else if (current_frame.code === MOVEMENT_ROUTE_CODE) {
-            block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length });
+            pushBlock(current_frame);
           }
           if (current_frame.code === MERCHANDISE_CODE) {
             if (previous_frame.code === SHOP_PROCESSING_CODE && previous_frame.parameters[1] === 0) {

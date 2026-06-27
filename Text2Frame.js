@@ -9410,6 +9410,21 @@
       const MOVEMENT_ROUTE_CODE = 205
       const MOVEMENT_COMMANDS_CODE = 505
 
+      // --- ブロックノード(選択肢/分岐/戦闘/移動ルート)の小さな型付きモデル ---
+      // block_stack の各要素は { code, event, indent, ...(index|winCode) }。
+      // 種別(code)で入れ子を判別し、不変条件を requireTopBlock で検証する。
+      const topBlock = () => block_stack[block_stack.length - 1]
+      const requireTopBlock = (codes, tag) => {
+        const top = topBlock()
+        if (!top || codes.indexOf(top.code) === -1) {
+          throw new Error('Syntax error. / 文法エラーです。\n' + tag + ' に対応する開始タグがありません。')
+        }
+        return top
+      }
+      const pushBlock = (event, extra) => {
+        block_stack.push(Object.assign({ code: event.code, event, indent: block_stack.length }, extra || {}))
+      }
+
       // イベントコマンド追加
       events.forEach((current_frame) => {
         if (
@@ -9465,52 +9480,53 @@
             event_command_list.push(getPretextEvent())
           }
         } else if (current_frame.code === WHEN_CODE) {
-          const current_index = block_stack.slice(-1)[0].index
-          const current_choice = block_stack.slice(-1)[0].event
-          if (current_index !== 0) {
+          // <When> は選択肢(102)の中にのみ置ける。
+          const choice = requireTopBlock([CHOICE_CODE], '<When>')
+          if (choice.index !== 0) {
             event_command_list.push(getBlockEnd())
           }
-          current_frame.parameters[0] = current_index
-          block_stack.slice(-1)[0].index += 1
-          // 最上位が選択肢(102)で parameters[0] が配列のときだけ選択肢文字列を追加。
-          if (current_choice && current_choice.code === CHOICE_CODE && Array.isArray(current_choice.parameters[0])) {
-            current_choice.parameters[0].push(current_frame.parameters[1])
+          current_frame.parameters[0] = choice.index
+          choice.index += 1
+          // 選択肢文字列を ShowChoices の parameters[0](配列)へ追加。
+          if (Array.isArray(choice.event.parameters[0])) {
+            choice.event.parameters[0].push(current_frame.parameters[1])
           }
         } else if (current_frame.code === WHEN_CANCEL_CODE) {
-          const current_index = block_stack.slice(-1)[0].index
-          if (current_index !== 0) {
+          // <WhenCancel> も選択肢(102)の中にのみ置ける。
+          const choice = requireTopBlock([CHOICE_CODE], '<WhenCancel>')
+          if (choice.index !== 0) {
             event_command_list.push(getBlockEnd())
           }
-          block_stack.slice(-1)[0].index += 1
+          choice.index += 1
         } else if (current_frame.code === IF_WIN_CODE) {
-          // WIN_CODEが来たらtrueに更新
-          block_stack.slice(-1)[0].winCode = true
+          // 戦闘処理(301)の勝利分岐。
+          requireTopBlock([BATTLE_PROCESSING_CODE], '戦闘の勝利分岐').winCode = true
         } else if (current_frame.code === IF_ESCAPE_CODE) {
-          // WIN_CODEが無い状態でESCAPEが来たらIF_WINコードを追加し、trueに更新
-          if (block_stack.slice(-1)[0].winCode === false) {
+          // 戦闘処理(301)の逃走分岐。WIN が未出現なら補う。
+          const battle = requireTopBlock([BATTLE_PROCESSING_CODE], '戦闘の逃走分岐')
+          if (battle.winCode === false) {
             event_command_list.push(getIfWin())
-            block_stack.slice(-1)[0].winCode = true
+            battle.winCode = true
           }
-          const current_event = block_stack.slice(-1)[0].event
           event_command_list.push(getBlockEnd())
-          current_event.parameters[2] = true
+          battle.event.parameters[2] = true
         } else if (current_frame.code === IF_LOSE_CODE) {
-          // WIN_CODEが無い状態でLOSEが来たらIF_WINコードを追加し、trueに更新
-          if (block_stack.slice(-1)[0].winCode === false) {
+          // 戦闘処理(301)の敗北分岐。WIN が未出現なら補う。
+          const battle = requireTopBlock([BATTLE_PROCESSING_CODE], '戦闘の敗北分岐')
+          if (battle.winCode === false) {
             event_command_list.push(getIfWin())
-            block_stack.slice(-1)[0].winCode = true
+            battle.winCode = true
           }
-          const current_event = block_stack.slice(-1)[0].event
           event_command_list.push(getBlockEnd())
-          current_event.parameters[3] = true
+          battle.event.parameters[3] = true
         } else if (current_frame.code === CHOICE_CODE) {
-          block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, index: 0 })
+          pushBlock(current_frame, { index: 0 })
         } else if (current_frame.code === IF_CODE) {
-          block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, index: 0 })
+          pushBlock(current_frame, { index: 0 })
         } else if (current_frame.code === BATTLE_PROCESSING_CODE) {
-          block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length, winCode: false })
+          pushBlock(current_frame, { winCode: false })
         } else if (current_frame.code === MOVEMENT_ROUTE_CODE) {
-          block_stack.push({ code: current_frame.code, event: current_frame, indent: block_stack.length })
+          pushBlock(current_frame)
         }
 
         // ショップの処理
