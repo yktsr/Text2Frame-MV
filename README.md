@@ -75,6 +75,12 @@ Simple compiler to convert text to event.
 
 ![./introduce_WindowPosition.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_namebox.png)
 
+### メッセージ内の空行 <br>
+メッセージ本文の途中に空行を入れたいときは `<br>` を使います。テキスト上の素の空行は
+「次のメッセージウィンドウの区切り」として扱われるため、同じウィンドウ内に空行を残したい
+場合は `<br>` と記述してください。書き出し(Frame2Text)でも空のメッセージ行は `<br>` として
+出力され、取り込みで元の空行に戻ります。
+
 
 ## イベントコマンドを組み込むタグ
 「文章の表示」以外にも、他のすべてのイベントコマンドにも対応しています。
@@ -162,6 +168,11 @@ Simple compiler to convert text to event.
 
 詳細は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3)を参照してください。
 
+### スキップ <Skip> … <SkipEnd>
+RPGツクールMZの「スキップ」(イベントコマンド 109)に対応します。`<Skip>`(`<スキップ>`)と
+`<SkipEnd>`(`<スキップ終了>`)で囲んだブロックは、データ上は保持されますが実行時はスキップ
+されます。書き出し・取り込みの往復でそのまま保持されます。
+
 ## 逆変換プラグイン Frame2Text
 RPGツクールMV/MZのイベントコマンドを、Text2Frameの記法に則ったテキストにエクスポートするプラグインである、Frame2Textも公開しています。
 
@@ -220,6 +231,13 @@ node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json -
 3. batch import(diff) で JSON へ反映
 4. batch sync で再整形し、コメント/改行を可能な限り維持
 5. 失敗レコードは CLI の JSON レポートで確認
+
+> `diff` 方式の警告について: ブロックの**内容変更**は「`Block changed / ブロックが変更されます`」、
+> テキストから消えて**削除されるブロックのみ**「`Block removed / ブロックが削除されます`」と報告されます
+> (変更を削除と誤報告しません)。
+
+> VS Code だけで翻訳を完結させたい場合は、拡張機能の「翻訳セットを作成 / 翻訳をゲームに反映」
+> コマンドを使うフローもあります（[vscode-extension/README.md](vscode-extension/README.md) 参照）。
 
 ## Author/連絡先
 * [@kryptos_nv](https://twitter.com/kryptos_nv)
@@ -422,6 +440,16 @@ $ npm run lint
 $ npm run test
 ```
 
+### Round-trip check（往復検証）
+書き出し(Frame2Text)→取り込み(Text2Frame)の往復で、コマンドリストが完全一致するかを
+実データで検証します。
+```
+$ npm run verify-roundtrip -- sample/data --locale=ja --en=true
+```
+- ⚠️ **破壊的**: 指定した dataDir と `text/` を上書きします。検証後は `git checkout -- <dataDir>` で復元してください。
+- 必ず**未変換の新鮮なデータ**で実行してください（変換済みデータの再変換は冪等で偽の100%になります）。
+- MV/MZ のフォーマット差（101の名前枠・124・204・232・移動ルート内 indent 等）は無害な正規化として吸収され、真の差分のみが報告されます。
+
 
 ## ライセンス
 MIT LICENSE
@@ -492,6 +520,12 @@ You can change the window position.
 You can specify the name to be displayed in the window.
 
 ![./introduce_namebox.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_namebox.png)
+
+#### Empty Line in a Message <br>
+Use `<br>` to keep a blank line inside a message. A bare empty line in the text is
+treated as a window separator (blank line + plain text = a new window), so write
+`<br>` when you want a blank line within the same window. Export (Frame2Text) also
+emits empty message lines as `<br>`, and import restores them to blank lines.
 
 ### Tags for Event Commands
 In addition to "Show Text", all other event commands are also supported.
@@ -576,6 +610,11 @@ When you want to load multiple files or apply different options for each file, y
 This feature is for RPG Maker MV. In RPG Maker MZ, you can set directly from the plugin command.
 
 For details, refer to the [corresponding wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3).
+
+#### Skip <Skip> … <SkipEnd>
+Supports RPG Maker MZ's "Skip" (event command 109). A block enclosed by `<Skip>`
+and `<SkipEnd>` is kept in the data but skipped at runtime. It is preserved as-is
+through the export/import round-trip.
 
 ### Reverse Conversion Plugin: Frame2Text
 Frame2Text is also available - a plugin that exports RPG Maker MV/MZ event commands to text following Text2Frame notation.
