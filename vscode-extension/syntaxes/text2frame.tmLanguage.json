@@ -29,8 +29,8 @@
       "patterns": [
         {
           "name": "comment.block.text2frame",
-          "begin": "<comment>",
-          "end": "</comment>",
+          "begin": "<(?i:comment|注釈)>",
+          "end": "</(?i:comment|注釈)>",
           "patterns": [
             {
               "name": "comment.block.content.text2frame",

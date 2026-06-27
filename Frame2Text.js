@@ -1557,7 +1557,8 @@
         /** ********************************************** */
         if (event.code === 108) {
           const comment = event.parameters[0]
-          const tag = EnglishTag ? '<Comment>' : '<注釈>'
+          // 開きタグは閉じ </comment> と大文字小文字を揃える(文法ハイライト/正準形に一致)。
+          const tag = EnglishTag ? '<comment>' : '<注釈>'
           const tagEnd = EnglishTag ? '</comment>' : '</注釈>'
           addNewLineIndent(indent)
           text += tag + newLine + comment + newLine + tagEnd
