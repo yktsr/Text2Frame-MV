@@ -224,6 +224,18 @@ node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json -
 node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json --strategy sync
 ```
 
+### strategy 一覧（text→JSON の反映方式）
+
+| strategy | 挙動 | 使いどころ |
+| --- | --- | --- |
+| `import` | テキストで全上書き | 初回取り込み・完全再生成 |
+| `diff` | 差分ブロック反映。ただし**テキストが正**（テキストに無い JSON 側コマンドは削除。結果は `import` と実質同一） | テキストが完全な正のとき |
+| `sync` | `diff` ＋ 反映後にテキストへ書き戻して整形 | コメント/改行を保ちたいとき |
+| `overlay` | **JSON 構造を保持し会話文字列だけ差し替え**（移動/分岐/スイッチ等の UI 編集を残す） | ライターがセリフのみ翻訳、構造は UI 側が正 |
+| `merge3` | 祖先基準の 3-way。ライター編集と UI 編集を統合、同一箇所の相反変更のみ**両方残す** | 両者が構造も編集する場合。※ CLI/バッチは祖先未指定のため overlay 相当に縮退 |
+
+`import` と `diff` は**結果が実質同一**（テキストが正）で、真のマージではありません。JSON 側の編集を残せるのは `overlay` / `merge3` だけです。3-way の祖先スナップショット運用は VS Code 拡張が管理します（[vscode-extension/README.md](vscode-extension/README.md) 参照）。
+
 ### 英語化の固定フロー（推奨）
 
 1. ja を batch-export で出力

@@ -38,6 +38,8 @@ RPG ツクール MV/MZ 用プラグイン **Text2Frame** のスクリプトを�
 | `Text2Frame: Export All` | すべてのイベント/コモンを `text/<locale>/` へ書き出し |
 | `Text2Frame: Create Translation Set` | 翻訳セットを `text/<targetLocale>/` に作成（後述） |
 | `Text2Frame: Deploy Translation` | `text/<targetLocale>/` のみをデータへ反映（後述） |
+| `Text2Frame: Merge Translation (overlay)` | 構造を保持し会話だけ反映（後述） |
+| `Text2Frame: Merge Translation (3-way)` | 祖先基準で両者の編集を統合・衝突は両方残す（後述） |
 
 ステータスバーに現在の状態と直近の結果が表示されます。
 
@@ -131,11 +133,17 @@ commonEventId: 3
    - **既存ファイルは上書きしません**（翻訳の途中で再実行しても安全）。
 2. **翻訳する** — `text/<targetLocale>/` 配下の本文・選択肢ラベルを編集します。
    - front matter とタグ（`<Face..>` 等）、空行マーカー `<br>` は触らないでください。
-3. **ゲームへ反映** — コマンドパレット →「Text2Frame: 翻訳をゲームに反映 / Deploy Translation」
-   - `text/<targetLocale>/` **のみ**を取り込みます（原文 `ja` を巻き込みません）。
-   - 方式は `text2frame.strategy`（`diff`＝最小マージ / `import`＝全上書き）に従います。
+3. **ゲームへ反映** — 用途に応じて次のいずれかを実行します。
 
-> 個別ファイルを編集中に保存→即反映したい場合は、従来どおり「保存時に自動反映」を有効にすれば、front matter のルーティングでそのイベントへデプロイされます。
+| コマンド | 挙動 | 使いどころ |
+| --- | --- | --- |
+| Deploy Translation | `text2frame.strategy`（`diff`/`import`）で反映。**テキストが正**（テキストに無い JSON 側コマンドは消える） | テキストが完全な正のとき |
+| **Merge Translation (overlay)** | **JSON 構造を保持し会話文字列だけ差し替え** | ツクール UI で構造(移動/分岐/スイッチ)を編集済み。ライターはセリフのみ翻訳 |
+| **Merge Translation (3-way)** | 祖先(`.t2f-base/`＝翻訳セット作成時に保存)を基準に**ライター編集と UI 編集を統合**。同じ箇所を双方が別々に変えた時だけ**両方残す**（`<<<<<<<` コメント＋警告）。祖先が無ければ overlay に自動フォールバック | ライターも構造を触る／確実に両者を残したい |
+
+> **pull（データ→テキスト書き出し）との違い**: 「ゲームからテキストへ書き出し」や外部更新時の *pull* は JSON でテキストを**上書き**し、翻訳を失って祖先をリセットします。翻訳を保持したいときは *pull* ではなく **overlay / 3-way マージ**を使ってください。
+
+> 個別ファイルを編集中に保存→即反映したい場合は、従来どおり「保存時に自動反映」を有効にすれば、front matter のルーティングでそのイベントへデプロイされます（方式は `text2frame.strategy`）。
 
 ---
 
