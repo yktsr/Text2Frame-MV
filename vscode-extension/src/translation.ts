@@ -157,8 +157,11 @@ export function createTranslationSet(context: vscode.ExtensionContext): void {
     }
 }
 
-/** Command: deploy only text/<targetLocale>/ back into the data JSON. */
-export function deployTranslationSet(context: vscode.ExtensionContext): void {
+/**
+ * Shared core: deploy every text file under text/<targetLocale>/ into the data JSON
+ * using the given strategy. `opName` is used in the log/notification labels.
+ */
+function runLocaleDeploy(context: vscode.ExtensionContext, strategy: string, opName: string): void {
     const root = workspaceRootFor();
     if (!root) {
         vscode.window.showErrorMessage('Text2Frame: ワークスペースフォルダが見つかりません。');
@@ -176,9 +179,8 @@ export function deployTranslationSet(context: vscode.ExtensionContext): void {
         vscode.window.showInformationMessage(`Text2Frame: ${path.relative(root, dir)} に翻訳ファイルがありません。先に「翻訳セットを作成」を実行してください。`);
         return;
     }
-    const strategy = strategySetting();
     const out = getOutput();
-    out.appendLine(`=== Deploy Translation (${target}): ${files.length} files, strategy=${strategy} ===`);
+    out.appendLine(`=== ${opName} (${target}): ${files.length} files, strategy=${strategy} ===`);
     let ok = 0;
     let fail = 0;
     let warn = 0;
@@ -201,10 +203,24 @@ export function deployTranslationSet(context: vscode.ExtensionContext): void {
         }
     }
     out.appendLine(`=== done: ${ok} ok, ${fail} fail, ${warn} warnings ===`);
-    const msg = `Text2Frame: 翻訳デプロイ完了 (${target}) — ${ok} 成功 / ${fail} 失敗`;
+    const msg = `Text2Frame: ${opName} 完了 (${target}) — ${ok} 成功 / ${fail} 失敗` + (warn ? ` / ${warn} 警告` : '');
     if (fail > 0) {
         vscode.window.showWarningMessage(msg, '詳細').then((p) => { if (p) { out.show(true); } });
     } else {
         vscode.window.showInformationMessage(msg);
     }
+}
+
+/** Command: deploy only text/<targetLocale>/ back into the data JSON (configured strategy). */
+export function deployTranslationSet(context: vscode.ExtensionContext): void {
+    runLocaleDeploy(context, strategySetting(), '翻訳デプロイ');
+}
+
+/**
+ * Command: overlay-merge translations into the data JSON. Keeps the JSON structure
+ * (movement/branches/switches edited in the editor) and only replaces conversation
+ * strings from text/<targetLocale>/. Uses the 'overlay' strategy.
+ */
+export function mergeTranslation(context: vscode.ExtensionContext): void {
+    runLocaleDeploy(context, 'overlay', '翻訳マージ');
 }

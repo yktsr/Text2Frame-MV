@@ -9849,6 +9849,81 @@
       }
     }
 
+    /* 翻訳オーバーレイ: existing(JSON)を「構造の正」とし、new(テキスト)側の会話文字列だけを
+     * 対応スロットへ差し替える。移動/分岐/スイッチ等の非会話コマンドは一切変更しない。
+     * スロット種別の並びを LCS で対応付け、対応が取れた分だけ差し替え、余りは警告する。
+     * 戻り値: { commands: 適用後(終端コードなし), warnings } (applyDiff と同契約)。 */
+    const applyOverlay = function (existing_commands, new_commands) {
+      const stripBottom = function (cmds) {
+        const copy = cmds.slice()
+        while (copy.length > 0 && copy[copy.length - 1] && copy[copy.length - 1].code === 0) {
+          copy.pop()
+        }
+        return copy
+      }
+      const PREVIEW = 60
+      const preview = function (s) { const t = String(s); return t.length > PREVIEW ? t.slice(0, PREVIEW) + '...' : t }
+      const result = JSON.parse(JSON.stringify(stripBottom(existing_commands)))
+
+      // 会話系スロットを出現順に抽出。101 の名前(param[4])は MZ(5引数)のときだけ対象。
+      const slotsOf = function (cmds) {
+        const slots = []
+        for (let i = 0; i < cmds.length; i++) {
+          const c = cmds[i]
+          if (!c || !Array.isArray(c.parameters)) continue
+          if (c.code === 401) slots.push({ kind: 'text', i, param: 0 })
+          else if (c.code === 405) slots.push({ kind: 'scroll', i, param: 0 })
+          else if (c.code === 402) slots.push({ kind: 'choice', i, param: 1 })
+          else if (c.code === 101 && c.parameters.length >= 5) slots.push({ kind: 'name', i, param: 4 })
+        }
+        return slots
+      }
+      const exSlots = slotsOf(result)
+      const newSlots = slotsOf(new_commands)
+
+      // スロット種別列を LCS で対応付け(applyDiff と同じ lcsTable/buildDiffFromTable を再利用)。
+      const a = exSlots.map(function (s) { return s.kind })
+      const b = newSlots.map(function (s) { return s.kind })
+      const diff = buildDiffFromTable(lcsTable(a, b), a, b)
+
+      const warnings = []
+      let ei = 0
+      let ni = 0
+      for (let di = 0; di < diff.length; di++) {
+        const t = diff[di].type
+        if (t === 'equal') {
+          const es = exSlots[ei]
+          const ns = newSlots[ni]
+          result[es.i].parameters[es.param] = new_commands[ns.i].parameters[ns.param]
+          ei++
+          ni++
+        } else if (t === 'removed') {
+          const es = exSlots[ei]
+          warnings.push('Untranslated slot kept / 未対応で原文維持: ' + es.kind + ' "' + preview(result[es.i].parameters[es.param]) + '"')
+          ei++
+        } else {
+          const ns = newSlots[ni]
+          warnings.push('Extra text ignored / テキスト側の余剰を無視: ' + ns.kind + ' "' + preview(new_commands[ns.i].parameters[ns.param]) + '"')
+          ni++
+        }
+      }
+
+      // 選択肢(102)の表示配列 parameters[0] を、差し替え後の 402 ラベルから同一 indent 単位で再構築。
+      for (let i = 0; i < result.length; i++) {
+        if (result[i].code !== 102) continue
+        const depth = result[i].indent
+        const labels = []
+        for (let j = i + 1; j < result.length; j++) {
+          const cj = result[j]
+          if (cj.indent === depth && cj.code === 404) break
+          if (cj.indent === depth && cj.code === 402 && Array.isArray(cj.parameters)) labels.push(cj.parameters[1])
+        }
+        if (labels.length > 0 && Array.isArray(result[i].parameters)) result[i].parameters[0] = labels
+      }
+
+      return { commands: result, warnings }
+    }
+
     // 監視ツール用: 対象データJSONの初回バックアップ(.bak が無いときだけ pristine 状態を退避)。
     const backupOnce = function (fsLib, dataPath) {
       try {
@@ -9876,8 +9951,8 @@
         return { ok: false, textPath: opts.textPath || '', warnings: [], error: 'textPath is required' }
       }
       const strategy = String(opts.strategy || 'diff').toLowerCase()
-      if (!['import', 'diff'].includes(strategy)) {
-        return { ok: false, textPath, warnings: [], error: 'Unknown strategy: ' + strategy + ' (expected: import|diff)' }
+      if (!['import', 'diff', 'overlay'].includes(strategy)) {
+        return { ok: false, textPath, warnings: [], error: 'Unknown strategy: ' + strategy + ' (expected: import|diff|overlay)' }
       }
 
       const prevWarnings = Laurus.Text2Frame._warnings
@@ -9917,7 +9992,7 @@
             EventID: String(eventId),
             PageID: String(pageId),
             IsOverwrite: overwrite,
-            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT',
+            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT'),
             WriteBack: false
           }])
         } else if (kind === 'common') {
@@ -9938,7 +10013,7 @@
             CommonEventPath: dataPath,
             CommonEventID: String(commonEventId),
             IsOverwrite: overwrite,
-            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE',
+            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE'),
             WriteBack: false
           }])
         } else {
@@ -9973,7 +10048,7 @@
       }
     }
 
-    Laurus.Text2Frame.export = { compile, applyDiff, applyTextFile, runBatch }
+    Laurus.Text2Frame.export = { compile, applyDiff, applyOverlay, applyTextFile, runBatch }
 
     /* 差分適用後のコマンドリストをテキストファイルへ書き戻す。
      * Frame2Text プラグインの decompile 関数を使用します。
@@ -10019,8 +10094,8 @@
       }
 
       const strategy = String(strategyArg || 'diff').toLowerCase()
-      if (!['import', 'diff', 'sync'].includes(strategy)) {
-        throw new Error('Unknown strategy: ' + strategy + ' (expected: import|diff|sync)')
+      if (!['import', 'diff', 'sync', 'overlay'].includes(strategy)) {
+        throw new Error('Unknown strategy: ' + strategy + ' (expected: import|diff|sync|overlay)')
       }
 
       if (strategy === 'sync' && typeof this.pluginCommandFrame2Text !== 'function') {
@@ -10066,7 +10141,7 @@
               EventID: String(eventId),
               PageID: String(pageId),
               IsOverwrite: String(entry.overwrite).toLowerCase() === 'true',
-              ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT',
+              ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT'),
               WriteBack: false
             }])
 
@@ -10095,7 +10170,7 @@
               CommonEventPath: commonEventPath,
               CommonEventID: String(commonEventId),
               IsOverwrite: String(entry.overwrite).toLowerCase() === 'true',
-              ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE',
+              ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE'),
               WriteBack: false
             }])
 
@@ -10222,7 +10297,8 @@
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break
       }
-      case 'DIFF_IMPORT_MESSAGE_TO_EVENT': {
+      case 'DIFF_IMPORT_MESSAGE_TO_EVENT':
+      case 'OVERLAY_MESSAGE_TO_EVENT': {
         const map_data = readJsonData(Laurus.Text2Frame.MapPath)
         if (!map_data.events[Laurus.Text2Frame.EventID]) {
           throw new Error(
@@ -10236,7 +10312,8 @@
         }
 
         const existing_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list
-        const diff_result = applyDiff(existing_events, event_command_list)
+        const mergeFn = Laurus.Text2Frame.ExecMode === 'OVERLAY_MESSAGE_TO_EVENT' ? applyOverlay : applyDiff
+        const diff_result = mergeFn(existing_events, event_command_list)
         for (let wi = 0; wi < diff_result.warnings.length; wi++) {
           addWarning(diff_result.warnings[wi])
         }
@@ -10257,7 +10334,8 @@
         )
         break
       }
-      case 'DIFF_IMPORT_MESSAGE_TO_CE': {
+      case 'DIFF_IMPORT_MESSAGE_TO_CE':
+      case 'OVERLAY_MESSAGE_TO_CE': {
         const ce_data = readJsonData(Laurus.Text2Frame.CommonEventPath)
         if (ce_data.length - 1 < Laurus.Text2Frame.CommonEventID) {
           throw new Error(
@@ -10266,7 +10344,8 @@
         }
 
         const existing_ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list
-        const diff_ce_result = applyDiff(existing_ce_events, event_command_list)
+        const mergeCeFn = Laurus.Text2Frame.ExecMode === 'OVERLAY_MESSAGE_TO_CE' ? applyOverlay : applyDiff
+        const diff_ce_result = mergeCeFn(existing_ce_events, event_command_list)
         for (let wi = 0; wi < diff_ce_result.warnings.length; wi++) {
           addWarning(diff_ce_result.warnings[wi])
         }
@@ -10360,7 +10439,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-p, --page_id <name>', 'page id')
     .option('-c, --common_event_id <name>', 'common event id')
     .option('-f, --manifest <path>', 'batch manifest json path')
-    .option('-s, --strategy <import|diff|sync>', 'batch strategy', /^(import|diff|sync)$/i, 'diff')
+    .option('-s, --strategy <import|diff|sync|overlay>', 'batch strategy', /^(import|diff|sync|overlay)$/i, 'diff')
     .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
     .option('-v, --verbose', 'debug mode', false)
     .option('--watch', 'watch text files and redeploy on change (batch mode)', false)
@@ -10495,7 +10574,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             EventID: String(eventId),
             PageID: String(pageId),
             IsOverwrite: boolFrom(entry.overwrite, false),
-            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT',
+            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT'),
             WriteBack: false
           }
           Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [cmd])
@@ -10527,7 +10606,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             CommonEventPath: commonEventPath,
             CommonEventID: String(commonEventId),
             IsOverwrite: boolFrom(entry.overwrite, false),
-            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE',
+            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE'),
             WriteBack: false
           }
           Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [cmd])
