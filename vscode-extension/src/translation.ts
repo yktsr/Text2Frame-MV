@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor } from './compiler';
+import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot } from './compiler';
 import { exportToTextFile, ExportTarget } from './exportText';
 import { walkTextFiles } from './batch';
 
@@ -142,6 +142,8 @@ export function createTranslationSet(context: vscode.ExtensionContext): void {
         const res = exportToTextFile(context, root, exportTarget);
         if (res.ok) {
             created++;
+            // seed を 3-way マージの共通祖先(BASE)として保存する。
+            saveBaseSnapshot(root, target, it.key, fs.readFileSync(textPath, 'utf8'));
             out.appendLine(`NEW  ${path.relative(root, textPath)}`);
         } else {
             fail++;
@@ -186,12 +188,19 @@ function runLocaleDeploy(context: vscode.ExtensionContext, strategy: string, opN
     let warn = 0;
     for (const file of files) {
         try {
+            const key = path.basename(file, '.txt');
             const { meta } = parseFrontMatter(fs.readFileSync(file, 'utf8'));
             const { opts, label } = resolveTarget(meta, root);
-            const res = mod.applyTextFile({ textPath: file, ...opts, strategy, overwrite: strategy === 'import', backup: true });
+            const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, overwrite: strategy === 'import', backup: true };
+            if (strategy === 'merge3' && hasBaseSnapshot(root, target, key)) {
+                applyOpts.basePath = baseSnapshotPath(root, target, key);
+            }
+            const res = mod.applyTextFile(applyOpts);
             if (res.ok) {
                 ok++;
                 warn += res.warnings.length;
+                // 3-way マージ成功後は、現在のテキストを新しい共通祖先(BASE)にする。
+                if (strategy === 'merge3') { saveBaseSnapshot(root, target, key, fs.readFileSync(file, 'utf8')); }
                 out.appendLine(`OK   ${label}  <- ${path.relative(root, file)}` + (res.warnings.length ? `  (${res.warnings.length} warn)` : ''));
             } else {
                 fail++;
@@ -223,4 +232,15 @@ export function deployTranslationSet(context: vscode.ExtensionContext): void {
  */
 export function mergeTranslation(context: vscode.ExtensionContext): void {
     runLocaleDeploy(context, 'overlay', '翻訳マージ');
+}
+
+/**
+ * Command: 3-way merge translations into the data JSON. Uses the BASE snapshot
+ * (.t2f-base, saved when the translation set was created) as the common ancestor,
+ * so both the writer's text edits and the editor's JSON edits are combined; a unit
+ * changed differently on both sides is kept as BOTH with conflict comment markers.
+ * Falls back to overlay when no base snapshot exists.
+ */
+export function mergeTranslation3way(context: vscode.ExtensionContext): void {
+    runLocaleDeploy(context, 'merge3', '翻訳3wayマージ');
 }

@@ -23,3 +23,6 @@ node_modules
 vscode-extension/out/
 vscode-extension/lib/
 *.vsix
+
+# 3-way merge base snapshots (Text2Frame)
+.t2f-base/
