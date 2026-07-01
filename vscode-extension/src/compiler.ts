@@ -156,6 +156,24 @@ export function dataChangedExternally(context: vscode.ExtensionContext, dataPath
     return current > baseline + 1; // small epsilon for fs timestamp precision
 }
 
+/**
+ * BASE snapshot storage for 3-way merge. The snapshot is the last-synced text
+ * for a target, kept under .t2f-base/<locale>/<key>.txt (gitignored). It is the
+ * common ancestor: writer edits (current text) and dev edits (current JSON) are
+ * merged against it.
+ */
+export function baseSnapshotPath(workspaceRoot: string, locale: string, key: string): string {
+    return path.join(workspaceRoot, '.t2f-base', locale, key + '.txt');
+}
+export function hasBaseSnapshot(workspaceRoot: string, locale: string, key: string): boolean {
+    return fs.existsSync(baseSnapshotPath(workspaceRoot, locale, key));
+}
+export function saveBaseSnapshot(workspaceRoot: string, locale: string, key: string, content: string): void {
+    const target = baseSnapshotPath(workspaceRoot, locale, key);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, content, 'utf8');
+}
+
 /** Resolve the workspace root for a document (or the first workspace folder). */
 export function workspaceRootFor(document?: vscode.TextDocument): string | undefined {
     if (document) {
