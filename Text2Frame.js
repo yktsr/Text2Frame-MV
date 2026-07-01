@@ -9924,6 +9924,176 @@
       return { commands: result, warnings }
     }
 
+    /* コマンド列を「釣り合った単位」に分割する。制御構造(選択肢/条件分岐/ループ/戦闘/Skip)は
+     * 開始〜終了をまとめて1単位にし、3-way マージで入れ子を壊さないようにする。
+     * 葉(文章101+401、注釈108+408、スクロール105+405、スクリプト355+655、移動205+505)も1単位。 */
+    const BALANCED_OPENERS = { 102: 404, 111: 412, 112: 413, 301: 604, 109: 409 }
+    const BALANCED_CLOSERS = { 404: true, 412: true, 413: true, 604: true, 409: true }
+    const LEAF_CONTINUATIONS = { 101: [401], 108: [408], 105: [405], 355: [655], 205: [505] }
+    const groupIntoBalancedUnits = function (commands) {
+      const units = []
+      let i = 0
+      while (i < commands.length) {
+        const c = commands[i]
+        if (c && BALANCED_OPENERS[c.code] !== undefined) {
+          let depth = 0
+          let j = i
+          for (; j < commands.length; j++) {
+            const cc = commands[j]
+            if (cc && BALANCED_OPENERS[cc.code] !== undefined) depth++
+            else if (cc && BALANCED_CLOSERS[cc.code]) depth--
+            if (depth === 0) break
+          }
+          units.push(commands.slice(i, j + 1))
+          i = j + 1
+        } else {
+          const conts = (c && LEAF_CONTINUATIONS[c.code]) || []
+          let j = i
+          while (j + 1 < commands.length && conts.indexOf(commands[j + 1].code) !== -1) j++
+          units.push(commands.slice(i, j + 1))
+          i = j + 1
+        }
+      }
+      return units
+    }
+
+    /* 3-way マージ(diff3 方式・両方残す)。base=共通祖先, ours=現JSON, theirs=テキスト。
+     * 釣り合った単位で base↔ours / base↔theirs を LCS 対応し、両方が同じ箇所を別々に変えた領域は
+     * 「衝突」として両方を残し 108 コメントで囲む(非破壊・常に valid)。
+     * 戻り値: { commands: 適用後(終端コードなし), conflicts: 件数, warnings }。 */
+    const applyThreeWayMerge = function (base_commands, ours_commands, theirs_commands) {
+      const stripBottom = function (cmds) {
+        const copy = cmds.slice()
+        while (copy.length > 0 && copy[copy.length - 1] && copy[copy.length - 1].code === 0) copy.pop()
+        return copy
+      }
+      const key = function (unit) { return JSON.stringify(unit) }
+      const B = groupIntoBalancedUnits(stripBottom(base_commands))
+      const O = groupIntoBalancedUnits(stripBottom(ours_commands))
+      const T = groupIntoBalancedUnits(stripBottom(theirs_commands))
+      const Bk = B.map(key)
+      const Ok = O.map(key)
+      const Tk = T.map(key)
+
+      const lcsPairs = function (a, b) {
+        const m = a.length
+        const n = b.length
+        const dp = []
+        for (let x = 0; x <= m; x++) { const row = []; for (let y = 0; y <= n; y++) row.push(0); dp.push(row) }
+        for (let x = 1; x <= m; x++) {
+          for (let y = 1; y <= n; y++) dp[x][y] = a[x - 1] === b[y - 1] ? dp[x - 1][y - 1] + 1 : Math.max(dp[x - 1][y], dp[x][y - 1])
+        }
+        const pairs = []
+        let x = m
+        let y = n
+        while (x > 0 && y > 0) {
+          if (a[x - 1] === b[y - 1]) {
+            pairs.unshift([x - 1, y - 1])
+            x--
+            y--
+          } else if (dp[x - 1][y] >= dp[x][y - 1]) {
+            x--
+          } else {
+            y--
+          }
+        }
+        return pairs
+      }
+      // side が base の [baseLo,baseHi) を side の [sideLo,sideHi) に変えた「ハンク」列(diff3 用)。
+      const diffHunks = function (baseKeys, sideKeys) {
+        const pairs = lcsPairs(baseKeys, sideKeys)
+        pairs.push([baseKeys.length, sideKeys.length])
+        const hunks = []
+        let bi = 0
+        let si = 0
+        for (const p of pairs) {
+          if (p[0] > bi || p[1] > si) hunks.push({ baseLo: bi, baseHi: p[0], sideLo: si, sideHi: p[1] })
+          bi = p[0] + 1
+          si = p[1] + 1
+        }
+        return hunks
+      }
+      const oH = diffHunks(Bk, Ok)
+      const tH = diffHunks(Bk, Tk)
+
+      const result = []
+      const warnings = []
+      let conflicts = 0
+      const pushAll = function (units) { for (const u of units) for (const c of u) result.push(c) }
+      const pushComment = function (text, indent) { result.push({ code: 108, indent: indent || 0, parameters: [text] }) }
+      const keyOf = function (units) { return units.map(key).join('') }
+
+      let pos = 0
+      let oi = 0
+      let ti = 0
+      while (pos < B.length || oi < oH.length || ti < tH.length) {
+        const oStart = oi < oH.length ? oH[oi].baseLo : Infinity
+        const tStart = ti < tH.length ? tH[ti].baseLo : Infinity
+        if (pos < oStart && pos < tStart) {
+          const stableEnd = Math.min(oStart, tStart, B.length)
+          if (stableEnd <= pos) break
+          for (; pos < stableEnd; pos++) pushAll([B[pos]])
+          continue
+        }
+        let baseHi = pos
+        let oLo = null
+        let oHi = null
+        let tLo = null
+        let tHi = null
+        if (oStart === pos) {
+          oLo = oH[oi].sideLo
+          oHi = oH[oi].sideHi
+          baseHi = Math.max(baseHi, oH[oi].baseHi)
+          oi++
+        }
+        if (tStart === pos) {
+          tLo = tH[ti].sideLo
+          tHi = tH[ti].sideHi
+          baseHi = Math.max(baseHi, tH[ti].baseHi)
+          ti++
+        }
+        let changed = true
+        while (changed) {
+          changed = false
+          if (oi < oH.length && oH[oi].baseLo < baseHi) {
+            if (oLo === null) oLo = oH[oi].sideLo
+            oHi = oH[oi].sideHi
+            baseHi = Math.max(baseHi, oH[oi].baseHi)
+            oi++
+            changed = true
+          }
+          if (ti < tH.length && tH[ti].baseLo < baseHi) {
+            if (tLo === null) tLo = tH[ti].sideLo
+            tHi = tH[ti].sideHi
+            baseHi = Math.max(baseHi, tH[ti].baseHi)
+            ti++
+            changed = true
+          }
+        }
+        const oReg = oLo !== null ? O.slice(oLo, oHi) : B.slice(pos, baseHi)
+        const tReg = tLo !== null ? T.slice(tLo, tHi) : B.slice(pos, baseHi)
+        if (oLo === null) {
+          pushAll(tReg)
+        } else if (tLo === null) {
+          pushAll(oReg)
+        } else if (keyOf(oReg) === keyOf(tReg)) {
+          pushAll(oReg)
+        } else {
+          conflicts++
+          const ind = (tReg[0] && tReg[0][0] && tReg[0][0].indent) || (oReg[0] && oReg[0][0] && oReg[0][0].indent) || 0
+          pushComment('<<<<<<< text (theirs)', ind)
+          pushAll(tReg)
+          pushComment('======= json (ours)', ind)
+          pushAll(oReg)
+          pushComment('>>>>>>>', ind)
+          warnings.push('Conflict kept both / 衝突は両方残しました')
+        }
+        pos = baseHi
+      }
+
+      return { commands: result, conflicts, warnings }
+    }
+
     // 監視ツール用: 対象データJSONの初回バックアップ(.bak が無いときだけ pristine 状態を退避)。
     const backupOnce = function (fsLib, dataPath) {
       try {
@@ -10048,7 +10218,7 @@
       }
     }
 
-    Laurus.Text2Frame.export = { compile, applyDiff, applyOverlay, applyTextFile, runBatch }
+    Laurus.Text2Frame.export = { compile, applyDiff, applyOverlay, applyThreeWayMerge, applyTextFile, runBatch }
 
     /* 差分適用後のコマンドリストをテキストファイルへ書き戻す。
      * Frame2Text プラグインの decompile 関数を使用します。
