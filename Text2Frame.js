@@ -10121,8 +10121,8 @@
         return { ok: false, textPath: opts.textPath || '', warnings: [], error: 'textPath is required' }
       }
       const strategy = String(opts.strategy || 'diff').toLowerCase()
-      if (!['import', 'diff', 'overlay'].includes(strategy)) {
-        return { ok: false, textPath, warnings: [], error: 'Unknown strategy: ' + strategy + ' (expected: import|diff|overlay)' }
+      if (!['import', 'diff', 'overlay', 'merge3'].includes(strategy)) {
+        return { ok: false, textPath, warnings: [], error: 'Unknown strategy: ' + strategy + ' (expected: import|diff|overlay|merge3)' }
       }
 
       const prevWarnings = Laurus.Text2Frame._warnings
@@ -10162,7 +10162,8 @@
             EventID: String(eventId),
             PageID: String(pageId),
             IsOverwrite: overwrite,
-            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT'),
+            BasePath: opts.basePath,
+            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_EVENT' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT')),
             WriteBack: false
           }])
         } else if (kind === 'common') {
@@ -10183,7 +10184,8 @@
             CommonEventPath: dataPath,
             CommonEventID: String(commonEventId),
             IsOverwrite: overwrite,
-            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE'),
+            BasePath: opts.basePath,
+            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_CE' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE')),
             WriteBack: false
           }])
         } else {
@@ -10264,8 +10266,8 @@
       }
 
       const strategy = String(strategyArg || 'diff').toLowerCase()
-      if (!['import', 'diff', 'sync', 'overlay'].includes(strategy)) {
-        throw new Error('Unknown strategy: ' + strategy + ' (expected: import|diff|sync|overlay)')
+      if (!['import', 'diff', 'sync', 'overlay', 'merge3'].includes(strategy)) {
+        throw new Error('Unknown strategy: ' + strategy + ' (expected: import|diff|sync|overlay|merge3)')
       }
 
       if (strategy === 'sync' && typeof this.pluginCommandFrame2Text !== 'function') {
@@ -10311,7 +10313,7 @@
               EventID: String(eventId),
               PageID: String(pageId),
               IsOverwrite: String(entry.overwrite).toLowerCase() === 'true',
-              ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT'),
+              ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_EVENT' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT')),
               WriteBack: false
             }])
 
@@ -10340,7 +10342,7 @@
               CommonEventPath: commonEventPath,
               CommonEventID: String(commonEventId),
               IsOverwrite: String(entry.overwrite).toLowerCase() === 'true',
-              ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE'),
+              ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_CE' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE')),
               WriteBack: false
             }])
 
@@ -10463,6 +10465,60 @@
         }
         ce_events.pop()
         ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list)
+        writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
+        addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
+        break
+      }
+      case 'MERGE3_MESSAGE_TO_EVENT': {
+        const map_data = readJsonData(Laurus.Text2Frame.MapPath)
+        if (!map_data.events[Laurus.Text2Frame.EventID]) {
+          throw new Error('EventID not found. / EventIDが見つかりません。\n' + 'Event ID: ' + Laurus.Text2Frame.EventID)
+        }
+        const pageID = Number(Laurus.Text2Frame.PageID) - 1
+        while (!map_data.events[Laurus.Text2Frame.EventID].pages[pageID]) {
+          map_data.events[Laurus.Text2Frame.EventID].pages.push(getDefaultPage())
+        }
+        const existing_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list
+        let base_cmds = null
+        if (Laurus.Text2Frame.BasePath) {
+          try { base_cmds = compile(parseFrontMatter(readText(Laurus.Text2Frame.BasePath)).body) } catch (e) { base_cmds = null }
+        }
+        let merge_result
+        if (base_cmds) {
+          merge_result = applyThreeWayMerge(base_cmds, existing_events, event_command_list)
+          if (merge_result.conflicts) addWarning('3-way merge: ' + merge_result.conflicts + ' conflict(s) kept both / 衝突を両方残しました')
+        } else {
+          merge_result = applyOverlay(existing_events, event_command_list)
+          addWarning('No base snapshot; overlay fallback / 祖先が無いため overlay で反映しました')
+        }
+        for (let wi = 0; wi < merge_result.warnings.length; wi++) addWarning(merge_result.warnings[wi])
+        map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list =
+          merge_result.commands.concat([getCommandBottomEvent()])
+        writeData(Laurus.Text2Frame.MapPath, map_data)
+        addMessage('Success / 書き出し成功！\n======> MapID: ' + Laurus.Text2Frame.MapID + ' -> EventID: ' + Laurus.Text2Frame.EventID + ' -> PageID: ' + Laurus.Text2Frame.PageID)
+        break
+      }
+      case 'MERGE3_MESSAGE_TO_CE': {
+        const ce_data = readJsonData(Laurus.Text2Frame.CommonEventPath)
+        if (ce_data.length - 1 < Laurus.Text2Frame.CommonEventID) {
+          throw new Error('Common Event not found. / コモンイベントが見つかりません。: ' + Laurus.Text2Frame.CommonEventID)
+        }
+        const existing_ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list
+        let base_ce_cmds = null
+        if (Laurus.Text2Frame.BasePath) {
+          try { base_ce_cmds = compile(parseFrontMatter(readText(Laurus.Text2Frame.BasePath)).body) } catch (e) { base_ce_cmds = null }
+        }
+        let merge_ce_result
+        if (base_ce_cmds) {
+          merge_ce_result = applyThreeWayMerge(base_ce_cmds, existing_ce_events, event_command_list)
+          if (merge_ce_result.conflicts) addWarning('3-way merge: ' + merge_ce_result.conflicts + ' conflict(s) kept both / 衝突を両方残しました')
+        } else {
+          merge_ce_result = applyOverlay(existing_ce_events, event_command_list)
+          addWarning('No base snapshot; overlay fallback / 祖先が無いため overlay で反映しました')
+        }
+        for (let wi = 0; wi < merge_ce_result.warnings.length; wi++) addWarning(merge_ce_result.warnings[wi])
+        ce_data[Laurus.Text2Frame.CommonEventID].list =
+          merge_ce_result.commands.concat([getCommandBottomEvent()])
         writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break
@@ -10609,7 +10665,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-p, --page_id <name>', 'page id')
     .option('-c, --common_event_id <name>', 'common event id')
     .option('-f, --manifest <path>', 'batch manifest json path')
-    .option('-s, --strategy <import|diff|sync|overlay>', 'batch strategy', /^(import|diff|sync|overlay)$/i, 'diff')
+    .option('-s, --strategy <import|diff|sync|overlay|merge3>', 'batch strategy', /^(import|diff|sync|overlay|merge3)$/i, 'diff')
     .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
     .option('-v, --verbose', 'debug mode', false)
     .option('--watch', 'watch text files and redeploy on change (batch mode)', false)
@@ -10744,7 +10800,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             EventID: String(eventId),
             PageID: String(pageId),
             IsOverwrite: boolFrom(entry.overwrite, false),
-            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT'),
+            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_EVENT' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT')),
             WriteBack: false
           }
           Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [cmd])
@@ -10776,7 +10832,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             CommonEventPath: commonEventPath,
             CommonEventID: String(commonEventId),
             IsOverwrite: boolFrom(entry.overwrite, false),
-            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE'),
+            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_CE' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE')),
             WriteBack: false
           }
           Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [cmd])
