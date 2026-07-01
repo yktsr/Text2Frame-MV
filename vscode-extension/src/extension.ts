@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { registerDeployFeature, showCompiledJson } from './deploy';
 import { exportCurrentFile, exportCurrentFileForTranslation } from './exportText';
 import { deployAll, exportAll } from './batch';
-import { createTranslationSet, deployTranslationSet } from './translation';
+import { createTranslationSet, deployTranslationSet, mergeTranslation } from './translation';
 import { registerTreeView } from './tree';
 import { parseFrontMatter } from './compiler';
 
@@ -47,7 +47,8 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('text2frame.deployAll', () => deployAll(context)),
         vscode.commands.registerCommand('text2frame.exportAll', () => exportAll(context)),
         vscode.commands.registerCommand('text2frame.createTranslationSet', () => createTranslationSet(context)),
-        vscode.commands.registerCommand('text2frame.deployTranslationSet', () => deployTranslationSet(context))
+        vscode.commands.registerCommand('text2frame.deployTranslationSet', () => deployTranslationSet(context)),
+        vscode.commands.registerCommand('text2frame.mergeTranslation', () => mergeTranslation(context))
     );
 
     // Register completion provider
