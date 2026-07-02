@@ -23,7 +23,8 @@
       "locale": "en",
       "sourceLocale": "ja",
       "key": "map001_event001_page001",
-      "textPath": "text/en/map001_event001_page001.txt"
+      "textPath": "text/en/map001_event001_page001.txt",
+      "basePath": "text/base/map001_event001_page001.txt"
     },
     {
       "kind": "common",
