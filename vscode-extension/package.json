@@ -86,6 +86,14 @@
         "title": "Text2Frame: 翻訳をゲームに反映 (targetLocale) / Deploy Translation"
       },
       {
+        "command": "text2frame.mergeTranslation",
+        "title": "Text2Frame: 翻訳をマージ (構造を保持) / Merge Translation (overlay)"
+      },
+      {
+        "command": "text2frame.mergeTranslation3way",
+        "title": "Text2Frame: 翻訳を3wayマージ (両方残す) / Merge Translation (3-way)"
+      },
+      {
         "command": "text2frame.tree.refresh",
         "title": "Text2Frame: 更新 / Refresh",
         "icon": "$(refresh)"
@@ -171,6 +179,16 @@
           "command": "text2frame.deployTranslationSet",
           "when": "view == text2frameExplorer",
           "group": "2_translation@2"
+        },
+        {
+          "command": "text2frame.mergeTranslation",
+          "when": "view == text2frameExplorer",
+          "group": "2_translation@3"
+        },
+        {
+          "command": "text2frame.mergeTranslation3way",
+          "when": "view == text2frameExplorer",
+          "group": "2_translation@4"
         }
       ],
       "commandPalette": [
@@ -196,9 +214,9 @@
       "properties": {
         "text2frame.strategy": {
           "type": "string",
-          "enum": ["diff", "import"],
+          "enum": ["diff", "import", "overlay"],
           "default": "diff",
-          "description": "書き出し方式。diff=最小差分マージ、import=イベントをすべて上書き。 / Deploy strategy: diff = merge minimally, import = overwrite the event."
+          "description": "書き出し方式。diff=最小差分マージ、import=イベントをすべて上書き、overlay=JSON構造を保持し会話だけ差し替え(翻訳マージ)。 / Deploy strategy: diff = merge minimally, import = overwrite, overlay = keep JSON structure and replace only conversation text (translation merge)."
         },
         "text2frame.normalizeAfterDeploy": {
           "type": "boolean",
