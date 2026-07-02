@@ -236,6 +236,11 @@ node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json -
 
 `import` と `diff` は**結果が実質同一**（テキストが正）で、真のマージではありません。JSON 側の編集を残せるのは `overlay` / `merge3` だけです。3-way の祖先スナップショット運用は VS Code 拡張が管理します（[vscode-extension/README.md](vscode-extension/README.md) 参照）。
 
+これらの strategy は次の3経路すべてで使えます:
+- **CLI 単発**: `node Text2Frame.js --mode map --strategy overlay|merge3 --base <祖先テキスト> --text_path <t> --output_path <Map001.json> --event_id 1 --page_id 1`（`--base` は merge3 の共通祖先。省略時は overlay に縮退）。`--mode common` も同様。
+- **CLI 一括**: `--strategy overlay|merge3`。merge3 の祖先は manifest エントリの任意フィールド `basePath` で指定。
+- **プラグインコマンド（MZ）**: `MERGE3_MESSAGE_TO_EVENT` / `MERGE3_MESSAGE_TO_CE`（任意の `BaseFolder`/`BaseFileName` で祖先指定、空なら overlay 縮退）。`APPLY_MESSAGES_BY_MANIFEST` の Strategy でも `overlay`/`merge3` を選択可。
+
 ### 英語化の固定フロー（推奨）
 
 1. ja を batch-export で出力

@@ -244,6 +244,86 @@
  * @value false
  * @default false
  *
+ * @command MERGE3_MESSAGE_TO_EVENT
+ * @text イベントに3wayマージ
+ * @desc 祖先(前回書き出し)基準でテキスト編集とUI編集を統合しイベントへ反映。衝突は両方残す。祖先無しなら会話のみ差し替え(overlay)。
+ *
+ * @arg FileFolder
+ * @text 取り込み元フォルダ名
+ * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text 取り込み元ファイル名
+ * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @type string
+ * @default message.txt
+ *
+ * @arg MapID
+ * @text 取り込み先マップID
+ * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。
+ * @type number
+ * @default 1
+ *
+ * @arg EventID
+ * @text 取り込み先イベントID
+ * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。
+ * @type number
+ * @default 2
+ *
+ * @arg PageID
+ * @text 取り込み先ページID
+ * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。
+ * @type number
+ * @default 1
+ *
+ * @arg BaseFolder
+ * @text 祖先フォルダ名(任意)
+ * @desc 3wayマージの共通祖先テキストのフォルダ名。空なら会話のみ差し替え(overlay)に縮退します。
+ * @type string
+ * @default
+ *
+ * @arg BaseFileName
+ * @text 祖先ファイル名(任意)
+ * @desc 共通祖先テキストのファイル名。BaseFolderと両方指定した場合のみ3wayマージになります。
+ * @type string
+ * @default
+ *
+ * @command MERGE3_MESSAGE_TO_CE
+ * @text コモンイベントに3wayマージ
+ * @desc 祖先基準でテキスト編集とUI編集を統合しコモンイベントへ反映。衝突は両方残す。祖先無しならoverlay。
+ *
+ * @arg FileFolder
+ * @text 取り込み元フォルダ名
+ * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text 取り込み元ファイル名
+ * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @type string
+ * @default message.txt
+ *
+ * @arg CommonEventID
+ * @text 取り込み先コモンイベントID
+ * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。
+ * @type common_event
+ * @default 1
+ *
+ * @arg BaseFolder
+ * @text 祖先フォルダ名(任意)
+ * @desc 3wayマージの共通祖先テキストのフォルダ名。空ならoverlayに縮退します。
+ * @type string
+ * @default
+ *
+ * @arg BaseFileName
+ * @text 祖先ファイル名(任意)
+ * @desc 共通祖先テキストのファイル名。BaseFolderと両方指定した場合のみ3wayマージ。
+ * @type string
+ * @default
+ *
  * @command SYNC_EVENT_BIDIRECTIONAL
  * @text イベントを双方向差分同期
  * @desc 1回の実行でテキスト差分をJSONへ反映し、その結果をテキストへ同期します。
@@ -290,7 +370,7 @@
  *
  * @arg Strategy
  * @text 一括反映戦略
- * @desc import(単純反映) / diff(差分反映) / sync(差分反映+テキスト同期)
+ * @desc import / diff / sync / overlay(会話のみ差替) / merge3(祖先基準3wayマージ) を選択できます。
  * @type select
  * @option import
  * @value import
@@ -298,6 +378,10 @@
  * @value diff
  * @option sync
  * @value sync
+ * @option overlay
+ * @value overlay
+ * @option merge3
+ * @value merge3
  * @default diff
  *
  * @param Default Window Position
@@ -4224,6 +4308,26 @@
       this.pluginCommand('DIFF_IMPORT_MESSAGE_TO_CE',
         [file_folder, file_name, common_event_id, write_back])
     })
+    PluginManager.registerCommand('Text2Frame', 'MERGE3_MESSAGE_TO_EVENT', function (args) {
+      const file_folder = args.FileFolder
+      const file_name = args.FileName
+      const map_id = args.MapID
+      const event_id = args.EventID
+      const page_id = args.PageID
+      const base_folder = args.BaseFolder
+      const base_file_name = args.BaseFileName
+      this.pluginCommand('MERGE3_MESSAGE_TO_EVENT',
+        [file_folder, file_name, map_id, event_id, page_id, base_folder, base_file_name])
+    })
+    PluginManager.registerCommand('Text2Frame', 'MERGE3_MESSAGE_TO_CE', function (args) {
+      const file_folder = args.FileFolder
+      const file_name = args.FileName
+      const common_event_id = args.CommonEventID
+      const base_folder = args.BaseFolder
+      const base_file_name = args.BaseFileName
+      this.pluginCommand('MERGE3_MESSAGE_TO_CE',
+        [file_folder, file_name, common_event_id, base_folder, base_file_name])
+    })
     PluginManager.registerCommand('Text2Frame', 'SYNC_EVENT_BIDIRECTIONAL', function (args) {
       const file_folder = args.FileFolder
       const file_name = args.FileName
@@ -4449,6 +4553,32 @@
           const { PATH_SEP, BASE_PATH } = getDirParams()
           Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
           Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
+        }
+        break
+      case 'MERGE3_MESSAGE_TO_EVENT' :
+        addMessage('3-way merge message to event. \n/ 3wayマージでイベントに反映します。')
+        if (args[0]) Laurus.Text2Frame.FileFolder = args[0]
+        if (args[1]) Laurus.Text2Frame.FileName = args[1]
+        if (args[2]) Laurus.Text2Frame.MapID = args[2]
+        if (args[3]) Laurus.Text2Frame.EventID = args[3]
+        if (args[4]) Laurus.Text2Frame.PageID = args[4]
+        if (args[0] || args[1]) {
+          const { PATH_SEP, BASE_PATH } = getDirParams()
+          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
+          Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
+          Laurus.Text2Frame.BasePath = (args[5] && args[6]) ? `${BASE_PATH}${PATH_SEP}${args[5]}${PATH_SEP}${args[6]}` : undefined
+        }
+        break
+      case 'MERGE3_MESSAGE_TO_CE' :
+        addMessage('3-way merge message to common event. \n/ 3wayマージでコモンイベントに反映します。')
+        Laurus.Text2Frame.FileFolder = args[0]
+        Laurus.Text2Frame.FileName = args[1]
+        Laurus.Text2Frame.CommonEventID = args[2]
+        {
+          const { PATH_SEP, BASE_PATH } = getDirParams()
+          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
+          Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
+          Laurus.Text2Frame.BasePath = (args[3] && args[4]) ? `${BASE_PATH}${PATH_SEP}${args[3]}${PATH_SEP}${args[4]}` : undefined
         }
         break
       case 'SYNC_EVENT_BIDIRECTIONAL' :
@@ -10313,6 +10443,7 @@
               EventID: String(eventId),
               PageID: String(pageId),
               IsOverwrite: String(entry.overwrite).toLowerCase() === 'true',
+              BasePath: resolveFromRoot(manifestRootDir, entry.basePath),
               ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_EVENT' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT')),
               WriteBack: false
             }])
@@ -10342,6 +10473,7 @@
               CommonEventPath: commonEventPath,
               CommonEventID: String(commonEventId),
               IsOverwrite: String(entry.overwrite).toLowerCase() === 'true',
+              BasePath: resolveFromRoot(manifestRootDir, entry.basePath),
               ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_CE' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE')),
               WriteBack: false
             }])
@@ -10665,7 +10797,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-p, --page_id <name>', 'page id')
     .option('-c, --common_event_id <name>', 'common event id')
     .option('-f, --manifest <path>', 'batch manifest json path')
-    .option('-s, --strategy <import|diff|sync|overlay|merge3>', 'batch strategy', /^(import|diff|sync|overlay|merge3)$/i, 'diff')
+    .option('-s, --strategy <import|diff|sync|overlay|merge3>', 'deploy strategy', /^(import|diff|sync|overlay|merge3)$/i, 'diff')
+    .option('-b, --base <path>', 'ancestor text path for merge3 (common ancestor)')
     .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
     .option('-v, --verbose', 'debug mode', false)
     .option('--watch', 'watch text files and redeploy on change (batch mode)', false)
@@ -10718,12 +10851,21 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     process.exit(0)
   }
 
+  const cliStrategy = String(options.strategy || 'diff').toLowerCase()
+  const execModeFor = function (kind) {
+    const suffix = kind === 'common' ? '_TO_CE' : '_TO_EVENT'
+    if (cliStrategy === 'import') return 'IMPORT_MESSAGE' + suffix
+    if (cliStrategy === 'overlay') return 'OVERLAY_MESSAGE' + suffix
+    if (cliStrategy === 'merge3') return 'MERGE3_MESSAGE' + suffix
+    return 'DIFF_IMPORT_MESSAGE' + suffix
+  }
   if (options.mode === 'map') {
     const Text2Frame = {
       IsDebug: options.verbose,
       TextPath: options.text_path,
       IsOverwrite: (options.overwrite === 'true'),
-      ExecMode: 'IMPORT_MESSAGE_TO_EVENT',
+      ExecMode: execModeFor('event'),
+      BasePath: options.base,
       MapPath: options.output_path,
       EventID: options.event_id,
       PageID: options.page_id ? options.page_id : '1'
@@ -10734,7 +10876,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       IsDebug: options.verbose,
       TextPath: options.text_path,
       IsOverwrite: (options.overwrite === 'true'),
-      ExecMode: 'IMPORT_MESSAGE_TO_CE',
+      ExecMode: execModeFor('common'),
+      BasePath: options.base,
       CommonEventPath: options.output_path,
       CommonEventID: options.common_event_id
     }
@@ -10800,6 +10943,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             EventID: String(eventId),
             PageID: String(pageId),
             IsOverwrite: boolFrom(entry.overwrite, false),
+            BasePath: resolveFromRoot(manifestRootDir, entry.basePath),
             ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_EVENT' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT')),
             WriteBack: false
           }
@@ -10832,6 +10976,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             CommonEventPath: commonEventPath,
             CommonEventID: String(commonEventId),
             IsOverwrite: boolFrom(entry.overwrite, false),
+            BasePath: resolveFromRoot(manifestRootDir, entry.basePath),
             ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_CE' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE')),
             WriteBack: false
           }
