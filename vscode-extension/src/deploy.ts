@@ -89,21 +89,29 @@ export async function deployDocument(
     }
 
     const config = vscode.workspace.getConfiguration('text2frame');
-    const strategy = config.get<string>('strategy') || 'diff';
+    let strategy = config.get<string>('strategy') || 'merge';
+    // overwrite-like strategies replace the JSON wholesale (legacy import/diff included);
+    // merge-like strategies (merge/overlay/merge3) preserve external JSON edits.
+    const isOverwriteLike = (s: string): boolean => s === 'overwrite' || s === 'import' || s === 'diff';
     const dataPath = (resolved.opts.mapPath || resolved.opts.commonEventPath) as string;
     const out = getOutput();
     const time = new Date().toLocaleTimeString();
 
     // Data-change guard: the JSON changed externally since we last wrote/pulled it.
-    // Overwriting it with (possibly stale) text would lose those changes.
-    if (dataPath && dataChangedExternally(context, dataPath)) {
+    // Only overwrite-like strategies can lose those edits; merge preserves them, so we
+    // only prompt when the configured strategy would overwrite.
+    if (dataPath && isOverwriteLike(strategy) && dataChangedExternally(context, dataPath)) {
         const choice = await vscode.window.showWarningMessage(
             `Text2Frame: ${path.basename(dataPath)} が外部で更新されています。テキストで上書きすると失われる可能性があります。`,
             { modal: true },
+            'マージして反映(merge)',
             '上書きする',
             '先に取り込む(pull)'
         );
-        if (choice === '先に取り込む(pull)') {
+        if (choice === 'マージして反映(merge)') {
+            // Switch this deploy to the non-destructive smart merge, keeping external JSON edits.
+            strategy = 'merge';
+        } else if (choice === '先に取り込む(pull)') {
             const pullTarget: ExportTarget = {
                 kind: meta.kind === 'common' ? 'common' : 'event',
                 mapId: meta.mapId,
@@ -121,17 +129,17 @@ export async function deployDocument(
                 vscode.window.showErrorMessage('Text2Frame: 取り込み失敗 - ' + (ex.error || ''));
             }
             return undefined;
-        }
-        if (choice !== '上書きする') {
+        } else if (choice === '上書きする') {
+            // Snapshot the about-to-be-overwritten data so it can be recovered.
+            try {
+                fs.copyFileSync(dataPath, dataPath + '.conflict.bak');
+                out.appendLine(`[${time}] saved conflict backup: ${path.basename(dataPath)}.conflict.bak`);
+            } catch (e) {
+                // best effort
+            }
+        } else {
             out.appendLine(`[${time}] CANCELLED (external change) ${path.basename(dataPath)}`);
             return undefined;
-        }
-        // Snapshot the about-to-be-overwritten data so it can be recovered.
-        try {
-            fs.copyFileSync(dataPath, dataPath + '.conflict.bak');
-            out.appendLine(`[${time}] saved conflict backup: ${path.basename(dataPath)}.conflict.bak`);
-        } catch (e) {
-            // best effort
         }
     }
 
@@ -139,7 +147,6 @@ export async function deployDocument(
         textPath: document.uri.fsPath,
         ...resolved.opts,
         strategy,
-        overwrite: strategy === 'import',
         backup: true
     });
 

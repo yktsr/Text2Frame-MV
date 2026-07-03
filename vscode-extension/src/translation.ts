@@ -32,7 +32,7 @@ function cfg(key: string, def: string): string {
 const sourceLocaleSetting = (): string => cfg('sourceLocale', 'ja');
 const targetLocaleSetting = (): string => cfg('targetLocale', 'en');
 const textBaseSetting = (): string => cfg('textBaseDir', 'text');
-const strategySetting = (): string => cfg('strategy', 'diff');
+const strategySetting = (): string => cfg('strategy', 'merge');
 
 interface DataItem {
     kind: 'event' | 'common';
@@ -191,16 +191,19 @@ function runLocaleDeploy(context: vscode.ExtensionContext, strategy: string, opN
             const key = path.basename(file, '.txt');
             const { meta } = parseFrontMatter(fs.readFileSync(file, 'utf8'));
             const { opts, label } = resolveTarget(meta, root);
-            const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, overwrite: strategy === 'import', backup: true };
-            if (strategy === 'merge3' && hasBaseSnapshot(root, target, key)) {
+            // merge (and legacy overlay/merge3/diff) keep JSON structure; overwrite/import fully replace.
+            const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
+            const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, backup: true };
+            // Auto common-ancestor: use the BASE snapshot when present so merge does a 3-way.
+            if (mergeLike && hasBaseSnapshot(root, target, key)) {
                 applyOpts.basePath = baseSnapshotPath(root, target, key);
             }
             const res = mod.applyTextFile(applyOpts);
             if (res.ok) {
                 ok++;
                 warn += res.warnings.length;
-                // 3-way マージ成功後は、現在のテキストを新しい共通祖先(BASE)にする。
-                if (strategy === 'merge3') { saveBaseSnapshot(root, target, key, fs.readFileSync(file, 'utf8')); }
+                // After a successful merge, make the current text the new common ancestor (BASE).
+                if (mergeLike) { saveBaseSnapshot(root, target, key, fs.readFileSync(file, 'utf8')); }
                 out.appendLine(`OK   ${label}  <- ${path.relative(root, file)}` + (res.warnings.length ? `  (${res.warnings.length} warn)` : ''));
             } else {
                 fail++;
@@ -226,21 +229,13 @@ export function deployTranslationSet(context: vscode.ExtensionContext): void {
 }
 
 /**
- * Command: overlay-merge translations into the data JSON. Keeps the JSON structure
- * (movement/branches/switches edited in the editor) and only replaces conversation
- * strings from text/<targetLocale>/. Uses the 'overlay' strategy.
+ * Command: merge translations into the data JSON (the smart, non-destructive default).
+ * Keeps the JSON structure (movement/branches/switches edited in the editor) and updates
+ * only the conversation from text/<targetLocale>/. When a BASE snapshot (.t2f-base, saved
+ * on the previous deploy/export) exists it does a 3-way merge — a unit changed differently
+ * on both sides is kept as BOTH with conflict comment markers; otherwise it overlays. An
+ * empty target event is populated wholesale. The current text becomes the new BASE on success.
  */
-export function mergeTranslation(context: vscode.ExtensionContext): void {
-    runLocaleDeploy(context, 'overlay', '翻訳マージ');
-}
-
-/**
- * Command: 3-way merge translations into the data JSON. Uses the BASE snapshot
- * (.t2f-base, saved when the translation set was created) as the common ancestor,
- * so both the writer's text edits and the editor's JSON edits are combined; a unit
- * changed differently on both sides is kept as BOTH with conflict comment markers.
- * Falls back to overlay when no base snapshot exists.
- */
-export function mergeTranslation3way(context: vscode.ExtensionContext): void {
-    runLocaleDeploy(context, 'merge3', '翻訳3wayマージ');
+export function deployTranslation(context: vscode.ExtensionContext): void {
+    runLocaleDeploy(context, 'merge', '翻訳マージ');
 }
