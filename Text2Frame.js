@@ -10353,7 +10353,6 @@
       if (!_resolvedBatch) {
         throw new Error('Unknown strategy: ' + strategyArg + ' (expected: merge|overwrite)')
       }
-      const strategy = _resolvedBatch.strategy
       const syncBack = _resolvedBatch.sync
 
       if (syncBack && typeof this.pluginCommandFrame2Text !== 'function') {
@@ -10375,12 +10374,21 @@
 
           const parsed = parseFrontMatter(readText(textPath))
           const meta = parsed.meta || {}
-          const kind = String(entry.kind || meta.kind || 'event').toLowerCase()
+          // Front matter is the primary source of truth; the manifest entry is a fallback.
+          const kind = String(meta.kind || entry.kind || 'event').toLowerCase()
+          // Per-entry strategy/sync/base override the batch defaults (front matter wins).
+          const _entryResolved = resolveStrategy(meta.strategy || entry.strategy) || _resolvedBatch
+          const entryStrategy = _entryResolved.strategy
+          const entrySync = _entryResolved.sync || syncBack
+          if (entrySync && typeof this.pluginCommandFrame2Text !== 'function') {
+            throw new Error('Frame2Text plugin is required for sync (writeback).')
+          }
+          const entryBasePath = resolveFromRoot(manifestRootDir, meta.basePath || entry.basePath)
 
           if (kind === 'event') {
-            const mapId = entry.mapId || meta.mapId
-            const eventId = entry.eventId || meta.eventId
-            const pageId = entry.pageId || meta.pageId || '1'
+            const mapId = meta.mapId || entry.mapId
+            const eventId = meta.eventId || entry.eventId
+            const pageId = meta.pageId || entry.pageId || '1'
             if (!eventId) {
               throw new Error('eventId is required for event entry')
             }
@@ -10398,13 +10406,13 @@
               MapPath: mapPath,
               EventID: String(eventId),
               PageID: String(pageId),
-              IsOverwrite: strategy === 'overwrite',
-              BasePath: resolveFromRoot(manifestRootDir, entry.basePath),
-              ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_EVENT' : 'MERGE_MESSAGE_TO_EVENT',
+              IsOverwrite: entryStrategy === 'overwrite',
+              BasePath: entryBasePath,
+              ExecMode: entryStrategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_EVENT' : 'MERGE_MESSAGE_TO_EVENT',
               WriteBack: false
             }])
 
-            if (syncBack) {
+            if (entrySync) {
               this.pluginCommandFrame2Text('COMMAND_LINE', [{
                 IsDebug: Laurus.Text2Frame.IsDebug,
                 TextPath: textPath,
@@ -10415,7 +10423,7 @@
               }])
             }
           } else if (kind === 'common') {
-            const commonEventId = entry.commonEventId || meta.commonEventId
+            const commonEventId = meta.commonEventId || entry.commonEventId
             if (!commonEventId) {
               throw new Error('commonEventId is required for common entry')
             }
@@ -10428,13 +10436,13 @@
               TextPath: textPath,
               CommonEventPath: commonEventPath,
               CommonEventID: String(commonEventId),
-              IsOverwrite: strategy === 'overwrite',
-              BasePath: resolveFromRoot(manifestRootDir, entry.basePath),
-              ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_CE' : 'MERGE_MESSAGE_TO_CE',
+              IsOverwrite: entryStrategy === 'overwrite',
+              BasePath: entryBasePath,
+              ExecMode: entryStrategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_CE' : 'MERGE_MESSAGE_TO_CE',
               WriteBack: false
             }])
 
-            if (syncBack) {
+            if (entrySync) {
               this.pluginCommandFrame2Text('COMMAND_LINE', [{
                 IsDebug: Laurus.Text2Frame.IsDebug,
                 TextPath: textPath,
@@ -10715,11 +10723,11 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   const parseFrontMatterCli = function (text) {
     const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
     if (normalized.indexOf('---\n') !== 0) {
-      return { meta: {}, body: text }
+      return { meta: {}, body: text, hasFrontMatter: false }
     }
     const endIndex = normalized.indexOf('\n---\n', 4)
     if (endIndex < 0) {
-      return { meta: {}, body: text }
+      return { meta: {}, body: text, hasFrontMatter: false }
     }
     const header = normalized.slice(4, endIndex)
     const body = normalized.slice(endIndex + 5)
@@ -10729,7 +10737,37 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       if (!m) return
       meta[m[1]] = m[2].trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1')
     })
-    return { meta, body }
+    return { meta, body, hasFrontMatter: true }
+  }
+
+  // Build a front matter block from routing metadata (used to backfill files that lack one).
+  const renderFrontMatterCli = function (meta) {
+    const lines = ['---']
+    const order = ['kind', 'mapId', 'eventId', 'pageId', 'commonEventId', 'locale', 'sourceLocale', 'strategy', 'basePath']
+    order.forEach(function (k) {
+      if (meta[k] !== undefined && meta[k] !== null && String(meta[k]) !== '') {
+        lines.push(k + ': ' + String(meta[k]))
+      }
+    })
+    lines.push('---', '')
+    return lines.join('\n')
+  }
+
+  // Recursively collect *.txt files under a directory.
+  const walkTextFilesCli = function (dir) {
+    const out = []
+    const stack = [dir]
+    while (stack.length) {
+      const cur = stack.pop()
+      let stat
+      try { stat = fs.statSync(cur) } catch (e) { continue }
+      if (stat.isDirectory()) {
+        fs.readdirSync(cur).forEach(function (name) { stack.push(path.join(cur, name)) })
+      } else if (stat.isFile() && cur.toLowerCase().endsWith('.txt')) {
+        out.push(cur)
+      }
+    }
+    return out.sort()
   }
 
   const toMapPath = function (mapId) {
@@ -10854,15 +10892,31 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       console.log(JSON.stringify(module.exports.compile(parseFrontMatterCli(data).body), null, 2))
     })
   } else if (options.mode === 'batch') {
-    if (!options.manifest) {
-      throw new Error('--manifest is required in batch mode.')
-    }
-    const manifestPath = path.resolve(options.manifest)
-    const manifestRootDir = path.dirname(manifestPath)
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, { encoding: 'utf8' }))
-    const entries = Array.isArray(manifest.entries) ? manifest.entries : []
     const strategy = cliStrategy
     const includeSync = cliSync
+    // Front matter is the primary source of routing/metadata. A manifest is optional and
+    // legacy: when omitted, scan the text directory for front-matter .txt files (E-2);
+    // when explicitly given, it is used AND its metadata is backfilled into files that
+    // lack front matter (E-3).
+    const manifestExplicit = !!options.manifest
+    let manifestPath = null
+    let manifestRootDir
+    let entries
+    if (manifestExplicit) {
+      manifestPath = path.resolve(options.manifest)
+      manifestRootDir = path.dirname(manifestPath)
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, { encoding: 'utf8' }))
+      entries = Array.isArray(manifest.entries) ? manifest.entries : []
+    } else {
+      const scanRoot = path.resolve(options.text_path || 'text')
+      manifestRootDir = process.cwd()
+      entries = walkTextFilesCli(scanRoot)
+        .filter(function (f) { return parseFrontMatterCli(fs.readFileSync(f, { encoding: 'utf8' })).hasFrontMatter })
+        .map(function (f) { return { textPath: f } })
+      if (entries.length === 0) {
+        throw new Error('No front-matter text files found under ' + scanRoot + ' (pass --manifest or --text_path <dir>).')
+      }
+    }
 
     if (includeSync) {
       // Load Frame2Text bridge for one-shot sync mode.
@@ -10879,12 +10933,36 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
         const parsed = parseFrontMatterCli(fs.readFileSync(textPath, { encoding: 'utf8' }))
         const meta = parsed.meta || {}
-        const kind = (entry.kind || meta.kind || 'event').toLowerCase()
+        // Front matter wins; manifest entry is the fallback (E-1).
+        const kind = String(meta.kind || entry.kind || 'event').toLowerCase()
+        // Per-entry strategy/sync/base override the batch defaults (front matter first, E-4).
+        const _entryResolved = module.exports.resolveStrategy(meta.strategy || entry.strategy) || _cliResolved
+        const entryStrategy = _entryResolved.strategy
+        const entrySync = _entryResolved.sync || includeSync
+        const entryBasePath =
+          resolveFromRoot(manifestRootDir, meta.basePath || entry.basePath) ||
+          (options.base ? path.resolve(options.base) : undefined)
+
+        // E-3: when a manifest is explicitly provided, backfill front matter into files that
+        // lack one, so subsequent runs can be driven by front matter alone (non-destructive:
+        // files that already have front matter are never touched).
+        if (manifestExplicit && !parsed.hasFrontMatter) {
+          const fmMeta = {
+            kind,
+            mapId: entry.mapId || meta.mapId,
+            eventId: entry.eventId || meta.eventId,
+            pageId: entry.pageId || meta.pageId,
+            commonEventId: entry.commonEventId || meta.commonEventId,
+            locale: entry.locale || meta.locale,
+            sourceLocale: entry.sourceLocale || meta.sourceLocale
+          }
+          fs.writeFileSync(textPath, renderFrontMatterCli(fmMeta) + parsed.body, { encoding: 'utf8' })
+        }
 
         if (kind === 'event') {
-          const mapId = entry.mapId || meta.mapId
-          const eventId = entry.eventId || meta.eventId
-          const pageId = entry.pageId || meta.pageId || '1'
+          const mapId = meta.mapId || entry.mapId
+          const eventId = meta.eventId || entry.eventId
+          const pageId = meta.pageId || entry.pageId || '1'
           if (!eventId) {
             throw new Error('eventId is required for event entry')
           }
@@ -10901,14 +10979,14 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             MapPath: mapPath,
             EventID: String(eventId),
             PageID: String(pageId),
-            IsOverwrite: strategy === 'overwrite',
-            BasePath: resolveFromRoot(manifestRootDir, entry.basePath),
-            ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_EVENT' : 'MERGE_MESSAGE_TO_EVENT',
+            IsOverwrite: entryStrategy === 'overwrite',
+            BasePath: entryBasePath,
+            ExecMode: entryStrategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_EVENT' : 'MERGE_MESSAGE_TO_EVENT',
             WriteBack: false
           }
           Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [cmd])
 
-          if (includeSync) {
+          if (entrySync) {
             if (typeof Game_Interpreter.prototype.pluginCommandFrame2Text !== 'function') {
               throw new Error('Frame2Text bridge is not available for sync strategy')
             }
@@ -10922,7 +11000,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             }])
           }
         } else if (kind === 'common') {
-          const commonEventId = entry.commonEventId || meta.commonEventId
+          const commonEventId = meta.commonEventId || entry.commonEventId
           if (!commonEventId) {
             throw new Error('commonEventId is required for common entry')
           }
@@ -10934,14 +11012,14 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             TextPath: textPath,
             CommonEventPath: commonEventPath,
             CommonEventID: String(commonEventId),
-            IsOverwrite: strategy === 'overwrite',
-            BasePath: resolveFromRoot(manifestRootDir, entry.basePath),
-            ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_CE' : 'MERGE_MESSAGE_TO_CE',
+            IsOverwrite: entryStrategy === 'overwrite',
+            BasePath: entryBasePath,
+            ExecMode: entryStrategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_CE' : 'MERGE_MESSAGE_TO_CE',
             WriteBack: false
           }
           Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [cmd])
 
-          if (includeSync) {
+          if (entrySync) {
             if (typeof Game_Interpreter.prototype.pluginCommandFrame2Text !== 'function') {
               throw new Error('Frame2Text bridge is not available for sync strategy')
             }

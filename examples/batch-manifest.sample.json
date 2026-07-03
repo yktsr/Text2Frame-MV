@@ -1,4 +1,5 @@
 {
+  "_note": "LEGACY/OPTIONAL. Front matter (the YAML header at the top of each text file) is the primary source of metadata. A manifest is only needed for older files without front matter; when passed explicitly, front matter still wins and files lacking one are backfilled. For new setups prefer: node Text2Frame.js --mode batch --text_path text",
   "version": 1,
   "entries": [
     {
