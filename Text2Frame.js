@@ -9916,6 +9916,18 @@
      * existing_commands: 既存のイベントコマンドリスト
      * new_commands: テキストから変換した新しいイベントコマンドリスト
      * 戻り値: { commands: 適用後コマンドリスト(終端コードなし), warnings: 警告メッセージ配列 } */
+    // strategy 正規化(後方互換エイリアス)。ユーザー向けは merge / overwrite の2本。
+    // 旧: import/diff -> overwrite, overlay/merge3 -> merge, sync -> merge + 書き戻しフラグ。
+    // 戻り値 { strategy, sync } / 未知は null。
+    const resolveStrategy = function (name) {
+      const s = String(name == null ? 'merge' : name).toLowerCase()
+      if (s === 'merge') return { strategy: 'merge', sync: false }
+      if (s === 'overwrite') return { strategy: 'overwrite', sync: false }
+      if (s === 'import' || s === 'diff') return { strategy: 'overwrite', sync: false }
+      if (s === 'overlay' || s === 'merge3') return { strategy: 'merge', sync: false }
+      if (s === 'sync') return { strategy: 'merge', sync: true }
+      return null
+    }
     const applyDiff = function (existing_commands, new_commands) {
       const stripBottom = function (cmds) {
         const copy = cmds.slice()
@@ -10250,10 +10262,11 @@
       if (!textPath) {
         return { ok: false, textPath: opts.textPath || '', warnings: [], error: 'textPath is required' }
       }
-      const strategy = String(opts.strategy || 'diff').toLowerCase()
-      if (!['import', 'diff', 'overlay', 'merge3'].includes(strategy)) {
-        return { ok: false, textPath, warnings: [], error: 'Unknown strategy: ' + strategy + ' (expected: import|diff|overlay|merge3)' }
+      const _resolvedStrategy = resolveStrategy(opts.strategy)
+      if (!_resolvedStrategy) {
+        return { ok: false, textPath, warnings: [], error: 'Unknown strategy: ' + opts.strategy + ' (expected: merge|overwrite)' }
       }
+      const strategy = _resolvedStrategy.strategy
 
       const prevWarnings = Laurus.Text2Frame._warnings
       const prevQuiet = Laurus.Text2Frame._quiet
@@ -10263,7 +10276,7 @@
         const parsed = parseFrontMatter(readText(textPath))
         const meta = parsed.meta || {}
         const kind = String(opts.kind || meta.kind || 'event').toLowerCase()
-        const overwrite = String(opts.overwrite).toLowerCase() === 'true' || opts.overwrite === true
+        const overwrite = strategy === 'overwrite'
 
         let dataPath
         let target
@@ -10293,7 +10306,7 @@
             PageID: String(pageId),
             IsOverwrite: overwrite,
             BasePath: opts.basePath,
-            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_EVENT' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT')),
+            ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_EVENT' : 'MERGE_MESSAGE_TO_EVENT',
             WriteBack: false
           }])
         } else if (kind === 'common') {
@@ -10315,7 +10328,7 @@
             CommonEventID: String(commonEventId),
             IsOverwrite: overwrite,
             BasePath: opts.basePath,
-            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_CE' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE')),
+            ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_CE' : 'MERGE_MESSAGE_TO_CE',
             WriteBack: false
           }])
         } else {
@@ -10350,7 +10363,7 @@
       }
     }
 
-    Laurus.Text2Frame.export = { compile, applyDiff, applyOverlay, applyThreeWayMerge, applyTextFile, runBatch }
+    Laurus.Text2Frame.export = { compile, applyDiff, applyOverlay, applyThreeWayMerge, applyTextFile, runBatch, resolveStrategy }
 
     /* 差分適用後のコマンドリストをテキストファイルへ書き戻す。
      * Frame2Text プラグインの decompile 関数を使用します。
@@ -10395,12 +10408,14 @@
         throw new Error('ManifestPath is required for BATCH command.')
       }
 
-      const strategy = String(strategyArg || 'diff').toLowerCase()
-      if (!['import', 'diff', 'sync', 'overlay', 'merge3'].includes(strategy)) {
-        throw new Error('Unknown strategy: ' + strategy + ' (expected: import|diff|sync|overlay|merge3)')
+      const _resolvedBatch = resolveStrategy(strategyArg)
+      if (!_resolvedBatch) {
+        throw new Error('Unknown strategy: ' + strategyArg + ' (expected: merge|overwrite)')
       }
+      const strategy = _resolvedBatch.strategy
+      const syncBack = _resolvedBatch.sync
 
-      if (strategy === 'sync' && typeof this.pluginCommandFrame2Text !== 'function') {
+      if (syncBack && typeof this.pluginCommandFrame2Text !== 'function') {
         throw new Error('Frame2Text plugin is required for sync strategy in BATCH command.')
       }
 
@@ -10442,13 +10457,13 @@
               MapPath: mapPath,
               EventID: String(eventId),
               PageID: String(pageId),
-              IsOverwrite: String(entry.overwrite).toLowerCase() === 'true',
+              IsOverwrite: strategy === 'overwrite',
               BasePath: resolveFromRoot(manifestRootDir, entry.basePath),
-              ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_EVENT' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT')),
+              ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_EVENT' : 'MERGE_MESSAGE_TO_EVENT',
               WriteBack: false
             }])
 
-            if (strategy === 'sync') {
+            if (syncBack) {
               this.pluginCommandFrame2Text('COMMAND_LINE', [{
                 IsDebug: Laurus.Text2Frame.IsDebug,
                 TextPath: textPath,
@@ -10472,13 +10487,13 @@
               TextPath: textPath,
               CommonEventPath: commonEventPath,
               CommonEventID: String(commonEventId),
-              IsOverwrite: String(entry.overwrite).toLowerCase() === 'true',
+              IsOverwrite: strategy === 'overwrite',
               BasePath: resolveFromRoot(manifestRootDir, entry.basePath),
-              ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_CE' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE')),
+              ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_CE' : 'MERGE_MESSAGE_TO_CE',
               WriteBack: false
             }])
 
-            if (strategy === 'sync') {
+            if (syncBack) {
               this.pluginCommandFrame2Text('COMMAND_LINE', [{
                 IsDebug: Laurus.Text2Frame.IsDebug,
                 TextPath: textPath,
@@ -10601,6 +10616,7 @@
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break
       }
+      case 'MERGE_MESSAGE_TO_EVENT':
       case 'MERGE3_MESSAGE_TO_EVENT': {
         const map_data = readJsonData(Laurus.Text2Frame.MapPath)
         if (!map_data.events[Laurus.Text2Frame.EventID]) {
@@ -10616,12 +10632,16 @@
           try { base_cmds = compile(parseFrontMatter(readText(Laurus.Text2Frame.BasePath)).body) } catch (e) { base_cmds = null }
         }
         let merge_result
+        const hasContent = existing_events.some(function (c) { return c && c.code !== 0 })
         if (base_cmds) {
           merge_result = applyThreeWayMerge(base_cmds, existing_events, event_command_list)
           if (merge_result.conflicts) addWarning('3-way merge: ' + merge_result.conflicts + ' conflict(s) kept both / 衝突を両方残しました')
-        } else {
+        } else if (hasContent) {
           merge_result = applyOverlay(existing_events, event_command_list)
-          addWarning('No base snapshot; overlay fallback / 祖先が無いため overlay で反映しました')
+        } else {
+          const overwriteCmds = event_command_list.slice()
+          while (overwriteCmds.length && overwriteCmds[overwriteCmds.length - 1] && overwriteCmds[overwriteCmds.length - 1].code === 0) overwriteCmds.pop()
+          merge_result = { commands: overwriteCmds, warnings: [] }
         }
         for (let wi = 0; wi < merge_result.warnings.length; wi++) addWarning(merge_result.warnings[wi])
         map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list =
@@ -10630,6 +10650,7 @@
         addMessage('Success / 書き出し成功！\n======> MapID: ' + Laurus.Text2Frame.MapID + ' -> EventID: ' + Laurus.Text2Frame.EventID + ' -> PageID: ' + Laurus.Text2Frame.PageID)
         break
       }
+      case 'MERGE_MESSAGE_TO_CE':
       case 'MERGE3_MESSAGE_TO_CE': {
         const ce_data = readJsonData(Laurus.Text2Frame.CommonEventPath)
         if (ce_data.length - 1 < Laurus.Text2Frame.CommonEventID) {
@@ -10641,12 +10662,16 @@
           try { base_ce_cmds = compile(parseFrontMatter(readText(Laurus.Text2Frame.BasePath)).body) } catch (e) { base_ce_cmds = null }
         }
         let merge_ce_result
+        const hasCeContent = existing_ce_events.some(function (c) { return c && c.code !== 0 })
         if (base_ce_cmds) {
           merge_ce_result = applyThreeWayMerge(base_ce_cmds, existing_ce_events, event_command_list)
           if (merge_ce_result.conflicts) addWarning('3-way merge: ' + merge_ce_result.conflicts + ' conflict(s) kept both / 衝突を両方残しました')
-        } else {
+        } else if (hasCeContent) {
           merge_ce_result = applyOverlay(existing_ce_events, event_command_list)
-          addWarning('No base snapshot; overlay fallback / 祖先が無いため overlay で反映しました')
+        } else {
+          const overwriteCeCmds = event_command_list.slice()
+          while (overwriteCeCmds.length && overwriteCeCmds[overwriteCeCmds.length - 1] && overwriteCeCmds[overwriteCeCmds.length - 1].code === 0) overwriteCeCmds.pop()
+          merge_ce_result = { commands: overwriteCeCmds, warnings: [] }
         }
         for (let wi = 0; wi < merge_ce_result.warnings.length; wi++) addWarning(merge_ce_result.warnings[wi])
         ce_data[Laurus.Text2Frame.CommonEventID].list =
@@ -10779,13 +10804,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       : path.resolve(rootDir, maybeRelativePath)
   }
 
-  const boolFrom = function (value, defaultValue) {
-    if (value === undefined || value === null || value === '') {
-      return defaultValue
-    }
-    return String(value).toLowerCase() === 'true'
-  }
-
   const program = new Command()
   program
     .version('2.2.1')
@@ -10797,9 +10815,10 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-p, --page_id <name>', 'page id')
     .option('-c, --common_event_id <name>', 'common event id')
     .option('-f, --manifest <path>', 'batch manifest json path')
-    .option('-s, --strategy <import|diff|sync|overlay|merge3>', 'deploy strategy', /^(import|diff|sync|overlay|merge3)$/i, 'diff')
-    .option('-b, --base <path>', 'ancestor text path for merge3 (common ancestor)')
-    .option('-w, --overwrite <true/false>', 'overwrite mode', 'false')
+    .option('-s, --strategy <merge|overwrite>', 'deploy strategy (default merge; legacy import/diff/overlay/merge3/sync accepted)', /^(merge|overwrite|import|diff|sync|overlay|merge3)$/i, 'merge')
+    .option('-b, --base <path>', 'ancestor text path for merge (3-way common ancestor)')
+    .option('--sync', 're-export text after applying (requires Frame2Text)', false)
+    .option('-w, --overwrite <true/false>', 'overwrite mode (legacy)', 'false')
     .option('-v, --verbose', 'debug mode', false)
     .option('--watch', 'watch text files and redeploy on change (batch mode)', false)
     .option('--debounce <ms>', 'debounce window for --watch', '250')
@@ -10851,19 +10870,18 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     process.exit(0)
   }
 
-  const cliStrategy = String(options.strategy || 'diff').toLowerCase()
+  const _cliResolved = module.exports.resolveStrategy(options.strategy) || { strategy: 'merge', sync: false }
+  const cliStrategy = _cliResolved.strategy
+  const cliSync = _cliResolved.sync || options.sync === true
   const execModeFor = function (kind) {
     const suffix = kind === 'common' ? '_TO_CE' : '_TO_EVENT'
-    if (cliStrategy === 'import') return 'IMPORT_MESSAGE' + suffix
-    if (cliStrategy === 'overlay') return 'OVERLAY_MESSAGE' + suffix
-    if (cliStrategy === 'merge3') return 'MERGE3_MESSAGE' + suffix
-    return 'DIFF_IMPORT_MESSAGE' + suffix
+    return (cliStrategy === 'overwrite' ? 'IMPORT_MESSAGE' : 'MERGE_MESSAGE') + suffix
   }
   if (options.mode === 'map') {
     const Text2Frame = {
       IsDebug: options.verbose,
       TextPath: options.text_path,
-      IsOverwrite: (options.overwrite === 'true'),
+      IsOverwrite: (cliStrategy === 'overwrite'),
       ExecMode: execModeFor('event'),
       BasePath: options.base,
       MapPath: options.output_path,
@@ -10875,7 +10893,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const Text2Frame = {
       IsDebug: options.verbose,
       TextPath: options.text_path,
-      IsOverwrite: (options.overwrite === 'true'),
+      IsOverwrite: (cliStrategy === 'overwrite'),
       ExecMode: execModeFor('common'),
       BasePath: options.base,
       CommonEventPath: options.output_path,
@@ -10902,8 +10920,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const manifestRootDir = path.dirname(manifestPath)
     const manifest = JSON.parse(fs.readFileSync(manifestPath, { encoding: 'utf8' }))
     const entries = Array.isArray(manifest.entries) ? manifest.entries : []
-    const strategy = String(options.strategy || 'diff').toLowerCase()
-    const includeSync = strategy === 'sync'
+    const strategy = cliStrategy
+    const includeSync = cliSync
 
     if (includeSync) {
       // Load Frame2Text bridge for one-shot sync mode.
@@ -10942,9 +10960,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             MapPath: mapPath,
             EventID: String(eventId),
             PageID: String(pageId),
-            IsOverwrite: boolFrom(entry.overwrite, false),
+            IsOverwrite: strategy === 'overwrite',
             BasePath: resolveFromRoot(manifestRootDir, entry.basePath),
-            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_EVENT' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_EVENT' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_EVENT' : 'DIFF_IMPORT_MESSAGE_TO_EVENT')),
+            ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_EVENT' : 'MERGE_MESSAGE_TO_EVENT',
             WriteBack: false
           }
           Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [cmd])
@@ -10975,9 +10993,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             TextPath: textPath,
             CommonEventPath: commonEventPath,
             CommonEventID: String(commonEventId),
-            IsOverwrite: boolFrom(entry.overwrite, false),
+            IsOverwrite: strategy === 'overwrite',
             BasePath: resolveFromRoot(manifestRootDir, entry.basePath),
-            ExecMode: strategy === 'import' ? 'IMPORT_MESSAGE_TO_CE' : (strategy === 'overlay' ? 'OVERLAY_MESSAGE_TO_CE' : (strategy === 'merge3' ? 'MERGE3_MESSAGE_TO_CE' : 'DIFF_IMPORT_MESSAGE_TO_CE')),
+            ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_CE' : 'MERGE_MESSAGE_TO_CE',
             WriteBack: false
           }
           Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [cmd])
@@ -11018,9 +11036,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         throw new Error('chokidar is required for --watch. Run: npm install')
       }
 
-      const watchStrategy = strategy === 'sync' ? 'diff' : strategy
-      if (strategy === 'sync') {
-        console.log('[watch] note: per-file redeploy uses "diff" strategy (sync runs only on the initial pass).')
+      const watchStrategy = strategy
+      if (cliSync) {
+        console.log('[watch] note: sync write-back runs only on the initial pass; per-file redeploy uses the resolved strategy.')
       }
 
       const stamp = function () {
