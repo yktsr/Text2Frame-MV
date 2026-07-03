@@ -28,7 +28,7 @@ function textBaseSetting(): string {
     return vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text');
 }
 function strategySetting(): string {
-    return vscode.workspace.getConfiguration('text2frame').get<string>('strategy', 'diff');
+    return vscode.workspace.getConfiguration('text2frame').get<string>('strategy', 'merge');
 }
 
 /** Recursively collect *.txt files under a directory. */
@@ -76,7 +76,7 @@ export function deployAll(context: vscode.ExtensionContext): void {
         try {
             const { meta } = parseFrontMatter(fs.readFileSync(file, 'utf8'));
             const { opts, label } = resolveTarget(meta, root);
-            const res = mod.applyTextFile({ textPath: file, ...opts, strategy: strategySetting(), overwrite: strategySetting() === 'import', backup: true });
+            const res = mod.applyTextFile({ textPath: file, ...opts, strategy: strategySetting(), backup: true });
             if (res.ok) {
                 ok++;
                 warn += res.warnings.length;
