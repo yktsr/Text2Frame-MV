@@ -37,9 +37,7 @@ RPG ツクール MV/MZ 用プラグイン **Text2Frame** のスクリプトを�
 | `Text2Frame: Deploy All` | `text/` 配下のフロントマター付き .txt をすべて反映 |
 | `Text2Frame: Export All` | すべてのイベント/コモンを `text/<locale>/` へ書き出し |
 | `Text2Frame: Create Translation Set` | 翻訳セットを `text/<targetLocale>/` に作成（後述） |
-| `Text2Frame: Deploy Translation` | `text/<targetLocale>/` のみをデータへ反映（後述） |
-| `Text2Frame: Merge Translation (overlay)` | 構造を保持し会話だけ反映（後述） |
-| `Text2Frame: Merge Translation (3-way)` | 祖先基準で両者の編集を統合・衝突は両方残す（後述） |
+| `Text2Frame: Deploy Translation (merge)` | `text/<targetLocale>/` のみを **merge** でデータへ反映（構造保持＋祖先があれば 3-way、後述） |
 
 ステータスバーに現在の状態と直近の結果が表示されます。
 
@@ -88,7 +86,7 @@ commonEventId: 3
 - 最初の書き込み前に、対象 JSON のオリジナルを `*.bak` として 1 度だけ退避します。
 - 文法エラー時は書き込まずに中断し、エラーを通知します。
 - 差分の警告・エラーは通知と **Text2Frame Deploy** 出力チャンネルに表示されます。
-  - `diff` 方式では、ブロックの**内容変更**は「`Block changed / ブロックが変更されます`」、
+  - ブロックの**内容変更**は「`Block changed / ブロックが変更されます`」、
     テキストから消えて**削除されるブロックのみ**「`Block removed / ブロックが削除されます`」と報告されます。
 
 > ⚠️ デプロイは稼働中の `data/` JSON を直接書き換えます。反映を確認するときは
@@ -98,7 +96,7 @@ commonEventId: 3
 
 | 設定キー | 既定値 | 説明 |
 | --- | --- | --- |
-| `text2frame.strategy` | `diff` | `diff`＝最小マージ、`import`＝イベントを上書き |
+| `text2frame.strategy` | `merge` | `merge`＝JSON 構造を保持して賢く反映（祖先があれば 3-way、無ければ会話のみ差し替え、空は新規反映）、`overwrite`＝テキストで全上書き。旧値(`diff`/`import`/`overlay`/`merge3`/`sync`)も内部で正規化され受理 |
 | `text2frame.normalizeAfterDeploy` | `false` | 保存時デプロイ後、データからテキストへ書き戻して正準形に整形。保存ファイルが書き換わりエディタが再読込されます(外部変更の取り込みではありません) |
 | `text2frame.modulePath` | （空） | `Text2Frame.js` のパスを明示指定（空なら自動解決） |
 | `text2frame.dataDir` | `data` | データフォルダ(ワークスペース相対) |
@@ -137,13 +135,14 @@ commonEventId: 3
 
 | コマンド | 挙動 | 使いどころ |
 | --- | --- | --- |
-| Deploy Translation | `text2frame.strategy`（`diff`/`import`）で反映。**テキストが正**（テキストに無い JSON 側コマンドは消える） | テキストが完全な正のとき |
-| **Merge Translation (overlay)** | **JSON 構造を保持し会話文字列だけ差し替え** | ツクール UI で構造(移動/分岐/スイッチ)を編集済み。ライターはセリフのみ翻訳 |
-| **Merge Translation (3-way)** | 祖先(`.t2f-base/`＝翻訳セット作成時に保存)を基準に**ライター編集と UI 編集を統合**。同じ箇所を双方が別々に変えた時だけ**両方残す**（`<<<<<<<` コメント＋警告）。祖先が無ければ overlay に自動フォールバック | ライターも構造を触る／確実に両者を残したい |
+| **Deploy Translation (merge)** | **JSON 構造を保持し会話文字列だけ差し替え**。祖先(`.t2f-base/`＝デプロイ/書き出し成功時に自動保存)があれば**ライター編集と UI 編集を統合する 3-way**（同じ箇所を双方が別々に変えた時だけ**両方残す**：`<<<<<<<` コメント＋警告）。祖先が無ければ overlay に自動フォールバック。反映成功後は現在のテキストが新しい祖先になります。 | 通常はこれ。ツクール UI で構造(移動/分岐/スイッチ)を編集し、ライターはセリフを翻訳する運用 |
+| Deploy Translation Set | 設定 `text2frame.strategy`（既定 `merge`）で反映。`overwrite` にすると**テキストが正**でJSON側コマンドは消えます | テキストが完全な正のとき（設定を `overwrite` に） |
 
-> **pull（データ→テキスト書き出し）との違い**: 「ゲームからテキストへ書き出し」や外部更新時の *pull* は JSON でテキストを**上書き**し、翻訳を失って祖先をリセットします。翻訳を保持したいときは *pull* ではなく **overlay / 3-way マージ**を使ってください。
+> **旧コマンド名について**: 従来の「Merge Translation (overlay)」「Merge Translation (3-way)」は **Deploy Translation (merge) に一本化**されました（overlay / 3-way は自動判定）。旧コマンド ID (`text2frame.mergeTranslation` / `mergeTranslation3way`) はエイリアスとして残っており、同じ merge を実行します。
 
-> 個別ファイルを編集中に保存→即反映したい場合は、従来どおり「保存時に自動反映」を有効にすれば、front matter のルーティングでそのイベントへデプロイされます（方式は `text2frame.strategy`）。
+> **pull（データ→テキスト書き出し）との違い**: 「ゲームからテキストへ書き出し」や外部更新時の *pull* は JSON でテキストを**上書き**し、翻訳を失って祖先をリセットします。翻訳を保持したいときは *pull* ではなく **Deploy Translation (merge)** を使ってください。
+
+> 個別ファイルを編集中に保存→即反映したい場合は、従来どおり「保存時に自動反映」を有効にすれば、front matter のルーティングでそのイベントへデプロイされます（方式は `text2frame.strategy`、既定 `merge`）。外部で JSON が変わっていても merge は UI 編集を保持するため、上書き警告は overwrite 設定時のみ表示されます。
 
 ---
 

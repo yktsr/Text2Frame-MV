@@ -212,44 +212,47 @@ Hello
 node Frame2Text.js --mode batch-export --manifest examples/batch-manifest.sample.json --english_tag true
 ```
 
-### 4. 一括 import（text -> JSON）
+### 4. 一括反映（text -> JSON、既定は merge）
 
 ```bash
-node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json --strategy diff
+node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json
 ```
 
-### 5. 一括 sync（import + 再export）
+`--strategy` を省略すると `merge`（既定）です。全上書きしたいときだけ `--strategy overwrite` を付けます。
+
+### 5. 反映後にテキストへ書き戻して整形（--sync）
 
 ```bash
-node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json --strategy sync
+node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json --sync
 ```
 
 ### strategy 一覧（text→JSON の反映方式）
 
+方式は **2 つ**に集約されています。既定は `merge` です。
+
 | strategy | 挙動 | 使いどころ |
 | --- | --- | --- |
-| `import` | テキストで全上書き | 初回取り込み・完全再生成 |
-| `diff` | 差分ブロック反映。ただし**テキストが正**（テキストに無い JSON 側コマンドは削除。結果は `import` と実質同一） | テキストが完全な正のとき |
-| `sync` | `diff` ＋ 反映後にテキストへ書き戻して整形 | コメント/改行を保ちたいとき |
-| `overlay` | **JSON 構造を保持し会話文字列だけ差し替え**（移動/分岐/スイッチ等の UI 編集を残す） | ライターがセリフのみ翻訳、構造は UI 側が正 |
-| `merge3` | 祖先基準の 3-way。ライター編集と UI 編集を統合、同一箇所の相反変更のみ**両方残す** | 両者が構造も編集する場合。※ CLI/バッチは祖先未指定のため overlay 相当に縮退 |
+| `merge`（既定） | **JSON 構造を保ちつつテキストを賢く反映**。自動判定で、祖先があれば 3-way マージ（同一箇所の相反変更のみ**両方残す**）、祖先が無く既存に内容があれば会話文字列だけ差し替え（overlay）、既存が空ならテキストをそのまま新規反映。移動/分岐/スイッチ等の UI 編集を消しません。 | 通常はこれ。ライターがセリフを編集し、構造は UI 側で編集する運用に最適 |
+| `overwrite` | **テキストを完全な正として全上書き**（テキストに無い JSON 側コマンドは削除） | 初回取り込み・完全再生成・テキストが唯一の正のとき |
 
-`import` と `diff` は**結果が実質同一**（テキストが正）で、真のマージではありません。JSON 側の編集を残せるのは `overlay` / `merge3` だけです。3-way の祖先スナップショット運用は VS Code 拡張が管理します（[vscode-extension/README.md](vscode-extension/README.md) 参照）。
+`--sync` は strategy ではなく**フラグ**です（反映後にテキストへ書き戻して標準形へ整形。Frame2Text が必要）。
 
-これらの strategy は次の3経路すべてで使えます:
-- **CLI 単発**: `node Text2Frame.js --mode map --strategy overlay|merge3 --base <祖先テキスト> --text_path <t> --output_path <Map001.json> --event_id 1 --page_id 1`（`--base` は merge3 の共通祖先。省略時は overlay に縮退）。`--mode common` も同様。
-- **CLI 一括**: `--strategy overlay|merge3`。merge3 の祖先は manifest エントリの任意フィールド `basePath` で指定。
-- **プラグインコマンド（MZ）**: `MERGE3_MESSAGE_TO_EVENT` / `MERGE3_MESSAGE_TO_CE`（任意の `BaseFolder`/`BaseFileName` で祖先指定、空なら overlay 縮退）。`APPLY_MESSAGES_BY_MANIFEST` の Strategy でも `overlay`/`merge3` を選択可。
+> **旧 strategy 名は非推奨エイリアス**として引き続き受理され、内部で正規化されます: `import`/`diff` → `overwrite`、`overlay`/`merge3` → `merge`、`sync` → `merge` ＋ `--sync` フラグ。
+
+3-way の祖先（BASE）スナップショット運用は VS Code 拡張が管理します（[vscode-extension/README.md](vscode-extension/README.md) 参照）。`merge` は次の 3 経路すべてで使えます:
+- **CLI 単発**: `node Text2Frame.js --mode map --strategy merge --base <祖先テキスト> --text_path <t> --output_path <Map001.json> --event_id 1 --page_id 1`（`--base` は 3-way の共通祖先。省略時は overlay 相当に縮退）。`--mode common` も同様。
+- **CLI 一括**: `--strategy merge`（既定）。3-way の祖先は manifest エントリの任意フィールド `basePath` で指定。
+- **プラグインコマンド（MZ）**: `MERGE_MESSAGE_TO_EVENT` / `MERGE_MESSAGE_TO_CE`（任意の `BaseFolder`/`BaseFileName` で祖先指定、空なら overlay 相当に縮退）。全上書きは `IMPORT_MESSAGE_TO_EVENT` / `_TO_CE`。`APPLY_MESSAGES_BY_MANIFEST` の Strategy でも `merge`/`overwrite` を選択可。
 
 ### 英語化の固定フロー（推奨）
 
 1. ja を batch-export で出力
 2. text/en 配下を翻訳
-3. batch import(diff) で JSON へ反映
-4. batch sync で再整形し、コメント/改行を可能な限り維持
+3. batch で JSON へ反映（既定 `merge`。UI 編集を残したまま会話だけ反映されます）
+4. `--sync` で再整形し、コメント/改行を可能な限り維持
 5. 失敗レコードは CLI の JSON レポートで確認
 
-> `diff` 方式の警告について: ブロックの**内容変更**は「`Block changed / ブロックが変更されます`」、
+> 反映時の警告について: ブロックの**内容変更**は「`Block changed / ブロックが変更されます`」、
 > テキストから消えて**削除されるブロックのみ**「`Block removed / ブロックが削除されます`」と報告されます
 > (変更を削除と誤報告しません)。
 
