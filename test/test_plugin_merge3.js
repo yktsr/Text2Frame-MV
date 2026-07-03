@@ -82,4 +82,54 @@ describe('Plugin command MERGE3_MESSAGE_TO_EVENT (name-style router)', function 
     expect(list.some(function (c) { return c.code === 121 })).to.equal(true)
     expect(texts(list)).to.include('Bonjour')
   })
+
+  it('canonical MERGE_MESSAGE_TO_EVENT (no base) keeps dev switch and updates text', function () {
+    Game_Interpreter.prototype.pluginCommandText2Frame('MERGE_MESSAGE_TO_EVENT',
+      ['text', 'message.txt', '1', '1', '1', '', ''])
+    expect(written).to.not.equal(null)
+    const list = eventList()
+    expect(list.some(function (c) { return c.code === 121 })).to.equal(true) // overlay keeps structure
+    expect(texts(list)).to.include('Bonjour')
+  })
+
+  it('canonical MERGE_MESSAGE_TO_EVENT with base does 3-way (keeps switch, applies text)', function () {
+    Game_Interpreter.prototype.pluginCommandText2Frame('MERGE_MESSAGE_TO_EVENT',
+      ['text', 'message.txt', '1', '1', '1', 'base', 'ancestor.txt'])
+    expect(written).to.not.equal(null)
+    const list = eventList()
+    expect(list.some(function (c) { return c.code === 121 })).to.equal(true)
+    expect(texts(list)).to.include('Bonjour')
+  })
+})
+
+describe('Plugin command MERGE_MESSAGE_TO_EVENT on empty target (overwrite path)', function () {
+  const emptyMap = {
+    events: [null, { id: 1, pages: [{ list: [{ code: 0, indent: 0, parameters: [] }] }] }]
+  }
+  const theirsText = '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n\n<Switch: 7, ON>\nBonjour\n'
+  let written
+
+  beforeEach(function () {
+    written = null
+    sinon.stub(fs, 'readFileSync').callsFake(function (p) {
+      const s = String(p)
+      if (s.indexOf('Map001') !== -1) return JSON.stringify(emptyMap)
+      if (s.indexOf('message.txt') !== -1) return theirsText
+      throw new Error('unexpected read: ' + s)
+    })
+    sinon.stub(fs, 'writeFileSync').callsFake(function (p, data) {
+      if (String(p).indexOf('Map001') !== -1) written = data
+    })
+    sinon.stub(console, 'log')
+  })
+  afterEach(function () { sinon.restore() })
+
+  it('applies text whole (incl. switch) when target is empty', function () {
+    Game_Interpreter.prototype.pluginCommandText2Frame('MERGE_MESSAGE_TO_EVENT',
+      ['text', 'message.txt', '1', '1', '1', '', ''])
+    expect(written).to.not.equal(null)
+    const list = JSON.parse(written).events[1].pages[0].list
+    expect(list.some(function (c) { return c.code === 121 })).to.equal(true) // empty -> overwrite applies switch
+    expect(list.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })).to.include('Bonjour')
+  })
 })

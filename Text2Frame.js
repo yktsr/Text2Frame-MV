@@ -93,8 +93,8 @@
  * @url https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Text2Frame.js
  *
  * @command IMPORT_MESSAGE_TO_EVENT
- * @text イベントにインポート
- * @desc イベントにメッセージをインポートします。取り込み元ファイルの情報や、取り込み先のマップ・イベント・ページID等を指定します。
+ * @text イベントに上書きインポート
+ * @desc テキストを正としてイベントへ反映します(strategy=overwrite相当)。既定は末尾追加、IsOverwrite=trueで全置換です。UI編集を残したい場合はMERGEを使ってください。
  *
  * @arg FileFolder
  * @text 取り込み元フォルダ名
@@ -137,8 +137,8 @@
  * @default false
  *
  * @command IMPORT_MESSAGE_TO_CE
- * @text コモンイベントにインポート
- * @desc コモンイベントにメッセージをインポートします。取り込み元ファイルの情報や、取り込み先のコモンイベントID等を指定します。
+ * @text コモンイベントに上書きインポート
+ * @desc テキストを正としてコモンイベントへ反映します(strategy=overwrite相当)。既定は末尾追加、IsOverwrite=trueで全置換です。UI編集を残したい場合はMERGEを使ってください。
  *
  * @arg FileFolder
  * @text 取り込み元フォルダ名
@@ -168,85 +168,9 @@
  * @value false
  * @default false
  *
- * @command DIFF_IMPORT_MESSAGE_TO_EVENT
- * @text イベントに差分インポート
- * @desc テキストと既存イベントコマンドを比較し、差分のみをイベントに適用します。
- *
- * @arg FileFolder
- * @text 取り込み元フォルダ名
- * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
- * @type string
- * @default text
- *
- * @arg FileName
- * @text 取り込み元ファイル名
- * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
- * @type string
- * @default message.txt
- *
- * @arg MapID
- * @text 取り込み先マップID
- * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。
- * @type number
- * @default 1
- *
- * @arg EventID
- * @text 取り込み先イベントID
- * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。
- * @type number
- * @default 2
- *
- * @arg PageID
- * @text 取り込み先ページID
- * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。
- * @type number
- * @default 1
- *
- * @arg WriteBack
- * @text テキストへ書き戻す
- * @desc 差分適用後の結果をテキストファイルへ書き戻します。Frame2Textプラグインが必要です。デフォルトはfalseです。
- * @type select
- * @option true(書き戻す)
- * @value true
- * @option false(書き戻さない)
- * @value false
- * @default false
- *
- * @command DIFF_IMPORT_MESSAGE_TO_CE
- * @text コモンイベントに差分インポート
- * @desc テキストと既存コモンイベントコマンドを比較し、差分のみを適用します。
- *
- * @arg FileFolder
- * @text 取り込み元フォルダ名
- * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
- * @type string
- * @default text
- *
- * @arg FileName
- * @text 取り込み元ファイル名
- * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
- * @type string
- * @default message.txt
- *
- * @arg CommonEventID
- * @text 取り込み先コモンイベントID
- * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。
- * @type common_event
- * @default 1
- *
- * @arg WriteBack
- * @text テキストへ書き戻す
- * @desc 差分適用後の結果をテキストファイルへ書き戻します。Frame2Textプラグインが必要です。デフォルトはfalseです。
- * @type select
- * @option true(書き戻す)
- * @value true
- * @option false(書き戻さない)
- * @value false
- * @default false
- *
- * @command MERGE3_MESSAGE_TO_EVENT
- * @text イベントに3wayマージ
- * @desc 祖先(前回書き出し)基準でテキスト編集とUI編集を統合しイベントへ反映。衝突は両方残す。祖先無しなら会話のみ差し替え(overlay)。
+ * @command MERGE_MESSAGE_TO_EVENT
+ * @text イベントにマージ
+ * @desc 既存イベントを保ちつつテキストを賢く反映します。祖先(任意)があれば3wayマージ(衝突は両方残す)、無ければ会話のみ差し替え、空イベントはそのまま新規反映します。
  *
  * @arg FileFolder
  * @text 取り込み元フォルダ名
@@ -290,9 +214,9 @@
  * @type string
  * @default
  *
- * @command MERGE3_MESSAGE_TO_CE
- * @text コモンイベントに3wayマージ
- * @desc 祖先基準でテキスト編集とUI編集を統合しコモンイベントへ反映。衝突は両方残す。祖先無しならoverlay。
+ * @command MERGE_MESSAGE_TO_CE
+ * @text コモンイベントにマージ
+ * @desc 既存コモンイベントを保ちつつテキストを賢く反映します。祖先(任意)があれば3wayマージ(衝突は両方残す)、無ければ会話のみ差し替え、空なら新規反映します。
  *
  * @arg FileFolder
  * @text 取り込み元フォルダ名
@@ -360,7 +284,7 @@
  *
  * @command APPLY_MESSAGES_BY_MANIFEST
  * @text manifestで一括反映
- * @desc manifestで指定した複数テキストを一括で取り込みます。strategyでimport/diff/syncを選択できます。
+ * @desc manifestで指定した複数テキストを一括で反映します。strategyはmerge(既定・賢い反映)かoverwrite(全上書き)を選べます。旧値(import/diff/overlay/merge3/sync)も内部で正規化され受理されます。
  *
  * @arg ManifestPath
  * @text manifestファイルパス
@@ -370,19 +294,13 @@
  *
  * @arg Strategy
  * @text 一括反映戦略
- * @desc import / diff / sync / overlay(会話のみ差替) / merge3(祖先基準3wayマージ) を選択できます。
+ * @desc merge(既定・構造保持の賢い反映) / overwrite(テキストで全上書き) を選択できます。
  * @type select
- * @option import
- * @value import
- * @option diff
- * @value diff
- * @option sync
- * @value sync
- * @option overlay
- * @value overlay
- * @option merge3
- * @value merge3
- * @default diff
+ * @option merge
+ * @value merge
+ * @option overwrite
+ * @value overwrite
+ * @default merge
  *
  * @param Default Window Position
  * @text 位置のデフォルト値
@@ -4308,6 +4226,27 @@
       this.pluginCommand('DIFF_IMPORT_MESSAGE_TO_CE',
         [file_folder, file_name, common_event_id, write_back])
     })
+    PluginManager.registerCommand('Text2Frame', 'MERGE_MESSAGE_TO_EVENT', function (args) {
+      const file_folder = args.FileFolder
+      const file_name = args.FileName
+      const map_id = args.MapID
+      const event_id = args.EventID
+      const page_id = args.PageID
+      const base_folder = args.BaseFolder
+      const base_file_name = args.BaseFileName
+      this.pluginCommand('MERGE_MESSAGE_TO_EVENT',
+        [file_folder, file_name, map_id, event_id, page_id, base_folder, base_file_name])
+    })
+    PluginManager.registerCommand('Text2Frame', 'MERGE_MESSAGE_TO_CE', function (args) {
+      const file_folder = args.FileFolder
+      const file_name = args.FileName
+      const common_event_id = args.CommonEventID
+      const base_folder = args.BaseFolder
+      const base_file_name = args.BaseFileName
+      this.pluginCommand('MERGE_MESSAGE_TO_CE',
+        [file_folder, file_name, common_event_id, base_folder, base_file_name])
+    })
+    // MERGE3_* kept for backward compatibility (existing placed commands); hidden from MZ UI.
     PluginManager.registerCommand('Text2Frame', 'MERGE3_MESSAGE_TO_EVENT', function (args) {
       const file_folder = args.FileFolder
       const file_name = args.FileName
@@ -4555,8 +4494,9 @@
           Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
         }
         break
+      case 'MERGE_MESSAGE_TO_EVENT' :
       case 'MERGE3_MESSAGE_TO_EVENT' :
-        addMessage('3-way merge message to event. \n/ 3wayマージでイベントに反映します。')
+        addMessage('merge message to event. \n/ マージでイベントに反映します。')
         if (args[0]) Laurus.Text2Frame.FileFolder = args[0]
         if (args[1]) Laurus.Text2Frame.FileName = args[1]
         if (args[2]) Laurus.Text2Frame.MapID = args[2]
@@ -4569,8 +4509,9 @@
           Laurus.Text2Frame.BasePath = (args[5] && args[6]) ? `${BASE_PATH}${PATH_SEP}${args[5]}${PATH_SEP}${args[6]}` : undefined
         }
         break
+      case 'MERGE_MESSAGE_TO_CE' :
       case 'MERGE3_MESSAGE_TO_CE' :
-        addMessage('3-way merge message to common event. \n/ 3wayマージでコモンイベントに反映します。')
+        addMessage('merge message to common event. \n/ マージでコモンイベントに反映します。')
         Laurus.Text2Frame.FileFolder = args[0]
         Laurus.Text2Frame.FileName = args[1]
         Laurus.Text2Frame.CommonEventID = args[2]
