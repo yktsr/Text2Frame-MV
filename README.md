@@ -214,11 +214,22 @@ node Frame2Text.js --mode batch-export --manifest examples/batch-manifest.sample
 
 ### 4. 一括反映（text -> JSON、既定は merge）
 
+**メタデータは各テキスト先頭の front matter（YAML ヘッダ）を第一の真実とします。** manifest は任意（レガシー）です。
+
 ```bash
+# manifest 不要: text/ 配下の front matter 付き .txt を走査して一括反映
+node Text2Frame.js --mode batch --text_path text
+
+# レガシー: manifest 明示（front matter が優先され、front matter が無いファイルには自動追記＝backfill）
 node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json
 ```
 
 `--strategy` を省略すると `merge`（既定）です。全上書きしたいときだけ `--strategy overwrite` を付けます。
+
+- **front matter 優先**: manifest エントリと front matter が食い違う場合、front matter（`kind`/`mapId`/`eventId`/`pageId`/`commonEventId`、任意で `strategy`/`basePath`/`locale`）が勝ちます。
+- **manifest 無し**: `--manifest` を省略すると `--text_path <dir>`（既定 `text`）配下を再帰走査し、front matter 付き `.txt` を各自の front matter で反映します。
+- **backfill（自己記述化）**: `--manifest` を明示した時のみ、front matter を持たないファイルに manifest のメタを先頭へ追記します（既存 front matter は不変・非破壊）。一度流せば以降は manifest 無しで回せます。
+- **front matter での strategy 指定（任意）**: ファイル先頭に `strategy: overwrite` 等を書くと、そのファイルだけ方式を上書きできます（`basePath` で 3-way の祖先も指定可）。
 
 ### 5. 反映後にテキストへ書き戻して整形（--sync）
 
