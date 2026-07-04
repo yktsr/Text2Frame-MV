@@ -52,6 +52,52 @@ function snapshotIdFor(meta: { [key: string]: string }, textPath: string): { loc
     return { locale, key };
 }
 
+/**
+ * After a successful merge deploy, optionally write the merged JSON back into the text file
+ * (so 3-way kept-both conflicts surface for the writer), then refresh the BASE snapshot so the
+ * next deploy is a clean 3-way. Controlled by `text2frame.writeBackAfterMerge`:
+ *   - off       : never write back
+ *   - onConflict: write back only when the merge kept conflicts (default)
+ *   - always    : write back after every successful deploy (text mirrors JSON)
+ * The BASE is set to the final text (written-back if any, else the just-deployed text).
+ */
+export function writeBackAndRefreshBase(
+    context: vscode.ExtensionContext,
+    workspaceRoot: string,
+    meta: { [key: string]: string },
+    textPath: string,
+    originalText: string,
+    result: { warnings: string[] },
+    snap: { locale: string; key: string },
+    mergeLike: boolean
+): void {
+    const mode = vscode.workspace.getConfiguration('text2frame').get<string>('writeBackAfterMerge', 'onConflict');
+    const hadConflict = result.warnings.some((w) => /conflict|衝突/i.test(w));
+    const shouldWriteBack = mergeLike && (mode === 'always' || (mode === 'onConflict' && hadConflict));
+    let finalText = originalText;
+    if (shouldWriteBack) {
+        const target: ExportTarget = {
+            kind: meta.kind === 'common' ? 'common' : 'event',
+            mapId: meta.mapId,
+            eventId: meta.eventId,
+            pageId: meta.pageId || '1',
+            commonEventId: meta.commonEventId,
+            textPath,
+            frontMatterSource: originalText
+        };
+        const ex = exportToTextFile(context, workspaceRoot, target);
+        if (ex.ok) {
+            try { finalText = fs.readFileSync(textPath, 'utf8'); } catch (e) { /* keep original */ }
+            getOutput().appendLine(`    write-back -> ${path.basename(textPath)}${hadConflict ? ' (conflicts to resolve)' : ''}`);
+        } else {
+            getOutput().appendLine(`    write-back failed: ${ex.error}`);
+        }
+    }
+    if (mergeLike) {
+        saveBaseSnapshot(workspaceRoot, snap.locale, snap.key, finalText);
+    }
+}
+
 /** Locate and load the compiler module that exports applyTextFile(). */
 function loadCompiler(context: vscode.ExtensionContext, workspaceRoot: string | undefined): { mod?: T2FModule; tried: string[] } {
     return loadModule<T2FModule>(
@@ -172,10 +218,6 @@ export async function deployDocument(
     if (result.ok) {
         recordDataState(context, dataPath);
         deployDiagnostics.delete(document.uri);
-        // Update the common ancestor to the just-deployed text so the next deploy is a true 3-way.
-        if (mergeLike) {
-            saveBaseSnapshot(workspaceRoot, snap.locale, snap.key, document.getText());
-        }
         out.appendLine(`[${time}] OK  ${resolved.label}  <- ${path.basename(document.uri.fsPath)}` +
             (result.warnings.length ? `  (${result.warnings.length} warnings)` : ''));
         result.warnings.forEach((w) => out.appendLine('    warn: ' + w));
@@ -183,24 +225,8 @@ export async function deployDocument(
             vscode.window.showWarningMessage(`Text2Frame: デプロイ完了 (${result.warnings.length} 件の警告)`, '詳細')
                 .then((pick) => { if (pick) { out.show(true); } });
         }
-        // Normalize: re-export the merged data to text (canonical form), keeping front matter.
-        if (vscode.workspace.getConfiguration('text2frame').get<boolean>('normalizeAfterDeploy', false)) {
-            const syncTarget: ExportTarget = {
-                kind: meta.kind === 'common' ? 'common' : 'event',
-                mapId: meta.mapId,
-                eventId: meta.eventId,
-                pageId: meta.pageId || '1',
-                commonEventId: meta.commonEventId,
-                textPath: document.uri.fsPath,
-                frontMatterSource: document.getText()
-            };
-            const ex = exportToTextFile(context, workspaceRoot, syncTarget);
-            if (ex.ok) {
-                out.appendLine(`[${time}] NORMALIZE -> ${path.basename(document.uri.fsPath)}`);
-            } else {
-                out.appendLine(`[${time}] NORMALIZE failed: ${ex.error}`);
-            }
-        }
+        // Optionally write the merged result back to the text, then refresh the 3-way BASE.
+        writeBackAndRefreshBase(context, workspaceRoot, meta, document.uri.fsPath, document.getText(), result, snap, mergeLike);
     } else {
         out.appendLine(`[${time}] FAIL  ${resolved.label}  <- ${path.basename(document.uri.fsPath)}  ${result.error}`);
         setDeployDiagnostic(deployDiagnostics, document, result.error || 'deploy failed', result.errorLineText);
@@ -284,10 +310,8 @@ export function deployFile(
         if (dataPath) {
             recordDataState(context, dataPath);
         }
-        // Update the common ancestor so the next deploy of this file is a true 3-way.
-        if (mergeLike) {
-            saveBaseSnapshot(workspaceRoot, snap.locale, snap.key, text);
-        }
+        // Optionally write the merged result back to the text, then refresh the 3-way BASE.
+        writeBackAndRefreshBase(context, workspaceRoot, meta, filePath, text, result, snap, mergeLike);
     }
     return result;
 }
