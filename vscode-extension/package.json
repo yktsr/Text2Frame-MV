@@ -58,7 +58,7 @@
       },
       {
         "command": "text2frame.exportCurrentFile",
-        "title": "Text2Frame: ゲームから書き出し(このファイル) / Pull from game (this file)",
+        "title": "Text2Frame: ゲームから取り出す(このファイル) / Pull from game (this file)",
         "icon": "$(cloud-download)"
       },
       {
@@ -76,11 +76,11 @@
       },
       {
         "command": "text2frame.exportAll",
-        "title": "Text2Frame: ゲームから書き出し(すべて) / Pull from game (all)"
+        "title": "Text2Frame: ゲームから取り出す(すべて) / Pull from game (all)"
       },
       {
-        "command": "text2frame.seedLocale",
-        "title": "Text2Frame: 言語を追加 / Add a language"
+        "command": "text2frame.repullOverwrite",
+        "title": "Text2Frame: 全部取り直す(上書き) / Re-pull (overwrite)"
       },
       {
         "command": "text2frame.tree.refresh",
@@ -164,9 +164,9 @@
           "group": "1_batch@2"
         },
         {
-          "command": "text2frame.seedLocale",
+          "command": "text2frame.repullOverwrite",
           "when": "view == text2frameExplorer",
-          "group": "2_locale@1"
+          "group": "2_advanced@1"
         }
       ],
       "commandPalette": [

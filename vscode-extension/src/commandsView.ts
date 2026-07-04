@@ -27,21 +27,16 @@ const GROUPS: CommandGroup[] = [
         ]
     },
     {
-        label: 'ゲームから書き出し / Pull from game',
+        label: 'ゲームから取り出す / Pull from game',
         items: [
-            { command: 'text2frame.exportCurrentFile', label: 'このファイル / This file', icon: 'cloud-download', tooltip: '今開いているファイルをゲームの内容で書き出します(テキストは上書き)。' },
-            { command: 'text2frame.exportAll', label: 'すべて / All', icon: 'archive', tooltip: 'ゲームの全イベントを今の言語フォルダへ書き出します(テキストは上書き)。' }
-        ]
-    },
-    {
-        label: '言語 / Language',
-        items: [
-            { command: 'text2frame.seedLocale', label: '言語を追加 / Add a language', icon: 'add', tooltip: 'ゲームの内容を今の言語フォルダに複製して、翻訳の着手点を作ります(既存ファイルは残します)。' }
+            { command: 'text2frame.exportCurrentFile', label: 'このファイル / This file', icon: 'cloud-download', tooltip: '今のファイルにゲームの内容を取り込みます(あなたの編集は残し、ゲーム側の変更を反映)。' },
+            { command: 'text2frame.exportAll', label: 'すべて / All', icon: 'cloud-download', tooltip: '今の言語フォルダにゲームの内容を取り込みます(編集は残す)。初回はその言語一式が揃います。' }
         ]
     },
     {
         label: '上級 / Advanced',
         items: [
+            { command: 'text2frame.repullOverwrite', label: '全部取り直す(上書き) / Re-pull (overwrite)', icon: 'refresh', tooltip: '今の言語フォルダをゲームの内容で全部上書きします(編集は失われます)。' },
             { command: 'text2frame.showCompiledJson', label: 'コンパイル結果を表示 / Show compiled JSON', icon: 'json', tooltip: '今のテキストの変換結果(JSON)を表示します。' },
             { command: 'text2frame.toggleDeployOnSave', label: '保存時に自動反映 切替 / Toggle apply-on-save', icon: 'sync', tooltip: '保存したら自動でゲームに反映する設定を ON / OFF します。' },
             { command: 'text2frame.exportConversationOnly', label: '会話のみ書き出し / Pull conversation only', icon: 'comment-discussion', tooltip: '会話部分だけを *.conversation.txt に書き出します。' }

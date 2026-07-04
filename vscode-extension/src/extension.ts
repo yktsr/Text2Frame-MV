@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 import { registerDeployFeature, showCompiledJson } from './deploy';
 import { exportCurrentFile, exportConversationOnly } from './exportText';
-import { deployAll, exportAll } from './batch';
-import { seedLocale } from './translation';
+import { deployAll, exportAll, repullAllOverwrite } from './batch';
 import { registerTreeView } from './tree';
 import { registerCommandsView } from './commandsView';
 import { parseFrontMatter } from './compiler';
@@ -49,7 +48,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('text2frame.showCompiledJson', () => showCompiledJson(context)),
         vscode.commands.registerCommand('text2frame.deployAll', () => deployAll(context)),
         vscode.commands.registerCommand('text2frame.exportAll', () => exportAll(context)),
-        vscode.commands.registerCommand('text2frame.seedLocale', () => seedLocale(context))
+        vscode.commands.registerCommand('text2frame.repullOverwrite', () => repullAllOverwrite(context))
     );
 
     // Register completion provider
