@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor } from './compiler';
+import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot } from './compiler';
 import { exportToTextFile, ExportTarget } from './exportText';
 
 /**
@@ -72,14 +72,26 @@ export function deployAll(context: vscode.ExtensionContext): void {
     let ok = 0;
     let fail = 0;
     let warn = 0;
+    const strategy = strategySetting();
+    const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
     for (const file of files) {
         try {
-            const { meta } = parseFrontMatter(fs.readFileSync(file, 'utf8'));
+            const fileText = fs.readFileSync(file, 'utf8');
+            const { meta } = parseFrontMatter(fileText);
             const { opts, label } = resolveTarget(meta, root);
-            const res = mod.applyTextFile({ textPath: file, ...opts, strategy: strategySetting(), backup: true });
+            // Default to 3-way merge: attach the BASE snapshot (common ancestor) when present.
+            const key = path.basename(file, path.extname(file));
+            const locale = meta.locale || path.basename(path.dirname(file)) || 'default';
+            const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, backup: true };
+            if (mergeLike && hasBaseSnapshot(root, locale, key)) {
+                applyOpts.basePath = baseSnapshotPath(root, locale, key);
+            }
+            const res = mod.applyTextFile(applyOpts);
             if (res.ok) {
                 ok++;
                 warn += res.warnings.length;
+                // Update the common ancestor so the next deploy of this file is a true 3-way.
+                if (mergeLike) { saveBaseSnapshot(root, locale, key, fileText); }
                 out.appendLine(`OK   ${label}  <- ${path.relative(root, file)}` + (res.warnings.length ? `  (${res.warnings.length} warn)` : ''));
             } else {
                 fail++;

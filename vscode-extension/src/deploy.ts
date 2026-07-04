@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, isDeployable, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState } from './compiler';
+import { parseFrontMatter, isDeployable, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot } from './compiler';
 import { exportToTextFile, ExportTarget } from './exportText';
 
 export { isDeployable };
@@ -39,6 +39,17 @@ function getOutput(): vscode.OutputChannel {
         outputChannel = vscode.window.createOutputChannel('Text2Frame Deploy');
     }
     return outputChannel;
+}
+
+/**
+ * Identity of the 3-way BASE snapshot for a single file: locale from front matter (or the
+ * parent folder name as a fallback), key from the file name. Kept consistent with the
+ * locale/key used by Seed Locale / Deploy Locale so single-file deploys share the same ancestor.
+ */
+function snapshotIdFor(meta: { [key: string]: string }, textPath: string): { locale: string; key: string } {
+    const key = path.basename(textPath, path.extname(textPath));
+    const locale = meta.locale || path.basename(path.dirname(textPath)) || 'default';
+    return { locale, key };
 }
 
 /** Locate and load the compiler module that exports applyTextFile(). */
@@ -143,16 +154,28 @@ export async function deployDocument(
         }
     }
 
-    const result = mod.applyTextFile({
+    // Default to 3-way merge: attach the BASE snapshot (common ancestor) when present so a
+    // merge deploy reconciles writer text edits with external JSON edits, instead of overlaying.
+    const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
+    const snap = snapshotIdFor(meta, document.uri.fsPath);
+    const applyOpts: { [key: string]: unknown } = {
         textPath: document.uri.fsPath,
         ...resolved.opts,
         strategy,
         backup: true
-    });
+    };
+    if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.locale, snap.key)) {
+        applyOpts.basePath = baseSnapshotPath(workspaceRoot, snap.locale, snap.key);
+    }
+    const result = mod.applyTextFile(applyOpts);
 
     if (result.ok) {
         recordDataState(context, dataPath);
         deployDiagnostics.delete(document.uri);
+        // Update the common ancestor to the just-deployed text so the next deploy is a true 3-way.
+        if (mergeLike) {
+            saveBaseSnapshot(workspaceRoot, snap.locale, snap.key, document.getText());
+        }
         out.appendLine(`[${time}] OK  ${resolved.label}  <- ${path.basename(document.uri.fsPath)}` +
             (result.warnings.length ? `  (${result.warnings.length} warnings)` : ''));
         result.warnings.forEach((w) => out.appendLine('    warn: ' + w));
@@ -243,16 +266,27 @@ export function deployFile(
         return { ok: false, textPath: filePath, warnings: [], error: e instanceof Error ? e.message : String(e) };
     }
     const strategy = vscode.workspace.getConfiguration('text2frame').get<string>('strategy') || 'merge';
-    const result = mod.applyTextFile({
+    // Default to 3-way merge: attach the BASE snapshot (common ancestor) when present.
+    const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
+    const snap = snapshotIdFor(meta, filePath);
+    const applyOpts: { [key: string]: unknown } = {
         textPath: filePath,
         ...resolved.opts,
         strategy,
         backup: true
-    });
+    };
+    if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.locale, snap.key)) {
+        applyOpts.basePath = baseSnapshotPath(workspaceRoot, snap.locale, snap.key);
+    }
+    const result = mod.applyTextFile(applyOpts);
     if (result && result.ok) {
         const dataPath = (resolved.opts.mapPath || resolved.opts.commonEventPath) as string;
         if (dataPath) {
             recordDataState(context, dataPath);
+        }
+        // Update the common ancestor so the next deploy of this file is a true 3-way.
+        if (mergeLike) {
+            saveBaseSnapshot(workspaceRoot, snap.locale, snap.key, text);
         }
     }
     return result;
