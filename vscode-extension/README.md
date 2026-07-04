@@ -36,8 +36,8 @@ RPG ツクール MV/MZ 用プラグイン **Text2Frame** のスクリプトを�
 | `Text2Frame: Export for Translation` | 現在のファイルの会話のみを `*.translation.txt` に書き出し |
 | `Text2Frame: Deploy All` | `text/` 配下のフロントマター付き .txt をすべて反映 |
 | `Text2Frame: Export All` | すべてのイベント/コモンを `text/<locale>/` へ書き出し |
-| `Text2Frame: Create Translation Set` | 翻訳セットを `text/<targetLocale>/` に作成（後述） |
-| `Text2Frame: Deploy Translation (merge)` | `text/<targetLocale>/` のみを **merge** でデータへ反映（構造保持＋祖先があれば 3-way、後述） |
+| `Text2Frame: Seed Locale` | `sourceLocale` から `text/<targetLocale>/` へ複製して着手（後述） |
+| `Text2Frame: Deploy Locale` | `text/<targetLocale>/` を設定 `text2frame.strategy`（既定 **merge**）でデータへ反映（構造保持＋祖先があれば 3-way、後述） |
 
 ステータスバーに現在の状態と直近の結果が表示されます。
 
@@ -120,27 +120,26 @@ commonEventId: 3
 
 ---
 
-## 🌐 翻訳ワークフロー（VS Code だけで完結）
+## 🌐 英語化フロー（ロケール運用、VS Code だけで完結）
 
-原文(`sourceLocale`、既定 `ja`)を別言語(`targetLocale`、既定 `en`)へ翻訳し、
-ゲームへ戻すまでをコマンド2つで行えます。
+このツールに「翻訳」という独立した機構はありません。あるのは **ロケール別の
+`text/<locale>/` フォルダに対する通常のデプロイ／エクスポート**だけです。原文
+(`sourceLocale`、既定 `ja`)を作業ロケール(`targetLocale`、既定 `en`)へ展開して
+ゲームへ戻すまでを、コマンド2つで行えます。
 
-1. **翻訳セットを作成** — コマンドパレット →「Text2Frame: 翻訳セットを作成 / Create Translation Set」
+1. **ロケールを複製して着手（Seed Locale）** — コマンドパレット →「Text2Frame: ロケールを複製して着手 / Seed Locale」
    - `data` を走査し、`text/<targetLocale>/<key>.txt` を生成します。
-   - 本文は**原文と同じ内容**、front matter に `locale` / `sourceLocale` が付きます（デプロイ先 `mapId`/`eventId`/`pageId` は原文と同一）。
-   - **既存ファイルは上書きしません**（翻訳の途中で再実行しても安全）。
-2. **翻訳する** — `text/<targetLocale>/` 配下の本文・選択肢ラベルを編集します。
+   - 本文は**原文と同じ内容**（着手点）、front matter に `locale` / `sourceLocale` が付きます（デプロイ先 `mapId`/`eventId`/`pageId` は原文と同一）。
+   - **既存ファイルは上書きしません**（作業途中で再実行しても安全）。
+   - これが唯一「原文→作業ロケール」の対を扱う操作です。
+2. **編集する** — `text/<targetLocale>/` 配下の本文・選択肢ラベルを編集します。
    - front matter とタグ（`<Face..>` 等）、空行マーカー `<br>` は触らないでください。
-3. **ゲームへ反映** — 用途に応じて次のいずれかを実行します。
+3. **ゲームへ反映（Deploy Locale）** — 「Text2Frame: ロケールをデプロイ / Deploy Locale」を実行します。
+   - 設定 `text2frame.strategy`（既定 **merge**）で `text/<targetLocale>/` を反映します。
+   - **merge**: JSON 構造を保持し会話文字列だけ差し替え。祖先(`.t2f-base/`＝デプロイ/書き出し成功時に自動保存)があれば**ライター編集と UI 編集を統合する 3-way**（同じ箇所を双方が別々に変えた時だけ**両方残す**：`<<<<<<<` コメント＋警告）。祖先が無ければ overlay に自動フォールバック。反映成功後は現在のテキストが新しい祖先になります。
+   - 全上書きしたいときだけ設定を `overwrite` にします（**テキストが正**で JSON 側コマンドは消えます）。
 
-| コマンド | 挙動 | 使いどころ |
-| --- | --- | --- |
-| **Deploy Translation (merge)** | **JSON 構造を保持し会話文字列だけ差し替え**。祖先(`.t2f-base/`＝デプロイ/書き出し成功時に自動保存)があれば**ライター編集と UI 編集を統合する 3-way**（同じ箇所を双方が別々に変えた時だけ**両方残す**：`<<<<<<<` コメント＋警告）。祖先が無ければ overlay に自動フォールバック。反映成功後は現在のテキストが新しい祖先になります。 | 通常はこれ。ツクール UI で構造(移動/分岐/スイッチ)を編集し、ライターはセリフを翻訳する運用 |
-| Deploy Translation Set | 設定 `text2frame.strategy`（既定 `merge`）で反映。`overwrite` にすると**テキストが正**でJSON側コマンドは消えます | テキストが完全な正のとき（設定を `overwrite` に） |
-
-> **旧コマンド名について**: 従来の「Merge Translation (overlay)」「Merge Translation (3-way)」は **Deploy Translation (merge) に一本化**されました（overlay / 3-way は自動判定）。旧コマンド ID (`text2frame.mergeTranslation` / `mergeTranslation3way`) はエイリアスとして残っており、同じ merge を実行します。
-
-> **pull（データ→テキスト書き出し）との違い**: 「ゲームからテキストへ書き出し」や外部更新時の *pull* は JSON でテキストを**上書き**し、翻訳を失って祖先をリセットします。翻訳を保持したいときは *pull* ではなく **Deploy Translation (merge)** を使ってください。
+> **pull（データ→テキスト書き出し）との違い**: 「ゲームからテキストへ書き出し」や外部更新時の *pull* は JSON でテキストを**上書き**し、編集内容を失って祖先をリセットします。作業ロケールの編集を保持したいときは *pull* ではなく **Deploy Locale (merge)** を使ってください。
 
 > 個別ファイルを編集中に保存→即反映したい場合は、従来どおり「保存時に自動反映」を有効にすれば、front matter のルーティングでそのイベントへデプロイされます（方式は `text2frame.strategy`、既定 `merge`）。外部で JSON が変わっていても merge は UI 編集を保持するため、上書き警告は overwrite 設定時のみ表示されます。
 

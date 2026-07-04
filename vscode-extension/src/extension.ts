@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { registerDeployFeature, showCompiledJson } from './deploy';
 import { exportCurrentFile, exportCurrentFileForTranslation } from './exportText';
 import { deployAll, exportAll } from './batch';
-import { createTranslationSet, deployTranslationSet, deployTranslation } from './translation';
+import { seedLocale, deployLocale } from './translation';
 import { registerTreeView } from './tree';
 import { parseFrontMatter } from './compiler';
 
@@ -46,12 +46,8 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('text2frame.showCompiledJson', () => showCompiledJson(context)),
         vscode.commands.registerCommand('text2frame.deployAll', () => deployAll(context)),
         vscode.commands.registerCommand('text2frame.exportAll', () => exportAll(context)),
-        vscode.commands.registerCommand('text2frame.createTranslationSet', () => createTranslationSet(context)),
-        vscode.commands.registerCommand('text2frame.deployTranslationSet', () => deployTranslationSet(context)),
-        vscode.commands.registerCommand('text2frame.deployTranslation', () => deployTranslation(context)),
-        // Backward-compatible aliases (old command ids) — both now run the unified smart merge.
-        vscode.commands.registerCommand('text2frame.mergeTranslation', () => deployTranslation(context)),
-        vscode.commands.registerCommand('text2frame.mergeTranslation3way', () => deployTranslation(context))
+        vscode.commands.registerCommand('text2frame.seedLocale', () => seedLocale(context)),
+        vscode.commands.registerCommand('text2frame.deployLocale', () => deployLocale(context))
     );
 
     // Register completion provider
