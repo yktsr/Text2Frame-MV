@@ -25,6 +25,7 @@
   "main": "./out/extension.js",
   "activationEvents": [
     "onLanguage:text2frame",
+    "onView:text2frameCommands",
     "onView:text2frameExplorer",
     "workspaceContains:**/text/**/*.txt",
     "workspaceContains:**/data/Map*.json"
@@ -61,8 +62,8 @@
         "icon": "$(cloud-download)"
       },
       {
-        "command": "text2frame.exportForTranslation",
-        "title": "Text2Frame: 会話イベントのみ書き出し / Export for Translation (conversation only)"
+        "command": "text2frame.exportConversationOnly",
+        "title": "Text2Frame: 会話のみ書き出し / Export Conversation Only"
       },
       {
         "command": "text2frame.showCompiledJson",
@@ -78,20 +79,12 @@
         "title": "Text2Frame: すべてのゲームイベントをテキストに書き出す / Export All"
       },
       {
-        "command": "text2frame.createTranslationSet",
-        "title": "Text2Frame: 翻訳セットを作成 (targetLocale) / Create Translation Set"
+        "command": "text2frame.seedLocale",
+        "title": "Text2Frame: ロケールを複製して着手 (sourceLocale→targetLocale) / Seed Locale"
       },
       {
-        "command": "text2frame.deployTranslationSet",
-        "title": "Text2Frame: 翻訳をゲームに反映 (targetLocale) / Deploy Translation"
-      },
-      {
-        "command": "text2frame.mergeTranslation",
-        "title": "Text2Frame: 翻訳をマージ (構造を保持) / Merge Translation (overlay)"
-      },
-      {
-        "command": "text2frame.mergeTranslation3way",
-        "title": "Text2Frame: 翻訳を3wayマージ (両方残す) / Merge Translation (3-way)"
+        "command": "text2frame.deployLocale",
+        "title": "Text2Frame: ロケールをデプロイ (targetLocale, 既定 merge) / Deploy Locale"
       },
       {
         "command": "text2frame.tree.refresh",
@@ -121,6 +114,10 @@
     "views": {
       "text2frame": [
         {
+          "id": "text2frameCommands",
+          "name": "操作 / Commands"
+        },
+        {
           "id": "text2frameExplorer",
           "name": "Maps / Common Events"
         }
@@ -144,7 +141,7 @@
           "group": "navigation@2"
         },
         {
-          "command": "text2frame.exportForTranslation",
+          "command": "text2frame.exportConversationOnly",
           "when": "resourceLangId == text2frame || resourceExtname == .txt",
           "group": "1_text2frame@2"
         },
@@ -171,24 +168,14 @@
           "group": "1_batch@2"
         },
         {
-          "command": "text2frame.createTranslationSet",
+          "command": "text2frame.seedLocale",
           "when": "view == text2frameExplorer",
-          "group": "2_translation@1"
+          "group": "2_locale@1"
         },
         {
-          "command": "text2frame.deployTranslationSet",
+          "command": "text2frame.deployLocale",
           "when": "view == text2frameExplorer",
-          "group": "2_translation@2"
-        },
-        {
-          "command": "text2frame.mergeTranslation",
-          "when": "view == text2frameExplorer",
-          "group": "2_translation@3"
-        },
-        {
-          "command": "text2frame.mergeTranslation3way",
-          "when": "view == text2frameExplorer",
-          "group": "2_translation@4"
+          "group": "2_locale@2"
         }
       ],
       "commandPalette": [
@@ -214,14 +201,20 @@
       "properties": {
         "text2frame.strategy": {
           "type": "string",
-          "enum": ["diff", "import", "overlay"],
-          "default": "diff",
-          "description": "書き出し方式。diff=最小差分マージ、import=イベントをすべて上書き、overlay=JSON構造を保持し会話だけ差し替え(翻訳マージ)。 / Deploy strategy: diff = merge minimally, import = overwrite, overlay = keep JSON structure and replace only conversation text (translation merge)."
+          "enum": ["merge", "overwrite"],
+          "default": "merge",
+          "description": "反映方式。merge=JSON構造(UIで足した移動・分岐・スイッチ等)を保ちつつテキストを賢く反映(祖先があれば3wayマージ、無ければ会話のみ差し替え、空イベントは新規反映)。overwrite=テキストを正としてすべて上書き。旧値(diff/import/overlay/merge3/sync)も内部で正規化され受理されます。 / Deploy strategy: merge = keep JSON structure and smart-apply text (3-way when an ancestor exists, otherwise overlay conversation; empty events populated wholesale). overwrite = replace everything from text. Legacy values (diff/import/overlay/merge3/sync) are still accepted and normalized."
         },
-        "text2frame.normalizeAfterDeploy": {
-          "type": "boolean",
-          "default": false,
-          "description": "テキストからゲームへ反映後、再度ゲームからテキストへ書き戻してテキストを標準形に自動整形する。/ After deploy-on-save, re-export data back to the text file to normalize it (the saved file is rewritten and the editor reloads). "
+        "text2frame.writeBackAfterMerge": {
+          "type": "string",
+          "enum": ["off", "onConflict", "always"],
+          "default": "onConflict",
+          "enumDescriptions": [
+            "書き戻さない / never write back",
+            "3-wayで衝突(両方残し)が出た時だけ、マージ結果をテキストへ書き戻す(既定) / write back only when the merge kept conflicts",
+            "デプロイ成功のたびにマージ結果をテキストへ書き戻す(テキストが常にJSONを反映) / write back after every successful deploy"
+          ],
+          "description": "merge 反映後にマージ結果をテキストへ自動で書き戻すか。書き戻すと 3-way の共通祖先(BASE)も更新され、次回はクリーンな 3-way になります。衝突は「テキストの変更 / ゲームの変更」の目印コメントで両方残るので、テキスト側で解決できます(タグ記号は使わないので文法警告は出ません)。 / Whether to write the merged result back into the text after a merge deploy (also refreshes the 3-way BASE). Conflicts are kept as both sides with plain comment markers so you can resolve them in text."
         },
         "text2frame.englishTag": {
           "type": "boolean",
@@ -251,12 +244,12 @@
         "text2frame.sourceLocale": {
           "type": "string",
           "default": "ja",
-          "description": "翻訳元の言語(原文)。翻訳セット作成時の front matter に記録される。 / Source language for the translation set."
+          "description": "複製元のロケール(原文)。「ロケールを複製して着手 (Seed Locale)」のときだけ使われ、front matter に記録されます。 / Source locale to copy from; used only by Seed Locale."
         },
         "text2frame.targetLocale": {
           "type": "string",
           "default": "en",
-          "description": "翻訳先の言語。翻訳セット作成・デプロイの対象サブフォルダ (textBaseDir/<targetLocale>) になる。 / Target language; the text2frame.textBaseDir/<targetLocale> subfolder used by Create/Deploy Translation."
+          "description": "作業ロケール。Seed Locale / Deploy Locale の対象サブフォルダ (textBaseDir/<targetLocale>) になります。 / Working locale; the textBaseDir/<targetLocale> subfolder used by Seed/Deploy Locale."
         }
       }
     }

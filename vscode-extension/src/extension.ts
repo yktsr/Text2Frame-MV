@@ -4,6 +4,7 @@ import { exportCurrentFile, exportConversationOnly } from './exportText';
 import { deployAll, exportAll } from './batch';
 import { seedLocale, deployLocale } from './translation';
 import { registerTreeView } from './tree';
+import { registerCommandsView } from './commandsView';
 import { parseFrontMatter } from './compiler';
 
 /**
@@ -31,6 +32,8 @@ export function activate(context: vscode.ExtensionContext) {
     registerDeployFeature(context);
     // Activity Bar tree (Maps / Events / Pages / Common Events).
     registerTreeView(context);
+    // Activity Bar "Commands" panel (grouped, clickable actions).
+    registerCommandsView(context);
 
     // Auto-assign the text2frame language to front-matter .txt files (open now + later).
     vscode.workspace.textDocuments.forEach(maybeAssignLanguage);
