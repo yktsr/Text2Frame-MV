@@ -220,8 +220,8 @@ export function exportCurrentFile(context: vscode.ExtensionContext): void {
     }
 }
 
-/** Command: export the active file as a translation-only (conversation) text beside it. */
-export function exportCurrentFileForTranslation(context: vscode.ExtensionContext): void {
+/** Command: export the active file as a conversation-only text beside it (lossy sidecar). */
+export function exportConversationOnly(context: vscode.ExtensionContext): void {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         vscode.window.showWarningMessage('Text2Frame: アクティブなエディタがありません。');
@@ -239,14 +239,14 @@ export function exportCurrentFileForTranslation(context: vscode.ExtensionContext
         vscode.window.showErrorMessage('Text2Frame: ' + (e instanceof Error ? e.message : String(e)));
         return;
     }
-    // Lossy extraction: write beside the source as *.translation.txt, never overwrite the editable file.
+    // Lossy extraction: write beside the source as *.conversation.txt, never overwrite the editable file.
     const srcPath = editor.document.uri.fsPath;
     const ext = path.extname(srcPath);
-    target.textPath = srcPath.slice(0, srcPath.length - ext.length) + '.translation' + (ext || '.txt');
+    target.textPath = srcPath.slice(0, srcPath.length - ext.length) + '.conversation' + (ext || '.txt');
     target.translationOnly = true;
     const result = exportToTextFile(context, workspaceRoot, target);
     if (result.ok) {
-        vscode.window.showInformationMessage('Text2Frame: 翻訳用テキスト(会話のみ)を書き出しました: ' + path.basename(result.textPath || ''));
+        vscode.window.showInformationMessage('Text2Frame: 会話のみテキストを書き出しました: ' + path.basename(result.textPath || ''));
         vscode.workspace.openTextDocument(result.textPath as string).then((doc) => vscode.window.showTextDocument(doc, { preview: true }));
     } else {
         vscode.window.showErrorMessage('Text2Frame: 書き出し失敗 - ' + (result.error || ''));
