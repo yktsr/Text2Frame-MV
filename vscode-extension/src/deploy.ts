@@ -159,16 +159,16 @@ export async function deployDocument(
     // only prompt when the configured strategy would overwrite.
     if (dataPath && isOverwriteLike(strategy) && dataChangedExternally(context, dataPath)) {
         const choice = await vscode.window.showWarningMessage(
-            `Text2Frame: ${path.basename(dataPath)} が外部で更新されています。テキストで上書きすると失われる可能性があります。`,
+            `Text2Frame: ${path.basename(dataPath)} はゲーム側で変更されています。テキストで全部上書きすると、その変更が失われる可能性があります。`,
             { modal: true },
-            'マージして反映(merge)',
-            '上書きする',
-            '先に取り込む(pull)'
+            '安全に反映する(おすすめ)',
+            '全部上書きする',
+            'ゲームの内容を取り込む'
         );
-        if (choice === 'マージして反映(merge)') {
+        if (choice === '安全に反映する(おすすめ)') {
             // Switch this deploy to the non-destructive smart merge, keeping external JSON edits.
             strategy = 'merge';
-        } else if (choice === '先に取り込む(pull)') {
+        } else if (choice === 'ゲームの内容を取り込む') {
             const pullTarget: ExportTarget = {
                 kind: meta.kind === 'common' ? 'common' : 'event',
                 mapId: meta.mapId,
@@ -186,7 +186,7 @@ export async function deployDocument(
                 vscode.window.showErrorMessage('Text2Frame: 取り込み失敗 - ' + (ex.error || ''));
             }
             return undefined;
-        } else if (choice === '上書きする') {
+        } else if (choice === '全部上書きする') {
             // Snapshot the about-to-be-overwritten data so it can be recovered.
             try {
                 fs.copyFileSync(dataPath, dataPath + '.conflict.bak');

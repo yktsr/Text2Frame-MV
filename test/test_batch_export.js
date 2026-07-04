@@ -119,7 +119,6 @@ describe('BATCH_EXPORT Plugin Command Test', function () {
         'examples/auto-manifest.json',
         'data',
         'ja',
-        'ja',
         'text'
       ])
 
@@ -133,7 +132,6 @@ describe('BATCH_EXPORT Plugin Command Test', function () {
       manifestWritten.entries.forEach(entry => {
         expect(entry.kind).to.be.oneOf(['event', 'common'])
         expect(entry.locale).to.equal('ja')
-        expect(entry.sourceLocale).to.equal('ja')
         expect(entry.textPath).to.exist
       })
 
@@ -152,7 +150,6 @@ describe('BATCH_EXPORT Plugin Command Test', function () {
             eventId: '1',
             pageId: '1',
             locale: 'ja',
-            sourceLocale: 'ja',
             key: 'map001_event001_page1',
             textPath: 'text/ja/map001_event001_page1.txt'
           }
@@ -167,7 +164,6 @@ describe('BATCH_EXPORT Plugin Command Test', function () {
       Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT', [
         'examples/auto-manifest.json',
         'data',
-        'ja',
         'ja',
         'text'
       ])
@@ -191,7 +187,6 @@ describe('BATCH_EXPORT Plugin Command Test', function () {
             eventId: '1',
             pageId: '1',
             locale: 'ja',
-            sourceLocale: 'ja',
             key: 'map001_event001_page1',
             textPath: 'text/ja/map001_event001_page1.txt'
           },
@@ -199,7 +194,6 @@ describe('BATCH_EXPORT Plugin Command Test', function () {
             kind: 'common',
             commonEventId: '1',
             locale: 'ja',
-            sourceLocale: 'ja',
             key: 'common001',
             textPath: 'text/ja/common001.txt'
           }
@@ -261,7 +255,6 @@ describe('BATCH_EXPORT Plugin Command Test', function () {
         'examples/auto-manifest.json',
         'data',
         'ja',
-        'ja',
         'text',
         true
       ])
@@ -289,7 +282,6 @@ describe('BATCH_EXPORT Plugin Command Test', function () {
             eventId: '1',
             pageId: '1',
             locale: 'ja',
-            sourceLocale: 'ja',
             key: 'map999_event001_page1',
             textPath: 'text/ja/map999_event001_page1.txt'
           }
@@ -313,7 +305,6 @@ describe('BATCH_EXPORT Plugin Command Test', function () {
       Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT', [
         'examples/auto-manifest.json',
         'data',
-        'ja',
         'ja',
         'text'
       ])
@@ -342,7 +333,7 @@ describe('BATCH_EXPORT Plugin Command Test', function () {
       // Execute command with no optional parameters
       Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT', [
         'examples/auto-manifest.json'
-        // DataDir, Locale, SourceLocale, TextBase omitted - should use defaults
+        // DataDir, Locale, TextBase omitted - should use defaults
       ])
 
       // Verify command was executed (no error thrown)

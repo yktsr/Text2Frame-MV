@@ -20,27 +20,31 @@ interface CommandGroup {
 
 const GROUPS: CommandGroup[] = [
     {
-        label: '現在のファイル / Current File',
+        label: 'ゲームに反映 / Apply to game',
         items: [
-            { command: 'text2frame.deployCurrentFile', label: 'ゲームに反映 / Deploy', icon: 'rocket', tooltip: '現在のテキストをゲーム(JSON)に反映します。' },
-            { command: 'text2frame.exportCurrentFile', label: 'テキストへ書き出し(pull) / Export', icon: 'cloud-download', tooltip: 'ゲーム(JSON)から現在のテキストへ書き出します(上書き)。' },
-            { command: 'text2frame.exportConversationOnly', label: '会話のみ書き出し / Conversation Only', icon: 'comment-discussion', tooltip: '会話部分のみを *.conversation.txt に書き出します。' },
-            { command: 'text2frame.showCompiledJson', label: 'コンパイル結果を表示 / Show Compiled JSON', icon: 'json', tooltip: '現在のテキストのコンパイル結果(JSON)を表示します。' },
-            { command: 'text2frame.toggleDeployOnSave', label: '保存時に自動反映 切替 / Toggle Deploy on Save', icon: 'sync', tooltip: '保存時の自動デプロイを ON / OFF します。' }
+            { command: 'text2frame.deployCurrentFile', label: 'このファイル / This file', icon: 'rocket', tooltip: '今開いているテキストをゲームに反映します。' },
+            { command: 'text2frame.deployAll', label: 'すべて / All', icon: 'cloud-upload', tooltip: '今の言語フォルダのテキストをすべてゲームに反映します。' }
         ]
     },
     {
-        label: '一括 / Batch',
+        label: 'ゲームから書き出し / Pull from game',
         items: [
-            { command: 'text2frame.deployAll', label: 'すべて反映 / Deploy All', icon: 'cloud-upload', tooltip: 'text/ 配下の front matter 付き .txt をすべてゲームに反映します。' },
-            { command: 'text2frame.exportAll', label: 'すべて書き出し / Export All', icon: 'archive', tooltip: 'ゲームの全イベント/コモンを text/<locale>/ へ書き出します。' }
+            { command: 'text2frame.exportCurrentFile', label: 'このファイル / This file', icon: 'cloud-download', tooltip: '今開いているファイルをゲームの内容で書き出します(テキストは上書き)。' },
+            { command: 'text2frame.exportAll', label: 'すべて / All', icon: 'archive', tooltip: 'ゲームの全イベントを今の言語フォルダへ書き出します(テキストは上書き)。' }
         ]
     },
     {
-        label: 'ロケール / Locale',
+        label: '言語 / Language',
         items: [
-            { command: 'text2frame.seedLocale', label: 'ロケールを複製して着手 / Seed Locale', icon: 'repo-clone', tooltip: 'sourceLocale から targetLocale フォルダへ複製して翻訳の着手点を作ります。' },
-            { command: 'text2frame.deployLocale', label: 'ロケールをデプロイ / Deploy Locale', icon: 'globe', tooltip: 'text/<targetLocale>/ を merge(既定)でゲームに反映します。' }
+            { command: 'text2frame.seedLocale', label: '言語を追加 / Add a language', icon: 'add', tooltip: 'ゲームの内容を今の言語フォルダに複製して、翻訳の着手点を作ります(既存ファイルは残します)。' }
+        ]
+    },
+    {
+        label: '上級 / Advanced',
+        items: [
+            { command: 'text2frame.showCompiledJson', label: 'コンパイル結果を表示 / Show compiled JSON', icon: 'json', tooltip: '今のテキストの変換結果(JSON)を表示します。' },
+            { command: 'text2frame.toggleDeployOnSave', label: '保存時に自動反映 切替 / Toggle apply-on-save', icon: 'sync', tooltip: '保存したら自動でゲームに反映する設定を ON / OFF します。' },
+            { command: 'text2frame.exportConversationOnly', label: '会話のみ書き出し / Pull conversation only', icon: 'comment-discussion', tooltip: '会話部分だけを *.conversation.txt に書き出します。' }
         ]
     }
 ];

@@ -153,12 +153,6 @@
  * @type string
  * @default ja
  *
- * @arg SourceLocale
- * @text ソースロケール
- * @desc マニフェスト自動生成時のソースロケールです。デフォルトはjaです。
- * @type string
- * @default ja
- *
  * @arg TextBase
  * @text テキストベースディレクトリ
  * @desc マニフェスト自動生成時のテキストベースディレクトリです。デフォルトはtextです。
@@ -503,10 +497,9 @@
       const manifest_path = args.ManifestPath || 'examples/auto-manifest.json'
       const data_dir = args.DataDir || 'data'
       const locale = args.Locale || 'ja'
-      const source_locale = args.SourceLocale || 'ja'
       const text_base = args.TextBase || 'text'
       const english_tag = String(args.EnglishTag) === 'true'
-      this.pluginCommand('BATCH_EXPORT', [manifest_path, data_dir, locale, source_locale, text_base, english_tag])
+      this.pluginCommand('BATCH_EXPORT', [manifest_path, data_dir, locale, text_base, english_tag])
     })
   }
 
@@ -610,9 +603,8 @@
         const manifestPath = args[0]
         const dataDir = args[1]
         const locale = args[2]
-        const sourceLocale = args[3]
-        const textBase = args[4]
-        const englishTag = args[5]
+        const textBase = args[3]
+        const englishTag = args[4]
 
         let resolvedPath = manifestPath
         if (typeof require !== 'undefined') {
@@ -623,7 +615,7 @@
 
           if (!fs.existsSync(resolvedPath)) {
             addMessage('[BATCH_EXPORT] Manifest not found. Auto-generating...')
-            const scanMapEvents = function (baseDir, loc, srcLoc, txtBase) {
+            const scanMapEvents = function (baseDir, loc, txtBase) {
               const entries = []
               const files = fs.readdirSync(baseDir)
               const mapFiles = files.filter(f => /^Map\d+\.json$/.test(f)).sort()
@@ -647,7 +639,6 @@
                       eventId: String(eventId),
                       pageId: String(pageId),
                       locale: loc,
-                      sourceLocale: srcLoc,
                       key,
                       textPath
                     })
@@ -657,7 +648,7 @@
               return entries
             }
 
-            const scanCommonEvents = function (baseDir, loc, srcLoc, txtBase) {
+            const scanCommonEvents = function (baseDir, loc, txtBase) {
               const entries = []
               const commonPath = path.join(baseDir, 'CommonEvents.json')
               if (!fs.existsSync(commonPath)) return entries
@@ -671,7 +662,6 @@
                   kind: 'common',
                   commonEventId: String(index),
                   locale: loc,
-                  sourceLocale: srcLoc,
                   key,
                   textPath
                 })
@@ -679,8 +669,8 @@
               return entries
             }
 
-            const mapEntries = scanMapEvents(dataDir, locale, sourceLocale, textBase)
-            const commonEntries = scanCommonEvents(dataDir, locale, sourceLocale, textBase)
+            const mapEntries = scanMapEvents(dataDir, locale, textBase)
+            const commonEntries = scanCommonEvents(dataDir, locale, textBase)
             const manifestObj = {
               version: 1,
               entries: mapEntries.concat(commonEntries)
@@ -3169,7 +3159,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   /**
    * Map*.json ファイルをスキャンしてイベントエントリを生成
    */
-  const scanMapEvents = function (dataDir, locale, sourceLocale, textBaseDir) {
+  const scanMapEvents = function (dataDir, locale, textBaseDir) {
     const entries = []
     const files = fs.readdirSync(dataDir)
     const mapFiles = files.filter(f => /^Map\d+\.json$/.test(f)).sort()
@@ -3200,7 +3190,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             eventId: String(eventId),
             pageId: String(pageId),
             locale,
-            sourceLocale,
             key,
             textPath
           })
@@ -3214,7 +3203,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   /**
    * CommonEvents.json をスキャンしてコモンイベントエントリを生成
    */
-  const scanCommonEvents = function (dataDir, locale, sourceLocale, textBaseDir) {
+  const scanCommonEvents = function (dataDir, locale, textBaseDir) {
     const entries = []
     const commonPath = path.join(dataDir, 'CommonEvents.json')
 
@@ -3236,7 +3225,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         kind: 'common',
         commonEventId: String(index),
         locale,
-        sourceLocale,
         key,
         textPath
       })
@@ -3248,9 +3236,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   /**
    * manifest オブジェクトを生成
    */
-  const generateManifestObject = function (dataDir, locale, sourceLocale, textBaseDir) {
-    const mapEntries = scanMapEvents(dataDir, locale, sourceLocale, textBaseDir)
-    const commonEntries = scanCommonEvents(dataDir, locale, sourceLocale, textBaseDir)
+  const generateManifestObject = function (dataDir, locale, textBaseDir) {
+    const mapEntries = scanMapEvents(dataDir, locale, textBaseDir)
+    const commonEntries = scanCommonEvents(dataDir, locale, textBaseDir)
     const allEntries = mapEntries.concat(commonEntries)
 
     return {
@@ -3273,9 +3261,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     }
     if (entry.locale) {
       lines.push('locale: ' + String(entry.locale))
-    }
-    if (entry.sourceLocale) {
-      lines.push('sourceLocale: ' + String(entry.sourceLocale))
     }
     if (entry.key) {
       lines.push('key: ' + String(entry.key))
@@ -3364,7 +3349,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-g, --generate-manifest', 'auto-generate manifest if not exists', false)
     .option('-d, --data-dir <dir>', 'game data directory', 'data')
     .option('-l, --locale <locale>', 'locale for generated manifest', 'ja')
-    .option('-s, --source-locale <locale>', 'source locale for generated manifest', 'ja')
     .option('-t, --text-base <dir>', 'text base directory for generated manifest', 'text')
     .option('-v, --verbose', 'debug mode', false)
     .option('-w, --english_tag <true/false>', 'english tag', 'true')
@@ -3474,14 +3458,13 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         console.log('[batch-export] manifest not found or --generate-manifest option enabled. Auto-generating manifest...')
         const dataDir = path.resolve(options.dataDir)
         const locale = options.locale
-        const sourceLocale = options.sourceLocale
         const textBaseDir = options.textBase
 
         if (!fs.existsSync(dataDir)) {
           throw new Error('Data directory not found: ' + dataDir)
         }
 
-        const manifestObj = generateManifestObject(dataDir, locale, sourceLocale, textBaseDir)
+        const manifestObj = generateManifestObject(dataDir, locale, textBaseDir)
 
         if (!manifestPath) {
           manifestPath = path.resolve('auto-manifest.json')

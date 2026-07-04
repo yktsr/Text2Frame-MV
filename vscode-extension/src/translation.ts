@@ -1,27 +1,20 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot } from './compiler';
+import { workspaceRootFor, dataDirFor } from './compiler';
 import { exportToTextFile, ExportTarget } from './exportText';
-import { walkTextFiles } from './batch';
 
 /**
- * VS Code-only translation flow:
- *   1. "Create Translation Set" — seed text/<targetLocale>/ from the data JSON
- *      (same body as the source, front matter carries locale/sourceLocale).
- *      Existing files are kept, so re-running never clobbers translations.
- *   2. Translate the text/<targetLocale>/*.txt files.
- *   3. "Deploy Translation" — import only text/<targetLocale>/ back into the data.
+ * "Add a language": seed text/<language>/ from the game data JSON so a translator has a
+ * starting point (same content as the game). Existing files are kept, so re-running never
+ * clobbers in-progress edits. Everything else (deploy / export) is the plain, direction-based
+ * flow that works on the current language folder; there is no separate "translation" concept.
  */
-
-interface T2FModule {
-    applyTextFile: (opts: { [key: string]: unknown }) => { ok: boolean; warnings: string[]; error?: string };
-}
 
 let outputChannel: vscode.OutputChannel | undefined;
 function getOutput(): vscode.OutputChannel {
     if (!outputChannel) {
-        outputChannel = vscode.window.createOutputChannel('Text2Frame Translation');
+        outputChannel = vscode.window.createOutputChannel('Text2Frame');
     }
     return outputChannel;
 }
@@ -29,10 +22,12 @@ function getOutput(): vscode.OutputChannel {
 function cfg(key: string, def: string): string {
     return vscode.workspace.getConfiguration('text2frame').get<string>(key, def) || def;
 }
-const sourceLocaleSetting = (): string => cfg('sourceLocale', 'ja');
-const targetLocaleSetting = (): string => cfg('targetLocale', 'en');
+/** The single "working language" setting (folder text/<language>/). */
+function languageSetting(): string {
+    const c = vscode.workspace.getConfiguration('text2frame');
+    return c.get<string>('locale') || c.get<string>('targetLocale') || 'ja';
+}
 const textBaseSetting = (): string => cfg('textBaseDir', 'text');
-const strategySetting = (): string => cfg('strategy', 'merge');
 
 interface DataItem {
     kind: 'event' | 'common';
@@ -94,10 +89,9 @@ function enumerateDataTargets(dataDir: string): DataItem[] {
 }
 
 /**
- * Command: seed text/<targetLocale>/ from the source data JSON. The body is copied
- * from the source locale as a starting point; the front matter records locale/sourceLocale.
- * Existing files are skipped so in-progress edits are preserved. This is the one genuinely
- * locale-pairing operation (source -> target); everything else is plain locale-scoped deploy.
+ * Command: "Add a language" — seed text/<language>/ from the game data as a starting point.
+ * Existing files are skipped (safe to re-run). The export also records the common ancestor
+ * so the first later "Apply to game" is already a proper 3-way.
  */
 export function seedLocale(context: vscode.ExtensionContext): void {
     const root = workspaceRootFor();
@@ -110,15 +104,10 @@ export function seedLocale(context: vscode.ExtensionContext): void {
         vscode.window.showErrorMessage('Text2Frame: データフォルダが見つかりません: ' + dataDir);
         return;
     }
-    const source = sourceLocaleSetting();
-    const target = targetLocaleSetting();
-    if (source === target) {
-        vscode.window.showErrorMessage(`Text2Frame: sourceLocale と targetLocale が同じ (${source}) です。設定 text2frame.targetLocale を変更してください。`);
-        return;
-    }
-    const outDir = path.join(root, textBaseSetting(), target);
+    const language = languageSetting();
+    const outDir = path.join(root, textBaseSetting(), language);
     const out = getOutput();
-    out.appendLine(`=== Seed Locale: ${source} -> ${target} (${path.relative(root, outDir)}) ===`);
+    out.appendLine(`=== 言語を追加: ${language} (${path.relative(root, outDir)}) ===`);
 
     const items = enumerateDataTargets(dataDir);
     let created = 0;
@@ -127,7 +116,7 @@ export function seedLocale(context: vscode.ExtensionContext): void {
     for (const it of items) {
         const textPath = path.join(outDir, it.key + '.txt');
         if (fs.existsSync(textPath)) {
-            skipped++; // 既存の翻訳を上書きしない
+            skipped++; // 既存のファイルは上書きしない
             continue;
         }
         const exportTarget: ExportTarget = {
@@ -137,14 +126,12 @@ export function seedLocale(context: vscode.ExtensionContext): void {
             pageId: it.pageId,
             commonEventId: it.commonEventId,
             textPath,
-            locale: target,
-            sourceLocale: source
+            locale: language
         };
+        // exportToTextFile also records the ancestor snapshot for this file.
         const res = exportToTextFile(context, root, exportTarget);
         if (res.ok) {
             created++;
-            // seed を 3-way マージの共通祖先(BASE)として保存する。
-            saveBaseSnapshot(root, target, it.key, fs.readFileSync(textPath, 'utf8'));
             out.appendLine(`NEW  ${path.relative(root, textPath)}`);
         } else {
             fail++;
@@ -152,87 +139,10 @@ export function seedLocale(context: vscode.ExtensionContext): void {
         }
     }
     out.appendLine(`=== done: ${created} created, ${skipped} skipped (existing), ${fail} fail ===`);
-    const msg = `Text2Frame: ロケール複製 (${source}→${target}) — ${created} 新規 / ${skipped} 既存維持 / ${fail} 失敗`;
+    const msg = `Text2Frame: 言語を追加 (${language}) — ${created} 新規 / ${skipped} 既存維持 / ${fail} 失敗`;
     if (fail > 0) {
         vscode.window.showWarningMessage(msg, '詳細').then((p) => { if (p) { out.show(true); } });
     } else {
         vscode.window.showInformationMessage(msg);
     }
-}
-
-/**
- * Shared core: deploy every text file under text/<targetLocale>/ into the data JSON
- * using the given strategy. `opName` is used in the log/notification labels.
- */
-function runLocaleDeploy(context: vscode.ExtensionContext, strategy: string, opName: string): void {
-    const root = workspaceRootFor();
-    if (!root) {
-        vscode.window.showErrorMessage('Text2Frame: ワークスペースフォルダが見つかりません。');
-        return;
-    }
-    const { mod } = loadModule<T2FModule>(context, root, 'Text2Frame.js', (m) => !!m && typeof (m as T2FModule).applyTextFile === 'function');
-    if (!mod) {
-        vscode.window.showErrorMessage('Text2Frame: コンパイラ (Text2Frame.js) が見つかりません。');
-        return;
-    }
-    const target = targetLocaleSetting();
-    const dir = path.join(root, textBaseSetting(), target);
-    const files = walkTextFiles(dir).filter((f) => parseFrontMatter(fs.readFileSync(f, 'utf8')).hasFrontMatter);
-    if (files.length === 0) {
-        vscode.window.showInformationMessage(`Text2Frame: ${path.relative(root, dir)} に翻訳ファイルがありません。先に「翻訳セットを作成」を実行してください。`);
-        return;
-    }
-    const out = getOutput();
-    out.appendLine(`=== ${opName} (${target}): ${files.length} files, strategy=${strategy} ===`);
-    let ok = 0;
-    let fail = 0;
-    let warn = 0;
-    for (const file of files) {
-        try {
-            const key = path.basename(file, '.txt');
-            const { meta } = parseFrontMatter(fs.readFileSync(file, 'utf8'));
-            const { opts, label } = resolveTarget(meta, root);
-            // merge (and legacy overlay/merge3/diff) keep JSON structure; overwrite/import fully replace.
-            const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
-            const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, backup: true };
-            // Auto common-ancestor: use the BASE snapshot when present so merge does a 3-way.
-            if (mergeLike && hasBaseSnapshot(root, target, key)) {
-                applyOpts.basePath = baseSnapshotPath(root, target, key);
-            }
-            const res = mod.applyTextFile(applyOpts);
-            if (res.ok) {
-                ok++;
-                warn += res.warnings.length;
-                // After a successful merge, make the current text the new common ancestor (BASE).
-                if (mergeLike) { saveBaseSnapshot(root, target, key, fs.readFileSync(file, 'utf8')); }
-                out.appendLine(`OK   ${label}  <- ${path.relative(root, file)}` + (res.warnings.length ? `  (${res.warnings.length} warn)` : ''));
-            } else {
-                fail++;
-                out.appendLine(`FAIL ${label}  <- ${path.relative(root, file)}  ${res.error}`);
-            }
-        } catch (e) {
-            fail++;
-            out.appendLine(`FAIL ${path.relative(root, file)}  ${e instanceof Error ? e.message : String(e)}`);
-        }
-    }
-    out.appendLine(`=== done: ${ok} ok, ${fail} fail, ${warn} warnings ===`);
-    const msg = `Text2Frame: ${opName} 完了 (${target}) — ${ok} 成功 / ${fail} 失敗` + (warn ? ` / ${warn} 警告` : '');
-    if (fail > 0) {
-        vscode.window.showWarningMessage(msg, '詳細').then((p) => { if (p) { out.show(true); } });
-    } else {
-        vscode.window.showInformationMessage(msg);
-    }
-}
-
-/**
- * Command: deploy the working locale (text/<targetLocale>/) into the data JSON, using the
- * configured strategy (default `merge`). merge keeps the JSON structure (movement/branches/
- * switches edited in the editor) and updates only the conversation; when a BASE snapshot
- * (.t2f-base, saved on the previous deploy/export) exists it does a 3-way merge — a unit
- * changed differently on both sides is kept as BOTH with conflict comment markers; otherwise
- * it overlays. An empty target event is populated wholesale. The current text becomes the new
- * BASE on success. Set text2frame.strategy = overwrite to fully replace from text instead.
- */
-export function deployLocale(context: vscode.ExtensionContext): void {
-    runLocaleDeploy(context, strategySetting(), 'ロケールデプロイ');
 }

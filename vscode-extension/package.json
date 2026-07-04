@@ -49,42 +49,38 @@
     "commands": [
       {
         "command": "text2frame.deployCurrentFile",
-        "title": "Text2Frame: 現在のファイルをゲームに反映 / Deploy Current File",
+        "title": "Text2Frame: ゲームに反映(このファイル) / Apply to game (this file)",
         "icon": "$(rocket)"
       },
       {
         "command": "text2frame.toggleDeployOnSave",
-        "title": "Text2Frame: 保存時に自動でゲームに反映する / Toggle Deploy on Save"
+        "title": "Text2Frame: 保存時に自動でゲームに反映する / Toggle apply-on-save"
       },
       {
         "command": "text2frame.exportCurrentFile",
-        "title": "Frame2Text: ゲームからテキストへ書き出し / Export Current File from Data",
+        "title": "Text2Frame: ゲームから書き出し(このファイル) / Pull from game (this file)",
         "icon": "$(cloud-download)"
       },
       {
         "command": "text2frame.exportConversationOnly",
-        "title": "Text2Frame: 会話のみ書き出し / Export Conversation Only"
+        "title": "Text2Frame: 会話のみ書き出し / Pull conversation only"
       },
       {
         "command": "text2frame.showCompiledJson",
-        "title": "Text2Frame: コンパイル結果を表示 / Show Compiled JSON",
+        "title": "Text2Frame: コンパイル結果を表示 / Show compiled JSON",
         "icon": "$(json)"
       },
       {
         "command": "text2frame.deployAll",
-        "title": "Text2Frame: すべてのテキストをゲームに反映する / Deploy All"
+        "title": "Text2Frame: ゲームに反映(すべて) / Apply to game (all)"
       },
       {
         "command": "text2frame.exportAll",
-        "title": "Text2Frame: すべてのゲームイベントをテキストに書き出す / Export All"
+        "title": "Text2Frame: ゲームから書き出し(すべて) / Pull from game (all)"
       },
       {
         "command": "text2frame.seedLocale",
-        "title": "Text2Frame: ロケールを複製して着手 (sourceLocale→targetLocale) / Seed Locale"
-      },
-      {
-        "command": "text2frame.deployLocale",
-        "title": "Text2Frame: ロケールをデプロイ (targetLocale, 既定 merge) / Deploy Locale"
+        "title": "Text2Frame: 言語を追加 / Add a language"
       },
       {
         "command": "text2frame.tree.refresh",
@@ -171,11 +167,6 @@
           "command": "text2frame.seedLocale",
           "when": "view == text2frameExplorer",
           "group": "2_locale@1"
-        },
-        {
-          "command": "text2frame.deployLocale",
-          "when": "view == text2frameExplorer",
-          "group": "2_locale@2"
         }
       ],
       "commandPalette": [
@@ -203,18 +194,22 @@
           "type": "string",
           "enum": ["merge", "overwrite"],
           "default": "merge",
-          "description": "反映方式。merge=JSON構造(UIで足した移動・分岐・スイッチ等)を保ちつつテキストを賢く反映(祖先があれば3wayマージ、無ければ会話のみ差し替え、空イベントは新規反映)。overwrite=テキストを正としてすべて上書き。旧値(diff/import/overlay/merge3/sync)も内部で正規化され受理されます。 / Deploy strategy: merge = keep JSON structure and smart-apply text (3-way when an ancestor exists, otherwise overlay conversation; empty events populated wholesale). overwrite = replace everything from text. Legacy values (diff/import/overlay/merge3/sync) are still accepted and normalized."
+          "enumDescriptions": [
+            "安全に反映(ゲーム側の編集を勝手に消さない・既定) / safe (keeps edits made in the game)",
+            "テキストで全部上書き(ゲーム側の編集は消えます) / overwrite everything from text"
+          ],
+          "description": "ゲームへの反映のしかた。通常は既定のままで大丈夫です。 / How text is applied to the game. The default is fine for most users."
         },
         "text2frame.writeBackAfterMerge": {
           "type": "string",
           "enum": ["off", "onConflict", "always"],
           "default": "onConflict",
           "enumDescriptions": [
-            "書き戻さない / never write back",
-            "3-wayで衝突(両方残し)が出た時だけ、マージ結果をテキストへ書き戻す(既定) / write back only when the merge kept conflicts",
-            "デプロイ成功のたびにマージ結果をテキストへ書き戻す(テキストが常にJSONを反映) / write back after every successful deploy"
+            "書き戻さない / never",
+            "競合したときだけ書き戻す(既定) / only when there is a conflict to resolve",
+            "反映のたびに書き戻す / after every apply"
           ],
-          "description": "merge 反映後にマージ結果をテキストへ自動で書き戻すか。書き戻すと 3-way の共通祖先(BASE)も更新され、次回はクリーンな 3-way になります。衝突は「テキストの変更 / ゲームの変更」の目印コメントで両方残るので、テキスト側で解決できます(タグ記号は使わないので文法警告は出ません)。 / Whether to write the merged result back into the text after a merge deploy (also refreshes the 3-way BASE). Conflicts are kept as both sides with plain comment markers so you can resolve them in text."
+          "description": "テキストとゲームで同じ所を別々に変更して競合したとき、結果をテキストに書き戻して確認・解決できるようにするか。 / When the same spot was changed both in text and in the game, whether to write the result back into the text so you can review and resolve it."
         },
         "text2frame.englishTag": {
           "type": "boolean",
@@ -224,7 +219,7 @@
         "text2frame.locale": {
           "type": "string",
           "default": "ja",
-          "description": "書き出し先のサブフォルダ名を指定する。 / Locale subfolder under the text base dir for export."
+          "description": "作業する言語(text/<言語>/ フォルダ)。例: ja / en。「ゲームに反映」「ゲームから書き出し」「言語を追加」はこの言語フォルダを対象にします。 / Working language (the text/<language>/ folder), e.g. ja / en. Apply / Pull / Add-a-language all operate on this language folder."
         },
         "text2frame.textBaseDir": {
           "type": "string",
@@ -240,16 +235,6 @@
           "type": "string",
           "default": "",
           "description": "Text2Frame 本体(Text2Frame.js)のパスを明示指定。通常指定する必要はありません。空なら自動解決されます。 / Explicit path to Text2Frame.js. Empty = auto-resolve."
-        },
-        "text2frame.sourceLocale": {
-          "type": "string",
-          "default": "ja",
-          "description": "複製元のロケール(原文)。「ロケールを複製して着手 (Seed Locale)」のときだけ使われ、front matter に記録されます。 / Source locale to copy from; used only by Seed Locale."
-        },
-        "text2frame.targetLocale": {
-          "type": "string",
-          "default": "en",
-          "description": "作業ロケール。Seed Locale / Deploy Locale の対象サブフォルダ (textBaseDir/<targetLocale>) になります。 / Working locale; the textBaseDir/<targetLocale> subfolder used by Seed/Deploy Locale."
         }
       }
     }

@@ -25,7 +25,8 @@ class T2FNode extends vscode.TreeItem {
 }
 
 function localeSetting(): string {
-    return vscode.workspace.getConfiguration('text2frame').get<string>('locale', 'ja');
+    const c = vscode.workspace.getConfiguration('text2frame');
+    return c.get<string>('locale') || c.get<string>('targetLocale') || 'ja';
 }
 function textBaseSetting(): string {
     return vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text');

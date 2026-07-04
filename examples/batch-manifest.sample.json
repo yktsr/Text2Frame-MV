@@ -10,7 +10,6 @@
       "eventName": "村長との会話",
       "pageId": "1",
       "locale": "ja",
-      "sourceLocale": "ja",
       "key": "map001_event001_page001",
       "textPath": "text/ja/map001_event001_page001.txt"
     },
@@ -22,7 +21,6 @@
       "eventName": "村長との会話",
       "pageId": "1",
       "locale": "en",
-      "sourceLocale": "ja",
       "key": "map001_event001_page001",
       "textPath": "text/en/map001_event001_page001.txt",
       "basePath": "text/base/map001_event001_page001.txt"
@@ -32,7 +30,6 @@
       "commonEventId": "1",
       "commonEventName": "共通イベント：オープニング",
       "locale": "ja",
-      "sourceLocale": "ja",
       "key": "common001",
       "textPath": "text/ja/common001.txt"
     }

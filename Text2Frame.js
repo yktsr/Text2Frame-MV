@@ -10745,7 +10745,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   // Build a front matter block from routing metadata (used to backfill files that lack one).
   const renderFrontMatterCli = function (meta) {
     const lines = ['---']
-    const order = ['kind', 'mapId', 'eventId', 'pageId', 'commonEventId', 'locale', 'sourceLocale', 'strategy', 'basePath']
+    const order = ['kind', 'mapId', 'eventId', 'pageId', 'commonEventId', 'locale', 'strategy', 'basePath']
     order.forEach(function (k) {
       if (meta[k] !== undefined && meta[k] !== null && String(meta[k]) !== '') {
         lines.push(k + ': ' + String(meta[k]))
@@ -10955,8 +10955,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             eventId: entry.eventId || meta.eventId,
             pageId: entry.pageId || meta.pageId,
             commonEventId: entry.commonEventId || meta.commonEventId,
-            locale: entry.locale || meta.locale,
-            sourceLocale: entry.sourceLocale || meta.sourceLocale
+            locale: entry.locale || meta.locale
           }
           fs.writeFileSync(textPath, renderFrontMatterCli(fmMeta) + parsed.body, { encoding: 'utf8' })
         }
