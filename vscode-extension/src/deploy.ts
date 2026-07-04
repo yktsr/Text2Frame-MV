@@ -407,7 +407,14 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
                 return;
             }
             editor.document.save().then(() => {
-                deployDocument(editor.document, context, deployDiagnostics).then(flashResult);
+                deployDocument(editor.document, context, deployDiagnostics).then((result) => {
+                    flashResult(result);
+                    // Explicit command: confirm a clean success with a toast (deployDocument
+                    // already toasts on warnings/errors; deploy-on-save stays quiet).
+                    if (result && result.ok && result.warnings.length === 0) {
+                        vscode.window.showInformationMessage('Text2Frame: ゲームに反映しました。');
+                    }
+                });
             });
         }),
         vscode.commands.registerCommand('text2frame.toggleDeployOnSave', () => {
