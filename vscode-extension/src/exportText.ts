@@ -7,7 +7,8 @@ import {
     workspaceRootFor,
     mapPathFor,
     commonEventsPathFor,
-    recordDataState
+    recordDataState,
+    saveBaseSnapshot
 } from './compiler';
 
 /**
@@ -160,7 +161,8 @@ export function exportToTextFile(
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
-        fs.writeFileSync(target.textPath, header + '\n' + body + '\n', 'utf8');
+        const written = header + '\n' + body + '\n';
+        fs.writeFileSync(target.textPath, written, 'utf8');
         // Record the data baseline: after a pull, text matches data, so a later
         // deploy should not flag this data file as externally changed.
         const dataPath = target.kind === 'common'
@@ -168,6 +170,14 @@ export function exportToTextFile(
             : (target.mapId ? mapPathFor(workspaceRoot, target.mapId) : undefined);
         if (dataPath) {
             recordDataState(context, dataPath);
+        }
+        // Establish the 3-way common ancestor (BASE) from this export, so the first
+        // subsequent merge deploy is already a true 3-way. Skip the lossy conversation-only
+        // sidecar (it is not the deployable file). Mirrors deploy's snapshot id derivation.
+        if (!target.translationOnly) {
+            const key = path.basename(target.textPath, path.extname(target.textPath));
+            const locale = target.locale || path.basename(path.dirname(target.textPath)) || 'default';
+            saveBaseSnapshot(workspaceRoot, locale, key, written);
         }
         return { ok: true, textPath: target.textPath };
     } catch (e) {
