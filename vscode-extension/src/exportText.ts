@@ -27,6 +27,7 @@ type Command = { code: number; indent?: number; parameters?: unknown[] };
 interface Text2FrameModule {
     compile: (text: string) => Command[];
     applyThreeWayMerge: (base: Command[], ours: Command[], theirs: Command[]) => { commands: Command[]; conflicts: number; warnings: string[] };
+    applyOverlay: (existing: Command[], next: Command[]) => { commands: Command[]; warnings: string[] };
     VERSION?: string;
 }
 
@@ -239,9 +240,27 @@ export function mergePullToText(
             base = t2f.mod.compile(frontMatterBody(fs.readFileSync(baseP, 'utf8')));
         }
 
-        const merge = t2f.mod.applyThreeWayMerge(base, gameCmds, theirs);
-        const merged = merge.commands.slice();
-        // decompile expects an event list terminated by {code:0}; applyThreeWayMerge strips it.
+        // Smart choice (mirrors the deploy side):
+        //   - ancestor present            -> 3-way merge (keeps both sides, keeps-both on true conflict)
+        //   - no ancestor, text exists    -> overlay the game's structure with the text's conversation
+        //                                    (keeps translations, brings all game blocks, NO conflicts)
+        //   - no text (new file)          -> just the game's content (initial pull)
+        let merged: Command[];
+        let conflicts = 0;
+        let warnings: string[] = [];
+        if (base.length > 0) {
+            const m = t2f.mod.applyThreeWayMerge(base, gameCmds, theirs);
+            merged = m.commands.slice();
+            conflicts = m.conflicts;
+            warnings = m.warnings;
+        } else if (theirs.length > 0) {
+            const ov = t2f.mod.applyOverlay(gameCmds, theirs);
+            merged = ov.commands.slice();
+            warnings = ov.warnings;
+        } else {
+            merged = gameCmds.slice();
+        }
+        // decompile expects an event list terminated by {code:0}; the merge helpers strip it.
         if (!merged.length || merged[merged.length - 1].code !== 0) {
             merged.push({ code: 0, indent: 0, parameters: [] });
         }
@@ -266,7 +285,7 @@ export function mergePullToText(
         }
         // The just-written text becomes the new common ancestor.
         saveBaseSnapshot(workspaceRoot, locale, key, written);
-        return { ok: true, textPath: target.textPath, conflicts: merge.conflicts, warnings: merge.warnings };
+        return { ok: true, textPath: target.textPath, conflicts, warnings };
     } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
