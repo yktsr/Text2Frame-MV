@@ -122,11 +122,6 @@
     "menus": {
       "editor/title": [
         {
-          "command": "text2frame.toggleDeployOnSave",
-          "when": "resourceLangId == text2frame || resourceExtname == .txt",
-          "group": "1_text2frame@3"
-        },
-	{
           "command": "text2frame.deployCurrentFile",
           "when": "resourceLangId == text2frame || resourceExtname == .txt",
           "group": "navigation@1"
@@ -135,16 +130,6 @@
           "command": "text2frame.exportCurrentFile",
           "when": "resourceLangId == text2frame || resourceExtname == .txt",
           "group": "navigation@2"
-        },
-        {
-          "command": "text2frame.exportConversationOnly",
-          "when": "resourceLangId == text2frame || resourceExtname == .txt",
-          "group": "1_text2frame@2"
-        },
-        {
-          "command": "text2frame.showCompiledJson",
-          "when": "resourceLangId == text2frame || resourceExtname == .txt",
-          "group": "1_text2frame@1"
         }
       ],
       "view/title": [
