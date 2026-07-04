@@ -195,7 +195,6 @@ mapId: 1
 eventId: 1
 pageId: 1
 locale: en
-sourceLocale: ja
 key: map001_event001_page001
 ---
 <Face: (0)><Background: Window><WindowPosition: Bottom>
@@ -267,7 +266,7 @@ node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json -
 > テキストから消えて**削除されるブロックのみ**「`Block removed / ブロックが削除されます`」と報告されます
 > (変更を削除と誤報告しません)。
 
-> VS Code だけで英語化を完結させたい場合は、拡張機能の「ロケールを複製して着手 / ロケールをデプロイ」
+> VS Code だけで英語化を完結させたい場合は、拡張機能の「言語を追加 / ゲームに反映」
 > コマンドを使うフローもあります（[vscode-extension/README.md](vscode-extension/README.md) 参照）。
 
 ## Author/連絡先

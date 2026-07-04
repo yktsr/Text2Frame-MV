@@ -23,7 +23,8 @@ function getOutput(): vscode.OutputChannel {
 }
 
 function localeSetting(): string {
-    return vscode.workspace.getConfiguration('text2frame').get<string>('locale', 'ja');
+    const c = vscode.workspace.getConfiguration('text2frame');
+    return c.get<string>('locale') || c.get<string>('targetLocale') || 'ja';
 }
 function textBaseSetting(): string {
     return vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text');
@@ -61,7 +62,8 @@ export function deployAll(context: vscode.ExtensionContext): void {
         vscode.window.showErrorMessage('Text2Frame: コンパイラ (Text2Frame.js) が見つかりません。');
         return;
     }
-    const textDir = path.join(root, textBaseSetting());
+    // Scope to the current working language folder text/<language>/.
+    const textDir = path.join(root, textBaseSetting(), localeSetting());
     const files = walkTextFiles(textDir).filter((f) => parseFrontMatter(fs.readFileSync(f, 'utf8')).hasFrontMatter);
     if (files.length === 0) {
         vscode.window.showInformationMessage(`Text2Frame: ${path.relative(root, textDir)} にデプロイ対象(フロントマター付き .txt)がありません。`);

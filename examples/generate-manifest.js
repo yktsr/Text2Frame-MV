@@ -3,7 +3,7 @@
  * RPGツクール MV/MZ の JSON データから manifest を自動生成するスクリプト
  * 
  * 使用例:
- *   node examples/generate-manifest.js --data-dir data --output examples/auto-manifest.json --locale ja --source-locale ja
+ *   node examples/generate-manifest.js --data-dir data --output examples/auto-manifest.json --locale ja
  */
 
 const fs = require('fs');
@@ -18,7 +18,6 @@ program
   .option('--data-dir <dir>', 'ゲームデータディレクトリ', 'data')
   .option('--output <file>', '出力ファイルパス', 'examples/auto-manifest.json')
   .option('--locale <locale>', 'locale（e.g. ja, en）', 'ja')
-  .option('--source-locale <locale>', 'sourceLocale（e.g. ja）', 'ja')
   .option('--text-base <dir>', 'テキストファイルの基準ディレクトリ', 'text')
   .parse();
 
@@ -28,7 +27,6 @@ const dataDir = path.resolve(options.dataDir);
 const outputFile = path.resolve(options.output);
 const textBaseDir = options.textBase;
 const locale = options.locale;
-const sourceLocale = options.sourceLocale;
 
 if (!fs.existsSync(dataDir)) {
   console.error(`Error: Data directory not found: ${dataDir}`);
@@ -71,7 +69,6 @@ function scanMapEvents() {
           eventId: String(eventId),
           pageId: String(pageId),
           locale: locale,
-          sourceLocale: sourceLocale,
           key: key,
           textPath: textPath
         });
@@ -108,7 +105,6 @@ function scanCommonEvents() {
       kind: 'common',
       commonEventId: String(index),
       locale: locale,
-      sourceLocale: sourceLocale,
       key: key,
       textPath: textPath
     });

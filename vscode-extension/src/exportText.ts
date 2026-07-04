@@ -34,7 +34,6 @@ export interface ExportTarget {
     translationOnly?: boolean;
     /** Optional locale metadata (informational; ignored on deploy). */
     locale?: string;
-    sourceLocale?: string;
 }
 
 export interface ExportResult {
@@ -69,10 +68,7 @@ function renderFrontMatter(target: ExportTarget, version?: string): string {
     const lines = ['---'];
     // 来歴: 書き出しに使った変換スクリプトのバージョン(import 時は無視される)。
     lines.push(`generator: text2frame-mv@${version || 'unknown'}`);
-    // 翻訳メタ(任意・情報用。import 時は無視される)。
-    if (target.sourceLocale) {
-        lines.push(`sourceLocale: ${target.sourceLocale}`);
-    }
+    // 言語メタ(任意・情報用。import 時は無視される)。
     if (target.locale) {
         lines.push(`locale: ${target.locale}`);
     }
