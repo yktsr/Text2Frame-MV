@@ -267,7 +267,7 @@ node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json -
 > テキストから消えて**削除されるブロックのみ**「`Block removed / ブロックが削除されます`」と報告されます
 > (変更を削除と誤報告しません)。
 
-> VS Code だけで翻訳を完結させたい場合は、拡張機能の「翻訳セットを作成 / 翻訳をゲームに反映」
+> VS Code だけで英語化を完結させたい場合は、拡張機能の「ロケールを複製して着手 / ロケールをデプロイ」
 > コマンドを使うフローもあります（[vscode-extension/README.md](vscode-extension/README.md) 参照）。
 
 ## Author/連絡先

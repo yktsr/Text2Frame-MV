@@ -94,11 +94,12 @@ function enumerateDataTargets(dataDir: string): DataItem[] {
 }
 
 /**
- * Command: seed text/<targetLocale>/ from the source data JSON. The body is the
- * source content (a starting point for translation); the front matter records
- * locale/sourceLocale. Existing files are skipped so translations are preserved.
+ * Command: seed text/<targetLocale>/ from the source data JSON. The body is copied
+ * from the source locale as a starting point; the front matter records locale/sourceLocale.
+ * Existing files are skipped so in-progress edits are preserved. This is the one genuinely
+ * locale-pairing operation (source -> target); everything else is plain locale-scoped deploy.
  */
-export function createTranslationSet(context: vscode.ExtensionContext): void {
+export function seedLocale(context: vscode.ExtensionContext): void {
     const root = workspaceRootFor();
     if (!root) {
         vscode.window.showErrorMessage('Text2Frame: ワークスペースフォルダが見つかりません。');
@@ -117,7 +118,7 @@ export function createTranslationSet(context: vscode.ExtensionContext): void {
     }
     const outDir = path.join(root, textBaseSetting(), target);
     const out = getOutput();
-    out.appendLine(`=== Create Translation Set: ${source} -> ${target} (${path.relative(root, outDir)}) ===`);
+    out.appendLine(`=== Seed Locale: ${source} -> ${target} (${path.relative(root, outDir)}) ===`);
 
     const items = enumerateDataTargets(dataDir);
     let created = 0;
@@ -151,7 +152,7 @@ export function createTranslationSet(context: vscode.ExtensionContext): void {
         }
     }
     out.appendLine(`=== done: ${created} created, ${skipped} skipped (existing), ${fail} fail ===`);
-    const msg = `Text2Frame: 翻訳セット作成 (${source}→${target}) — ${created} 新規 / ${skipped} 既存維持 / ${fail} 失敗`;
+    const msg = `Text2Frame: ロケール複製 (${source}→${target}) — ${created} 新規 / ${skipped} 既存維持 / ${fail} 失敗`;
     if (fail > 0) {
         vscode.window.showWarningMessage(msg, '詳細').then((p) => { if (p) { out.show(true); } });
     } else {
@@ -223,19 +224,15 @@ function runLocaleDeploy(context: vscode.ExtensionContext, strategy: string, opN
     }
 }
 
-/** Command: deploy only text/<targetLocale>/ back into the data JSON (configured strategy). */
-export function deployTranslationSet(context: vscode.ExtensionContext): void {
-    runLocaleDeploy(context, strategySetting(), '翻訳デプロイ');
-}
-
 /**
- * Command: merge translations into the data JSON (the smart, non-destructive default).
- * Keeps the JSON structure (movement/branches/switches edited in the editor) and updates
- * only the conversation from text/<targetLocale>/. When a BASE snapshot (.t2f-base, saved
- * on the previous deploy/export) exists it does a 3-way merge — a unit changed differently
- * on both sides is kept as BOTH with conflict comment markers; otherwise it overlays. An
- * empty target event is populated wholesale. The current text becomes the new BASE on success.
+ * Command: deploy the working locale (text/<targetLocale>/) into the data JSON, using the
+ * configured strategy (default `merge`). merge keeps the JSON structure (movement/branches/
+ * switches edited in the editor) and updates only the conversation; when a BASE snapshot
+ * (.t2f-base, saved on the previous deploy/export) exists it does a 3-way merge — a unit
+ * changed differently on both sides is kept as BOTH with conflict comment markers; otherwise
+ * it overlays. An empty target event is populated wholesale. The current text becomes the new
+ * BASE on success. Set text2frame.strategy = overwrite to fully replace from text instead.
  */
-export function deployTranslation(context: vscode.ExtensionContext): void {
-    runLocaleDeploy(context, 'merge', '翻訳マージ');
+export function deployLocale(context: vscode.ExtensionContext): void {
+    runLocaleDeploy(context, strategySetting(), 'ロケールデプロイ');
 }
