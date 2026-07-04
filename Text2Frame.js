@@ -10164,11 +10164,13 @@
         } else {
           conflicts++
           const ind = (tReg[0] && tReg[0][0] && tReg[0][0].indent) || (oReg[0] && oReg[0][0] && oReg[0][0].indent) || 0
-          pushComment('<<<<<<< text (theirs)', ind)
+          // 非エンジニアにも分かる日本語ラベル。タグ記号(< >)はコメント内でも
+          // 文法警告の元になるため使わない(=== の目印で表現)。
+          pushComment('=== テキストの変更 / from text ===', ind)
           pushAll(tReg)
-          pushComment('======= json (ours)', ind)
+          pushComment('=== ゲームの変更 / from game ===', ind)
           pushAll(oReg)
-          pushComment('>>>>>>>', ind)
+          pushComment('=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===', ind)
           warnings.push('Conflict kept both / 衝突は両方残しました')
         }
         pos = baseHi
