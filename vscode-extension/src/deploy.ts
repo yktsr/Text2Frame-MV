@@ -242,12 +242,11 @@ export function deployFile(
     } catch (e) {
         return { ok: false, textPath: filePath, warnings: [], error: e instanceof Error ? e.message : String(e) };
     }
-    const strategy = vscode.workspace.getConfiguration('text2frame').get<string>('strategy') || 'diff';
+    const strategy = vscode.workspace.getConfiguration('text2frame').get<string>('strategy') || 'merge';
     const result = mod.applyTextFile({
         textPath: filePath,
         ...resolved.opts,
         strategy,
-        overwrite: strategy === 'import',
         backup: true
     });
     if (result && result.ok) {
