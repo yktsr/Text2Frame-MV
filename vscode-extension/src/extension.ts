@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { registerDeployFeature, showCompiledJson } from './deploy';
-import { exportCurrentFile, exportCurrentFileForTranslation } from './exportText';
+import { exportCurrentFile, exportConversationOnly } from './exportText';
 import { deployAll, exportAll } from './batch';
 import { seedLocale, deployLocale } from './translation';
 import { registerTreeView } from './tree';
@@ -42,7 +42,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Export / batch / preview commands.
     context.subscriptions.push(
         vscode.commands.registerCommand('text2frame.exportCurrentFile', () => exportCurrentFile(context)),
-        vscode.commands.registerCommand('text2frame.exportForTranslation', () => exportCurrentFileForTranslation(context)),
+        vscode.commands.registerCommand('text2frame.exportConversationOnly', () => exportConversationOnly(context)),
         vscode.commands.registerCommand('text2frame.showCompiledJson', () => showCompiledJson(context)),
         vscode.commands.registerCommand('text2frame.deployAll', () => deployAll(context)),
         vscode.commands.registerCommand('text2frame.exportAll', () => exportAll(context)),

@@ -33,7 +33,7 @@ RPG ツクール MV/MZ 用プラグイン **Text2Frame** のスクリプトを�
 | `Text2Frame: Deploy Current File` | 現在のファイルを今すぐデプロイ |
 | `Text2Frame: Toggle Deploy on Save` | 保存時の自動デプロイを ON / OFF 切り替え |
 | `Frame2Text: Export Current File from Data` | 現在のファイルをデータから書き出し（取り込み） |
-| `Text2Frame: Export for Translation` | 現在のファイルの会話のみを `*.translation.txt` に書き出し |
+| `Text2Frame: Export Conversation Only` | 現在のファイルの会話のみを `*.conversation.txt` に書き出し |
 | `Text2Frame: Deploy All` | `text/` 配下のフロントマター付き .txt をすべて反映 |
 | `Text2Frame: Export All` | すべてのイベント/コモンを `text/<locale>/` へ書き出し |
 | `Text2Frame: Seed Locale` | `sourceLocale` から `text/<targetLocale>/` へ複製して着手（後述） |

@@ -41,7 +41,7 @@ export function walkTextFiles(dir: string): string[] {
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) {
             result.push(...walkTextFiles(full));
-        } else if (entry.isFile() && entry.name.endsWith('.txt') && !entry.name.endsWith('.translation.txt')) {
+        } else if (entry.isFile() && entry.name.endsWith('.txt') && !entry.name.endsWith('.conversation.txt') && !entry.name.endsWith('.translation.txt')) {
             result.push(full);
         }
     }
