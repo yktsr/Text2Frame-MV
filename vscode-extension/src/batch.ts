@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot } from './compiler';
+import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor, baseSnapshotPath, hasBaseSnapshot } from './compiler';
 import { exportToTextFile, ExportTarget } from './exportText';
+import { writeBackAndRefreshBase } from './deploy';
 
 /**
  * Batch operations: deploy every text file into data, or export every data
@@ -90,8 +91,8 @@ export function deployAll(context: vscode.ExtensionContext): void {
             if (res.ok) {
                 ok++;
                 warn += res.warnings.length;
-                // Update the common ancestor so the next deploy of this file is a true 3-way.
-                if (mergeLike) { saveBaseSnapshot(root, locale, key, fileText); }
+                // Optionally write the merged result back to the text, then refresh the 3-way BASE.
+                writeBackAndRefreshBase(context, root, meta, file, fileText, res, { locale, key }, mergeLike);
                 out.appendLine(`OK   ${label}  <- ${path.relative(root, file)}` + (res.warnings.length ? `  (${res.warnings.length} warn)` : ''));
             } else {
                 fail++;
