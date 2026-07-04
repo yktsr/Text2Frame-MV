@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { parseFrontMatter, isDeployable, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot } from './compiler';
-import { exportToTextFile, ExportTarget } from './exportText';
+import { exportToTextFile, mergePullToText, ExportTarget } from './exportText';
 
 export { isDeployable };
 
@@ -178,10 +178,10 @@ export async function deployDocument(
                 textPath: document.uri.fsPath,
                 frontMatterSource: document.getText()
             };
-            const ex = exportToTextFile(context, workspaceRoot, pullTarget);
+            const ex = mergePullToText(context, workspaceRoot, pullTarget);
             recordDataState(context, dataPath);
             if (ex.ok) {
-                vscode.window.showInformationMessage('Text2Frame: データを取り込みました。内容を確認して保存し直してください。');
+                vscode.window.showInformationMessage('Text2Frame: ゲームの内容を取り込みました(編集は残しました)。内容を確認して保存し直してください。');
             } else {
                 vscode.window.showErrorMessage('Text2Frame: 取り込み失敗 - ' + (ex.error || ''));
             }

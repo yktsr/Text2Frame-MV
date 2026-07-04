@@ -26,3 +26,5 @@ vscode-extension/lib/
 
 # 3-way merge base snapshots (Text2Frame)
 .t2f-base/
+
+sample*

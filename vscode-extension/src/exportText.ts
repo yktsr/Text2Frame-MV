@@ -3,12 +3,14 @@ import * as path from 'path';
 import * as fs from 'fs';
 import {
     parseFrontMatter,
+    frontMatterBody,
     loadModule,
     workspaceRootFor,
     mapPathFor,
     commonEventsPathFor,
     recordDataState,
-    saveBaseSnapshot
+    saveBaseSnapshot,
+    baseSnapshotPath
 } from './compiler';
 
 /**
@@ -18,6 +20,13 @@ import {
 
 interface Frame2TextModule {
     decompile: (list: unknown[], englishTag: boolean, options?: { pretty?: boolean; translationOnly?: boolean }) => string;
+    VERSION?: string;
+}
+
+type Command = { code: number; indent?: number; parameters?: unknown[] };
+interface Text2FrameModule {
+    compile: (text: string) => Command[];
+    applyThreeWayMerge: (base: Command[], ours: Command[], theirs: Command[]) => { commands: Command[]; conflicts: number; warnings: string[] };
     VERSION?: string;
 }
 
@@ -40,6 +49,8 @@ export interface ExportResult {
     ok: boolean;
     textPath?: string;
     error?: string;
+    conflicts?: number;
+    warnings?: string[];
 }
 
 let outputChannel: vscode.OutputChannel | undefined;
@@ -56,6 +67,15 @@ function loadFrame2Text(context: vscode.ExtensionContext, workspaceRoot: string 
         workspaceRoot,
         'Frame2Text.js',
         (m) => !!m && typeof (m as Frame2TextModule).decompile === 'function'
+    );
+}
+
+function loadText2Frame(context: vscode.ExtensionContext, workspaceRoot: string | undefined): { mod?: Text2FrameModule; tried: string[] } {
+    return loadModule<Text2FrameModule>(
+        context,
+        workspaceRoot,
+        'Text2Frame.js',
+        (m) => !!m && typeof (m as Text2FrameModule).compile === 'function' && typeof (m as Text2FrameModule).applyThreeWayMerge === 'function'
     );
 }
 
@@ -181,6 +201,77 @@ export function exportToTextFile(
     }
 }
 
+/**
+ * Merge-pull: bring the game's content into text/<language>/ WITHOUT clobbering existing
+ * translations. This is the mirror image of deploy — the same 3-way merge, but the merged
+ * result is written back out as TEXT (via decompile) instead of into the game JSON.
+ *   ours   = the game's current commands
+ *   theirs = the existing text (translations)
+ *   base   = the last-synced ancestor snapshot
+ * A line translated only in text is kept; a line changed only in the game is brought in;
+ * the same spot changed on both sides is kept as BOTH with the plain marker comments.
+ * When the text file does not exist yet, this simply writes the game's content (initial pull).
+ */
+export function mergePullToText(
+    context: vscode.ExtensionContext,
+    workspaceRoot: string,
+    target: ExportTarget
+): ExportResult {
+    const f2t = loadFrame2Text(context, workspaceRoot);
+    const t2f = loadText2Frame(context, workspaceRoot);
+    if (!f2t.mod || !t2f.mod) {
+        return { ok: false, error: 'Text2Frame.js / Frame2Text.js を読み込めませんでした。設定 text2frame.modulePath を確認してください。' };
+    }
+    try {
+        const gameCmds = readEventList(workspaceRoot, target) as Command[]; // ours
+        const key = path.basename(target.textPath, path.extname(target.textPath));
+        const locale = target.locale || path.basename(path.dirname(target.textPath)) || 'default';
+
+        let existingText = '';
+        let theirs: Command[] = [];
+        if (fs.existsSync(target.textPath)) {
+            existingText = fs.readFileSync(target.textPath, 'utf8');
+            theirs = t2f.mod.compile(frontMatterBody(existingText));
+        }
+        let base: Command[] = [];
+        const baseP = baseSnapshotPath(workspaceRoot, locale, key);
+        if (fs.existsSync(baseP)) {
+            base = t2f.mod.compile(frontMatterBody(fs.readFileSync(baseP, 'utf8')));
+        }
+
+        const merge = t2f.mod.applyThreeWayMerge(base, gameCmds, theirs);
+        const merged = merge.commands.slice();
+        // decompile expects an event list terminated by {code:0}; applyThreeWayMerge strips it.
+        if (!merged.length || merged[merged.length - 1].code !== 0) {
+            merged.push({ code: 0, indent: 0, parameters: [] });
+        }
+        const body = f2t.mod.decompile(merged, englishTagSetting(), { pretty: true });
+
+        let header = existingText ? existingFrontMatterHeader(existingText) : undefined;
+        if (!header) {
+            header = renderFrontMatter(target, f2t.mod.VERSION);
+        }
+        const dir = path.dirname(target.textPath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        const written = header + '\n' + body + '\n';
+        fs.writeFileSync(target.textPath, written, 'utf8');
+
+        const dataPath = target.kind === 'common'
+            ? commonEventsPathFor(workspaceRoot)
+            : (target.mapId ? mapPathFor(workspaceRoot, target.mapId) : undefined);
+        if (dataPath) {
+            recordDataState(context, dataPath);
+        }
+        // The just-written text becomes the new common ancestor.
+        saveBaseSnapshot(workspaceRoot, locale, key, written);
+        return { ok: true, textPath: target.textPath, conflicts: merge.conflicts, warnings: merge.warnings };
+    } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+}
+
 /** Build an ExportTarget from a text document's front matter. */
 function targetFromDocument(document: vscode.TextDocument): ExportTarget {
     const { meta, hasFrontMatter } = parseFrontMatter(document.getText());
@@ -199,7 +290,10 @@ function targetFromDocument(document: vscode.TextDocument): ExportTarget {
     };
 }
 
-/** Command: re-export the active text file from its data source (pull from data). */
+/**
+ * Command: pull this file's content from the game, merging (keeps your edits, brings in
+ * game-side changes). Use "全部取り直す" (overwrite) when you want to discard and re-pull.
+ */
 export function exportCurrentFile(context: vscode.ExtensionContext): void {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
@@ -218,11 +312,12 @@ export function exportCurrentFile(context: vscode.ExtensionContext): void {
         vscode.window.showErrorMessage('Text2Frame: ' + (e instanceof Error ? e.message : String(e)));
         return;
     }
-    const result = exportToTextFile(context, workspaceRoot, target);
+    const result = mergePullToText(context, workspaceRoot, target);
     if (result.ok) {
-        vscode.window.showInformationMessage('Text2Frame: データからテキストへ書き出しました。');
+        const c = result.conflicts || 0;
+        vscode.window.showInformationMessage(`Text2Frame: ゲームから取り出しました${c ? `（${c} 件の競合は両方残しました。確認してください）` : ''}`);
     } else {
-        vscode.window.showErrorMessage('Text2Frame: 書き出し失敗 - ' + (result.error || ''));
+        vscode.window.showErrorMessage('Text2Frame: 取り出し失敗 - ' + (result.error || ''));
     }
 }
 
