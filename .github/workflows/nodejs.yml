@@ -1,28 +1,49 @@
 name: Node.js CI
 
-on: [pull_request]
+on:
+  push:
+    branches: [master]
+  pull_request:
 
 jobs:
-  lint_and_test:
+  core:
+    name: Core (lint + tests + round-trip)
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js
-        uses: actions/setup-node@v3
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
         with:
+          node-version: '20'
           cache: 'npm'
       - name: Install dependencies
-        run: |
-          npm ci 
-          npm run build --if-present
-      - name: Test with eslint
-        run: |
-          npm run lint
-      - name: Test Text2Frame
-        run: |
-          npm run test_text2frame
-      - name: Test Frame2Text
-        run: |
-          npm run test_frame2text
+        run: npm ci
+      - name: Build (if present)
+        run: npm run build --if-present
+      - name: Lint
+        run: npm run lint
+      - name: Test (full suite)
+        run: npm test
+      - name: Round-trip test (Frame2Text, 130 cases)
+        run: npm run test_frame2text
 
+  extension:
+    name: VS Code extension (compile + lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: vscode-extension/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: vscode-extension
+      - name: Compile (tsc)
+        run: npm run compile
+        working-directory: vscode-extension
+      - name: Lint
+        run: npm run lint
+        working-directory: vscode-extension
