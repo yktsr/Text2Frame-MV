@@ -46,6 +46,7 @@ describe('Plugin command MERGE3_MESSAGE_TO_EVENT (name-style router)', function 
     written = null
     sinon.stub(fs, 'readFileSync').callsFake(function (p) {
       const s = String(p)
+      if (s.indexOf('.t2f-base') !== -1) throw new Error('no auto base') // explicit-base scenarios only
       if (s.indexOf('Map001') !== -1) return JSON.stringify(oursMap)
       if (s.indexOf('ancestor') !== -1) return baseText
       if (s.indexOf('message.txt') !== -1) return theirsText
@@ -54,6 +55,7 @@ describe('Plugin command MERGE3_MESSAGE_TO_EVENT (name-style router)', function 
     sinon.stub(fs, 'writeFileSync').callsFake(function (p, data) {
       if (String(p).indexOf('Map001') !== -1) written = data
     })
+    sinon.stub(fs, 'mkdirSync')
     sinon.stub(console, 'log')
   })
   afterEach(function () { sinon.restore() })
@@ -113,6 +115,7 @@ describe('Plugin command MERGE_MESSAGE_TO_EVENT on empty target (overwrite path)
     written = null
     sinon.stub(fs, 'readFileSync').callsFake(function (p) {
       const s = String(p)
+      if (s.indexOf('.t2f-base') !== -1) throw new Error('no auto base')
       if (s.indexOf('Map001') !== -1) return JSON.stringify(emptyMap)
       if (s.indexOf('message.txt') !== -1) return theirsText
       throw new Error('unexpected read: ' + s)
@@ -120,6 +123,7 @@ describe('Plugin command MERGE_MESSAGE_TO_EVENT on empty target (overwrite path)
     sinon.stub(fs, 'writeFileSync').callsFake(function (p, data) {
       if (String(p).indexOf('Map001') !== -1) written = data
     })
+    sinon.stub(fs, 'mkdirSync')
     sinon.stub(console, 'log')
   })
   afterEach(function () { sinon.restore() })
