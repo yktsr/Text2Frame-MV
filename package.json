@@ -12,6 +12,7 @@
     "test_text2frame": "mocha --inline-diffs test/test_json_eq.js",
     "test_frame2text": "mocha --reporter-options maxDiffSize=100000 --inline-diffs test/test_frame2text.js",
     "test_batch_export": "mocha --no-esm test/test_batch_export.js",
+    "audit:prod": "npm audit --omit=dev",
     "lint": "eslint --max-warnings=0 Text2Frame.js Frame2Text.js",
     "watch": "node Text2Frame.js -m batch -f auto-manifest.json --watch",
     "verify-roundtrip": "node tools/verify-roundtrip.js",
@@ -26,17 +27,17 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "chai": "^4.2.0",
     "chokidar": "^3.6.0",
-    "commander": "^12.1.0",
-    "eslint": "^8.57.0",
-    "eslint-config-standard": "^17.1.0",
-    "mocha": "^10.7.3",
-    "sinon": "^18.0.0"
+    "commander": "^12.1.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-node-resolve": "^15.2.3",
-    "vite": "^5.0.11"
+    "chai": "^4.2.0",
+    "eslint": "^8.57.0",
+    "eslint-config-standard": "^17.1.0",
+    "mocha": "^11.7.6",
+    "sinon": "^18.0.0",
+    "vite": "^8.1.3"
   }
 }
