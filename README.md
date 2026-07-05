@@ -205,11 +205,20 @@ Hello
 
 サンプルは [examples/batch-manifest.sample.json](examples/batch-manifest.sample.json) を参照してください。
 
-### 3. 一括 export（JSON -> text）
+### 3. 取り出し（JSON -> text、既定は merge）
+
+取り出し（pull）も**既定は merge**で、**既存の翻訳を残したまま**ゲーム側の新規・変更だけを取り込みます（同一箇所を双方で変えたら両方残す）。白紙から取り直したいときだけ `--strategy overwrite`。
 
 ```bash
+# 単発（既定 merge：翻訳を残す）
+node Frame2Text.js --mode map --input_path data/Map001.json --output_path text/en/map001_event001_page1.txt --event_id 1 --page_id 1
+# 全部取り直す（上書き）
+node Frame2Text.js --mode map --strategy overwrite --input_path data/Map001.json --output_path text/en/map001_event001_page1.txt --event_id 1 --page_id 1
+# 一括
 node Frame2Text.js --mode batch-export --manifest examples/batch-manifest.sample.json --english_tag true
 ```
+
+3-way の祖先は `.t2f-base/<言語>/<key>.txt` に**自動保存/自動参照**されます（`--base` で明示も可・通常不要）。
 
 ### 4. 一括反映（text -> JSON、既定は merge）
 
@@ -249,10 +258,20 @@ node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json -
 
 > **旧 strategy 名は非推奨エイリアス**として引き続き受理され、内部で正規化されます: `import`/`diff` → `overwrite`、`overlay`/`merge3` → `merge`、`sync` → `merge` ＋ `--sync` フラグ。
 
-3-way の祖先（BASE）スナップショット運用は VS Code 拡張が管理します（[vscode-extension/README.md](vscode-extension/README.md) 参照）。`merge` は次の 3 経路すべてで使えます:
-- **CLI 単発**: `node Text2Frame.js --mode map --strategy merge --base <祖先テキスト> --text_path <t> --output_path <Map001.json> --event_id 1 --page_id 1`（`--base` は 3-way の共通祖先。省略時は overlay 相当に縮退）。`--mode common` も同様。
-- **CLI 一括**: `--strategy merge`（既定）。3-way の祖先は manifest エントリの任意フィールド `basePath` で指定。
-- **プラグインコマンド（MZ）**: `MERGE_MESSAGE_TO_EVENT` / `MERGE_MESSAGE_TO_CE`（任意の `BaseFolder`/`BaseFileName` で祖先指定、空なら overlay 相当に縮退）。全上書きは `IMPORT_MESSAGE_TO_EVENT` / `_TO_CE`。`APPLY_MESSAGES_BY_MANIFEST` の Strategy でも `merge`/`overwrite` を選択可。
+**3-way の祖先（BASE）は `.t2f-base/<言語>/<key>.txt` に自動保存・自動参照**されます（VS Code / CLI / プラグインで共通・相互運用可、`.gitignore` 済）。`--base`/`BaseFolder` は明示したいときだけの任意指定です。
+
+#### 3系統の機能パリティ
+反映（text→ゲーム）・取り出し（ゲーム→text）とも **merge が既定・3-way は祖先があれば自動**。VS Code / CLI / プラグインで同じことができます:
+
+| 操作 | VS Code | CLI | プラグイン(MZ) |
+| --- | --- | --- | --- |
+| ゲームに反映(merge/overwrite) | パネル「ゲームに反映」 | `Text2Frame.js --mode map/common/batch [--strategy merge\|overwrite]` | `MERGE_MESSAGE_TO_EVENT`/`_TO_CE`・`IMPORT_MESSAGE_TO_*`・`APPLY_MESSAGES_BY_MANIFEST` |
+| ゲームから取り出し(merge/overwrite) | パネル「ゲームから取り出す」 | `Frame2Text.js --mode map/common/batch-export [--strategy merge\|overwrite]` | `MERGE_EVENT_TO_MESSAGE`/`_CE`(翻訳保持)・`EXPORT_*`(上書き) |
+| 3-way 祖先 | 自動 `.t2f-base` | 自動 `.t2f-base`（`--base` 任意） | 自動 `.t2f-base`（`BaseFolder`/`BaseFileName` 任意） |
+| 競合(両方残す) | あり | あり | あり |
+| 書き戻し/同期 | `writeBackAfterMerge` | `--sync` | `SYNC_*` |
+
+> 旧 strategy 名は非推奨エイリアスとして受理・正規化されます: `import`/`diff`→`overwrite`、`overlay`/`merge3`→`merge`、`sync`→`merge`＋`--sync`。
 
 ### 英語化の固定フロー（推奨）
 
