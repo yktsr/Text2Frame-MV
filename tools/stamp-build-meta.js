@@ -10,7 +10,9 @@ const version = (process.env.BUILD_VERSION || pkg.version || '0.0.0').trim()
 const buildId = (process.env.BUILD_ID || process.env.GITHUB_SHA || 'local').trim()
 
 const sourceText2FramePath = path.join(root, 'Text2Frame.js')
+const sourceFrame2TextPath = path.join(root, 'Frame2Text.js')
 const distText2FramePath = path.join(distDir, 'Text2Frame.js')
+const distFrame2TextPath = path.join(distDir, 'Frame2Text.js')
 
 if (!fs.existsSync(distDir)) {
   console.error(`Missing dist directory: ${distDir}`)
@@ -22,9 +24,16 @@ if (!fs.existsSync(sourceText2FramePath)) {
   process.exit(1)
 }
 
+if (!fs.existsSync(sourceFrame2TextPath)) {
+  console.error('Missing source file: Frame2Text.js')
+  process.exit(1)
+}
+
 fs.copyFileSync(sourceText2FramePath, distText2FramePath)
+fs.copyFileSync(sourceFrame2TextPath, distFrame2TextPath)
 
 const targets = [
+  'Frame2Text.js',
   'Text2Frame.js',
   'Text2Frame.cjs.js',
   'Text2Frame.es.mjs',

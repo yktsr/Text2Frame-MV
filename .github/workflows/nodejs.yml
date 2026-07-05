@@ -39,6 +39,7 @@ jobs:
         with:
           name: Text2Frame-MV-${{ env.BUILD_VERSION }}-${{ github.run_number }}
           path: |
+            dist/Frame2Text.js
             dist/Text2Frame.js
             dist/Text2Frame.cjs.js
             dist/Text2Frame.es.mjs
