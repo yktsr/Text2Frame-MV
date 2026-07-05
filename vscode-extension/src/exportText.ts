@@ -23,11 +23,9 @@ interface Frame2TextModule {
     VERSION?: string;
 }
 
-type Command = { code: number; indent?: number; parameters?: unknown[] };
 interface Text2FrameModule {
-    compile: (text: string) => Command[];
-    applyThreeWayMerge: (base: Command[], ours: Command[], theirs: Command[]) => { commands: Command[]; conflicts: number; warnings: string[] };
-    applyOverlay: (existing: Command[], next: Command[]) => { commands: Command[]; warnings: string[] };
+    /** game->text merge (mirror of deploy): keeps translations, brings game changes, kept-both on conflict. */
+    applyMergePull: (opts: { gameCommands: unknown[]; textBody: string; baseBody: string; englishTag: boolean }) => { text: string; conflicts: number; warnings: string[] };
     VERSION?: string;
 }
 
@@ -76,7 +74,7 @@ function loadText2Frame(context: vscode.ExtensionContext, workspaceRoot: string 
         context,
         workspaceRoot,
         'Text2Frame.js',
-        (m) => !!m && typeof (m as Text2FrameModule).compile === 'function' && typeof (m as Text2FrameModule).applyThreeWayMerge === 'function'
+        (m) => !!m && typeof (m as Text2FrameModule).applyMergePull === 'function'
     );
 }
 
@@ -218,63 +216,43 @@ export function mergePullToText(
     workspaceRoot: string,
     target: ExportTarget
 ): ExportResult {
-    const f2t = loadFrame2Text(context, workspaceRoot);
     const t2f = loadText2Frame(context, workspaceRoot);
-    if (!f2t.mod || !t2f.mod) {
-        return { ok: false, error: 'Text2Frame.js / Frame2Text.js を読み込めませんでした。設定 text2frame.modulePath を確認してください。' };
+    if (!t2f.mod) {
+        return { ok: false, error: 'Text2Frame.js を読み込めませんでした。設定 text2frame.modulePath を確認してください。' };
     }
     try {
-        const gameCmds = readEventList(workspaceRoot, target) as Command[]; // ours
+        const gameCommands = readEventList(workspaceRoot, target); // ours
         const key = path.basename(target.textPath, path.extname(target.textPath));
         const locale = target.locale || path.basename(path.dirname(target.textPath)) || 'default';
 
         let existingText = '';
-        let theirs: Command[] = [];
         if (fs.existsSync(target.textPath)) {
             existingText = fs.readFileSync(target.textPath, 'utf8');
-            theirs = t2f.mod.compile(frontMatterBody(existingText));
         }
-        let base: Command[] = [];
+        let baseBody = '';
         const baseP = baseSnapshotPath(workspaceRoot, locale, key);
         if (fs.existsSync(baseP)) {
-            base = t2f.mod.compile(frontMatterBody(fs.readFileSync(baseP, 'utf8')));
+            baseBody = frontMatterBody(fs.readFileSync(baseP, 'utf8'));
         }
 
-        // Smart choice (mirrors the deploy side):
-        //   - ancestor present            -> 3-way merge (keeps both sides, keeps-both on true conflict)
-        //   - no ancestor, text exists    -> overlay the game's structure with the text's conversation
-        //                                    (keeps translations, brings all game blocks, NO conflicts)
-        //   - no text (new file)          -> just the game's content (initial pull)
-        let merged: Command[];
-        let conflicts = 0;
-        let warnings: string[] = [];
-        if (base.length > 0) {
-            const m = t2f.mod.applyThreeWayMerge(base, gameCmds, theirs);
-            merged = m.commands.slice();
-            conflicts = m.conflicts;
-            warnings = m.warnings;
-        } else if (theirs.length > 0) {
-            const ov = t2f.mod.applyOverlay(gameCmds, theirs);
-            merged = ov.commands.slice();
-            warnings = ov.warnings;
-        } else {
-            merged = gameCmds.slice();
-        }
-        // decompile expects an event list terminated by {code:0}; the merge helpers strip it.
-        if (!merged.length || merged[merged.length - 1].code !== 0) {
-            merged.push({ code: 0, indent: 0, parameters: [] });
-        }
-        const body = f2t.mod.decompile(merged, englishTagSetting(), { pretty: true });
+        // The whole 3-way/overlay/decompile logic lives in the shared core (Text2Frame.applyMergePull),
+        // so CLI, plugin and this extension all behave identically.
+        const r = t2f.mod.applyMergePull({
+            gameCommands,
+            textBody: existingText ? frontMatterBody(existingText) : '',
+            baseBody,
+            englishTag: englishTagSetting()
+        });
 
         let header = existingText ? existingFrontMatterHeader(existingText) : undefined;
         if (!header) {
-            header = renderFrontMatter(target, f2t.mod.VERSION);
+            header = renderFrontMatter(target, t2f.mod.VERSION);
         }
         const dir = path.dirname(target.textPath);
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
-        const written = header + '\n' + body + '\n';
+        const written = header + '\n' + r.text + '\n';
         fs.writeFileSync(target.textPath, written, 'utf8');
 
         const dataPath = target.kind === 'common'
@@ -285,7 +263,7 @@ export function mergePullToText(
         }
         // The just-written text becomes the new common ancestor.
         saveBaseSnapshot(workspaceRoot, locale, key, written);
-        return { ok: true, textPath: target.textPath, conflicts, warnings };
+        return { ok: true, textPath: target.textPath, conflicts: r.conflicts, warnings: r.warnings };
     } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
