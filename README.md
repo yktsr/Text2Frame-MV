@@ -176,6 +176,8 @@ RPGツクールMZの「スキップ」(イベントコマンド 109)に対応し
 ## 逆変換プラグイン Frame2Text
 RPGツクールMV/MZのイベントコマンドを、Text2Frameの記法に則ったテキストにエクスポートするプラグインである、Frame2Textも公開しています。
 
+**取り出し(pull)は既定で `merge`** です。既存のテキスト(翻訳など)を残したまま、ゲーム側の新規・変更だけを取り込みます(白紙から取り直したいときだけ `overwrite`)。詳しい使い方・CLI は下記「[フォルダ一括同期と英語化ワークフロー（CLI）](#フォルダ一括同期と英語化ワークフローcli)」を参照してください。
+
 Frame2Textのダウンロードは[ここ](https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Frame2Text.js)からお願いします。
 
 また、詳細な使い方は[Frame2Textの紹介ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E9%80%86%E5%A4%89%E6%8F%9B%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3Frame2Text)かプラグイン本体のヘルプドキュメントを参照してください。
@@ -260,6 +262,19 @@ node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json -
 
 **3-way の祖先（BASE）は `.t2f-base/<言語>/<key>.txt` に自動保存・自動参照**されます（VS Code / CLI / プラグインで共通・相互運用可、`.gitignore` 済）。`--base`/`BaseFolder` は明示したいときだけの任意指定です。
 
+#### 競合したときの表示（両方残す）
+同じ箇所をテキストとゲームの**両方で変更**した 3-way マージでは、どちらも捨てずに次の目印付きで両方を残します。
+
+```
+=== テキストの変更 / from text ===
+(テキスト側の内容)
+=== ゲームの変更 / from game ===
+(ゲーム側の内容)
+=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===
+```
+
+残したい方だけを残し、**この目印の3行を消す**だけで解消します（特別なコマンドは不要）。
+
 #### 3系統の機能パリティ
 反映（text→ゲーム）・取り出し（ゲーム→text）とも **merge が既定・3-way は祖先があれば自動**。VS Code / CLI / プラグインで同じことができます:
 
@@ -309,52 +324,64 @@ $ npm run build --if-present
 Usage: Text2Frame [options]
 
 Options:
-  -V, --version                         output the version number
-  -m, --mode <map|common|compile|test>  output mode
-  -t, --text_path <name>                text file path
-  -o, --output_path <name>              output file path
-  -e, --event_id <name>                 event file id
-  -p, --page_id <name>                  page id
-  -c, --common_event_id <name>          common event id
-  -w, --overwrite <true/false>          overwrite mode (default: "false")
-  -v, --verbose                         debug mode (default: false)
-  -h, --help                            display help for command
+  -V, --version                               output the version number
+  -m, --mode <map|common|compile|test|batch>  output mode
+  -t, --text_path <name>                      text file path
+  -o, --output_path <name>                    output file path
+  -e, --event_id <name>                       event file id
+  -p, --page_id <name>                        page id
+  -c, --common_event_id <name>                common event id
+  -f, --manifest <path>                       batch manifest json path
+  -s, --strategy <merge|overwrite>            deploy strategy (default merge; legacy import/diff/overlay/merge3/sync accepted) (default: "merge")
+  -b, --base <path>                           ancestor text path for merge (3-way common ancestor)
+  --sync                                      re-export text after applying (requires Frame2Text) (default: false)
+  -w, --overwrite <true/false>                overwrite mode (legacy) (default: "false")
+  -v, --verbose                               debug mode (default: false)
+  --watch                                     watch text files and redeploy on change (batch mode) (default: false)
+  --debounce <ms>                             debounce window for --watch (default: "250")
+  --poll                                      force polling for --watch (recommended on network/WSL paths) (default: false)
+  -h, --help                                  display help for command
 
 ===== Manual =====
     NAME
        Text2Frame - Simple compiler to convert text to event command.
     SYNOPSIS
-        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
-        node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
+        node Text2Frame.js --mode map --text_path <text> --output_path <map json> --event_id <id> --page_id <id> [--strategy merge|overwrite] [--base <ancestor text>]
+        node Text2Frame.js --mode common --text_path <text> --output_path <common json> --common_event_id <id> [--strategy merge|overwrite] [--base <ancestor text>]
+        node Text2Frame.js --mode batch [--text_path <dir>] [--manifest <path>] [--strategy merge|overwrite] [--sync] [--watch]
         node Text2Frame.js --mode compile
-        node Text2Frame.js --verbose --mode test
+        node Text2Frame.js --mode test
     DESCRIPTION
-        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
-          マップへのイベント出力モードです。
-          読み込むファイル、出力マップ、上書きの有無を引数で指定します。
-          test/basic.txt を読み込み data/Map001.json に上書きするコマンド例は以下です。
+        反映の既定は `--strategy merge`(既定なので省略可)です。**JSON の構造(移動/分岐/スイッチ等の UI 編集)を保ちつつ**、
+        テキストを賢く反映します(祖先があれば 3-way、無ければ会話のみ差し替え、空なら新規反映)。テキストを唯一の正として
+        全上書きしたいときだけ `--strategy overwrite` を付けます。祖先(BASE)は `.t2f-base/` に自動保存/自動参照されるため、
+        `--base` は明示したいときだけの任意指定です。旧 `-w/--overwrite true` は互換用途に残っています(= overwrite 相当)。
 
-          例1：$ node Text2Frame.js --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --page_id 1 --overwrite true
-          例2：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -p 1 -w true
+        node Text2Frame.js --mode map ...
+          マップへのイベント反映モードです。読み込むテキスト、出力マップ、対象イベント/ページを指定します。
+          例1：$ node Text2Frame.js --mode map --text_path text/ja/map001_event001_page1.txt --output_path data/Map001.json --event_id 1 --page_id 1
+          例2(全上書き)：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -p 1 --strategy overwrite
 
-        node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
-          コモンイベントへのイベント出力モードです。
-          読み込むファイル、出力コモンイベント、上書きの有無を引数で指定します。
-          test/basic.txt を読み込み data/CommonEvents.json に上書きするコマンド例は以下です。
+        node Text2Frame.js --mode common ...
+          コモンイベントへの反映モードです。読み込むテキスト、出力先、対象コモンイベントIDを指定します。
+          例1：$ node Text2Frame.js --mode common --text_path text/ja/common001.txt --output_path data/CommonEvents.json --common_event_id 1
+          例2(全上書き)：$ node Text2Frame.js -m common -t test/basic.txt -o data/CommonEvents.json -c 1 --strategy overwrite
 
-          例1：$ node Text2Frame.js --mode common --text_path test/basic.txt --output_path data/CommonEvents.json --common_event_id 1 --overwrite true
-          例2：$ node Text2Frame.js -m common -t test/basic.txt -o data/CommonEvents.json -c 1 -w true
+        node Text2Frame.js --mode batch ...
+          一括反映モードです。`--manifest` を省略すると `--text_path <dir>`(既定 `text`)配下の front matter 付き
+          `.txt` を再帰走査し、各ファイル先頭の front matter に従って反映します(詳細は上記「フォルダ一括同期」節)。
 
         node Text2Frame.js --mode compile
-          コンパイルモードです。
-          変換したいテキストファイルをパイプで与えると、対応したイベントに変換されたJSONを、標準出力に出力します。
-          このモードでは、Map.json / CommonEvent.jsonの形式へフォーマットされず、イベントに変換したJSONのみが出力されるため、
-          Map.json/CommonEvent.json への組み込みは各自で行う必要があります。
-
+          コンパイルモードです。変換したいテキストをパイプで与えると、イベントに変換された JSON を標準出力へ出力します
+          (Map.json / CommonEvents.json への組み込みは各自で行います)。
           例1: $ cat test/basic.txt | node Text2Frame.js --mode compile
 
         node Text2Frame.js --mode test
-          テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
+          テストモードです。test/basic.txt を読み込み、data/Map001.json に出力します。
+
+    取り出し(逆変換)も既定 merge です:
+        node Frame2Text.js --mode map|common|batch-export [--strategy merge|overwrite] [--base <ancestor text>] [-w true|false]
+      (翻訳などを残したままゲーム変更を取り込みます。`node Frame2Text.js --help` と上記ワークフロー節を参照)
 ```
 
 ### Run Text2frame.js with command line
