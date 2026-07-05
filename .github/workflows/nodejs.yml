@@ -35,7 +35,7 @@ jobs:
       - name: Round-trip test (Frame2Text, 130 cases)
         run: npm run test_frame2text
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Text2Frame-MV-${{ env.BUILD_VERSION }}-${{ github.run_number }}
           path: |
@@ -71,7 +71,7 @@ jobs:
           npx @vscode/vsce package --out text2frame-language-support-${VERSION}.vsix
         working-directory: vscode-extension
       - name: Upload VSIX artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vscode-extension-vsix-${{ github.run_number }}
           path: vscode-extension/text2frame-language-support-*.vsix
