@@ -26,8 +26,8 @@ tools: [read, edit, search, execute]
 
 | パス | 役割 |
 |---|---|
-| `Text2Frame.js` | テキスト→JSON コンパイラ本体。ツクールのプラグインとしても動作。`module.exports = { compile, applyDiff, applyTextFile, runBatch }` |
-| `Frame2Text.js` | JSON→テキスト。`module.exports = { decompile, applySyncDiff }` |
+| `Text2Frame.js` | テキスト→JSON コンパイラ本体。ツクールのプラグインとしても動作。`module.exports = { compile, applyDiff, applyOverlay, applyThreeWayMerge, applyMergePull, applyTextFile, runBatch, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId }` |
+| `Frame2Text.js` | JSON→テキスト。`module.exports = { decompile, applySyncDiff, VERSION }`。プラグイン/CLI の取り出しは merge 既定(`MERGE_EVENT_TO_MESSAGE`/`MERGE_CE_TO_MESSAGE` ExecMode、内部で `Text2Frame.applyMergePull` を lazy require) |
 | `Text2Frame.{cjs.js,es.mjs,umd.js}` | `npm run build`(vite)生成物。**直接編集しない**。`// developer mode` 以降(CLI部)は build で除去される |
 | `vscode-extension/` | VSCode 拡張(モノレポのサブディレクトリ)。下記「VSCode拡張」参照 |
 | `data/` | リポジトリ同梱の最小サンプル JSON(`Map001.json` は空イベント、`CommonEvents.json` は2件) |
@@ -39,15 +39,19 @@ tools: [read, edit, search, execute]
 ## 開発コマンド
 
 ```bash
-npm test                       # 主要テスト一式(下記の test_frame2text は含まれない点に注意)
+npm test                       # 主要テスト一式 17 ファイル(下記の test_frame2text は含まれない点に注意)
 npm run test_text2frame        # Text2Frame テスト(test_json_eq.js)
-npx mocha test/test_frame2text.js   # ★往復変換テスト(130件)。npm test に含まれないので個別実行
+npm run test_frame2text        # ★往復変換テスト(135件)。npm test に含まれないので別途実行
 npm run lint                   # ESLint(--max-warnings=0)
 npm run build                  # vite で *.cjs.js / *.es.mjs / *.umd.js を生成
+# ★実データ往復検証(2902件。sample/ が必要=未追跡なので CI では走らない):
+cp -r sample/data /tmp/vd && node tools/verify-roundtrip.js /tmp/vd --locale=ja --en=true --max=0
 # VSCode 拡張(vscode-extension/ で):
 npm run compile                # tsc → out/
 npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ にコピー
 ```
+
+**CI(`.github/workflows/nodejs.yml`)**: push[master]/PR で 2 ジョブ。core = `npm ci → build → lint → npm test → test_frame2text`、extension = `npm ci → compile → lint`。2902 往復は `sample/` が未追跡のため CI 対象外(自己完結の test_frame2text 135 件でガード)。
 
 ## データフロー
 
@@ -61,8 +65,9 @@ npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ �
    commonEventId: 3   # kind: common のとき
    ---
    ```
-2. デプロイ(テキスト→データ): `compile(body)` でコマンド配列に変換 → 対象 JSON の `events[eventId].pages[pageId-1].list`(または `CommonEvents[id].list`)へ反映。戦略は `import`(上書き)/`diff`(LCSマージ)。
-3. 書き出し(データ→テキスト): `decompile(list, englishTag, {pretty, translationOnly})`。
+2. デプロイ(テキスト→データ): `compile(body)` でコマンド配列に変換 → 対象 JSON の `events[eventId].pages[pageId-1].list`(または `CommonEvents[id].list`)へ反映。**戦略は `merge`(既定)/ `overwrite` の2つ**(旧 `import`/`diff`/`overlay`/`merge3`/`sync` は `resolveStrategy` で正規化されるレガシー別名)。`merge` は祖先(BASE)があれば 3-way、無くて既存が非空なら overlay、空なら overwrite を自動選択。
+3. 書き出し(データ→テキスト): `decompile(list, englishTag, {pretty, translationOnly})`。**取り出しも既定は merge**(翻訳を残しつつゲーム変更を取り込む。`Text2Frame.applyMergePull` 経由)。生の上書きは `overwrite`。
+4. **祖先スナップショット(3-way 用)**: `.t2f-base/<locale>/<key>.txt`(gitignore 済、`key`=テキストのファイル名、`locale`=front matter `locale` ‖ 親フォルダ名 ‖ `default`)。反映/取り出しの成功時に自動保存され、次回から自動 3-way。明示 `--base`/`BasePath` 指定時はそれを優先。VSCode 拡張・CLI・プラグインで同じ規約=相互運用可。同じ箇所を両方変更した競合は両方残し、平易マーカー(`=== テキストの変更 / from text ===` 等)で表示。
 
 ## 公開 API
 
@@ -71,19 +76,26 @@ npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ �
 - `applyTextFile(opts)` → 単一テキストを単一データ JSON へデプロイ。`opts={ textPath, kind, mapId, eventId, pageId, commonEventId, mapPath, commonEventPath, strategy, overwrite, backup }`。戻り値 `{ ok, warnings, error, errorLine, errorLineText, dataPath, target }`。throw せず結果を返す
 - `runBatch({ manifestPath, strategy })` → マニフェスト一括(サマリ返却)
 - `applyDiff(existing, new)` → LCS マージ
+- `applyOverlay(existing, incoming)` → 構造保持マージ(祖先が無いとき)。`applyThreeWayMerge(base, ours, theirs)` → 3-way マージ(`{ commands, warnings, conflicts }`)
+- `applyMergePull({ gameCommands, textBody, baseBody, englishTag })` → `{ text, conflicts, warnings }`。取り出し(ゲーム→テキスト)の 3-way 本体。push と対称(出力先がテキストなだけ)。内部で `Frame2Text.decompile` を lazy require
+- `resolveStrategy(name)` → `{ strategy: 'merge'|'overwrite', sync }`(レガシー別名を正規化)
+- 祖先ヘルパ: `deriveBaseId(textPath, meta)`→`{ locale, key }`、`baseSnapshotPathCore(root, locale, key)`、`readBaseText`/`saveBaseText`
 
 **Frame2Text.js**
 - `decompile(list, englishTag, { pretty, translationOnly })` → テキスト。`translationOnly` は会話系コード(101/401, 102/402/403/404, 105/405)のみ出力
 - `applySyncDiff(oldParas, newParas)` → 段落単位の同期マージ
+- `VERSION` → 書き出しフロントマターの `generator:` に埋める版番号
 
 ## CLI モード
 
 ```bash
-# Text2Frame(取り込み)
-node Text2Frame.js -m map|common|compile|test|batch [...] [--watch] [--poll] [--debounce ms]
-#   batch: -f <manifest> -s import|diff|sync   --watch でファイル監視→再デプロイ(chokidar)
-# Frame2Text(書き出し)
-node Frame2Text.js -m map|common|decompile|batch-export [...] [-T]   # -T=翻訳用(会話のみ)
+# Text2Frame(取り込み/反映)。push は既定 merge
+node Text2Frame.js -m map|common|compile|test|batch [...] [-s merge|overwrite] [-b <base>] [--watch] [--poll] [--debounce ms]
+#   -s: 既定 merge(3-way 自動)。overwrite で全置換。旧 import/diff/sync/overlay/merge3 も受理(正規化)
+#   -b <base>: 明示祖先(任意)。未指定なら .t2f-base を自動参照/保存   --watch でファイル監視→再デプロイ(chokidar)
+# Frame2Text(書き出し/取り出し)。pull も既定 merge(翻訳を残す)
+node Frame2Text.js -m map|common|decompile|batch-export [...] [-s merge|overwrite] [-b <base>] [-T]
+#   -s: 既定 merge(翻訳保持+ゲーム変更流入)。overwrite で生の全取り直し   -T=翻訳用(会話のみ)
 ```
 
 ## VSCode 拡張(`vscode-extension/`)
@@ -91,8 +103,9 @@ node Frame2Text.js -m map|common|decompile|batch-export [...] [-T]   # -T=翻訳
 - 元は別リポジトリ `Text2Frame-vscode`。**モノレポのサブディレクトリ**として取り込み済み。
 - 構成: `src/extension.ts`(activate), `src/deploy.ts`(デプロイ/プレビュー/データ変更ガード), `src/exportText.ts`(書き出し), `src/batch.ts`(一括), `src/tree.ts`(TreeView), `src/compiler.ts`(共有: モジュール解決・フロントマター・ターゲット解決・mtimeガード)。
 - **コンパイラの読込**: 生 `Text2Frame.js`/`Frame2Text.js` を `require`(ブラウザ向け `*.cjs.js` は Node builtin を解決できないため使わない)。解決順: 設定 `text2frame.modulePath` → 同梱 `lib/` → モノレポ兄弟 `../` → ワークスペース。フロントマターから解決した**絶対パス**を `applyTextFile` に渡す(拡張ホストでは `process.mainModule` が無いため、本体側も cwd フォールバック済み)。
-- 主なコマンド: `deployCurrentFile` / `toggleDeployOnSave` / `exportCurrentFile` / `exportForTranslation` / `showCompiledJson` / `deployAll` / `exportAll` / `tree.*`。`contributes.menus` に出さないコマンドはコマンドパレットのみ。
-- 設定: `strategy` / `normalizeAfterDeploy` / `modulePath` / `englishTag` / `locale` / `textBaseDir` / `dataDir`。
+- 主なコマンド(方向×範囲。UI は日本語ラベル): `deployCurrentFile`「ゲームに反映(このファイル)」/ `deployAll`「ゲームに反映(すべて)」/ `exportCurrentFile`「ゲームから取り出す(このファイル)」/ `exportAll`「ゲームから取り出す(すべて)」/ `repullOverwrite`「全部取り直す(上書き)」/ `exportConversationOnly`「会話のみ書き出し」/ `showCompiledJson` / `toggleDeployOnSave` / `tree.*`。反映・取り出しとも既定は merge(3-way 自動)。`seedLocale`(言語を追加)は**廃止**(初回取り出し=空テキストへの全取り込みが seed を兼ねる)。「すべて」系は実行時に言語を QuickPick(既定 `ja`)。
+- 設定: `strategy`(merge/overwrite) / `writeBackAfterMerge` / `modulePath` / `englishTag` / `locale` / `textBaseDir` / `dataDir`。`sourceLocale`/`targetLocale` は**撤廃**(言語は `locale` 1本)。
+- コンパイラは動的 `require`(拡張は TS、コアは JS。この境界のため `compiler.ts` の祖先ヘルパはコア `deriveBaseId` 等と同規約の別実装=意図的重複)。
 - フロントマター付き `.txt` は開くと自動で `text2frame` 言語に切替(ハイライト/補完/診断が有効化)。
 
 ## コンパイラ内部構造(`Text2Frame.compile`)— ★AST化の前提
@@ -118,7 +131,7 @@ node Frame2Text.js -m map|common|decompile|batch-export [...] [-T]   # -T=翻訳
 
 ## ハード制約
 
-- **往復変換の維持は絶対**: 変更後は `npx mocha test/test_frame2text.js`(130件)と `npm test` と `npm run lint` が全緑であること。Frame2Text の本文系コード(101本文401/スクロール405/コメント408/スクリプト355,655/プラグインコマンド357,657)は**列0**のまま出力する(Text2Frame が行頭空白を本文として取り込むため)。
+- **往復変換の維持は絶対**: 変更後は `npm run test_frame2text`(135件)と `npm test`(17ファイル)と `npm run lint` が全緑であること。加えて Frame2Text の出力を変えたら**実データ往復 2902/2902** も確認する(`sample/data` を `/tmp` にコピーして `node tools/verify-roundtrip.js ... --max=0`。sample/ が未追跡のため CI では不可、ローカル必須)。Frame2Text の本文系コード(101本文401/スクロール405/コメント408/スクリプト355,655/プラグインコマンド357,657)は**列0**のまま出力する(Text2Frame が行頭空白を本文として取り込むため)。
 - ビルド成果物は直接編集しない(`npm run build` で再生成)。
 - ESLint 警告 0 件(`--max-warnings=0`)。
 - テキストソースは LF(`.gitattributes` で強制)。
