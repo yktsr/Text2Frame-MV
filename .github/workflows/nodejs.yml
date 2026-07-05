@@ -18,17 +18,32 @@ jobs:
           cache: 'npm'
       - name: Install dependencies
         run: npm ci
-      - name: Build (if present)
-        run: npm run build --if-present
+      - name: Set build metadata
+        run: |
+          echo "BUILD_VERSION=$(node -p \"require('./package.json').version\")" >> "$GITHUB_ENV"
+          echo "BUILD_ID=${GITHUB_SHA}" >> "$GITHUB_ENV"
+      - name: Build cjs/es/umd
+        run: |
+          npm run build:dist
+      - name: Audit production dependencies
+        run: |
+          npm run audit:prod
       - name: Lint
         run: npm run lint
       - name: Test (full suite)
         run: npm test
       - name: Round-trip test (Frame2Text, 130 cases)
         run: npm run test_frame2text
-      - name: Audit production dependencies
-        run: |
-          npm run audit:prod
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Text2Frame-MV-${{ env.BUILD_VERSION }}-${{ github.run_number }}
+          path: |
+            dist/Text2Frame.js
+            dist/Text2Frame.cjs.js
+            dist/Text2Frame.es.mjs
+            dist/Text2Frame.umd.js
+          if-no-files-found: error
 
   extension:
     name: VS Code extension (compile + lint)
