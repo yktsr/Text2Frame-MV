@@ -75,6 +75,77 @@
  * @type common_event
  * @default 1
  *
+ * @command MERGE_EVENT_TO_MESSAGE
+ * @text イベントを取り出す(翻訳を残す)
+ * @desc ゲームのイベントをテキストへ取り込みます。既存の翻訳は残し、ゲーム側の変更だけを反映します(祖先は自動)。
+ *
+ * @arg FileFolder
+ * @text 取り込み先フォルダ名
+ * @desc テキストファイルのフォルダ名。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text 取り込み先ファイル名
+ * @desc テキストファイル名。デフォルトはmessage.txtです。
+ * @type string
+ * @default message.txt
+ *
+ * @arg MapID
+ * @text マップID
+ * @type number
+ * @default 1
+ *
+ * @arg EventID
+ * @text イベントID
+ * @type number
+ * @default 2
+ *
+ * @arg PageID
+ * @text ページID
+ * @type number
+ * @default 1
+ *
+ * @arg BaseFolder
+ * @text 祖先フォルダ名(任意)
+ * @desc 3-way の共通祖先テキストのフォルダ名。空なら自動(.t2f-base)。
+ * @type string
+ * @default
+ *
+ * @arg BaseFileName
+ * @text 祖先ファイル名(任意)
+ * @type string
+ * @default
+ *
+ * @command MERGE_CE_TO_MESSAGE
+ * @text コモンイベントを取り出す(翻訳を残す)
+ * @desc ゲームのコモンイベントをテキストへ取り込みます。既存の翻訳は残し、ゲーム側の変更だけを反映します(祖先は自動)。
+ *
+ * @arg FileFolder
+ * @text 取り込み先フォルダ名
+ * @type string
+ * @default text
+ *
+ * @arg FileName
+ * @text 取り込み先ファイル名
+ * @type string
+ * @default message.txt
+ *
+ * @arg CommonEventID
+ * @text コモンイベントID
+ * @type common_event
+ * @default 1
+ *
+ * @arg BaseFolder
+ * @text 祖先フォルダ名(任意)
+ * @type string
+ * @default
+ *
+ * @arg BaseFileName
+ * @text 祖先ファイル名(任意)
+ * @type string
+ * @default
+ *
  * @command SYNC_EVENT_TO_MESSAGE
  * @text イベントをテキストに同期
  * @desc JSONのイベントコマンドを正として、既存のテキストファイルに差分を書き込んで同期します。マップ・イベント・ページIDや、同期先ファイルの情報を指定します。
@@ -479,6 +550,12 @@
       const common_event_id = args.CommonEventID
       this.pluginCommand('EXPORT_CE_TO_MESSAGE', [file_folder, file_name, common_event_id])
     })
+    PluginManager.registerCommand('Frame2Text', 'MERGE_EVENT_TO_MESSAGE', function (args) {
+      this.pluginCommand('MERGE_EVENT_TO_MESSAGE', [args.FileFolder, args.FileName, args.MapID, args.EventID, args.PageID, args.BaseFolder, args.BaseFileName])
+    })
+    PluginManager.registerCommand('Frame2Text', 'MERGE_CE_TO_MESSAGE', function (args) {
+      this.pluginCommand('MERGE_CE_TO_MESSAGE', [args.FileFolder, args.FileName, args.CommonEventID, args.BaseFolder, args.BaseFileName])
+    })
     PluginManager.registerCommand('Frame2Text', 'SYNC_EVENT_TO_MESSAGE', function (args) {
       const file_folder = args.FileFolder
       const file_name = args.FileName
@@ -563,6 +640,28 @@
           Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
         }
         addMessage('=====> Common EventID: ' + Laurus.Frame2Text.CommonEventID)
+        break
+      case 'MERGE_EVENT_TO_MESSAGE':
+        if (args[0]) Laurus.Frame2Text.FileFolder = args[0]
+        if (args[1]) Laurus.Frame2Text.FileName = args[1]
+        if (args[2]) Laurus.Frame2Text.MapID = args[2]
+        if (args[3]) Laurus.Frame2Text.EventID = args[3]
+        if (args[4]) Laurus.Frame2Text.PageID = args[4]
+        if (args[0] || args[1]) {
+          Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
+          Laurus.Frame2Text.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Frame2Text.MapID).slice(-3)}.json`
+          Laurus.Frame2Text.BasePath = (args[5] && args[6]) ? `${BASE_PATH}${PATH_SEP}${args[5]}${PATH_SEP}${args[6]}` : undefined
+        }
+        addMessage('======> (merge) MapID: ' + Laurus.Frame2Text.MapID + ' -> EventID: ' + Laurus.Frame2Text.EventID + ' -> PageID: ' + Laurus.Frame2Text.PageID)
+        break
+      case 'MERGE_CE_TO_MESSAGE':
+        Laurus.Frame2Text.FileFolder = args[0]
+        Laurus.Frame2Text.FileName = args[1]
+        Laurus.Frame2Text.CommonEventID = args[2]
+        Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
+        Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
+        Laurus.Frame2Text.BasePath = (args[3] && args[4]) ? `${BASE_PATH}${PATH_SEP}${args[3]}${PATH_SEP}${args[4]}` : undefined
+        addMessage('=====> (merge) Common EventID: ' + Laurus.Frame2Text.CommonEventID)
         break
       case 'SYNC_EVENT_TO_MESSAGE':
       case 'イベントをテキストに同期':
@@ -3004,7 +3103,8 @@
     // push の 3-way を鏡写しにし、Text2Frame.applyMergePull で結果テキストを得る。
     if (Laurus.Frame2Text.ExecMode === 'MERGE_EVENT_TO_MESSAGE' || Laurus.Frame2Text.ExecMode === 'MERGE_CE_TO_MESSAGE') {
       const isCE = Laurus.Frame2Text.ExecMode === 'MERGE_CE_TO_MESSAGE'
-      const T2F = require('./Text2Frame.js')
+      let T2F
+      try { T2F = require('./Text2Frame.js') } catch (e) { throw new Error('取り出し(merge)には Text2Frame.js が必要です。同じ場所に配置してください。 / MERGE pull requires Text2Frame.js next to Frame2Text.js.') }
       const stripFM = function (t) {
         const n = String(t).replace(/\r\n/g, '\n')
         if (n.indexOf('---\n') !== 0) return t
