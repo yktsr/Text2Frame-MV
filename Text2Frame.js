@@ -4427,6 +4427,46 @@
       }
     }
 
+    // MERGE(反映): 祖先(BASE)を解決し 3-way / overlay / overwrite を自動選択して
+    // マージ後のコマンド列を返す。event / CE で共通。祖先の保存キー(baseRoot/baseId)も返す。
+    const resolveMergeCommands = function (existing_events, event_command_list, textPath, explicitBasePath) {
+      // 祖先(BASE): 明示 BasePath 優先。無ければ .t2f-base/<locale>/<key> を自動参照。
+      let base_cmds = null
+      let baseRoot = null
+      let baseId = null
+      try {
+        // 祖先は「ユーザーのプロジェクト(cwd)」直下の .t2f-base に置く(ツール本体の場所ではない)。
+        baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH
+        const meta = parseFrontMatter(readText(textPath)).meta
+        baseId = deriveBaseId(textPath, meta)
+      } catch (e) { baseRoot = null }
+      if (explicitBasePath) {
+        try { base_cmds = compile(parseFrontMatter(readText(explicitBasePath)).body) } catch (e) { base_cmds = null }
+      } else if (baseRoot && baseId) {
+        const bt = readBaseText(baseRoot, baseId.locale, baseId.key)
+        if (bt) { try { base_cmds = compile(parseFrontMatter(bt).body) } catch (e) { base_cmds = null } }
+      }
+      let merge_result
+      const hasContent = existing_events.some(function (c) { return c && c.code !== 0 })
+      if (base_cmds) {
+        merge_result = applyThreeWayMerge(base_cmds, existing_events, event_command_list)
+        if (merge_result.conflicts) addWarning('3-way merge: ' + merge_result.conflicts + ' conflict(s) kept both / 衝突を両方残しました')
+      } else if (hasContent) {
+        merge_result = applyOverlay(existing_events, event_command_list)
+      } else {
+        const overwriteCmds = event_command_list.slice()
+        while (overwriteCmds.length && overwriteCmds[overwriteCmds.length - 1] && overwriteCmds[overwriteCmds.length - 1].code === 0) overwriteCmds.pop()
+        merge_result = { commands: overwriteCmds, warnings: [] }
+      }
+      for (let wi = 0; wi < merge_result.warnings.length; wi++) addWarning(merge_result.warnings[wi])
+      return { commands: merge_result.commands, baseRoot, baseId }
+    }
+
+    // マージ反映後、反映したテキストを次回の祖先として保存する(明示 BasePath 使用時も最新化)。
+    const saveMergeBase = function (baseRoot, baseId, textPath) {
+      if (baseRoot && baseId) { try { saveBaseText(baseRoot, baseId.locale, baseId.key, readText(textPath)) } catch (e) {} }
+    }
+
     Laurus.Text2Frame.ExecMode = command.toUpperCase()
 
     switch (Laurus.Text2Frame.ExecMode) {
@@ -10633,40 +10673,11 @@
           map_data.events[Laurus.Text2Frame.EventID].pages.push(getDefaultPage())
         }
         const existing_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list
-        // 祖先(BASE): 明示 BasePath 優先。無ければ .t2f-base/<locale>/<key> を自動参照。
-        let base_cmds = null
-        let _baseRoot = null
-        let _baseId = null
-        try {
-          // 祖先は「ユーザーのプロジェクト(cwd)」直下の .t2f-base に置く(ツール本体の場所ではない)。
-          _baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH
-          const _tmeta = parseFrontMatter(readText(Laurus.Text2Frame.TextPath)).meta
-          _baseId = deriveBaseId(Laurus.Text2Frame.TextPath, _tmeta)
-        } catch (e) { _baseRoot = null }
-        if (Laurus.Text2Frame.BasePath) {
-          try { base_cmds = compile(parseFrontMatter(readText(Laurus.Text2Frame.BasePath)).body) } catch (e) { base_cmds = null }
-        } else if (_baseRoot && _baseId) {
-          const _bt = readBaseText(_baseRoot, _baseId.locale, _baseId.key)
-          if (_bt) { try { base_cmds = compile(parseFrontMatter(_bt).body) } catch (e) { base_cmds = null } }
-        }
-        let merge_result
-        const hasContent = existing_events.some(function (c) { return c && c.code !== 0 })
-        if (base_cmds) {
-          merge_result = applyThreeWayMerge(base_cmds, existing_events, event_command_list)
-          if (merge_result.conflicts) addWarning('3-way merge: ' + merge_result.conflicts + ' conflict(s) kept both / 衝突を両方残しました')
-        } else if (hasContent) {
-          merge_result = applyOverlay(existing_events, event_command_list)
-        } else {
-          const overwriteCmds = event_command_list.slice()
-          while (overwriteCmds.length && overwriteCmds[overwriteCmds.length - 1] && overwriteCmds[overwriteCmds.length - 1].code === 0) overwriteCmds.pop()
-          merge_result = { commands: overwriteCmds, warnings: [] }
-        }
-        for (let wi = 0; wi < merge_result.warnings.length; wi++) addWarning(merge_result.warnings[wi])
+        const merged = resolveMergeCommands(existing_events, event_command_list, Laurus.Text2Frame.TextPath, Laurus.Text2Frame.BasePath)
         map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list =
-          merge_result.commands.concat([getCommandBottomEvent()])
+          merged.commands.concat([getCommandBottomEvent()])
         writeData(Laurus.Text2Frame.MapPath, map_data)
-        // 反映したテキストを次回の祖先として保存(明示 BasePath 使用時も最新化)。
-        if (_baseRoot && _baseId) { try { saveBaseText(_baseRoot, _baseId.locale, _baseId.key, readText(Laurus.Text2Frame.TextPath)) } catch (e) {} }
+        saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath)
         addMessage('Success / 書き出し成功！\n======> MapID: ' + Laurus.Text2Frame.MapID + ' -> EventID: ' + Laurus.Text2Frame.EventID + ' -> PageID: ' + Laurus.Text2Frame.PageID)
         break
       }
@@ -10677,38 +10688,11 @@
           throw new Error('Common Event not found. / コモンイベントが見つかりません。: ' + Laurus.Text2Frame.CommonEventID)
         }
         const existing_ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list
-        // 祖先(BASE): 明示 BasePath 優先。無ければ .t2f-base/<locale>/<key> を自動参照。
-        let base_ce_cmds = null
-        let _baseCeRoot = null
-        let _baseCeId = null
-        try {
-          _baseCeRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH
-          const _tmeta = parseFrontMatter(readText(Laurus.Text2Frame.TextPath)).meta
-          _baseCeId = deriveBaseId(Laurus.Text2Frame.TextPath, _tmeta)
-        } catch (e) { _baseCeRoot = null }
-        if (Laurus.Text2Frame.BasePath) {
-          try { base_ce_cmds = compile(parseFrontMatter(readText(Laurus.Text2Frame.BasePath)).body) } catch (e) { base_ce_cmds = null }
-        } else if (_baseCeRoot && _baseCeId) {
-          const _bt = readBaseText(_baseCeRoot, _baseCeId.locale, _baseCeId.key)
-          if (_bt) { try { base_ce_cmds = compile(parseFrontMatter(_bt).body) } catch (e) { base_ce_cmds = null } }
-        }
-        let merge_ce_result
-        const hasCeContent = existing_ce_events.some(function (c) { return c && c.code !== 0 })
-        if (base_ce_cmds) {
-          merge_ce_result = applyThreeWayMerge(base_ce_cmds, existing_ce_events, event_command_list)
-          if (merge_ce_result.conflicts) addWarning('3-way merge: ' + merge_ce_result.conflicts + ' conflict(s) kept both / 衝突を両方残しました')
-        } else if (hasCeContent) {
-          merge_ce_result = applyOverlay(existing_ce_events, event_command_list)
-        } else {
-          const overwriteCeCmds = event_command_list.slice()
-          while (overwriteCeCmds.length && overwriteCeCmds[overwriteCeCmds.length - 1] && overwriteCeCmds[overwriteCeCmds.length - 1].code === 0) overwriteCeCmds.pop()
-          merge_ce_result = { commands: overwriteCeCmds, warnings: [] }
-        }
-        for (let wi = 0; wi < merge_ce_result.warnings.length; wi++) addWarning(merge_ce_result.warnings[wi])
+        const merged = resolveMergeCommands(existing_ce_events, event_command_list, Laurus.Text2Frame.TextPath, Laurus.Text2Frame.BasePath)
         ce_data[Laurus.Text2Frame.CommonEventID].list =
-          merge_ce_result.commands.concat([getCommandBottomEvent()])
+          merged.commands.concat([getCommandBottomEvent()])
         writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
-        if (_baseCeRoot && _baseCeId) { try { saveBaseText(_baseCeRoot, _baseCeId.locale, _baseCeId.key, readText(Laurus.Text2Frame.TextPath)) } catch (e) {} }
+        saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath)
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break
       }
