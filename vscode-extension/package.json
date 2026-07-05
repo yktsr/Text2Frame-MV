@@ -2,7 +2,7 @@
   "name": "text2frame-language-support",
   "displayName": "Text2Frame Language Support",
   "description": "Language support for Text2Frame visual novel scripts",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "yktsr",
   "license": "MIT",
   "icon": "icon.png",
