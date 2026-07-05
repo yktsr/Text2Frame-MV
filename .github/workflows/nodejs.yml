@@ -20,7 +20,8 @@ jobs:
         run: npm ci
       - name: Set build metadata
         run: |
-          echo "BUILD_VERSION=$(node -p \"require('./package.json').version\")" >> "$GITHUB_ENV"
+          BUILD_VERSION="$(node -e 'console.log(require("./package.json").version)')"
+          echo "BUILD_VERSION=${BUILD_VERSION}" >> "$GITHUB_ENV"
           echo "BUILD_ID=${GITHUB_SHA}" >> "$GITHUB_ENV"
       - name: Build cjs/es/umd
         run: |
