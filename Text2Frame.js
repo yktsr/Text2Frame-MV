@@ -10306,7 +10306,62 @@
       }
     }
 
-    Laurus.Text2Frame.export = { compile, applyDiff, applyOverlay, applyThreeWayMerge, applyTextFile, runBatch, resolveStrategy }
+    /* 3-way 共通祖先(BASE)スナップショットの規約。VSCode 拡張と同一:
+     * <root>/.t2f-base/<locale>/<key>.txt。CLI/プラグインが作る祖先は VSCode と相互運用可能。 */
+    const baseSnapshotPathCore = function (root, locale, key) {
+      const path = require('path')
+      return path.join(root, '.t2f-base', String(locale || 'default'), String(key) + '.txt')
+    }
+    const readBaseText = function (root, locale, key) {
+      try { return require('fs').readFileSync(baseSnapshotPathCore(root, locale, key), 'utf8') } catch (e) { return null }
+    }
+    const saveBaseText = function (root, locale, key, text) {
+      try {
+        const fs = require('fs')
+        const path = require('path')
+        const p = baseSnapshotPathCore(root, locale, key)
+        fs.mkdirSync(path.dirname(p), { recursive: true })
+        fs.writeFileSync(p, text, 'utf8')
+      } catch (e) { /* best effort */ }
+    }
+    const deriveBaseId = function (textPath, meta) {
+      const path = require('path')
+      const key = path.basename(String(textPath), path.extname(String(textPath)))
+      const locale = (meta && meta.locale) || path.basename(path.dirname(String(textPath))) || 'default'
+      return { locale, key }
+    }
+
+    /* pull-merge(ゲーム→テキスト)。push の 3-way を鏡写しにし、結果を decompile でテキスト化する。
+     * ours=ゲームのコマンド, theirs=既存テキスト, base=祖先。翻訳を残しつつゲーム変更を取り込む。
+     * 戻り値: { text, conflicts, warnings }。VSCode の mergePullToText と同一ロジック。 */
+    const applyMergePull = function (opts) {
+      opts = opts || {}
+      const gameCommands = opts.gameCommands || []
+      const theirs = opts.textBody ? compile(opts.textBody) : []
+      const base = opts.baseBody ? compile(opts.baseBody) : []
+      const englishTag = opts.englishTag !== false
+      let merged
+      let conflicts = 0
+      let warnings = []
+      if (base.length > 0) {
+        const m = applyThreeWayMerge(base, gameCommands, theirs)
+        merged = m.commands.slice()
+        conflicts = m.conflicts
+        warnings = m.warnings
+      } else if (theirs.length > 0) {
+        const ov = applyOverlay(gameCommands, theirs)
+        merged = ov.commands.slice()
+        warnings = ov.warnings
+      } else {
+        merged = gameCommands.slice()
+      }
+      if (!merged.length || merged[merged.length - 1].code !== 0) merged.push({ code: 0, indent: 0, parameters: [] })
+      const F2T = require('./Frame2Text.js')
+      const text = F2T.decompile(merged, englishTag, { pretty: true })
+      return { text, conflicts, warnings }
+    }
+
+    Laurus.Text2Frame.export = { compile, applyDiff, applyOverlay, applyThreeWayMerge, applyMergePull, applyTextFile, runBatch, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId }
 
     /* 差分適用後のコマンドリストをテキストファイルへ書き戻す。
      * Frame2Text プラグインの decompile 関数を使用します。
@@ -10578,9 +10633,21 @@
           map_data.events[Laurus.Text2Frame.EventID].pages.push(getDefaultPage())
         }
         const existing_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list
+        // 祖先(BASE): 明示 BasePath 優先。無ければ .t2f-base/<locale>/<key> を自動参照。
         let base_cmds = null
+        let _baseRoot = null
+        let _baseId = null
+        try {
+          // 祖先は「ユーザーのプロジェクト(cwd)」直下の .t2f-base に置く(ツール本体の場所ではない)。
+          _baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH
+          const _tmeta = parseFrontMatter(readText(Laurus.Text2Frame.TextPath)).meta
+          _baseId = deriveBaseId(Laurus.Text2Frame.TextPath, _tmeta)
+        } catch (e) { _baseRoot = null }
         if (Laurus.Text2Frame.BasePath) {
           try { base_cmds = compile(parseFrontMatter(readText(Laurus.Text2Frame.BasePath)).body) } catch (e) { base_cmds = null }
+        } else if (_baseRoot && _baseId) {
+          const _bt = readBaseText(_baseRoot, _baseId.locale, _baseId.key)
+          if (_bt) { try { base_cmds = compile(parseFrontMatter(_bt).body) } catch (e) { base_cmds = null } }
         }
         let merge_result
         const hasContent = existing_events.some(function (c) { return c && c.code !== 0 })
@@ -10598,6 +10665,8 @@
         map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list =
           merge_result.commands.concat([getCommandBottomEvent()])
         writeData(Laurus.Text2Frame.MapPath, map_data)
+        // 反映したテキストを次回の祖先として保存(明示 BasePath 使用時も最新化)。
+        if (_baseRoot && _baseId) { try { saveBaseText(_baseRoot, _baseId.locale, _baseId.key, readText(Laurus.Text2Frame.TextPath)) } catch (e) {} }
         addMessage('Success / 書き出し成功！\n======> MapID: ' + Laurus.Text2Frame.MapID + ' -> EventID: ' + Laurus.Text2Frame.EventID + ' -> PageID: ' + Laurus.Text2Frame.PageID)
         break
       }
@@ -10608,9 +10677,20 @@
           throw new Error('Common Event not found. / コモンイベントが見つかりません。: ' + Laurus.Text2Frame.CommonEventID)
         }
         const existing_ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list
+        // 祖先(BASE): 明示 BasePath 優先。無ければ .t2f-base/<locale>/<key> を自動参照。
         let base_ce_cmds = null
+        let _baseCeRoot = null
+        let _baseCeId = null
+        try {
+          _baseCeRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH
+          const _tmeta = parseFrontMatter(readText(Laurus.Text2Frame.TextPath)).meta
+          _baseCeId = deriveBaseId(Laurus.Text2Frame.TextPath, _tmeta)
+        } catch (e) { _baseCeRoot = null }
         if (Laurus.Text2Frame.BasePath) {
           try { base_ce_cmds = compile(parseFrontMatter(readText(Laurus.Text2Frame.BasePath)).body) } catch (e) { base_ce_cmds = null }
+        } else if (_baseCeRoot && _baseCeId) {
+          const _bt = readBaseText(_baseCeRoot, _baseCeId.locale, _baseCeId.key)
+          if (_bt) { try { base_ce_cmds = compile(parseFrontMatter(_bt).body) } catch (e) { base_ce_cmds = null } }
         }
         let merge_ce_result
         const hasCeContent = existing_ce_events.some(function (c) { return c && c.code !== 0 })
@@ -10628,6 +10708,7 @@
         ce_data[Laurus.Text2Frame.CommonEventID].list =
           merge_ce_result.commands.concat([getCommandBottomEvent()])
         writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
+        if (_baseCeRoot && _baseCeId) { try { saveBaseText(_baseCeRoot, _baseCeId.locale, _baseCeId.key, readText(Laurus.Text2Frame.TextPath)) } catch (e) {} }
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break
       }
