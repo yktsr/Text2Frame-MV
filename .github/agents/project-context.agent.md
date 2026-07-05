@@ -16,7 +16,7 @@ tools: [read, edit, search, execute]
 ## 開発環境(重要)
 
 - リポジトリは WSL 上(`\\wsl.localhost\Ubuntu\home\yuki\workspace\Text2Frame-MV`)。
-- **git-bash / Windows のシステム node は v12 で古く、tsc/vite が動かない。** node/npm は必ず WSL の nvm node v20 で実行する:
+- **git-bash / Windows のシステム node は v12 で古く、tsc/rollup が動かない。** node/npm は必ず WSL の nvm node v20 で実行する:
   ```bash
   wsl -d ubuntu -- bash -lc 'export PATH="$HOME/.nvm/versions/node/v20.19.5/bin:$PATH"; cd ~/workspace/Text2Frame-MV && <cmd>'
   ```
@@ -43,9 +43,10 @@ npm test                       # 主要テスト一式 17 ファイル(下記の
 npm run test_text2frame        # Text2Frame テスト(test_json_eq.js)
 npm run test_frame2text        # ★往復変換テスト(135件)。npm test に含まれないので別途実行
 npm run lint                   # ESLint(--max-warnings=0)
-npm run build                  # vite で *.cjs.js / *.es.mjs / *.umd.js を生成
+npm run build                  # rollup で dist/*.cjs.js / dist/*.es.mjs / dist/*.umd.js を生成
 # ★実データ往復検証(2902件。sample/ が必要=未追跡なので CI では走らない):
 cp -r sample/data /tmp/vd && node tools/verify-roundtrip.js /tmp/vd --locale=ja --en=true --max=0
+npm run build:dist             # build + stamp(Version/build id バナー付与)
 # VSCode 拡張(vscode-extension/ で):
 npm run compile                # tsc → out/
 npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ にコピー
