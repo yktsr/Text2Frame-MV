@@ -65,3 +65,14 @@ jobs:
       - name: Lint
         run: npm run lint
         working-directory: vscode-extension
+      - name: Package VSIX
+        run: |
+          VERSION="$(node -e 'console.log(require("./package.json").version)')"
+          npx @vscode/vsce package --out text2frame-language-support-${VERSION}.vsix
+        working-directory: vscode-extension
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-extension-vsix-${{ github.run_number }}
+          path: vscode-extension/text2frame-language-support-*.vsix
+          if-no-files-found: error
