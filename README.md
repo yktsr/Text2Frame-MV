@@ -14,18 +14,27 @@ Simple compiler to convert text to event.
 テキストファイル(.txtファイルなど)から「文章の表示」イベントコマンドに簡単に変換するための、RPGツクールMV・MZ用の開発支援プラグインです。
 
 ## 最新版プラグインのダウンロード
-[![Download Text2Frame](https://img.shields.io/badge/Download-Text2Frame.js-blue)](https://github.com/yktsr/Text2Frame-MV/releases/download/2.2.4/Text2Frame.js)
+[![Download Text2Frame](https://img.shields.io/badge/Download-Text2Frame.js-blue)](https://github.com/yktsr/Text2Frame-MV/releases/download/2.3.0/Text2Frame.js)
 
-[![Download Frame2Text](https://img.shields.io/badge/Download-Frame2Text.js-blue)](https://github.com/yktsr/Text2Frame-MV/releases/download/2.2.4/Frame2Text.js)
+[![Download Frame2Text](https://img.shields.io/badge/Download-Frame2Text.js-blue)](https://github.com/yktsr/Text2Frame-MV/releases/download/2.3.0/Frame2Text.js)
 
-## 説明
+[![Download VisualStudioCode Plugin](https://img.shields.io/badge/Download-VisualStudioCodePlugin-blue)](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support)
+
+## 更新履歴
+* Version 2.3.0：
+  * テキストファイルの取り込み方法を強化し、従来の「追記」、「上書き」の他に、変更の「統合」が選べるようになりました。この統合モードは、RPGツクール上のUIを使ったゲーム編集を壊すことなく、テキストファイルで行った編集をゲームに反映することができるようになりました。
+  * 一括反映コマンド、一括取り出しコマンドを追加しました。従来、一つのテキストを一つのイベントに書き込むには、一つのプラグインコマンドが必要でしたが、すべてのイベント・コモンイベントを一括で処理する機能を追加しました。これにより、コマンドを一つ実行するだけで、ゲームとテキストを同期できるようになりました。
+  * [Visual Studio Code](https://code.visualstudio.com)の[Plugin](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support)に対応しました。プラグインコマンドの実行をUI上から簡単に行えるようになりました。ボタンひとつでゲームとテキストを相互に同期できるようになり、従来難しかった、文法のミスもシンタックスハイライト機能により、視覚的にわかるようになりました。Watch & Deploy 機能により、テキストの変更を監視し、テキストファイルを保存すると自動的にゲームに反映できるようになりました。詳細な機能や使い方は[マーケットプレイス](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support)を参照してください。
+  * 不具合を修正し、安定性を向上しました。
+![./introduce_Text2Frame_plugin.png](./vscode.png)
+
+
+## 機能概要
 ![./introduce_Text2Frame_MV_MZ.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Text2Frame_MV_MZ.png)
 
-会話などをツクールMV・MZ**以外**のエディタで編集して、あとでイベントコマンドとして組み込みたい人をサポートします。
+このプラグインは、「会話イベント」など、RPGツクール上で編集できる様々なイベントを、RPGツクールMV・MZ**以外**の、テキストエディタで編集し、作成したテキストファイルから一括でイベントコマンドとして取り込むことができます。
 
-プラグインコマンドを実行すると、テキストファイルを読み込み、ツクールMV・MZのマップイベントまたはコモンイベントにイベントコマンドとして取り込むことができます。
-
-これによりツクール上でセリフ、ウインドウの表示方法（表示位置、背景）、BGMの編集などをする必要がなくなります。
+これにより、イベントの作成はRPGツクール上で、シナリオの取り込みはテキストファイルで、といった、自分の作成スタイルに最も合ったエディタで制作を進めることができます。
 
 最も基本的な使い方は、以下のデモを見てください。
 高度な使い方やプラグインパラメータの詳細は[wiki](https://github.com/yktsr/Text2Frame-MV/wiki)を参照してください。
@@ -51,38 +60,36 @@ Simple compiler to convert text to event.
 1. プラグインエディターからText2Frameのプラグインを有効にします。
 
 
-## 顔・背景・位置・名前の設定
+## プラグイン固有の文法
+このプラグインでは、基本となるメッセージの取り込み以外にも、下記のような専用のタグを使うことで、より高度な取り込みを実現できます。
+
+下記は代表的なものであり、詳細な文法は[wiki](https://github.com/yktsr/Text2Frame-MV/wiki)を参照してください。
+
+### 顔・背景・位置・名前の設定
 タグを使って、顔・背景・位置等のメッセージの設定を変更することができます。
 これらのデフォルト値は、プラグインのオプションから変更することができます。
 
-### 顔の指定 <顔: 顔の指定>
+#### 顔の指定 <顔: 顔の指定>
 ウインドウに表示される顔を指定することができます。
 
 ![./introduce_Face.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Face.png)
 
-### 背景の変更 <背景: 背景の指定>
+#### 背景の変更 <背景: 背景の指定>
 ウインドウの背景を変更することができます。
 
 ![./introduce_Background.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Background.png)
 
-### 位置の変更 <位置: 位置の指定>
+#### 位置の変更 <位置: 位置の指定>
 ウインドウの位置を変更することができます。
 
 ![./introduce_WindowPosition.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_WindowPosition.png)
 
-### 名前の設定(MZ用) <名前: ○○○○>
+#### 名前の設定(MZ用) <名前: ○○○○>
 ウィンドウに表示される名前を指定することができます。
 
 ![./introduce_WindowPosition.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_namebox.png)
 
-### メッセージ内の空行 <br>
-メッセージ本文の途中に空行を入れたいときは `<br>` を使います。テキスト上の素の空行は
-「次のメッセージウィンドウの区切り」として扱われるため、同じウィンドウ内に空行を残したい
-場合は `<br>` と記述してください。書き出し(Frame2Text)でも空のメッセージ行は `<br>` として
-出力され、取り込みで元の空行に戻ります。
-
-
-## イベントコマンドを組み込むタグ
+### イベントコマンドを組み込むタグ
 「文章の表示」以外にも、他のすべてのイベントコマンドにも対応しています。
 以下のタグをメッセージの間に挟むことで、そのタグがイベントコマンドに置き換わります。
 例えば、
@@ -151,8 +158,6 @@ Simple compiler to convert text to event.
 
 より具体的かつその他のイベントコマンドのサンプルは、[動作確認用テキスト文例ページ](https://github.com/yktsr/Text2Frame-MV/wiki/動作確認テキスト)を参照してください。
 
-
-## その他の機能
 ### コメントアウト
 取り込みたい文章の行の先頭に「%」を記載すると、それはコメントと見なされ、取り込まれません。
 このコメントアウト記号はプラグインパラメータで変更することができます。
@@ -168,19 +173,25 @@ Simple compiler to convert text to event.
 
 詳細は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3)を参照してください。
 
-### スキップ <Skip> … <SkipEnd>
-RPGツクールMZの「スキップ」(イベントコマンド 109)に対応します。`<Skip>`(`<スキップ>`)と
-`<SkipEnd>`(`<スキップ終了>`)で囲んだブロックは、データ上は保持されますが実行時はスキップ
-されます。書き出し・取り込みの往復でそのまま保持されます。
 
 ## 逆変換プラグイン Frame2Text
-RPGツクールMV/MZのイベントコマンドを、Text2Frameの記法に則ったテキストにエクスポートするプラグインである、Frame2Textも公開しています。
-
-**取り出し(pull)は既定で `merge`** です。既存のテキスト(翻訳など)を残したまま、ゲーム側の新規・変更だけを取り込みます(白紙から取り直したいときだけ `overwrite`)。詳しい使い方・CLI は下記「[フォルダ一括同期と英語化ワークフロー（CLI）](#フォルダ一括同期と英語化ワークフローcli)」を参照してください。
+RPGツクールMV/MZのイベントコマンドを、Text2Frameの記法に則ったテキストにエクスポートするプラグインです。
 
 Frame2Textのダウンロードは[ここ](https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Frame2Text.js)からお願いします。
 
 また、詳細な使い方は[Frame2Textの紹介ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E9%80%86%E5%A4%89%E6%8F%9B%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3Frame2Text)かプラグイン本体のヘルプドキュメントを参照してください。
+
+
+## Visual Studio Code Plugin
+Visual Studio Codeの[Plugin](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support)に対応しました。
+
+これにより、プラグインコマンドの実行をUI上から簡単に行えるようになりました。
+
+ボタンひとつでゲームとテキストを相互に同期できるようになり、従来難しかった、文法のミスもシンタックスハイライト機能により、視覚的にわかるようになりました。
+
+詳細な機能や使い方は[マーケットプレイス](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support)を参照してください。
+![./introduce_Text2Frame_plugin.png](./vscode.png)
+
 
 ## フォルダ一括同期と英語化ワークフロー（CLI）
 
@@ -522,10 +533,6 @@ $ npm run test
 ```
 $ npm run verify-roundtrip -- sample/data --locale=ja --en=true
 ```
-- ⚠️ **破壊的**: 指定した dataDir と `text/` を上書きします。検証後は `git checkout -- <dataDir>` で復元してください。
-- 必ず**未変換の新鮮なデータ**で実行してください（変換済みデータの再変換は冪等で偽の100%になります）。
-- MV/MZ のフォーマット差（101の名前枠・124・204・232・移動ルート内 indent 等）は無害な正規化として吸収され、真の差分のみが報告されます。
-
 
 ## ライセンス
 MIT LICENSE
