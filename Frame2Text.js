@@ -3000,6 +3000,64 @@
       return
     }
 
+    // MERGE pull(ゲーム→テキスト。翻訳を残しつつゲーム変更を取り込む)。
+    // push の 3-way を鏡写しにし、Text2Frame.applyMergePull で結果テキストを得る。
+    if (Laurus.Frame2Text.ExecMode === 'MERGE_EVENT_TO_MESSAGE' || Laurus.Frame2Text.ExecMode === 'MERGE_CE_TO_MESSAGE') {
+      const isCE = Laurus.Frame2Text.ExecMode === 'MERGE_CE_TO_MESSAGE'
+      const T2F = require('./Text2Frame.js')
+      const stripFM = function (t) {
+        const n = String(t).replace(/\r\n/g, '\n')
+        if (n.indexOf('---\n') !== 0) return t
+        const e = n.indexOf('\n---\n', 4)
+        return e < 0 ? t : n.slice(e + 5)
+      }
+      const headerFM = function (t) {
+        const n = String(t).replace(/\r\n/g, '\n')
+        if (n.indexOf('---\n') !== 0) return null
+        const e = n.indexOf('\n---\n', 4)
+        return e < 0 ? null : n.slice(0, e + 5)
+      }
+      let gameCommands
+      if (isCE) {
+        const ce = readJsonData(Laurus.Frame2Text.CommonEventPath)
+        if (ce.length - 1 < Laurus.Frame2Text.CommonEventID) {
+          throw new Error('Common Event not found. / コモンイベントが見つかりません。: ' + Laurus.Frame2Text.CommonEventID)
+        }
+        gameCommands = ce[Laurus.Frame2Text.CommonEventID].list
+      } else {
+        const md = readJsonData(Laurus.Frame2Text.MapPath)
+        if (!md.events[Laurus.Frame2Text.EventID]) {
+          throw new Error('EventID not found. / EventIDが見つかりません。\n' + 'Event ID: ' + Laurus.Frame2Text.EventID)
+        }
+        const pageID = Number(Laurus.Frame2Text.PageID) - 1
+        if (!md.events[Laurus.Frame2Text.EventID].pages[pageID]) {
+          throw new Error('PageID not found. / PageIDが見つかりません。\n' + 'Page ID: ' + Laurus.Frame2Text.PageID)
+        }
+        gameCommands = md.events[Laurus.Frame2Text.EventID].pages[pageID].list
+      }
+      const outPath = Laurus.Frame2Text.TextPath
+      let existingText = ''
+      try { existingText = readText(outPath) } catch (e) { existingText = '' }
+      const root = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : '.'
+      const id = T2F.deriveBaseId(outPath, {})
+      let baseBody = ''
+      if (Laurus.Frame2Text.BasePath) {
+        try { baseBody = stripFM(readText(Laurus.Frame2Text.BasePath)) } catch (e) { baseBody = '' }
+      } else {
+        const bt = T2F.readBaseText(root, id.locale, id.key)
+        if (bt) baseBody = stripFM(bt)
+      }
+      const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
+      const r = T2F.applyMergePull({ gameCommands, textBody: existingText ? stripFM(existingText) : '', baseBody, englishTag })
+      const header = (existingText && headerFM(existingText)) || ('---\ngenerator: text2frame-mv@' + VERSION + '\nkind: ' + (isCE ? 'common' : 'event') + '\n' + (isCE ? ('commonEventId: ' + Laurus.Frame2Text.CommonEventID) : ('mapId: ' + Laurus.Frame2Text.MapID + '\neventId: ' + Laurus.Frame2Text.EventID + '\npageId: ' + (Laurus.Frame2Text.PageID || '1'))) + '\n---\n')
+      const written = header + '\n' + r.text + '\n'
+      try { const _p = require('path'); require('fs').mkdirSync(_p.dirname(outPath), { recursive: true }) } catch (e) {}
+      writeData(outPath, written)
+      try { T2F.saveBaseText(root, id.locale, id.key, written) } catch (e) {}
+      if (r.conflicts) { logger.error('[merge-pull] ' + r.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath) }
+      return
+    }
+
     // BATCH_EXPORT モード: マニフェストでバッチ処理
     if (Laurus.Frame2Text.ExecMode === 'BATCH_EXPORT') {
       if (typeof require !== 'undefined') {
@@ -3352,6 +3410,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-t, --text-base <dir>', 'text base directory for generated manifest', 'text')
     .option('-v, --verbose', 'debug mode', false)
     .option('-w, --english_tag <true/false>', 'english tag', 'true')
+    .option('-s, --strategy <merge|overwrite>', 'pull strategy (default merge: keep translations; overwrite: replace)', /^(merge|overwrite)$/i, 'merge')
+    .option('-b, --base <path>', 'ancestor text path for merge (optional; auto .t2f-base when omitted)')
     .parse()
 
   const help_text = `
@@ -3395,6 +3455,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     process.exit(0)
   }
 
+  const _pullOverwrite = String(options.strategy).toLowerCase() === 'overwrite'
   if (options.mode === 'map') {
     const Frame2Text = {
       MapID: options.map_id,
@@ -3405,7 +3466,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       MapPath: options.input_path,
       CommonEventPath: options.input_path,
       CommonEventID: options.common_event_id,
-      ExecMode: 'EXPORT_EVENT_TO_MESSAGE'
+      EnglishTag: options.english_tag,
+      BasePath: options.base,
+      ExecMode: _pullOverwrite ? 'EXPORT_EVENT_TO_MESSAGE' : 'MERGE_EVENT_TO_MESSAGE'
     }
     Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', [Frame2Text])
   } else if (options.mode === 'common') {
@@ -3418,7 +3481,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       MapPath: options.input_path,
       CommonEventPath: options.input_path,
       CommonEventID: options.common_event_id,
-      ExecMode: 'EXPORT_CE_TO_MESSAGE'
+      EnglishTag: options.english_tag,
+      BasePath: options.base,
+      ExecMode: _pullOverwrite ? 'EXPORT_CE_TO_MESSAGE' : 'MERGE_CE_TO_MESSAGE'
     }
     Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', [Frame2Text])
   } else if (options.mode === 'decompile') {
