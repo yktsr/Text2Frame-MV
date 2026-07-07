@@ -195,7 +195,9 @@ Visual Studio Codeの[Plugin](https://marketplace.visualstudio.com/items?itemNam
 
 ## フォルダ一括同期と英語化ワークフロー（CLI）
 
-Text2Frame/Frame2Text は、manifest を使ってフォルダ全体を一括処理できます。
+> この節は **ターミナル（コマンド）でまとめて処理したい人向け** です。ボタン操作だけで反映・取り出し・英語化をしたい方は、上記「[Visual Studio Code Plugin](#visual-studio-code-plugin)」をお使いください（専門用語もやさしく表示されます）。
+
+Text2Frame/Frame2Text は、manifest（処理対象の一覧ファイル）を使ってフォルダ全体を一括処理できます。以下では次の言葉を使います —— **反映**＝テキストをゲームへ書き込む、**取り出し（pull）**＝ゲームの内容をテキストへ書き出す、**front matter**＝ファイル先頭の `---` で囲む設定欄。反映・取り出しの方式は **`merge`（＝安全に統合。勝手に消さない・既定）** と **`overwrite`（＝全部上書き）** の2つです。
 
 ### 1. メタ情報付きテキスト
 
