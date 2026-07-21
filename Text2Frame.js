@@ -9813,10 +9813,6 @@
       return diff
     }
 
-    /* テキストから変換した新コマンドと既存コマンドを差分比較して適用する。
-     * existing_commands: 既存のイベントコマンドリスト
-     * new_commands: テキストから変換した新しいイベントコマンドリスト
-     * 戻り値: { commands: 適用後コマンドリスト(終端コードなし), warnings: 警告メッセージ配列 } */
     // strategy 正規化(後方互換エイリアス)。ユーザー向けは merge / overwrite の2本。
     // 旧: import/diff -> overwrite, overlay/merge3 -> merge, sync -> merge + 書き戻しフラグ。
     // 戻り値 { strategy, sync } / 未知は null。
@@ -10373,7 +10369,9 @@
         let meta
         try { meta = parseFrontMatter(readText(fileName)).meta } catch (e) { meta = null }
         if (!meta || !meta.kind) return
-        const res = applyTextFile({ textPath: fileName, strategy, backup: true })
+        // Command Strategy arg is the default; a per-file front-matter `strategy:` overrides it.
+        const entryStrategy = meta.strategy ? (resolveStrategy(meta.strategy) || { strategy }).strategy : strategy
+        const res = applyTextFile({ textPath: fileName, strategy: entryStrategy, backup: true })
         if (res && res.ok) ok++
         else fail++
       })
@@ -10719,7 +10717,12 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       const parsed = parseFrontMatterCli(fs.readFileSync(fileArg, { encoding: 'utf8' }))
       const meta = parsed.meta || {}
       const kind = String(meta.kind || 'event').toLowerCase()
-      const entryStrategy = (module.exports.resolveStrategy(meta.strategy) || { strategy }).strategy
+      // CLI --strategy is the default; a per-file front-matter `strategy:` overrides it.
+      // (resolveStrategy(undefined) would default to merge and mask the CLI flag, so only
+      // consult it when the file actually declares a strategy.)
+      const entryStrategy = meta.strategy
+        ? (module.exports.resolveStrategy(meta.strategy) || { strategy }).strategy
+        : strategy
       const entryBasePath =
         (meta.basePath ? path.resolve(path.dirname(fileArg), meta.basePath) : undefined) || cliBasePath
       const opts = {

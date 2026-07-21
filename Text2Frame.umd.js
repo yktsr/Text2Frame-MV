@@ -6450,7 +6450,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 
 			    // 書き出し主体のバージョン(リリース時に package.json と揃えて更新する)。
 			    // 書き出したテキストのフロントマターに generator: text2frame-mv@<VERSION> として埋める。
-			    const VERSION = '2.2.1';
+			    const VERSION = '2.3.0';
 
 			    // 書き出したテキストに載せる front matter(YAMLヘッダ)を生成する。
 			    const renderFrontMatter = function (entry, kind) {
@@ -6651,7 +6651,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 
 			  const program = new Command();
 			  program
-			    .version('1.0.0')
+			    .version('2.3.0')
 			    .usage('[options]')
 			    .option('-m, --mode <map|common|decompile|test|batch-export>', 'output mode', /^(map|common|decompile|test|batch-export)$/i)
 			    .option('-i, --input_path <name>', 'input map data path')
@@ -16640,10 +16640,6 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      return diff
 			    };
 
-			    /* テキストから変換した新コマンドと既存コマンドを差分比較して適用する。
-			     * existing_commands: 既存のイベントコマンドリスト
-			     * new_commands: テキストから変換した新しいイベントコマンドリスト
-			     * 戻り値: { commands: 適用後コマンドリスト(終端コードなし), warnings: 警告メッセージ配列 } */
 			    // strategy 正規化(後方互換エイリアス)。ユーザー向けは merge / overwrite の2本。
 			    // 旧: import/diff -> overwrite, overlay/merge3 -> merge, sync -> merge + 書き戻しフラグ。
 			    // 戻り値 { strategy, sync } / 未知は null。
@@ -17200,7 +17196,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			        let meta;
 			        try { meta = parseFrontMatter(readText(fileName)).meta; } catch (e) { meta = null; }
 			        if (!meta || !meta.kind) return
-			        const res = applyTextFile({ textPath: fileName, strategy, backup: true });
+			        // Command Strategy arg is the default; a per-file front-matter `strategy:` overrides it.
+			        const entryStrategy = meta.strategy ? (resolveStrategy(meta.strategy) || { strategy }).strategy : strategy;
+			        const res = applyTextFile({ textPath: fileName, strategy: entryStrategy, backup: true });
 			        if (res && res.ok) ok++;
 			        else fail++;
 			      });
