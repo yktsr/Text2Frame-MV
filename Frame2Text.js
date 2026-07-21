@@ -2683,7 +2683,7 @@
 
     // 書き出し主体のバージョン(リリース時に package.json と揃えて更新する)。
     // 書き出したテキストのフロントマターに generator: text2frame-mv@<VERSION> として埋める。
-    const VERSION = '2.2.1'
+    const VERSION = '2.3.0'
 
     // 書き出したテキストに載せる front matter(YAMLヘッダ)を生成する。
     const renderFrontMatter = function (entry, kind) {
@@ -2884,7 +2884,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
   const program = new Command()
   program
-    .version('1.0.0')
+    .version('2.3.0')
     .usage('[options]')
     .option('-m, --mode <map|common|decompile|test|batch-export>', 'output mode', /^(map|common|decompile|test|batch-export)$/i)
     .option('-i, --input_path <name>', 'input map data path')

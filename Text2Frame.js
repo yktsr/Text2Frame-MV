@@ -10600,7 +10600,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
   const program = new Command()
   program
-    .version('2.2.1')
+    .version('2.3.0')
     .usage('[options]')
     .option('-m, --mode <map|common|compile|test|batch>', 'output mode', /^(map|common|compile|test|batch)$/i)
     .option('-t, --text_path <name>', 'text file path')
