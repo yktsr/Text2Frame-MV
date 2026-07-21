@@ -147,9 +147,8 @@ export async function deployDocument(
 
     const config = vscode.workspace.getConfiguration('text2frame');
     let strategy = config.get<string>('strategy') || 'merge';
-    // overwrite-like strategies replace the JSON wholesale (legacy import/diff included);
-    // merge-like strategies (merge/overlay/merge3) preserve external JSON edits.
-    const isOverwriteLike = (s: string): boolean => s === 'overwrite' || s === 'import' || s === 'diff';
+    // overwrite replaces the JSON wholesale; merge preserves external JSON edits.
+    const isOverwriteLike = (s: string): boolean => s === 'overwrite';
     const dataPath = (resolved.opts.mapPath || resolved.opts.commonEventPath) as string;
     const out = getOutput();
     const time = new Date().toLocaleTimeString();

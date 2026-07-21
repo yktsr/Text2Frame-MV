@@ -8,22 +8,20 @@ const text2frame = require('../Text2Frame.js')
 const resolveStrategy = text2frame.resolveStrategy
 const applyTextFile = text2frame.applyTextFile
 
-describe('resolveStrategy (alias normalization)', function () {
-  it('maps legacy names to merge/overwrite', function () {
-    expect(resolveStrategy('import')).to.eql({ strategy: 'overwrite', sync: false })
-    expect(resolveStrategy('diff')).to.eql({ strategy: 'overwrite', sync: false })
-    expect(resolveStrategy('overlay')).to.eql({ strategy: 'merge', sync: false })
-    expect(resolveStrategy('merge3')).to.eql({ strategy: 'merge', sync: false })
-    expect(resolveStrategy('sync')).to.eql({ strategy: 'merge', sync: true })
-  })
+describe('resolveStrategy', function () {
   it('passes through merge/overwrite and defaults to merge', function () {
-    expect(resolveStrategy('merge')).to.eql({ strategy: 'merge', sync: false })
-    expect(resolveStrategy('overwrite')).to.eql({ strategy: 'overwrite', sync: false })
-    expect(resolveStrategy(undefined)).to.eql({ strategy: 'merge', sync: false })
-    expect(resolveStrategy(null)).to.eql({ strategy: 'merge', sync: false })
+    expect(resolveStrategy('merge')).to.eql({ strategy: 'merge' })
+    expect(resolveStrategy('overwrite')).to.eql({ strategy: 'overwrite' })
+    expect(resolveStrategy(undefined)).to.eql({ strategy: 'merge' })
+    expect(resolveStrategy(null)).to.eql({ strategy: 'merge' })
   })
-  it('returns null for unknown', function () {
+  it('returns null for unknown (incl. removed legacy names)', function () {
     expect(resolveStrategy('bogus')).to.equal(null)
+    expect(resolveStrategy('import')).to.equal(null)
+    expect(resolveStrategy('diff')).to.equal(null)
+    expect(resolveStrategy('overlay')).to.equal(null)
+    expect(resolveStrategy('merge3')).to.equal(null)
+    expect(resolveStrategy('sync')).to.equal(null)
   })
 })
 
@@ -70,9 +68,9 @@ describe('merge strategy auto behavior (via applyTextFile)', function () {
     expect(l.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })).to.eql(['Hello'])
   })
 
-  it('overwrite (and legacy diff alias) fully replaces (drops movement, adds switch)', function () {
+  it('overwrite fully replaces (drops movement, adds switch)', function () {
     setup(JSON.parse(JSON.stringify(withMovement)))
-    applyTextFile({ textPath, kind: 'event', mapId: '1', eventId: '1', pageId: '1', mapPath, strategy: 'diff' })
+    applyTextFile({ textPath, kind: 'event', mapId: '1', eventId: '1', pageId: '1', mapPath, strategy: 'overwrite' })
     const l = deployed()
     expect(l.some(function (c) { return c.code === 205 })).to.equal(false) // movement dropped
     expect(l.some(function (c) { return c.code === 121 })).to.equal(true) // switch added

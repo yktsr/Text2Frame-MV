@@ -52,22 +52,22 @@ describe('CLI merge strategies (--mode map)', function () {
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }
   })
 
-  it('overlay keeps non-conversation commands and translates text', function () {
-    runCli(['--mode', 'map', '--strategy', 'overlay', '--text_path', textPath, '--output_path', mapPath, '--event_id', '1', '--page_id', '1'])
+  it('merge without a base keeps non-conversation commands and translates text (overlay)', function () {
+    runCli(['--mode', 'map', '--strategy', 'merge', '--text_path', textPath, '--output_path', mapPath, '--event_id', '1', '--page_id', '1'])
     const list = listOf(mapPath)
     expect(hasSwitch(list)).to.equal(true)
     expect(texts(list)).to.eql(['Bonjour'])
   })
 
-  it('merge3 with --base merges writer text and dev switch cleanly', function () {
-    runCli(['--mode', 'map', '--strategy', 'merge3', '--base', basePath, '--text_path', textPath, '--output_path', mapPath, '--event_id', '1', '--page_id', '1'])
+  it('merge with --base merges writer text and dev switch cleanly (3-way)', function () {
+    runCli(['--mode', 'map', '--strategy', 'merge', '--base', basePath, '--text_path', textPath, '--output_path', mapPath, '--event_id', '1', '--page_id', '1'])
     const list = listOf(mapPath)
     expect(hasSwitch(list)).to.equal(true)
     expect(texts(list)).to.eql(['Bonjour'])
   })
 
-  it('merge3 without --base falls back to overlay (still keeps switch)', function () {
-    runCli(['--mode', 'map', '--strategy', 'merge3', '--text_path', textPath, '--output_path', mapPath, '--event_id', '1', '--page_id', '1'])
+  it('merge without --base falls back to overlay (still keeps switch)', function () {
+    runCli(['--mode', 'map', '--strategy', 'merge', '--text_path', textPath, '--output_path', mapPath, '--event_id', '1', '--page_id', '1'])
     const list = listOf(mapPath)
     expect(hasSwitch(list)).to.equal(true)
     expect(texts(list)).to.eql(['Bonjour'])

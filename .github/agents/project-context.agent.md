@@ -66,7 +66,7 @@ npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ �
    commonEventId: 3   # kind: common のとき
    ---
    ```
-2. デプロイ(テキスト→データ): `compile(body)` でコマンド配列に変換 → 対象 JSON の `events[eventId].pages[pageId-1].list`(または `CommonEvents[id].list`)へ反映。**戦略は `merge`(既定)/ `overwrite` の2つ**(旧 `import`/`diff`/`overlay`/`merge3`/`sync` は `resolveStrategy` で正規化されるレガシー別名)。`merge` は祖先(BASE)があれば 3-way、無くて既存が非空なら overlay、空なら overwrite を自動選択。
+2. デプロイ(テキスト→データ): `compile(body)` でコマンド配列に変換 → 対象 JSON の `events[eventId].pages[pageId-1].list`(または `CommonEvents[id].list`)へ反映。**戦略は `merge`(既定)/ `overwrite` の2つ**(`resolveStrategy` で検証。未知値は null)。`merge` は祖先(BASE)があれば 3-way、無くて既存が非空なら overlay、空なら overwrite を自動選択。
 3. 書き出し(データ→テキスト): `decompile(list, englishTag, {pretty, translationOnly})`。**取り出しも既定は merge**(翻訳を残しつつゲーム変更を取り込む。`Text2Frame.applyMergePull` 経由)。生の上書きは `overwrite`。
 4. **祖先スナップショット(3-way 用)**: `.t2f-base/<locale>/<key>.txt`(gitignore 済、`key`=テキストのファイル名、`locale`=front matter `locale` ‖ 親フォルダ名 ‖ `default`)。反映/取り出しの成功時に自動保存され、次回から自動 3-way。明示 `--base`/`BasePath` 指定時はそれを優先。VSCode 拡張・CLI・プラグインで同じ規約=相互運用可。同じ箇所を両方変更した競合は両方残し、平易マーカー(`=== テキストの変更 / from text ===` 等)で表示。
 
@@ -93,7 +93,7 @@ npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ �
 ```bash
 # Text2Frame(取り込み/反映)。push は既定 merge
 node Text2Frame.js -m map|common|compile|test|batch [...] [-s merge|overwrite] [-b <base>] [--watch] [--poll] [--debounce ms]
-#   -s: 既定 merge(3-way 自動)。overwrite で全置換。旧 import/diff/sync/overlay/merge3 も受理(正規化)
+#   -s: 既定 merge(3-way 自動)。overwrite で全置換
 #   -b <base>: 明示祖先(任意)。未指定なら .t2f-base を自動参照/保存   --watch でファイル監視→再デプロイ(chokidar)
 # Frame2Text(書き出し/取り出し)。pull も既定 merge(翻訳を残す)
 node Frame2Text.js -m map|common|decompile|batch-export [...] [-s merge|overwrite] [-b <base>] [-T]

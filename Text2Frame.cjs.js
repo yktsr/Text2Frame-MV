@@ -16644,16 +16644,11 @@ function requireText2Frame () {
 		      return diff
 		    };
 
-		    // strategy 正規化(後方互換エイリアス)。ユーザー向けは merge / overwrite の2本。
-		    // 旧: import/diff -> overwrite, overlay/merge3 -> merge, sync -> merge + 書き戻しフラグ。
-		    // 戻り値 { strategy, sync } / 未知は null。
+		    // 反映方式は merge(既定・構造保持の賢い反映) / overwrite(全上書き) の2つ。未指定は merge。未知は null。
 		    const resolveStrategy = function (name) {
 		      const s = String(name == null ? 'merge' : name).toLowerCase();
-		      if (s === 'merge') return { strategy: 'merge', sync: false }
-		      if (s === 'overwrite') return { strategy: 'overwrite', sync: false }
-		      if (s === 'import' || s === 'diff') return { strategy: 'overwrite', sync: false }
-		      if (s === 'overlay' || s === 'merge3') return { strategy: 'merge', sync: false }
-		      if (s === 'sync') return { strategy: 'merge', sync: true }
+		      if (s === 'merge') return { strategy: 'merge' }
+		      if (s === 'overwrite') return { strategy: 'overwrite' }
 		      return null
 		    };
 		    const applyDiff = function (existing_commands, new_commands) {
