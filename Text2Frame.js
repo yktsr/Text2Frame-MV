@@ -253,49 +253,15 @@
  * @type string
  * @default
  *
- * @command SYNC_EVENT_BIDIRECTIONAL
- * @text イベントを双方向差分同期
- * @desc 1回の実行でテキスト差分をJSONへ反映し、その結果をテキストへ同期します。
+ * @command BATCH_IMPORT_MESSAGES_FROM_FOLDER
+ * @text フォルダから一括反映
+ * @desc 指定フォルダ内の front matter 付きテキストを再帰的に走査し、各ファイルの見出し情報に従って一括でゲームへ反映します。
  *
- * @arg FileFolder
- * @text 対象フォルダ名
- * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
+ * @arg TextFolder
+ * @text 取り込み元フォルダ名
+ * @desc 走査するテキストフォルダ名です。デフォルトはtextです。
  * @type string
  * @default text
- *
- * @arg FileName
- * @text 対象ファイル名
- * @desc 同期対象となるシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
- * @type string
- * @default message.txt
- *
- * @arg MapID
- * @text 対象マップID
- * @desc 対象となるマップのIDを設定します。デフォルト値は1です。
- * @type number
- * @default 1
- *
- * @arg EventID
- * @text 対象イベントID
- * @desc 対象となるイベントのIDを設定します。デフォルト値は2です。
- * @type number
- * @default 2
- *
- * @arg PageID
- * @text 対象ページID
- * @desc 対象となるページのIDを設定します。デフォルト値は1です。
- * @type number
- * @default 1
- *
- * @command APPLY_MESSAGES_BY_MANIFEST
- * @text manifestで一括反映
- * @desc manifestで指定した複数テキストを一括で反映します。strategyはmerge(既定・賢い反映)かoverwrite(全上書き)を選べます。旧値(import/diff/overlay/merge3/sync)も内部で正規化され受理されます。
- *
- * @arg ManifestPath
- * @text manifestファイルパス
- * @desc プロジェクトルートからの相対パス、または絶対パスを指定します。
- * @type string
- * @default examples/batch-manifest.sample.json
  *
  * @arg Strategy
  * @text 一括反映戦略
@@ -306,6 +272,8 @@
  * @option overwrite
  * @value overwrite
  * @default merge
+ *
+
  *
  * @param Default Window Position
  * @text 位置のデフォルト値
@@ -524,7 +492,7 @@
  *    ツクール上で加えたUI編集（移動・分岐・スイッチ等）を残したまま、
  *    テキストの会話などを反映します。共通の祖先があれば賢く3方向で統合し、
  *    同じ場所を両方で変えたときだけ両方を残します（下記の競合表示）。
- *  ・APPLY_MESSAGES_BY_MANIFEST … 複数ファイルを一括で反映します（既定は統合）。
+ *  ・BATCH_IMPORT_MESSAGES_FROM_FOLDER … フォルダ内のテキストを一括で反映します（既定は統合）。
  *
  * ◆ 取り出し（ゲーム→テキスト）: 逆変換プラグイン Frame2Text
  *  ゲームの内容をテキストへ書き出します。既定は「安全な統合」で、既にある翻訳
@@ -726,11 +694,10 @@
  *   IMPORT_MESSAGE_TO_CE text message.txt 3 true
  *   メッセージをコモンイベントにインポート text message.txt 3 true
  *
- * 例3:manifestを使って一括反映する（第2引数は反映のしかた。省略すると統合。
- *     全上書きしたいときだけ overwrite を指定）。
- *   APPLY_MESSAGES_BY_MANIFEST examples/batch-manifest.sample.json
- *   APPLY_MESSAGES_BY_MANIFEST examples/batch-manifest.sample.json overwrite
- *   （旧値 import/diff/overlay/merge3/sync も受理され、内部で正規化されます）
+ * 例3:フォルダ内のテキストを一括反映する（第1引数は取り込み元フォルダ名。省略すると
+ *     text。第2引数は反映のしかた。省略すると統合。全上書きは overwrite を指定）。
+ *   BATCH_IMPORT_MESSAGES_FROM_FOLDER text
+ *   BATCH_IMPORT_MESSAGES_FROM_FOLDER text overwrite
  *
  * ◆ 旧版のプラグインコマンドの引数(非推奨)
  *  最新版(ツクールMZ対応後,ver2.0.0)と旧版(ツクールMZ対応前,ver1.4.1)では、
@@ -4254,24 +4221,6 @@
       this.pluginCommand('IMPORT_MESSAGE_TO_CE',
         [file_folder, file_name, common_event_id, is_overwrite])
     })
-    PluginManager.registerCommand('Text2Frame', 'DIFF_IMPORT_MESSAGE_TO_EVENT', function (args) {
-      const file_folder = args.FileFolder
-      const file_name = args.FileName
-      const map_id = args.MapID
-      const event_id = args.EventID
-      const page_id = args.PageID
-      const write_back = args.WriteBack
-      this.pluginCommand('DIFF_IMPORT_MESSAGE_TO_EVENT',
-        [file_folder, file_name, map_id, event_id, page_id, write_back])
-    })
-    PluginManager.registerCommand('Text2Frame', 'DIFF_IMPORT_MESSAGE_TO_CE', function (args) {
-      const file_folder = args.FileFolder
-      const file_name = args.FileName
-      const common_event_id = args.CommonEventID
-      const write_back = args.WriteBack
-      this.pluginCommand('DIFF_IMPORT_MESSAGE_TO_CE',
-        [file_folder, file_name, common_event_id, write_back])
-    })
     PluginManager.registerCommand('Text2Frame', 'MERGE_MESSAGE_TO_EVENT', function (args) {
       const file_folder = args.FileFolder
       const file_name = args.FileName
@@ -4292,40 +4241,10 @@
       this.pluginCommand('MERGE_MESSAGE_TO_CE',
         [file_folder, file_name, common_event_id, base_folder, base_file_name])
     })
-    // MERGE3_* kept for backward compatibility (existing placed commands); hidden from MZ UI.
-    PluginManager.registerCommand('Text2Frame', 'MERGE3_MESSAGE_TO_EVENT', function (args) {
-      const file_folder = args.FileFolder
-      const file_name = args.FileName
-      const map_id = args.MapID
-      const event_id = args.EventID
-      const page_id = args.PageID
-      const base_folder = args.BaseFolder
-      const base_file_name = args.BaseFileName
-      this.pluginCommand('MERGE3_MESSAGE_TO_EVENT',
-        [file_folder, file_name, map_id, event_id, page_id, base_folder, base_file_name])
-    })
-    PluginManager.registerCommand('Text2Frame', 'MERGE3_MESSAGE_TO_CE', function (args) {
-      const file_folder = args.FileFolder
-      const file_name = args.FileName
-      const common_event_id = args.CommonEventID
-      const base_folder = args.BaseFolder
-      const base_file_name = args.BaseFileName
-      this.pluginCommand('MERGE3_MESSAGE_TO_CE',
-        [file_folder, file_name, common_event_id, base_folder, base_file_name])
-    })
-    PluginManager.registerCommand('Text2Frame', 'SYNC_EVENT_BIDIRECTIONAL', function (args) {
-      const file_folder = args.FileFolder
-      const file_name = args.FileName
-      const map_id = args.MapID
-      const event_id = args.EventID
-      const page_id = args.PageID
-      this.pluginCommand('SYNC_EVENT_BIDIRECTIONAL',
-        [file_folder, file_name, map_id, event_id, page_id])
-    })
-    PluginManager.registerCommand('Text2Frame', 'APPLY_MESSAGES_BY_MANIFEST', function (args) {
-      const manifest_path = args.ManifestPath
+    PluginManager.registerCommand('Text2Frame', 'BATCH_IMPORT_MESSAGES_FROM_FOLDER', function (args) {
+      const text_folder = args.TextFolder
       const strategy = args.Strategy
-      this.pluginCommand('APPLY_MESSAGES_BY_MANIFEST', [manifest_path, strategy])
+      this.pluginCommand('BATCH_IMPORT_MESSAGES_FROM_FOLDER', [text_folder, strategy])
     })
   }
 
@@ -4348,7 +4267,6 @@
     Laurus.Text2Frame.IsDebug = false
     Laurus.Text2Frame.DisplayMsg = true
     Laurus.Text2Frame.DisplayWarning = true
-    Laurus.Text2Frame.ManifestPath = ''
     Laurus.Text2Frame.BatchStrategy = 'diff'
     Laurus.Text2Frame.TextPath = 'dummy'
     Laurus.Text2Frame.MapPath = 'dummy'
@@ -4374,7 +4292,6 @@
     Laurus.Text2Frame.IsDebug = (String(Laurus.Text2Frame.Parameters.IsDebug) === 'true')
     Laurus.Text2Frame.DisplayMsg = (String(Laurus.Text2Frame.Parameters.DisplayMsg) === 'true')
     Laurus.Text2Frame.DisplayWarning = (String(Laurus.Text2Frame.Parameters.DisplayWarning) === 'true')
-    Laurus.Text2Frame.ManifestPath = ''
     Laurus.Text2Frame.BatchStrategy = 'diff'
     let PATH_SEP = '/'
     let BASE_PATH = '.'
@@ -4494,7 +4411,8 @@
       }
       let merge_result
       const hasContent = existing_events.some(function (c) { return c && c.code !== 0 })
-      if (base_cmds) {
+
+      if (base_cmds && hasContent) {
         merge_result = applyThreeWayMerge(base_cmds, existing_events, event_command_list)
         if (merge_result.conflicts) addWarning('3-way merge: ' + merge_result.conflicts + ' conflict(s) kept both / 衝突を両方残しました')
       } else if (hasContent) {
@@ -4553,35 +4471,7 @@
           Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
         }
         break
-      case 'DIFF_IMPORT_MESSAGE_TO_EVENT' :
-        addMessage('diff import message to event. \n/ 差分をイベントにインポートします。')
-        if (args[0]) Laurus.Text2Frame.FileFolder = args[0]
-        if (args[1]) Laurus.Text2Frame.FileName = args[1]
-        if (args[2]) Laurus.Text2Frame.MapID = args[2]
-        if (args[3]) Laurus.Text2Frame.EventID = args[3]
-        if (args[4]) Laurus.Text2Frame.PageID = args[4]
-        if (args[5] !== undefined) Laurus.Text2Frame.WriteBack = (args[5] === 'true' || args[5] === true)
-        if (args[0] || args[1]) {
-          const { PATH_SEP, BASE_PATH } = getDirParams()
-          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
-          Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
-        }
-        break
-      case 'DIFF_IMPORT_MESSAGE_TO_CE' :
-        if (args.length === 3 || args.length === 4) {
-          addMessage('diff import message to common event. \n/ 差分をコモンイベントにインポートします。')
-          Laurus.Text2Frame.ExecMode = 'DIFF_IMPORT_MESSAGE_TO_CE'
-          Laurus.Text2Frame.FileFolder = args[0]
-          Laurus.Text2Frame.FileName = args[1]
-          Laurus.Text2Frame.CommonEventID = args[2]
-          if (args[3] !== undefined) Laurus.Text2Frame.WriteBack = (args[3] === 'true' || args[3] === true)
-          const { PATH_SEP, BASE_PATH } = getDirParams()
-          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
-          Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
-        }
-        break
       case 'MERGE_MESSAGE_TO_EVENT' :
-      case 'MERGE3_MESSAGE_TO_EVENT' :
         addMessage('merge message to event. \n/ マージでイベントに反映します。')
         if (args[0]) Laurus.Text2Frame.FileFolder = args[0]
         if (args[1]) Laurus.Text2Frame.FileName = args[1]
@@ -4596,7 +4486,6 @@
         }
         break
       case 'MERGE_MESSAGE_TO_CE' :
-      case 'MERGE3_MESSAGE_TO_CE' :
         addMessage('merge message to common event. \n/ マージでコモンイベントに反映します。')
         Laurus.Text2Frame.FileFolder = args[0]
         Laurus.Text2Frame.FileName = args[1]
@@ -4608,28 +4497,13 @@
           Laurus.Text2Frame.BasePath = (args[3] && args[4]) ? `${BASE_PATH}${PATH_SEP}${args[3]}${PATH_SEP}${args[4]}` : undefined
         }
         break
-      case 'SYNC_EVENT_BIDIRECTIONAL' :
-      case 'イベントを双方向差分同期' :
-        addMessage('bidirectional sync event. \n/ イベントを双方向差分同期します。')
-        if (args[0]) Laurus.Text2Frame.FileFolder = args[0]
-        if (args[1]) Laurus.Text2Frame.FileName = args[1]
-        if (args[2]) Laurus.Text2Frame.MapID = args[2]
-        if (args[3]) Laurus.Text2Frame.EventID = args[3]
-        if (args[4]) Laurus.Text2Frame.PageID = args[4]
-        if (args[0] || args[1]) {
-          const { PATH_SEP, BASE_PATH } = getDirParams()
-          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
-          Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
-        }
-        Laurus.Text2Frame.ExecMode = 'SYNC_EVENT_BIDIRECTIONAL'
-        break
-      case 'APPLY_MESSAGES_BY_MANIFEST' :
+
+      case 'BATCH_IMPORT_MESSAGES_FROM_FOLDER' :
       case '一括反映' :
-      case 'BATCH' : // backward compatibility
-        addMessage('batch import by manifest. \n/ manifestで一括反映します。')
-        Laurus.Text2Frame.ManifestPath = args[0] || Laurus.Text2Frame.ManifestPath
-        Laurus.Text2Frame.BatchStrategy = String(args[1] || Laurus.Text2Frame.BatchStrategy || 'diff').toLowerCase()
-        Laurus.Text2Frame.ExecMode = 'APPLY_MESSAGES_BY_MANIFEST'
+        addMessage('batch import from folder. \n/ フォルダから一括反映します。')
+        Laurus.Text2Frame.ImportFolder = args[0] || 'text'
+        Laurus.Text2Frame.BatchStrategy = String(args[1] || 'merge').toLowerCase()
+        Laurus.Text2Frame.ExecMode = 'BATCH_IMPORT_MESSAGES_FROM_FOLDER'
         break
       case 'COMMAND_LINE' :
         Laurus.Text2Frame = Object.assign(Laurus.Text2Frame, args[0])
@@ -10380,18 +10254,6 @@
       }
     }
 
-    // マニフェスト一括デプロイの再利用ラッパ。結果サマリを返し、冗長ログ/throw は抑制する。
-    const runBatch = function (opts) {
-      opts = opts || {}
-      const prevQuiet = Laurus.Text2Frame._quiet
-      Laurus.Text2Frame._quiet = true
-      try {
-        return runBatchByManifest.call(interpreter, opts.manifestPath, opts.strategy, true)
-      } finally {
-        Laurus.Text2Frame._quiet = prevQuiet
-      }
-    }
-
     /* 3-way 共通祖先(BASE)スナップショットの規約。VSCode 拡張と同一:
      * <root>/.t2f-base/<locale>/<key>.txt。CLI/プラグインが作る祖先は VSCode と相互運用可能。 */
     const baseSnapshotPathCore = function (root, locale, key) {
@@ -10447,7 +10309,7 @@
       return { text, conflicts, warnings }
     }
 
-    Laurus.Text2Frame.export = { compile, applyDiff, applyOverlay, applyThreeWayMerge, applyMergePull, applyTextFile, runBatch, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId }
+    Laurus.Text2Frame.export = { compile, applyDiff, applyOverlay, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId }
 
     /* 差分適用後のコマンドリストをテキストファイルへ書き戻す。
      * Frame2Text プラグインの decompile 関数を使用します。
@@ -10479,174 +10341,44 @@
         : path.resolve(rootDir, maybeRelativePath)
     }
 
-    const runBatchByManifest = function (manifestPathArg, strategyArg, quiet) {
-      if (typeof require === 'undefined') {
-        throw new Error('BATCH command requires Node.js runtime.')
-      }
-      const fs = require('fs')
-      const path = require('path')
-
-      const { BASE_PATH } = getDirParams()
-      const manifestPath = resolveFromRoot(BASE_PATH, manifestPathArg)
-      if (!manifestPath) {
-        throw new Error('ManifestPath is required for BATCH command.')
-      }
-
-      const _resolvedBatch = resolveStrategy(strategyArg)
-      if (!_resolvedBatch) {
-        throw new Error('Unknown strategy: ' + strategyArg + ' (expected: merge|overwrite)')
-      }
-      const syncBack = _resolvedBatch.sync
-
-      if (syncBack && typeof this.pluginCommandFrame2Text !== 'function') {
-        throw new Error('Frame2Text plugin is required for sync strategy in BATCH command.')
-      }
-
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, { encoding: 'utf8' }))
-      const manifestRootDir = path.dirname(manifestPath)
-      const entries = Array.isArray(manifest.entries) ? manifest.entries : []
-      const results = []
-
-      for (let index = 0; index < entries.length; index++) {
-        const entry = entries[index]
-        try {
-          const textPath = resolveFromRoot(manifestRootDir, entry.textPath || entry.path)
-          if (!textPath) {
-            throw new Error('textPath is required')
-          }
-
-          const parsed = parseFrontMatter(readText(textPath))
-          const meta = parsed.meta || {}
-          // Front matter is the primary source of truth; the manifest entry is a fallback.
-          const kind = String(meta.kind || entry.kind || 'event').toLowerCase()
-          // Per-entry strategy/sync/base override the batch defaults (front matter wins).
-          const _entryResolved = resolveStrategy(meta.strategy || entry.strategy) || _resolvedBatch
-          const entryStrategy = _entryResolved.strategy
-          const entrySync = _entryResolved.sync || syncBack
-          if (entrySync && typeof this.pluginCommandFrame2Text !== 'function') {
-            throw new Error('Frame2Text plugin is required for sync (writeback).')
-          }
-          const entryBasePath = resolveFromRoot(manifestRootDir, meta.basePath || entry.basePath)
-
-          if (kind === 'event') {
-            const mapId = meta.mapId || entry.mapId
-            const eventId = meta.eventId || entry.eventId
-            const pageId = meta.pageId || entry.pageId || '1'
-            if (!eventId) {
-              throw new Error('eventId is required for event entry')
-            }
-            const defaultMapPath = mapId ? path.join('data', 'Map' + ('000' + String(mapId)).slice(-3) + '.json') : null
-            const mapPath =
-              resolveFromRoot(manifestRootDir, entry.mapPath) ||
-              resolveFromRoot(manifestRootDir, defaultMapPath)
-            if (!mapPath) {
-              throw new Error('mapPath or mapId is required for event entry')
-            }
-
-            this.pluginCommandText2Frame('COMMAND_LINE', [{
-              IsDebug: Laurus.Text2Frame.IsDebug,
-              TextPath: textPath,
-              MapPath: mapPath,
-              EventID: String(eventId),
-              PageID: String(pageId),
-              IsOverwrite: entryStrategy === 'overwrite',
-              BasePath: entryBasePath,
-              ExecMode: entryStrategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_EVENT' : 'MERGE_MESSAGE_TO_EVENT',
-              WriteBack: false
-            }])
-
-            if (entrySync) {
-              this.pluginCommandFrame2Text('COMMAND_LINE', [{
-                IsDebug: Laurus.Text2Frame.IsDebug,
-                TextPath: textPath,
-                MapPath: mapPath,
-                EventID: String(eventId),
-                PageID: String(pageId),
-                ExecMode: 'SYNC_EVENT_TO_MESSAGE'
-              }])
-            }
-          } else if (kind === 'common') {
-            const commonEventId = meta.commonEventId || entry.commonEventId
-            if (!commonEventId) {
-              throw new Error('commonEventId is required for common entry')
-            }
-            const commonEventPath =
-              resolveFromRoot(manifestRootDir, entry.commonEventPath) ||
-              resolveFromRoot(manifestRootDir, path.join('data', 'CommonEvents.json'))
-
-            this.pluginCommandText2Frame('COMMAND_LINE', [{
-              IsDebug: Laurus.Text2Frame.IsDebug,
-              TextPath: textPath,
-              CommonEventPath: commonEventPath,
-              CommonEventID: String(commonEventId),
-              IsOverwrite: entryStrategy === 'overwrite',
-              BasePath: entryBasePath,
-              ExecMode: entryStrategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_CE' : 'MERGE_MESSAGE_TO_CE',
-              WriteBack: false
-            }])
-
-            if (entrySync) {
-              this.pluginCommandFrame2Text('COMMAND_LINE', [{
-                IsDebug: Laurus.Text2Frame.IsDebug,
-                TextPath: textPath,
-                CommonEventPath: commonEventPath,
-                CommonEventID: String(commonEventId),
-                ExecMode: 'SYNC_CE_TO_MESSAGE'
-              }])
-            }
-          } else {
-            throw new Error('unknown kind: ' + kind)
-          }
-
-          results.push({ index: index + 1, ok: true, textPath })
-        } catch (error) {
-          results.push({ index: index + 1, ok: false, textPath: entry.textPath || entry.path || '', error: error.message })
-        }
-      }
-
-      const failures = results.filter(function (r) { return !r.ok })
-      const summary = { total: results.length, failed: failures.length, results }
-      if (!quiet) {
-        console.log(JSON.stringify(summary, null, 2))
-        if (failures.length > 0) {
-          throw new Error('BATCH completed with failures: ' + failures.length)
-        }
-      }
-      return summary
-    }
     if (Laurus.Text2Frame.ExecMode === 'LIBRARY_EXPORT') {
       return
     }
 
-    if (Laurus.Text2Frame.ExecMode === 'APPLY_MESSAGES_BY_MANIFEST') {
-      runBatchByManifest.call(this, Laurus.Text2Frame.ManifestPath, Laurus.Text2Frame.BatchStrategy)
-      return
-    }
-
-    if (Laurus.Text2Frame.ExecMode === 'SYNC_EVENT_BIDIRECTIONAL') {
-      if (typeof this.pluginCommandFrame2Text !== 'function') {
-        throw new Error(
-          'Frame2Text plugin is required. / SYNC_EVENT_BIDIRECTIONAL には Frame2Text プラグインが必要です。'
-        )
+    if (Laurus.Text2Frame.ExecMode === 'BATCH_IMPORT_MESSAGES_FROM_FOLDER') {
+      if (typeof require === 'undefined') {
+        addMessage('[batch-import] Node.js environment not available')
+        return
       }
-
-      // Apply text edits first, then sync merged JSON back to text.
-      this.pluginCommandText2Frame('DIFF_IMPORT_MESSAGE_TO_EVENT', [
-        Laurus.Text2Frame.FileFolder,
-        Laurus.Text2Frame.FileName,
-        Laurus.Text2Frame.MapID,
-        Laurus.Text2Frame.EventID,
-        Laurus.Text2Frame.PageID,
-        false
-      ])
-
-      this.pluginCommandFrame2Text('SYNC_EVENT_TO_MESSAGE', [
-        Laurus.Text2Frame.FileFolder,
-        Laurus.Text2Frame.FileName,
-        Laurus.Text2Frame.MapID,
-        Laurus.Text2Frame.EventID,
-        Laurus.Text2Frame.PageID
-      ])
+      const _fs = require('fs')
+      const _path = require('path')
+      const { BASE_PATH } = getDirParams()
+      const root = _path.isAbsolute(Laurus.Text2Frame.ImportFolder) ? Laurus.Text2Frame.ImportFolder : _path.resolve(BASE_PATH, Laurus.Text2Frame.ImportFolder)
+      const strategy = Laurus.Text2Frame.BatchStrategy || 'merge'
+      const walk = function (dir) {
+        let out = []
+        let entries = []
+        try { entries = _fs.readdirSync(dir) } catch (e) { return out }
+        entries.forEach(function (ent) {
+          const full = _path.join(dir, ent)
+          const stat = _fs.statSync(full)
+          if (stat.isDirectory()) out = out.concat(walk(full))
+          else if (stat.isFile() && /\.txt$/i.test(ent)) out.push(full)
+        })
+        return out
+      }
+      let ok = 0
+      let fail = 0
+      walk(root).forEach(function (fileName) {
+        let meta
+        try { meta = parseFrontMatter(readText(fileName)).meta } catch (e) { meta = null }
+        if (!meta || !meta.kind) return
+        const res = applyTextFile({ textPath: fileName, strategy, backup: true })
+        if (res && res.ok) ok++
+        else fail++
+      })
+      addMessage('[batch-import] Completed: ' + ok + ' success, ' + fail + ' errors')
+      console.log('[batch-import] Completed: ' + ok + ' success, ' + fail + ' errors')
       return
     }
 
@@ -10708,8 +10440,7 @@
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break
       }
-      case 'MERGE_MESSAGE_TO_EVENT':
-      case 'MERGE3_MESSAGE_TO_EVENT': {
+      case 'MERGE_MESSAGE_TO_EVENT': {
         const map_data = readJsonData(Laurus.Text2Frame.MapPath)
         if (!map_data.events[Laurus.Text2Frame.EventID]) {
           throw new Error('EventID not found. / EventIDが見つかりません。\n' + 'Event ID: ' + Laurus.Text2Frame.EventID)
@@ -10727,8 +10458,7 @@
         addMessage('Success / 書き出し成功！\n======> MapID: ' + Laurus.Text2Frame.MapID + ' -> EventID: ' + Laurus.Text2Frame.EventID + ' -> PageID: ' + Laurus.Text2Frame.PageID)
         break
       }
-      case 'MERGE_MESSAGE_TO_CE':
-      case 'MERGE3_MESSAGE_TO_CE': {
+      case 'MERGE_MESSAGE_TO_CE': {
         const ce_data = readJsonData(Laurus.Text2Frame.CommonEventPath)
         if (ce_data.length - 1 < Laurus.Text2Frame.CommonEventID) {
           throw new Error('Common Event not found. / コモンイベントが見つかりません。: ' + Laurus.Text2Frame.CommonEventID)
@@ -10742,7 +10472,6 @@
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break
       }
-      case 'DIFF_IMPORT_MESSAGE_TO_EVENT':
       case 'OVERLAY_MESSAGE_TO_EVENT': {
         const map_data = readJsonData(Laurus.Text2Frame.MapPath)
         if (!map_data.events[Laurus.Text2Frame.EventID]) {
@@ -10779,7 +10508,6 @@
         )
         break
       }
-      case 'DIFF_IMPORT_MESSAGE_TO_CE':
       case 'OVERLAY_MESSAGE_TO_CE': {
         const ce_data = readJsonData(Laurus.Text2Frame.CommonEventPath)
         if (ce_data.length - 1 < Laurus.Text2Frame.CommonEventID) {
@@ -10809,7 +10537,7 @@
       'Please restart RPG Maker MV(Editor) WITHOUT save. \n' +
         '**セーブせずに**プロジェクトファイルを開き直してください'
     )
-    // _quiet 指定時(applyTextFile/runBatch 経由)は冗長な案内ログを抑制する。
+    // _quiet 指定時(applyTextFile 経由)は冗長な案内ログを抑制する。
     if (!Laurus.Text2Frame._quiet) {
       console.log(
         'Please restart RPG Maker MV(Editor) WITHOUT save. \n' +
@@ -10853,19 +10581,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     return { meta, body, hasFrontMatter: true }
   }
 
-  // Build a front matter block from routing metadata (used to backfill files that lack one).
-  const renderFrontMatterCli = function (meta) {
-    const lines = ['---']
-    const order = ['kind', 'mapId', 'eventId', 'pageId', 'commonEventId', 'locale', 'strategy', 'basePath']
-    order.forEach(function (k) {
-      if (meta[k] !== undefined && meta[k] !== null && String(meta[k]) !== '') {
-        lines.push(k + ': ' + String(meta[k]))
-      }
-    })
-    lines.push('---', '')
-    return lines.join('\n')
-  }
-
   // Recursively collect *.txt files under a directory.
   const walkTextFilesCli = function (dir) {
     const out = []
@@ -10883,19 +10598,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     return out.sort()
   }
 
-  const toMapPath = function (mapId) {
-    return path.join('data', 'Map' + ('000' + String(mapId)).slice(-3) + '.json')
-  }
-
-  const resolveFromRoot = function (rootDir, maybeRelativePath) {
-    if (!maybeRelativePath) {
-      return maybeRelativePath
-    }
-    return path.isAbsolute(maybeRelativePath)
-      ? maybeRelativePath
-      : path.resolve(rootDir, maybeRelativePath)
-  }
-
   const program = new Command()
   program
     .version('2.2.1')
@@ -10906,10 +10608,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-e, --event_id <name>', 'event file id')
     .option('-p, --page_id <name>', 'page id')
     .option('-c, --common_event_id <name>', 'common event id')
-    .option('-f, --manifest <path>', 'batch manifest json path')
     .option('-s, --strategy <merge|overwrite>', 'deploy strategy (default merge; legacy import/diff/overlay/merge3/sync accepted)', /^(merge|overwrite|import|diff|sync|overlay|merge3)$/i, 'merge')
     .option('-b, --base <path>', 'ancestor text path for merge (3-way common ancestor)')
-    .option('--sync', 're-export text after applying (requires Frame2Text)', false)
     .option('-w, --overwrite <true/false>', 'overwrite mode (legacy)', 'false')
     .option('-v, --verbose', 'debug mode', false)
     .option('--watch', 'watch text files and redeploy on change (batch mode)', false)
@@ -10964,7 +10664,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
   const _cliResolved = module.exports.resolveStrategy(options.strategy) || { strategy: 'merge', sync: false }
   const cliStrategy = _cliResolved.strategy
-  const cliSync = _cliResolved.sync || options.sync === true
   const execModeFor = function (kind) {
     const suffix = kind === 'common' ? '_TO_CE' : '_TO_EVENT'
     return (cliStrategy === 'overwrite' ? 'IMPORT_MESSAGE' : 'MERGE_MESSAGE') + suffix
@@ -11005,154 +10704,49 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       console.log(JSON.stringify(module.exports.compile(parseFrontMatterCli(data).body), null, 2))
     })
   } else if (options.mode === 'batch') {
+    // Front matter is the sole source of routing/metadata: scan the text directory for
+    // front-matter .txt files and deploy each by its own header.
+    const scanRoot = path.resolve(options.text_path || 'text')
     const strategy = cliStrategy
-    const includeSync = cliSync
-    // Front matter is the primary source of routing/metadata. A manifest is optional and
-    // legacy: when omitted, scan the text directory for front-matter .txt files (E-2);
-    // when explicitly given, it is used AND its metadata is backfilled into files that
-    // lack front matter (E-3).
-    const manifestExplicit = !!options.manifest
-    let manifestPath = null
-    let manifestRootDir
-    let entries
-    if (manifestExplicit) {
-      manifestPath = path.resolve(options.manifest)
-      manifestRootDir = path.dirname(manifestPath)
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, { encoding: 'utf8' }))
-      entries = Array.isArray(manifest.entries) ? manifest.entries : []
-    } else {
-      const scanRoot = path.resolve(options.text_path || 'text')
-      manifestRootDir = process.cwd()
-      entries = walkTextFilesCli(scanRoot)
+    const cliBasePath = options.base ? path.resolve(options.base) : undefined
+
+    const collectFiles = function () {
+      return walkTextFilesCli(scanRoot)
         .filter(function (f) { return parseFrontMatterCli(fs.readFileSync(f, { encoding: 'utf8' })).hasFrontMatter })
-        .map(function (f) { return { textPath: f } })
-      if (entries.length === 0) {
-        throw new Error('No front-matter text files found under ' + scanRoot + ' (pass --manifest or --text_path <dir>).')
-      }
     }
 
-    if (includeSync) {
-      // Load Frame2Text bridge for one-shot sync mode.
-      require('./Frame2Text.js')
+    const deployOne = function (fileArg) {
+      const parsed = parseFrontMatterCli(fs.readFileSync(fileArg, { encoding: 'utf8' }))
+      const meta = parsed.meta || {}
+      const kind = String(meta.kind || 'event').toLowerCase()
+      const entryStrategy = (module.exports.resolveStrategy(meta.strategy) || { strategy }).strategy
+      const entryBasePath =
+        (meta.basePath ? path.resolve(path.dirname(fileArg), meta.basePath) : undefined) || cliBasePath
+      const opts = {
+        textPath: fileArg,
+        strategy: entryStrategy,
+        basePath: entryBasePath,
+        backup: true,
+        isDebug: options.verbose
+      }
+      // Resolve data paths against the project root (cwd), not the module dir, so batch
+      // deploys target the invoking project's data/ (front matter carries the routing IDs).
+      if (kind === 'common') {
+        opts.commonEventPath = path.resolve(process.cwd(), 'data', 'CommonEvents.json')
+      } else if (meta.mapId) {
+        opts.mapPath = path.resolve(process.cwd(), 'data', 'Map' + ('000' + String(meta.mapId)).slice(-3) + '.json')
+      }
+      return module.exports.applyTextFile(opts)
     }
 
-    const results = []
-    entries.forEach(function (entry, index) {
-      try {
-        const textPath = resolveFromRoot(manifestRootDir, entry.textPath || entry.path)
-        if (!textPath) {
-          throw new Error('textPath is required')
-        }
-
-        const parsed = parseFrontMatterCli(fs.readFileSync(textPath, { encoding: 'utf8' }))
-        const meta = parsed.meta || {}
-        // Front matter wins; manifest entry is the fallback (E-1).
-        const kind = String(meta.kind || entry.kind || 'event').toLowerCase()
-        // Per-entry strategy/sync/base override the batch defaults (front matter first, E-4).
-        const _entryResolved = module.exports.resolveStrategy(meta.strategy || entry.strategy) || _cliResolved
-        const entryStrategy = _entryResolved.strategy
-        const entrySync = _entryResolved.sync || includeSync
-        const entryBasePath =
-          resolveFromRoot(manifestRootDir, meta.basePath || entry.basePath) ||
-          (options.base ? path.resolve(options.base) : undefined)
-
-        // E-3: when a manifest is explicitly provided, backfill front matter into files that
-        // lack one, so subsequent runs can be driven by front matter alone (non-destructive:
-        // files that already have front matter are never touched).
-        if (manifestExplicit && !parsed.hasFrontMatter) {
-          const fmMeta = {
-            kind,
-            mapId: entry.mapId || meta.mapId,
-            eventId: entry.eventId || meta.eventId,
-            pageId: entry.pageId || meta.pageId,
-            commonEventId: entry.commonEventId || meta.commonEventId,
-            locale: entry.locale || meta.locale
-          }
-          fs.writeFileSync(textPath, renderFrontMatterCli(fmMeta) + parsed.body, { encoding: 'utf8' })
-        }
-
-        if (kind === 'event') {
-          const mapId = meta.mapId || entry.mapId
-          const eventId = meta.eventId || entry.eventId
-          const pageId = meta.pageId || entry.pageId || '1'
-          if (!eventId) {
-            throw new Error('eventId is required for event entry')
-          }
-          const mapPath =
-            resolveFromRoot(manifestRootDir, entry.mapPath) ||
-            (mapId ? resolveFromRoot(manifestRootDir, toMapPath(mapId)) : null)
-          if (!mapPath) {
-            throw new Error('mapPath or mapId is required for event entry')
-          }
-
-          const cmd = {
-            IsDebug: options.verbose,
-            TextPath: textPath,
-            MapPath: mapPath,
-            EventID: String(eventId),
-            PageID: String(pageId),
-            IsOverwrite: entryStrategy === 'overwrite',
-            BasePath: entryBasePath,
-            ExecMode: entryStrategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_EVENT' : 'MERGE_MESSAGE_TO_EVENT',
-            WriteBack: false
-          }
-          Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [cmd])
-
-          if (entrySync) {
-            if (typeof Game_Interpreter.prototype.pluginCommandFrame2Text !== 'function') {
-              throw new Error('Frame2Text bridge is not available for sync strategy')
-            }
-            Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', [{
-              IsDebug: options.verbose,
-              TextPath: textPath,
-              MapPath: mapPath,
-              EventID: String(eventId),
-              PageID: String(pageId),
-              ExecMode: 'SYNC_EVENT_TO_MESSAGE'
-            }])
-          }
-        } else if (kind === 'common') {
-          const commonEventId = meta.commonEventId || entry.commonEventId
-          if (!commonEventId) {
-            throw new Error('commonEventId is required for common entry')
-          }
-          const commonEventPath =
-            resolveFromRoot(manifestRootDir, entry.commonEventPath) ||
-            resolveFromRoot(manifestRootDir, path.join('data', 'CommonEvents.json'))
-          const cmd = {
-            IsDebug: options.verbose,
-            TextPath: textPath,
-            CommonEventPath: commonEventPath,
-            CommonEventID: String(commonEventId),
-            IsOverwrite: entryStrategy === 'overwrite',
-            BasePath: entryBasePath,
-            ExecMode: entryStrategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_CE' : 'MERGE_MESSAGE_TO_CE',
-            WriteBack: false
-          }
-          Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [cmd])
-
-          if (entrySync) {
-            if (typeof Game_Interpreter.prototype.pluginCommandFrame2Text !== 'function') {
-              throw new Error('Frame2Text bridge is not available for sync strategy')
-            }
-            Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', [{
-              IsDebug: options.verbose,
-              TextPath: textPath,
-              CommonEventPath: commonEventPath,
-              CommonEventID: String(commonEventId),
-              ExecMode: 'SYNC_CE_TO_MESSAGE'
-            }])
-          }
-        } else {
-          throw new Error('unknown kind: ' + kind)
-        }
-
-        results.push({ index: index + 1, ok: true, textPath, locale: entry.locale || meta.locale || '' })
-      } catch (error) {
-        results.push({ index: index + 1, ok: false, textPath: entry.textPath || entry.path || '', error: error.message })
-      }
+    const files = collectFiles()
+    if (files.length === 0) {
+      throw new Error('No front-matter text files found under ' + scanRoot + ' (pass --text_path <dir>).')
+    }
+    const results = files.map(function (fileArg) {
+      const res = deployOne(fileArg)
+      return { textPath: fileArg, ok: res.ok, error: res.error, warnings: res.warnings }
     })
-
     const failures = results.filter(function (r) { return !r.ok })
     console.log(JSON.stringify({ total: results.length, failed: failures.length, results }, null, 2))
     if (failures.length > 0) {
@@ -11167,55 +10761,18 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         throw new Error('chokidar is required for --watch. Run: npm install')
       }
 
-      const watchStrategy = strategy
-      if (cliSync) {
-        console.log('[watch] note: sync write-back runs only on the initial pass; per-file redeploy uses the resolved strategy.')
-      }
-
       const stamp = function () {
         const d = new Date()
         const pad = function (n) { return ('0' + n).slice(-2) }
         return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds())
       }
 
-      // テキスト絶対パス -> マニフェストエントリ(解決済みターゲット付き)のマップを構築。
-      const buildEntryMap = function () {
-        const mf = JSON.parse(fs.readFileSync(manifestPath, { encoding: 'utf8' }))
-        const es = Array.isArray(mf.entries) ? mf.entries : []
-        const map = {}
-        es.forEach(function (entry) {
-          const tp = resolveFromRoot(manifestRootDir, entry.textPath || entry.path)
-          if (tp) {
-            map[path.resolve(tp)] = entry
-          }
-        })
-        return map
-      }
-      let entryMap = buildEntryMap()
-
-      const deployOne = function (file) {
-        const entry = entryMap[path.resolve(file)] || {}
-        const mapPath =
-          resolveFromRoot(manifestRootDir, entry.mapPath) ||
-          (entry.mapId ? resolveFromRoot(manifestRootDir, toMapPath(entry.mapId)) : undefined)
-        const commonEventPath =
-          resolveFromRoot(manifestRootDir, entry.commonEventPath) ||
-          (entry.commonEventId ? resolveFromRoot(manifestRootDir, path.join('data', 'CommonEvents.json')) : undefined)
-        const res = module.exports.applyTextFile({
-          textPath: file,
-          kind: entry.kind,
-          mapId: entry.mapId,
-          eventId: entry.eventId,
-          pageId: entry.pageId,
-          commonEventId: entry.commonEventId,
-          mapPath,
-          commonEventPath,
-          strategy: watchStrategy,
-          overwrite: entry.overwrite,
-          backup: true,
-          isDebug: options.verbose
-        })
-        const rel = path.relative(process.cwd(), file)
+      const deployWatched = function (fileArg) {
+        let parsed
+        try { parsed = parseFrontMatterCli(fs.readFileSync(fileArg, { encoding: 'utf8' })) } catch (e) { return }
+        if (!parsed.hasFrontMatter) return
+        const res = deployOne(fileArg)
+        const rel = path.relative(process.cwd(), fileArg)
         if (res.ok) {
           const tgt = res.dataPath ? path.relative(process.cwd(), res.dataPath) : '?'
           const w = res.warnings.length ? '  (' + res.warnings.length + ' warnings)' : ''
@@ -11228,19 +10785,17 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
       const timers = {}
       const debounceMs = parseInt(options.debounce, 10) || 250
-      const scheduleDeploy = function (file) {
-        const key = path.resolve(file)
-        if (timers[key]) {
-          clearTimeout(timers[key])
-        }
+      const scheduleDeploy = function (fileArg) {
+        const key = path.resolve(fileArg)
+        if (timers[key]) clearTimeout(timers[key])
         timers[key] = setTimeout(function () {
           delete timers[key]
-          deployOne(file)
+          deployWatched(fileArg)
         }, debounceMs)
       }
 
-      const usePolling = !!options.poll || /wsl\.localhost|[/\\]mnt[/\\]/.test(manifestPath)
-      const watcher = chokidar.watch(Object.keys(entryMap).concat([manifestPath]), {
+      const usePolling = !!options.poll || /wsl\.localhost|[/\\]mnt[/\\]/.test(scanRoot)
+      const watcher = chokidar.watch(scanRoot, {
         usePolling,
         interval: 300,
         awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 50 },
@@ -11248,20 +10803,16 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       })
 
       console.log(
-        '[watch] watching ' + Object.keys(entryMap).length + ' text file(s). strategy=' + watchStrategy +
+        '[watch] watching ' + path.relative(process.cwd(), scanRoot) + ' for *.txt. strategy=' + strategy +
         (usePolling ? ' (polling)' : '') + '. Press Ctrl-C to stop.'
       )
 
-      watcher.on('change', function (file) {
-        if (path.resolve(file) === path.resolve(manifestPath)) {
-          console.log('[' + stamp() + '] manifest changed -> rescan + full redeploy')
-          entryMap = buildEntryMap()
-          watcher.add(Object.keys(entryMap))
-          Object.keys(entryMap).forEach(function (f) { scheduleDeploy(f) })
-          return
-        }
-        scheduleDeploy(file)
-      })
+      const onFsEvent = function (fileArg) {
+        if (!/\.txt$/i.test(fileArg)) return
+        scheduleDeploy(fileArg)
+      }
+      watcher.on('add', onFsEvent)
+      watcher.on('change', onFsEvent)
 
       process.on('SIGINT', function () {
         console.log('\n[watch] stopping...')

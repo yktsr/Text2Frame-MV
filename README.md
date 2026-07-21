@@ -197,7 +197,7 @@ Visual Studio Codeの[Plugin](https://marketplace.visualstudio.com/items?itemNam
 
 > この節は **ターミナル（コマンド）でまとめて処理したい人向け** です。ボタン操作だけで反映・取り出し・英語化をしたい方は、上記「[Visual Studio Code Plugin](#visual-studio-code-plugin)」をお使いください（専門用語もやさしく表示されます）。
 
-Text2Frame/Frame2Text は、manifest（処理対象の一覧ファイル）を使ってフォルダ全体を一括処理できます。以下では次の言葉を使います —— **反映**＝テキストをゲームへ書き込む、**取り出し（pull）**＝ゲームの内容をテキストへ書き出す、**front matter**＝ファイル先頭の `---` で囲む設定欄。反映・取り出しの方式は **`merge`（＝安全に統合。勝手に消さない・既定）** と **`overwrite`（＝全部上書き）** の2つです。
+Text2Frame/Frame2Text は、front matter 付きテキストのフォルダを丸ごと一括処理できます。以下では次の言葉を使います —— **反映**＝テキストをゲームへ書き込む、**取り出し（pull）**＝ゲームの内容をテキストへ書き出す、**front matter**＝ファイル先頭の `---` で囲む設定欄。反映・取り出しの方式は **`merge`（＝安全に統合。勝手に消さない・既定）** と **`overwrite`（＝全部上書き）** の2つです。
 
 ### 1. メタ情報付きテキスト
 
@@ -216,11 +216,7 @@ key: map001_event001_page001
 Hello
 ```
 
-### 2. manifest を用意する
-
-サンプルは [examples/batch-manifest.sample.json](examples/batch-manifest.sample.json) を参照してください。
-
-### 3. 取り出し（JSON -> text、既定は merge）
+### 2. 取り出し（JSON -> text、既定は merge）
 
 取り出し（pull）も**既定は merge**で、**既存の翻訳を残したまま**ゲーム側の新規・変更だけを取り込みます（同一箇所を双方で変えたら両方残す）。白紙から取り直したいときだけ `--strategy overwrite`。
 
@@ -229,36 +225,26 @@ Hello
 node Frame2Text.js --mode map --input_path data/Map001.json --output_path text/en/map001_event001_page1.txt --event_id 1 --page_id 1
 # 全部取り直す（上書き）
 node Frame2Text.js --mode map --strategy overwrite --input_path data/Map001.json --output_path text/en/map001_event001_page1.txt --event_id 1 --page_id 1
-# 一括
-node Frame2Text.js --mode batch-export --manifest examples/batch-manifest.sample.json --english_tag true
+# 一括（data/ を走査し text/<locale>/ 配下へ front matter 付きで書き出し）
+node Frame2Text.js --mode batch-export --data-dir data --locale en --text-base text --english_tag true
 ```
 
 3-way の祖先は `.t2f-base/<言語>/<key>.txt` に**自動保存/自動参照**されます（`--base` で明示も可・通常不要）。
 
-### 4. 一括反映（text -> JSON、既定は merge）
+### 3. 一括反映（text -> JSON、既定は merge）
 
-**メタデータは各テキスト先頭の front matter（YAML ヘッダ）を第一の真実とします。** manifest は任意（レガシー）です。
+**ルーティング情報は各テキスト先頭の front matter（YAML ヘッダ）だけで決まります。**
 
 ```bash
-# manifest 不要: text/ 配下の front matter 付き .txt を走査して一括反映
+# text/ 配下の front matter 付き .txt を再帰走査して一括反映
 node Text2Frame.js --mode batch --text_path text
-
-# レガシー: manifest 明示（front matter が優先され、front matter が無いファイルには自動追記＝backfill）
-node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json
 ```
 
 `--strategy` を省略すると `merge`（既定）です。全上書きしたいときだけ `--strategy overwrite` を付けます。
 
-- **front matter 優先**: manifest エントリと front matter が食い違う場合、front matter（`kind`/`mapId`/`eventId`/`pageId`/`commonEventId`、任意で `strategy`/`basePath`/`locale`）が勝ちます。
-- **manifest 無し**: `--manifest` を省略すると `--text_path <dir>`（既定 `text`）配下を再帰走査し、front matter 付き `.txt` を各自の front matter で反映します。
-- **backfill（自己記述化）**: `--manifest` を明示した時のみ、front matter を持たないファイルに manifest のメタを先頭へ追記します（既存 front matter は不変・非破壊）。一度流せば以降は manifest 無しで回せます。
+- **front matter で振り分け**: 各 `.txt` は自分の front matter（`kind`/`mapId`/`eventId`/`pageId`/`commonEventId`、任意で `strategy`/`basePath`/`locale`）に従って反映先が決まります。front matter を持たない `.txt` はスキップされます。
 - **front matter での strategy 指定（任意）**: ファイル先頭に `strategy: overwrite` 等を書くと、そのファイルだけ方式を上書きできます（`basePath` で 3-way の祖先も指定可）。
-
-### 5. 反映後にテキストへ書き戻して整形（--sync）
-
-```bash
-node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json --sync
-```
+- **監視**: `--watch` を付けると text ディレクトリを監視し、変更・追加された `.txt` を自動で再反映します。
 
 ### strategy 一覧（text→JSON の反映方式）
 
@@ -269,9 +255,7 @@ node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json -
 | `merge`（既定） | **JSON 構造を保ちつつテキストを賢く反映**。自動判定で、祖先があれば 3-way マージ（同一箇所の相反変更のみ**両方残す**）、祖先が無く既存に内容があれば会話文字列だけ差し替え（overlay）、既存が空ならテキストをそのまま新規反映。移動/分岐/スイッチ等の UI 編集を消しません。 | 通常はこれ。ライターがセリフを編集し、構造は UI 側で編集する運用に最適 |
 | `overwrite` | **テキストを完全な正として全上書き**（テキストに無い JSON 側コマンドは削除） | 初回取り込み・完全再生成・テキストが唯一の正のとき |
 
-`--sync` は strategy ではなく**フラグ**です（反映後にテキストへ書き戻して標準形へ整形。Frame2Text が必要）。
-
-> **旧 strategy 名は非推奨エイリアス**として引き続き受理され、内部で正規化されます: `import`/`diff` → `overwrite`、`overlay`/`merge3` → `merge`、`sync` → `merge` ＋ `--sync` フラグ。
+> **旧 strategy 名は非推奨エイリアス**として引き続き受理され、内部で正規化されます: `import`/`diff` → `overwrite`、`overlay`/`merge3`/`sync` → `merge`。
 
 **3-way の祖先（BASE）は `.t2f-base/<言語>/<key>.txt` に自動保存・自動参照**されます（VS Code / CLI / プラグインで共通・相互運用可、`.gitignore` 済）。`--base`/`BaseFolder` は明示したいときだけの任意指定です。
 
@@ -293,21 +277,20 @@ node Text2Frame.js --mode batch --manifest examples/batch-manifest.sample.json -
 
 | 操作 | VS Code | CLI | プラグイン(MZ) |
 | --- | --- | --- | --- |
-| ゲームに反映(merge/overwrite) | パネル「ゲームに反映」 | `Text2Frame.js --mode map/common/batch [--strategy merge\|overwrite]` | `MERGE_MESSAGE_TO_EVENT`/`_TO_CE`・`IMPORT_MESSAGE_TO_*`・`APPLY_MESSAGES_BY_MANIFEST` |
-| ゲームから取り出し(merge/overwrite) | パネル「ゲームから取り出す」 | `Frame2Text.js --mode map/common/batch-export [--strategy merge\|overwrite]` | `MERGE_EVENT_TO_MESSAGE`/`_CE`(翻訳保持)・`EXPORT_*`(上書き) |
+| ゲームに反映(merge/overwrite) | パネル「ゲームに反映」 | `Text2Frame.js --mode map/common/batch [--strategy merge\|overwrite]` | `MERGE_MESSAGE_TO_EVENT`/`_TO_CE`・`IMPORT_MESSAGE_TO_*`・`BATCH_IMPORT_MESSAGES_FROM_FOLDER` |
+| ゲームから取り出し(merge/overwrite) | パネル「ゲームから取り出す」 | `Frame2Text.js --mode map/common/batch-export [--strategy merge\|overwrite]` | `MERGE_EVENT_TO_MESSAGE`/`_CE`(翻訳保持)・`EXPORT_*`(上書き)・`BATCH_EXPORT_MESSAGES_TO_FOLDER` |
 | 3-way 祖先 | 自動 `.t2f-base` | 自動 `.t2f-base`（`--base` 任意） | 自動 `.t2f-base`（`BaseFolder`/`BaseFileName` 任意） |
 | 競合(両方残す) | あり | あり | あり |
-| 書き戻し/同期 | `writeBackAfterMerge` | `--sync` | `SYNC_*` |
+| 反映時のテキスト書き戻し | 保存時に自動書き戻し | — | — |
 
-> 旧 strategy 名は非推奨エイリアスとして受理・正規化されます: `import`/`diff`→`overwrite`、`overlay`/`merge3`→`merge`、`sync`→`merge`＋`--sync`。
+> 旧 strategy 名は非推奨エイリアスとして受理・正規化されます: `import`/`diff`→`overwrite`、`overlay`/`merge3`/`sync`→`merge`。
 
 ### 英語化の固定フロー（推奨）
 
 1. ja を batch-export で出力
 2. text/en 配下を翻訳
 3. batch で JSON へ反映（既定 `merge`。UI 編集を残したまま会話だけ反映されます）
-4. `--sync` で再整形し、コメント/改行を可能な限り維持
-5. 失敗レコードは CLI の JSON レポートで確認
+4. 失敗レコードは CLI の JSON レポートで確認
 
 > 反映時の警告について: ブロックの**内容変更**は「`Block changed / ブロックが変更されます`」、
 > テキストから消えて**削除されるブロックのみ**「`Block removed / ブロックが削除されます`」と報告されます
@@ -344,10 +327,8 @@ Options:
   -e, --event_id <name>                       event file id
   -p, --page_id <name>                        page id
   -c, --common_event_id <name>                common event id
-  -f, --manifest <path>                       batch manifest json path
   -s, --strategy <merge|overwrite>            deploy strategy (default merge; legacy import/diff/overlay/merge3/sync accepted) (default: "merge")
   -b, --base <path>                           ancestor text path for merge (3-way common ancestor)
-  --sync                                      re-export text after applying (requires Frame2Text) (default: false)
   -w, --overwrite <true/false>                overwrite mode (legacy) (default: "false")
   -v, --verbose                               debug mode (default: false)
   --watch                                     watch text files and redeploy on change (batch mode) (default: false)
@@ -361,7 +342,7 @@ Options:
     SYNOPSIS
         node Text2Frame.js --mode map --text_path <text> --output_path <map json> --event_id <id> --page_id <id> [--strategy merge|overwrite] [--base <ancestor text>]
         node Text2Frame.js --mode common --text_path <text> --output_path <common json> --common_event_id <id> [--strategy merge|overwrite] [--base <ancestor text>]
-        node Text2Frame.js --mode batch [--text_path <dir>] [--manifest <path>] [--strategy merge|overwrite] [--sync] [--watch]
+        node Text2Frame.js --mode batch [--text_path <dir>] [--strategy merge|overwrite] [--watch]
         node Text2Frame.js --mode compile
         node Text2Frame.js --mode test
     DESCRIPTION
@@ -381,7 +362,7 @@ Options:
           例2(全上書き)：$ node Text2Frame.js -m common -t test/basic.txt -o data/CommonEvents.json -c 1 --strategy overwrite
 
         node Text2Frame.js --mode batch ...
-          一括反映モードです。`--manifest` を省略すると `--text_path <dir>`(既定 `text`)配下の front matter 付き
+          一括反映モードです。`--text_path <dir>`(既定 `text`)配下の front matter 付き
           `.txt` を再帰走査し、各ファイル先頭の front matter に従って反映します(詳細は上記「フォルダ一括同期」節)。
 
         node Text2Frame.js --mode compile

@@ -48,9 +48,8 @@ describe('applyTextFile / runBatch (deploy core) Test', function () {
     return p
   }
 
-  it('exports applyTextFile and runBatch', function () {
+  it('exports applyTextFile', function () {
     expect(text2frame.applyTextFile).to.be.a('function')
-    expect(text2frame.runBatch).to.be.a('function')
   })
 
   it('import strategy: writes the event page list and returns ok + target', function () {
@@ -113,21 +112,6 @@ describe('applyTextFile / runBatch (deploy core) Test', function () {
     expect(fs.readFileSync(mapPath + '.bak', 'utf8')).to.equal(pristine)
   })
 
-  it('runBatch returns a summary and applies all entries without throwing', function () {
-    const t1 = writeTextWithMeta('map001_event001_page1.txt', ['---', 'kind: event', 'mapId: 1', 'eventId: 1', 'pageId: 1', '---'])
-    const t2 = writeTextWithMeta('common001.txt', ['---', 'kind: common', 'commonEventId: 1', '---'])
-    const manifestPath = path.join(tmp, 'manifest.json')
-    fs.writeFileSync(manifestPath, JSON.stringify({
-      version: 1,
-      entries: [
-        { kind: 'event', mapId: '1', eventId: '1', pageId: '1', textPath: path.basename(t1) },
-        { kind: 'common', commonEventId: '1', textPath: path.basename(t2) }
-      ]
-    }, null, 2))
-    const summary = text2frame.runBatch({ manifestPath, strategy: 'import' })
-    expect(summary.total).to.equal(2)
-    expect(summary.failed).to.equal(0)
-  })
 })
 
 describe('choice / branch compile invariants', function () {

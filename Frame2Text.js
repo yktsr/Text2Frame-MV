@@ -146,87 +146,27 @@
  * @type string
  * @default
  *
- * @command SYNC_EVENT_TO_MESSAGE
- * @text イベントをテキストに同期
- * @desc JSONのイベントコマンドを正として、既存のテキストファイルに差分を書き込んで同期します。マップ・イベント・ページIDや、同期先ファイルの情報を指定します。
+
  *
- * @arg FileFolder
- * @text 同期先フォルダ名
- * @desc テキストファイルを出力するフォルダ名を設定します。デフォルトはtextです。
- * @type string
- * @default text
- *
- * @arg FileName
- * @text 同期先ファイル名
- * @desc 同期するテキストファイルのファイル名を設定します。デフォルトはmessage.txtです。
- * @type string
- * @default message.txt
- *
- * @arg MapID
- * @text 同期するマップID
- * @desc 同期するマップのIDを設定します。デフォルト値は1です。
- * @type number
- * @default 1
- *
- * @arg EventID
- * @text 同期するイベントID
- * @desc 同期するイベントのIDを設定します。デフォルト値は2です。
- * @type number
- * @default 2
- *
- * @arg PageID
- * @text 同期するページID
- * @desc 同期するページのIDを設定します。デフォルト値は1です。
- * @type number
- * @default 1
- *
- * @command SYNC_CE_TO_MESSAGE
- * @text コモンイベントをテキストに同期
- * @desc JSONのコモンイベントコマンドを正として、既存のテキストファイルに差分を書き込んで同期します。コモンイベントIDや、同期先ファイルの情報を指定します。
- *
- * @arg FileFolder
- * @text 同期先フォルダ名
- * @desc テキストファイルを出力するフォルダ名を設定します。デフォルトはtextです。
- * @type string
- * @default text
- *
- * @arg FileName
- * @text 同期先ファイル名
- * @desc 同期するテキストファイルのファイル名を設定します。デフォルトはmessage.txtです。
- * @type string
- * @default message.txt
- *
- * @arg CommonEventID
- * @text 同期するコモンイベントID
- * @desc 同期するコモンイベントIDを設定します。デフォルト値は1です。
- * @type common_event
- * @default 1
- *
- * @command BATCH_EXPORT
- * @text マニフェストで一括エクスポート
- * @desc マニフェストで指定した複数イベント/コモンイベントを一括テキスト出力します。マニフェストが存在しなければ自動生成します。
- *
- * @arg ManifestPath
- * @text マニフェストファイルパス
- * @desc プロジェクトルートからの相対パス、または絶対パスを指定します。存在しなければ自動生成します。
- * @type string
- * @default examples/auto-manifest.json
+ * @command BATCH_EXPORT_MESSAGES_TO_FOLDER
+ * @text フォルダへ一括取り出し
+ * @desc dataフォルダ内の全イベント/コモンイベントを走査し、front matter付きテキストとしてフォルダへ一括出力します。
  *
  * @arg DataDir
  * @text ゲームデータディレクトリ
- * @desc マニフェスト自動生成時の対象ディレクトリです。デフォルトはdataです。
+ * @desc 走査対象のゲームデータディレクトリです。デフォルトはdataです。
  * @type string
  * @default data
  *
  * @arg Locale
  * @text ロケール
- * @desc マニフェスト自動生成時のロケールです。デフォルトはjaです。
+ * @desc 出力先の言語サブフォルダ名です。デフォルトはjaです。
  * @type string
  * @default ja
  *
  * @arg TextBase
  * @text テキストベースディレクトリ
- * @desc マニフェスト自動生成時のテキストベースディレクトリです。デフォルトはtextです。
+ * @desc 出力先のテキストベースディレクトリです。デフォルトはtextです。
  * @type string
  * @default text
  *
@@ -357,14 +297,7 @@
  *    EXPORT_CE_TO_MESSAGE
  *    コモンイベントをメッセージにエクスポート
  *     上記どちらかのプラグインコマンドを記載する
- *  【マップのイベントをテキストと同期したい場合(差分書き込み)】
- *    SYNC_EVENT_TO_MESSAGE
- *    イベントをテキストに同期
- *     上記どちらかのプラグインコマンドを記載する
- *  【コモンイベントをテキストと同期したい場合(差分書き込み)】
- *    SYNC_CE_TO_MESSAGE
- *    コモンイベントをテキストに同期
- *     上記どちらかのプラグインコマンドを記載する
+
  *
  * 5. 作成したイベントコマンドをテストプレイかイベントテストで実行する。
  *    【成功した場合】
@@ -392,13 +325,7 @@
  *   EXPORT_CE_TO_MESSAGE text message.txt 3
  *   コモンイベントをメッセージにエクスポート text message.txt 3
  *
- * 例3:マップIDが1, イベントIDが2, ページIDが3をtext/message.txtに差分同期する
- *   SYNC_EVENT_TO_MESSAGE text message.txt 1 2 3
- *   イベントをテキストに同期 text message.txt 1 2 3
- *
- * 例4:IDが3のコモンイベントをtext/message.txtに差分同期する
- *   SYNC_CE_TO_MESSAGE text message.txt 3
- *   コモンイベントをテキストに同期 text message.txt 3
+
  *
  * -------------------------------------
  * ツクールMZでの実行方法
@@ -442,16 +369,7 @@
  *       (デフォルトはmessage.txtです)
  *   ・「出力するコモンイベントID」に2.でメモしたコモンイベントIDを入力。
  *       (デフォルトで1です)
- *  【マップのイベントをテキストと同期したい場合(差分書き込み)】
- *   ・「イベントをテキストに同期」を選択。
- *   ・引数はイベントをエクスポートと同じです。
- *   ・既存のテキストファイルが存在する場合、JSONを正として差分のみ更新します。
- *   ・既存のテキストファイルが存在しない場合は、エクスポートと同じ動作になります。
- *  【コモンイベントをテキストと同期したい場合(差分書き込み)】
- *   ・「コモンイベントをテキストに同期」を選択。
- *   ・引数はコモンイベントをエクスポートと同じです。
- *   ・既存のテキストファイルが存在する場合、JSONを正として差分のみ更新します。
- *   ・既存のテキストファイルが存在しない場合は、エクスポートと同じ動作になります。
+
  *
  * 5. 作成したイベントコマンドをテストプレイかイベントテストで実行する。
  *    【成功した場合】
@@ -556,27 +474,12 @@
     PluginManager.registerCommand('Frame2Text', 'MERGE_CE_TO_MESSAGE', function (args) {
       this.pluginCommand('MERGE_CE_TO_MESSAGE', [args.FileFolder, args.FileName, args.CommonEventID, args.BaseFolder, args.BaseFileName])
     })
-    PluginManager.registerCommand('Frame2Text', 'SYNC_EVENT_TO_MESSAGE', function (args) {
-      const file_folder = args.FileFolder
-      const file_name = args.FileName
-      const map_id = args.MapID
-      const event_id = args.EventID
-      const page_id = args.PageID
-      this.pluginCommand('SYNC_EVENT_TO_MESSAGE', [file_folder, file_name, map_id, event_id, page_id])
-    })
-    PluginManager.registerCommand('Frame2Text', 'SYNC_CE_TO_MESSAGE', function (args) {
-      const file_folder = args.FileFolder
-      const file_name = args.FileName
-      const common_event_id = args.CommonEventID
-      this.pluginCommand('SYNC_CE_TO_MESSAGE', [file_folder, file_name, common_event_id])
-    })
-    PluginManager.registerCommand('Frame2Text', 'BATCH_EXPORT', function (args) {
-      const manifest_path = args.ManifestPath || 'examples/auto-manifest.json'
+    PluginManager.registerCommand('Frame2Text', 'BATCH_EXPORT_MESSAGES_TO_FOLDER', function (args) {
       const data_dir = args.DataDir || 'data'
       const locale = args.Locale || 'ja'
       const text_base = args.TextBase || 'text'
-      const english_tag = String(args.EnglishTag) === 'true'
-      this.pluginCommand('BATCH_EXPORT', [manifest_path, data_dir, locale, text_base, english_tag])
+      const english_tag = String(args.EnglishTag) !== 'false'
+      this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER', [data_dir, locale, text_base, english_tag])
     })
   }
 
@@ -663,134 +566,14 @@
         Laurus.Frame2Text.BasePath = (args[3] && args[4]) ? `${BASE_PATH}${PATH_SEP}${args[3]}${PATH_SEP}${args[4]}` : undefined
         addMessage('=====> (merge) Common EventID: ' + Laurus.Frame2Text.CommonEventID)
         break
-      case 'SYNC_EVENT_TO_MESSAGE':
-      case 'イベントをテキストに同期':
-        if (args[0]) Laurus.Frame2Text.FileFolder = args[0]
-        if (args[1]) Laurus.Frame2Text.FileName = args[1]
-        if (args[2]) Laurus.Frame2Text.MapID = args[2]
-        if (args[3]) Laurus.Frame2Text.EventID = args[3]
-        if (args[4]) Laurus.Frame2Text.PageID = args[4]
-        if (args[0] || args[1]) {
-          Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
-          Laurus.Frame2Text.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${(
-            '000' + Laurus.Frame2Text.MapID
-          ).slice(-3)}.json`
-        }
-        Laurus.Frame2Text.ExecMode = 'SYNC_EVENT_TO_MESSAGE'
-        addMessage(
-          '======> MapID: ' +
-            Laurus.Frame2Text.MapID +
-            ' -> EventID: ' +
-            Laurus.Frame2Text.EventID +
-            ' -> PageID: ' +
-            Laurus.Frame2Text.PageID
-        )
+
+      case 'BATCH_EXPORT_MESSAGES_TO_FOLDER':
+        Laurus.Frame2Text.DataDir = args[0] || 'data'
+        Laurus.Frame2Text.Locale = args[1] || 'ja'
+        Laurus.Frame2Text.TextBase = args[2] || 'text'
+        Laurus.Frame2Text.EnglishTag = args[3] !== undefined ? (String(args[3]) !== 'false') : Laurus.Frame2Text.EnglishTag
+        Laurus.Frame2Text.ExecMode = 'BATCH_EXPORT_MESSAGES_TO_FOLDER'
         break
-      case 'SYNC_CE_TO_MESSAGE':
-      case 'コモンイベントをテキストに同期':
-        if (args.length === 3) {
-          Laurus.Frame2Text.FileFolder = args[0]
-          Laurus.Frame2Text.FileName = args[1]
-          Laurus.Frame2Text.CommonEventID = args[2]
-          Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
-          Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
-        }
-        Laurus.Frame2Text.ExecMode = 'SYNC_CE_TO_MESSAGE'
-        addMessage('=====> Common EventID: ' + Laurus.Frame2Text.CommonEventID)
-        break
-      case 'BATCH_EXPORT': {
-        const manifestPath = args[0]
-        const dataDir = args[1]
-        const locale = args[2]
-        const textBase = args[3]
-        const englishTag = args[4]
-
-        let resolvedPath = manifestPath
-        if (typeof require !== 'undefined') {
-          const path = require('path')
-          const fs = require('fs')
-
-          resolvedPath = path.isAbsolute(manifestPath) ? manifestPath : path.resolve(BASE_PATH, manifestPath)
-
-          if (!fs.existsSync(resolvedPath)) {
-            addMessage('[BATCH_EXPORT] Manifest not found. Auto-generating...')
-            const scanMapEvents = function (baseDir, loc, txtBase) {
-              const entries = []
-              const files = fs.readdirSync(baseDir)
-              const mapFiles = files.filter(f => /^Map\d+\.json$/.test(f)).sort()
-              mapFiles.forEach(function (file) {
-                const mapPath = path.join(baseDir, file)
-                const match = file.match(/^Map(\d+)\.json$/)
-                if (!match) return
-                const mapId = String(parseInt(match[1], 10))
-                const mapData = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
-                if (!mapData.events || !Array.isArray(mapData.events)) return
-                mapData.events.forEach(function (event, eventIndex) {
-                  if (!event || !event.pages || !Array.isArray(event.pages)) return
-                  const eventId = String(eventIndex)
-                  event.pages.forEach(function (page, pageIndex) {
-                    const pageId = String(pageIndex + 1)
-                    const key = 'map' + String(mapId).padStart(3, '0') + '_event' + String(eventId).padStart(3, '0') + '_page' + pageId
-                    const textPath = txtBase + '/' + loc + '/' + key + '.txt'
-                    entries.push({
-                      kind: 'event',
-                      mapId: String(mapId),
-                      eventId: String(eventId),
-                      pageId: String(pageId),
-                      locale: loc,
-                      key,
-                      textPath
-                    })
-                  })
-                })
-              })
-              return entries
-            }
-
-            const scanCommonEvents = function (baseDir, loc, txtBase) {
-              const entries = []
-              const commonPath = path.join(baseDir, 'CommonEvents.json')
-              if (!fs.existsSync(commonPath)) return entries
-              const commonData = JSON.parse(fs.readFileSync(commonPath, 'utf8'))
-              if (!Array.isArray(commonData)) return entries
-              commonData.forEach(function (commonEvent, index) {
-                if (!commonEvent) return
-                const key = 'common' + String(index).padStart(3, '0')
-                const textPath = txtBase + '/' + loc + '/' + key + '.txt'
-                entries.push({
-                  kind: 'common',
-                  commonEventId: String(index),
-                  locale: loc,
-                  key,
-                  textPath
-                })
-              })
-              return entries
-            }
-
-            const mapEntries = scanMapEvents(dataDir, locale, textBase)
-            const commonEntries = scanCommonEvents(dataDir, locale, textBase)
-            const manifestObj = {
-              version: 1,
-              entries: mapEntries.concat(commonEntries)
-            }
-
-            const manifestDir = path.dirname(resolvedPath)
-            if (!fs.existsSync(manifestDir)) {
-              fs.mkdirSync(manifestDir, { recursive: true })
-            }
-            fs.writeFileSync(resolvedPath, JSON.stringify(manifestObj, null, 2), 'utf8')
-            addMessage('[BATCH_EXPORT] Manifest generated: ' + resolvedPath)
-          }
-
-          Laurus.Frame2Text.ExecMode = 'BATCH_EXPORT'
-          Laurus.Frame2Text.ManifestPath = resolvedPath
-          Laurus.Frame2Text.EnglishTag = englishTag
-        } else {
-          addMessage('[BATCH_EXPORT] Node.js environment not available')
-        }
-        break
-      }
       case 'COMMAND_LINE':
         Laurus.Frame2Text = Object.assign(Laurus.Frame2Text, args[0])
         break
@@ -880,37 +663,6 @@
 
         const ce_events = ce_data[Laurus.Frame2Text.CommonEventID].list
         map_events = ce_events
-        break
-      }
-      // 同期モード: マップのイベントを読み込む
-      case 'SYNC_EVENT_TO_MESSAGE': {
-        const map_data = readJsonData(Laurus.Frame2Text.MapPath)
-        if (!map_data.events[Laurus.Frame2Text.EventID]) {
-          throw new Error(
-            'EventID not found. / EventIDが見つかりません。\n' + 'Event ID: ' + Laurus.Frame2Text.EventID
-          )
-        }
-        const pageID = Number(Laurus.Frame2Text.PageID) - 1
-        if (!map_data.events[Laurus.Frame2Text.EventID].pages[pageID]) {
-          throw new Error('PageID not found. / PageIDが見つかりません。\n' + 'Page ID: ' + Laurus.Frame2Text.PageID)
-        }
-        map_events = map_data.events[Laurus.Frame2Text.EventID].pages[pageID].list
-        break
-      }
-      // 同期モード: コモンイベントを読み込む
-      case 'SYNC_CE_TO_MESSAGE': {
-        const ce_data = readJsonData(Laurus.Frame2Text.CommonEventPath)
-        if (ce_data.length - 1 < Laurus.Frame2Text.CommonEventID) {
-          throw new Error(
-            'Common Event not found. / コモンイベントが見つかりません。: ' + Laurus.Frame2Text.CommonEventID
-          )
-        }
-        map_events = ce_data[Laurus.Frame2Text.CommonEventID].list
-        break
-      }
-      // BATCH_EXPORT モード: マニフェストを処理
-      case 'BATCH_EXPORT': {
-        // BATCH_EXPORT は特別処理のため、switch 外で処理
         break
       }
     }
@@ -2929,172 +2681,63 @@
       return text
     }
 
-    /** ******************************* */
-    // 同期(SYNC)モード用のヘルパー関数
-    /** ******************************* */
-
-    /* コマンドリストをブロック単位にグループ化する (Text2Frame の同関数と同じロジック) */
-    const SYNC_CONTINUATION_CODES = [401, 655, 408, 405]
-    const syncGroupCommandsIntoBlocks = function (commands) {
-      const blocks = []
-      let current_block = []
-      for (let i = 0; i < commands.length; i++) {
-        const cmd = commands[i]
-        if (cmd.code === 0) continue
-        if (SYNC_CONTINUATION_CODES.indexOf(cmd.code) !== -1) {
-          current_block.push(cmd)
-        } else {
-          if (current_block.length > 0) blocks.push(current_block)
-          current_block = [cmd]
-        }
-      }
-      if (current_block.length > 0) blocks.push(current_block)
-      return blocks
-    }
-
-    /* LCS テーブルを計算する */
-    const syncLcsTable = function (a, b) {
-      const m = a.length
-      const n = b.length
-      const table = []
-      for (let i = 0; i <= m; i++) {
-        const row = []
-        for (let j = 0; j <= n; j++) row.push(0)
-        table.push(row)
-      }
-      for (let i = 1; i <= m; i++) {
-        for (let j = 1; j <= n; j++) {
-          if (a[i - 1] === b[j - 1]) {
-            table[i][j] = table[i - 1][j - 1] + 1
-          } else {
-            table[i][j] = Math.max(table[i - 1][j], table[i][j - 1])
-          }
-        }
-      }
-      return table
-    }
-
-    /* LCS テーブルから差分リストをビルドする */
-    const syncBuildDiff = function (table, a, b) {
-      const diff = []
-      let i = a.length
-      let j = b.length
-      while (i > 0 || j > 0) {
-        if (i === 0) {
-          diff.unshift({ type: 'added', value: b[j - 1] })
-          j--
-        } else if (j === 0) {
-          diff.unshift({ type: 'removed', value: a[i - 1] })
-          i--
-        } else if (a[i - 1] === b[j - 1]) {
-          diff.unshift({ type: 'equal', value: a[i - 1] })
-          i--
-          j--
-        } else if (table[i - 1][j] >= table[i][j - 1]) {
-          diff.unshift({ type: 'removed', value: a[i - 1] })
-          i--
-        } else {
-          diff.unshift({ type: 'added', value: b[j - 1] })
-          j--
-        }
-      }
-      return diff
-    }
-
-    const isCommentParagraph = function (paragraph) {
-      const lines = paragraph.split('\n').map(function (line) { return line.trim() }).filter(function (line) { return line !== '' })
-      return lines.length > 0 && lines.every(function (line) { return line.indexOf('%') === 0 })
-    }
-
-    const splitParagraphsWithSeparators = function (text) {
-      const paragraphs = []
-      const separators = []
-      if (text === '') {
-        return { paragraphs, separators }
-      }
-      const re = /\n\n+/g
-      let lastIndex = 0
-      let match
-      while ((match = re.exec(text)) !== null) {
-        paragraphs.push(text.slice(lastIndex, match.index))
-        separators.push(match[0])
-        lastIndex = match.index + match[0].length
-      }
-      paragraphs.push(text.slice(lastIndex))
-      return { paragraphs, separators }
-    }
-
-    const buildTextWithOldSeparators = function (paragraphs, trace, oldSeparators) {
-      if (paragraphs.length === 0) {
-        return ''
-      }
-      let output = paragraphs[0]
-      for (let i = 1; i < paragraphs.length; i++) {
-        let separator = '\n\n'
-        const prev = trace[i - 1]
-        const curr = trace[i]
-        if (
-          prev && curr &&
-          prev.source === 'old' && curr.source === 'old' &&
-          curr.oldIndex === prev.oldIndex + 1 &&
-          oldSeparators[prev.oldIndex] !== undefined
-        ) {
-          separator = oldSeparators[prev.oldIndex]
-        }
-        output += separator + paragraphs[i]
-      }
-      return output
-    }
-
-    /* テキストの段落リストと新しい段落リストを差分比較して同期結果を返す。
-     * old_paragraphs: 既存テキストを空行で分割した段落リスト
-     * new_paragraphs: 現在のJSONをブロック単位でデコンパイルした段落リスト
-     * 戻り値: { paragraphs: 結果段落リスト, warnings: 警告メッセージ配列, trace: 段落ソース情報 } */
-    const applySyncDiff = function (old_paragraphs, new_paragraphs) {
-      const PREVIEW_LENGTH = 80
-      if (old_paragraphs.length === 0) {
-        return {
-          paragraphs: new_paragraphs.slice(),
-          warnings: [],
-          trace: new_paragraphs.map(function (_paragraph, newIndex) { return { source: 'new', newIndex } })
-        }
-      }
-      const table = syncLcsTable(old_paragraphs, new_paragraphs)
-      const diff = syncBuildDiff(table, old_paragraphs, new_paragraphs)
-      const warnings = []
-      const result = []
-      const trace = []
-      let oldIndex = 0
-      let newIndex = 0
-      for (let di = 0; di < diff.length; di++) {
-        const d = diff[di]
-        if (d.type === 'equal') {
-          result.push(d.value)
-          trace.push({ source: 'old', oldIndex, newIndex })
-          oldIndex++
-          newIndex++
-        } else if (d.type === 'added') {
-          result.push(d.value)
-          trace.push({ source: 'new', newIndex })
-          newIndex++
-        } else {
-          if (isCommentParagraph(d.value)) {
-            result.push(d.value)
-            trace.push({ source: 'old', oldIndex })
-          } else {
-            const preview = d.value.length > PREVIEW_LENGTH ? d.value.substring(0, PREVIEW_LENGTH) + '...' : d.value
-            warnings.push('Block removed / ブロックが削除されます: ' + preview)
-          }
-          oldIndex++
-        }
-      }
-      return { paragraphs: result, warnings, trace }
-    }
-
     // 書き出し主体のバージョン(リリース時に package.json と揃えて更新する)。
     // 書き出したテキストのフロントマターに generator: text2frame-mv@<VERSION> として埋める。
     const VERSION = '2.2.1'
-    Laurus.Frame2Text.export = { decompile, applySyncDiff, VERSION }
+
+    // 書き出したテキストに載せる front matter(YAMLヘッダ)を生成する。
+    const renderFrontMatter = function (entry, kind) {
+      const lines = ['---']
+      lines.push('generator: text2frame-mv@' + VERSION)
+      lines.push('kind: ' + kind)
+      if (kind === 'event') {
+        lines.push('mapId: ' + String(entry.mapId))
+        lines.push('eventId: ' + String(entry.eventId))
+        lines.push('pageId: ' + String(entry.pageId || '1'))
+      } else {
+        lines.push('commonEventId: ' + String(entry.commonEventId))
+      }
+      if (entry.locale) lines.push('locale: ' + String(entry.locale))
+      if (entry.key) lines.push('key: ' + String(entry.key))
+      lines.push('---\n\n')
+      return lines.join('\n')
+    }
+
+    // data ディレクトリを走査し、出力対象(イベント/コモンイベント)の routing メタだけを返す。
+    // textPath/locale は付けない(呼び出し側が textBase/locale/key.txt を組み立てる)。
+    const enumerateTargets = function (dataDir) {
+      const _fs = require('fs')
+      const _path = require('path')
+      const targets = []
+      _fs.readdirSync(dataDir).filter(function (f) { return /^Map\d+\.json$/.test(f) }).sort().forEach(function (fileName) {
+        const m = fileName.match(/^Map(\d+)\.json$/)
+        if (!m) return
+        const mapId = String(parseInt(m[1], 10))
+        const mapData = JSON.parse(_fs.readFileSync(_path.join(dataDir, fileName), 'utf8'))
+        if (!mapData.events || !Array.isArray(mapData.events)) return
+        mapData.events.forEach(function (event, eventIndex) {
+          if (!event || !event.pages || !Array.isArray(event.pages)) return
+          event.pages.forEach(function (page, pageIndex) {
+            const pageId = String(pageIndex + 1)
+            const key = 'map' + mapId.padStart(3, '0') + '_event' + String(eventIndex).padStart(3, '0') + '_page' + pageId
+            targets.push({ kind: 'event', mapId, eventId: String(eventIndex), pageId, key })
+          })
+        })
+      })
+      const commonPath = _path.join(dataDir, 'CommonEvents.json')
+      if (_fs.existsSync(commonPath)) {
+        const commonData = JSON.parse(_fs.readFileSync(commonPath, 'utf8'))
+        if (Array.isArray(commonData)) {
+          commonData.forEach(function (ce, index) {
+            if (!ce) return
+            targets.push({ kind: 'common', commonEventId: String(index), key: 'common' + String(index).padStart(3, '0') })
+          })
+        }
+      }
+      return targets
+    }
+
+    Laurus.Frame2Text.export = { decompile, VERSION, enumerateTargets, renderFrontMatter }
     if (Laurus.Frame2Text.ExecMode === 'LIBRARY_EXPORT') {
       return
     }
@@ -3158,119 +2801,53 @@
       return
     }
 
-    // BATCH_EXPORT モード: マニフェストでバッチ処理
-    if (Laurus.Frame2Text.ExecMode === 'BATCH_EXPORT') {
-      if (typeof require !== 'undefined') {
-        const manifestPath = Laurus.Frame2Text.ManifestPath
-        const englishTag = Laurus.Frame2Text.EnglishTag
-        try {
-          const path = require('path')
-          const fs = require('fs')
-          const manifestAbs = path.isAbsolute(manifestPath) ? manifestPath : path.resolve(BASE_PATH, manifestPath)
-          const rootDir = path.dirname(manifestAbs)
-          const manifest = JSON.parse(fs.readFileSync(manifestAbs, { encoding: 'utf8' }))
-          const entries = Array.isArray(manifest.entries) ? manifest.entries : []
-          let successCount = 0
-          let errorCount = 0
-
-          entries.forEach(function (entry, index) {
-            try {
-              const kind = String(entry.kind || 'event').toLowerCase()
-              const textPathRel = entry.textPath || entry.path
-              if (!textPathRel) {
-                throw new Error('textPath is required')
-              }
-              const textPath = path.isAbsolute(textPathRel) ? textPathRel : path.resolve(rootDir, textPathRel)
-              const textDir = path.dirname(textPath)
-              if (!fs.existsSync(textDir)) {
-                fs.mkdirSync(textDir, { recursive: true })
-              }
-
-              let eventCommands = []
-              if (kind === 'event') {
-                const mapId = String(entry.mapId || 0).padStart(3, '0')
-                const mapPath = path.resolve(rootDir, '..', 'data', 'Map' + mapId + '.json')
-                const mapData = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
-                const eventId = Number(entry.eventId || 0)
-                const pageId = (Number(entry.pageId || 1) - 1)
-                if (!mapData.events[eventId] || !mapData.events[eventId].pages[pageId]) {
-                  throw new Error('Event not found: Map' + mapId + ', Event ' + eventId + ', Page ' + (pageId + 1))
-                }
-                eventCommands = mapData.events[eventId].pages[pageId].list || []
-              } else if (kind === 'common') {
-                const commonPath = path.resolve(rootDir, '..', 'data', 'CommonEvents.json')
-                const commonData = JSON.parse(fs.readFileSync(commonPath, 'utf8'))
-                const commonId = Number(entry.commonEventId || 0)
-                if (!commonData[commonId]) {
-                  throw new Error('Common Event not found: Common Event ' + commonId)
-                }
-                eventCommands = commonData[commonId].list || []
-              }
-
-              const outputText = decompile(eventCommands, englishTag, { pretty: true })
-              fs.writeFileSync(textPath, outputText, 'utf8')
-              successCount++
-            } catch (e) {
-              errorCount++
-              console.error('[BATCH_EXPORT] Error processing entry ' + index + ': ' + String(e))
-              addMessage('[BATCH_EXPORT] Error: ' + String(e))
-            }
-          })
-
-          addMessage('[BATCH_EXPORT] Completed: ' + successCount + ' success, ' + errorCount + ' errors')
-          console.log('[BATCH_EXPORT] Completed: ' + successCount + ' success, ' + errorCount + ' errors')
-        } catch (e) {
-          addMessage('[BATCH_EXPORT] Fatal error: ' + String(e))
-          console.error('[BATCH_EXPORT] Fatal error: ' + String(e))
-        }
-      } else {
-        addMessage('[BATCH_EXPORT] Node.js environment not available')
+    // BATCH_EXPORT_MESSAGES_TO_FOLDER: data ディレクトリを走査し front matter 付きで一括出力する。
+    if (Laurus.Frame2Text.ExecMode === 'BATCH_EXPORT_MESSAGES_TO_FOLDER') {
+      if (typeof require === 'undefined') {
+        addMessage('[batch-export] Node.js environment not available')
+        return
       }
+      const _path = require('path')
+      const _fs = require('fs')
+      const dataDir = _path.isAbsolute(Laurus.Frame2Text.DataDir) ? Laurus.Frame2Text.DataDir : _path.resolve(BASE_PATH, Laurus.Frame2Text.DataDir)
+      const locale = Laurus.Frame2Text.Locale
+      const textBase = Laurus.Frame2Text.TextBase
+      const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
+      let okCount = 0
+      let errCount = 0
+
+      const outDir = _path.resolve(BASE_PATH, textBase, locale)
+      if (!_fs.existsSync(outDir)) { _fs.mkdirSync(outDir, { recursive: true }) }
+
+      enumerateTargets(dataDir).forEach(function (t) {
+        try {
+          let list = []
+          if (t.kind === 'event') {
+            const mapData = JSON.parse(_fs.readFileSync(_path.join(dataDir, 'Map' + ('000' + String(t.mapId)).slice(-3) + '.json'), 'utf8'))
+            list = mapData.events[Number(t.eventId)].pages[Number(t.pageId) - 1].list || []
+          } else {
+            const ceData = JSON.parse(_fs.readFileSync(_path.join(dataDir, 'CommonEvents.json'), 'utf8'))
+            list = ceData[Number(t.commonEventId)].list || []
+          }
+          const body = decompile(list, englishTag, { pretty: true })
+          const fm = renderFrontMatter(Object.assign({ locale }, t), t.kind)
+          const outPath = _path.resolve(BASE_PATH, textBase, locale, t.key + '.txt')
+          _fs.writeFileSync(outPath, fm + body + '\n', 'utf8')
+          okCount++
+        } catch (e) {
+          errCount++
+          console.error('[batch-export] ' + t.key + ': ' + String(e))
+        }
+      })
+      addMessage('[batch-export] Completed: ' + okCount + ' success, ' + errCount + ' errors')
+      console.log('[batch-export] Completed: ' + okCount + ' success, ' + errCount + ' errors')
       return
     }
 
-    const addWarning = function (text) {
-      if (Laurus.Frame2Text.DisplayWarning) {
-        $gameMessage.add(text)
-      }
-    }
-
-    const isSyncMode =
-      Laurus.Frame2Text.ExecMode === 'SYNC_EVENT_TO_MESSAGE' ||
-      Laurus.Frame2Text.ExecMode === 'SYNC_CE_TO_MESSAGE'
-
-    let outputText
-    if (isSyncMode) {
-      /** ******************************* */
-      // 同期モード: 差分をテキストに書き込む
-      /** ******************************* */
-      // JSONのブロックをそれぞれデコンパイルして段落リストを生成
-      const currentBlocks = syncGroupCommandsIntoBlocks(map_events)
-      const new_paragraphs = currentBlocks.map(function (block) { return decompile(block, EnglishTag) })
-
-      // 既存のテキストファイルを読み込む (存在しない場合は空配列扱い)
-      let old_paragraphs = []
-      let old_separators = []
-      try {
-        const existing_text = readText(Laurus.Frame2Text.TextPath)
-        const split_result = splitParagraphsWithSeparators(existing_text)
-        old_paragraphs = split_result.paragraphs
-        old_separators = split_result.separators
-      } catch (e) {
-        // ファイルが存在しない場合は初回エクスポートと同等の動作
-      }
-
-      const sync_result = applySyncDiff(old_paragraphs, new_paragraphs)
-      for (let wi = 0; wi < sync_result.warnings.length; wi++) {
-        addWarning(sync_result.warnings[wi])
-      }
-      outputText = buildTextWithOldSeparators(sync_result.paragraphs, sync_result.trace || [], old_separators)
-    } else {
-      /** ******************************* */
-      // エクスポートモード: 全体を上書き
-      /** ******************************* */
-      outputText = decompile(map_events, EnglishTag, { pretty: true })
-    }
+    /** ******************************* */
+    // エクスポートモード: 全体を上書き
+    /** ******************************* */
+    const outputText = decompile(map_events, EnglishTag, { pretty: true })
 
     /** ********************************************** */
     // txtファイルを出力
@@ -3280,8 +2857,8 @@
     /** ********************************************** */
     // 出力メッセージ
     /** ********************************************** */
-    const actionWord = isSyncMode ? 'Synced to' : 'Exported to'
-    const actionWordJa = isSyncMode ? 'に同期しました' : 'にエクスポートしました'
+    const actionWord = 'Exported to'
+    const actionWordJa = 'にエクスポートしました'
     const EnglishMessage = `${actionWord} ${Laurus.Frame2Text.TextPath}`
     const JapaneseMessage = `${Laurus.Frame2Text.TextPath} ${actionWordJa}`
     addMessage(EnglishMessage + '\n' + JapaneseMessage)
@@ -3301,198 +2878,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   const fs = require('fs')
   const path = require('path')
 
-  const resolveFromRoot = function (rootDir, maybeRelativePath) {
-    if (!maybeRelativePath) {
-      return maybeRelativePath
-    }
-    return path.isAbsolute(maybeRelativePath)
-      ? maybeRelativePath
-      : path.resolve(rootDir, maybeRelativePath)
-  }
-
-  const toMapPath = function (mapId) {
-    return path.join('data', 'Map' + ('000' + String(mapId)).slice(-3) + '.json')
-  }
-
-  /**
-   * Map*.json ファイルをスキャンしてイベントエントリを生成
-   */
-  const scanMapEvents = function (dataDir, locale, textBaseDir) {
-    const entries = []
-    const files = fs.readdirSync(dataDir)
-    const mapFiles = files.filter(f => /^Map\d+\.json$/.test(f)).sort()
-
-    mapFiles.forEach(function (file) {
-      const mapPath = path.join(dataDir, file)
-      const match = file.match(/^Map(\d+)\.json$/)
-      if (!match) return
-
-      const mapId = String(parseInt(match[1], 10))
-      const mapData = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
-
-      if (!mapData.events || !Array.isArray(mapData.events)) return
-
-      mapData.events.forEach(function (event, eventIndex) {
-        if (!event || !event.pages || !Array.isArray(event.pages)) return
-
-        const eventId = String(eventIndex)
-
-        event.pages.forEach(function (page, pageIndex) {
-          const pageId = String(pageIndex + 1)
-          const key = 'map' + String(mapId).padStart(3, '0') + '_event' + String(eventId).padStart(3, '0') + '_page' + pageId
-          const textPath = textBaseDir + '/' + locale + '/' + key + '.txt'
-
-          entries.push({
-            kind: 'event',
-            mapId: String(mapId),
-            eventId: String(eventId),
-            pageId: String(pageId),
-            locale,
-            key,
-            textPath
-          })
-        })
-      })
-    })
-
-    return entries
-  }
-
-  /**
-   * CommonEvents.json をスキャンしてコモンイベントエントリを生成
-   */
-  const scanCommonEvents = function (dataDir, locale, textBaseDir) {
-    const entries = []
-    const commonPath = path.join(dataDir, 'CommonEvents.json')
-
-    if (!fs.existsSync(commonPath)) {
-      return entries
-    }
-
-    const commonData = JSON.parse(fs.readFileSync(commonPath, 'utf8'))
-
-    if (!Array.isArray(commonData)) return entries
-
-    commonData.forEach(function (commonEvent, index) {
-      if (!commonEvent) return
-
-      const key = 'common' + String(index).padStart(3, '0')
-      const textPath = textBaseDir + '/' + locale + '/' + key + '.txt'
-
-      entries.push({
-        kind: 'common',
-        commonEventId: String(index),
-        locale,
-        key,
-        textPath
-      })
-    })
-
-    return entries
-  }
-
-  /**
-   * manifest オブジェクトを生成
-   */
-  const generateManifestObject = function (dataDir, locale, textBaseDir) {
-    const mapEntries = scanMapEvents(dataDir, locale, textBaseDir)
-    const commonEntries = scanCommonEvents(dataDir, locale, textBaseDir)
-    const allEntries = mapEntries.concat(commonEntries)
-
-    return {
-      version: 1,
-      entries: allEntries
-    }
-  }
-
-  const renderFrontMatter = function (entry, kind) {
-    const lines = ['---']
-    // 来歴: 書き出しに使った変換スクリプトのバージョン(import 時は無視される)。
-    lines.push('generator: text2frame-mv@' + (module.exports && module.exports.VERSION ? module.exports.VERSION : 'unknown'))
-    lines.push('kind: ' + kind)
-    if (kind === 'event') {
-      lines.push('mapId: ' + String(entry.mapId))
-      lines.push('eventId: ' + String(entry.eventId))
-      lines.push('pageId: ' + String(entry.pageId || '1'))
-    } else {
-      lines.push('commonEventId: ' + String(entry.commonEventId))
-    }
-    if (entry.locale) {
-      lines.push('locale: ' + String(entry.locale))
-    }
-    if (entry.key) {
-      lines.push('key: ' + String(entry.key))
-    }
-    lines.push('---\n\n')
-    return lines.join('\n')
-  }
-
-  const exportByManifest = function (manifestPath, englishTag) {
-    const manifestAbs = path.resolve(manifestPath)
-    const rootDir = path.dirname(manifestAbs)
-    const manifest = JSON.parse(fs.readFileSync(manifestAbs, { encoding: 'utf8' }))
-    const manifestDataDir = manifest.dataDir
-      ? resolveFromRoot(rootDir, manifest.dataDir)
-      : null
-    const entries = Array.isArray(manifest.entries) ? manifest.entries : []
-    const results = []
-
-    entries.forEach(function (entry, index) {
-      try {
-        const kind = String(entry.kind || 'event').toLowerCase()
-        const textPath = resolveFromRoot(rootDir, entry.textPath || entry.path)
-        if (!textPath) {
-          throw new Error('textPath is required')
-        }
-
-        let body = ''
-        if (kind === 'event') {
-          const mapId = entry.mapId
-          const eventId = entry.eventId
-          const pageId = Number(entry.pageId || '1') - 1
-          if (!mapId || !eventId) {
-            throw new Error('mapId and eventId are required for event entry')
-          }
-          const defaultMapPath = manifestDataDir
-            ? path.join(manifestDataDir, 'Map' + ('000' + String(mapId)).slice(-3) + '.json')
-            : toMapPath(mapId)
-          const mapPath = resolveFromRoot(rootDir, entry.mapPath || defaultMapPath)
-          const mapData = JSON.parse(fs.readFileSync(mapPath, { encoding: 'utf8' }))
-          if (!mapData.events[eventId]) {
-            throw new Error('EventID not found: ' + eventId)
-          }
-          if (!mapData.events[eventId].pages[pageId]) {
-            throw new Error('PageID not found: ' + String(pageId + 1))
-          }
-          body = module.exports.decompile(mapData.events[eventId].pages[pageId].list, englishTag, { pretty: true })
-        } else if (kind === 'common') {
-          const commonEventId = entry.commonEventId
-          if (!commonEventId) {
-            throw new Error('commonEventId is required for common entry')
-          }
-          const defaultCommonPath = manifestDataDir
-            ? path.join(manifestDataDir, 'CommonEvents.json')
-            : path.join('data', 'CommonEvents.json')
-          const commonPath = resolveFromRoot(rootDir, entry.commonEventPath || defaultCommonPath)
-          const commonData = JSON.parse(fs.readFileSync(commonPath, { encoding: 'utf8' }))
-          if (commonData.length - 1 < commonEventId) {
-            throw new Error('Common Event not found: ' + commonEventId)
-          }
-          body = module.exports.decompile(commonData[commonEventId].list, englishTag, { pretty: true })
-        } else {
-          throw new Error('unknown kind: ' + kind)
-        }
-
-        const frontMatter = renderFrontMatter(entry, kind)
-        fs.writeFileSync(textPath, frontMatter + '\n' + body, { encoding: 'utf8' })
-        results.push({ index: index + 1, ok: true, textPath })
-      } catch (error) {
-        results.push({ index: index + 1, ok: false, textPath: entry.textPath || entry.path || '', error: error.message })
-      }
-    })
-    return results
-  }
-
   const program = new Command()
   program
     .version('1.0.0')
@@ -3503,11 +2888,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-e, --event_id <name>', 'event file id')
     .option('-p, --page_id <name>', 'page id', '1')
     .option('-c, --common_event_id <name>', 'common event id')
-    .option('-f, --manifest <path>', 'batch manifest json path')
-    .option('-g, --generate-manifest', 'auto-generate manifest if not exists', false)
     .option('-d, --data-dir <dir>', 'game data directory', 'data')
-    .option('-l, --locale <locale>', 'locale for generated manifest', 'ja')
-    .option('-t, --text-base <dir>', 'text base directory for generated manifest', 'text')
+    .option('-l, --locale <locale>', 'output language subfolder (batch-export)', 'ja')
+    .option('-t, --text-base <dir>', 'text base output directory (batch-export)', 'text')
     .option('-v, --verbose', 'debug mode', false)
     .option('-w, --english_tag <true/false>', 'english tag', 'true')
     .option('-s, --strategy <merge|overwrite>', 'pull strategy (default merge: keep translations; overwrite: replace)', /^(merge|overwrite)$/i, 'merge')
@@ -3520,10 +2903,17 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
        Frame2Text - Simple decompiler to convert event to text.
     SYNOPSIS
         node Frame2Text.js
+        node Frame2Text.js --mode batch-export --data-dir <RPG Maker Project Dir>/data
         node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
         node Frame2Text.js --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
         node Frame2Text.js --mode test
     DESCRIPTION
+        node Frame2Text.js --mode batch-export --data-dir ./data
+          イベントの一括変換モードです。
+          PRGツクールのdataディレクトリを読み込み、 text/ja に書き出すコマンド例は以下です。
+          例1：$ node Frame2Text.js --mode batch-export --data-dir ./data
+          例2：$ node Frame2Text.js -m batch-export -d ./data
+
         node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
           マップイベントのテキスト出力モードです。
           読み込むマップファイル、出力テキストファイル、イベントID、ページIDを指定します。
@@ -3616,46 +3006,34 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       page_id
     ])
   } else if (options.mode === 'batch-export') {
-    let manifestPath = options.manifest
-
-    if (!manifestPath || !fs.existsSync(manifestPath)) {
-      if (options.generateManifest || !manifestPath) {
-        console.log('[batch-export] manifest not found or --generate-manifest option enabled. Auto-generating manifest...')
-        const dataDir = path.resolve(options.dataDir)
-        const locale = options.locale
-        const textBaseDir = options.textBase
-
-        if (!fs.existsSync(dataDir)) {
-          throw new Error('Data directory not found: ' + dataDir)
-        }
-
-        const manifestObj = generateManifestObject(dataDir, locale, textBaseDir)
-
-        if (!manifestPath) {
-          manifestPath = path.resolve('auto-manifest.json')
-        } else {
-          if (!path.isAbsolute(manifestPath)) {
-            manifestPath = path.resolve(manifestPath)
-          }
-        }
-
-        const manifestDir = path.dirname(manifestPath)
-        if (!fs.existsSync(manifestDir)) {
-          fs.mkdirSync(manifestDir, { recursive: true })
-        }
-
-        // Persist source data directory so export resolves the same dataset used for generation.
-        manifestObj.dataDir = path.relative(manifestDir, dataDir)
-
-        fs.writeFileSync(manifestPath, JSON.stringify(manifestObj, null, 2), 'utf8')
-        console.log('[batch-export] manifest generated: ' + manifestPath + ' (entries: ' + manifestObj.entries.length + ')')
-      } else {
-        throw new Error('--manifest is required in batch-export mode or use --generate-manifest option')
-      }
+    const dataDir = path.resolve(options.dataDir)
+    if (!fs.existsSync(dataDir)) {
+      throw new Error('Data directory not found: ' + dataDir)
     }
-
+    const locale = options.locale
+    const textBaseDir = options.textBase
     const englishTag = String(options.english_tag) === 'true'
-    const results = exportByManifest(manifestPath, englishTag)
+    const results = []
+    module.exports.enumerateTargets(dataDir).forEach(function (t) {
+      try {
+        let list = []
+        if (t.kind === 'event') {
+          const mapData = JSON.parse(fs.readFileSync(path.join(dataDir, 'Map' + ('000' + String(t.mapId)).slice(-3) + '.json'), 'utf8'))
+          list = mapData.events[Number(t.eventId)].pages[Number(t.pageId) - 1].list || []
+        } else {
+          const ceData = JSON.parse(fs.readFileSync(path.join(dataDir, 'CommonEvents.json'), 'utf8'))
+          list = ceData[Number(t.commonEventId)].list || []
+        }
+        const body = module.exports.decompile(list, englishTag, { pretty: true })
+        const frontMatter = module.exports.renderFrontMatter(Object.assign({ locale }, t), t.kind)
+        const textPath = path.resolve(textBaseDir, locale, t.key + '.txt')
+        fs.mkdirSync(path.dirname(textPath), { recursive: true })
+        fs.writeFileSync(textPath, frontMatter + body + '\n', 'utf8')
+        results.push({ ok: true, textPath })
+      } catch (error) {
+        results.push({ ok: false, key: t.key, error: error.message })
+      }
+    })
     const failures = results.filter(function (r) { return !r.ok })
     console.log(JSON.stringify({ total: results.length, failed: failures.length, results }, null, 2))
     if (failures.length > 0) {
