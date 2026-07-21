@@ -74,6 +74,24 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI batch-export)', function () {
     expect(texts(T2F.compile(stripFrontMatter(ceText)))).to.include('Hello from common')
   })
 
+  it('saves a .t2f-base ancestor so a later merge applies added lines (no overlay drop)', function () {
+    cp.execFileSync('node', [F2T, '--mode', 'batch-export', '--data-dir', 'data', '--locale', 'ja', '--text-base', 'text'],
+      { cwd: tmp, encoding: 'utf8' })
+    // Export must establish the 3-way ancestor.
+    const basePath = path.join(tmp, '.t2f-base', 'ja', 'map001_event001_page1.txt')
+    expect(fs.existsSync(basePath)).to.equal(true)
+
+    // Add a brand-new message line in the text, then import with the default (merge) strategy.
+    const evPath = path.join(tmp, 'text', 'ja', 'map001_event001_page1.txt')
+    fs.writeFileSync(evPath, fs.readFileSync(evPath, 'utf8').replace('Hello from event', 'Hello from event\n\nBrand new line'))
+    cp.execFileSync('node', [path.join(ROOT, 'Text2Frame.js'), '--mode', 'batch', '--text_path', 'text'],
+      { cwd: tmp, encoding: 'utf8' })
+
+    // 3-way (base==game, text added a line) applies the addition rather than dropping it via overlay.
+    const map = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8'))
+    expect(texts(map.events[1].pages[0].list)).to.include('Brand new line')
+  })
+
   it('round-trips: exported text re-imports via --mode batch', function () {
     cp.execFileSync('node', [F2T, '--mode', 'batch-export', '--data-dir', 'data', '--locale', 'ja', '--text-base', 'text'],
       { cwd: tmp, encoding: 'utf8' })

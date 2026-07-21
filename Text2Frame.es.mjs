@@ -6584,6 +6584,9 @@ function requireFrame2Text () {
 		      const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false';
 		      let okCount = 0;
 		      let errCount = 0;
+		      // 取り出した内容を次回反映の 3-way 祖先(.t2f-base)として保存する(取り出し直後は text==game)。
+		      const _T2F = (function () { try { return requireText2Frame() } catch (e) { return null } })();
+		      const _baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH;
 
 		      const outDir = _path.resolve(BASE_PATH, textBase, locale);
 		      if (!_fs.existsSync(outDir)) { _fs.mkdirSync(outDir, { recursive: true }); }
@@ -6602,6 +6605,7 @@ function requireFrame2Text () {
 		          const fm = renderFrontMatter(Object.assign({ locale }, t), t.kind);
 		          const outPath = _path.resolve(BASE_PATH, textBase, locale, t.key + '.txt');
 		          _fs.writeFileSync(outPath, fm + body + '\n', 'utf8');
+		          if (_T2F && _T2F.saveBaseText) { try { _T2F.saveBaseText(_baseRoot, locale, t.key, fm + body + '\n'); } catch (e) {} }
 		          okCount++;
 		        } catch (e) {
 		          errCount++;
@@ -6782,6 +6786,9 @@ function requireFrame2Text () {
 		    const locale = options.locale;
 		    const textBaseDir = options.textBase;
 		    const englishTag = String(options.english_tag) === 'true';
+		    // 取り出した内容を次回反映の 3-way 祖先(.t2f-base)として保存する(取り出し直後は text==game)。
+		    const T2F = (function () { try { return requireText2Frame() } catch (e) { return null } })();
+		    const baseRoot = process.cwd();
 		    const results = [];
 		    module.exports.enumerateTargets(dataDir).forEach(function (t) {
 		      try {
@@ -6798,6 +6805,7 @@ function requireFrame2Text () {
 		        const textPath = path.resolve(textBaseDir, locale, t.key + '.txt');
 		        fs.mkdirSync(path.dirname(textPath), { recursive: true });
 		        fs.writeFileSync(textPath, frontMatter + body + '\n', 'utf8');
+		        if (T2F && T2F.saveBaseText) { try { T2F.saveBaseText(baseRoot, locale, t.key, frontMatter + body + '\n'); } catch (e) {} }
 		        results.push({ ok: true, textPath });
 		      } catch (error) {
 		        results.push({ ok: false, key: t.key, error: error.message });
