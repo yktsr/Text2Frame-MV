@@ -26,7 +26,7 @@ globalThis.PluginManager = {
 }
 require('../Text2Frame.js')
 
-describe('Plugin command MERGE3_MESSAGE_TO_EVENT (name-style router)', function () {
+describe('Plugin command MERGE_MESSAGE_TO_EVENT (name-style router)', function () {
   const oursMap = {
     events: [null, {
       id: 1,
@@ -68,7 +68,7 @@ describe('Plugin command MERGE3_MESSAGE_TO_EVENT (name-style router)', function 
   }
 
   it('3-way merges writer text with dev switch when a base is given', function () {
-    Game_Interpreter.prototype.pluginCommandText2Frame('MERGE3_MESSAGE_TO_EVENT',
+    Game_Interpreter.prototype.pluginCommandText2Frame('MERGE_MESSAGE_TO_EVENT',
       ['text', 'message.txt', '1', '1', '1', 'base', 'ancestor.txt'])
     expect(written).to.not.equal(null)
     const list = eventList()
@@ -77,7 +77,7 @@ describe('Plugin command MERGE3_MESSAGE_TO_EVENT (name-style router)', function 
   })
 
   it('falls back to overlay (keeps switch) when no base is given', function () {
-    Game_Interpreter.prototype.pluginCommandText2Frame('MERGE3_MESSAGE_TO_EVENT',
+    Game_Interpreter.prototype.pluginCommandText2Frame('MERGE_MESSAGE_TO_EVENT',
       ['text', 'message.txt', '1', '1', '1', '', ''])
     expect(written).to.not.equal(null)
     const list = eventList()
@@ -134,6 +134,44 @@ describe('Plugin command MERGE_MESSAGE_TO_EVENT on empty target (overwrite path)
     expect(written).to.not.equal(null)
     const list = JSON.parse(written).events[1].pages[0].list
     expect(list.some(function (c) { return c.code === 121 })).to.equal(true) // empty -> overwrite applies switch
+    expect(list.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })).to.include('Bonjour')
+  })
+})
+
+describe('Plugin command MERGE_MESSAGE_TO_EVENT on empty target WITH a base (regression)', function () {
+  // 再現: 同じテキストを一度マージ済み(=祖先が保存されている)で、その後イベントを空にクリアし、
+  // 同じテキストを再マージするケース。祖先ありでも空イベントは新規反映され、内容が消えてはいけない。
+  const emptyMap = {
+    events: [null, { id: 1, pages: [{ list: [{ code: 0, indent: 0, parameters: [] }] }] }]
+  }
+  const theirsText = '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n\n<Switch: 7, ON>\nBonjour\n'
+  const baseText = 'Bonjour\n' // 前回反映した内容が祖先として残っている想定
+  let written
+
+  beforeEach(function () {
+    written = null
+    sinon.stub(fs, 'readFileSync').callsFake(function (p) {
+      const s = String(p)
+      if (s.indexOf('.t2f-base') !== -1) throw new Error('no auto base') // explicit-base scenario only
+      if (s.indexOf('Map001') !== -1) return JSON.stringify(emptyMap)
+      if (s.indexOf('ancestor') !== -1) return baseText
+      if (s.indexOf('message.txt') !== -1) return theirsText
+      throw new Error('unexpected read: ' + s)
+    })
+    sinon.stub(fs, 'writeFileSync').callsFake(function (p, data) {
+      if (String(p).indexOf('Map001') !== -1) written = data
+    })
+    sinon.stub(fs, 'mkdirSync')
+    sinon.stub(console, 'log')
+  })
+  afterEach(function () { sinon.restore() })
+
+  it('re-applies text (not empty) even when a base exists', function () {
+    Game_Interpreter.prototype.pluginCommandText2Frame('MERGE_MESSAGE_TO_EVENT',
+      ['text', 'message.txt', '1', '1', '1', 'base', 'ancestor.txt'])
+    expect(written).to.not.equal(null)
+    const list = JSON.parse(written).events[1].pages[0].list
+    expect(list.some(function (c) { return c.code === 121 })).to.equal(true) // switch applied
     expect(list.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })).to.include('Bonjour')
   })
 })

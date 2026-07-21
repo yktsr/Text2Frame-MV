@@ -1,0 +1,89 @@
+const chai = require('chai')
+const expect = chai.expect
+const cp = require('child_process')
+const fs = require('fs')
+const path = require('path')
+const os = require('os')
+
+const ROOT = path.resolve(__dirname, '..')
+const F2T = path.join(ROOT, 'Frame2Text.js')
+const T2F = require('../Text2Frame.js')
+
+function msgEvent (line) {
+  return {
+    id: 1,
+    pages: [{ list: [
+      { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+      { code: 401, indent: 0, parameters: [line] },
+      { code: 0, indent: 0, parameters: [] }
+    ] }]
+  }
+}
+function stripFrontMatter (text) {
+  const n = String(text).replace(/\r\n/g, '\n')
+  if (n.indexOf('---\n') !== 0) return n
+  const e = n.indexOf('\n---\n', 4)
+  return e < 0 ? n : n.slice(e + 5)
+}
+function texts (list) {
+  return list.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })
+}
+
+describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI batch-export)', function () {
+  let tmp
+
+  beforeEach(function () {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-export-'))
+    fs.mkdirSync(path.join(tmp, 'data'))
+    fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'),
+      JSON.stringify({ events: [null, msgEvent('Hello from event')] }))
+    fs.writeFileSync(path.join(tmp, 'data', 'CommonEvents.json'),
+      JSON.stringify([null, { id: 1, list: [
+        { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+        { code: 401, indent: 0, parameters: ['Hello from common'] },
+        { code: 0, indent: 0, parameters: [] }
+      ] }]))
+  })
+  afterEach(function () {
+    try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }
+  })
+
+  it('writes one front-matter .txt per event/common under textBase/locale', function () {
+    cp.execFileSync('node', [F2T, '--mode', 'batch-export', '--data-dir', 'data', '--locale', 'ja', '--text-base', 'text'],
+      { cwd: tmp, encoding: 'utf8' })
+
+    const evPath = path.join(tmp, 'text', 'ja', 'map001_event001_page1.txt')
+    const cePath = path.join(tmp, 'text', 'ja', 'common001.txt')
+    expect(fs.existsSync(evPath)).to.equal(true)
+    expect(fs.existsSync(cePath)).to.equal(true)
+
+    const evText = fs.readFileSync(evPath, 'utf8')
+    // (a) starts with front matter carrying the routing fields
+    expect(evText.indexOf('---\n')).to.equal(0)
+    expect(evText).to.contain('kind: event')
+    expect(evText).to.contain('mapId: 1')
+    expect(evText).to.contain('eventId: 1')
+    expect(evText).to.contain('pageId: 1')
+    // (b) body round-trips through compile
+    expect(texts(T2F.compile(stripFrontMatter(evText)))).to.include('Hello from event')
+
+    const ceText = fs.readFileSync(cePath, 'utf8')
+    expect(ceText.indexOf('---\n')).to.equal(0)
+    expect(ceText).to.contain('kind: common')
+    expect(ceText).to.contain('commonEventId: 1')
+    expect(texts(T2F.compile(stripFrontMatter(ceText)))).to.include('Hello from common')
+  })
+
+  it('round-trips: exported text re-imports via --mode batch', function () {
+    cp.execFileSync('node', [F2T, '--mode', 'batch-export', '--data-dir', 'data', '--locale', 'ja', '--text-base', 'text'],
+      { cwd: tmp, encoding: 'utf8' })
+    // Edit the exported event text, then deploy it back with overwrite.
+    const evPath = path.join(tmp, 'text', 'ja', 'map001_event001_page1.txt')
+    fs.writeFileSync(evPath, fs.readFileSync(evPath, 'utf8').replace('Hello from event', 'Edited line'))
+    cp.execFileSync('node', [path.join(ROOT, 'Text2Frame.js'), '--mode', 'batch', '--text_path', 'text', '--strategy', 'overwrite'],
+      { cwd: tmp, encoding: 'utf8' })
+
+    const map = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8'))
+    expect(texts(map.events[1].pages[0].list)).to.include('Edited line')
+  })
+})

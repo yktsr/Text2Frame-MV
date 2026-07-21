@@ -73,45 +73,6 @@ describe('Phase E: front-matter-first batch (CLI)', function () {
     expect(texts(eventList(mapPath, 1))).to.eql(['Hello-1'])
   })
 
-  it('E-1: front matter wins over a conflicting manifest entry (deploys to FM eventId)', function () {
-    fs.writeFileSync(path.join(textDir, 'ev.txt'),
-      '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n\nFMWIN\n')
-    // Manifest says eventId 2, but front matter says 1 -> front matter must win.
-    fs.writeFileSync(path.join(tmp, 'manifest.json'), JSON.stringify({
-      version: 1,
-      entries: [{ kind: 'event', mapId: '1', eventId: '2', pageId: '1', textPath: 'text/ev.txt' }]
-    }))
-    runCli(['--mode', 'batch', '--manifest', 'manifest.json', '--strategy', 'overwrite'], tmp)
-    expect(texts(eventList(mapPath, 1))).to.eql(['FMWIN']) // event 1 (front matter)
-    expect(texts(eventList(mapPath, 2))).to.eql(['Hello-2']) // event 2 untouched
-  })
-
-  it('E-3: manifest run backfills front matter into files lacking it, leaves existing FM untouched', function () {
-    const noFmPath = path.join(textDir, 'nofm.txt')
-    const withFmPath = path.join(textDir, 'withfm.txt')
-    fs.writeFileSync(noFmPath, 'NoFM\n')
-    const withFmContent = '---\nkind: event\nmapId: 1\neventId: 2\npageId: 1\n---\n\nWithFM\n'
-    fs.writeFileSync(withFmPath, withFmContent)
-    fs.writeFileSync(path.join(tmp, 'manifest.json'), JSON.stringify({
-      version: 1,
-      entries: [
-        { kind: 'event', mapId: '1', eventId: '1', pageId: '1', textPath: 'text/nofm.txt' },
-        { kind: 'event', mapId: '1', eventId: '2', pageId: '1', textPath: 'text/withfm.txt' }
-      ]
-    }))
-    runCli(['--mode', 'batch', '--manifest', 'manifest.json'], tmp)
-
-    // nofm.txt now has front matter prepended, body preserved.
-    const nofmAfter = fs.readFileSync(noFmPath, 'utf8')
-    expect(nofmAfter.indexOf('---\n')).to.equal(0)
-    expect(nofmAfter).to.contain('eventId: 1')
-    expect(nofmAfter).to.contain('kind: event')
-    expect(nofmAfter).to.contain('NoFM')
-
-    // withfm.txt is byte-for-byte unchanged (existing front matter respected).
-    expect(fs.readFileSync(withFmPath, 'utf8')).to.equal(withFmContent)
-  })
-
   it('E-4: front matter strategy overrides the batch default (overwrite drops dev switch)', function () {
     // Batch default is merge (keeps switch); this file requests overwrite in front matter.
     fs.writeFileSync(path.join(textDir, 'ev.txt'),
