@@ -8,7 +8,7 @@ const path = require('path')
 // matching test/test_json_eq.js. That sets CommentOutChar and stubs $gameMessage.
 const text2frame = require('../Text2Frame.js')
 
-describe('applyTextFile / runBatch (deploy core) Test', function () {
+describe('applyTextFile (deploy core) Test', function () {
   let tmp
   let dataDir
   let mapPath
@@ -52,9 +52,9 @@ describe('applyTextFile / runBatch (deploy core) Test', function () {
     expect(text2frame.applyTextFile).to.be.a('function')
   })
 
-  it('import strategy: writes the event page list and returns ok + target', function () {
+  it('overwrite strategy: writes the event page list and returns ok + target', function () {
     const textPath = writeTextWithMeta('map001_event001_page1.txt', ['---', 'kind: event', 'mapId: 1', 'eventId: 1', 'pageId: 1', '---'])
-    const res = text2frame.applyTextFile({ textPath, mapPath, strategy: 'import', overwrite: true })
+    const res = text2frame.applyTextFile({ textPath, mapPath, strategy: 'overwrite', overwrite: true })
     expect(res.ok).to.equal(true)
     expect(res.kind).to.equal('event')
     expect(res.target).to.include({ eventId: '1', pageId: '1' })
@@ -65,22 +65,22 @@ describe('applyTextFile / runBatch (deploy core) Test', function () {
 
   it('resolves target purely from front matter (no opts overrides)', function () {
     const textPath = writeTextWithMeta('fm.txt', ['---', 'kind: event', 'mapId: 1', 'eventId: 1', 'pageId: 1', '---'])
-    const res = text2frame.applyTextFile({ textPath, mapPath, strategy: 'import', overwrite: true })
+    const res = text2frame.applyTextFile({ textPath, mapPath, strategy: 'overwrite', overwrite: true })
     expect(res.ok).to.equal(true)
     expect(res.dataPath).to.equal(mapPath)
   })
 
-  it('diff strategy on unchanged content produces no warnings', function () {
+  it('overwrite on unchanged content produces no warnings', function () {
     const textPath = writeTextWithMeta('map001_event001_page1.txt', ['---', 'kind: event', 'mapId: 1', 'eventId: 1', 'pageId: 1', '---'])
-    text2frame.applyTextFile({ textPath, mapPath, strategy: 'import', overwrite: true })
-    const res = text2frame.applyTextFile({ textPath, mapPath, strategy: 'diff' })
+    text2frame.applyTextFile({ textPath, mapPath, strategy: 'overwrite', overwrite: true })
+    const res = text2frame.applyTextFile({ textPath, mapPath, strategy: 'overwrite' })
     expect(res.ok).to.equal(true)
     expect(res.warnings).to.eql([])
   })
 
   it('common kind: writes the common event list', function () {
     const textPath = writeTextWithMeta('common001.txt', ['---', 'kind: common', 'commonEventId: 1', '---'])
-    const res = text2frame.applyTextFile({ textPath, commonEventPath: cePath, strategy: 'import', overwrite: true })
+    const res = text2frame.applyTextFile({ textPath, commonEventPath: cePath, strategy: 'overwrite', overwrite: true })
     expect(res.ok).to.equal(true)
     expect(res.target).to.include({ commonEventId: '1' })
     const after = JSON.parse(fs.readFileSync(cePath, 'utf8'))
@@ -89,7 +89,7 @@ describe('applyTextFile / runBatch (deploy core) Test', function () {
 
   it('returns ok:false with error (does not throw) on bad eventId', function () {
     const textPath = writeTextWithMeta('bad.txt', ['---', 'kind: event', 'mapId: 1', 'eventId: 1', 'pageId: 1', '---'])
-    const res = text2frame.applyTextFile({ textPath, mapPath, eventId: '99', strategy: 'import', overwrite: true })
+    const res = text2frame.applyTextFile({ textPath, mapPath, eventId: '99', strategy: 'overwrite', overwrite: true })
     expect(res.ok).to.equal(false)
     expect(res.error).to.be.a('string')
   })
@@ -104,11 +104,11 @@ describe('applyTextFile / runBatch (deploy core) Test', function () {
   it('backup:true creates .bak once (pristine) and does not clobber it', function () {
     const textPath = writeTextWithMeta('map001_event001_page1.txt', ['---', 'kind: event', 'mapId: 1', 'eventId: 1', 'pageId: 1', '---'])
     const pristine = fs.readFileSync(mapPath, 'utf8')
-    text2frame.applyTextFile({ textPath, mapPath, strategy: 'import', overwrite: true, backup: true })
+    text2frame.applyTextFile({ textPath, mapPath, strategy: 'overwrite', overwrite: true, backup: true })
     expect(fs.existsSync(mapPath + '.bak')).to.equal(true)
     expect(fs.readFileSync(mapPath + '.bak', 'utf8')).to.equal(pristine)
     // Second deploy must not overwrite the pristine .bak.
-    text2frame.applyTextFile({ textPath, mapPath, strategy: 'import', overwrite: true, backup: true })
+    text2frame.applyTextFile({ textPath, mapPath, strategy: 'overwrite', overwrite: true, backup: true })
     expect(fs.readFileSync(mapPath + '.bak', 'utf8')).to.equal(pristine)
   })
 

@@ -255,8 +255,6 @@ node Text2Frame.js --mode batch --text_path text
 | `merge`（既定） | **JSON 構造を保ちつつテキストを賢く反映**。自動判定で、祖先があれば 3-way マージ（同一箇所の相反変更のみ**両方残す**）、祖先が無く既存に内容があれば会話文字列だけ差し替え（overlay）、既存が空ならテキストをそのまま新規反映。移動/分岐/スイッチ等の UI 編集を消しません。 | 通常はこれ。ライターがセリフを編集し、構造は UI 側で編集する運用に最適 |
 | `overwrite` | **テキストを完全な正として全上書き**（テキストに無い JSON 側コマンドは削除） | 初回取り込み・完全再生成・テキストが唯一の正のとき |
 
-> **旧 strategy 名は非推奨エイリアス**として引き続き受理され、内部で正規化されます: `import`/`diff` → `overwrite`、`overlay`/`merge3`/`sync` → `merge`。
-
 **3-way の祖先（BASE）は `.t2f-base/<言語>/<key>.txt` に自動保存・自動参照**されます（VS Code / CLI / プラグインで共通・相互運用可、`.gitignore` 済）。`--base`/`BaseFolder` は明示したいときだけの任意指定です。
 
 #### 競合したときの表示（両方残す）
@@ -282,8 +280,6 @@ node Text2Frame.js --mode batch --text_path text
 | 3-way 祖先 | 自動 `.t2f-base` | 自動 `.t2f-base`（`--base` 任意） | 自動 `.t2f-base`（`BaseFolder`/`BaseFileName` 任意） |
 | 競合(両方残す) | あり | あり | あり |
 | 反映時のテキスト書き戻し | 保存時に自動書き戻し | — | — |
-
-> 旧 strategy 名は非推奨エイリアスとして受理・正規化されます: `import`/`diff`→`overwrite`、`overlay`/`merge3`/`sync`→`merge`。
 
 ### 英語化の固定フロー（推奨）
 
@@ -327,7 +323,7 @@ Options:
   -e, --event_id <name>                       event file id
   -p, --page_id <name>                        page id
   -c, --common_event_id <name>                common event id
-  -s, --strategy <merge|overwrite>            deploy strategy (default merge; legacy import/diff/overlay/merge3/sync accepted) (default: "merge")
+  -s, --strategy <merge|overwrite>            deploy strategy (default merge) (default: "merge")
   -b, --base <path>                           ancestor text path for merge (3-way common ancestor)
   -w, --overwrite <true/false>                overwrite mode (legacy) (default: "false")
   -v, --verbose                               debug mode (default: false)
