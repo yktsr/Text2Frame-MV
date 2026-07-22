@@ -10,6 +10,8 @@ describe('Text2Frame Test', function() {
   const consoleStub = sinon.stub(console, 'log');
   const writeFileSyncStub = sinon.stub(fs, 'writeFileSync');
   const readFileSyncStub = sinon.stub(fs, 'readFileSync');
+  // 祖先スナップショット(.t2f-base)の保存で実ディレクトリを作らせない。
+  sinon.stub(fs, 'mkdirSync');
 
   tests.forEach(function(test, index) {
     it(test.title, function(done) {
@@ -18,6 +20,8 @@ describe('Text2Frame Test', function() {
       fs.readFile(test.expfile, 'utf8', function(err, expected_data) {
         let result_data = "";
         writeFileSyncStub.callsFake(function(file_path, json_data, encoding){
+          // 祖先スナップショットの書き込みは対象外(検証したいのはデータJSON)。
+          if (String(file_path).indexOf('.t2f-base') !== -1) { return file_path; }
           result_data = json_data;
           return file_path;
         });

@@ -6473,14 +6473,16 @@ function requireFrame2Text () {
 		    // 書き出したテキストに載せる front matter(YAMLヘッダ)を生成する。
 		    const renderFrontMatter = function (entry, kind) {
 		      const lines = ['---'];
+		      // 値が無いキーは書かない("mapId: undefined" のような行を出さない)。
+		      const put = function (k, v) { if (v !== undefined && v !== null && String(v) !== '') lines.push(k + ': ' + String(v)); };
 		      lines.push('generator: text2frame-mv@' + VERSION);
 		      lines.push('kind: ' + kind);
 		      if (kind === 'event') {
-		        lines.push('mapId: ' + String(entry.mapId));
-		        lines.push('eventId: ' + String(entry.eventId));
+		        put('mapId', entry.mapId);
+		        put('eventId', entry.eventId);
 		        lines.push('pageId: ' + String(entry.pageId || '1'));
 		      } else {
-		        lines.push('commonEventId: ' + String(entry.commonEventId));
+		        put('commonEventId', entry.commonEventId);
 		      }
 		      if (entry.locale) lines.push('locale: ' + String(entry.locale));
 		      if (entry.key) lines.push('key: ' + String(entry.key));
@@ -6643,12 +6645,33 @@ function requireFrame2Text () {
 		    /** ******************************* */
 		    // エクスポートモード: 全体を上書き
 		    /** ******************************* */
-		    const outputText = decompile(map_events, EnglishTag, { pretty: true });
+		    const isCEExport = Laurus.Frame2Text.ExecMode === 'EXPORT_CE_TO_MESSAGE' ||
+		      Laurus.Frame2Text.ExecMode === 'コモンイベントをメッセージにエクスポート';
+		    const exportKind = isCEExport ? 'common' : 'event';
+		    // CLI は --input_path で map ファイルを直接指定するため MapID が無い。パス名から補う。
+		    const exportMapId = Laurus.Frame2Text.MapID || (function () {
+		      const m = String(Laurus.Frame2Text.MapPath || '').match(/Map(\d+)\.json$/i);
+		      return m ? String(parseInt(m[1], 10)) : undefined
+		    })();
+		    const exportEntry = isCEExport
+		      ? { commonEventId: Laurus.Frame2Text.CommonEventID }
+		      : { mapId: exportMapId, eventId: Laurus.Frame2Text.EventID, pageId: Laurus.Frame2Text.PageID };
+		    const outputText = renderFrontMatter(exportEntry, exportKind) +
+		      decompile(map_events, EnglishTag, { pretty: true }) + '\n';
 
 		    /** ********************************************** */
 		    // txtファイルを出力
 		    /** ********************************************** */
 		    writeData(Laurus.Frame2Text.TextPath, outputText);
+		    // 取り出し直後は text==game。overwrite でも次回反映の 3-way 祖先を更新する。
+		    try {
+		      const _T2Fx = resolveText2Frame();
+		      if (_T2Fx && _T2Fx.saveBaseText && _T2Fx.deriveBaseId) {
+		        const _root = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH;
+		        const _id = _T2Fx.deriveBaseId(Laurus.Frame2Text.TextPath, {});
+		        _T2Fx.saveBaseText(_root, _id.locale, _id.key, outputText);
+		      }
+		    } catch (e) { /* best effort */ }
 
 		    /** ********************************************** */
 		    // 出力メッセージ
@@ -11288,6 +11311,16 @@ function requireText2Frame () {
 		    // マージ反映後、反映したテキストを次回の祖先として保存する(明示 BasePath 使用時も最新化)。
 		    const saveMergeBase = function (baseRoot, baseId, textPath) {
 		      if (baseRoot && baseId) { try { saveBaseText(baseRoot, baseId.locale, baseId.key, readText(textPath)); } catch (e) {} }
+		    };
+
+		    // overwrite 反映の直後も text==game なので、同じく祖先を更新する。
+		    // 読み込み済みのテキスト/メタを受け取り、ファイルを読み直さない。
+		    const saveBaseAfterOverwrite = function (textPath, text, meta) {
+		      try {
+		        const root = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH;
+		        const id = deriveBaseId(textPath, meta);
+		        if (root && id) saveBaseText(root, id.locale, id.key, text);
+		      } catch (e) { /* best effort */ }
 		    };
 
 		    Laurus.Text2Frame.ExecMode = command.toUpperCase();
@@ -17267,6 +17300,8 @@ function requireText2Frame () {
 		        map_events = map_events.concat(event_command_list);
 		        map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list = map_events;
 		        writeData(Laurus.Text2Frame.MapPath, map_data);
+		        // 全上書きのときだけ text==game になる(追記モードは一致しないので祖先を更新しない)。
+		        if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, parsed.meta);
 		        addMessage(
 		          'Success / 書き出し成功！\n' +
 		            '======> MapID: ' +
@@ -17294,6 +17329,8 @@ function requireText2Frame () {
 		        ce_events.pop();
 		        ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list);
 		        writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
+		        // 全上書きのときだけ text==game になる(追記モードは一致しないので祖先を更新しない)。
+		        if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, parsed.meta);
 		        addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID);
 		        break
 		      }

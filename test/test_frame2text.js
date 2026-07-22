@@ -30,6 +30,8 @@ describe('Frame2Text Test', function() {
   const consoleStub = sinon.stub(console, 'log');
   const writeFileSyncStub = sinon.stub(fs, 'writeFileSync');
   const readFileSyncStub = sinon.stub(fs, 'readFileSync');
+  // 祖先スナップショット(.t2f-base)の保存で実ディレクトリを作らせない。
+  sinon.stub(fs, 'mkdirSync');
 
   tests.forEach(function(test, index) {
     it(test.title, function(done) {
@@ -37,19 +39,17 @@ describe('Frame2Text Test', function() {
       fs.readFile(test.expfile, 'utf8', function(err, expected_data) {
         let event_2_message = "";
         let message_2_event = "";
-        const write_count = index * 2;
         const read_count = index * 3;
 
-        writeFileSyncStub.onCall(write_count).callsFake(function(file_path, text, encoding) {
-          event_2_message = text;
-          console.log("Message Text")
-          console.log(text)
-          return file_path;
-        });
-        writeFileSyncStub.onCall(write_count + 1).callsFake(function(file_path, json_data, encoding) {
-          message_2_event = json_data;
-          // console.log("Message To Event")
-          // console.log(json_data)
+        // 書き込みはパスで振り分ける(祖先スナップショットの保存が挟まっても壊れないように)。
+        writeFileSyncStub.callsFake(function(file_path, data, encoding) {
+          const p = String(file_path);
+          if (p.indexOf('.t2f-base') !== -1) { return file_path; } // 祖先は検証対象外
+          if (/\.json$/i.test(p)) {
+            message_2_event = data;   // テキスト -> データJSON(反映結果)
+          } else {
+            event_2_message = data;   // データ -> テキスト(書き出し結果)
+          }
           return file_path;
         });
         readFileSyncStub.onCall(read_count).returns(expected_data);
