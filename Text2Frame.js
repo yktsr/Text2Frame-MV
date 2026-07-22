@@ -10667,27 +10667,48 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const suffix = kind === 'common' ? '_TO_CE' : '_TO_EVENT'
     return (cliStrategy === 'overwrite' ? 'IMPORT_MESSAGE' : 'MERGE_MESSAGE') + suffix
   }
+  // 単一ファイルモードでも front matter を反映先のフォールバックに使う(明示した CLI 引数が優先)。
+  const frontMatterOf = function (p) {
+    if (!p) return {}
+    try { return parseFrontMatterCli(fs.readFileSync(path.resolve(p), { encoding: 'utf8' })).meta || {} } catch (e) { return {} }
+  }
   if (options.mode === 'map') {
+    const fm = frontMatterOf(options.text_path)
+    const eventId = options.event_id || fm.eventId
+    const mapPath = options.output_path ||
+      (fm.mapId ? path.resolve(process.cwd(), 'data', 'Map' + ('000' + String(fm.mapId)).slice(-3) + '.json') : undefined)
+    if (!eventId) {
+      throw new Error('eventId is required: pass --event_id, or put "eventId:" in the text front matter.')
+    }
+    if (!mapPath) {
+      throw new Error('map path is required: pass --output_path, or put "mapId:" in the text front matter.')
+    }
     const Text2Frame = {
       IsDebug: options.verbose,
       TextPath: options.text_path,
       IsOverwrite: (cliStrategy === 'overwrite'),
       ExecMode: execModeFor('event'),
       BasePath: options.base,
-      MapPath: options.output_path,
-      EventID: options.event_id,
-      PageID: options.page_id ? options.page_id : '1'
+      MapPath: mapPath,
+      EventID: String(eventId),
+      PageID: String(options.page_id || fm.pageId || '1')
     }
     Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [Text2Frame])
   } else if (options.mode === 'common') {
+    const fm = frontMatterOf(options.text_path)
+    const commonEventId = options.common_event_id || fm.commonEventId
+    const commonEventPath = options.output_path || path.resolve(process.cwd(), 'data', 'CommonEvents.json')
+    if (!commonEventId) {
+      throw new Error('commonEventId is required: pass --common_event_id, or put "commonEventId:" in the text front matter.')
+    }
     const Text2Frame = {
       IsDebug: options.verbose,
       TextPath: options.text_path,
       IsOverwrite: (cliStrategy === 'overwrite'),
       ExecMode: execModeFor('common'),
       BasePath: options.base,
-      CommonEventPath: options.output_path,
-      CommonEventID: options.common_event_id
+      CommonEventPath: commonEventPath,
+      CommonEventID: String(commonEventId)
     }
     Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [Text2Frame])
   } else if (options.mode === 'compile') {
