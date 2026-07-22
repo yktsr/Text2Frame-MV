@@ -93,9 +93,8 @@ export function writeBackAndRefreshBase(
             getOutput().appendLine(`    write-back failed: ${ex.error}`);
         }
     }
-    if (mergeLike) {
-        saveBaseSnapshot(workspaceRoot, snap.locale, snap.key, finalText);
-    }
+    // overwrite の直後も text==game なので、merge と同じく祖先を更新する。
+    saveBaseSnapshot(workspaceRoot, snap.locale, snap.key, finalText);
 }
 
 /** Locate and load the compiler module that exports applyTextFile(). */

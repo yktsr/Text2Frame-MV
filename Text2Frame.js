@@ -4431,6 +4431,16 @@
       if (baseRoot && baseId) { try { saveBaseText(baseRoot, baseId.locale, baseId.key, readText(textPath)) } catch (e) {} }
     }
 
+    // overwrite 反映の直後も text==game なので、同じく祖先を更新する。
+    // 読み込み済みのテキスト/メタを受け取り、ファイルを読み直さない。
+    const saveBaseAfterOverwrite = function (textPath, text, meta) {
+      try {
+        const root = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH
+        const id = deriveBaseId(textPath, meta)
+        if (root && id) saveBaseText(root, id.locale, id.key, text)
+      } catch (e) { /* best effort */ }
+    }
+
     Laurus.Text2Frame.ExecMode = command.toUpperCase()
 
     switch (Laurus.Text2Frame.ExecMode) {
@@ -10408,6 +10418,8 @@
         map_events = map_events.concat(event_command_list)
         map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list = map_events
         writeData(Laurus.Text2Frame.MapPath, map_data)
+        // 全上書きのときだけ text==game になる(追記モードは一致しないので祖先を更新しない)。
+        if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, parsed.meta)
         addMessage(
           'Success / 書き出し成功！\n' +
             '======> MapID: ' +
@@ -10435,6 +10447,8 @@
         ce_events.pop()
         ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list)
         writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
+        // 全上書きのときだけ text==game になる(追記モードは一致しないので祖先を更新しない)。
+        if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, parsed.meta)
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break
       }
