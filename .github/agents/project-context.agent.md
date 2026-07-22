@@ -26,7 +26,7 @@ tools: [read, edit, search, execute]
 
 | パス | 役割 |
 |---|---|
-| `Text2Frame.js` | テキスト→JSON コンパイラ本体。ツクールのプラグインとしても動作。`module.exports = { compile, applyDiff, applyOverlay, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId }` |
+| `Text2Frame.js` | テキスト→JSON コンパイラ本体。ツクールのプラグインとしても動作。`module.exports = { compile, applyOverlay, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId }` |
 | `Frame2Text.js` | JSON→テキスト。`module.exports = { decompile, VERSION, enumerateTargets, renderFrontMatter }`。プラグイン/CLI の取り出しは merge 既定(`MERGE_EVENT_TO_MESSAGE`/`MERGE_CE_TO_MESSAGE` ExecMode、内部で `Text2Frame.applyMergePull` を lazy require) |
 | `Text2Frame.{cjs.js,es.mjs,umd.js}` | `npm run build`(vite)生成物。**直接編集しない**。`// developer mode` 以降(CLI部)は build で除去される |
 | `vscode-extension/` | VSCode 拡張(モノレポのサブディレクトリ)。下記「VSCode拡張」参照 |
@@ -76,7 +76,6 @@ npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ �
 - `compile(text)` → イベントコマンド配列(本文のみ。フロントマターは呼び出し側で除去)
 - `applyTextFile(opts)` → 単一テキストを単一データ JSON へデプロイ。`opts={ textPath, kind, mapId, eventId, pageId, commonEventId, mapPath, commonEventPath, strategy, overwrite, backup }`。戻り値 `{ ok, warnings, error, errorLine, errorLineText, dataPath, target }`。throw せず結果を返す
 - フォルダ一括反映は front matter 走査で行う: 各 `.txt` を `applyTextFile({ textPath, strategy })` で反映(CLI は `--mode batch --text_path <dir> [--locale <name>]`、プラグインは `BATCH_IMPORT_MESSAGES_FROM_FOLDER`)
-- `applyDiff(existing, new)` → LCS マージ
 - `applyOverlay(existing, incoming)` → 構造保持マージ(祖先が無いとき)。`applyThreeWayMerge(base, ours, theirs)` → 3-way マージ(`{ commands, warnings, conflicts }`)
 - `applyMergePull({ gameCommands, textBody, baseBody, englishTag })` → `{ text, conflicts, warnings }`。取り出し(ゲーム→テキスト)の 3-way 本体。push と対称(出力先がテキストなだけ)。内部で `Frame2Text.decompile` を lazy require
 - `resolveStrategy(name)` → `{ strategy: 'merge'|'overwrite' }`(未知値は null)
