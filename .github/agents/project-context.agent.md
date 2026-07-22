@@ -75,11 +75,11 @@ npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ �
 **Text2Frame.js**
 - `compile(text)` → イベントコマンド配列(本文のみ。フロントマターは呼び出し側で除去)
 - `applyTextFile(opts)` → 単一テキストを単一データ JSON へデプロイ。`opts={ textPath, kind, mapId, eventId, pageId, commonEventId, mapPath, commonEventPath, strategy, overwrite, backup }`。戻り値 `{ ok, warnings, error, errorLine, errorLineText, dataPath, target }`。throw せず結果を返す
-- フォルダ一括反映は front matter 走査で行う: 各 `.txt` を `applyTextFile({ textPath, strategy })` で反映(CLI は `--mode batch --text_path <dir>`、プラグインは `BATCH_IMPORT_MESSAGES_FROM_FOLDER`)
+- フォルダ一括反映は front matter 走査で行う: 各 `.txt` を `applyTextFile({ textPath, strategy })` で反映(CLI は `--mode batch --text_path <dir> [--locale <name>]`、プラグインは `BATCH_IMPORT_MESSAGES_FROM_FOLDER`)
 - `applyDiff(existing, new)` → LCS マージ
 - `applyOverlay(existing, incoming)` → 構造保持マージ(祖先が無いとき)。`applyThreeWayMerge(base, ours, theirs)` → 3-way マージ(`{ commands, warnings, conflicts }`)
 - `applyMergePull({ gameCommands, textBody, baseBody, englishTag })` → `{ text, conflicts, warnings }`。取り出し(ゲーム→テキスト)の 3-way 本体。push と対称(出力先がテキストなだけ)。内部で `Frame2Text.decompile` を lazy require
-- `resolveStrategy(name)` → `{ strategy: 'merge'|'overwrite', sync }`(レガシー別名を正規化)
+- `resolveStrategy(name)` → `{ strategy: 'merge'|'overwrite' }`(未知値は null)
 - 祖先ヘルパ: `deriveBaseId(textPath, meta)`→`{ locale, key }`、`baseSnapshotPathCore(root, locale, key)`、`readBaseText`/`saveBaseText`
 
 **Frame2Text.js**
@@ -92,7 +92,7 @@ npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ �
 
 ```bash
 # Text2Frame(取り込み/反映)。push は既定 merge
-node Text2Frame.js -m map|common|compile|test|batch [...] [-s merge|overwrite] [-b <base>] [--watch] [--poll] [--debounce ms]
+node Text2Frame.js -m map|common|compile|test|batch [...] [-l <locale>] [-s merge|overwrite] [-b <base>] [--watch] [--poll] [--debounce ms]
 #   -s: 既定 merge(3-way 自動)。overwrite で全置換
 #   -b <base>: 明示祖先(任意)。未指定なら .t2f-base を自動参照/保存   --watch でファイル監視→再デプロイ(chokidar)
 # Frame2Text(書き出し/取り出し)。pull も既定 merge(翻訳を残す)

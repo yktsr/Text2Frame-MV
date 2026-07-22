@@ -238,11 +238,15 @@ node Frame2Text.js --mode batch-export --data-dir data --locale en --text-base t
 ```bash
 # text/ 配下の front matter 付き .txt を再帰走査して一括反映
 node Text2Frame.js --mode batch --text_path text
+
+# 言語を選んで反映（取り出しの --locale と対称。多言語プロジェクトではこちら）
+node Text2Frame.js --mode batch --text_path text --locale en
 ```
 
 `--strategy` を省略すると `merge`（既定）です。全上書きしたいときだけ `--strategy overwrite` を付けます。
 
 - **front matter で振り分け**: 各 `.txt` は自分の front matter（`kind`/`mapId`/`eventId`/`pageId`/`commonEventId`、任意で `strategy`/`basePath`/`locale`）に従って反映先が決まります。front matter を持たない `.txt` はスキップされます。
+- **言語の選択（`--locale`）**: `text/ja` と `text/en` の両方がある状態で `--locale` を省略すると、**同じイベントに全言語が順に反映され最後の1つだけが残ります**（警告を表示します）。多言語プロジェクトでは取り出し時と同じく `--locale <name>` で1つ選んでください。判定は front matter の `locale`、無ければ親フォルダ名です。
 - **front matter での strategy 指定（任意）**: ファイル先頭に `strategy: overwrite` 等を書くと、そのファイルだけ方式を上書きできます（`basePath` で 3-way の祖先も指定可）。
 - **監視**: `--watch` を付けると text ディレクトリを監視し、変更・追加された `.txt` を自動で再反映します。
 
@@ -319,6 +323,7 @@ Options:
   -V, --version                               output the version number
   -m, --mode <map|common|compile|test|batch>  output mode
   -t, --text_path <name>                      text file path
+  -l, --locale <name>                         batch mode: only deploy text of this locale
   -o, --output_path <name>                    output file path
   -e, --event_id <name>                       event file id
   -p, --page_id <name>                        page id
@@ -338,7 +343,7 @@ Options:
     SYNOPSIS
         node Text2Frame.js --mode map --text_path <text> --output_path <map json> --event_id <id> --page_id <id> [--strategy merge|overwrite] [--base <ancestor text>]
         node Text2Frame.js --mode common --text_path <text> --output_path <common json> --common_event_id <id> [--strategy merge|overwrite] [--base <ancestor text>]
-        node Text2Frame.js --mode batch [--text_path <dir>] [--strategy merge|overwrite] [--watch]
+        node Text2Frame.js --mode batch [--text_path <dir>] [--locale <name>] [--strategy merge|overwrite] [--watch]
         node Text2Frame.js --mode compile
         node Text2Frame.js --mode test
     DESCRIPTION

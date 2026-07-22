@@ -10602,6 +10602,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .usage('[options]')
     .option('-m, --mode <map|common|compile|test|batch>', 'output mode', /^(map|common|compile|test|batch)$/i)
     .option('-t, --text_path <name>', 'text file path')
+    .option('-l, --locale <name>', 'batch mode: only deploy text of this locale (front matter locale, else parent dir name)')
     .option('-o, --output_path <name>', 'output file path')
     .option('-e, --event_id <name>', 'event file id')
     .option('-p, --page_id <name>', 'page id')
@@ -10708,9 +10709,28 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const strategy = cliStrategy
     const cliBasePath = options.base ? path.resolve(options.base) : undefined
 
+    // ファイルの言語は front matter の locale、無ければ親ディレクトリ名(deriveBaseId と同規約)。
+    const localeOf = function (fileArg, meta) {
+      return String((meta && meta.locale) || path.basename(path.dirname(fileArg)) || 'default')
+    }
+
     const collectFiles = function () {
-      return walkTextFilesCli(scanRoot)
-        .filter(function (f) { return parseFrontMatterCli(fs.readFileSync(f, { encoding: 'utf8' })).hasFrontMatter })
+      const wanted = options.locale ? String(options.locale) : null
+      const found = {}
+      const files = walkTextFilesCli(scanRoot).filter(function (f) {
+        const parsed = parseFrontMatterCli(fs.readFileSync(f, { encoding: 'utf8' }))
+        if (!parsed.hasFrontMatter) return false
+        const loc = localeOf(f, parsed.meta)
+        found[loc] = true
+        return wanted ? loc === wanted : true
+      })
+      const locales = Object.keys(found)
+      if (!wanted && locales.length > 1) {
+        console.warn('[batch] WARNING: 複数の言語 (' + locales.join(', ') + ') が対象に含まれています。' +
+          '同じイベントに全言語が順に反映され、最後の1つだけが残ります。--locale <name> で1つ選んでください。 / ' +
+          'multiple locales found; deploying all of them to the same events. Pass --locale <name>.')
+      }
+      return files
     }
 
     const deployOne = function (fileArg) {
@@ -10744,7 +10764,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
     const files = collectFiles()
     if (files.length === 0) {
-      throw new Error('No front-matter text files found under ' + scanRoot + ' (pass --text_path <dir>).')
+      throw new Error('No front-matter text files found under ' + scanRoot +
+        (options.locale ? ' for locale "' + options.locale + '"' : '') + ' (pass --text_path <dir> / --locale <name>).')
     }
     const results = files.map(function (fileArg) {
       const res = deployOne(fileArg)
