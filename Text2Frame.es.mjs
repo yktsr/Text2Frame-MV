@@ -11144,7 +11144,6 @@ function requireText2Frame () {
 		    Laurus.Text2Frame.EventID = '1';
 		    Laurus.Text2Frame.PageID = '1';
 		    Laurus.Text2Frame.IsOverwrite = true;
-		    Laurus.Text2Frame.WriteBack = false;
 		    Laurus.Text2Frame.CommentOutChar = '%';
 		    Laurus.Text2Frame.IsDebug = false;
 		    Laurus.Text2Frame.DisplayMsg = true;
@@ -11447,17 +11446,6 @@ function requireText2Frame () {
 		      const fs = require$$1$1;
 		      try {
 		        fs.writeFileSync(filepath, JSON.stringify(jsonData, null, '  '), { encoding: 'utf8' });
-		      } catch (e) {
-		        throw new Error(
-		          'Save failed. / 保存に失敗しました。\n' + 'ファイルが開いていないか確認してください。\n' + filepath
-		        )
-		      }
-		    };
-
-		    const writeText = function (filepath, textData) {
-		      const fs = require$$1$1;
-		      try {
-		        fs.writeFileSync(filepath, textData, { encoding: 'utf8' });
 		      } catch (e) {
 		        throw new Error(
 		          'Save failed. / 保存に失敗しました。\n' + 'ファイルが開いていないか確認してください。\n' + filepath
@@ -16626,34 +16614,6 @@ function requireText2Frame () {
 		      return event_command_list
 		    };
 
-		    /* コマンドリストをブロック単位にグループ化する。
-		     * 継続コード (401, 655, 408, 405) は直前のヘッドコマンドに属する。 */
-		    const CONTINUATION_CODES = [401, 655, 408, 405];
-
-		    const groupCommandsIntoBlocks = function (commands) {
-		      const blocks = [];
-		      let current_block = [];
-		      for (let i = 0; i < commands.length; i++) {
-		        const cmd = commands[i];
-		        if (CONTINUATION_CODES.indexOf(cmd.code) !== -1) {
-		          current_block.push(cmd);
-		        } else {
-		          if (current_block.length > 0) {
-		            blocks.push(current_block);
-		          }
-		          current_block = [cmd];
-		        }
-		      }
-		      if (current_block.length > 0) {
-		        blocks.push(current_block);
-		      }
-		      return blocks
-		    };
-
-		    const flattenBlocks = function (blocks) {
-		      return blocks.reduce(function (acc, block) { return acc.concat(block) }, [])
-		    };
-
 		    /* LCS (最長共通部分列) テーブルを計算する */
 		    const lcsTable = function (a, b) {
 		      const m = a.length;
@@ -16712,73 +16672,11 @@ function requireText2Frame () {
 		      if (s === 'overwrite') return { strategy: 'overwrite' }
 		      return null
 		    };
-		    const applyDiff = function (existing_commands, new_commands) {
-		      const stripBottom = function (cmds) {
-		        const copy = cmds.slice();
-		        while (copy.length > 0 && copy[copy.length - 1].code === 0) {
-		          copy.pop();
-		        }
-		        return copy
-		      };
-
-		      const existingStripped = stripBottom(existing_commands);
-		      const newStripped = stripBottom(new_commands);
-
-		      const existingBlocks = groupCommandsIntoBlocks(existingStripped);
-		      const newBlocks = groupCommandsIntoBlocks(newStripped);
-
-		      const table = lcsTable(existingBlocks, newBlocks);
-		      const diff = buildDiffFromTable(table, existingBlocks, newBlocks);
-
-		      const warnings = [];
-		      const resultBlocks = [];
-		      const DIFF_PREVIEW_LENGTH = 80;
-		      const previewOf = function (block) {
-		        const full = JSON.stringify(block);
-		        return full.length > DIFF_PREVIEW_LENGTH ? full.substring(0, DIFF_PREVIEW_LENGTH) + '...' : full
-		      };
-
-		      // LCS では「内容変更」が removed(旧)+added(新) のペアとして現れる。非 equal の
-		      // 連続領域内で removed と added をペアにし、ペアは「変更」、余った removed だけを
-		      // 「削除」として警告する(変更を削除と誤警告しないため)。結果リストの構築順
-		      // (equal/added を出現順に push、removed は除外)は従来と同一。
-		      let idx = 0;
-		      while (idx < diff.length) {
-		        if (diff[idx].type === 'equal') {
-		          resultBlocks.push(diff[idx].block);
-		          idx++;
-		          continue
-		        }
-		        const removedBlocks = [];
-		        const addedBlocks = [];
-		        while (idx < diff.length && diff[idx].type !== 'equal') {
-		          if (diff[idx].type === 'added') {
-		            resultBlocks.push(diff[idx].block);
-		            addedBlocks.push(diff[idx].block);
-		          } else {
-		            removedBlocks.push(diff[idx].block);
-		          }
-		          idx++;
-		        }
-		        const changed = Math.min(removedBlocks.length, addedBlocks.length);
-		        for (let k = 0; k < changed; k++) {
-		          warnings.push('Block changed / ブロックが変更されます: ' + previewOf(removedBlocks[k]) + ' -> ' + previewOf(addedBlocks[k]));
-		        }
-		        for (let k = changed; k < removedBlocks.length; k++) {
-		          warnings.push('Block removed / ブロックが削除されます: ' + previewOf(removedBlocks[k]));
-		        }
-		      }
-
-		      return {
-		        commands: flattenBlocks(resultBlocks),
-		        warnings
-		      }
-		    };
 
 		    /* 翻訳オーバーレイ: existing(JSON)を「構造の正」とし、new(テキスト)側の会話文字列だけを
 		     * 対応スロットへ差し替える。移動/分岐/スイッチ等の非会話コマンドは一切変更しない。
 		     * スロット種別の並びを LCS で対応付け、対応が取れた分だけ差し替え、余りは警告する。
-		     * 戻り値: { commands: 適用後(終端コードなし), warnings } (applyDiff と同契約)。 */
+		     * 戻り値: { commands: 適用後(終端コードなし), warnings }。 */
 		    const applyOverlay = function (existing_commands, new_commands) {
 		      const stripBottom = function (cmds) {
 		        const copy = cmds.slice();
@@ -16807,7 +16705,7 @@ function requireText2Frame () {
 		      const exSlots = slotsOf(result);
 		      const newSlots = slotsOf(new_commands);
 
-		      // スロット種別列を LCS で対応付け(applyDiff と同じ lcsTable/buildDiffFromTable を再利用)。
+		      // スロット種別列を LCS で対応付け(lcsTable/buildDiffFromTable を再利用)。
 		      const a = exSlots.map(function (s) { return s.kind });
 		      const b = newSlots.map(function (s) { return s.kind });
 		      const diff = buildDiffFromTable(lcsTable(a, b), a, b);
@@ -17092,8 +16990,7 @@ function requireText2Frame () {
 		            PageID: String(pageId),
 		            IsOverwrite: overwrite,
 		            BasePath: opts.basePath,
-		            ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_EVENT' : 'MERGE_MESSAGE_TO_EVENT',
-		            WriteBack: false
+		            ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_EVENT' : 'MERGE_MESSAGE_TO_EVENT'
 		          }]);
 		        } else if (kind === 'common') {
 		          const commonEventId = opts.commonEventId || meta.commonEventId;
@@ -17114,8 +17011,7 @@ function requireText2Frame () {
 		            CommonEventID: String(commonEventId),
 		            IsOverwrite: overwrite,
 		            BasePath: opts.basePath,
-		            ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_CE' : 'MERGE_MESSAGE_TO_CE',
-		            WriteBack: false
+		            ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_CE' : 'MERGE_MESSAGE_TO_CE'
 		          }]);
 		        } else {
 		          throw new Error('unknown kind: ' + kind)
@@ -17194,30 +17090,10 @@ function requireText2Frame () {
 		      return { text, conflicts, warnings }
 		    };
 
-		    Laurus.Text2Frame.export = { compile, applyDiff, applyOverlay, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId };
+		    Laurus.Text2Frame.export = { compile, applyOverlay, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId };
 		    // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
 		    // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
 		    try { if (typeof globalThis !== 'undefined') globalThis.$LaurusText2Frame = Laurus.Text2Frame.export; } catch (e) { /* noop */ }
-
-		    /* 差分適用後のコマンドリストをテキストファイルへ書き戻す。
-		     * Frame2Text プラグインの decompile 関数を使用します。
-		     * Frame2Text が未ロードの場合は警告を表示します。 */
-		    const writeBackToText = function (commands) {
-		      const decompile =
-		        typeof Laurus !== 'undefined' &&
-		        Laurus.Frame2Text &&
-		        Laurus.Frame2Text.export &&
-		        Laurus.Frame2Text.export.decompile;
-		      if (!decompile) {
-		        addWarning(
-		          'WriteBack requires Frame2Text plugin. / WriteBack には Frame2Text プラグインが必要です。'
-		        );
-		        return
-		      }
-		      const text = decompile(commands);
-		      writeText(Laurus.Text2Frame.TextPath, text);
-		      addMessage('WriteBack success / テキストへの書き戻し成功！\n' + Laurus.Text2Frame.TextPath);
-		    };
 
 		    const resolveFromRoot = function (rootDir, maybeRelativePath) {
 		      if (!maybeRelativePath) {
@@ -17363,65 +17239,6 @@ function requireText2Frame () {
 		          merged.commands.concat([getCommandBottomEvent()]);
 		        writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
 		        saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath);
-		        addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID);
-		        break
-		      }
-		      case 'OVERLAY_MESSAGE_TO_EVENT': {
-		        const map_data = readJsonData(Laurus.Text2Frame.MapPath);
-		        if (!map_data.events[Laurus.Text2Frame.EventID]) {
-		          throw new Error(
-		            'EventID not found. / EventIDが見つかりません。\n' + 'Event ID: ' + Laurus.Text2Frame.EventID
-		          )
-		        }
-
-		        const pageID = Number(Laurus.Text2Frame.PageID) - 1;
-		        while (!map_data.events[Laurus.Text2Frame.EventID].pages[pageID]) {
-		          map_data.events[Laurus.Text2Frame.EventID].pages.push(getDefaultPage());
-		        }
-
-		        const existing_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list;
-		        const mergeFn = Laurus.Text2Frame.ExecMode === 'OVERLAY_MESSAGE_TO_EVENT' ? applyOverlay : applyDiff;
-		        const diff_result = mergeFn(existing_events, event_command_list);
-		        for (let wi = 0; wi < diff_result.warnings.length; wi++) {
-		          addWarning(diff_result.warnings[wi]);
-		        }
-		        map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list =
-		          diff_result.commands.concat([getCommandBottomEvent()]);
-		        writeData(Laurus.Text2Frame.MapPath, map_data);
-		        if (Laurus.Text2Frame.WriteBack) {
-		          writeBackToText(diff_result.commands);
-		        }
-		        addMessage(
-		          'Success / 書き出し成功！\n' +
-		            '======> MapID: ' +
-		            Laurus.Text2Frame.MapID +
-		            ' -> EventID: ' +
-		            Laurus.Text2Frame.EventID +
-		            ' -> PageID: ' +
-		            Laurus.Text2Frame.PageID
-		        );
-		        break
-		      }
-		      case 'OVERLAY_MESSAGE_TO_CE': {
-		        const ce_data = readJsonData(Laurus.Text2Frame.CommonEventPath);
-		        if (ce_data.length - 1 < Laurus.Text2Frame.CommonEventID) {
-		          throw new Error(
-		            'Common Event not found. / コモンイベントが見つかりません。: ' + Laurus.Text2Frame.CommonEventID
-		          )
-		        }
-
-		        const existing_ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list;
-		        const mergeCeFn = Laurus.Text2Frame.ExecMode === 'OVERLAY_MESSAGE_TO_CE' ? applyOverlay : applyDiff;
-		        const diff_ce_result = mergeCeFn(existing_ce_events, event_command_list);
-		        for (let wi = 0; wi < diff_ce_result.warnings.length; wi++) {
-		          addWarning(diff_ce_result.warnings[wi]);
-		        }
-		        ce_data[Laurus.Text2Frame.CommonEventID].list =
-		          diff_ce_result.commands.concat([getCommandBottomEvent()]);
-		        writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
-		        if (Laurus.Text2Frame.WriteBack) {
-		          writeBackToText(diff_ce_result.commands);
-		        }
 		        addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID);
 		        break
 		      }
