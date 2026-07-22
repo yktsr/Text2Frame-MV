@@ -341,8 +341,8 @@ Options:
     NAME
        Text2Frame - Simple compiler to convert text to event command.
     SYNOPSIS
-        node Text2Frame.js --mode map --text_path <text> --output_path <map json> --event_id <id> --page_id <id> [--strategy merge|overwrite] [--base <ancestor text>]
-        node Text2Frame.js --mode common --text_path <text> --output_path <common json> --common_event_id <id> [--strategy merge|overwrite] [--base <ancestor text>]
+        node Text2Frame.js --mode map --text_path <text> [--output_path <map json>] [--event_id <id>] [--page_id <id>] [--strategy merge|overwrite] [--base <ancestor text>]
+        node Text2Frame.js --mode common --text_path <text> [--output_path <common json>] [--common_event_id <id>] [--strategy merge|overwrite] [--base <ancestor text>]
         node Text2Frame.js --mode batch [--text_path <dir>] [--locale <name>] [--strategy merge|overwrite] [--watch]
         node Text2Frame.js --mode compile
         node Text2Frame.js --mode test
@@ -354,6 +354,9 @@ Options:
 
         node Text2Frame.js --mode map ...
           マップへのイベント反映モードです。読み込むテキスト、出力マップ、対象イベント/ページを指定します。
+          テキストに front matter があれば `--output_path`(mapId から導出) / `--event_id` / `--page_id` は
+          省略でき、front matter の値が使われます(明示した引数が優先)。
+          例: $ node Text2Frame.js --mode map --text_path text/ja/map001_event001_page1.txt
           例1：$ node Text2Frame.js --mode map --text_path text/ja/map001_event001_page1.txt --output_path data/Map001.json --event_id 1 --page_id 1
           例2(全上書き)：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -p 1 --strategy overwrite
 
