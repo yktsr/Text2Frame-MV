@@ -92,6 +92,16 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI batch-export)', function () {
     expect(texts(map.events[1].pages[0].list)).to.include('Brand new line')
   })
 
+  it('Text2Frame exposes its base API on a global for in-engine Frame2Text access', function () {
+    // In the game runtime (NW.js) Frame2Text cannot require('./Text2Frame.js'); it resolves the
+    // shared API via globalThis.$LaurusText2Frame instead. Guard that contract here.
+    require('../Text2Frame.js')
+    expect(global.$LaurusText2Frame).to.be.an('object')
+    expect(global.$LaurusText2Frame.saveBaseText).to.be.a('function')
+    expect(global.$LaurusText2Frame.readBaseText).to.be.a('function')
+    expect(global.$LaurusText2Frame.deriveBaseId).to.be.a('function')
+  })
+
   it('round-trips: exported text re-imports via --mode batch', function () {
     cp.execFileSync('node', [F2T, '--mode', 'batch-export', '--data-dir', 'data', '--locale', 'ja', '--text-base', 'text'],
       { cwd: tmp, encoding: 'utf8' })

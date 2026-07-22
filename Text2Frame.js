@@ -10259,7 +10259,9 @@
         const fs = require('fs')
         const path = require('path')
         const p = baseSnapshotPathCore(root, locale, key)
-        fs.mkdirSync(path.dirname(p), { recursive: true })
+        const dir = path.dirname(p)
+        // 既存 dir への mkdirSync は一部ランタイム(NW.js)で EEXIST を投げるため existsSync でガード。
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
         fs.writeFileSync(p, text, 'utf8')
       } catch (e) { /* best effort */ }
     }
@@ -10301,6 +10303,9 @@
     }
 
     Laurus.Text2Frame.export = { compile, applyDiff, applyOverlay, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId }
+    // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
+    // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
+    try { if (typeof globalThis !== 'undefined') globalThis.$LaurusText2Frame = Laurus.Text2Frame.export } catch (e) { /* noop */ }
 
     /* 差分適用後のコマンドリストをテキストファイルへ書き戻す。
      * Frame2Text プラグインの decompile 関数を使用します。
