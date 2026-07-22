@@ -4164,7 +4164,23 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			 */
 			/* eslint-enable spaced-comment */
 
-			/* global Game_Interpreter, $gameMessage, process, PluginManager */
+			/* global Game_Interpreter, $gameMessage, process, PluginManager, globalThis, __dirname */
+
+			// Text2Frame の共有 API を解決する。ゲーム内(NW.js)は require('./Text2Frame.js') が
+			// 解決できないため、まず Text2Frame がグローバル公開した API を使い、無ければ Node の
+			// require(兄弟ファイル / __dirname 基準)にフォールバックする。
+			function resolveText2Frame () {
+			  try {
+			    if (typeof globalThis !== 'undefined' && globalThis.$LaurusText2Frame && globalThis.$LaurusText2Frame.saveBaseText) {
+			      return globalThis.$LaurusText2Frame
+			    }
+			  } catch (e) { /* noop */ }
+			  if (typeof commonjsRequire !== 'undefined') {
+			    try { return requireText2Frame() } catch (e) { /* try next */ }
+			    try { return commonjsRequire(require('path').join(__dirname, 'Text2Frame.js')) } catch (e) { /* give up */ }
+			  }
+			  return null
+			}
 
 			(function () {
 
@@ -6513,8 +6529,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    // push の 3-way を鏡写しにし、Text2Frame.applyMergePull で結果テキストを得る。
 			    if (Laurus.Frame2Text.ExecMode === 'MERGE_EVENT_TO_MESSAGE' || Laurus.Frame2Text.ExecMode === 'MERGE_CE_TO_MESSAGE') {
 			      const isCE = Laurus.Frame2Text.ExecMode === 'MERGE_CE_TO_MESSAGE';
-			      let T2F;
-			      try { T2F = requireText2Frame(); } catch (e) { throw new Error('取り出し(merge)には Text2Frame.js が必要です。同じ場所に配置してください。 / MERGE pull requires Text2Frame.js next to Frame2Text.js.') }
+			      const T2F = resolveText2Frame();
+			      if (!T2F || !T2F.applyMergePull) { throw new Error('取り出し(merge)には Text2Frame プラグインが必要です。同じプロジェクトに導入してください。 / MERGE pull requires the Text2Frame plugin to be loaded.') }
 			      const stripFM = function (t) {
 			        const n = String(t).replace(/\r\n/g, '\n');
 			        if (n.indexOf('---\n') !== 0) return t
@@ -6582,12 +6598,15 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false';
 			      let okCount = 0;
 			      let errCount = 0;
-			      // 取り出した内容を次回反映の 3-way 祖先(.t2f-base)として保存する(取り出し直後は text==game)。
-			      const _T2F = (function () { try { return requireText2Frame() } catch (e) { return null } })();
+			      // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する。
+			      let _baseSaveError = null;
 			      const _baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH;
 
 			      const outDir = _path.resolve(BASE_PATH, textBase, locale);
 			      if (!_fs.existsSync(outDir)) { _fs.mkdirSync(outDir, { recursive: true }); }
+			      // 既存 dir への mkdirSync は一部ランタイム(NW.js)で EEXIST を投げるため existsSync でガード。
+			      const _baseDir = _path.join(_baseRoot, '.t2f-base', String(locale || 'default'));
+			      try { if (!_fs.existsSync(_baseDir)) _fs.mkdirSync(_baseDir, { recursive: true }); } catch (e) { _baseSaveError = _baseSaveError || e; }
 
 			      enumerateTargets(dataDir).forEach(function (t) {
 			        try {
@@ -6603,13 +6622,17 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			          const fm = renderFrontMatter(Object.assign({ locale }, t), t.kind);
 			          const outPath = _path.resolve(BASE_PATH, textBase, locale, t.key + '.txt');
 			          _fs.writeFileSync(outPath, fm + body + '\n', 'utf8');
-			          if (_T2F && _T2F.saveBaseText) { try { _T2F.saveBaseText(_baseRoot, locale, t.key, fm + body + '\n'); } catch (e) {} }
+			          try { _fs.writeFileSync(_path.join(_baseDir, t.key + '.txt'), fm + body + '\n', 'utf8'); } catch (e) { _baseSaveError = _baseSaveError || e; }
 			          okCount++;
 			        } catch (e) {
 			          errCount++;
 			          console.error('[batch-export] ' + t.key + ': ' + String(e));
 			        }
 			      });
+			      if (_baseSaveError) {
+			        addMessage('[batch-export] 警告: .t2f-base の祖先を保存できませんでした (' + (_baseSaveError.message || _baseSaveError) + ')。次回反映は overlay に縮退します。');
+			        console.warn('[batch-export] WARNING: .t2f-base ancestor NOT saved (' + (_baseSaveError.message || _baseSaveError) + '); next import falls back to overlay.');
+			      }
 			      addMessage('[batch-export] Completed: ' + okCount + ' success, ' + errCount + ' errors');
 			      console.log('[batch-export] Completed: ' + okCount + ' success, ' + errCount + ' errors');
 			      return
@@ -6784,9 +6807,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    const locale = options.locale;
 			    const textBaseDir = options.textBase;
 			    const englishTag = String(options.english_tag) === 'true';
-			    // 取り出した内容を次回反映の 3-way 祖先(.t2f-base)として保存する(取り出し直後は text==game)。
-			    const T2F = (function () { try { return requireText2Frame() } catch (e) { return null } })();
+			    // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する(既存 dir は existsSync でガード)。
+			    let baseSaveError = null;
 			    const baseRoot = process.cwd();
+			    const baseDir = path.join(baseRoot, '.t2f-base', String(locale || 'default'));
+			    try { if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true }); } catch (e) { baseSaveError = baseSaveError || e; }
 			    const results = [];
 			    module.exports.enumerateTargets(dataDir).forEach(function (t) {
 			      try {
@@ -6803,7 +6828,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			        const textPath = path.resolve(textBaseDir, locale, t.key + '.txt');
 			        fs.mkdirSync(path.dirname(textPath), { recursive: true });
 			        fs.writeFileSync(textPath, frontMatter + body + '\n', 'utf8');
-			        if (T2F && T2F.saveBaseText) { try { T2F.saveBaseText(baseRoot, locale, t.key, frontMatter + body + '\n'); } catch (e) {} }
+			        try { fs.writeFileSync(path.join(baseDir, t.key + '.txt'), frontMatter + body + '\n', 'utf8'); } catch (e) { baseSaveError = baseSaveError || e; }
 			        results.push({ ok: true, textPath });
 			      } catch (error) {
 			        results.push({ ok: false, key: t.key, error: error.message });
@@ -6811,6 +6836,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    });
 			    const failures = results.filter(function (r) { return !r.ok });
 			    console.log(JSON.stringify({ total: results.length, failed: failures.length, results }, null, 2));
+			    if (baseSaveError) {
+			      console.warn('[batch-export] WARNING: .t2f-base の祖先を保存できませんでした (' + (baseSaveError.message || baseSaveError) +
+			        ')。テキストは書き出せていますが、次回 --mode batch は overlay に縮退します（3-wayになりません）。/ ' +
+			        'ancestor NOT saved; next import falls back to overlay.');
+			    }
 			    if (failures.length > 0) {
 			      process.exitCode = 1;
 			    }
@@ -17086,7 +17116,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			        const fs = require('fs');
 			        const path = require('path');
 			        const p = baseSnapshotPathCore(root, locale, key);
-			        fs.mkdirSync(path.dirname(p), { recursive: true });
+			        const dir = path.dirname(p);
+			        // 既存 dir への mkdirSync は一部ランタイム(NW.js)で EEXIST を投げるため existsSync でガード。
+			        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 			        fs.writeFileSync(p, text, 'utf8');
 			      } catch (e) { /* best effort */ }
 			    };
@@ -17128,6 +17160,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    };
 
 			    Laurus.Text2Frame.export = { compile, applyDiff, applyOverlay, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId };
+			    // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
+			    // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
+			    try { if (typeof globalThis !== 'undefined') globalThis.$LaurusText2Frame = Laurus.Text2Frame.export; } catch (e) { /* noop */ }
 
 			    /* 差分適用後のコマンドリストをテキストファイルへ書き戻す。
 			     * Frame2Text プラグインの decompile 関数を使用します。
