@@ -10456,6 +10456,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
         node Text2Frame.js --mode compile
         node Text2Frame.js --verbose --mode test
+        node Text2Frame.js --mode batch
     DESCRIPTION
         node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
           マップへのイベント出力モードです。
@@ -10480,6 +10481,23 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           Map.json/CommonEvent.json への組み込みは各自で行う必要があります。
 
           例1: $ cat test/basic.txt | node Text2Frame.js --mode compile
+
+        node Text2Frame.js --mode batch
+          バッチモードです。
+          textフォルダ以下のすべてのテキストファイルを一括でゲームに反映します。
+          例1: $ node Text2Frame.js --mode batch
+
+          ベースディレクトリは、--text_path で変更することができます。（デフォルトは text ）
+          例2: $ node Text2Frame.js --mode batch --text_path text
+
+          --watch を付与すると、テキストの変更を監視し、自動でゲームに反映することができます。
+          例3: $ node Text2Frame.js --mode batch --watch
+
+          --locale を付与すると、ベースディレクトリ以下のディレクトリを指定することができます。
+          典型的な利用方法として、ゲームの翻訳が挙げられます。
+          例えば、Frame2Textを利用しゲームの内容をenフォルダへ書き出し、ゲームの内容を英語に翻訳後、下記のコマンドで翻訳内容をゲームに反映できます。
+          例4: $ node Text2Frame.js --mode batch --locale en
+
 
         node Text2Frame.js --mode test
           テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
