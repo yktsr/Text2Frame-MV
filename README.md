@@ -55,9 +55,31 @@ Simple compiler to convert text to event.
 
 
 ## 導入方法
+
+### ゲームのプラグインとして使う（基本）
 1. [ここ](https://github.com/yktsr/Text2Frame-MV/releases)から Text2Frame.js をダウンロードします。
-1. 導入したいプロジェクトのプラグインフォルダに入れます。
+1. 導入したいプロジェクトのプラグインフォルダ(`js/plugins/`)に入れます。
 1. プラグインエディターからText2Frameのプラグインを有効にします。
+
+（取り出し機能を使うときは Frame2Text.js も同じ場所に入れてください）
+
+### npm / CLI として使う（上級者向け）
+ターミナルからの一括反映・取り出し・双方向同期や、ライブラリとしての利用はこちら。**ゲームのプラグイン導入とは別チャネル**です（npm パッケージ＝プラグインファイルではありません）。
+
+```bash
+npm install -D @yktsr/text2frame-mv
+
+npx t2f-sync --watch                              # テキスト⇄ゲームを双方向に自動同期
+npx text2frame --mode batch --text_path text --locale ja      # 反映(text -> game)
+npx frame2text --mode batch --data-dir data --locale ja       # 取り出し(game -> text)
+```
+
+ライブラリとして:
+```js
+const { compile, applyTextFile } = require('@yktsr/text2frame-mv')
+```
+
+（GitHub から直接入れることもできます: `npm install -D github:yktsr/Text2Frame-MV`。ただし `npx` は使えず `node node_modules/@yktsr/text2frame-mv/t2f-sync.js ...` になります）
 
 
 ## プラグイン固有の文法

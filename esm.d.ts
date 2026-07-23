@@ -27,15 +27,15 @@ namespace Text2FrameMV {
   };
 }
 
-declare module "Text2Frame-MV" {
+declare module "@yktsr/text2frame-mv" {
   export = Text2FrameMV;
 }
-declare module "Text2Frame-MV/Text2Frame.cjs.js" {
+declare module "@yktsr/text2frame-mv/Text2Frame.cjs.js" {
   export = Text2FrameMV;
 }
-declare module "Text2Frame-MV/Text2Frame.es.js" {
+declare module "@yktsr/text2frame-mv/Text2Frame.es.mjs" {
   export = Text2FrameMV;
 }
-declare module "Text2Frame-MV/Text2Frame.umd.js" {
+declare module "@yktsr/text2frame-mv/Text2Frame.umd.js" {
   export = Text2FrameMV;
 }
