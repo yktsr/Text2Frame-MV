@@ -201,7 +201,7 @@ Text2Frame/Frame2Text は、front matter 付きテキストのフォルダを丸
 
 ### 1. メタ情報付きテキスト
 
-batch-export で書き出すファイルは、先頭に YAML front matter を持ちます。
+一括取り出し(--mode batch)で書き出すファイルは、先頭に YAML front matter を持ちます。
 
 ```yaml
 ---
@@ -226,7 +226,7 @@ node Frame2Text.js --mode map --input_path data/Map001.json --output_path text/e
 # 全部取り直す（上書き）
 node Frame2Text.js --mode map --strategy overwrite --input_path data/Map001.json --output_path text/en/map001_event001_page1.txt --event_id 1 --page_id 1
 # 一括（data/ を走査し text/<locale>/ 配下へ front matter 付きで書き出し）
-node Frame2Text.js --mode batch-export --data-dir data --locale en --text-base text --english_tag true
+node Frame2Text.js --mode batch --data-dir data --locale en --text-base text --english_tag true
 ```
 
 3-way の祖先は `.t2f-base/<言語>/<key>.txt` に**自動保存/自動参照**されます（`--base` で明示も可・通常不要）。
@@ -249,6 +249,32 @@ node Text2Frame.js --mode batch --text_path text --locale en
 - **言語の選択（`--locale`）**: `text/ja` と `text/en` の両方がある状態で `--locale` を省略すると、**同じイベントに全言語が順に反映され最後の1つだけが残ります**（警告を表示します）。多言語プロジェクトでは取り出し時と同じく `--locale <name>` で1つ選んでください。判定は front matter の `locale`、無ければ親フォルダ名です。
 - **front matter での strategy 指定（任意）**: ファイル先頭に `strategy: overwrite` 等を書くと、そのファイルだけ方式を上書きできます（`basePath` で 3-way の祖先も指定可）。
 - **監視**: `--watch` を付けると text ディレクトリを監視し、変更・追加された `.txt` を自動で再反映します。
+
+### 4. 双方向同期（t2f-sync）
+
+反映と取り出しを1コマンドで面倒みるコントローラです。`Text2Frame.js` / `Frame2Text.js` をライブラリとして呼び出し、**1プロセスが両方向を所有**します。
+
+```bash
+# 一度だけ同期（pull -> push）
+npm run sync_once
+# 監視して自動同期（text 変更 -> 反映 / data 変更 -> 取り出し）
+npm run sync
+# 方向や言語を指定
+node t2f-sync.js --watch --direction both --locale ja --strategy merge
+```
+
+| オプション | 既定 | 説明 |
+| --- | --- | --- |
+| `--direction <both\|push\|pull>` | `both` | 同期方向 |
+| `-t, --text_path <dir>` | `text` | テキストのベースディレクトリ |
+| `-d, --data-dir <dir>` | `data` | ゲームデータディレクトリ |
+| `-l, --locale <name>` | `ja` | 言語サブフォルダ |
+| `-s, --strategy <merge\|overwrite>` | `merge` | 反映・取り出しの方式 |
+| `--watch` / `--debounce <ms>` / `--poll` | - | 監視モード |
+
+- **無限ループしません**: 自分が書いたファイルは内容ハッシュで覚えており、その変更イベントは無視します（text→game→text のピンポンが起きない）。
+- 取り出しは既定 `merge` なので**翻訳を残したまま**ゲーム側の変更だけを取り込みます。祖先（`.t2f-base`）も両方向で更新されます。
+- ⚠️ **RPGツクールを開いたまま使う場合の注意**: ツクールはプロジェクト保存時に `data/*.json` を丸ごと書き戻すため、反映済みの内容が保存操作で失われることがあります。反映後はツクール側を**セーブせずに開き直して**ください。
 
 ### strategy 一覧（text→JSON の反映方式）
 
@@ -280,14 +306,14 @@ node Text2Frame.js --mode batch --text_path text --locale en
 | 操作 | VS Code | CLI | プラグイン(MZ) |
 | --- | --- | --- | --- |
 | ゲームに反映(merge/overwrite) | パネル「ゲームに反映」 | `Text2Frame.js --mode map/common/batch [--strategy merge\|overwrite]` | `MERGE_MESSAGE_TO_EVENT`/`_TO_CE`・`IMPORT_MESSAGE_TO_*`・`BATCH_IMPORT_MESSAGES_FROM_FOLDER` |
-| ゲームから取り出し(merge/overwrite) | パネル「ゲームから取り出す」 | `Frame2Text.js --mode map/common/batch-export [--strategy merge\|overwrite]` | `MERGE_EVENT_TO_MESSAGE`/`_CE`(翻訳保持)・`EXPORT_*`(上書き)・`BATCH_EXPORT_MESSAGES_TO_FOLDER` |
+| ゲームから取り出し(merge/overwrite) | パネル「ゲームから取り出す」 | `Frame2Text.js --mode map/common/batch [--strategy merge\|overwrite]` | `MERGE_EVENT_TO_MESSAGE`/`_CE`(翻訳保持)・`EXPORT_*`(上書き)・`BATCH_EXPORT_MESSAGES_TO_FOLDER` |
 | 3-way 祖先 | 自動 `.t2f-base` | 自動 `.t2f-base`（`--base` 任意） | 自動 `.t2f-base`（`BaseFolder`/`BaseFileName` 任意） |
 | 競合(両方残す) | あり | あり | あり |
 | 反映時のテキスト書き戻し | 保存時に自動書き戻し | — | — |
 
 ### 英語化の固定フロー（推奨）
 
-1. ja を batch-export で出力
+1. ja を --mode batch で出力
 2. text/en 配下を翻訳
 3. batch で JSON へ反映（既定 `merge`。UI 編集を残したまま会話だけ反映されます）
 4. 失敗レコードは CLI の JSON レポートで確認
@@ -378,7 +404,7 @@ Options:
           テストモードです。test/basic.txt を読み込み、data/Map001.json に出力します。
 
     取り出し(逆変換)も既定 merge です:
-        node Frame2Text.js --mode map|common|batch-export [--strategy merge|overwrite] [--base <ancestor text>] [-w true|false]
+        node Frame2Text.js --mode map|common|batch [--strategy merge|overwrite] [--base <ancestor text>] [-w true|false]
       (翻訳などを残したままゲーム変更を取り込みます。`node Frame2Text.js --help` と上記ワークフロー節を参照)
 ```
 

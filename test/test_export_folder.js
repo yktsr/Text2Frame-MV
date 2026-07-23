@@ -29,7 +29,7 @@ function texts (list) {
   return list.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })
 }
 
-describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI batch-export)', function () {
+describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI --mode batch)', function () {
   let tmp
 
   beforeEach(function () {
@@ -49,7 +49,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI batch-export)', function () {
   })
 
   it('writes one front-matter .txt per event/common under textBase/locale', function () {
-    cp.execFileSync('node', [F2T, '--mode', 'batch-export', '--data-dir', 'data', '--locale', 'ja', '--text-base', 'text'],
+    cp.execFileSync('node', [F2T, '--mode', 'batch', '--data-dir', 'data', '--locale', 'ja', '--text-base', 'text'],
       { cwd: tmp, encoding: 'utf8' })
 
     const evPath = path.join(tmp, 'text', 'ja', 'map001_event001_page1.txt')
@@ -75,7 +75,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI batch-export)', function () {
   })
 
   it('saves a .t2f-base ancestor so a later merge applies added lines (no overlay drop)', function () {
-    cp.execFileSync('node', [F2T, '--mode', 'batch-export', '--data-dir', 'data', '--locale', 'ja', '--text-base', 'text'],
+    cp.execFileSync('node', [F2T, '--mode', 'batch', '--data-dir', 'data', '--locale', 'ja', '--text-base', 'text'],
       { cwd: tmp, encoding: 'utf8' })
     // Export must establish the 3-way ancestor.
     const basePath = path.join(tmp, '.t2f-base', 'ja', 'map001_event001_page1.txt')
@@ -103,7 +103,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI batch-export)', function () {
   })
 
   it('round-trips: exported text re-imports via --mode batch', function () {
-    cp.execFileSync('node', [F2T, '--mode', 'batch-export', '--data-dir', 'data', '--locale', 'ja', '--text-base', 'text'],
+    cp.execFileSync('node', [F2T, '--mode', 'batch', '--data-dir', 'data', '--locale', 'ja', '--text-base', 'text'],
       { cwd: tmp, encoding: 'utf8' })
     // Edit the exported event text, then deploy it back with overwrite.
     const evPath = path.join(tmp, 'text', 'ja', 'map001_event001_page1.txt')

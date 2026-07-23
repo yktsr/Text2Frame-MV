@@ -8,18 +8,20 @@
     "test": "test"
   },
   "scripts": {
-    "test": "mocha test/test_json_eq.js && mocha --no-esm test/test_front_matter.js && mocha --no-esm test/test_apply_text_file.js && mocha --no-esm test/test_overlay.js && mocha --no-esm test/test_merge3.js && mocha --no-esm test/test_plugin_merge3.js && mocha --no-esm test/test_cli_merge.js && mocha --no-esm test/test_strategy.js && mocha --no-esm test/test_front_matter_first.js && mocha --no-esm test/test_export_folder.js && mocha --no-esm test/test_plugin_pull_merge.js",
+    "test": "mocha test/test_json_eq.js && mocha --no-esm test/test_front_matter.js && mocha --no-esm test/test_apply_text_file.js && mocha --no-esm test/test_overlay.js && mocha --no-esm test/test_merge3.js && mocha --no-esm test/test_plugin_merge3.js && mocha --no-esm test/test_cli_merge.js && mocha --no-esm test/test_strategy.js && mocha --no-esm test/test_front_matter_first.js && mocha --no-esm test/test_export_folder.js && mocha --no-esm test/test_plugin_pull_merge.js && mocha --no-esm test/test_sync_controller.js",
     "test_text2frame": "mocha --inline-diffs test/test_json_eq.js",
     "test_frame2text": "mocha --reporter-options maxDiffSize=100000 --inline-diffs test/test_frame2text.js",
     "test_export_folder": "mocha --no-esm test/test_export_folder.js",
     "audit:prod": "npm audit --omit=dev",
-    "lint": "eslint --max-warnings=0 Text2Frame.js Frame2Text.js",
+    "lint": "eslint --max-warnings=0 Text2Frame.js Frame2Text.js t2f-sync.js",
     "watch": "node Text2Frame.js -m batch --text_path text --watch",
     "verify-roundtrip": "node tools/verify-roundtrip.js",
     "debug": "node Text2Frame.js",
     "build": "rollup -c",
     "stamp:dist": "node tools/stamp-build-meta.js",
-    "build:dist": "npm run build && npm run stamp:dist"
+    "build:dist": "npm run build && npm run stamp:dist",
+    "sync": "node t2f-sync.js --watch",
+    "sync_once": "node t2f-sync.js"
   },
   "repository": {
     "type": "git",
