@@ -2822,7 +2822,7 @@ function resolveText2Frame () {
     // BATCH_EXPORT_MESSAGES_TO_FOLDER: data ディレクトリを走査し front matter 付きで一括出力する。
     if (Laurus.Frame2Text.ExecMode === 'BATCH_EXPORT_MESSAGES_TO_FOLDER') {
       if (typeof require === 'undefined') {
-        addMessage('[batch-export] Node.js environment not available')
+        addMessage('[batch] Node.js environment not available')
         return
       }
       const _path = require('path')
@@ -2861,15 +2861,15 @@ function resolveText2Frame () {
           okCount++
         } catch (e) {
           errCount++
-          console.error('[batch-export] ' + t.key + ': ' + String(e))
+          console.error('[batch] ' + t.key + ': ' + String(e))
         }
       })
       if (_baseSaveError) {
-        addMessage('[batch-export] 警告: .t2f-base の祖先を保存できませんでした (' + (_baseSaveError.message || _baseSaveError) + ')。次回反映は overlay に縮退します。')
-        console.warn('[batch-export] WARNING: .t2f-base ancestor NOT saved (' + (_baseSaveError.message || _baseSaveError) + '); next import falls back to overlay.')
+        addMessage('[batch] 警告: .t2f-base の祖先を保存できませんでした (' + (_baseSaveError.message || _baseSaveError) + ')。次回反映は overlay に縮退します。')
+        console.warn('[batch] WARNING: .t2f-base ancestor NOT saved (' + (_baseSaveError.message || _baseSaveError) + '); next import falls back to overlay.')
       }
-      addMessage('[batch-export] Completed: ' + okCount + ' success, ' + errCount + ' errors')
-      console.log('[batch-export] Completed: ' + okCount + ' success, ' + errCount + ' errors')
+      addMessage('[batch] Completed: ' + okCount + ' success, ' + errCount + ' errors')
+      console.log('[batch] Completed: ' + okCount + ' success, ' + errCount + ' errors')
       return
     }
 
@@ -2932,15 +2932,15 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   program
     .version('2.3.0')
     .usage('[options]')
-    .option('-m, --mode <map|common|decompile|test|batch-export>', 'output mode', /^(map|common|decompile|test|batch-export)$/i)
+    .option('-m, --mode <map|common|decompile|test|batch>', 'output mode', /^(map|common|decompile|test|batch-export)$/i)
     .option('-i, --input_path <name>', 'input map data path')
     .option('-o, --output_path <name>', 'output file path')
     .option('-e, --event_id <name>', 'event file id')
     .option('-p, --page_id <name>', 'page id', '1')
     .option('-c, --common_event_id <name>', 'common event id')
     .option('-d, --data-dir <dir>', 'game data directory', 'data')
-    .option('-l, --locale <locale>', 'output language subfolder (batch-export)', 'ja')
-    .option('-t, --text-base <dir>', 'text base output directory (batch-export)', 'text')
+    .option('-l, --locale <locale>', 'output language subfolder (batch)', 'ja')
+    .option('-t, --text-base <dir>', 'text base output directory (batch)', 'text')
     .option('-v, --verbose', 'debug mode', false)
     .option('-w, --english_tag <true/false>', 'english tag', 'true')
     .option('-s, --strategy <merge|overwrite>', 'pull strategy (default merge: keep translations; overwrite: replace)', /^(merge|overwrite)$/i, 'merge')
@@ -2953,16 +2953,16 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
        Frame2Text - Simple decompiler to convert event to text.
     SYNOPSIS
         node Frame2Text.js
-        node Frame2Text.js --mode batch-export --data-dir <RPG Maker Project Dir>/data
+        node Frame2Text.js --mode batch --data-dir <RPG Maker Project Dir>/data
         node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
         node Frame2Text.js --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
         node Frame2Text.js --mode test
     DESCRIPTION
-        node Frame2Text.js --mode batch-export --data-dir ./data
+        node Frame2Text.js --mode batch
           イベントの一括変換モードです。
           PRGツクールのdataディレクトリを読み込み、 text/ja に書き出すコマンド例は以下です。
-          例1：$ node Frame2Text.js --mode batch-export --data-dir ./data
-          例2：$ node Frame2Text.js -m batch-export -d ./data
+          例1：$ node Frame2Text.js --mode batch --data-dir ./data
+          例2：$ node Frame2Text.js -m batch -d ./data
 
         node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
           マップイベントのテキスト出力モードです。
@@ -2990,7 +2990,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   program.addHelpText('after', help_text)
   const options = program.opts()
 
-  if (!['map', 'common', 'decompile', 'test', 'batch-export'].includes(options.mode)) {
+  if (!['map', 'common', 'decompile', 'test', 'batch'].includes(options.mode)) {
     program.help()
     process.exit(0)
   }
@@ -3055,7 +3055,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       event_id,
       page_id
     ])
-  } else if (options.mode === 'batch-export') {
+  } else if (options.mode === 'batch') {
     const dataDir = path.resolve(options.dataDir)
     if (!fs.existsSync(dataDir)) {
       throw new Error('Data directory not found: ' + dataDir)
@@ -3093,7 +3093,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const failures = results.filter(function (r) { return !r.ok })
     console.log(JSON.stringify({ total: results.length, failed: failures.length, results }, null, 2))
     if (baseSaveError) {
-      console.warn('[batch-export] WARNING: .t2f-base の祖先を保存できませんでした (' + (baseSaveError.message || baseSaveError) +
+      console.warn('[batch] WARNING: .t2f-base の祖先を保存できませんでした (' + (baseSaveError.message || baseSaveError) +
         ')。テキストは書き出せていますが、次回 --mode batch は overlay に縮退します（3-wayになりません）。/ ' +
         'ancestor NOT saved; next import falls back to overlay.')
     }
