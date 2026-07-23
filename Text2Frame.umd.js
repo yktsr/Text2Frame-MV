@@ -6589,7 +6589,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    // BATCH_EXPORT_MESSAGES_TO_FOLDER: data ディレクトリを走査し front matter 付きで一括出力する。
 			    if (Laurus.Frame2Text.ExecMode === 'BATCH_EXPORT_MESSAGES_TO_FOLDER') {
 			      if (typeof commonjsRequire === 'undefined') {
-			        addMessage('[batch-export] Node.js environment not available');
+			        addMessage('[batch] Node.js environment not available');
 			        return
 			      }
 			      const _path = require$$0$1;
@@ -6628,15 +6628,15 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			          okCount++;
 			        } catch (e) {
 			          errCount++;
-			          console.error('[batch-export] ' + t.key + ': ' + String(e));
+			          console.error('[batch] ' + t.key + ': ' + String(e));
 			        }
 			      });
 			      if (_baseSaveError) {
-			        addMessage('[batch-export] 警告: .t2f-base の祖先を保存できませんでした (' + (_baseSaveError.message || _baseSaveError) + ')。次回反映は overlay に縮退します。');
-			        console.warn('[batch-export] WARNING: .t2f-base ancestor NOT saved (' + (_baseSaveError.message || _baseSaveError) + '); next import falls back to overlay.');
+			        addMessage('[batch] 警告: .t2f-base の祖先を保存できませんでした (' + (_baseSaveError.message || _baseSaveError) + ')。次回反映は overlay に縮退します。');
+			        console.warn('[batch] WARNING: .t2f-base ancestor NOT saved (' + (_baseSaveError.message || _baseSaveError) + '); next import falls back to overlay.');
 			      }
-			      addMessage('[batch-export] Completed: ' + okCount + ' success, ' + errCount + ' errors');
-			      console.log('[batch-export] Completed: ' + okCount + ' success, ' + errCount + ' errors');
+			      addMessage('[batch] Completed: ' + okCount + ' success, ' + errCount + ' errors');
+			      console.log('[batch] Completed: ' + okCount + ' success, ' + errCount + ' errors');
 			      return
 			    }
 
@@ -6699,15 +6699,15 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			  program
 			    .version('2.3.0')
 			    .usage('[options]')
-			    .option('-m, --mode <map|common|decompile|test|batch-export>', 'output mode', /^(map|common|decompile|test|batch-export)$/i)
+			    .option('-m, --mode <map|common|decompile|test|batch>', 'output mode', /^(map|common|decompile|test|batch)$/i)
 			    .option('-i, --input_path <name>', 'input map data path')
 			    .option('-o, --output_path <name>', 'output file path')
 			    .option('-e, --event_id <name>', 'event file id')
 			    .option('-p, --page_id <name>', 'page id', '1')
 			    .option('-c, --common_event_id <name>', 'common event id')
 			    .option('-d, --data-dir <dir>', 'game data directory', 'data')
-			    .option('-l, --locale <locale>', 'output language subfolder (batch-export)', 'ja')
-			    .option('-t, --text-base <dir>', 'text base output directory (batch-export)', 'text')
+			    .option('-l, --locale <locale>', 'output language subfolder (batch)', 'ja')
+			    .option('-t, --text-base <dir>', 'text base output directory (batch)', 'text')
 			    .option('-v, --verbose', 'debug mode', false)
 			    .option('-w, --english_tag <true/false>', 'english tag', 'true')
 			    .option('-s, --strategy <merge|overwrite>', 'pull strategy (default merge: keep translations; overwrite: replace)', /^(merge|overwrite)$/i, 'merge')
@@ -6720,16 +6720,16 @@ Expecting one of '${allowedValues.join("', '")}'`);
        Frame2Text - Simple decompiler to convert event to text.
     SYNOPSIS
         node Frame2Text.js
-        node Frame2Text.js --mode batch-export --data-dir <RPG Maker Project Dir>/data
+        node Frame2Text.js --mode batch --data-dir <RPG Maker Project Dir>/data
         node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
         node Frame2Text.js --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
         node Frame2Text.js --mode test
     DESCRIPTION
-        node Frame2Text.js --mode batch-export --data-dir ./data
+        node Frame2Text.js --mode batch
           イベントの一括変換モードです。
           PRGツクールのdataディレクトリを読み込み、 text/ja に書き出すコマンド例は以下です。
-          例1：$ node Frame2Text.js --mode batch-export --data-dir ./data
-          例2：$ node Frame2Text.js -m batch-export -d ./data
+          例1：$ node Frame2Text.js --mode batch --data-dir ./data
+          例2：$ node Frame2Text.js -m batch -d ./data
 
         node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
           マップイベントのテキスト出力モードです。
@@ -6757,7 +6757,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			  program.addHelpText('after', help_text);
 			  const options = program.opts();
 
-			  if (!['map', 'common', 'decompile', 'test', 'batch-export'].includes(options.mode)) {
+			  if (!['map', 'common', 'decompile', 'test', 'batch'].includes(options.mode)) {
 			    program.help();
 			    process.exit(0);
 			  }
@@ -6822,7 +6822,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      event_id,
 			      page_id
 			    ]);
-			  } else if (options.mode === 'batch-export') {
+			  } else if (options.mode === 'batch') {
 			    const dataDir = path.resolve(options.dataDir);
 			    if (!fs.existsSync(dataDir)) {
 			      throw new Error('Data directory not found: ' + dataDir)
@@ -6860,7 +6860,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    const failures = results.filter(function (r) { return !r.ok });
 			    console.log(JSON.stringify({ total: results.length, failed: failures.length, results }, null, 2));
 			    if (baseSaveError) {
-			      console.warn('[batch-export] WARNING: .t2f-base の祖先を保存できませんでした (' + (baseSaveError.message || baseSaveError) +
+			      console.warn('[batch] WARNING: .t2f-base の祖先を保存できませんでした (' + (baseSaveError.message || baseSaveError) +
 			        ')。テキストは書き出せていますが、次回 --mode batch は overlay に縮退します（3-wayになりません）。/ ' +
 			        'ancestor NOT saved; next import falls back to overlay.');
 			    }
@@ -11278,7 +11278,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      let baseId = null;
 			      try {
 			        // 祖先は「ユーザーのプロジェクト(cwd)」直下の .t2f-base に置く(ツール本体の場所ではない)。
-			        baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH;
+			        baseRoot = Laurus.Text2Frame.BaseRoot ||
+			          ((typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH);
 			        const meta = parseFrontMatter(readText(textPath)).meta;
 			        baseId = deriveBaseId(textPath, meta);
 			      } catch (e) { baseRoot = null; }
@@ -11314,7 +11315,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    // 読み込み済みのテキスト/メタを受け取り、ファイルを読み直さない。
 			    const saveBaseAfterOverwrite = function (textPath, text, meta) {
 			      try {
-			        const root = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH;
+			        const root = Laurus.Text2Frame.BaseRoot ||
+			          ((typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH);
 			        const id = deriveBaseId(textPath, meta);
 			        if (root && id) saveBaseText(root, id.locale, id.key, text);
 			      } catch (e) { /* best effort */ }
@@ -16988,6 +16990,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			            PageID: String(pageId),
 			            IsOverwrite: overwrite,
 			            BasePath: opts.basePath,
+			            BaseRoot: opts.baseRoot,
 			            ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_EVENT' : 'MERGE_MESSAGE_TO_EVENT'
 			          }]);
 			        } else if (kind === 'common') {
@@ -17009,6 +17012,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			            CommonEventID: String(commonEventId),
 			            IsOverwrite: overwrite,
 			            BasePath: opts.basePath,
+			            BaseRoot: opts.baseRoot,
 			            ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_CE' : 'MERGE_MESSAGE_TO_CE'
 			          }]);
 			        } else {

@@ -4398,7 +4398,8 @@
       let baseId = null
       try {
         // 祖先は「ユーザーのプロジェクト(cwd)」直下の .t2f-base に置く(ツール本体の場所ではない)。
-        baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH
+        baseRoot = Laurus.Text2Frame.BaseRoot ||
+          ((typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH)
         const meta = parseFrontMatter(readText(textPath)).meta
         baseId = deriveBaseId(textPath, meta)
       } catch (e) { baseRoot = null }
@@ -4434,7 +4435,8 @@
     // 読み込み済みのテキスト/メタを受け取り、ファイルを読み直さない。
     const saveBaseAfterOverwrite = function (textPath, text, meta) {
       try {
-        const root = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH
+        const root = Laurus.Text2Frame.BaseRoot ||
+          ((typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH)
         const id = deriveBaseId(textPath, meta)
         if (root && id) saveBaseText(root, id.locale, id.key, text)
       } catch (e) { /* best effort */ }
@@ -10108,6 +10110,7 @@
             PageID: String(pageId),
             IsOverwrite: overwrite,
             BasePath: opts.basePath,
+            BaseRoot: opts.baseRoot,
             ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_EVENT' : 'MERGE_MESSAGE_TO_EVENT'
           }])
         } else if (kind === 'common') {
@@ -10129,6 +10132,7 @@
             CommonEventID: String(commonEventId),
             IsOverwrite: overwrite,
             BasePath: opts.basePath,
+            BaseRoot: opts.baseRoot,
             ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_CE' : 'MERGE_MESSAGE_TO_CE'
           }])
         } else {

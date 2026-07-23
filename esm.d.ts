@@ -11,12 +11,14 @@ namespace Text2FrameMV {
   ): { code: number; parameters: any[]; indent: number }[];
 
   /**
-   * 既存のイベントコマンドリストとテキストから変換した新コマンドリストを比較し、差分のみを適用します。
-   * Compares existing event commands with newly compiled commands and applies only the differences.
+   * 既存のイベントコマンドリスト(JSONを構造の正とする)に対し、テキスト側の会話文字列だけを
+   * 対応スロットへ差し替えます。移動/分岐/スイッチ等の非会話コマンドは変更しません。
+   * Overlays only the conversation strings from the text onto the existing command list,
+   * leaving non-conversation commands (movement, branches, switches, ...) untouched.
    * @param existing_commands 既存のイベントコマンドリスト（終端コード code:0 を含む）
    * @param new_commands テキストから変換した新しいイベントコマンドリスト（終端コード code:0 を含む）
    */
-  export function applyDiff(
+  export function applyOverlay(
     existing_commands: { code: number; parameters: any[]; indent: number }[],
     new_commands: { code: number; parameters: any[]; indent: number }[]
   ): {

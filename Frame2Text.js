@@ -2932,7 +2932,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   program
     .version('2.3.0')
     .usage('[options]')
-    .option('-m, --mode <map|common|decompile|test|batch>', 'output mode', /^(map|common|decompile|test|batch-export)$/i)
+    .option('-m, --mode <map|common|decompile|test|batch>', 'output mode', /^(map|common|decompile|test|batch)$/i)
     .option('-i, --input_path <name>', 'input map data path')
     .option('-o, --output_path <name>', 'output file path')
     .option('-e, --event_id <name>', 'event file id')
