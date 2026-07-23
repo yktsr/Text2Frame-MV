@@ -3,6 +3,9 @@ bin-debug/
 bin-release/
 [Oo]bj/
 [Bb]in/
+# ...but our top-level bin/ holds CLI wrapper sources (npm bin), not build output.
+!/bin/
+!/bin/*.js
 
 # Other files and folders
 .settings/
