@@ -76,7 +76,7 @@ npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ �
 **Text2Frame.js**
 - `compile(text)` → イベントコマンド配列(本文のみ。フロントマターは呼び出し側で除去)
 - `applyTextFile(opts)` → 単一テキストを単一データ JSON へデプロイ。`opts={ textPath, kind, mapId, eventId, pageId, commonEventId, mapPath, commonEventPath, strategy, overwrite, backup, baseRoot }`(`baseRoot` 未指定時は `process.cwd()`。cwd と別のプロジェクトを扱う組み込み側は必ず渡す)。戻り値 `{ ok, warnings, error, errorLine, errorLineText, dataPath, target }`。throw せず結果を返す
-- フォルダ一括反映は front matter 走査で行う: 各 `.txt` を `applyTextFile({ textPath, strategy })` で反映(CLI は `--mode batch --text_path <dir> [--locale <name>]`、プラグインは `BATCH_IMPORT_MESSAGES_FROM_FOLDER`)
+- フォルダ一括反映は front matter 走査で行う: 各 `.txt` を `applyTextFile({ textPath, strategy })` で反映(CLI は `--mode batch --text-dir <dir> [--locale <name>]`、プラグインは `BATCH_IMPORT_MESSAGES_FROM_FOLDER`)
 - `applyOverlay(existing, incoming)` → 構造保持マージ(祖先が無いとき)。`applyThreeWayMerge(base, ours, theirs)` → 3-way マージ(`{ commands, warnings, conflicts }`)
 - `applyMergePull({ gameCommands, textBody, baseBody, englishTag })` → `{ text, conflicts, warnings }`。取り出し(ゲーム→テキスト)の 3-way 本体。push と対称(出力先がテキストなだけ)。内部で `Frame2Text.decompile` を lazy require
 - `resolveStrategy(name)` → `{ strategy: 'merge'|'overwrite' }`(未知値は null)

@@ -49,7 +49,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI --mode batch)', function () {
   })
 
   it('writes one front-matter .txt per event/common under textBase/locale', function () {
-    cp.execFileSync('node', [F2T, '--mode', 'batch', '--data-dir', 'data', '--locale', 'ja', '--text-base', 'text'],
+    cp.execFileSync('node', [F2T, '--mode', 'batch', '--data-dir', 'data', '--locale', 'ja', '--text-dir', 'text'],
       { cwd: tmp, encoding: 'utf8' })
 
     const evPath = path.join(tmp, 'text', 'ja', 'map001_event001_page1.txt')
@@ -75,7 +75,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI --mode batch)', function () {
   })
 
   it('saves a .t2f-base ancestor so a later merge applies added lines (no overlay drop)', function () {
-    cp.execFileSync('node', [F2T, '--mode', 'batch', '--data-dir', 'data', '--locale', 'ja', '--text-base', 'text'],
+    cp.execFileSync('node', [F2T, '--mode', 'batch', '--data-dir', 'data', '--locale', 'ja', '--text-dir', 'text'],
       { cwd: tmp, encoding: 'utf8' })
     // Export must establish the 3-way ancestor.
     const basePath = path.join(tmp, '.t2f-base', 'ja', 'map001_event001_page1.txt')
@@ -84,7 +84,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI --mode batch)', function () {
     // Add a brand-new message line in the text, then import with the default (merge) strategy.
     const evPath = path.join(tmp, 'text', 'ja', 'map001_event001_page1.txt')
     fs.writeFileSync(evPath, fs.readFileSync(evPath, 'utf8').replace('Hello from event', 'Hello from event\n\nBrand new line'))
-    cp.execFileSync('node', [path.join(ROOT, 'Text2Frame.js'), '--mode', 'batch', '--text_path', 'text'],
+    cp.execFileSync('node', [path.join(ROOT, 'Text2Frame.js'), '--mode', 'batch', '--text-dir', 'text'],
       { cwd: tmp, encoding: 'utf8' })
 
     // 3-way (base==game, text added a line) applies the addition rather than dropping it via overlay.
@@ -103,12 +103,12 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI --mode batch)', function () {
   })
 
   it('round-trips: exported text re-imports via --mode batch', function () {
-    cp.execFileSync('node', [F2T, '--mode', 'batch', '--data-dir', 'data', '--locale', 'ja', '--text-base', 'text'],
+    cp.execFileSync('node', [F2T, '--mode', 'batch', '--data-dir', 'data', '--locale', 'ja', '--text-dir', 'text'],
       { cwd: tmp, encoding: 'utf8' })
     // Edit the exported event text, then deploy it back with overwrite.
     const evPath = path.join(tmp, 'text', 'ja', 'map001_event001_page1.txt')
     fs.writeFileSync(evPath, fs.readFileSync(evPath, 'utf8').replace('Hello from event', 'Edited line'))
-    cp.execFileSync('node', [path.join(ROOT, 'Text2Frame.js'), '--mode', 'batch', '--text_path', 'text', '--strategy', 'overwrite'],
+    cp.execFileSync('node', [path.join(ROOT, 'Text2Frame.js'), '--mode', 'batch', '--text-dir', 'text', '--strategy', 'overwrite'],
       { cwd: tmp, encoding: 'utf8' })
 
     const map = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8'))

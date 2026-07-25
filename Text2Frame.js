@@ -10436,7 +10436,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .version('2.3.0')
     .usage('[options]')
     .option('-m, --mode <map|common|compile|test|batch>', 'output mode', /^(map|common|compile|test|batch)$/i)
-    .option('-t, --text_path <name>', 'text file path')
+    .option('-t, --text_path <name>', 'single-file mode (map/common): input text file')
+    .option('--text-dir <dir>', 'batch mode: text base directory', 'text')
+    .option('-d, --data-dir <dir>', 'game data directory', 'data')
     .option('-l, --locale <name>', 'batch mode: only deploy text of this locale (front matter locale, else parent dir name)')
     .option('-o, --output_path <name>', 'output file path')
     .option('-e, --event_id <name>', 'event file id')
@@ -10491,8 +10493,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           textフォルダ以下のすべてのテキストファイルを一括でゲームに反映します。
           例1: $ node Text2Frame.js --mode batch
 
-          ベースディレクトリは、--text_path で変更することができます。（デフォルトは text ）
-          例2: $ node Text2Frame.js --mode batch --text_path text
+          テキストの場所は --text-dir、データの場所は --data-dir で変更できます。（既定は text / data ）
+          例2: $ node Text2Frame.js --mode batch --text-dir text --data-dir data --locale ja
 
           --watch を付与すると、テキストの変更を監視し、自動でゲームに反映することができます。
           例3: $ node Text2Frame.js --mode batch --watch
@@ -10500,8 +10502,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           --locale を付与すると、ベースディレクトリ以下のディレクトリを指定することができます。
           典型的な利用方法として、ゲームの翻訳が挙げられます。
           例えば、Frame2Textを利用しゲームの内容をenフォルダへ書き出し、ゲームの内容を英語に翻訳後、下記のコマンドで翻訳内容をゲームに反映できます。
-          例4: $ node Text2Frame.js --mode batch --locale en
-
+          例4: $ node Frame2Text.js --mode batch --locale en
+               $ node Text2Frame.js --mode batch --locale en
 
         node Text2Frame.js --mode test
           テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
@@ -10529,7 +10531,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const fm = frontMatterOf(options.text_path)
     const eventId = options.event_id || fm.eventId
     const mapPath = options.output_path ||
-      (fm.mapId ? path.resolve(process.cwd(), 'data', 'Map' + ('000' + String(fm.mapId)).slice(-3) + '.json') : undefined)
+      (fm.mapId ? path.resolve(process.cwd(), options.dataDir, 'Map' + ('000' + String(fm.mapId)).slice(-3) + '.json') : undefined)
     if (!eventId) {
       throw new Error('eventId is required: pass --event_id, or put "eventId:" in the text front matter.')
     }
@@ -10550,7 +10552,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   } else if (options.mode === 'common') {
     const fm = frontMatterOf(options.text_path)
     const commonEventId = options.common_event_id || fm.commonEventId
-    const commonEventPath = options.output_path || path.resolve(process.cwd(), 'data', 'CommonEvents.json')
+    const commonEventPath = options.output_path || path.resolve(process.cwd(), options.dataDir, 'CommonEvents.json')
     if (!commonEventId) {
       throw new Error('commonEventId is required: pass --common_event_id, or put "commonEventId:" in the text front matter.')
     }
@@ -10579,7 +10581,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   } else if (options.mode === 'batch') {
     // Front matter is the sole source of routing/metadata: scan the text directory for
     // front-matter .txt files and deploy each by its own header.
-    const scanRoot = path.resolve(options.text_path || 'text')
+    const scanRoot = path.resolve(options.textDir || 'text')
     const strategy = cliStrategy
     const cliBasePath = options.base ? path.resolve(options.base) : undefined
 
@@ -10629,9 +10631,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       // Resolve data paths against the project root (cwd), not the module dir, so batch
       // deploys target the invoking project's data/ (front matter carries the routing IDs).
       if (kind === 'common') {
-        opts.commonEventPath = path.resolve(process.cwd(), 'data', 'CommonEvents.json')
+        opts.commonEventPath = path.resolve(process.cwd(), options.dataDir, 'CommonEvents.json')
       } else if (meta.mapId) {
-        opts.mapPath = path.resolve(process.cwd(), 'data', 'Map' + ('000' + String(meta.mapId)).slice(-3) + '.json')
+        opts.mapPath = path.resolve(process.cwd(), options.dataDir, 'Map' + ('000' + String(meta.mapId)).slice(-3) + '.json')
       }
       return module.exports.applyTextFile(opts)
     }
@@ -10639,7 +10641,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const files = collectFiles()
     if (files.length === 0) {
       throw new Error('No front-matter text files found under ' + scanRoot +
-        (options.locale ? ' for locale "' + options.locale + '"' : '') + ' (pass --text_path <dir> / --locale <name>).')
+        (options.locale ? ' for locale "' + options.locale + '"' : '') + ' (pass --text-dir <dir> / --locale <name>).')
     }
     const results = files.map(function (fileArg) {
       const res = deployOne(fileArg)

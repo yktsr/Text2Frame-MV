@@ -117,7 +117,7 @@ function pullTarget (target, opts) {
   const locale = o.locale || 'ja'
   const englishTag = o.englishTag !== false
   const strategy = o.strategy || 'merge'
-  const textPath = path.resolve(root, o.textBase || 'text', locale, target.key + '.txt')
+  const textPath = path.resolve(root, o.textDir || 'text', locale, target.key + '.txt')
 
   let list = []
   if (target.kind === 'event') {
@@ -194,7 +194,7 @@ function syncOnce (opts) {
   const root = o.root || process.cwd()
   const dir = o.direction || 'both'
   const dataDir = path.resolve(root, o.dataDir || 'data')
-  const textRoot = path.resolve(root, o.textBase || 'text', o.locale || 'ja')
+  const textRoot = path.resolve(root, o.textDir || 'text', o.locale || 'ja')
   const results = { pulled: [], pushed: [] }
 
   if (dir === 'pull' || dir === 'both') {
@@ -224,7 +224,7 @@ if (require.main === module) {
     .name('t2f-sync')
     .description('テキストとゲームデータを双方向に同期する (Text2Frame / Frame2Text のコントローラ)')
     .option('--direction <both|push|pull>', 'sync direction', /^(both|push|pull)$/i, 'both')
-    .option('-t, --text_path <dir>', 'text base directory', 'text')
+    .option('-t, --text-dir <dir>', 'text base directory', 'text')
     .option('-d, --data-dir <dir>', 'game data directory', 'data')
     .option('-l, --locale <name>', 'language subfolder', 'ja')
     .option('-s, --strategy <merge|overwrite>', 'sync strategy', /^(merge|overwrite)$/i, 'merge')
@@ -241,7 +241,7 @@ if (require.main === module) {
   const opts = {
     root,
     dataDir: options.dataDir,
-    textBase: options.text_path,
+    textDir: options.textDir,
     locale: options.locale,
     strategy: String(options.strategy).toLowerCase(),
     englishTag: String(options.english_tag) !== 'false',
@@ -282,7 +282,7 @@ if (require.main === module) {
     try { chokidar = require('chokidar') } catch (e) {
       throw new Error('chokidar is required for --watch. Run: npm install')
     }
-    const textRoot = path.resolve(root, opts.textBase, opts.locale)
+    const textRoot = path.resolve(root, opts.textDir, opts.locale)
     const dataDir = path.resolve(root, opts.dataDir)
     const usePolling = !!options.poll || /wsl\.localhost|[/\\]mnt[/\\]/.test(root)
     const debounceMs = parseInt(options.debounce, 10) || 250

@@ -2940,7 +2940,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-c, --common_event_id <name>', 'common event id')
     .option('-d, --data-dir <dir>', 'game data directory', 'data')
     .option('-l, --locale <locale>', 'output language subfolder (batch)', 'ja')
-    .option('-t, --text-base <dir>', 'text base output directory (batch)', 'text')
+    .option('-t, --text-dir <dir>', 'text base directory (batch)', 'text')
     .option('-v, --verbose', 'debug mode', false)
     .option('-w, --english_tag <true/false>', 'english tag', 'true')
     .option('-s, --strategy <merge|overwrite>', 'pull strategy (default merge: keep translations; overwrite: replace)', /^(merge|overwrite)$/i, 'merge')
@@ -3061,7 +3061,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       throw new Error('Data directory not found: ' + dataDir)
     }
     const locale = options.locale
-    const textBaseDir = options.textBase
+    const textDir = options.textDir
     const englishTag = String(options.english_tag) === 'true'
     // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する(既存 dir は existsSync でガード)。
     let baseSaveError = null
@@ -3081,7 +3081,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         }
         const body = module.exports.decompile(list, englishTag, { pretty: true })
         const frontMatter = module.exports.renderFrontMatter(Object.assign({ locale }, t), t.kind)
-        const textPath = path.resolve(textBaseDir, locale, t.key + '.txt')
+        const textPath = path.resolve(textDir, locale, t.key + '.txt')
         fs.mkdirSync(path.dirname(textPath), { recursive: true })
         fs.writeFileSync(textPath, frontMatter + body + '\n', 'utf8')
         try { fs.writeFileSync(path.join(baseDir, t.key + '.txt'), frontMatter + body + '\n', 'utf8') } catch (e) { baseSaveError = baseSaveError || e }
