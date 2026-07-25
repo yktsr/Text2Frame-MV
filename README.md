@@ -70,7 +70,7 @@ Simple compiler to convert text to event.
 npm install -D @yktsr/text2frame-mv
 
 npx t2f-sync --watch                              # テキスト⇄ゲームを双方向に自動同期
-npx text2frame --mode batch --text_path text --locale ja      # 反映(text -> game)
+npx text2frame --mode batch --text-dir text --locale ja      # 反映(text -> game)
 npx frame2text --mode batch --data-dir data --locale ja       # 取り出し(game -> text)
 ```
 
@@ -248,7 +248,7 @@ node Frame2Text.js --mode map --input_path data/Map001.json --output_path text/e
 # 全部取り直す（上書き）
 node Frame2Text.js --mode map --strategy overwrite --input_path data/Map001.json --output_path text/en/map001_event001_page1.txt --event_id 1 --page_id 1
 # 一括（data/ を走査し text/<locale>/ 配下へ front matter 付きで書き出し）
-node Frame2Text.js --mode batch --data-dir data --locale en --text-base text --english_tag true
+node Frame2Text.js --mode batch --data-dir data --locale en --text-dir text --english_tag true
 ```
 
 3-way の祖先は `.t2f-base/<言語>/<key>.txt` に**自動保存/自動参照**されます（`--base` で明示も可・通常不要）。
@@ -259,10 +259,10 @@ node Frame2Text.js --mode batch --data-dir data --locale en --text-base text --e
 
 ```bash
 # text/ 配下の front matter 付き .txt を再帰走査して一括反映
-node Text2Frame.js --mode batch --text_path text
+node Text2Frame.js --mode batch --text-dir text
 
 # 言語を選んで反映（取り出しの --locale と対称。多言語プロジェクトではこちら）
-node Text2Frame.js --mode batch --text_path text --locale en
+node Text2Frame.js --mode batch --text-dir text --locale en
 ```
 
 `--strategy` を省略すると `merge`（既定）です。全上書きしたいときだけ `--strategy overwrite` を付けます。
@@ -288,7 +288,7 @@ node t2f-sync.js --watch --direction both --locale ja --strategy merge
 | オプション | 既定 | 説明 |
 | --- | --- | --- |
 | `--direction <both\|push\|pull>` | `both` | 同期方向 |
-| `-t, --text_path <dir>` | `text` | テキストのベースディレクトリ |
+| `-t, --text-dir <dir>` | `text` | テキストのベースディレクトリ |
 | `-d, --data-dir <dir>` | `data` | ゲームデータディレクトリ |
 | `-l, --locale <name>` | `ja` | 言語サブフォルダ |
 | `-s, --strategy <merge\|overwrite>` | `merge` | 反映・取り出しの方式 |
@@ -356,11 +356,14 @@ node t2f-sync.js --watch --direction both --locale ja --strategy merge
 * inazumasoft:Shick
   * [いなずまそふと制作支援部](https://ci-en.net/creator/12715)
 
-## Development
+## CI Mode
 ### Install dependencies
 ```
-$ npm ci
-$ npm run build --if-present
+npm install -D @yktsr/text2frame-mv
+
+npx t2f-sync --watch                                    # 双方向同期
+npx text2frame --mode batch --text-dir text --locale ja # 反映
+npx frame2text --mode batch --data-dir data --locale ja  # 取り出し
 ```
 
 ### Show help
@@ -370,7 +373,9 @@ Usage: Text2Frame [options]
 Options:
   -V, --version                               output the version number
   -m, --mode <map|common|compile|test|batch>  output mode
-  -t, --text_path <name>                      text file path
+  -t, --text_path <name>                      single-file mode (map/common): input text file
+  --text-dir <dir>                            batch mode: text base directory (default: "text")
+  -d, --data-dir <dir>                        game data directory (default: "data")
   -l, --locale <name>                         batch mode: only deploy text of this locale
   -o, --output_path <name>                    output file path
   -e, --event_id <name>                       event file id
@@ -391,7 +396,7 @@ Options:
     SYNOPSIS
         node Text2Frame.js --mode map --text_path <text> [--output_path <map json>] [--event_id <id>] [--page_id <id>] [--strategy merge|overwrite] [--base <ancestor text>]
         node Text2Frame.js --mode common --text_path <text> [--output_path <common json>] [--common_event_id <id>] [--strategy merge|overwrite] [--base <ancestor text>]
-        node Text2Frame.js --mode batch [--text_path <dir>] [--locale <name>] [--strategy merge|overwrite] [--watch]
+        node Text2Frame.js --mode batch [--text-dir <dir>] [--locale <name>] [--strategy merge|overwrite] [--watch]
         node Text2Frame.js --mode compile
         node Text2Frame.js --mode test
     DESCRIPTION
@@ -414,7 +419,7 @@ Options:
           例2(全上書き)：$ node Text2Frame.js -m common -t test/basic.txt -o data/CommonEvents.json -c 1 --strategy overwrite
 
         node Text2Frame.js --mode batch ...
-          一括反映モードです。`--text_path <dir>`(既定 `text`)配下の front matter 付き
+          一括反映モードです。`--text-dir <dir>`(既定 `text`)配下の front matter 付き
           `.txt` を再帰走査し、各ファイル先頭の front matter に従って反映します(詳細は上記「フォルダ一括同期」節)。
 
         node Text2Frame.js --mode compile
@@ -552,6 +557,12 @@ fs.writeFileSync("data/Map001.json", JSON.stringify(mapData, null, 2))
 console.log("イベントコマンドの組み込みが完了しました！")
 ```
 
+### Install dependencies
+```
+$ npm ci
+$ npm run build --if-present
+```
+
 ### Lint check
 ```
 $ npm run lint
@@ -562,9 +573,8 @@ $ npm run lint
 $ npm run test
 ```
 
-### Round-trip check（往復検証）
-書き出し(Frame2Text)→取り込み(Text2Frame)の往復で、コマンドリストが完全一致するかを
-実データで検証します。
+### Round-trip check（実データ検証）
+書き出し(Frame2Text)→取り込み(Text2Frame)の往復で、コマンドリストが完全一致するかを実データで検証します。
 ```
 $ npm run verify-roundtrip -- sample/data --locale=ja --en=true
 ```
@@ -931,6 +941,7 @@ fs.writeFileSync("data/Map001.json", JSON.stringify(mapData, null, 2))
 
 console.log("Event commands have been successfully incorporated!")
 ```
+
 
 #### Lint check
 ```

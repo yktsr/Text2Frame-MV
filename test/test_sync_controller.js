@@ -36,7 +36,7 @@ describe('t2f-sync controller', function () {
         { code: 0, indent: 0, parameters: [] }
       ] }
     ]))
-    opts = { root: tmp, dataDir: 'data', textBase: 'text', locale: 'ja', strategy: 'merge' }
+    opts = { root: tmp, dataDir: 'data', textDir: 'text', locale: 'ja', strategy: 'merge' }
   })
   afterEach(function () {
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }
