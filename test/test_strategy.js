@@ -59,12 +59,13 @@ describe('merge strategy auto behavior (via applyTextFile)', function () {
     expect(l.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })).to.eql(['Hello'])
   })
 
-  it('non-empty target + merge → overlay (keeps movement, updates dialogue, no new switch)', function () {
+  it('non-empty target + merge, no ancestor → TOFU (text applied whole, movement dropped, switch added)', function () {
+    // 祖先が無いので現在のゲーム状態を祖先とみなし、完全表現のテキストをそのまま反映する(=overwrite相当)。
     setup(JSON.parse(JSON.stringify(withMovement)))
-    applyTextFile({ textPath, kind: 'event', mapId: '1', eventId: '1', pageId: '1', mapPath, strategy: 'merge' })
+    applyTextFile({ textPath, kind: 'event', mapId: '1', eventId: '1', pageId: '1', mapPath, strategy: 'merge', baseRoot: tmp })
     const l = deployed()
-    expect(l.some(function (c) { return c.code === 205 })).to.equal(true) // movement preserved
-    expect(l.some(function (c) { return c.code === 121 })).to.equal(false) // overlay does not add non-conversation
+    expect(l.some(function (c) { return c.code === 205 })).to.equal(false) // movement not in text → dropped
+    expect(l.some(function (c) { return c.code === 121 })).to.equal(true) // switch from text applied
     expect(l.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })).to.eql(['Hello'])
   })
 
