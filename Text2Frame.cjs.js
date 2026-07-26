@@ -6899,7 +6899,7 @@ function requireText2Frame () {
 		//= ============================================================================
 		// Text2Frame.js
 		// ----------------------------------------------------------------------------
-		// (C)2018-2024 Yuki Katsura
+		// (C)2018-2026 Yuki Katsura
 		// This software is released under the MIT License.
 		// http://opensource.org/licenses/mit-license.php
 		// ----------------------------------------------------------------------------
@@ -7074,7 +7074,7 @@ function requireText2Frame () {
 		 *
 		 * @command BATCH_IMPORT_MESSAGES_FROM_FOLDER
 		 * @text フォルダから一括取り込み
-		 * @desc 指定フォルダ内の見出し情報付きテキストを一括でゲームへ反映します。
+		 * @desc 指定フォルダ内の見出し情報付きテキストを、一括でゲームへ反映します。
 		 *
 		 * @arg TextFolder
 		 * @text 取り込み元フォルダ名
@@ -7084,7 +7084,7 @@ function requireText2Frame () {
 		 *
 		 * @arg Strategy
 		 * @text 一括反映戦略
-		 * @desc merge(既定・構造保持の賢い反映) / overwrite(テキストで全上書き) を選択できます。
+		 * @desc merge(差分更新) / overwrite(テキストで全上書き) を選択できます。既定はmergeです。
 		 * @type select
 		 * @option merge
 		 * @value merge
@@ -7095,7 +7095,7 @@ function requireText2Frame () {
 		 *
 		 * @command MERGE_MESSAGE_TO_EVENT
 		 * @text イベントにマージ
-		 * @desc 既存イベントを保ちつつテキストを賢く反映します。祖先(任意)があれば3wayマージ(衝突は両方残す)、無ければ現在のゲーム状態を祖先として記録した上でテキストを反映、空イベントはそのまま新規反映します。
+		 * @desc 既存イベントを保ちつつテキストを賢く反映します。祖先(任意)があれば3wayマージ(衝突は両方残す)、無ければ現在のゲーム状態を祖先として記録した上でテキストを反映、空イベントはそのまま新規反映します。テキストに front matter があれば反映先(mapId/eventId/pageId)はそれに従います(引数より優先)。
 		 *
 		 * @arg FileFolder
 		 * @text 取り込み元フォルダ名
@@ -7111,19 +7111,19 @@ function requireText2Frame () {
 		 *
 		 * @arg MapID
 		 * @text 取り込み先マップID
-		 * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。
+		 * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。テキストの front matter に mapId があればそちらが優先されます。
 		 * @type number
 		 * @default 1
 		 *
 		 * @arg EventID
 		 * @text 取り込み先イベントID
-		 * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。
+		 * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。テキストの front matter に eventId があればそちらが優先されます。
 		 * @type number
 		 * @default 2
 		 *
 		 * @arg PageID
 		 * @text 取り込み先ページID
-		 * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。
+		 * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。テキストの front matter に pageId があればそちらが優先されます。
 		 * @type number
 		 * @default 1
 		 *
@@ -7141,7 +7141,7 @@ function requireText2Frame () {
 		 *
 		 * @command MERGE_MESSAGE_TO_CE
 		 * @text コモンイベントにマージ
-		 * @desc 既存コモンイベントを保ちつつテキストを賢く反映します。祖先(任意)があれば3wayマージ(衝突は両方残す)、無ければ現在のゲーム状態を祖先として記録した上でテキストを反映、空なら新規反映します。
+		 * @desc 既存コモンイベントを保ちつつテキストを賢く反映します。祖先(任意)があれば3wayマージ(衝突は両方残す)、無ければ現在のゲーム状態を祖先として記録した上でテキストを反映、空なら新規反映します。テキストに front matter があれば反映先(commonEventId)はそれに従います(引数より優先)。
 		 *
 		 * @arg FileFolder
 		 * @text 取り込み元フォルダ名
@@ -7157,7 +7157,7 @@ function requireText2Frame () {
 		 *
 		 * @arg CommonEventID
 		 * @text 取り込み先コモンイベントID
-		 * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。
+		 * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。テキストの front matter に commonEventId があればそちらが優先されます。
 		 * @type common_event
 		 * @default 1
 		 *
@@ -11092,7 +11092,6 @@ function requireText2Frame () {
 		 * Version
 		 * --------------------------------------
 		 * 2.3.0
-		 * build: ba571817ab4daf5e0aa98cf82f15efc6efeec6c0
 		 */
 		/* eslint-enable spaced-comment */
 
@@ -11399,6 +11398,9 @@ function requireText2Frame () {
 		          Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
 		          Laurus.Text2Frame.BasePath = (args[5] && args[6]) ? `${BASE_PATH}${PATH_SEP}${args[5]}${PATH_SEP}${args[6]}` : undefined;
 		        }
+		        // プラグインコマンドの MERGE は、テキストの front matter があれば反映先を front matter に従わせる。
+		        // 実際の上書きは front matter パース後(実行部)で行う。CLI/applyTextFile は COMMAND_LINE 経由でここを通らない。
+		        Laurus.Text2Frame.RouteByFrontMatter = true;
 		        break
 		      case 'MERGE_MESSAGE_TO_CE' :
 		        addMessage('merge message to common event. \n/ マージでコモンイベントに反映します。');
@@ -11411,6 +11413,7 @@ function requireText2Frame () {
 		          Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`;
 		          Laurus.Text2Frame.BasePath = (args[3] && args[4]) ? `${BASE_PATH}${PATH_SEP}${args[3]}${PATH_SEP}${args[4]}` : undefined;
 		        }
+		        Laurus.Text2Frame.RouteByFrontMatter = true;
 		        break
 
 		      case 'BATCH_IMPORT_MESSAGES_FROM_FOLDER' :
@@ -17051,6 +17054,25 @@ function requireText2Frame () {
 		    const parsed = parseFrontMatter(scenario_text);
 		    const event_command_list = compile(parsed.body);
 		    event_command_list.push(getCommandBottomEvent());
+
+		    // プラグインコマンドの MERGE 系のみ: front matter があれば反映先ルーティングをそれに従わせる(引数より優先)。
+		    // フラグはプラグインコマンドの引数解決時だけ立つ(CLI/applyTextFile は立てない)。毎回消費して漏らさない。
+		    const routeByFrontMatter = Laurus.Text2Frame.RouteByFrontMatter === true;
+		    Laurus.Text2Frame.RouteByFrontMatter = false;
+		    if (routeByFrontMatter) {
+		      const fmeta = parsed.meta || {};
+		      if (Laurus.Text2Frame.ExecMode === 'MERGE_MESSAGE_TO_EVENT') {
+		        if (fmeta.mapId != null) {
+		          Laurus.Text2Frame.MapID = fmeta.mapId;
+		          const { PATH_SEP, BASE_PATH } = getDirParams();
+		          Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + fmeta.mapId).slice(-3)}.json`;
+		        }
+		        if (fmeta.eventId != null) Laurus.Text2Frame.EventID = fmeta.eventId;
+		        if (fmeta.pageId != null) Laurus.Text2Frame.PageID = fmeta.pageId;
+		      } else if (Laurus.Text2Frame.ExecMode === 'MERGE_MESSAGE_TO_CE') {
+		        if (fmeta.commonEventId != null) Laurus.Text2Frame.CommonEventID = fmeta.commonEventId;
+		      }
+		    }
 
 		    switch (Laurus.Text2Frame.ExecMode) {
 		      case 'IMPORT_MESSAGE_TO_EVENT':
