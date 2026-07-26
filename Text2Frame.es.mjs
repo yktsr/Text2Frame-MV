@@ -7,6 +7,8 @@ import require$$2 from 'node:path';
 import require$$3 from 'node:fs';
 import require$$4 from 'node:process';
 
+var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+
 function getDefaultExportFromCjs (x) {
 	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
 }
@@ -4173,8 +4175,15 @@ function requireFrame2Text () {
 		// require(兄弟ファイル / __dirname 基準)にフォールバックする。
 		function resolveText2Frame () {
 		  try {
-		    if (typeof globalThis !== 'undefined' && globalThis.$LaurusText2Frame && globalThis.$LaurusText2Frame.saveBaseText) {
-		      return globalThis.$LaurusText2Frame
+		    // 古い NW.js(Chromium<71)には globalThis が無い。ゲーム内の共有グローバルは window なので
+		    // window / global にもフォールバックしないと $LaurusText2Frame を見つけられず取り出しが失敗する。
+		    const glob = (typeof globalThis !== 'undefined')
+		      ? globalThis
+		      : (typeof window !== 'undefined')
+		          ? window
+		          : (typeof commonjsGlobal !== 'undefined') ? commonjsGlobal : null;
+		    if (glob && glob.$LaurusText2Frame && glob.$LaurusText2Frame.saveBaseText) {
+		      return glob.$LaurusText2Frame
 		    }
 		  } catch (e) { /* noop */ }
 		  if (typeof commonjsRequire !== 'undefined') {
@@ -17002,7 +17011,15 @@ function requireText2Frame () {
 		    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId };
 		    // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
 		    // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
-		    try { if (typeof globalThis !== 'undefined') globalThis.$LaurusText2Frame = Laurus.Text2Frame.export; } catch (e) { /* noop */ }
+		    // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。
+		    try {
+		      const glob = (typeof globalThis !== 'undefined')
+		        ? globalThis
+		        : (typeof window !== 'undefined')
+		            ? window
+		            : (typeof commonjsGlobal !== 'undefined') ? commonjsGlobal : null;
+		      if (glob) glob.$LaurusText2Frame = Laurus.Text2Frame.export;
+		    } catch (e) { /* noop */ }
 
 		    const resolveFromRoot = function (rootDir, maybeRelativePath) {
 		      if (!maybeRelativePath) {

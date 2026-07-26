@@ -403,8 +403,15 @@
 // require(兄弟ファイル / __dirname 基準)にフォールバックする。
 function resolveText2Frame () {
   try {
-    if (typeof globalThis !== 'undefined' && globalThis.$LaurusText2Frame && globalThis.$LaurusText2Frame.saveBaseText) {
-      return globalThis.$LaurusText2Frame
+    // 古い NW.js(Chromium<71)には globalThis が無い。ゲーム内の共有グローバルは window なので
+    // window / global にもフォールバックしないと $LaurusText2Frame を見つけられず取り出しが失敗する。
+    const glob = (typeof globalThis !== 'undefined')
+      ? globalThis
+      : (typeof window !== 'undefined')
+          ? window
+          : (typeof global !== 'undefined') ? global : null
+    if (glob && glob.$LaurusText2Frame && glob.$LaurusText2Frame.saveBaseText) {
+      return glob.$LaurusText2Frame
     }
   } catch (e) { /* noop */ }
   if (typeof require !== 'undefined') {
