@@ -2763,6 +2763,17 @@ function resolveText2Frame () {
     }
 
     Laurus.Frame2Text.export = { decompile, VERSION, enumerateTargets, renderFrontMatter }
+    // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
+    // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
+    // window / global にもフォールバックする(Text2Frame 側の $LaurusText2Frame と対称)。
+    try {
+      const glob = (typeof globalThis !== 'undefined')
+        ? globalThis
+        : (typeof window !== 'undefined')
+            ? window
+            : (typeof global !== 'undefined') ? global : null
+      if (glob) glob.$LaurusFrame2Text = Laurus.Frame2Text.export
+    } catch (e) { /* noop */ }
     if (Laurus.Frame2Text.ExecMode === 'LIBRARY_EXPORT') {
       return
     }
