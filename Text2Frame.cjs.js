@@ -6536,6 +6536,17 @@ function requireFrame2Text () {
 		    };
 
 		    Laurus.Frame2Text.export = { decompile, VERSION, enumerateTargets, renderFrontMatter };
+		    // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
+		    // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
+		    // window / global にもフォールバックする(Text2Frame 側の $LaurusText2Frame と対称)。
+		    try {
+		      const glob = (typeof globalThis !== 'undefined')
+		        ? globalThis
+		        : (typeof window !== 'undefined')
+		            ? window
+		            : (typeof commonjsGlobal !== 'undefined') ? commonjsGlobal : null;
+		      if (glob) glob.$LaurusFrame2Text = Laurus.Frame2Text.export;
+		    } catch (e) { /* noop */ }
 		    if (Laurus.Frame2Text.ExecMode === 'LIBRARY_EXPORT') {
 		      return
 		    }
@@ -7108,8 +7119,8 @@ function requireText2Frame () {
 		 *
 		 *
 		 * @command MERGE_MESSAGE_TO_EVENT
-		 * @text イベントにマージ
-		 * @desc 既存イベントを保ちつつテキストを賢く反映します。祖先(任意)があれば3wayマージ(衝突は両方残す)、無ければ現在のゲーム状態を祖先として記録した上でテキストを反映、空イベントはそのまま新規反映します。テキストに front matter があれば反映先(mapId/eventId/pageId)はそれに従います(引数より優先)。
+		 * @text テキストをイベントにマージ
+		 * @desc 既存イベントを保ちつつテキストを賢く反映します。テキストに見出し情報（どのイベントに反映するべきか）が書かれている場合は、取り込み先マップID、取り込み先イベントID、取り込み先ページID は省略できます。
 		 *
 		 * @arg FileFolder
 		 * @text 取り込み元フォルダ名
@@ -7141,17 +7152,6 @@ function requireText2Frame () {
 		 * @type number
 		 * @default 1
 		 *
-		 * @arg BaseFolder
-		 * @text 祖先フォルダ名
-		 * @desc 3wayマージの共通祖先テキストのフォルダ名。空なら祖先無し扱いとなり、現在のゲーム状態を祖先として記録した上でテキストを反映します。
-		 * @type string
-		 * @default
-		 *
-		 * @arg BaseFileName
-		 * @text 祖先ファイル名
-		 * @desc 共通祖先テキストのファイル名。BaseFolderと両方指定した場合のみ3wayマージになります。
-		 * @type string
-		 * @default
 		 *
 		 * @command MERGE_MESSAGE_TO_CE
 		 * @text コモンイベントにマージ
@@ -17005,7 +17005,19 @@ function requireText2Frame () {
 		        merged = gameCommands.slice();
 		      }
 		      if (!merged.length || merged[merged.length - 1].code !== 0) merged.push({ code: 0, indent: 0, parameters: [] });
-		      const F2T = requireFrame2Text();
+		      // decompile は Frame2Text 側。ゲーム内(NW.js)では require が効かないため共有グローバルから取り、
+		      // 無ければ(CLI/Node)require にフォールバックする。古い NW.js には globalThis が無いので window/global も見る。
+		      const glob = (typeof globalThis !== 'undefined')
+		        ? globalThis
+		        : (typeof window !== 'undefined')
+		            ? window
+		            : (typeof commonjsGlobal !== 'undefined') ? commonjsGlobal : null;
+		      let F2T = (glob && glob.$LaurusFrame2Text && glob.$LaurusFrame2Text.decompile) ? glob.$LaurusFrame2Text : null;
+		      if (!F2T && typeof commonjsRequire !== 'undefined') {
+		        try { F2T = requireFrame2Text(); } catch (e) { /* try next */ }
+		        if (!F2T) { try { F2T = commonjsRequire(require('path').join(__dirname, 'Frame2Text.js')); } catch (e) { /* give up */ } }
+		      }
+		      if (!F2T || !F2T.decompile) { throw new Error('取り出し(merge)には Frame2Text プラグインが必要です。同じプロジェクトに導入してください。 / MERGE pull requires the Frame2Text plugin to be loaded.') }
 		      const text = F2T.decompile(merged, englishTag, { pretty: true });
 		      return { text, conflicts, warnings }
 		    };
