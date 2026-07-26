@@ -2814,8 +2814,13 @@ function resolveText2Frame () {
       const written = header + '\n' + r.text + '\n'
       try { const _p = require('path'); require('fs').mkdirSync(_p.dirname(outPath), { recursive: true }) } catch (e) {}
       writeData(outPath, written)
-      try { T2F.saveBaseText(root, id.locale, id.key, written) } catch (e) {}
-      if (r.conflicts) { logger.error('[merge-pull] ' + r.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath) }
+      // 衝突が残っているときは共通祖先を進めない(Git 流。解決してから再実行させる)。
+      if (r.conflicts) {
+        logger.error('[merge-pull] ' + r.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath)
+        logger.error('[merge-pull] 衝突が残っているため .t2f-base は更新していません。解決後に再実行してください。 / conflicts remain; ancestor not updated')
+      } else {
+        try { T2F.saveBaseText(root, id.locale, id.key, written) } catch (e) {}
+      }
       return
     }
 

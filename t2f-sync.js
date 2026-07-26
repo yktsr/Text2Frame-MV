@@ -160,10 +160,15 @@ function pullTarget (target, opts) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(textPath, written, 'utf8')
   if (o.guard) o.guard.record(textPath, written)
-  try {
-    const id = T2F.deriveBaseId(textPath, { locale })
-    T2F.saveBaseText(root, id.locale, id.key, written)
-  } catch (e) { /* best effort */ }
+  // 衝突が残っているときは共通祖先を進めない(Git 流。解決してから再実行させる)。
+  if (conflicts) {
+    console.warn('[pull] ' + conflicts + ' conflict(s) kept both; .t2f-base not updated (resolve then re-run): ' + textPath)
+  } else {
+    try {
+      const id = T2F.deriveBaseId(textPath, { locale })
+      T2F.saveBaseText(root, id.locale, id.key, written)
+    } catch (e) { /* best effort */ }
+  }
   return { ok: true, textPath, conflicts }
 }
 

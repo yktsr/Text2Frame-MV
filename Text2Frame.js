@@ -4429,7 +4429,7 @@
         merge_result = { commands: overwriteCmds, warnings: [] }
       }
       for (let wi = 0; wi < merge_result.warnings.length; wi++) addWarning(merge_result.warnings[wi])
-      return { commands: merge_result.commands, baseRoot, baseId }
+      return { commands: merge_result.commands, baseRoot, baseId, conflicts: merge_result.conflicts || 0 }
     }
 
     // マージ反映後、反映したテキストを次回の祖先として保存する(明示 BasePath 使用時も最新化)。
@@ -10248,7 +10248,9 @@
         map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list =
           merged.commands.concat([getCommandBottomEvent()])
         writeData(Laurus.Text2Frame.MapPath, map_data)
-        saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath)
+        // 衝突が残っているときは共通祖先を進めない(Git 流。解決してから再実行させる)。
+        if (merged.conflicts) addWarning('衝突が残っているため祖先(.t2f-base)は更新していません。解決後に再実行してください。 / conflicts remain; .t2f-base not updated')
+        else saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath)
         addMessage('Success / 書き出し成功！\n======> MapID: ' + Laurus.Text2Frame.MapID + ' -> EventID: ' + Laurus.Text2Frame.EventID + ' -> PageID: ' + Laurus.Text2Frame.PageID)
         break
       }
@@ -10262,7 +10264,8 @@
         ce_data[Laurus.Text2Frame.CommonEventID].list =
           merged.commands.concat([getCommandBottomEvent()])
         writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
-        saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath)
+        if (merged.conflicts) addWarning('衝突が残っているため祖先(.t2f-base)は更新していません。解決後に再実行してください。 / conflicts remain; .t2f-base not updated')
+        else saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath)
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break
       }

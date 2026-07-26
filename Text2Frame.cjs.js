@@ -6585,8 +6585,13 @@ function requireFrame2Text () {
 		      const written = header + '\n' + r.text + '\n';
 		      try { const _p = require('path'); require('fs').mkdirSync(_p.dirname(outPath), { recursive: true }); } catch (e) {}
 		      writeData(outPath, written);
-		      try { T2F.saveBaseText(root, id.locale, id.key, written); } catch (e) {}
-		      if (r.conflicts) { logger.error('[merge-pull] ' + r.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath); }
+		      // 衝突が残っているときは共通祖先を進めない(Git 流。解決してから再実行させる)。
+		      if (r.conflicts) {
+		        logger.error('[merge-pull] ' + r.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath);
+		        logger.error('[merge-pull] 衝突が残っているため .t2f-base は更新していません。解決後に再実行してください。 / conflicts remain; ancestor not updated');
+		      } else {
+		        try { T2F.saveBaseText(root, id.locale, id.key, written); } catch (e) {}
+		      }
 		      return
 		    }
 
@@ -11326,7 +11331,7 @@ function requireText2Frame () {
 		        merge_result = { commands: overwriteCmds, warnings: [] };
 		      }
 		      for (let wi = 0; wi < merge_result.warnings.length; wi++) addWarning(merge_result.warnings[wi]);
-		      return { commands: merge_result.commands, baseRoot, baseId }
+		      return { commands: merge_result.commands, baseRoot, baseId, conflicts: merge_result.conflicts || 0 }
 		    };
 
 		    // マージ反映後、反映したテキストを次回の祖先として保存する(明示 BasePath 使用時も最新化)。
@@ -17145,7 +17150,9 @@ function requireText2Frame () {
 		        map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list =
 		          merged.commands.concat([getCommandBottomEvent()]);
 		        writeData(Laurus.Text2Frame.MapPath, map_data);
-		        saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath);
+		        // 衝突が残っているときは共通祖先を進めない(Git 流。解決してから再実行させる)。
+		        if (merged.conflicts) addWarning('衝突が残っているため祖先(.t2f-base)は更新していません。解決後に再実行してください。 / conflicts remain; .t2f-base not updated');
+		        else saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath);
 		        addMessage('Success / 書き出し成功！\n======> MapID: ' + Laurus.Text2Frame.MapID + ' -> EventID: ' + Laurus.Text2Frame.EventID + ' -> PageID: ' + Laurus.Text2Frame.PageID);
 		        break
 		      }
@@ -17159,7 +17166,8 @@ function requireText2Frame () {
 		        ce_data[Laurus.Text2Frame.CommonEventID].list =
 		          merged.commands.concat([getCommandBottomEvent()]);
 		        writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
-		        saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath);
+		        if (merged.conflicts) addWarning('衝突が残っているため祖先(.t2f-base)は更新していません。解決後に再実行してください。 / conflicts remain; .t2f-base not updated');
+		        else saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath);
 		        addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID);
 		        break
 		      }

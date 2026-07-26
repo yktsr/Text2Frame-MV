@@ -91,6 +91,39 @@ describe('t2f-sync controller', function () {
     expect(after).to.contain('NewDevLine')  // game change pulled in
   })
 
+  it('push with a conflict does not advance .t2f-base (kept-both left for the user)', function () {
+    sync.pullDataFile(path.join(tmp, 'data', 'Map001.json'), opts) // base := Hello
+    const basePath = path.join(tmp, '.t2f-base', 'ja', 'map001_event001_page1.txt')
+    const baseBefore = fs.readFileSync(basePath, 'utf8')
+    // Diverge both sides on the same line → genuine 3-way conflict.
+    fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8').replace('Hello', 'Bonjour')) // theirs (text)
+    const mapPath = path.join(tmp, 'data', 'Map001.json')
+    const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
+    map.events[1].pages[0].list[1].parameters[0] = 'ゲーム変更' // ours (game)
+    fs.writeFileSync(mapPath, JSON.stringify(map))
+
+    const res = sync.pushFile(evText(), opts)
+    expect(res.ok).to.equal(true)
+    // Ancestor must be unchanged until the conflict is resolved.
+    expect(fs.readFileSync(basePath, 'utf8')).to.equal(baseBefore)
+  })
+
+  it('pull with a conflict does not advance .t2f-base', function () {
+    const mapPath = path.join(tmp, 'data', 'Map001.json')
+    sync.pullDataFile(mapPath, opts) // base := Hello
+    const basePath = path.join(tmp, '.t2f-base', 'ja', 'map001_event001_page1.txt')
+    const baseBefore = fs.readFileSync(basePath, 'utf8')
+    // Diverge both sides on the same line → conflict on pull.
+    fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8').replace('Hello', 'Bonjour')) // theirs (text)
+    const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
+    map.events[1].pages[0].list[1].parameters[0] = 'ゲーム変更' // ours (game)
+    fs.writeFileSync(mapPath, JSON.stringify(map))
+
+    const res = sync.pullDataFile(mapPath, opts)
+    expect(res[0].conflicts).to.be.greaterThan(0)
+    expect(fs.readFileSync(basePath, 'utf8')).to.equal(baseBefore)
+  })
+
   it('pull with overwrite replaces the text wholesale', function () {
     sync.pullDataFile(path.join(tmp, 'data', 'Map001.json'), opts)
     fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8').replace('Hello', 'こんにちは'))
