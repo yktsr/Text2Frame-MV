@@ -196,7 +196,7 @@
  *
  *
  * @command MERGE_MESSAGE_TO_EVENT
- * @text イベントにマージ
+ * @text テキストをイベントにマージ
  * @desc 既存イベントを保ちつつテキストを賢く反映します。祖先(任意)があれば3wayマージ(衝突は両方残す)、無ければ現在のゲーム状態を祖先として記録した上でテキストを反映、空イベントはそのまま新規反映します。テキストに front matter があれば反映先(mapId/eventId/pageId)はそれに従います(引数より優先)。
  *
  * @arg FileFolder
@@ -10102,7 +10102,15 @@
     Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId }
     // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
     // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
-    try { if (typeof globalThis !== 'undefined') globalThis.$LaurusText2Frame = Laurus.Text2Frame.export } catch (e) { /* noop */ }
+    // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。
+    try {
+      const glob = (typeof globalThis !== 'undefined')
+        ? globalThis
+        : (typeof window !== 'undefined')
+            ? window
+            : (typeof global !== 'undefined') ? global : null
+      if (glob) glob.$LaurusText2Frame = Laurus.Text2Frame.export
+    } catch (e) { /* noop */ }
 
     const resolveFromRoot = function (rootDir, maybeRelativePath) {
       if (!maybeRelativePath) {
