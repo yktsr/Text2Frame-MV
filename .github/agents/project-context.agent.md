@@ -26,7 +26,7 @@ tools: [read, edit, search, execute]
 
 | パス | 役割 |
 |---|---|
-| `Text2Frame.js` | テキスト→JSON コンパイラ本体。ツクールのプラグインとしても動作。`module.exports = { compile, applyOverlay, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId }` |
+| `Text2Frame.js` | テキスト→JSON コンパイラ本体。ツクールのプラグインとしても動作。`module.exports = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId }` |
 | `Frame2Text.js` | JSON→テキスト。`module.exports = { decompile, VERSION, enumerateTargets, renderFrontMatter }`。プラグイン/CLI の取り出しは merge 既定(`MERGE_EVENT_TO_MESSAGE`/`MERGE_CE_TO_MESSAGE` ExecMode、内部で `Text2Frame.applyMergePull` を lazy require) |
 | `Text2Frame.{cjs.js,es.mjs,umd.js}` | `npm run build`(vite)生成物。**直接編集しない**。`// developer mode` 以降(CLI部)は build で除去される |
 | `t2f-sync.js` | 双方向同期コントローラ(CLI専用。ツクールのプラグインではない)。Text2Frame/Frame2Text を**公開APIとして**使い、1プロセスで push/pull を所有。自分の書き込みを内容ハッシュで無視してループを防ぐ |
@@ -67,7 +67,7 @@ npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ �
    commonEventId: 3   # kind: common のとき
    ---
    ```
-2. デプロイ(テキスト→データ): `compile(body)` でコマンド配列に変換 → 対象 JSON の `events[eventId].pages[pageId-1].list`(または `CommonEvents[id].list`)へ反映。**戦略は `merge`(既定)/ `overwrite` の2つ**(`resolveStrategy` で検証。未知値は null)。`merge` は祖先(BASE)があれば 3-way、無くて既存が非空なら overlay、空なら overwrite を自動選択。
+2. デプロイ(テキスト→データ): `compile(body)` でコマンド配列に変換 → 対象 JSON の `events[eventId].pages[pageId-1].list`(または `CommonEvents[id].list`)へ反映。**戦略は `merge`(既定)/ `overwrite` の2つ**(`resolveStrategy` で検証。未知値は null)。`merge` は祖先(BASE)があれば 3-way、無ければ現在のゲーム状態を祖先として記録した上でテキストを反映(TOFU。初回=全反映、以後 3-way)、空なら overwrite を自動選択。
 3. 書き出し(データ→テキスト): `decompile(list, englishTag, {pretty, translationOnly})`。**取り出しも既定は merge**(翻訳を残しつつゲーム変更を取り込む。`Text2Frame.applyMergePull` 経由)。生の上書きは `overwrite`。
 4. **祖先スナップショット(3-way 用)**: `.t2f-base/<locale>/<key>.txt`(gitignore 済、`key`=テキストのファイル名、`locale`=front matter `locale` ‖ 親フォルダ名 ‖ `default`)。反映/取り出しの成功時に自動保存され、次回から自動 3-way。明示 `--base`/`BasePath` 指定時はそれを優先。VSCode 拡張・CLI・プラグインで同じ規約=相互運用可。同じ箇所を両方変更した競合は両方残し、平易マーカー(`=== テキストの変更 / from text ===` 等)で表示。
 
@@ -77,7 +77,7 @@ npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ �
 - `compile(text)` → イベントコマンド配列(本文のみ。フロントマターは呼び出し側で除去)
 - `applyTextFile(opts)` → 単一テキストを単一データ JSON へデプロイ。`opts={ textPath, kind, mapId, eventId, pageId, commonEventId, mapPath, commonEventPath, strategy, overwrite, backup, baseRoot }`(`baseRoot` 未指定時は `process.cwd()`。cwd と別のプロジェクトを扱う組み込み側は必ず渡す)。戻り値 `{ ok, warnings, error, errorLine, errorLineText, dataPath, target }`。throw せず結果を返す
 - フォルダ一括反映は front matter 走査で行う: 各 `.txt` を `applyTextFile({ textPath, strategy })` で反映(CLI は `--mode batch --text-dir <dir> [--locale <name>]`、プラグインは `BATCH_IMPORT_MESSAGES_FROM_FOLDER`)
-- `applyOverlay(existing, incoming)` → 構造保持マージ(祖先が無いとき)。`applyThreeWayMerge(base, ours, theirs)` → 3-way マージ(`{ commands, warnings, conflicts }`)
+- `applyThreeWayMerge(base, ours, theirs)` → 3-way マージ(`{ commands, warnings, conflicts }`)。祖先が無い場合は呼び出し側が現在のゲーム状態を祖先として渡す(TOFU)
 - `applyMergePull({ gameCommands, textBody, baseBody, englishTag })` → `{ text, conflicts, warnings }`。取り出し(ゲーム→テキスト)の 3-way 本体。push と対称(出力先がテキストなだけ)。内部で `Frame2Text.decompile` を lazy require
 - `resolveStrategy(name)` → `{ strategy: 'merge'|'overwrite' }`(未知値は null)
 - 祖先ヘルパ: `deriveBaseId(textPath, meta)`→`{ locale, key }`、`baseSnapshotPathCore(root, locale, key)`、`readBaseText`/`saveBaseText`

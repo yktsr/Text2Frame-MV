@@ -2865,8 +2865,8 @@ function resolveText2Frame () {
         }
       })
       if (_baseSaveError) {
-        addMessage('[batch] 警告: .t2f-base の祖先を保存できませんでした (' + (_baseSaveError.message || _baseSaveError) + ')。次回反映は overlay に縮退します。')
-        console.warn('[batch] WARNING: .t2f-base ancestor NOT saved (' + (_baseSaveError.message || _baseSaveError) + '); next import falls back to overlay.')
+        addMessage('[batch] 警告: .t2f-base の祖先を保存できませんでした (' + (_baseSaveError.message || _baseSaveError) + ')。次回反映は祖先無し扱いとなり、テキストを全反映します(3-wayになりません)。')
+        console.warn('[batch] WARNING: .t2f-base ancestor NOT saved (' + (_baseSaveError.message || _baseSaveError) + '); next import applies text whole (no 3-way).')
       }
       addMessage('[batch] Completed: ' + okCount + ' success, ' + errCount + ' errors')
       console.log('[batch] Completed: ' + okCount + ' success, ' + errCount + ' errors')
@@ -2953,16 +2953,29 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
        Frame2Text - Simple decompiler to convert event to text.
     SYNOPSIS
         node Frame2Text.js
-        node Frame2Text.js --mode batch --data-dir <RPG Maker Project Dir>/data
+        node Frame2Text.js --mode batch
         node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
         node Frame2Text.js --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
         node Frame2Text.js --mode test
     DESCRIPTION
         node Frame2Text.js --mode batch
           イベントの一括変換モードです。
-          PRGツクールのdataディレクトリを読み込み、 text/ja に書き出すコマンド例は以下です。
-          例1：$ node Frame2Text.js --mode batch --data-dir ./data
-          例2：$ node Frame2Text.js -m batch -d ./data
+          PRGツクールのdataディレクトリを読み込み、 すべてのイベントを text/ja フォルダに書き出します。
+          例1：$ node Frame2Text.js --mode batch
+          例2：$ node Frame2Text.js -m batch
+
+          テキストの場所は --text-dir、データの場所は --data-dir で変更できます。（既定は text / data ）
+          例3: $ node Frame2Text.js --mode batch --text-dir text --data-dir data
+
+          --watch を付与すると、テキストの変更を監視し、自動でゲームに反映することができます。
+          例4: $ node Text2Frame.js --mode batch --watch
+
+          --locale を付与すると、ベースディレクトリ以下のディレクトリを指定することができます。
+          典型的な利用方法として、ゲームの翻訳が挙げられます。
+          例えば、Frame2Textを利用しゲームの内容をenフォルダへ書き出し、ゲームの内容を英語に翻訳後、
+          下記のコマンドで翻訳内容をゲームに反映できます。
+          例5: $ node Frame2Text.js --mode batch --locale en
+               $ node Text2Frame.js --mode batch --locale en
 
         node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
           マップイベントのテキスト出力モードです。
@@ -3094,8 +3107,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     console.log(JSON.stringify({ total: results.length, failed: failures.length, results }, null, 2))
     if (baseSaveError) {
       console.warn('[batch] WARNING: .t2f-base の祖先を保存できませんでした (' + (baseSaveError.message || baseSaveError) +
-        ')。テキストは書き出せていますが、次回 --mode batch は overlay に縮退します（3-wayになりません）。/ ' +
-        'ancestor NOT saved; next import falls back to overlay.')
+        ')。テキストは書き出せていますが、次回 --mode batch は祖先無し扱いとなりテキストを全反映します（3-wayになりません）。/ ' +
+        'ancestor NOT saved; next import applies text whole (no 3-way).')
     }
     if (failures.length > 0) {
       process.exitCode = 1

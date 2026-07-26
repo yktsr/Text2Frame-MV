@@ -43,13 +43,13 @@ const gameMap = {
 // existing text already translated to Hello
 const existingText = '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n\nHello\n'
 
-describe('Frame2Text plugin MERGE_EVENT_TO_MESSAGE (pull keeps translation)', function () {
+describe('Frame2Text plugin MERGE_EVENT_TO_MESSAGE (pull without ancestor)', function () {
   let written
   beforeEach(function () {
     written = null
     sinon.stub(fs, 'readFileSync').callsFake(function (p) {
       const s = String(p)
-      if (s.indexOf('.t2f-base') !== -1) throw new Error('no base') // no ancestor -> overlay
+      if (s.indexOf('.t2f-base') !== -1) throw new Error('no base') // no ancestor -> overwrite text from game
       if (s.indexOf('Map001') !== -1) return JSON.stringify(gameMap)
       if (s.indexOf('message.txt') !== -1) return existingText
       throw new Error('unexpected read: ' + s)
@@ -64,11 +64,13 @@ describe('Frame2Text plugin MERGE_EVENT_TO_MESSAGE (pull keeps translation)', fu
   })
   afterEach(function () { sinon.restore() })
 
-  it('keeps the existing translation (Hello), not the game text (こんにちは)', function () {
+  it('no ancestor → overwrites text from game (overlay removed; translation not preserved)', function () {
+    // overlay 廃止により、祖先が無い pull はゲーム内容でテキストを生成する。
+    // 翻訳を保つには先に export で祖先を作る必要がある(3-way は test_sync_controller で担保)。
     Game_Interpreter.prototype.pluginCommandFrame2Text('MERGE_EVENT_TO_MESSAGE',
       ['text', 'message.txt', '1', '1', '1', '', ''])
     expect(written).to.not.equal(null)
-    expect(written.indexOf('Hello')).to.be.greaterThan(-1)
-    expect(written.indexOf('こんにちは')).to.equal(-1)
+    expect(written.indexOf('こんにちは')).to.be.greaterThan(-1)
+    expect(written.indexOf('Hello')).to.equal(-1)
   })
 })

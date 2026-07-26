@@ -76,21 +76,14 @@ describe('Plugin command MERGE_MESSAGE_TO_EVENT (name-style router)', function (
     expect(texts(list)).to.include('Bonjour')
   })
 
-  it('falls back to overlay (keeps switch) when no base is given', function () {
+  it('TOFU when no base is given: text is authoritative, dev switch dropped', function () {
+    // 祖先が無い初回反映は現在のゲーム状態を祖先とみなし、完全表現のテキストをそのまま反映する。
+    // テキストに無いスイッチ(121)は削除される(overlay 廃止・TOFU 一本化)。
     Game_Interpreter.prototype.pluginCommandText2Frame('MERGE_MESSAGE_TO_EVENT',
       ['text', 'message.txt', '1', '1', '1', '', ''])
     expect(written).to.not.equal(null)
     const list = eventList()
-    expect(list.some(function (c) { return c.code === 121 })).to.equal(true)
-    expect(texts(list)).to.include('Bonjour')
-  })
-
-  it('canonical MERGE_MESSAGE_TO_EVENT (no base) keeps dev switch and updates text', function () {
-    Game_Interpreter.prototype.pluginCommandText2Frame('MERGE_MESSAGE_TO_EVENT',
-      ['text', 'message.txt', '1', '1', '1', '', ''])
-    expect(written).to.not.equal(null)
-    const list = eventList()
-    expect(list.some(function (c) { return c.code === 121 })).to.equal(true) // overlay keeps structure
+    expect(list.some(function (c) { return c.code === 121 })).to.equal(false)
     expect(texts(list)).to.include('Bonjour')
   })
 

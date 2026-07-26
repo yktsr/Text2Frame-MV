@@ -235,7 +235,7 @@ export function mergePullToText(
             baseBody = frontMatterBody(fs.readFileSync(baseP, 'utf8'));
         }
 
-        // The whole 3-way/overlay/decompile logic lives in the shared core (Text2Frame.applyMergePull),
+        // The whole 3-way/decompile logic lives in the shared core (Text2Frame.applyMergePull),
         // so CLI, plugin and this extension all behave identically.
         const r = t2f.mod.applyMergePull({
             gameCommands,

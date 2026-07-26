@@ -173,9 +173,31 @@
  * @value false
  * @default false
  *
+ *
+ * @command BATCH_IMPORT_MESSAGES_FROM_FOLDER
+ * @text フォルダから一括取り込み
+ * @desc 指定フォルダ内の見出し情報付きテキストを一括でゲームへ反映します。
+ *
+ * @arg TextFolder
+ * @text 取り込み元フォルダ名
+ * @desc 走査するテキストフォルダ名です。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
+ * @arg Strategy
+ * @text 一括反映戦略
+ * @desc merge(既定・構造保持の賢い反映) / overwrite(テキストで全上書き) を選択できます。
+ * @type select
+ * @option merge
+ * @value merge
+ * @option overwrite
+ * @value overwrite
+ * @default merge
+ *
+ *
  * @command MERGE_MESSAGE_TO_EVENT
  * @text イベントにマージ
- * @desc 既存イベントを保ちつつテキストを賢く反映します。祖先(任意)があれば3wayマージ(衝突は両方残す)、無ければ会話のみ差し替え、空イベントはそのまま新規反映します。
+ * @desc 既存イベントを保ちつつテキストを賢く反映します。祖先(任意)があれば3wayマージ(衝突は両方残す)、無ければ現在のゲーム状態を祖先として記録した上でテキストを反映、空イベントはそのまま新規反映します。
  *
  * @arg FileFolder
  * @text 取り込み元フォルダ名
@@ -208,20 +230,20 @@
  * @default 1
  *
  * @arg BaseFolder
- * @text 祖先フォルダ名(任意)
- * @desc 3wayマージの共通祖先テキストのフォルダ名。空なら会話のみ差し替え(overlay)に縮退します。
+ * @text 祖先フォルダ名
+ * @desc 3wayマージの共通祖先テキストのフォルダ名。空なら祖先無し扱いとなり、現在のゲーム状態を祖先として記録した上でテキストを反映します。
  * @type string
  * @default
  *
  * @arg BaseFileName
- * @text 祖先ファイル名(任意)
+ * @text 祖先ファイル名
  * @desc 共通祖先テキストのファイル名。BaseFolderと両方指定した場合のみ3wayマージになります。
  * @type string
  * @default
  *
  * @command MERGE_MESSAGE_TO_CE
  * @text コモンイベントにマージ
- * @desc 既存コモンイベントを保ちつつテキストを賢く反映します。祖先(任意)があれば3wayマージ(衝突は両方残す)、無ければ会話のみ差し替え、空なら新規反映します。
+ * @desc 既存コモンイベントを保ちつつテキストを賢く反映します。祖先(任意)があれば3wayマージ(衝突は両方残す)、無ければ現在のゲーム状態を祖先として記録した上でテキストを反映、空なら新規反映します。
  *
  * @arg FileFolder
  * @text 取り込み元フォルダ名
@@ -243,7 +265,7 @@
  *
  * @arg BaseFolder
  * @text 祖先フォルダ名(任意)
- * @desc 3wayマージの共通祖先テキストのフォルダ名。空ならoverlayに縮退します。
+ * @desc 3wayマージの共通祖先テキストのフォルダ名。空なら祖先無し扱いとなり、現在のゲーム状態を祖先として記録した上でテキストを反映します。
  * @type string
  * @default
  *
@@ -252,26 +274,6 @@
  * @desc 共通祖先テキストのファイル名。BaseFolderと両方指定した場合のみ3wayマージ。
  * @type string
  * @default
- *
- * @command BATCH_IMPORT_MESSAGES_FROM_FOLDER
- * @text フォルダから一括反映
- * @desc 指定フォルダ内の front matter 付きテキストを再帰的に走査し、各ファイルの見出し情報に従って一括でゲームへ反映します。
- *
- * @arg TextFolder
- * @text 取り込み元フォルダ名
- * @desc 走査するテキストフォルダ名です。デフォルトはtextです。
- * @type string
- * @default text
- *
- * @arg Strategy
- * @text 一括反映戦略
- * @desc merge(既定・構造保持の賢い反映) / overwrite(テキストで全上書き) を選択できます。
- * @type select
- * @option merge
- * @value merge
- * @option overwrite
- * @value overwrite
- * @default merge
  *
 
  *
@@ -4389,7 +4391,7 @@
       }
     }
 
-    // MERGE(反映): 祖先(BASE)を解決し 3-way / overlay / overwrite を自動選択して
+    // MERGE(反映): 祖先(BASE)を解決し 3-way / overwrite を自動選択して
     // マージ後のコマンド列を返す。event / CE で共通。祖先の保存キー(baseRoot/baseId)も返す。
     const resolveMergeCommands = function (existing_events, event_command_list, textPath, explicitBasePath) {
       // 祖先(BASE): 明示 BasePath 優先。無ければ .t2f-base/<locale>/<key> を自動参照。
@@ -4412,11 +4414,16 @@
       let merge_result
       const hasContent = existing_events.some(function (c) { return c && c.code !== 0 })
 
+      // TOFU(trust on first use): 祖先が無い初回反映は現在のゲーム状態を祖先とみなす。
+      // base==game なので 3-way はテキストをそのまま反映し(衝突なし)、反映後 saveMergeBase が
+      // base:=text を保存するため次回以降は本物の 3-way になる。テキストは完全表現である前提。
+      if (!base_cmds && hasContent) {
+        base_cmds = existing_events.slice()
+        addWarning('初回反映: 祖先が無いため現在のゲーム状態を祖先として記録しテキストで反映しました / no ancestor: recorded current game state as base')
+      }
       if (base_cmds && hasContent) {
         merge_result = applyThreeWayMerge(base_cmds, existing_events, event_command_list)
         if (merge_result.conflicts) addWarning('3-way merge: ' + merge_result.conflicts + ' conflict(s) kept both / 衝突を両方残しました')
-      } else if (hasContent) {
-        merge_result = applyOverlay(existing_events, event_command_list)
       } else {
         const overwriteCmds = event_command_list.slice()
         while (overwriteCmds.length && overwriteCmds[overwriteCmds.length - 1] && overwriteCmds[overwriteCmds.length - 1].code === 0) overwriteCmds.pop()
@@ -9734,138 +9741,12 @@
       return event_command_list
     }
 
-    /* LCS (最長共通部分列) テーブルを計算する */
-    const lcsTable = function (a, b) {
-      const m = a.length
-      const n = b.length
-      const table = []
-      for (let i = 0; i <= m; i++) {
-        const row = []
-        for (let j = 0; j <= n; j++) {
-          row.push(0)
-        }
-        table.push(row)
-      }
-      for (let i = 1; i <= m; i++) {
-        for (let j = 1; j <= n; j++) {
-          if (JSON.stringify(a[i - 1]) === JSON.stringify(b[j - 1])) {
-            table[i][j] = table[i - 1][j - 1] + 1
-          } else {
-            table[i][j] = Math.max(table[i - 1][j], table[i][j - 1])
-          }
-        }
-      }
-      return table
-    }
-
-    /* LCS テーブルから差分リストをビルドする */
-    const buildDiffFromTable = function (table, a, b) {
-      const diff = []
-      let i = a.length
-      let j = b.length
-      while (i > 0 || j > 0) {
-        if (i === 0) {
-          diff.unshift({ type: 'added', block: b[j - 1] })
-          j--
-        } else if (j === 0) {
-          diff.unshift({ type: 'removed', block: a[i - 1] })
-          i--
-        } else if (JSON.stringify(a[i - 1]) === JSON.stringify(b[j - 1])) {
-          diff.unshift({ type: 'equal', block: a[i - 1] })
-          i--
-          j--
-        } else if (table[i - 1][j] >= table[i][j - 1]) {
-          diff.unshift({ type: 'removed', block: a[i - 1] })
-          i--
-        } else {
-          diff.unshift({ type: 'added', block: b[j - 1] })
-          j--
-        }
-      }
-      return diff
-    }
-
     // 反映方式は merge(既定・構造保持の賢い反映) / overwrite(全上書き) の2つ。未指定は merge。未知は null。
     const resolveStrategy = function (name) {
       const s = String(name == null ? 'merge' : name).toLowerCase()
       if (s === 'merge') return { strategy: 'merge' }
       if (s === 'overwrite') return { strategy: 'overwrite' }
       return null
-    }
-
-    /* 翻訳オーバーレイ: existing(JSON)を「構造の正」とし、new(テキスト)側の会話文字列だけを
-     * 対応スロットへ差し替える。移動/分岐/スイッチ等の非会話コマンドは一切変更しない。
-     * スロット種別の並びを LCS で対応付け、対応が取れた分だけ差し替え、余りは警告する。
-     * 戻り値: { commands: 適用後(終端コードなし), warnings }。 */
-    const applyOverlay = function (existing_commands, new_commands) {
-      const stripBottom = function (cmds) {
-        const copy = cmds.slice()
-        while (copy.length > 0 && copy[copy.length - 1] && copy[copy.length - 1].code === 0) {
-          copy.pop()
-        }
-        return copy
-      }
-      const PREVIEW = 60
-      const preview = function (s) { const t = String(s); return t.length > PREVIEW ? t.slice(0, PREVIEW) + '...' : t }
-      const result = JSON.parse(JSON.stringify(stripBottom(existing_commands)))
-
-      // 会話系スロットを出現順に抽出。101 の名前(param[4])は MZ(5引数)のときだけ対象。
-      const slotsOf = function (cmds) {
-        const slots = []
-        for (let i = 0; i < cmds.length; i++) {
-          const c = cmds[i]
-          if (!c || !Array.isArray(c.parameters)) continue
-          if (c.code === 401) slots.push({ kind: 'text', i, param: 0 })
-          else if (c.code === 405) slots.push({ kind: 'scroll', i, param: 0 })
-          else if (c.code === 402) slots.push({ kind: 'choice', i, param: 1 })
-          else if (c.code === 101 && c.parameters.length >= 5) slots.push({ kind: 'name', i, param: 4 })
-        }
-        return slots
-      }
-      const exSlots = slotsOf(result)
-      const newSlots = slotsOf(new_commands)
-
-      // スロット種別列を LCS で対応付け(lcsTable/buildDiffFromTable を再利用)。
-      const a = exSlots.map(function (s) { return s.kind })
-      const b = newSlots.map(function (s) { return s.kind })
-      const diff = buildDiffFromTable(lcsTable(a, b), a, b)
-
-      const warnings = []
-      let ei = 0
-      let ni = 0
-      for (let di = 0; di < diff.length; di++) {
-        const t = diff[di].type
-        if (t === 'equal') {
-          const es = exSlots[ei]
-          const ns = newSlots[ni]
-          result[es.i].parameters[es.param] = new_commands[ns.i].parameters[ns.param]
-          ei++
-          ni++
-        } else if (t === 'removed') {
-          const es = exSlots[ei]
-          warnings.push('Untranslated slot kept / 未対応で原文維持: ' + es.kind + ' "' + preview(result[es.i].parameters[es.param]) + '"')
-          ei++
-        } else {
-          const ns = newSlots[ni]
-          warnings.push('Extra text ignored / テキスト側の余剰を無視: ' + ns.kind + ' "' + preview(new_commands[ns.i].parameters[ns.param]) + '"')
-          ni++
-        }
-      }
-
-      // 選択肢(102)の表示配列 parameters[0] を、差し替え後の 402 ラベルから同一 indent 単位で再構築。
-      for (let i = 0; i < result.length; i++) {
-        if (result[i].code !== 102) continue
-        const depth = result[i].indent
-        const labels = []
-        for (let j = i + 1; j < result.length; j++) {
-          const cj = result[j]
-          if (cj.indent === depth && cj.code === 404) break
-          if (cj.indent === depth && cj.code === 402 && Array.isArray(cj.parameters)) labels.push(cj.parameters[1])
-        }
-        if (labels.length > 0 && Array.isArray(result[i].parameters)) result[i].parameters[0] = labels
-      }
-
-      return { commands: result, warnings }
     }
 
     /* コマンド列を「釣り合った単位」に分割する。制御構造(選択肢/条件分岐/ループ/戦闘/Skip)は
@@ -10199,11 +10080,10 @@
         merged = m.commands.slice()
         conflicts = m.conflicts
         warnings = m.warnings
-      } else if (theirs.length > 0) {
-        const ov = applyOverlay(gameCommands, theirs)
-        merged = ov.commands.slice()
-        warnings = ov.warnings
       } else {
+        // 祖先なし: マージの判断材料が無いので現在のゲーム内容でテキストを生成する。
+        // 既存テキスト(翻訳)があれば上書きになるため警告する。通常は export が祖先を作るので稀。
+        if (theirs.length > 0) warnings.push('祖先が無いため既存テキストをゲーム内容で上書きしました / no ancestor: overwrote existing text from game')
         merged = gameCommands.slice()
       }
       if (!merged.length || merged[merged.length - 1].code !== 0) merged.push({ code: 0, indent: 0, parameters: [] })
@@ -10212,7 +10092,7 @@
       return { text, conflicts, warnings }
     }
 
-    Laurus.Text2Frame.export = { compile, applyOverlay, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId }
+    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId }
     // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
     // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
     try { if (typeof globalThis !== 'undefined') globalThis.$LaurusText2Frame = Laurus.Text2Frame.export } catch (e) { /* noop */ }
@@ -10458,12 +10338,30 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     NAME
        Text2Frame - Simple compiler to convert text to event command.
     SYNOPSIS
+        node Text2Frame.js --mode batch
         node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
         node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
         node Text2Frame.js --mode compile
         node Text2Frame.js --verbose --mode test
-        node Text2Frame.js --mode batch
     DESCRIPTION
+        node Text2Frame.js --mode batch
+          テキストの一括反映モードです。
+          textフォルダ以下のすべてのテキストファイルを一括でゲームに反映します。
+          例1: $ node Text2Frame.js --mode batch
+
+          テキストの場所は --text-dir、データの場所は --data-dir で変更できます。（既定は text / data ）
+          例2: $ node Text2Frame.js --mode batch --text-dir text --data-dir data
+
+          --watch を付与すると、テキストの変更を監視し、自動でゲームに反映することができます。
+          例3: $ node Text2Frame.js --mode batch --watch
+
+          --locale を付与すると、ベースディレクトリ以下のディレクトリを指定することができます。
+          典型的な利用方法として、ゲームの翻訳が挙げられます。
+          例えば、Frame2Textを利用しゲームの内容をenフォルダへ書き出し、ゲームの内容を英語に翻訳後、
+          下記のコマンドで翻訳内容をゲームに反映できます。
+          例4: $ node Frame2Text.js --mode batch --locale en
+               $ node Text2Frame.js --mode batch --locale en
+
         node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
           マップへのイベント出力モードです。
           読み込むファイル、出力マップ、上書きの有無を引数で指定します。
@@ -10487,23 +10385,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           Map.json/CommonEvent.json への組み込みは各自で行う必要があります。
 
           例1: $ cat test/basic.txt | node Text2Frame.js --mode compile
-
-        node Text2Frame.js --mode batch
-          バッチモードです。
-          textフォルダ以下のすべてのテキストファイルを一括でゲームに反映します。
-          例1: $ node Text2Frame.js --mode batch
-
-          テキストの場所は --text-dir、データの場所は --data-dir で変更できます。（既定は text / data ）
-          例2: $ node Text2Frame.js --mode batch --text-dir text --data-dir data --locale ja
-
-          --watch を付与すると、テキストの変更を監視し、自動でゲームに反映することができます。
-          例3: $ node Text2Frame.js --mode batch --watch
-
-          --locale を付与すると、ベースディレクトリ以下のディレクトリを指定することができます。
-          典型的な利用方法として、ゲームの翻訳が挙げられます。
-          例えば、Frame2Textを利用しゲームの内容をenフォルダへ書き出し、ゲームの内容を英語に翻訳後、下記のコマンドで翻訳内容をゲームに反映できます。
-          例4: $ node Frame2Text.js --mode batch --locale en
-               $ node Text2Frame.js --mode batch --locale en
 
         node Text2Frame.js --mode test
           テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。

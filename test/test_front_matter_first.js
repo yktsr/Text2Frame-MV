@@ -51,20 +51,20 @@ describe('Phase E: front-matter-first batch (CLI)', function () {
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }
   })
 
-  it('E-2: manifest-less batch scans text dir and deploys by front matter (merge default keeps switch)', function () {
+  it('E-2: manifest-less batch scans text dir and deploys by front matter (TOFU: no base → text authoritative)', function () {
     fs.writeFileSync(path.join(textDir, 'ev.txt'),
       '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n\nBonjour\n')
-    runCli(['--mode', 'batch', '--text_path', 'text'], tmp)
+    runCli(['--mode', 'batch', '--text-dir', 'text'], tmp)
     const list = eventList(mapPath, 1)
     expect(texts(list)).to.eql(['Bonjour'])
-    expect(list.some(function (c) { return c.code === 121 })).to.equal(true) // merge kept structure
+    expect(list.some(function (c) { return c.code === 121 })).to.equal(false) // TOFU: switch absent from text is dropped
   })
 
   it('E-2: manifest-less batch skips files without front matter', function () {
     fs.writeFileSync(path.join(textDir, 'nofm.txt'), 'PlainNoFrontMatter\n')
     let threw = false
     try {
-      runCli(['--mode', 'batch', '--text_path', 'text'], tmp)
+      runCli(['--mode', 'batch', '--text-dir', 'text'], tmp)
     } catch (e) {
       threw = true // no front-matter files => error "No front-matter text files found"
     }
@@ -77,7 +77,7 @@ describe('Phase E: front-matter-first batch (CLI)', function () {
     // Batch default is merge (keeps switch); this file requests overwrite in front matter.
     fs.writeFileSync(path.join(textDir, 'ev.txt'),
       '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\nstrategy: overwrite\n---\n\nReplaced\n')
-    runCli(['--mode', 'batch', '--text_path', 'text'], tmp)
+    runCli(['--mode', 'batch', '--text-dir', 'text'], tmp)
     const list = eventList(mapPath, 1)
     expect(texts(list)).to.eql(['Replaced'])
     expect(list.some(function (c) { return c.code === 121 })).to.equal(false) // overwrite removed the switch
