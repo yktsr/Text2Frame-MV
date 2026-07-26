@@ -11198,7 +11198,11 @@ function requireText2Frame () {
 		    if (typeof commonjsRequire !== 'undefined') {
 		      const path = require$$0$1;
 		      PATH_SEP = path.sep;
-		      BASE_PATH = path.dirname(process.mainModule.filename);
+		      // process.mainModule は環境(NW.js/VSCode 拡張ホスト等)によって undefined のことがある。
+		      // 未ガードで .filename を読むと読み込み時に throw し、$LaurusText2Frame が公開されず
+		      // Frame2Text の MERGE 取り出しが「プラグインが必要」で失敗する。cwd にフォールバックする。
+		      const mainFile = process.mainModule && process.mainModule.filename;
+		      BASE_PATH = mainFile ? path.dirname(mainFile) : process.cwd();
 		    }
 		    Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
 		    Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
