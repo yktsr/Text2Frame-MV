@@ -95,6 +95,34 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     expect(line('取り出し対象が見つかりませんでした')).to.contain(empty)
   })
 
+  it('skips targets whose game side still has conflict markers, and keeps their text', function () {
+    const marker = function (text) { return { code: 108, indent: 0, parameters: [text] } }
+    fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify({
+      events: [null, msgEvent('こんにちは'), {
+        id: 2,
+        pages: [{ list: [
+          { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+          { code: 401, indent: 0, parameters: ['やあ'] },
+          marker('=== テキストの変更 / from text ==='),
+          marker('=== ゲームの変更 / from game ==='),
+          marker('=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='),
+          { code: 0, indent: 0, parameters: [] }
+        ] }]
+      }]
+    }), 'utf8')
+    const kept = path.join(tmp, 'text', 'ja', 'map001_event002_page1.txt')
+    fs.mkdirSync(path.dirname(kept), { recursive: true })
+    fs.writeFileSync(kept, 'これは残るべき翻訳\n', 'utf8')
+
+    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja')
+
+    expect(line('取り出し完了')).to.contain('衝突未解決で除外 1件')
+    expect(line('衝突未解決で取り出さなかったファイル')).to.contain('map001_event002_page1')
+    // 除外したファイルのテキストと祖先は触っていない。
+    expect(fs.readFileSync(kept, 'utf8')).to.equal('これは残るべき翻訳\n')
+    expect(fs.existsSync(path.join(tmp, '.t2f-base', 'ja', 'map001_event002_page1.txt'))).to.equal(false)
+  })
+
   it('reports each failing key with its reason', function () {
     fs.writeFileSync(path.join(tmp, 'data', 'Map002.json'),
       JSON.stringify({ events: [null, msgEvent('だめ')] }), 'utf8')

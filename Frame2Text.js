@@ -2737,6 +2737,21 @@ function resolveText2Frame () {
       return lines.join('\n')
     }
 
+    // 未解決の衝突の目印(Text2Frame の CONFLICT_MARKERS と同じ文字列)。取り出しは Text2Frame が
+    // 無くても動く必要があるため、依存を作らずここに持つ。文言を変えるときは両方直すこと。
+    const CONFLICT_MARKERS = [
+      '=== テキストの変更 / from text ===',
+      '=== ゲームの変更 / from game ===',
+      '=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='
+    ]
+    const hasConflictMarker = function (commands) {
+      return (commands || []).some(function (c) {
+        if (!c || (c.code !== 108 && c.code !== 408)) return false
+        const p = c.parameters && c.parameters[0]
+        return typeof p === 'string' && CONFLICT_MARKERS.some(function (m) { return p.indexOf(m) !== -1 })
+      })
+    }
+
     // data ディレクトリを走査し、出力対象(イベント/コモンイベント)の routing メタだけを返す。
     // textPath/locale は付けない(呼び出し側が textBase/locale/key.txt を組み立てる)。
     const enumerateTargets = function (dataDir) {
@@ -2823,6 +2838,11 @@ function resolveText2Frame () {
         }
         gameCommands = md.events[Laurus.Frame2Text.EventID].pages[pageID].list
       }
+      // 目印が残ったままの取り出しは、衝突をテキストと祖先にも広げるだけなので止める。
+      if (hasConflictMarker(gameCommands)) {
+        throw new Error('未解決の衝突がゲーム側に残っています。目印3行を消してから取り出し直してください。' +
+          ' / unresolved conflict markers in the game data; resolve them first')
+      }
       const outPath = Laurus.Frame2Text.TextPath
       let existingText = ''
       try { existingText = readText(outPath) } catch (e) { existingText = '' }
@@ -2870,6 +2890,8 @@ function resolveText2Frame () {
       let overwrittenCount = 0
       // 失敗は件数だけだと原因が分からないので、キーと理由を控えてまとめて出す。
       const failures = []
+      // 未解決の衝突が残っていて取り出しを見送ったもの。
+      const conflictSkipped = []
       // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する。
       let _baseSaveError = null
       const _baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH
@@ -2911,6 +2933,12 @@ function resolveText2Frame () {
             const ceData = JSON.parse(_fs.readFileSync(_path.join(dataDir, 'CommonEvents.json'), 'utf8'))
             list = ceData[Number(t.commonEventId)].list || []
           }
+          // 目印が残ったまま取り出すと、テキストと祖先にまで衝突が広がって収拾がつかなくなる。
+          // 先にエディタで解決してもらう(このファイルだけ飛ばし、他は通す)。
+          if (hasConflictMarker(list)) {
+            conflictSkipped.push(t.key)
+            return
+          }
           const body = decompile(list, englishTag, { pretty: true })
           const fm = renderFrontMatter(Object.assign({ locale }, t), t.kind)
           const outPath = _path.resolve(BASE_PATH, textBase, locale, t.key + '.txt')
@@ -2931,13 +2959,20 @@ function resolveText2Frame () {
         addMessage('[batch] 警告: .t2f-base の祖先を保存できませんでした (' + (_baseSaveError.message || _baseSaveError) + ')。次回反映は祖先無し扱いとなり、テキストを全反映します(3-wayになりません)。')
         console.warn('[batch] WARNING: .t2f-base ancestor NOT saved (' + (_baseSaveError.message || _baseSaveError) + '); next import applies text whole (no 3-way).')
       }
-      addMessage('[batch] 取り出し完了: 成功 ' + okCount + '件 (イベント ' + eventCount + ' / コモン ' + commonCount + ')、失敗 ' + errCount + '件')
+      addMessage('[batch] 取り出し完了: 成功 ' + okCount + '件 (イベント ' + eventCount + ' / コモン ' + commonCount + ')、失敗 ' + errCount + '件' +
+        (conflictSkipped.length > 0 ? '、衝突未解決で除外 ' + conflictSkipped.length + '件' : ''))
       addMessage('[batch] 出力先: ' + outDir)
       if (overwrittenCount > 0) {
         addMessage('[batch] 既存テキスト ' + overwrittenCount + '件を上書きしました(取り出しはマージしません)。')
       }
       // $gameMessage は行数が限られるため、失敗の詳細は先頭数件だけ出して残りはコンソールへ回す。
       const FAILURE_LINES = 5
+      if (conflictSkipped.length > 0) {
+        addMessage('[batch] 衝突未解決で取り出さなかったファイル: ' + conflictSkipped.slice(0, FAILURE_LINES).join(', ') +
+          (conflictSkipped.length > FAILURE_LINES ? ' ほか' : ''))
+        addMessage('[batch] エディタで目印3行を消してから取り出し直してください(そのまま取り出すと衝突がテキストにも広がります)。')
+        console.warn('[batch] skipped (unresolved conflict markers): ' + conflictSkipped.join(', '))
+      }
       failures.slice(0, FAILURE_LINES).forEach(function (f) { addMessage('[batch] 失敗: ' + f) })
       if (failures.length > FAILURE_LINES) {
         addMessage('[batch] 他 ' + (failures.length - FAILURE_LINES) + '件の失敗はコンソール(F8)を参照してください。')
