@@ -4311,8 +4311,14 @@
   }
 
   Game_Interpreter.prototype.pluginCommandText2Frame = function (command, args) {
+    // 反映後の案内。一括反映では最後に 1 回だけ出す(個々の反映は _quiet で抑制)。
+    const RESTART_NOTICE = 'Please restart RPG Maker MV(Editor) WITHOUT save. \n' +
+      '**セーブせずに**プロジェクトファイルを開き直してください'
+
     const addMessage = function (text) {
-      if (Laurus.Text2Frame.DisplayMsg) {
+      // _quiet 中(applyTextFile 経由)は 1 ファイルごとの成功報告や案内を出さない。
+      // 出すと一括反映でファイル数ぶん同じ文言が並ぶ。呼び出し側がまとめて報告する。
+      if (Laurus.Text2Frame.DisplayMsg && !Laurus.Text2Frame._quiet) {
         $gameMessage.add(text)
       }
     }
@@ -4322,7 +4328,9 @@
       if (Array.isArray(Laurus.Text2Frame._warnings)) {
         Laurus.Text2Frame._warnings.push(warning)
       }
-      if (Laurus.Text2Frame.DisplayWarning) {
+      // _quiet 中(applyTextFile 経由)は呼び出し側が _warnings を受け取って報告する。
+      // ここで出すと一括反映でファイル数ぶん同じ文言が並ぶため、表示は呼び出し側に任せる。
+      if (Laurus.Text2Frame.DisplayWarning && !Laurus.Text2Frame._quiet) {
         $gameMessage.add(warning)
       }
     }
@@ -10037,6 +10045,24 @@
       const path = require('path')
       return path.join(root, '.t2f-base', String(locale || 'default'), String(key) + '.txt')
     }
+    // ディレクトリを親から順に掘る(mkdir -p 相当)。
+    // MV 同梱の NW.js は Node 9 系のため fs.mkdirSync の recursive オプションを無視し、
+    // 葉だけを作ろうとして親が無いと ENOENT、既存 dir には EEXIST を投げる。
+    // recursive に頼らず 1 段ずつ掘り、競合で出る EEXIST だけ握り潰す。
+    const mkdirpSync = function (dirPath) {
+      const fs = require('fs')
+      const path = require('path')
+      const abs = path.resolve(dirPath)
+      if (fs.existsSync(abs)) return
+      const parent = path.dirname(abs)
+      // ルート('/' や 'C:\')では dirname が自分自身を返すので、そこで再帰を止める。
+      if (parent !== abs) mkdirpSync(parent)
+      try {
+        fs.mkdirSync(abs)
+      } catch (e) {
+        if (!e || e.code !== 'EEXIST') throw e
+      }
+    }
     const readBaseText = function (root, locale, key) {
       try { return require('fs').readFileSync(baseSnapshotPathCore(root, locale, key), 'utf8') } catch (e) { return null }
     }
@@ -10045,9 +10071,7 @@
         const fs = require('fs')
         const path = require('path')
         const p = baseSnapshotPathCore(root, locale, key)
-        const dir = path.dirname(p)
-        // 既存 dir への mkdirSync は一部ランタイム(NW.js)で EEXIST を投げるため existsSync でガード。
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+        mkdirpSync(path.dirname(p))
         fs.writeFileSync(p, text, 'utf8')
       } catch (e) { /* best effort */ }
     }
@@ -10150,6 +10174,9 @@
       }
       let ok = 0
       let fail = 0
+      // 同じ警告がファイル数ぶん並ばないよう、文言ごとに件数をまとめて最後に 1 回だけ出す。
+      const warnTexts = []
+      const warnCounts = []
       walk(root).forEach(function (fileName) {
         let meta
         try { meta = parseFrontMatter(readText(fileName)).meta } catch (e) { meta = null }
@@ -10159,9 +10186,24 @@
         const res = applyTextFile({ textPath: fileName, strategy: entryStrategy, backup: true })
         if (res && res.ok) ok++
         else fail++
+        const resWarnings = (res && res.warnings) || []
+        resWarnings.forEach(function (w) {
+          const at = warnTexts.indexOf(w)
+          if (at < 0) { warnTexts.push(w); warnCounts.push(1) } else { warnCounts[at]++ }
+        })
+      })
+      warnTexts.forEach(function (w, i) {
+        addWarning(warnCounts[i] > 1 ? '[' + warnCounts[i] + '件] ' + w : w)
+        console.warn('[batch-import] warn x' + warnCounts[i] + ': ' + w)
       })
       addMessage('[batch-import] Completed: ' + ok + ' success, ' + fail + ' errors')
       console.log('[batch-import] Completed: ' + ok + ' success, ' + fail + ' errors')
+      // 1 件でも反映していればエディタの再読み込みが必要。案内はここで 1 回だけ。
+      if (ok > 0) {
+        addMessage('\n')
+        addMessage(RESTART_NOTICE)
+        console.log(RESTART_NOTICE)
+      }
       return
     }
 
@@ -10283,16 +10325,10 @@
       }
     }
     addMessage('\n')
-    addMessage(
-      'Please restart RPG Maker MV(Editor) WITHOUT save. \n' +
-        '**セーブせずに**プロジェクトファイルを開き直してください'
-    )
+    addMessage(RESTART_NOTICE)
     // _quiet 指定時(applyTextFile 経由)は冗長な案内ログを抑制する。
     if (!Laurus.Text2Frame._quiet) {
-      console.log(
-        'Please restart RPG Maker MV(Editor) WITHOUT save. \n' +
-          '**セーブせずに**プロジェクトファイルを開き直してください'
-      )
+      console.log(RESTART_NOTICE)
     }
   }
 
