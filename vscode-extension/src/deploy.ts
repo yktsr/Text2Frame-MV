@@ -22,6 +22,7 @@ interface ApplyResult {
     target?: { [key: string]: string | undefined };
     dataPath?: string;
     warnings: string[];
+    conflicts?: number;
     error?: string;
     errorLine?: number;
     errorLineText?: string;
@@ -67,12 +68,14 @@ export function writeBackAndRefreshBase(
     meta: { [key: string]: string },
     textPath: string,
     originalText: string,
-    result: { warnings: string[] },
+    result: { warnings: string[]; conflicts?: number },
     snap: { locale: string; key: string },
     mergeLike: boolean
 ): void {
     const mode = vscode.workspace.getConfiguration('text2frame').get<string>('writeBackAfterMerge', 'onConflict');
-    const hadConflict = result.warnings.some((w) => /conflict|衝突/i.test(w));
+    // The compiler reports the count directly; the warning-text match stays as a
+    // fallback for an older bundled Text2Frame.js that predates the field.
+    const hadConflict = (result.conflicts || 0) > 0 || result.warnings.some((w) => /conflict|衝突/i.test(w));
     const shouldWriteBack = mergeLike && (mode === 'always' || (mode === 'onConflict' && hadConflict));
     let finalText = originalText;
     if (shouldWriteBack) {
