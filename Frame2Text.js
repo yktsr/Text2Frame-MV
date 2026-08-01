@@ -1,11 +1,15 @@
 //= ============================================================================
 // Frame2Text.js
 // ----------------------------------------------------------------------------
-// (C)2023-2024 Shick
+// (C)2023-2026 Shick, Yuki Katsura
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.0 2026/08/02:
+// ・NW.js(MV同梱)でtext/<locale>や.t2f-baseのディレクトリ作成に失敗する不具合の修正
+// ・一括取り出しの実行結果に出力先・内訳・上書き件数・失敗理由を表示するよう改善
+// ・MZプラグインコマンドの一括取り出しでロケールと出力先の引数が入れ替わる不具合の修正
 // 1.0.1 2024/09/07:
 // ・#125 プラグインコマンドMZを変換する際、オブジェクト型を取り扱えない不具合の修正
 // 1.0.0 2024/01/20 Initial Version
@@ -16,7 +20,7 @@
 /*:
  * @target MZ
  * @plugindesc イベントコマンドをテキストファイル(.txtファイルなど)に出力するための開発支援プラグインです。ツクールMV・MZの両方に対応しています。
- * @author inazumasoft:Shick
+ * @author inazumasoft:Shick, Yuki Katsura
  * @url https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Frame2Text.js
  *
  * @command EXPORT_EVENT_TO_MESSAGE
@@ -146,37 +150,26 @@
  * @type string
  * @default
  *
-
- *
  * @command BATCH_EXPORT_MESSAGES_TO_FOLDER
  * @text フォルダへ一括取り出し
  * @desc dataフォルダ内の全イベント/コモンイベントを走査し、front matter付きテキストとしてフォルダへ一括出力します。
  *
- * @arg DataDir
- * @text ゲームデータディレクトリ
- * @desc 走査対象のゲームデータディレクトリです。デフォルトはdataです。
+ * @arg DataFolder
+ * @text ゲームデータのフォルダ名
+ * @desc 走査対象のゲームデータのフォルダ名です。デフォルトはdataです。通常、設定する必要はありません。
  * @type string
  * @default data
  *
- * @arg Locale
- * @text ロケール
- * @desc 出力先の言語サブフォルダ名です。デフォルトはjaです。
- * @type string
- * @default ja
- *
  * @arg TextBase
  * @text テキストベースディレクトリ
- * @desc 出力先のテキストベースディレクトリです。デフォルトはtextです。
- * @type string
+ * @desc 出力先のテキストベースディレクトリです。デフォルトはtextです。通常、設定する必要はありません。
  * @default text
  *
- * @arg EnglishTag
- * @text 英語タグ有効化
- * @desc trueのときコマンドタグを英語で出力します。デフォルト値はtrueです。
- * @type select
- * @option true
- * @option false
- * @default true
+ * @arg Locale
+ * @text ロケール
+ * @desc 出力先の言語サブフォルダ名です。デフォルトはjaです。通常、設定する必要はありません。
+ * @type string
+ * @default ja
  *
  * @param Default Scenario Folder
  * @text 出力フォルダ名
@@ -391,8 +384,7 @@
  * --------------------------------------
  * Version
  * --------------------------------------
- * 1.0.1
- * build: 81bc070a76bcd0246713b2872df90650ffc7ce70
+ * 1.1.0
  */
 /* eslint-enable spaced-comment */
 
@@ -498,11 +490,10 @@ function resolveText2Frame () {
       this.pluginCommand('MERGE_CE_TO_MESSAGE', [args.FileFolder, args.FileName, args.CommonEventID, args.BaseFolder, args.BaseFileName])
     })
     PluginManager.registerCommand('Frame2Text', 'BATCH_EXPORT_MESSAGES_TO_FOLDER', function (args) {
-      const data_dir = args.DataDir || 'data'
+      const data_dir = args.DataFolder || 'data'
       const locale = args.Locale || 'ja'
       const text_base = args.TextBase || 'text'
-      const english_tag = String(args.EnglishTag) !== 'false'
-      this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER', [data_dir, locale, text_base, english_tag])
+      this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER', [data_dir, text_base, locale])
     })
   }
 
@@ -591,10 +582,9 @@ function resolveText2Frame () {
         break
 
       case 'BATCH_EXPORT_MESSAGES_TO_FOLDER':
-        Laurus.Frame2Text.DataDir = args[0] || 'data'
-        Laurus.Frame2Text.Locale = args[1] || 'ja'
-        Laurus.Frame2Text.TextBase = args[2] || 'text'
-        Laurus.Frame2Text.EnglishTag = args[3] !== undefined ? (String(args[3]) !== 'false') : Laurus.Frame2Text.EnglishTag
+        Laurus.Frame2Text.DataFolder = args[0] || 'data'
+        Laurus.Frame2Text.TextBase = args[1] || 'text'
+        Laurus.Frame2Text.Locale = args[2] || 'ja'
         Laurus.Frame2Text.ExecMode = 'BATCH_EXPORT_MESSAGES_TO_FOLDER'
         break
       case 'COMMAND_LINE':
@@ -2708,6 +2698,25 @@ function resolveText2Frame () {
     // 書き出したテキストのフロントマターに generator: text2frame-mv@<VERSION> として埋める。
     const VERSION = '2.3.0'
 
+    // ディレクトリを親から順に掘る(mkdir -p 相当)。
+    // MV 同梱の NW.js は Node 9 系のため fs.mkdirSync の recursive オプションを無視し、
+    // 葉だけを作ろうとして親が無いと ENOENT、既存 dir には EEXIST を投げる。
+    // recursive に頼らず 1 段ずつ掘り、競合で出る EEXIST だけ握り潰す。
+    const mkdirpSync = function (dirPath) {
+      const _fs = require('fs')
+      const _path = require('path')
+      const abs = _path.resolve(dirPath)
+      if (_fs.existsSync(abs)) return
+      const parent = _path.dirname(abs)
+      // ルート('/' や 'C:\')では dirname が自分自身を返すので、そこで再帰を止める。
+      if (parent !== abs) mkdirpSync(parent)
+      try {
+        _fs.mkdirSync(abs)
+      } catch (e) {
+        if (!e || e.code !== 'EEXIST') throw e
+      }
+    }
+
     // 書き出したテキストに載せる front matter(YAMLヘッダ)を生成する。
     const renderFrontMatter = function (entry, kind) {
       const lines = ['---']
@@ -2830,7 +2839,7 @@ function resolveText2Frame () {
       const r = T2F.applyMergePull({ gameCommands, textBody: existingText ? stripFM(existingText) : '', baseBody, englishTag })
       const header = (existingText && headerFM(existingText)) || ('---\ngenerator: text2frame-mv@' + VERSION + '\nkind: ' + (isCE ? 'common' : 'event') + '\n' + (isCE ? ('commonEventId: ' + Laurus.Frame2Text.CommonEventID) : ('mapId: ' + Laurus.Frame2Text.MapID + '\neventId: ' + Laurus.Frame2Text.EventID + '\npageId: ' + (Laurus.Frame2Text.PageID || '1'))) + '\n---\n')
       const written = header + '\n' + r.text + '\n'
-      try { const _p = require('path'); require('fs').mkdirSync(_p.dirname(outPath), { recursive: true }) } catch (e) {}
+      try { mkdirpSync(require('path').dirname(outPath)) } catch (e) {}
       writeData(outPath, written)
       // 衝突が残っているときは共通祖先を進めない(Git 流。解決してから再実行させる)。
       if (r.conflicts) {
@@ -2850,23 +2859,49 @@ function resolveText2Frame () {
       }
       const _path = require('path')
       const _fs = require('fs')
-      const dataDir = _path.isAbsolute(Laurus.Frame2Text.DataDir) ? Laurus.Frame2Text.DataDir : _path.resolve(BASE_PATH, Laurus.Frame2Text.DataDir)
+      const dataDir = _path.isAbsolute(Laurus.Frame2Text.DataFolder) ? Laurus.Frame2Text.DataFolder : _path.resolve(BASE_PATH, Laurus.Frame2Text.DataFolder)
       const locale = Laurus.Frame2Text.Locale
       const textBase = Laurus.Frame2Text.TextBase
       const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
       let okCount = 0
       let errCount = 0
+      let eventCount = 0
+      let commonCount = 0
+      let overwrittenCount = 0
+      // 失敗は件数だけだと原因が分からないので、キーと理由を控えてまとめて出す。
+      const failures = []
       // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する。
       let _baseSaveError = null
       const _baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH
 
       const outDir = _path.resolve(BASE_PATH, textBase, locale)
-      if (!_fs.existsSync(outDir)) { _fs.mkdirSync(outDir, { recursive: true }) }
-      // 既存 dir への mkdirSync は一部ランタイム(NW.js)で EEXIST を投げるため existsSync でガード。
+      // 出力先が掘れないと 1 件も書けないので、ここだけは中断してユーザに理由を見せる。
+      try {
+        mkdirpSync(outDir)
+      } catch (e) {
+        addMessage('[batch] 出力先ディレクトリを作成できませんでした / failed to create output directory: ' + outDir + ' (' + (e.message || e) + ')')
+        console.error('[batch] failed to create output directory: ' + outDir + ' (' + (e.message || e) + ')')
+        return
+      }
       const _baseDir = _path.join(_baseRoot, '.t2f-base', String(locale || 'default'))
-      try { if (!_fs.existsSync(_baseDir)) _fs.mkdirSync(_baseDir, { recursive: true }) } catch (e) { _baseSaveError = _baseSaveError || e }
+      try { mkdirpSync(_baseDir) } catch (e) { _baseSaveError = _baseSaveError || e }
 
-      enumerateTargets(dataDir).forEach(function (t) {
+      // データフォルダが無いと readdirSync が投げる。生の例外ではなくパスを見せて止める。
+      let targets = []
+      try {
+        targets = enumerateTargets(dataDir)
+      } catch (e) {
+        addMessage('[batch] データフォルダを読めませんでした / cannot read data folder: ' + dataDir + ' (' + (e.message || e) + ')')
+        console.error('[batch] cannot read data folder: ' + dataDir + ' (' + (e.message || e) + ')')
+        return
+      }
+      if (targets.length === 0) {
+        addMessage('[batch] 取り出し対象が見つかりませんでした。データフォルダを確認してください / no targets found: ' + dataDir)
+        console.warn('[batch] no targets found under ' + dataDir)
+        return
+      }
+
+      targets.forEach(function (t) {
         try {
           let list = []
           if (t.kind === 'event') {
@@ -2879,11 +2914,16 @@ function resolveText2Frame () {
           const body = decompile(list, englishTag, { pretty: true })
           const fm = renderFrontMatter(Object.assign({ locale }, t), t.kind)
           const outPath = _path.resolve(BASE_PATH, textBase, locale, t.key + '.txt')
+          // 取り出しはマージしない全上書き。既存を潰した件数は最後に知らせる。
+          if (_fs.existsSync(outPath)) overwrittenCount++
           _fs.writeFileSync(outPath, fm + body + '\n', 'utf8')
           try { _fs.writeFileSync(_path.join(_baseDir, t.key + '.txt'), fm + body + '\n', 'utf8') } catch (e) { _baseSaveError = _baseSaveError || e }
+          if (t.kind === 'event') eventCount++
+          else commonCount++
           okCount++
         } catch (e) {
           errCount++
+          failures.push(t.key + ': ' + ((e && e.message) || String(e)))
           console.error('[batch] ' + t.key + ': ' + String(e))
         }
       })
@@ -2891,8 +2931,19 @@ function resolveText2Frame () {
         addMessage('[batch] 警告: .t2f-base の祖先を保存できませんでした (' + (_baseSaveError.message || _baseSaveError) + ')。次回反映は祖先無し扱いとなり、テキストを全反映します(3-wayになりません)。')
         console.warn('[batch] WARNING: .t2f-base ancestor NOT saved (' + (_baseSaveError.message || _baseSaveError) + '); next import applies text whole (no 3-way).')
       }
-      addMessage('[batch] Completed: ' + okCount + ' success, ' + errCount + ' errors')
-      console.log('[batch] Completed: ' + okCount + ' success, ' + errCount + ' errors')
+      addMessage('[batch] 取り出し完了: 成功 ' + okCount + '件 (イベント ' + eventCount + ' / コモン ' + commonCount + ')、失敗 ' + errCount + '件')
+      addMessage('[batch] 出力先: ' + outDir)
+      if (overwrittenCount > 0) {
+        addMessage('[batch] 既存テキスト ' + overwrittenCount + '件を上書きしました(取り出しはマージしません)。')
+      }
+      // $gameMessage は行数が限られるため、失敗の詳細は先頭数件だけ出して残りはコンソールへ回す。
+      const FAILURE_LINES = 5
+      failures.slice(0, FAILURE_LINES).forEach(function (f) { addMessage('[batch] 失敗: ' + f) })
+      if (failures.length > FAILURE_LINES) {
+        addMessage('[batch] 他 ' + (failures.length - FAILURE_LINES) + '件の失敗はコンソール(F8)を参照してください。')
+      }
+      console.log('[batch] Completed: ' + okCount + ' success (event ' + eventCount + ' / common ' + commonCount + '), ' +
+        errCount + ' errors -> ' + outDir + (overwrittenCount > 0 ? ' (overwrote ' + overwrittenCount + ' existing text file(s))' : ''))
       return
     }
 
