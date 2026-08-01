@@ -124,6 +124,37 @@ describe('t2f-sync controller', function () {
     expect(fs.readFileSync(basePath, 'utf8')).to.equal(baseBefore)
   })
 
+  it('pull skips a target whose game side still has conflict markers', function () {
+    const mapPath = path.join(tmp, 'data', 'Map001.json')
+    sync.pullDataFile(mapPath, opts)
+    const before = fs.readFileSync(evText(), 'utf8')
+    const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
+    map.events[1].pages[0].list.splice(2, 0,
+      { code: 108, indent: 0, parameters: ['=== テキストの変更 / from text ==='] },
+      { code: 108, indent: 0, parameters: ['=== ゲームの変更 / from game ==='] },
+      { code: 108, indent: 0, parameters: ['=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='] })
+    fs.writeFileSync(mapPath, JSON.stringify(map))
+
+    const res = sync.pullDataFile(mapPath, opts)
+
+    expect(res[0].skipped).to.equal('game')
+    expect(fs.readFileSync(evText(), 'utf8')).to.equal(before) // 目印はテキストへ広がっていない
+  })
+
+  it('pull honours a per-file strategy from the front matter', function () {
+    sync.pullDataFile(path.join(tmp, 'data', 'Map001.json'), opts)
+    // このファイルだけ overwrite 指定にして、テキスト側の編集を捨てさせる
+    fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8')
+      .replace('kind: event', 'kind: event\nstrategy: overwrite')
+      .replace('Hello', 'Bonjour'))
+
+    sync.pullDataFile(path.join(tmp, 'data', 'Map001.json'), opts) // opts は merge
+
+    const out = fs.readFileSync(evText(), 'utf8')
+    expect(out).to.contain('Hello')
+    expect(out).to.not.contain('Bonjour')
+  })
+
   it('pull with overwrite replaces the text wholesale', function () {
     sync.pullDataFile(path.join(tmp, 'data', 'Map001.json'), opts)
     fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8').replace('Hello', 'こんにちは'))

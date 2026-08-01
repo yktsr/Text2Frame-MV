@@ -22,13 +22,6 @@ const sha1 = function (s) { return crypto.createHash('sha1').update(String(s)).d
 const pad3 = function (n) { return ('000' + String(n)).slice(-3) }
 const mapFileName = function (mapId) { return 'Map' + pad3(mapId) + '.json' }
 
-const stripFrontMatter = function (text) {
-  const n = String(text).replace(/\r\n/g, '\n')
-  if (n.indexOf('---\n') !== 0) return n
-  const e = n.indexOf('\n---\n', 4)
-  return e < 0 ? n : n.slice(e + 5)
-}
-
 const parseFrontMatter = function (text) {
   const meta = {}
   const n = String(text).replace(/\r\n/g, '\n')
@@ -132,27 +125,29 @@ function pullTarget (target, opts) {
     list = ce[Number(target.commonEventId)].list || []
   }
 
-  const header = F2T.renderFrontMatter(Object.assign({ locale }, target), target.kind)
-  let body
-  let conflicts = 0
-  if (strategy === 'overwrite') {
-    body = F2T.decompile(list, englishTag, { pretty: true })
-  } else {
-    // merge: 既存テキスト(翻訳)を残しつつゲーム側の変更を取り込む(3-way)。
-    const existing = readIfExists(textPath)
-    const id = T2F.deriveBaseId(textPath, { locale })
-    const baseRaw = T2F.readBaseText(root, id.locale, id.key)
-    const r = T2F.applyMergePull({
-      gameCommands: list,
-      textBody: existing ? stripFrontMatter(existing) : '',
-      baseBody: baseRaw ? stripFrontMatter(baseRaw) : '',
-      englishTag
-    })
-    body = r.text
-    conflicts = r.conflicts || 0
+  // 本文の組み立ては Frame2Text の buildPullText に一本化する(プラグイン/CLI と同じ挙動)。
+  const existing = readIfExists(textPath)
+  const id = T2F.deriveBaseId(textPath, { locale })
+  // push と同じく、テキストの front matter の strategy: を1ファイル単位の指定として優先する。
+  const metaStrategy = F2T.frontMatterMeta(existing || '').strategy
+  const entryStrategy = String(metaStrategy || strategy).toLowerCase() === 'overwrite' ? 'overwrite' : 'merge'
+  const built = F2T.buildPullText({
+    list,
+    englishTag,
+    strategy: entryStrategy,
+    existingText: existing || '',
+    baseText: (entryStrategy === 'merge' && T2F.readBaseText(root, id.locale, id.key)) || '',
+    fallbackHeader: F2T.renderFrontMatter(Object.assign({ locale }, target), target.kind)
+  })
+  // 未解決の目印が残っているものは書かない(そのまま取り出すと衝突がテキストにも広がる)。
+  if (built.skipped) {
+    console.warn('[pull] skipped: unresolved conflict markers in the ' + built.skipped +
+      ' (resolve the 3 marker lines, then re-run): ' + textPath)
+    return { ok: true, textPath, skipped: built.skipped }
   }
+  const conflicts = built.conflicts || 0
 
-  const written = header + body + '\n'
+  const written = built.text
   const prev = readIfExists(textPath)
   if (prev === written) return { ok: true, textPath, unchanged: true, conflicts }
 

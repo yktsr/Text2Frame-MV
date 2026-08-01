@@ -2841,13 +2841,18 @@ function resolveText2Frame () {
 
     // 取り出し(ゲーム→テキスト)の本文を作る。merge のときだけ既存テキスト・祖先と 3-way する。
     // fs には触らない(ゲーム内は BASE_PATH、CLI は cwd と基準が違うため入出力は呼び出し側)。
-    // 戻り値: { text, conflicts }
+    // 戻り値: { text, conflicts } / 見送ったときは { skipped: 'game'|'text' }(text は返さない)。
     const buildPullText = function (opts) {
       opts = opts || {}
       const list = opts.list || []
       const englishTag = opts.englishTag !== false
       const existingText = opts.existingText || ''
       const merge = String(opts.strategy || 'overwrite').toLowerCase() === 'merge'
+      // 未解決の目印が残ったまま取り出すと、衝突がテキストと祖先にも広がって収拾がつかなくなる。
+      // 先に解決してもらうため、書き出す文字列を作らずに見送りを返す。
+      if (hasConflictMarker(list)) return { skipped: 'game', conflicts: 0 }
+      // 目印入りのテキストにマージすると目印ごと再マージされて二重化する。
+      if (merge && hasConflictMarkerInText(existingText)) return { skipped: 'text', conflicts: 0 }
       const header = normalizeHeader((existingText && frontMatterHeader(existingText)) || opts.fallbackHeader || '')
       // 既存テキストが無ければ突き合わせる相手がいないので、merge でも素の取り出しと同じ。
       if (!merge || !existingText) {
@@ -2940,11 +2945,6 @@ function resolveText2Frame () {
         }
         gameCommands = md.events[Laurus.Frame2Text.EventID].pages[pageID].list
       }
-      // 目印が残ったままの取り出しは、衝突をテキストと祖先にも広げるだけなので止める。
-      if (hasConflictMarker(gameCommands)) {
-        throw new Error('未解決の衝突がゲーム側に残っています。目印3行を消してから取り出し直してください。' +
-          ' / unresolved conflict markers in the game data; resolve them first')
-      }
       const outPath = Laurus.Frame2Text.TextPath
       let existingText = ''
       try { existingText = readText(outPath) } catch (e) { existingText = '' }
@@ -2959,6 +2959,15 @@ function resolveText2Frame () {
       const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
       const fallbackHeader = '---\ngenerator: text2frame-mv@' + VERSION + '\nkind: ' + (isCE ? 'common' : 'event') + '\n' + (isCE ? ('commonEventId: ' + Laurus.Frame2Text.CommonEventID) : ('mapId: ' + Laurus.Frame2Text.MapID + '\neventId: ' + Laurus.Frame2Text.EventID + '\npageId: ' + (Laurus.Frame2Text.PageID || '1'))) + '\n---\n'
       const r = buildPullText({ list: gameCommands, englishTag, strategy: 'merge', existingText, baseText, fallbackHeader })
+      // 単発コマンドは対象が1つしかないので、見送りは黙って成功にせず理由を出して止める。
+      if (r.skipped === 'game') {
+        throw new Error('未解決の衝突がゲーム側に残っています。目印3行を消してから取り出し直してください。' +
+          ' / unresolved conflict markers in the game data; resolve them first')
+      }
+      if (r.skipped) {
+        throw new Error('未解決の衝突がテキストに残っています。目印3行を消してから取り出し直してください。' +
+          ' / unresolved conflict markers in the text; resolve them first')
+      }
       const written = r.text
       try { mkdirpSync(require('path').dirname(outPath)) } catch (e) {}
       writeData(outPath, written)
@@ -3037,12 +3046,6 @@ function resolveText2Frame () {
             const ceData = JSON.parse(_fs.readFileSync(_path.join(dataDir, 'CommonEvents.json'), 'utf8'))
             list = ceData[Number(t.commonEventId)].list || []
           }
-          // 目印が残ったまま取り出すと、テキストと祖先にまで衝突が広がって収拾がつかなくなる。
-          // 先にエディタで解決してもらう(このファイルだけ飛ばし、他は通す)。
-          if (hasConflictMarker(list)) {
-            conflictSkipped.push(t.key)
-            return
-          }
           const outPath = _path.resolve(BASE_PATH, textBase, locale, t.key + '.txt')
           let existingText = ''
           try { existingText = _fs.readFileSync(outPath, 'utf8') } catch (e) { existingText = '' }
@@ -3050,12 +3053,6 @@ function resolveText2Frame () {
           // (一括反映・t2f-sync と同じ規則)。
           const metaStrategy = frontMatterMeta(existingText).strategy
           const entryStrategy = String(metaStrategy || batchStrategy).toLowerCase() === 'merge' ? 'merge' : 'overwrite'
-
-          if (entryStrategy === 'merge' && hasConflictMarkerInText(existingText)) {
-            // 目印入りのテキストにマージすると目印ごと再マージされて二重化する。ゲーム側と同じ扱い。
-            conflictSkipped.push(t.key)
-            return
-          }
           let baseText = ''
           if (entryStrategy === 'merge') {
             try { baseText = _fs.readFileSync(_path.join(_baseDir, t.key + '.txt'), 'utf8') } catch (e) { baseText = '' }
@@ -3068,6 +3065,11 @@ function resolveText2Frame () {
             baseText,
             fallbackHeader: renderFrontMatter(Object.assign({ locale }, t), t.kind)
           })
+          // 未解決の目印が残っているものは書かずに見送る(このファイルだけ飛ばし、他は通す)。
+          if (built.skipped) {
+            conflictSkipped.push(t.key)
+            return
+          }
           // 全上書きで既存を潰した件数だけ知らせる(merge は上書きではない)。
           if (entryStrategy !== 'merge' && existingText) overwrittenCount++
           _fs.writeFileSync(outPath, built.text, 'utf8')
@@ -3366,6 +3368,11 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           baseText,
           fallbackHeader: module.exports.renderFrontMatter(Object.assign({ locale }, t), t.kind)
         })
+        // 未解決の目印が残っているものは書かずに見送る(解決してから取り出し直させる)。
+        if (built.skipped) {
+          results.push({ ok: true, textPath, skipped: built.skipped })
+          return
+        }
         fs.mkdirSync(path.dirname(textPath), { recursive: true })
         fs.writeFileSync(textPath, built.text, 'utf8')
         // 衝突が残っているときは祖先を進めない(解決してから取り出し直させる)。
@@ -3379,7 +3386,12 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     })
     const failures = results.filter(function (r) { return !r.ok })
     const conflicted = results.filter(function (r) { return r.ok && r.conflicts })
-    console.log(JSON.stringify({ total: results.length, failed: failures.length, conflicts: conflicted.length, strategy: batchStrategy, results }, null, 2))
+    const skipped = results.filter(function (r) { return r.skipped })
+    console.log(JSON.stringify({ total: results.length, failed: failures.length, conflicts: conflicted.length, skipped: skipped.length, strategy: batchStrategy, results }, null, 2))
+    if (skipped.length > 0) {
+      console.warn('[batch] ' + skipped.length + ' file(s) skipped: unresolved conflict markers (resolve the 3 marker lines, then re-run): ' +
+        skipped.map(function (r) { return r.textPath }).join(', '))
+    }
     if (conflicted.length > 0) {
       // 衝突は失敗ではない(両方残して書き出してある)。ただし祖先は進めていないので知らせる。
       console.warn('[batch] ' + conflicted.length + ' file(s) kept both sides; .t2f-base not advanced (resolve the 3 marker lines, then re-run): ' +
