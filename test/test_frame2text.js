@@ -131,6 +131,42 @@ describe("empty message line (<br>) round-trip", function () {
   });
 });
 
+describe("blank line after message text", function () {
+  const list = [
+    { code: 101, indent: 0, parameters: ["", 0, 0, 2] },
+    { code: 401, indent: 0, parameters: ["ここを耐えれば、マリクに勝てるんだから！"] },
+    { code: 121, indent: 0, parameters: [7, 7, 0] },
+    { code: 101, indent: 0, parameters: ["", 0, 0, 2] },
+    { code: 401, indent: 0, parameters: ["次の相手は…"] },
+    { code: 401, indent: 0, parameters: ["城之内だ。"] },
+    { code: 250, indent: 0, parameters: [{ name: "Bell1", volume: 90, pitch: 100, pan: 0 }] }
+  ];
+
+  it("separates a message block from the command that follows it", function () {
+    const body = frame2text.decompile(list, true, { pretty: true });
+    expect(body).to.contain("マリクに勝てるんだから！\n\n<Switch:");
+    expect(body).to.contain("城之内だ。\n\n<PlaySE:");
+  });
+
+  it("does not separate the lines inside one message block", function () {
+    const body = frame2text.decompile(list, true, { pretty: true });
+    // 空行を挟むと compile がウィンドウを分けてしまうため、本文の連続は詰めたまま。
+    expect(body).to.contain("次の相手は…\n城之内だ。");
+  });
+
+  it("round-trips: the blank line adds no command", function () {
+    const body = frame2text.decompile(list, true, { pretty: true });
+    const cmds = text2frame.compile(body);
+    const stripped = (cmds.length && cmds[cmds.length - 1].code === 0) ? cmds.slice(0, -1) : cmds;
+    expect(stripped.map(function (c) { return c.code; })).to.eql([101, 401, 121, 101, 401, 401, 250]);
+  });
+
+  it("leaves non-pretty output untouched", function () {
+    const body = frame2text.decompile(list, true);
+    expect(body).to.not.contain("\n\n");
+  });
+});
+
 describe("long-tail round-trip fixes", function () {
   function rt(list) {
     const body = frame2text.decompile(list, true, { pretty: true });

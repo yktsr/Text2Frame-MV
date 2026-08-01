@@ -12,6 +12,7 @@
 // ・未解決の衝突が残っているイベント/テキストは反映・取り出しの対象から外すよう改善
 // ・NW.js(MV同梱)でtext/<locale>や.t2f-baseのディレクトリ作成に失敗する不具合の修正
 // ・一括取り出しの実行結果に出力先・内訳・上書き件数・失敗理由を表示するよう改善
+// ・取り出したテキストで、文章の後に必ず1行空けて次のコマンドと切り離すよう改善
 // ・MZプラグインコマンドの一括取り出しでロケールと出力先の引数が入れ替わる不具合の修正
 // 1.0.1 2024/09/07:
 // ・#125 プラグインコマンドMZを変換する際、オブジェクト型を取り扱えない不具合の修正
@@ -1171,6 +1172,8 @@ function resolveText2Frame () {
       const pretty = !!(options && options.pretty)
       const translationOnly = !!(options && options.translationOnly)
       let text = ''
+      // 直前に出力したのがメッセージ本文(401)か。本文と次のコマンドの間に空行を入れるのに使う。
+      let afterMessageText = false
       map_events.forEach(function (event) {
         if (typeof event !== 'object') {
           return
@@ -1179,12 +1182,18 @@ function resolveText2Frame () {
         if (translationOnly && CONVERSATION_CODES.indexOf(event.code) === -1) {
           return
         }
+        const textBefore = text
         // インデント(整形時のみ。本文系コードは列0のまま)
         const indent = pretty && RAW_CONTENT_CODES.indexOf(event.code) === -1 ? getIndent(event.indent) : ''
+        // メッセージ本文の後は必ず1行空けて、続くコマンドと視覚的に切り離す。
+        // 続きの本文(401)と、自前で空行を入れる 101/105 は対象外(空行が二重になる)。
+        // compile は空行を読み飛ばす(平文が続くときだけウィンドウ区切りになる)ので往復は変わらない。
+        const blankAfterText = pretty && afterMessageText &&
+          event.code !== 401 && event.code !== 101 && event.code !== 105
         // 改行とインデントを追加する関数
         const addNewLineIndent = (indent) => {
           // 最初のタグだけ改行を入れない
-          text += text === '' ? indent : newLine + indent
+          text += text === '' ? indent : newLine + (blankAfterText ? newLine : '') + indent
         }
         // メッセージウィンドウの先頭に空行を入れて会話の区切りを見やすくする
         const addMessageBlockStart = () => {
@@ -2740,6 +2749,10 @@ function resolveText2Frame () {
         } else {
           // プラグインコマンドMZのイベントが終わったらカウントを0にする
           mzCount = 0
+        }
+        // 何も書き出さなかったコード(未対応など)は「直前」の扱いを変えない。
+        if (text !== textBefore) {
+          afterMessageText = event.code === 401
         }
       })
       return text
