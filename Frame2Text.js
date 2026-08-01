@@ -7,8 +7,8 @@
 // ----------------------------------------------------------------------------
 // Version
 // 1.1.0 2026/08/02:
-// ・一括取り出しに取り出し戦略(merge/overwrite)を追加。mergeは既存テキストの翻訳を残したまま
-//   ゲーム側の変更だけを取り込みます(プラグインの既定はoverwrite、CLIは--strategyに従い既定merge)
+// ・一括取り出しに取り出しのしかた(上書き/統合)を追加。統合はテキストに書いた内容を残したまま
+//   ゲーム側の変更だけを取り込みます(プラグインの既定は上書き、CLIは--strategyに従い既定は統合)
 // ・未解決の衝突が残っているイベント/テキストは反映・取り出しの対象から外すよう改善
 // ・NW.js(MV同梱)でtext/<locale>や.t2f-baseのディレクトリ作成に失敗する不具合の修正
 // ・一括取り出しの実行結果に出力先・内訳・上書き件数・失敗理由を表示するよう改善
@@ -83,8 +83,8 @@
  * @default 1
  *
  * @command MERGE_EVENT_TO_MESSAGE
- * @text イベントを取り出す
- * @desc ゲームのイベントをテキストへ取り込みます。既存の翻訳は残し、ゲーム側の変更だけを反映します(祖先は自動)。
+ * @text イベントを取り出す(統合)
+ * @desc ゲームのイベントをテキストへ取り出します。テキストに書いた内容を残したまま、ゲーム側の変更だけを取り込みます(共通の祖先は自動)。
  *
  * @arg FileFolder
  * @text 取り込み先フォルダ名
@@ -125,8 +125,8 @@
  * @default
  *
  * @command MERGE_CE_TO_MESSAGE
- * @text コモンイベントを取り出す(翻訳を残す)
- * @desc ゲームのコモンイベントをテキストへ取り込みます。既存の翻訳は残し、ゲーム側の変更だけを反映します(祖先は自動)。
+ * @text コモンイベントを取り出す(統合)
+ * @desc ゲームのコモンイベントをテキストへ取り出します。テキストに書いた内容を残したまま、ゲーム側の変更だけを取り込みます(共通の祖先は自動)。
  *
  * @arg FileFolder
  * @text 取り込み先フォルダ名
@@ -155,7 +155,7 @@
  *
  * @command BATCH_EXPORT_MESSAGES_TO_FOLDER
  * @text フォルダへ一括取り出し
- * @desc dataフォルダ内の全イベント/コモンイベントを走査し、front matter付きテキストとしてフォルダへ一括出力します。
+ * @desc dataフォルダ内の全イベント/コモンイベントを、見出し情報付きのテキストとしてフォルダへ一括で取り出します(既定は上書き)。
  *
  * @arg DataFolder
  * @text ゲームデータのフォルダ名
@@ -175,8 +175,8 @@
  * @default ja
  *
  * @arg Strategy
- * @text 一括取り出し戦略
- * @desc overwrite(ゲームの内容でテキストを全上書き) / merge(既存テキストの翻訳を残しゲーム側の変更だけ取り込む。Text2Frameプラグインが必要)。既定はoverwriteです。
+ * @text 取り出しのしかた
+ * @desc overwrite(上書き)はゲームの内容でテキストを全て置き換えます。merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。既定はoverwriteです。
  * @type select
  * @option overwrite
  * @value overwrite
@@ -259,6 +259,36 @@
  *
  * Text2Frameについては、以下のページをご覧ください。
  * https://github.com/yktsr/Text2Frame-MV
+ *
+ * --------------------------------------
+ * 取り出しのしかた（上書き / 統合）
+ * --------------------------------------
+ * ◆ 取り出し（ゲーム→テキスト）
+ *  ・EXPORT_EVENT_TO_MESSAGE / EXPORT_CE_TO_MESSAGE …「上書き」。ゲームの内容で
+ *    テキストを全て置き換えます。テキスト側に書いてまだ反映していない編集は
+ *    失われます。
+ *  ・MERGE_EVENT_TO_MESSAGE / MERGE_CE_TO_MESSAGE …「統合」（おすすめ）。
+ *    テキストに書いた内容を残したまま、ツクール上で増えた・変わった箇所だけを
+ *    取り込みます。共通の祖先があれば賢く3方向で統合し、同じ場所を両方で変えた
+ *    ときだけ両方を残します（下記の衝突表示）。
+ *  ・BATCH_EXPORT_MESSAGES_TO_FOLDER … フォルダへ一括で取り出します。
+ *    「取り出しのしかた」で上書きと統合を選べます（既定は上書き）。
+ *    統合を選んだときは Text2Frame プラグインも導入されている必要があります。
+ *
+ * ◆ 共通の祖先の自動管理と、衝突の解決
+ *  統合に使う「共通の祖先」は .t2f-base フォルダに自動で保存・参照されるため、
+ *  通常は指定不要です。同じ場所をテキストとゲームの両方で変更したときは、次の
+ *  目印で両方を残します（残したい方を残し、目印の3行を消すだけで解決）。
+ *
+ *    === テキストの変更 / from text ===
+ *    （テキスト側の内容）
+ *    === ゲームの変更 / from game ===
+ *    （ゲーム側の内容）
+ *    === どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===
+ *
+ *  目印が残っているイベントやテキストは、解決するまで反映・取り出しの対象から
+ *  外されます（そのまま実行すると目印ごと重なって増えてしまうためです）。
+ *  どちらか一方を正としてやり直したいときは、上書きで一方向に流してください。
  *
  *
  * -------------------------------------
@@ -599,7 +629,7 @@ function resolveText2Frame () {
         Laurus.Frame2Text.DataFolder = args[0] || 'data'
         Laurus.Frame2Text.TextBase = args[1] || 'text'
         Laurus.Frame2Text.Locale = args[2] || 'ja'
-        // 既定は overwrite(従来どおり)。merge は既存テキストの翻訳を残す。
+        // 既定は overwrite(従来どおり)。merge はテキストに書いた内容を残す。
         const batchStrategy = String(args[3] || 'overwrite').toLowerCase()
         if (batchStrategy !== 'merge' && batchStrategy !== 'overwrite') {
           throw new Error('Unknown strategy: ' + args[3] + ' / 戦略は merge か overwrite を指定してください。')
@@ -2886,7 +2916,7 @@ function resolveText2Frame () {
       return
     }
 
-    // MERGE pull(ゲーム→テキスト。翻訳を残しつつゲーム変更を取り込む)。
+    // MERGE pull(ゲーム→テキスト。テキストに書いた内容を残しつつゲーム変更を取り込む)。
     // push の 3-way を鏡写しにし、Text2Frame.applyMergePull で結果テキストを得る。
     if (Laurus.Frame2Text.ExecMode === 'MERGE_EVENT_TO_MESSAGE' || Laurus.Frame2Text.ExecMode === 'MERGE_CE_TO_MESSAGE') {
       const isCE = Laurus.Frame2Text.ExecMode === 'MERGE_CE_TO_MESSAGE'
@@ -3184,19 +3214,20 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           テキストの場所は --text-dir、データの場所は --data-dir で変更できます。（既定は text / data ）
           例3: $ node Frame2Text.js --mode batch --text-dir text --data-dir data
 
-          -s / --strategy で取り出し方を選べます。（既定は merge ）
-            merge     … 既存テキストの翻訳を残したまま、ゲーム側の変更だけを取り込みます。
-                        両方が同じ箇所を変えていた場合は目印付きで両方残します。
-            overwrite … ゲームの内容でテキストを全上書きします。テキスト側の未反映の編集は失われます。
+          -s / --strategy で取り出しのしかたを選べます。（既定は merge ）
+            merge     … 「統合」。テキストに書いた内容を残したまま、ゲーム側の変更だけを
+                        取り込みます。同じ場所を両方で変えたときは目印付きで両方残します。
+            overwrite … 「上書き」。ゲームの内容でテキストを全て置き換えます。
+                        テキスト側に書いてまだ反映していない編集は失われます。
           例3-2: $ node Frame2Text.js --mode batch -s overwrite
 
           --watch を付与すると、テキストの変更を監視し、自動でゲームに反映することができます。
           例4: $ node Text2Frame.js --mode batch --watch
 
           --locale を付与すると、ベースディレクトリ以下のディレクトリを指定することができます。
-          典型的な利用方法として、ゲームの翻訳が挙げられます。
-          例えば、Frame2Textを利用しゲームの内容をenフォルダへ書き出し、ゲームの内容を英語に翻訳後、
-          下記のコマンドで翻訳内容をゲームに反映できます。
+          典型的な利用方法として、言語ごとのテキストの管理が挙げられます。
+          例えば、Frame2Textを利用しゲームの内容をenフォルダへ書き出し、テキストを英語で書き直した後、
+          下記のコマンドでその内容をゲームに反映できます。
           例5: $ node Frame2Text.js --mode batch --locale en
                $ node Text2Frame.js --mode batch --locale en
 
