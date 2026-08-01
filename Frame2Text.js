@@ -80,7 +80,7 @@
  * @default 1
  *
  * @command MERGE_EVENT_TO_MESSAGE
- * @text イベントを取り出す(翻訳を残す)
+ * @text イベントを取り出す
  * @desc ゲームのイベントをテキストへ取り込みます。既存の翻訳は残し、ゲーム側の変更だけを反映します(祖先は自動)。
  *
  * @arg FileFolder
