@@ -88,8 +88,8 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     }
   })
 
-  const runBatch = function (root) {
-    Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', [root || textRoot, 'merge'])
+  const runBatch = function (root, strategy) {
+    Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', [root || textRoot, strategy || 'merge'])
   }
   const countShown = function (needle) {
     return shown.filter(function (t) { return t.indexOf(needle) !== -1 }).length
@@ -162,6 +162,74 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
 
     expect(line('反映完了')).to.contain('失敗 1件')
     expect(line('失敗: broken')).to.contain('eventId is required')
+  })
+
+  it('refuses to merge a file whose game side still has conflict markers', function () {
+    const marker = function (text) { return { code: 108, indent: 0, parameters: [text] } }
+    const markedMap = {
+      events: [null, {
+        id: 1,
+        pages: [eventPage(msg('Hello').concat([
+          marker('=== テキストの変更 / from text ==='),
+          marker('=== ゲームの変更 / from game ==='),
+          marker('=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='),
+          bottom
+        ]))]
+      }]
+    }
+    entries = ['e1.txt']
+    const prev = readText
+    readText = function (s) { return s.indexOf('Map001') !== -1 ? JSON.stringify(markedMap) : prev(s) }
+
+    runBatch()
+
+    expect(line('反映完了')).to.contain('失敗 1件')
+    expect(line('失敗: e1')).to.contain('未解決の衝突がゲーム側に残っています')
+    // 反映を止めたので、目印が二重化するような書き込みは起きていない。
+    expect(fs.writeFileSync.called).to.equal(false)
+  })
+
+  it('refuses to merge a text that still has conflict markers', function () {
+    entries = ['e1.txt']
+    const prev = readText
+    readText = function (s) {
+      if (/e1\.txt$/.test(s)) {
+        return '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\nlocale: ja\n---\n\n' +
+          '<comment>\n=== テキストの変更 / from text ===\n</comment>\n\nBonjour\n'
+      }
+      return prev(s)
+    }
+
+    runBatch()
+
+    expect(line('失敗: e1')).to.contain('未解決の衝突がテキストに残っています')
+    expect(fs.writeFileSync.called).to.equal(false)
+  })
+
+  it('still lets overwrite through, so it stays the way out of a stuck merge', function () {
+    const marker = function (text) { return { code: 108, indent: 0, parameters: [text] } }
+    const markedMap = {
+      events: [null, {
+        id: 1,
+        pages: [eventPage(msg('Hello').concat([
+          marker('=== テキストの変更 / from text ==='),
+          marker('=== ゲームの変更 / from game ==='),
+          marker('=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='),
+          bottom
+        ]))]
+      }]
+    }
+    entries = ['e1.txt']
+    const prev = readText
+    readText = function (s) { return s.indexOf('Map001') !== -1 ? JSON.stringify(markedMap) : prev(s) }
+
+    runBatch(textRoot, 'overwrite')
+
+    expect(line('反映完了')).to.contain('成功 1件')
+    const written = fs.writeFileSync.getCalls().filter(function (c) { return String(c.args[0]).indexOf('Map001') !== -1 })
+    expect(written).to.have.lengthOf(1)
+    // 上書きなので目印はゲームから消えている。
+    expect(String(written[0].args[1])).to.not.contain('=== ゲームの変更')
   })
 
   it('says so when the source folder is missing or empty', function () {

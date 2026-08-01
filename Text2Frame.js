@@ -4393,6 +4393,16 @@
     // MERGE(反映): 祖先(BASE)を解決し 3-way / overwrite を自動選択して
     // マージ後のコマンド列を返す。event / CE で共通。祖先の保存キー(baseRoot/baseId)も返す。
     const resolveMergeCommands = function (existing_events, event_command_list, textPath, explicitBasePath) {
+      // 未解決の衝突が残ったままマージすると、目印ごと再マージされて目印が二重・三重に増え、
+      // どちらが自分の変更か分からなくなる。解決を促して止める(上書き反映は逃げ道として通す)。
+      if (hasConflictMarker(existing_events)) {
+        throw new Error('未解決の衝突がゲーム側に残っています。目印3行を消してから再実行してください。' +
+          ' / unresolved conflict markers in the game data; resolve them first')
+      }
+      if (hasConflictMarker(event_command_list)) {
+        throw new Error('未解決の衝突がテキストに残っています。目印3行を消してから再実行してください。' +
+          ' / unresolved conflict markers in the text; resolve them first')
+      }
       // 祖先(BASE): 明示 BasePath 優先。無ければ .t2f-base/<locale>/<key> を自動参照。
       let base_cmds = null
       let baseRoot = null
@@ -9789,6 +9799,22 @@
       return units
     }
 
+    /* 衝突を両方残したときに挟む目印。検出側とズレないよう、出す側もこの定数を使う。
+     * 未解決のまま再度マージすると目印ごと再マージされて二重・三重に増えるため、
+     * 反映・取り出しの前にこれで検出して対象から外す。 */
+    const CONFLICT_MARKERS = [
+      '=== テキストの変更 / from text ===',
+      '=== ゲームの変更 / from game ===',
+      '=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='
+    ]
+    const hasConflictMarker = function (commands) {
+      return (commands || []).some(function (c) {
+        if (!c || (c.code !== 108 && c.code !== 408)) return false
+        const p = c.parameters && c.parameters[0]
+        return typeof p === 'string' && CONFLICT_MARKERS.some(function (m) { return p.indexOf(m) !== -1 })
+      })
+    }
+
     /* 3-way マージ(diff3 方式・両方残す)。base=共通祖先, ours=現JSON, theirs=テキスト。
      * 釣り合った単位で base↔ours / base↔theirs を LCS 対応し、両方が同じ箇所を別々に変えた領域は
      * 「衝突」として両方を残し 108 コメントで囲む(非破壊・常に valid)。
@@ -9915,11 +9941,11 @@
           const ind = (tReg[0] && tReg[0][0] && tReg[0][0].indent) || (oReg[0] && oReg[0][0] && oReg[0][0].indent) || 0
           // 非エンジニアにも分かる日本語ラベル。タグ記号(< >)はコメント内でも
           // 文法警告の元になるため使わない(=== の目印で表現)。
-          pushComment('=== テキストの変更 / from text ===', ind)
+          pushComment(CONFLICT_MARKERS[0], ind)
           pushAll(tReg)
-          pushComment('=== ゲームの変更 / from game ===', ind)
+          pushComment(CONFLICT_MARKERS[1], ind)
           pushAll(oReg)
-          pushComment('=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===', ind)
+          pushComment(CONFLICT_MARKERS[2], ind)
           // 衝突の件数は戻り値の conflicts で返す。ここで警告文を積むと、呼び出し側が出す
           // 「N件の衝突を両方残しました」と同じ内容が衝突の数だけ重なるため積まない。
         }
@@ -10132,7 +10158,7 @@
       return { text, conflicts, warnings }
     }
 
-    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId }
+    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId, CONFLICT_MARKERS, hasConflictMarker }
     // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
     // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
     // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。
