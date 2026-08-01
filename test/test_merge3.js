@@ -56,7 +56,9 @@ describe('ThreeWayMerge (applyThreeWayMerge) Test', function () {
     // comment markers (108) present
     const comments = res.commands.filter(function (c) { return c.code === 108 })
     expect(comments.length).to.be.greaterThan(0)
-    expect(res.warnings.length).to.be.greaterThan(0)
+    // 衝突は conflicts で数えて返す。呼び出し側が件数付きで 1 行出すので、
+    // ここで衝突ごとの警告文は積まない(同じ内容が衝突の数だけ重なるため)。
+    expect(res.warnings).to.have.lengthOf(0)
   })
 
   it('does not split a control structure: choice tree stays one unit', function () {

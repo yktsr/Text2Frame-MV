@@ -9920,7 +9920,8 @@
           pushComment('=== ゲームの変更 / from game ===', ind)
           pushAll(oReg)
           pushComment('=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===', ind)
-          warnings.push('Conflict kept both / 衝突は両方残しました')
+          // 衝突の件数は戻り値の conflicts で返す。ここで警告文を積むと、呼び出し側が出す
+          // 「N件の衝突を両方残しました」と同じ内容が衝突の数だけ重なるため積まない。
         }
         pos = baseHi
       }
