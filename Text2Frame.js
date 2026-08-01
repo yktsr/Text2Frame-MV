@@ -4422,7 +4422,11 @@
       }
       if (base_cmds && hasContent) {
         merge_result = applyThreeWayMerge(base_cmds, existing_events, event_command_list)
-        if (merge_result.conflicts) addWarning('3-way merge: ' + merge_result.conflicts + ' conflict(s) kept both / 衝突を両方残しました')
+        if (merge_result.conflicts) {
+          addWarning('3-way merge: ' + merge_result.conflicts + ' conflict(s) kept both / 衝突を両方残しました')
+          // 一括反映が「どのファイルが衝突したか」を名指しできるよう、_warnings と同じ要領で外へ渡す。
+          Laurus.Text2Frame._conflicts = (Laurus.Text2Frame._conflicts || 0) + merge_result.conflicts
+        }
       } else {
         const overwriteCmds = event_command_list.slice()
         while (overwriteCmds.length && overwriteCmds[overwriteCmds.length - 1] && overwriteCmds[overwriteCmds.length - 1].code === 0) overwriteCmds.pop()
@@ -9958,8 +9962,10 @@
 
       const prevWarnings = Laurus.Text2Frame._warnings
       const prevQuiet = Laurus.Text2Frame._quiet
+      const prevConflicts = Laurus.Text2Frame._conflicts
       Laurus.Text2Frame._warnings = []
       Laurus.Text2Frame._quiet = true
+      Laurus.Text2Frame._conflicts = 0
       try {
         const parsed = parseFrontMatter(readText(textPath))
         const meta = parsed.meta || {}
@@ -10023,12 +10029,13 @@
           throw new Error('unknown kind: ' + kind)
         }
 
-        return { ok: true, textPath, kind, target, dataPath, warnings: Laurus.Text2Frame._warnings.slice() }
+        return { ok: true, textPath, kind, target, dataPath, warnings: Laurus.Text2Frame._warnings.slice(), conflicts: Laurus.Text2Frame._conflicts || 0 }
       } catch (error) {
         return {
           ok: false,
           textPath,
           warnings: (Laurus.Text2Frame._warnings || []).slice(),
+          conflicts: Laurus.Text2Frame._conflicts || 0,
           error: error.message,
           errorLine: error.t2fLine,
           errorLineText: error.t2fLineText
@@ -10036,6 +10043,7 @@
       } finally {
         Laurus.Text2Frame._warnings = prevWarnings
         Laurus.Text2Frame._quiet = prevQuiet
+        Laurus.Text2Frame._conflicts = prevConflicts
       }
     }
 
@@ -10172,20 +10180,47 @@
         })
         return out
       }
+      if (!_fs.existsSync(root)) {
+        addMessage('[batch-import] 反映元フォルダが見つかりません / import folder not found: ' + root)
+        console.error('[batch-import] import folder not found: ' + root)
+        return
+      }
+      const files = walk(root)
+      if (files.length === 0) {
+        addMessage('[batch-import] テキストが見つかりませんでした。反映元フォルダを確認してください / no text files found: ' + root)
+        console.warn('[batch-import] no text files found under ' + root)
+        return
+      }
+
       let ok = 0
       let fail = 0
+      let eventCount = 0
+      let commonCount = 0
+      let skipped = 0
       // 同じ警告がファイル数ぶん並ばないよう、文言ごとに件数をまとめて最後に 1 回だけ出す。
       const warnTexts = []
       const warnCounts = []
-      walk(root).forEach(function (fileName) {
+      // 失敗と衝突は件数だけだと対処できないので、キーを控えて名指しで出す。
+      const failures = []
+      const conflicted = []
+      const keyOfFile = function (fileName) { return _path.basename(fileName, _path.extname(fileName)) }
+      files.forEach(function (fileName) {
         let meta
         try { meta = parseFrontMatter(readText(fileName)).meta } catch (e) { meta = null }
-        if (!meta || !meta.kind) return
+        // front matter が無い/kind が無いテキストは反映先が決まらないので飛ばす。
+        if (!meta || !meta.kind) { skipped++; return }
         // Command Strategy arg is the default; a per-file front-matter `strategy:` overrides it.
         const entryStrategy = meta.strategy ? (resolveStrategy(meta.strategy) || { strategy }).strategy : strategy
         const res = applyTextFile({ textPath: fileName, strategy: entryStrategy, backup: true })
-        if (res && res.ok) ok++
-        else fail++
+        if (res && res.ok) {
+          ok++
+          if (res.kind === 'common') commonCount++
+          else eventCount++
+        } else {
+          fail++
+          failures.push(keyOfFile(fileName) + ': ' + ((res && res.error) || 'unknown error'))
+        }
+        if (res && res.conflicts) conflicted.push(keyOfFile(fileName))
         const resWarnings = (res && res.warnings) || []
         resWarnings.forEach(function (w) {
           const at = warnTexts.indexOf(w)
@@ -10196,8 +10231,23 @@
         addWarning(warnCounts[i] > 1 ? '[' + warnCounts[i] + '件] ' + w : w)
         console.warn('[batch-import] warn x' + warnCounts[i] + ': ' + w)
       })
-      addMessage('[batch-import] Completed: ' + ok + ' success, ' + fail + ' errors')
-      console.log('[batch-import] Completed: ' + ok + ' success, ' + fail + ' errors')
+      addMessage('[batch-import] 反映完了: 成功 ' + ok + '件 (イベント ' + eventCount + ' / コモン ' + commonCount + ')、失敗 ' + fail + '件' +
+        (skipped > 0 ? '、見出し情報なしで対象外 ' + skipped + '件' : ''))
+      addMessage('[batch-import] 反映元: ' + root)
+      // $gameMessage は行数が限られるため、詳細は先頭数件だけ出して残りはコンソールへ回す。
+      const DETAIL_LINES = 5
+      if (conflicted.length > 0) {
+        addMessage('[batch-import] 衝突が未解決のファイル ' + conflicted.length + '件: ' + conflicted.slice(0, DETAIL_LINES).join(', ') +
+          (conflicted.length > DETAIL_LINES ? ' ほか' : ''))
+        addMessage('[batch-import] 衝突したファイルは祖先(.t2f-base)を更新していません。目印3行を消してから再実行してください。')
+      }
+      failures.slice(0, DETAIL_LINES).forEach(function (f) { addMessage('[batch-import] 失敗: ' + f) })
+      if (failures.length > DETAIL_LINES) {
+        addMessage('[batch-import] 他 ' + (failures.length - DETAIL_LINES) + '件の失敗はコンソール(F8)を参照してください。')
+      }
+      failures.forEach(function (f) { console.error('[batch-import] failed: ' + f) })
+      console.log('[batch-import] Completed: ' + ok + ' success (event ' + eventCount + ' / common ' + commonCount + '), ' +
+        fail + ' errors, ' + skipped + ' skipped (no front matter), ' + conflicted.length + ' with conflicts <- ' + root)
       // 1 件でも反映していればエディタの再読み込みが必要。案内はここで 1 回だけ。
       if (ok > 0) {
         addMessage('\n')
