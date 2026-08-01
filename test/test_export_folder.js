@@ -102,6 +102,43 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI --mode batch)', function () {
     expect(global.$LaurusText2Frame.deriveBaseId).to.be.a('function')
   })
 
+  it('-s merge keeps the translation in the text and brings in the game change', function () {
+    // 1回目: 祖先を作る(既存テキストが無いので merge でも全取り出しと同じ結果)
+    cp.execFileSync('node', [F2T, '--mode', 'batch', '--data-dir', 'data', '--locale', 'ja', '--text-dir', 'text'],
+      { cwd: tmp, encoding: 'utf8' })
+    const evPath = path.join(tmp, 'text', 'ja', 'map001_event001_page1.txt')
+    // 翻訳者がテキストを訳す
+    fs.writeFileSync(evPath, fs.readFileSync(evPath, 'utf8').replace('Hello from event', 'Bonjour'))
+    // 開発者がゲーム側に行を足す
+    const map = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8'))
+    map.events[1].pages[0].list.splice(2, 0,
+      { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+      { code: 401, indent: 0, parameters: ['Added in the editor'] })
+    fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify(map))
+
+    cp.execFileSync('node', [F2T, '--mode', 'batch', '--data-dir', 'data', '--locale', 'ja', '--text-dir', 'text', '-s', 'merge'],
+      { cwd: tmp, encoding: 'utf8' })
+
+    const merged = fs.readFileSync(evPath, 'utf8')
+    expect(merged).to.contain('Bonjour')
+    expect(merged).to.contain('Added in the editor')
+    expect(merged).to.not.contain('Hello from event')
+  })
+
+  it('-s overwrite replaces the text wholesale', function () {
+    cp.execFileSync('node', [F2T, '--mode', 'batch', '--data-dir', 'data', '--locale', 'ja', '--text-dir', 'text'],
+      { cwd: tmp, encoding: 'utf8' })
+    const evPath = path.join(tmp, 'text', 'ja', 'map001_event001_page1.txt')
+    fs.writeFileSync(evPath, fs.readFileSync(evPath, 'utf8').replace('Hello from event', 'Bonjour'))
+
+    cp.execFileSync('node', [F2T, '--mode', 'batch', '--data-dir', 'data', '--locale', 'ja', '--text-dir', 'text', '-s', 'overwrite'],
+      { cwd: tmp, encoding: 'utf8' })
+
+    const out = fs.readFileSync(evPath, 'utf8')
+    expect(out).to.contain('Hello from event')
+    expect(out).to.not.contain('Bonjour')
+  })
+
   it('round-trips: exported text re-imports via --mode batch', function () {
     cp.execFileSync('node', [F2T, '--mode', 'batch', '--data-dir', 'data', '--locale', 'ja', '--text-dir', 'text'],
       { cwd: tmp, encoding: 'utf8' })

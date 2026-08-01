@@ -7,6 +7,9 @@
 // ----------------------------------------------------------------------------
 // Version
 // 1.1.0 2026/08/02:
+// ・一括取り出しに取り出し戦略(merge/overwrite)を追加。mergeは既存テキストの翻訳を残したまま
+//   ゲーム側の変更だけを取り込みます(プラグインの既定はoverwrite、CLIは--strategyに従い既定merge)
+// ・未解決の衝突が残っているイベント/テキストは反映・取り出しの対象から外すよう改善
 // ・NW.js(MV同梱)でtext/<locale>や.t2f-baseのディレクトリ作成に失敗する不具合の修正
 // ・一括取り出しの実行結果に出力先・内訳・上書き件数・失敗理由を表示するよう改善
 // ・MZプラグインコマンドの一括取り出しでロケールと出力先の引数が入れ替わる不具合の修正
@@ -170,6 +173,16 @@
  * @desc 出力先の言語サブフォルダ名です。デフォルトはjaです。通常、設定する必要はありません。
  * @type string
  * @default ja
+ *
+ * @arg Strategy
+ * @text 一括取り出し戦略
+ * @desc overwrite(ゲームの内容でテキストを全上書き) / merge(既存テキストの翻訳を残しゲーム側の変更だけ取り込む。Text2Frameプラグインが必要)。既定はoverwriteです。
+ * @type select
+ * @option overwrite
+ * @value overwrite
+ * @option merge
+ * @value merge
+ * @default overwrite
  *
  * @param Default Scenario Folder
  * @text 出力フォルダ名
@@ -493,7 +506,8 @@ function resolveText2Frame () {
       const data_dir = args.DataFolder || 'data'
       const locale = args.Locale || 'ja'
       const text_base = args.TextBase || 'text'
-      this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER', [data_dir, text_base, locale])
+      const strategy = args.Strategy || 'overwrite'
+      this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER', [data_dir, text_base, locale, strategy])
     })
   }
 
@@ -581,12 +595,19 @@ function resolveText2Frame () {
         addMessage('=====> (merge) Common EventID: ' + Laurus.Frame2Text.CommonEventID)
         break
 
-      case 'BATCH_EXPORT_MESSAGES_TO_FOLDER':
+      case 'BATCH_EXPORT_MESSAGES_TO_FOLDER': {
         Laurus.Frame2Text.DataFolder = args[0] || 'data'
         Laurus.Frame2Text.TextBase = args[1] || 'text'
         Laurus.Frame2Text.Locale = args[2] || 'ja'
+        // 既定は overwrite(従来どおり)。merge は既存テキストの翻訳を残す。
+        const batchStrategy = String(args[3] || 'overwrite').toLowerCase()
+        if (batchStrategy !== 'merge' && batchStrategy !== 'overwrite') {
+          throw new Error('Unknown strategy: ' + args[3] + ' / 戦略は merge か overwrite を指定してください。')
+        }
+        Laurus.Frame2Text.BatchStrategy = batchStrategy
         Laurus.Frame2Text.ExecMode = 'BATCH_EXPORT_MESSAGES_TO_FOLDER'
         break
+      }
       case 'COMMAND_LINE':
         Laurus.Frame2Text = Object.assign(Laurus.Frame2Text, args[0])
         break
@@ -2751,6 +2772,69 @@ function resolveText2Frame () {
         return typeof p === 'string' && CONFLICT_MARKERS.some(function (m) { return p.indexOf(m) !== -1 })
       })
     }
+    // テキスト側は compile せず素の文字列で見る(目印は注釈としてそのまま行に現れる)。
+    const hasConflictMarkerInText = function (text) {
+      const s = String(text || '')
+      return CONFLICT_MARKERS.some(function (m) { return s.indexOf(m) !== -1 })
+    }
+
+    // front matter(先頭の --- ブロック)の取り外し/取り出し。取り出し系で共有する。
+    const stripFrontMatter = function (t) {
+      const n = String(t).replace(/\r\n/g, '\n')
+      if (n.indexOf('---\n') !== 0) return t
+      const e = n.indexOf('\n---\n', 4)
+      return e < 0 ? t : n.slice(e + 5)
+    }
+    const frontMatterHeader = function (t) {
+      const n = String(t).replace(/\r\n/g, '\n')
+      if (n.indexOf('---\n') !== 0) return null
+      const e = n.indexOf('\n---\n', 4)
+      return e < 0 ? null : n.slice(0, e + 5)
+    }
+    // front matter から key: value を拾う最小パーサ。strategy の個別指定を読むためだけに使う。
+    const frontMatterMeta = function (t) {
+      const meta = {}
+      const head = frontMatterHeader(t)
+      if (!head) return meta
+      head.split('\n').forEach(function (row) {
+        const m = row.match(/^([A-Za-z][A-Za-z0-9_]*)\s*:\s*(.*)$/)
+        if (m) meta[m[1]] = String(m[2]).trim()
+      })
+      return meta
+    }
+    // 見出しの末尾を「---\n」+空行1つに揃える(renderFrontMatter は空行込み、既存ファイルの
+    // 見出しは空行なしで返るため、ここで吸収して本文との間隔を一定にする)。
+    const normalizeHeader = function (h) {
+      const s = String(h || '')
+      return s ? s.replace(/\n+$/, '\n') + '\n' : ''
+    }
+
+    // 取り出し(ゲーム→テキスト)の本文を作る。merge のときだけ既存テキスト・祖先と 3-way する。
+    // fs には触らない(ゲーム内は BASE_PATH、CLI は cwd と基準が違うため入出力は呼び出し側)。
+    // 戻り値: { text, conflicts }
+    const buildPullText = function (opts) {
+      opts = opts || {}
+      const list = opts.list || []
+      const englishTag = opts.englishTag !== false
+      const existingText = opts.existingText || ''
+      const merge = String(opts.strategy || 'overwrite').toLowerCase() === 'merge'
+      const header = normalizeHeader((existingText && frontMatterHeader(existingText)) || opts.fallbackHeader || '')
+      // 既存テキストが無ければ突き合わせる相手がいないので、merge でも素の取り出しと同じ。
+      if (!merge || !existingText) {
+        return { text: header + decompile(list, englishTag, { pretty: true }) + '\n', conflicts: 0 }
+      }
+      const T2F = resolveText2Frame()
+      if (!T2F || !T2F.applyMergePull) {
+        throw new Error('取り出し(merge)には Text2Frame プラグインが必要です。同じプロジェクトに導入してください。 / MERGE pull requires the Text2Frame plugin to be loaded.')
+      }
+      const r = T2F.applyMergePull({
+        gameCommands: list,
+        textBody: stripFrontMatter(existingText),
+        baseBody: opts.baseText ? stripFrontMatter(opts.baseText) : '',
+        englishTag
+      })
+      return { text: header + r.text + '\n', conflicts: r.conflicts || 0 }
+    }
 
     // data ディレクトリを走査し、出力対象(イベント/コモンイベント)の routing メタだけを返す。
     // textPath/locale は付けない(呼び出し側が textBase/locale/key.txt を組み立てる)。
@@ -2786,7 +2870,7 @@ function resolveText2Frame () {
       return targets
     }
 
-    Laurus.Frame2Text.export = { decompile, VERSION, enumerateTargets, renderFrontMatter }
+    Laurus.Frame2Text.export = { decompile, VERSION, enumerateTargets, renderFrontMatter, buildPullText, stripFrontMatter, frontMatterHeader, frontMatterMeta }
     // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
     // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
     // window / global にもフォールバックする(Text2Frame 側の $LaurusText2Frame と対称)。
@@ -2808,18 +2892,6 @@ function resolveText2Frame () {
       const isCE = Laurus.Frame2Text.ExecMode === 'MERGE_CE_TO_MESSAGE'
       const T2F = resolveText2Frame()
       if (!T2F || !T2F.applyMergePull) { throw new Error('取り出し(merge)には Text2Frame プラグインが必要です。同じプロジェクトに導入してください。 / MERGE pull requires the Text2Frame plugin to be loaded.') }
-      const stripFM = function (t) {
-        const n = String(t).replace(/\r\n/g, '\n')
-        if (n.indexOf('---\n') !== 0) return t
-        const e = n.indexOf('\n---\n', 4)
-        return e < 0 ? t : n.slice(e + 5)
-      }
-      const headerFM = function (t) {
-        const n = String(t).replace(/\r\n/g, '\n')
-        if (n.indexOf('---\n') !== 0) return null
-        const e = n.indexOf('\n---\n', 4)
-        return e < 0 ? null : n.slice(0, e + 5)
-      }
       let gameCommands
       if (isCE) {
         const ce = readJsonData(Laurus.Frame2Text.CommonEventPath)
@@ -2848,17 +2920,16 @@ function resolveText2Frame () {
       try { existingText = readText(outPath) } catch (e) { existingText = '' }
       const root = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : '.'
       const id = T2F.deriveBaseId(outPath, {})
-      let baseBody = ''
+      let baseText = ''
       if (Laurus.Frame2Text.BasePath) {
-        try { baseBody = stripFM(readText(Laurus.Frame2Text.BasePath)) } catch (e) { baseBody = '' }
+        try { baseText = readText(Laurus.Frame2Text.BasePath) } catch (e) { baseText = '' }
       } else {
-        const bt = T2F.readBaseText(root, id.locale, id.key)
-        if (bt) baseBody = stripFM(bt)
+        baseText = T2F.readBaseText(root, id.locale, id.key) || ''
       }
       const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
-      const r = T2F.applyMergePull({ gameCommands, textBody: existingText ? stripFM(existingText) : '', baseBody, englishTag })
-      const header = (existingText && headerFM(existingText)) || ('---\ngenerator: text2frame-mv@' + VERSION + '\nkind: ' + (isCE ? 'common' : 'event') + '\n' + (isCE ? ('commonEventId: ' + Laurus.Frame2Text.CommonEventID) : ('mapId: ' + Laurus.Frame2Text.MapID + '\neventId: ' + Laurus.Frame2Text.EventID + '\npageId: ' + (Laurus.Frame2Text.PageID || '1'))) + '\n---\n')
-      const written = header + '\n' + r.text + '\n'
+      const fallbackHeader = '---\ngenerator: text2frame-mv@' + VERSION + '\nkind: ' + (isCE ? 'common' : 'event') + '\n' + (isCE ? ('commonEventId: ' + Laurus.Frame2Text.CommonEventID) : ('mapId: ' + Laurus.Frame2Text.MapID + '\neventId: ' + Laurus.Frame2Text.EventID + '\npageId: ' + (Laurus.Frame2Text.PageID || '1'))) + '\n---\n'
+      const r = buildPullText({ list: gameCommands, englishTag, strategy: 'merge', existingText, baseText, fallbackHeader })
+      const written = r.text
       try { mkdirpSync(require('path').dirname(outPath)) } catch (e) {}
       writeData(outPath, written)
       // 衝突が残っているときは共通祖先を進めない(Git 流。解決してから再実行させる)。
@@ -2883,6 +2954,7 @@ function resolveText2Frame () {
       const locale = Laurus.Frame2Text.Locale
       const textBase = Laurus.Frame2Text.TextBase
       const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
+      const batchStrategy = Laurus.Frame2Text.BatchStrategy || 'overwrite'
       let okCount = 0
       let errCount = 0
       let eventCount = 0
@@ -2892,6 +2964,8 @@ function resolveText2Frame () {
       const failures = []
       // 未解決の衝突が残っていて取り出しを見送ったもの。
       const conflictSkipped = []
+      // merge で衝突を両方残したもの(祖先は進めない)。
+      const conflicted = []
       // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する。
       let _baseSaveError = null
       const _baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH
@@ -2939,13 +3013,40 @@ function resolveText2Frame () {
             conflictSkipped.push(t.key)
             return
           }
-          const body = decompile(list, englishTag, { pretty: true })
-          const fm = renderFrontMatter(Object.assign({ locale }, t), t.kind)
           const outPath = _path.resolve(BASE_PATH, textBase, locale, t.key + '.txt')
-          // 取り出しはマージしない全上書き。既存を潰した件数は最後に知らせる。
-          if (_fs.existsSync(outPath)) overwrittenCount++
-          _fs.writeFileSync(outPath, fm + body + '\n', 'utf8')
-          try { _fs.writeFileSync(_path.join(_baseDir, t.key + '.txt'), fm + body + '\n', 'utf8') } catch (e) { _baseSaveError = _baseSaveError || e }
+          let existingText = ''
+          try { existingText = _fs.readFileSync(outPath, 'utf8') } catch (e) { existingText = '' }
+          // テキストの front matter に strategy: があれば、そのファイルだけコマンド引数より優先する
+          // (一括反映・t2f-sync と同じ規則)。
+          const metaStrategy = frontMatterMeta(existingText).strategy
+          const entryStrategy = String(metaStrategy || batchStrategy).toLowerCase() === 'merge' ? 'merge' : 'overwrite'
+
+          if (entryStrategy === 'merge' && hasConflictMarkerInText(existingText)) {
+            // 目印入りのテキストにマージすると目印ごと再マージされて二重化する。ゲーム側と同じ扱い。
+            conflictSkipped.push(t.key)
+            return
+          }
+          let baseText = ''
+          if (entryStrategy === 'merge') {
+            try { baseText = _fs.readFileSync(_path.join(_baseDir, t.key + '.txt'), 'utf8') } catch (e) { baseText = '' }
+          }
+          const built = buildPullText({
+            list,
+            englishTag,
+            strategy: entryStrategy,
+            existingText,
+            baseText,
+            fallbackHeader: renderFrontMatter(Object.assign({ locale }, t), t.kind)
+          })
+          // 全上書きで既存を潰した件数だけ知らせる(merge は上書きではない)。
+          if (entryStrategy !== 'merge' && existingText) overwrittenCount++
+          _fs.writeFileSync(outPath, built.text, 'utf8')
+          // 衝突が残っているときは祖先を進めない(解決してから取り出し直させる)。
+          if (built.conflicts) {
+            conflicted.push(t.key)
+          } else {
+            try { _fs.writeFileSync(_path.join(_baseDir, t.key + '.txt'), built.text, 'utf8') } catch (e) { _baseSaveError = _baseSaveError || e }
+          }
           if (t.kind === 'event') eventCount++
           else commonCount++
           okCount++
@@ -2959,7 +3060,7 @@ function resolveText2Frame () {
         addMessage('[batch] 警告: .t2f-base の祖先を保存できませんでした (' + (_baseSaveError.message || _baseSaveError) + ')。次回反映は祖先無し扱いとなり、テキストを全反映します(3-wayになりません)。')
         console.warn('[batch] WARNING: .t2f-base ancestor NOT saved (' + (_baseSaveError.message || _baseSaveError) + '); next import applies text whole (no 3-way).')
       }
-      addMessage('[batch] 取り出し完了: 成功 ' + okCount + '件 (イベント ' + eventCount + ' / コモン ' + commonCount + ')、失敗 ' + errCount + '件' +
+      addMessage('[batch] 取り出し完了(' + batchStrategy + '): 成功 ' + okCount + '件 (イベント ' + eventCount + ' / コモン ' + commonCount + ')、失敗 ' + errCount + '件' +
         (conflictSkipped.length > 0 ? '、衝突未解決で除外 ' + conflictSkipped.length + '件' : ''))
       addMessage('[batch] 出力先: ' + outDir)
       if (overwrittenCount > 0) {
@@ -2973,12 +3074,19 @@ function resolveText2Frame () {
         addMessage('[batch] エディタで目印3行を消してから取り出し直してください(そのまま取り出すと衝突がテキストにも広がります)。')
         console.warn('[batch] skipped (unresolved conflict markers): ' + conflictSkipped.join(', '))
       }
+      if (conflicted.length > 0) {
+        addMessage('[batch] 衝突あり(両方残し) ' + conflicted.length + '件: ' + conflicted.slice(0, FAILURE_LINES).join(', ') +
+          (conflicted.length > FAILURE_LINES ? ' ほか' : ''))
+        addMessage('[batch] 衝突したファイルは祖先(.t2f-base)を更新していません。目印3行を消してから取り出し直してください。')
+        console.warn('[batch] conflicts kept both (ancestor not advanced): ' + conflicted.join(', '))
+      }
       failures.slice(0, FAILURE_LINES).forEach(function (f) { addMessage('[batch] 失敗: ' + f) })
       if (failures.length > FAILURE_LINES) {
         addMessage('[batch] 他 ' + (failures.length - FAILURE_LINES) + '件の失敗はコンソール(F8)を参照してください。')
       }
-      console.log('[batch] Completed: ' + okCount + ' success (event ' + eventCount + ' / common ' + commonCount + '), ' +
-        errCount + ' errors -> ' + outDir + (overwrittenCount > 0 ? ' (overwrote ' + overwrittenCount + ' existing text file(s))' : ''))
+      console.log('[batch] Completed (' + batchStrategy + '): ' + okCount + ' success (event ' + eventCount + ' / common ' + commonCount + '), ' +
+        errCount + ' errors, ' + conflicted.length + ' with conflicts -> ' + outDir +
+        (overwrittenCount > 0 ? ' (overwrote ' + overwrittenCount + ' existing text file(s))' : ''))
       return
     }
 
@@ -3075,6 +3183,12 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
           テキストの場所は --text-dir、データの場所は --data-dir で変更できます。（既定は text / data ）
           例3: $ node Frame2Text.js --mode batch --text-dir text --data-dir data
+
+          -s / --strategy で取り出し方を選べます。（既定は merge ）
+            merge     … 既存テキストの翻訳を残したまま、ゲーム側の変更だけを取り込みます。
+                        両方が同じ箇所を変えていた場合は目印付きで両方残します。
+            overwrite … ゲームの内容でテキストを全上書きします。テキスト側の未反映の編集は失われます。
+          例3-2: $ node Frame2Text.js --mode batch -s overwrite
 
           --watch を付与すると、テキストの変更を監視し、自動でゲームに反映することができます。
           例4: $ node Text2Frame.js --mode batch --watch
@@ -3185,6 +3299,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const locale = options.locale
     const textDir = options.textDir
     const englishTag = String(options.english_tag) === 'true'
+    // map/common モードと同じく -s を尊重する(既定 merge)。既存テキストが無ければ結果は全上書きと同じ。
+    const batchStrategy = _pullOverwrite ? 'overwrite' : 'merge'
     // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する(既存 dir は existsSync でガード)。
     let baseSaveError = null
     const baseRoot = process.cwd()
@@ -3201,19 +3317,43 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           const ceData = JSON.parse(fs.readFileSync(path.join(dataDir, 'CommonEvents.json'), 'utf8'))
           list = ceData[Number(t.commonEventId)].list || []
         }
-        const body = module.exports.decompile(list, englishTag, { pretty: true })
-        const frontMatter = module.exports.renderFrontMatter(Object.assign({ locale }, t), t.kind)
         const textPath = path.resolve(textDir, locale, t.key + '.txt')
+        let existingText = ''
+        try { existingText = fs.readFileSync(textPath, 'utf8') } catch (e) { existingText = '' }
+        // テキストの front matter に strategy: があれば、そのファイルだけ -s より優先する。
+        const metaStrategy = module.exports.frontMatterMeta(existingText).strategy
+        const entryStrategy = String(metaStrategy || batchStrategy).toLowerCase() === 'merge' ? 'merge' : 'overwrite'
+        let baseText = ''
+        if (entryStrategy === 'merge') {
+          try { baseText = fs.readFileSync(path.join(baseDir, t.key + '.txt'), 'utf8') } catch (e) { baseText = '' }
+        }
+        const built = module.exports.buildPullText({
+          list,
+          englishTag,
+          strategy: entryStrategy,
+          existingText,
+          baseText,
+          fallbackHeader: module.exports.renderFrontMatter(Object.assign({ locale }, t), t.kind)
+        })
         fs.mkdirSync(path.dirname(textPath), { recursive: true })
-        fs.writeFileSync(textPath, frontMatter + body + '\n', 'utf8')
-        try { fs.writeFileSync(path.join(baseDir, t.key + '.txt'), frontMatter + body + '\n', 'utf8') } catch (e) { baseSaveError = baseSaveError || e }
-        results.push({ ok: true, textPath })
+        fs.writeFileSync(textPath, built.text, 'utf8')
+        // 衝突が残っているときは祖先を進めない(解決してから取り出し直させる)。
+        if (!built.conflicts) {
+          try { fs.writeFileSync(path.join(baseDir, t.key + '.txt'), built.text, 'utf8') } catch (e) { baseSaveError = baseSaveError || e }
+        }
+        results.push({ ok: true, textPath, conflicts: built.conflicts })
       } catch (error) {
         results.push({ ok: false, key: t.key, error: error.message })
       }
     })
     const failures = results.filter(function (r) { return !r.ok })
-    console.log(JSON.stringify({ total: results.length, failed: failures.length, results }, null, 2))
+    const conflicted = results.filter(function (r) { return r.ok && r.conflicts })
+    console.log(JSON.stringify({ total: results.length, failed: failures.length, conflicts: conflicted.length, strategy: batchStrategy, results }, null, 2))
+    if (conflicted.length > 0) {
+      // 衝突は失敗ではない(両方残して書き出してある)。ただし祖先は進めていないので知らせる。
+      console.warn('[batch] ' + conflicted.length + ' file(s) kept both sides; .t2f-base not advanced (resolve the 3 marker lines, then re-run): ' +
+        conflicted.map(function (r) { return r.textPath }).join(', '))
+    }
     if (baseSaveError) {
       console.warn('[batch] WARNING: .t2f-base の祖先を保存できませんでした (' + (baseSaveError.message || baseSaveError) +
         ')。テキストは書き出せていますが、次回 --mode batch は祖先無し扱いとなりテキストを全反映します（3-wayになりません）。/ ' +

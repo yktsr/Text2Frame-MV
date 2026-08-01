@@ -10,7 +10,13 @@ const shown = []
 globalThis.$gameMessage = { add: function (t) { shown.push(String(t)) } }
 globalThis.PluginManager = {
   parameters: function () {
+    // merge 取り出しでは Text2Frame が遅延ロードされ、これらのパラメータでタグを解釈する。
+    // 欠けていると "undefined" が既定値になり <Background: ...> 等が文法エラーになる。
     return {
+      'Default Window Position': 'Bottom',
+      'Default Background': 'Window',
+      'Comment Out Char': '%',
+      IsOverwrite: 'false',
       'Default Scenario Folder': 'text',
       'Default Scenario File': 'message.txt',
       'Default Common Event ID': '1',
@@ -38,12 +44,27 @@ function msgEvent (line) {
 describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   let tmp
   let cwd
-  const run = function (dataDir, textBase, locale) {
+  const run = function (dataDir, textBase, locale, strategy) {
     shown.length = 0
-    Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [dataDir, textBase, locale])
+    Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [dataDir, textBase, locale, strategy])
   }
   const line = function (needle) {
     return shown.filter(function (t) { return t.indexOf(needle) !== -1 })[0]
+  }
+  const textPathOf = function (key) { return path.join(tmp, 'text', 'ja', key + '.txt') }
+  const basePathOf = function (key) { return path.join(tmp, '.t2f-base', 'ja', key + '.txt') }
+  const ev1 = 'map001_event001_page1'
+  const readIf = function (p) { try { return fs.readFileSync(p, 'utf8') } catch (e) { return '' } }
+  const setEvent1 = function (lines) {
+    const list = []
+    lines.forEach(function (l) {
+      list.push({ code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] })
+      list.push({ code: 401, indent: 0, parameters: [l] })
+    })
+    list.push({ code: 0, indent: 0, parameters: [] })
+    const map = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8'))
+    map.events[1] = { id: 1, pages: [{ list }] }
+    fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify(map), 'utf8')
   }
 
   beforeEach(function () {
@@ -121,6 +142,77 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     // 除外したファイルのテキストと祖先は触っていない。
     expect(fs.readFileSync(kept, 'utf8')).to.equal('これは残るべき翻訳\n')
     expect(fs.existsSync(path.join(tmp, '.t2f-base', 'ja', 'map001_event002_page1.txt'))).to.equal(false)
+  })
+
+  it('merge keeps the translation in the text and brings in the game change', function () {
+    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja') // 既定 overwrite で祖先を作る
+    // 翻訳者がテキストを訳す
+    fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)).replace('こんにちは', 'Bonjour'), 'utf8')
+    // 開発者がゲーム側に行を足す
+    setEvent1(['こんにちは', 'ゲーム側の追記'])
+
+    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja', 'merge')
+
+    const text = readIf(textPathOf(ev1))
+    expect(line('取り出し完了(merge)')).to.contain('成功 3件')
+    expect(text).to.contain('Bonjour') // 翻訳が残っている
+    expect(text).to.contain('ゲーム側の追記') // ゲームの変更が入っている
+    expect(text).to.not.contain('こんにちは')
+    // 上書きではないので「上書きしました」は出ない
+    expect(line('上書きしました')).to.equal(undefined)
+  })
+
+  it('merge keeps both on a conflict and does not advance the ancestor', function () {
+    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja')
+    const baseBefore = readIf(basePathOf(ev1))
+    // テキストとゲームが同じ行を別々に変える
+    fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)).replace('こんにちは', 'テキスト側の変更'), 'utf8')
+    setEvent1(['ゲーム側の変更'])
+
+    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja', 'merge')
+
+    const text = readIf(textPathOf(ev1))
+    expect(text).to.contain('テキスト側の変更')
+    expect(text).to.contain('ゲーム側の変更')
+    expect(text).to.contain('=== どちらかを残し')
+    expect(line('衝突あり(両方残し)')).to.contain(ev1)
+    expect(line('祖先(.t2f-base)を更新していません')).to.be.a('string')
+    // 祖先は据え置き(進めると次回の 3-way が壊れる)
+    expect(readIf(basePathOf(ev1))).to.equal(baseBefore)
+  })
+
+  it('lets a front-matter strategy override the command argument', function () {
+    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja')
+    // このファイルだけ overwrite 指定 + 翻訳あり
+    fs.writeFileSync(textPathOf(ev1),
+      readIf(textPathOf(ev1)).replace('kind: event', 'kind: event\nstrategy: overwrite').replace('こんにちは', 'Bonjour'), 'utf8')
+    setEvent1(['ゲームが正'])
+
+    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja', 'merge')
+
+    // merge を指定したが、このファイルは front matter に従って全上書きされる
+    const text = readIf(textPathOf(ev1))
+    expect(text).to.contain('ゲームが正')
+    expect(text).to.not.contain('Bonjour')
+  })
+
+  it('skips a merge whose text still has conflict markers', function () {
+    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja')
+    const marked = readIf(textPathOf(ev1)) + '\n<comment>\n=== ゲームの変更 / from game ===\n</comment>\n'
+    fs.writeFileSync(textPathOf(ev1), marked, 'utf8')
+    setEvent1(['ゲーム側の追記'])
+
+    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja', 'merge')
+
+    expect(line('取り出し完了(merge)')).to.contain('衝突未解決で除外 1件')
+    expect(line('衝突未解決で取り出さなかったファイル')).to.contain(ev1)
+    expect(readIf(textPathOf(ev1))).to.equal(marked) // 触っていない
+  })
+
+  it('rejects an unknown strategy instead of silently picking one', function () {
+    expect(function () {
+      run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja', 'rebase')
+    }).to.throw(/Unknown strategy/)
   })
 
   it('reports each failing key with its reason', function () {
