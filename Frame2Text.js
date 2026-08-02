@@ -13,6 +13,7 @@
 // ・NW.js(MV同梱)でtext/<locale>や.t2f-baseのディレクトリ作成に失敗する不具合の修正
 // ・一括取り出しの実行結果に出力先・内訳・上書き件数・失敗理由を表示するよう改善
 // ・取り出したテキストで、文章の後に必ず1行空けて次のコマンドと切り離すよう改善
+// ・衝突したときの直し方(目印を消して反対側へ「上書き」で押し出す)をヘルプと案内文に明記
 // ・MZプラグインコマンドの一括取り出しでロケールと出力先の引数が入れ替わる不具合の修正
 // 1.0.1 2024/09/07:
 // ・#125 プラグインコマンドMZを変換する際、オブジェクト型を取り扱えない不具合の修正
@@ -276,10 +277,12 @@
  *    「取り出しのしかた」で上書きと統合を選べます（既定は上書き）。
  *    統合を選んだときは Text2Frame プラグインも導入されている必要があります。
  *
- * ◆ 共通の祖先の自動管理と、衝突の解決
+ * ◆ 共通の祖先の自動管理
  *  統合に使う「共通の祖先」は .t2f-base フォルダに自動で保存・参照されるため、
- *  通常は指定不要です。同じ場所をテキストとゲームの両方で変更したときは、次の
- *  目印で両方を残します（残したい方を残し、目印の3行を消すだけで解決）。
+ *  通常は指定不要です。
+ *
+ * ◆ 衝突（同じ場所を両方で変えたとき）の直し方
+ *  同じ場所をテキストとゲームの両方で変更したときは、次の目印で両方を残します。
  *
  *    === テキストの変更 / from text ===
  *    （テキスト側の内容）
@@ -287,9 +290,24 @@
  *    （ゲーム側の内容）
  *    === どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===
  *
- *  目印が残っているイベントやテキストは、解決するまで反映・取り出しの対象から
- *  外されます（そのまま実行すると目印ごと重なって増えてしまうためです）。
- *  どちらか一方を正としてやり直したいときは、上書きで一方向に流してください。
+ *  直し方は「目印のある方で決めて、反対側へ上書きで押し出す」の2手です。
+ *
+ *  ・取り出しで衝突した（目印がテキストに入った）とき
+ *     1. テキストの目印3行を消して残す方だけにする
+ *     2. Text2Frame の「反映」を上書きで実行する
+ *
+ *  ・反映で衝突した（目印がゲームに入った）とき
+ *     1. ツクールをセーブせずに開き直し、目印3行を消して残す方だけにする
+ *     2. 「取り出し」を上書きで実行する
+ *
+ *  衝突したファイルは共通の祖先を更新していません。上の2手でテキスト・ゲーム・
+ *  祖先の3つが揃い、次からまた統合が使えるようになります。
+ *
+ *  ※ 目印を消しただけで同じ向きにもう一度実行しても直るとは限りません。祖先が
+ *    古いままなので、反対側の変更を残した場合は同じ衝突がまた出ます。必ず反対側
+ *    へ「上書き」で押し出してください。
+ *  ※ 目印が残っているイベントやテキストは、解決するまで反映・取り出しの対象から
+ *    外されます（そのまま実行すると目印ごと重なって増えてしまうためです）。
  *
  *
  * -------------------------------------
@@ -2974,12 +2992,12 @@ function resolveText2Frame () {
       const r = buildPullText({ list: gameCommands, englishTag, strategy: 'merge', existingText, baseText, fallbackHeader })
       // 単発コマンドは対象が1つしかないので、見送りは黙って成功にせず理由を出して止める。
       if (r.skipped === 'game') {
-        throw new Error('未解決の衝突がゲーム側に残っています。目印3行を消してから取り出し直してください。' +
-          ' / unresolved conflict markers in the game data; resolve them first')
+        throw new Error('未解決の衝突がゲーム側に残っています。ツクールで目印3行を消して残す方を決めたあと、取り出しを上書きで実行してください。' +
+          ' / unresolved conflict markers in the game data; resolve in the editor, then pull with overwrite')
       }
       if (r.skipped) {
-        throw new Error('未解決の衝突がテキストに残っています。目印3行を消してから取り出し直してください。' +
-          ' / unresolved conflict markers in the text; resolve them first')
+        throw new Error('未解決の衝突がテキストに残っています。目印3行を消して残す方を決めたあと、Text2Frameの「反映」を上書きで実行してください。' +
+          ' / unresolved conflict markers in the text; resolve them, then import with overwrite')
       }
       const written = r.text
       try { mkdirpSync(require('path').dirname(outPath)) } catch (e) {}
@@ -2987,7 +3005,7 @@ function resolveText2Frame () {
       // 衝突が残っているときは共通祖先を進めない(Git 流。解決してから再実行させる)。
       if (r.conflicts) {
         logger.error('[merge-pull] ' + r.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath)
-        logger.error('[merge-pull] 衝突が残っているため .t2f-base は更新していません。解決後に再実行してください。 / conflicts remain; ancestor not updated')
+        logger.error('[merge-pull] 衝突が残っているため .t2f-base は更新していません。テキストの目印3行を消して残す方を決めたあと、反映を上書きで実行してください。 / conflicts remain; resolve the text, then import with overwrite')
       } else {
         try { T2F.saveBaseText(root, id.locale, id.key, written) } catch (e) {}
       }
@@ -3116,13 +3134,14 @@ function resolveText2Frame () {
       if (conflictSkipped.length > 0) {
         addMessage('[batch] 衝突未解決で取り出さなかったファイル: ' + conflictSkipped.slice(0, FAILURE_LINES).join(', ') +
           (conflictSkipped.length > FAILURE_LINES ? ' ほか' : ''))
-        addMessage('[batch] エディタで目印3行を消してから取り出し直してください(そのまま取り出すと衝突がテキストにも広がります)。')
+        addMessage('[batch] ツクールで目印3行を消して残す方を決めたあと、もう一度この一括取り出しを上書きで実行してください。')
         console.warn('[batch] skipped (unresolved conflict markers): ' + conflictSkipped.join(', '))
       }
       if (conflicted.length > 0) {
         addMessage('[batch] 衝突あり(両方残し) ' + conflicted.length + '件: ' + conflicted.slice(0, FAILURE_LINES).join(', ') +
           (conflicted.length > FAILURE_LINES ? ' ほか' : ''))
-        addMessage('[batch] 衝突したファイルは祖先(.t2f-base)を更新していません。目印3行を消してから取り出し直してください。')
+        addMessage('[batch] 衝突したファイルは祖先(.t2f-base)を更新していません。テキストの目印3行を消して残す方を決めたあと、')
+        addMessage('[batch] Text2Frameの一括反映を上書きで実行してください(取り出しのやり直しでは直りません)。')
         console.warn('[batch] conflicts kept both (ancestor not advanced): ' + conflicted.join(', '))
       }
       failures.slice(0, FAILURE_LINES).forEach(function (f) { addMessage('[batch] 失敗: ' + f) })
@@ -3402,12 +3421,15 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const skipped = results.filter(function (r) { return r.skipped })
     console.log(JSON.stringify({ total: results.length, failed: failures.length, conflicts: conflicted.length, skipped: skipped.length, strategy: batchStrategy, results }, null, 2))
     if (skipped.length > 0) {
-      console.warn('[batch] ' + skipped.length + ' file(s) skipped: unresolved conflict markers (resolve the 3 marker lines, then re-run): ' +
+      console.warn('[batch] ' + skipped.length + ' file(s) skipped: unresolved conflict markers ' +
+        '(resolve the 3 marker lines, then push that side out with --strategy overwrite): ' +
         skipped.map(function (r) { return r.textPath }).join(', '))
     }
     if (conflicted.length > 0) {
       // 衝突は失敗ではない(両方残して書き出してある)。ただし祖先は進めていないので知らせる。
-      console.warn('[batch] ' + conflicted.length + ' file(s) kept both sides; .t2f-base not advanced (resolve the 3 marker lines, then re-run): ' +
+      // 目印はテキストに入ったので、テキストで決めてから overwrite で反映して三者を揃える。
+      console.warn('[batch] ' + conflicted.length + ' file(s) kept both sides; .t2f-base not advanced ' +
+        '(resolve the markers in the text, then import with --strategy overwrite): ' +
         conflicted.map(function (r) { return r.textPath }).join(', '))
     }
     if (baseSaveError) {
