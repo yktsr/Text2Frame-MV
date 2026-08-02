@@ -141,8 +141,10 @@ function pullTarget (target, opts) {
   })
   // 未解決の目印が残っているものは書かない(そのまま取り出すと衝突がテキストにも広がる)。
   if (built.skipped) {
-    console.warn('[pull] skipped: unresolved conflict markers in the ' + built.skipped +
-      ' (resolve the 3 marker lines, then re-run): ' + textPath)
+    console.warn('[pull] skipped: unresolved conflict markers in the ' + built.skipped + '. ' +
+      (built.skipped === 'game'
+        ? 'Resolve them in the editor, then pull with --strategy overwrite: '
+        : 'Resolve them in the text, then push with --strategy overwrite: ') + textPath)
     return { ok: true, textPath, skipped: built.skipped }
   }
   const conflicts = built.conflicts || 0
@@ -155,9 +157,11 @@ function pullTarget (target, opts) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(textPath, written, 'utf8')
   if (o.guard) o.guard.record(textPath, written)
-  // 衝突が残っているときは共通祖先を進めない(Git 流。解決してから再実行させる)。
+  // 衝突が残っているときは共通祖先を進めない(Git 流)。目印を消したあとは反対側へ
+  // 上書きで押し出す必要がある(同じ向きのやり直しでは祖先が古いままで再発する)。
   if (conflicts) {
-    console.warn('[pull] ' + conflicts + ' conflict(s) kept both; .t2f-base not updated (resolve then re-run): ' + textPath)
+    console.warn('[pull] ' + conflicts + ' conflict(s) kept both; .t2f-base not updated ' +
+      '(resolve the markers, then push with --strategy overwrite): ' + textPath)
   } else {
     try {
       const id = T2F.deriveBaseId(textPath, { locale })

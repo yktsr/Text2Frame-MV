@@ -10,6 +10,7 @@
 // ・テキストの反映に「統合(merge)」を追加。RPGツクール上のUI編集(移動・分岐・スイッチ等)を壊さずに、テキストで行った編集をゲームへ反映できるようになりました(既定)。従来の「上書き(overwrite)」も選べます。
 // ・一括反映・一括取り出しコマンドを追加。すべてのイベント・コモンイベントを、1つのコマンドでゲームとテキストの間で同期できるようになりました。
 // ・Visual Studio Code 拡張に対応。反映・取り出し・英語化をUIから実行でき、シンタックスハイライトや保存時自動反映(Watch & Deploy)を利用できます。
+// ・衝突したときの直し方(目印を消して反対側へ「上書き」で押し出す)をヘルプと案内文に明記しました。同じ向きで反映し直しても直らない場合があるためです。
 // ・不具合を修正し、安定性を向上しました。
 // 2.2.4 2024/10/06:
 // ・#126 プロジェクトを本番用にデプロイメント後、プラグインを実行しようとすると警告メッセージを表示するように改善
@@ -488,16 +489,37 @@
  *  ゲームの内容をテキストへ書き出します。既定は「安全な統合」で、既にある翻訳
  *  などを残しつつ、ゲーム側で増えた・変わった箇所だけを取り込みます。
  *
- * ◆ 共通の祖先の自動管理と、競合の解決
+ * ◆ 共通の祖先の自動管理
  *  統合に使う「共通の祖先」は .t2f-base フォルダに自動で保存・参照されるため、
- *  通常は指定不要です。同じ場所をテキストとゲームの両方で変更したときは、次の
- *  目印で両方を残します（残したい方を残し、目印の3行を消すだけで解決）。
+ *  通常は指定不要です。
+ *
+ * ◆ 衝突（同じ場所を両方で変えたとき）の直し方
+ *  同じ場所をテキストとゲームの両方で変更したときは、次の目印で両方を残します。
  *
  *    === テキストの変更 / from text ===
  *    （テキスト側の内容）
  *    === ゲームの変更 / from game ===
  *    （ゲーム側の内容）
  *    === どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===
+ *
+ *  直し方は「目印のある方で決めて、反対側へ上書きで押し出す」の2手です。
+ *
+ *  ・反映で衝突した（目印がゲームに入った）とき
+ *     1. ツクールをセーブせずに開き直し、目印3行を消して残す方だけにする
+ *     2. Frame2Text の「取り出し」を上書きで実行する
+ *
+ *  ・取り出しで衝突した（目印がテキストに入った）とき
+ *     1. テキストの目印3行を消して残す方だけにする
+ *     2. 「反映」を上書き（IMPORT_MESSAGE_TO_EVENT 等）で実行する
+ *
+ *  衝突したファイルは共通の祖先を更新していません。上の2手でテキスト・ゲーム・
+ *  祖先の3つが揃い、次からまた統合が使えるようになります。
+ *
+ *  ※ 目印を消しただけで同じ向きにもう一度実行しても直るとは限りません。祖先が
+ *    古いままなので、反対側の変更を残した場合は同じ衝突がまた出ます。必ず反対側
+ *    へ「上書き」で押し出してください。
+ *  ※ 目印が残ったままの反映・取り出しは、目印が増えるのを防ぐため見送ります
+ *    （上書きは逃げ道として通します）。
  *
  * ◆ ボタン操作で使いたい場合
  *  Visual Studio Code 拡張「Text2Frame Language Support」を使うと、反映・取り出し・
@@ -4396,12 +4418,12 @@
       // 未解決の衝突が残ったままマージすると、目印ごと再マージされて目印が二重・三重に増え、
       // どちらが自分の変更か分からなくなる。解決を促して止める(上書き反映は逃げ道として通す)。
       if (hasConflictMarker(existing_events)) {
-        throw new Error('未解決の衝突がゲーム側に残っています。目印3行を消してから再実行してください。' +
-          ' / unresolved conflict markers in the game data; resolve them first')
+        throw new Error('未解決の衝突がゲーム側に残っています。ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を上書きで実行してください。' +
+          ' / unresolved conflict markers in the game data; resolve in the editor, then pull with overwrite')
       }
       if (hasConflictMarker(event_command_list)) {
-        throw new Error('未解決の衝突がテキストに残っています。目印3行を消してから再実行してください。' +
-          ' / unresolved conflict markers in the text; resolve them first')
+        throw new Error('未解決の衝突がテキストに残っています。目印3行を消して残す方を決めたあと、反映を上書きで実行してください。' +
+          ' / unresolved conflict markers in the text; resolve them, then import with overwrite')
       }
       // 祖先(BASE): 明示 BasePath 優先。無ければ .t2f-base/<locale>/<key> を自動参照。
       let base_cmds = null
@@ -10266,7 +10288,8 @@
       if (conflicted.length > 0) {
         addMessage('[batch-import] 衝突が未解決のファイル ' + conflicted.length + '件: ' + conflicted.slice(0, DETAIL_LINES).join(', ') +
           (conflicted.length > DETAIL_LINES ? ' ほか' : ''))
-        addMessage('[batch-import] 衝突したファイルは祖先(.t2f-base)を更新していません。目印3行を消してから再実行してください。')
+        addMessage('[batch-import] 衝突したファイルは祖先(.t2f-base)を更新していません。ツクールで目印3行を消して残す方を決めたあと、')
+        addMessage('[batch-import] Frame2Textの一括取り出しを上書きで実行してください(反映のやり直しでは直りません)。')
       }
       failures.slice(0, DETAIL_LINES).forEach(function (f) { addMessage('[batch-import] 失敗: ' + f) })
       if (failures.length > DETAIL_LINES) {
@@ -10380,7 +10403,7 @@
           merged.commands.concat([getCommandBottomEvent()])
         writeData(Laurus.Text2Frame.MapPath, map_data)
         // 衝突が残っているときは共通祖先を進めない(Git 流。解決してから再実行させる)。
-        if (merged.conflicts) addWarning('衝突が残っているため祖先(.t2f-base)は更新していません。解決後に再実行してください。 / conflicts remain; .t2f-base not updated')
+        if (merged.conflicts) addWarning('衝突が残っているため祖先(.t2f-base)は更新していません。ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を上書きで実行してください(反映のやり直しでは直りません)。 / conflicts remain; resolve in the editor, then pull with overwrite')
         else saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath)
         addMessage('Success / 書き出し成功！\n======> MapID: ' + Laurus.Text2Frame.MapID + ' -> EventID: ' + Laurus.Text2Frame.EventID + ' -> PageID: ' + Laurus.Text2Frame.PageID)
         break
@@ -10395,7 +10418,7 @@
         ce_data[Laurus.Text2Frame.CommonEventID].list =
           merged.commands.concat([getCommandBottomEvent()])
         writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
-        if (merged.conflicts) addWarning('衝突が残っているため祖先(.t2f-base)は更新していません。解決後に再実行してください。 / conflicts remain; .t2f-base not updated')
+        if (merged.conflicts) addWarning('衝突が残っているため祖先(.t2f-base)は更新していません。ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を上書きで実行してください(反映のやり直しでは直りません)。 / conflicts remain; resolve in the editor, then pull with overwrite')
         else saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath)
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break
