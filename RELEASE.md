@@ -14,6 +14,40 @@
 
 ---
 
+## まとめて作る
+
+3つ全部を作るなら [tools/pack-all.sh](tools/pack-all.sh) が一度でやります。**公開はしません**。
+`release/` に成果物を並べ、中身の検証結果を出すところまでです。
+
+```bash
+npm run pack:all
+```
+
+```
+release/
+  Text2Frame.js                              ← GitHub Releases に添付する生ファイル
+  Frame2Text.js
+  yktsr-text2frame-mv-2.3.0.tgz              ← npm publish するもの / ローカル検証にも使う
+  text2frame-language-support-0.1.1.vsix     ← vsce publish するもの
+```
+
+やること:
+
+- lint とテスト（コア＋拡張）を通す
+- ルートの cjs/es/umd バンドルを作り直す（B-1 の忘れやすいやつ）。差分が出たらコミットを促す
+- `npm pack` と `vsce package`
+- **同梱コンパイラがリポジトリの `Text2Frame.js` / `Frame2Text.js` と一致するか**を `.vsix` を
+  開いて突き合わせる（ここがずれると、本体を直したのに拡張だけ古い挙動になる）
+- 拡張の pre-release / 安定版はマイナー版の偶奇から判定（`--stable` / `--pre-release` で上書き）
+
+```bash
+npm run pack:all -- --skip-tests     # 検査を飛ばす(中身だけ見たいとき)
+npm run pack:all -- --stable         # 拡張を安定版として作る
+npm run pack:all -- --out /tmp/rel   # 出力先を変える
+```
+
+以下は、個別にやる場合と背景の説明です。
+
 ## 0. 共通の事前チェック
 
 リポジトリルートで:
