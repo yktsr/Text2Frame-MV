@@ -96,14 +96,15 @@ export function writeBackAndRefreshBase(
             getOutput().appendLine(`    write-back failed: ${ex.error}`);
         }
     }
-    // overwrite の直後も text==game なので、merge と同じく祖先を更新する。ただし衝突が残って
-    // いるときは進めない(祖先が衝突の先に行くと次回の 3-way が壊れる)。プラグイン・CLI・
-    // t2f-sync と同じ規則。目印3行を消して反対側へ上書きで押し出すと、そこで祖先が揃う。
+    // overwrite の直後も text==game なので、merge と同じく祖先を更新する。衝突していても
+    // 更新する: 祖先は「ここまでのテキストの変更はゲームが見た」の意味で、テキストの変更は
+    // 目印の中に入っている。据え置くと、ツクールで解決したあとの取り出しで同じ衝突が再発する。
+    // ただし衝突時の祖先は書き戻し後(finalText)ではなく反映したテキスト(originalText)。
+    // 書き戻しは目印ごとテキストへ持ち込むため、祖先に目印が入ってしまう。
     if (hadConflict) {
-        getOutput().appendLine('    BASE not advanced (conflicts to resolve)');
-        return;
+        getOutput().appendLine('    conflicts to resolve (BASE = deployed text)');
     }
-    saveBaseSnapshot(workspaceRoot, snap.locale, snap.key, finalText);
+    saveBaseSnapshot(workspaceRoot, snap.locale, snap.key, hadConflict ? originalText : finalText);
 }
 
 /** Locate and load the compiler module that exports applyTextFile(). */

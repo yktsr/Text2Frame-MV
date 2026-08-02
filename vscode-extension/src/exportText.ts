@@ -298,9 +298,13 @@ export function mergePullToText(
         const written = built.text as string;
         writeTextFile(target.textPath, written);
         recordDataStateFor(context, workspaceRoot, target);
-        // The just-written text becomes the new common ancestor — unless it still has conflicts
-        // to resolve. Advancing past an unresolved conflict breaks the next 3-way.
-        if (!built.conflicts && !built.markers) {
+        // The game side becomes the new common ancestor — even when the merge conflicted.
+        // BASE means "the text has seen the game up to here", not "the two agreed": the game's
+        // changes are in the text, between the markers. Holding it back would make the same
+        // conflict come back on the game side after the user resolves the text.
+        // The one exception is an ancestor that itself carries markers (overwrite pull), which
+        // the next 3-way would merge again.
+        if (!built.markers) {
             saveBaseFor(workspaceRoot, target, built.baseText as string);
         }
         return { ok: true, textPath: target.textPath, conflicts: built.conflicts, markers: built.markers };
