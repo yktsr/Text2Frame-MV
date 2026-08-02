@@ -169,7 +169,8 @@ function pullTarget (target, opts) {
   } else {
     try {
       const id = T2F.deriveBaseId(textPath, { locale })
-      T2F.saveBaseText(root, id.locale, id.key, written)
+      // 祖先はゲーム側(built.baseText)。マージ結果を入れると次の push でテキストが消える。
+      T2F.saveBaseText(root, id.locale, id.key, built.baseText)
     } catch (e) { /* best effort */ }
   }
   return { ok: true, textPath, conflicts, markers }
