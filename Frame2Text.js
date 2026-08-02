@@ -16,7 +16,7 @@
 // ・衝突したときの直し方(目印を消して反対側へ「上書き」で押し出す)をヘルプと案内文に明記
 // ・目印が残っていても「上書き」なら取り出せるよう改善。ツクールを開かずテキストだけで衝突を解決できます
 //   (統合は従来どおり見送り。目印ごと取り出したときは祖先(.t2f-base)を進めません)
-// ・一括取り出しの「取り出しのしかた」を2番目の引数へ移動(一括反映と同じ位置に統一)
+// ・一括取り出しの「取り出しのしかた」を1番目の引数へ移動(一番よく変える引数を先頭に。一括反映と同じ位置)
 // ・MZプラグインコマンドの一括取り出しでロケールと出力先の引数が入れ替わる不具合の修正
 // 1.0.1 2024/09/07:
 // ・#125 プラグインコマンドMZを変換する際、オブジェクト型を取り扱えない不具合の修正
@@ -162,12 +162,6 @@
  * @text フォルダへ一括取り出し
  * @desc dataフォルダ内の全イベント/コモンイベントを、見出し情報付きのテキストとしてフォルダへ一括で取り出します(既定は上書き)。
  *
- * @arg DataFolder
- * @text ゲームデータのフォルダ名
- * @desc 走査対象のゲームデータのフォルダ名です。デフォルトはdataです。通常、設定する必要はありません。
- * @type string
- * @default data
- *
  * @arg Strategy
  * @text 取り出しのしかた
  * @desc overwrite(上書き)はゲームの内容でテキストを全て置き換えます。merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。既定はoverwriteです。
@@ -177,6 +171,12 @@
  * @option merge
  * @value merge
  * @default overwrite
+ *
+ * @arg DataFolder
+ * @text ゲームデータのフォルダ名
+ * @desc 走査対象のゲームデータのフォルダ名です。デフォルトはdataです。通常、設定する必要はありません。
+ * @type string
+ * @default data
  *
  * @arg TextBase
  * @text テキストベースディレクトリ
@@ -394,6 +394,13 @@
  *   EXPORT_CE_TO_MESSAGE text message.txt 3
  *   コモンイベントをメッセージにエクスポート text message.txt 3
  *
+ * 例3:全イベント/コモンイベントをフォルダへ一括で取り出す（第1引数は取り出しの
+ *     しかた。省略すると上書き。テキストに書いた内容を残すときは merge を指定。
+ *     第2引数以降はデータのフォルダ名・出力先・ロケールで、通常は省略します）。
+ *   BATCH_EXPORT_MESSAGES_TO_FOLDER
+ *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge
+ *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge data text ja
+ *
 
  *
  * -------------------------------------
@@ -570,8 +577,8 @@ function resolveText2Frame () {
       const locale = args.Locale || 'ja'
       const text_base = args.TextBase || 'text'
       const strategy = args.Strategy || 'overwrite'
-      // 引数順は @arg の並びと合わせる(取り出しのしかたが2番目)。
-      this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER', [data_dir, strategy, text_base, locale])
+      // 引数順は @arg の並びと合わせる(取り出しのしかたが1番目)。
+      this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER', [strategy, data_dir, text_base, locale])
     })
   }
 
@@ -660,13 +667,13 @@ function resolveText2Frame () {
         break
 
       case 'BATCH_EXPORT_MESSAGES_TO_FOLDER': {
-        Laurus.Frame2Text.DataFolder = args[0] || 'data'
-        // 取り出しのしかたは2番目(一括反映の BATCH_IMPORT_MESSAGES_FROM_FOLDER と同じ位置)。
+        // 取り出しのしかたは1番目(一括反映の BATCH_IMPORT_MESSAGES_FROM_FOLDER と同じ位置)。
         // 既定は overwrite(従来どおり)。merge はテキストに書いた内容を残す。
-        const batchStrategy = String(args[1] || 'overwrite').toLowerCase()
+        const batchStrategy = String(args[0] || 'overwrite').toLowerCase()
         if (batchStrategy !== 'merge' && batchStrategy !== 'overwrite') {
-          throw new Error('Unknown strategy: ' + args[1] + ' / 戦略は merge か overwrite を指定してください。')
+          throw new Error('Unknown strategy: ' + args[0] + ' / 戦略は merge か overwrite を指定してください。')
         }
+        Laurus.Frame2Text.DataFolder = args[1] || 'data'
         Laurus.Frame2Text.TextBase = args[2] || 'text'
         Laurus.Frame2Text.Locale = args[3] || 'ja'
         Laurus.Frame2Text.BatchStrategy = batchStrategy
