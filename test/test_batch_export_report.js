@@ -116,32 +116,51 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     expect(line('取り出し対象が見つかりませんでした')).to.contain(empty)
   })
 
-  it('skips targets whose game side still has conflict markers, and keeps their text', function () {
-    const marker = function (text) { return { code: 108, indent: 0, parameters: [text] } }
-    fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify({
-      events: [null, msgEvent('こんにちは'), {
-        id: 2,
-        pages: [{ list: [
-          { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-          { code: 401, indent: 0, parameters: ['やあ'] },
-          marker('=== テキストの変更 / from text ==='),
-          marker('=== ゲームの変更 / from game ==='),
-          marker('=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='),
-          { code: 0, indent: 0, parameters: [] }
-        ] }]
-      }]
-    }), 'utf8')
-    const kept = path.join(tmp, 'text', 'ja', 'map001_event002_page1.txt')
-    fs.mkdirSync(path.dirname(kept), { recursive: true })
-    fs.writeFileSync(kept, 'これは残るべき翻訳\n', 'utf8')
+  describe('a game side that still has conflict markers', function () {
+    const ev2 = 'map001_event002_page1'
+    const kept = function () { return path.join(tmp, 'text', 'ja', ev2 + '.txt') }
+    beforeEach(function () {
+      const marker = function (text) { return { code: 108, indent: 0, parameters: [text] } }
+      fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify({
+        events: [null, msgEvent('こんにちは'), {
+          id: 2,
+          pages: [{ list: [
+            { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+            { code: 401, indent: 0, parameters: ['やあ'] },
+            marker('=== テキストの変更 / from text ==='),
+            marker('=== ゲームの変更 / from game ==='),
+            marker('=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='),
+            { code: 0, indent: 0, parameters: [] }
+          ] }]
+        }]
+      }), 'utf8')
+      fs.mkdirSync(path.join(tmp, 'text', 'ja'), { recursive: true })
+      fs.writeFileSync(kept(), 'これは残るべき翻訳\n', 'utf8')
+    })
 
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja')
+    it('is skipped by merge, which cannot merge across the markers', function () {
+      run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja', 'merge')
 
-    expect(line('取り出し完了')).to.contain('衝突未解決で除外 1件')
-    expect(line('衝突未解決で取り出さなかったファイル')).to.contain('map001_event002_page1')
-    // 除外したファイルのテキストと祖先は触っていない。
-    expect(fs.readFileSync(kept, 'utf8')).to.equal('これは残るべき翻訳\n')
-    expect(fs.existsSync(path.join(tmp, '.t2f-base', 'ja', 'map001_event002_page1.txt'))).to.equal(false)
+      expect(line('取り出し完了')).to.contain('衝突未解決で除外 1件')
+      expect(line('衝突未解決で取り出さなかったファイル')).to.contain(ev2)
+      // 除外したファイルのテキストと祖先は触っていない。
+      expect(fs.readFileSync(kept(), 'utf8')).to.equal('これは残るべき翻訳\n')
+      expect(fs.existsSync(basePathOf(ev2))).to.equal(false)
+    })
+
+    it('is exported markers and all by overwrite, so it can be resolved in the text', function () {
+      run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja')
+
+      const text = fs.readFileSync(kept(), 'utf8')
+      expect(text).to.contain('=== どちらかを残し') // 目印ごとテキストへ出ている
+      expect(text).to.contain('やあ')
+      expect(line('取り出し完了')).to.contain('目印ごと取り出し 1件')
+      expect(line('目印ごと取り出したファイル')).to.contain(ev2)
+      // 祖先に目印を取り込むと次回の 3-way が壊れるので進めない。
+      expect(fs.existsSync(basePathOf(ev2))).to.equal(false)
+      // 目印の無い方は通常どおり祖先まで進む。
+      expect(fs.existsSync(basePathOf(ev1))).to.equal(true)
+    })
   })
 
   it('merge keeps the translation in the text and brings in the game change', function () {

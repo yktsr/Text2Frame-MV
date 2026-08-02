@@ -139,36 +139,40 @@ function pullTarget (target, opts) {
     baseText: (entryStrategy === 'merge' && T2F.readBaseText(root, id.locale, id.key)) || '',
     fallbackHeader: F2T.renderFrontMatter(Object.assign({ locale }, target), target.kind)
   })
-  // 未解決の目印が残っているものは書かない(そのまま取り出すと衝突がテキストにも広がる)。
+  // 目印をまたいだ統合はできない(目印ごと再マージして二重化するため)。上書きなら取り出せる。
   if (built.skipped) {
-    console.warn('[pull] skipped: unresolved conflict markers in the ' + built.skipped + '. ' +
+    console.warn('[pull] skipped: cannot merge across unresolved conflict markers in the ' + built.skipped + '. ' +
       (built.skipped === 'game'
-        ? 'Resolve them in the editor, then pull with --strategy overwrite: '
+        ? 'Resolve them in the editor, or pull with --strategy overwrite and resolve in the text: '
         : 'Resolve them in the text, then push with --strategy overwrite: ') + textPath)
     return { ok: true, textPath, skipped: built.skipped }
   }
   const conflicts = built.conflicts || 0
+  const markers = !!built.markers
 
   const written = built.text
   const prev = readIfExists(textPath)
-  if (prev === written) return { ok: true, textPath, unchanged: true, conflicts }
+  if (prev === written) return { ok: true, textPath, unchanged: true, conflicts, markers }
 
   const dir = path.dirname(textPath)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(textPath, written, 'utf8')
   if (o.guard) o.guard.record(textPath, written)
-  // 衝突が残っているときは共通祖先を進めない(Git 流)。目印を消したあとは反対側へ
+  // 衝突・目印が残っているときは共通祖先を進めない(Git 流)。目印を消したあとは反対側へ
   // 上書きで押し出す必要がある(同じ向きのやり直しでは祖先が古いままで再発する)。
   if (conflicts) {
     console.warn('[pull] ' + conflicts + ' conflict(s) kept both; .t2f-base not updated ' +
       '(resolve the markers, then push with --strategy overwrite): ' + textPath)
+  } else if (markers) {
+    console.warn('[pull] exported with unresolved markers; .t2f-base not updated ' +
+      '(resolve the markers in the text, then push with --strategy overwrite): ' + textPath)
   } else {
     try {
       const id = T2F.deriveBaseId(textPath, { locale })
       T2F.saveBaseText(root, id.locale, id.key, written)
     } catch (e) { /* best effort */ }
   }
-  return { ok: true, textPath, conflicts }
+  return { ok: true, textPath, conflicts, markers }
 }
 
 function pullDataFile (dataFile, opts) {

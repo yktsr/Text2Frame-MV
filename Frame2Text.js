@@ -14,6 +14,8 @@
 // ・一括取り出しの実行結果に出力先・内訳・上書き件数・失敗理由を表示するよう改善
 // ・取り出したテキストで、文章の後に必ず1行空けて次のコマンドと切り離すよう改善
 // ・衝突したときの直し方(目印を消して反対側へ「上書き」で押し出す)をヘルプと案内文に明記
+// ・目印が残っていても「上書き」なら取り出せるよう改善。ツクールを開かずテキストだけで衝突を解決できます
+//   (統合は従来どおり見送り。目印ごと取り出したときは祖先(.t2f-base)を進めません)
 // ・MZプラグインコマンドの一括取り出しでロケールと出力先の引数が入れ替わる不具合の修正
 // 1.0.1 2024/09/07:
 // ・#125 プラグインコマンドMZを変換する際、オブジェクト型を取り扱えない不具合の修正
@@ -303,11 +305,22 @@
  *  衝突したファイルは共通の祖先を更新していません。上の2手でテキスト・ゲーム・
  *  祖先の3つが揃い、次からまた統合が使えるようになります。
  *
+ * ◆ ツクールを開かずに、テキストだけで解決したいとき
+ *  反映で衝突して目印がゲームに入った場合でも、「取り出し」を上書きで実行すれば
+ *  目印ごとテキストへ書き出せます（目印は注釈として往復するので壊れません）。
+ *
+ *     1. 「取り出し」を上書きで実行する（目印ごとテキストに出てくる）
+ *     2. テキストで目印3行を消して残す方だけにする
+ *     3. Text2Frame の「反映」を上書きで実行する
+ *
+ *  目印ごと取り出したときは共通の祖先を更新しません（祖先に目印が入ると次の統合
+ *  が壊れるため）。3 の上書き反映で祖先も揃います。
+ *
  *  ※ 目印を消しただけで同じ向きにもう一度実行しても直るとは限りません。祖先が
  *    古いままなので、反対側の変更を残した場合は同じ衝突がまた出ます。必ず反対側
  *    へ「上書き」で押し出してください。
- *  ※ 目印が残っているイベントやテキストは、解決するまで反映・取り出しの対象から
- *    外されます（そのまま実行すると目印ごと重なって増えてしまうためです）。
+ *  ※ 目印をまたぐ「統合」はできません（目印ごと再度まとめてしまい、目印が二重・
+ *    三重に増えるためです）。上書きは常に通ります。
  *
  *
  * -------------------------------------
@@ -2872,22 +2885,29 @@ function resolveText2Frame () {
 
     // 取り出し(ゲーム→テキスト)の本文を作る。merge のときだけ既存テキスト・祖先と 3-way する。
     // fs には触らない(ゲーム内は BASE_PATH、CLI は cwd と基準が違うため入出力は呼び出し側)。
-    // 戻り値: { text, conflicts } / 見送ったときは { skipped: 'game'|'text' }(text は返さない)。
+    // 戻り値: { text, conflicts, markers } / 見送ったときは { skipped: 'game'|'text' }(text は返さない)。
+    // markers は「書き出した本文に未解決の目印が入っている」印。呼び出し側は祖先を進めないこと。
     const buildPullText = function (opts) {
       opts = opts || {}
       const list = opts.list || []
       const englishTag = opts.englishTag !== false
       const existingText = opts.existingText || ''
       const merge = String(opts.strategy || 'overwrite').toLowerCase() === 'merge'
-      // 未解決の目印が残ったまま取り出すと、衝突がテキストと祖先にも広がって収拾がつかなくなる。
-      // 先に解決してもらうため、書き出す文字列を作らずに見送りを返す。
-      if (hasConflictMarker(list)) return { skipped: 'game', conflicts: 0 }
-      // 目印入りのテキストにマージすると目印ごと再マージされて二重化する。
+      // 目印入りのゲームを統合すると、目印ごと再マージされて二重・三重に増える。統合だけ見送る。
+      // 上書きは通す(テキスト側で解決したい人の入口。目印は注釈として往復するので壊れない)。
+      const gameMarkers = hasConflictMarker(list)
+      if (merge && gameMarkers) return { skipped: 'game', conflicts: 0 }
+      // 目印入りのテキストにマージしても同じく二重化する。
       if (merge && hasConflictMarkerInText(existingText)) return { skipped: 'text', conflicts: 0 }
       const header = normalizeHeader((existingText && frontMatterHeader(existingText)) || opts.fallbackHeader || '')
       // 既存テキストが無ければ突き合わせる相手がいないので、merge でも素の取り出しと同じ。
       if (!merge || !existingText) {
-        return { text: header + decompile(list, englishTag, { pretty: true }) + '\n', conflicts: 0 }
+        return {
+          text: header + decompile(list, englishTag, { pretty: true }) + '\n',
+          conflicts: 0,
+          // 目印を含んだまま書き出した。祖先に取り込むと次回の 3-way が目印込みになるので進めない。
+          markers: gameMarkers
+        }
       }
       const T2F = resolveText2Frame()
       if (!T2F || !T2F.applyMergePull) {
@@ -3032,10 +3052,12 @@ function resolveText2Frame () {
       let overwrittenCount = 0
       // 失敗は件数だけだと原因が分からないので、キーと理由を控えてまとめて出す。
       const failures = []
-      // 未解決の衝突が残っていて取り出しを見送ったもの。
+      // 未解決の衝突が残っていて取り出しを見送ったもの(統合のみ)。
       const conflictSkipped = []
       // merge で衝突を両方残したもの(祖先は進めない)。
       const conflicted = []
+      // 上書きで、目印が残ったままテキストへ書き出したもの(祖先は進めない)。
+      const markerCarried = []
       // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する。
       let _baseSaveError = null
       const _baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH
@@ -3104,9 +3126,11 @@ function resolveText2Frame () {
           // 全上書きで既存を潰した件数だけ知らせる(merge は上書きではない)。
           if (entryStrategy !== 'merge' && existingText) overwrittenCount++
           _fs.writeFileSync(outPath, built.text, 'utf8')
-          // 衝突が残っているときは祖先を進めない(解決してから取り出し直させる)。
+          // 衝突・目印が残っているときは祖先を進めない(祖先に目印が入ると次回の 3-way が壊れる)。
           if (built.conflicts) {
             conflicted.push(t.key)
+          } else if (built.markers) {
+            markerCarried.push(t.key)
           } else {
             try { _fs.writeFileSync(_path.join(_baseDir, t.key + '.txt'), built.text, 'utf8') } catch (e) { _baseSaveError = _baseSaveError || e }
           }
@@ -3124,7 +3148,8 @@ function resolveText2Frame () {
         console.warn('[batch] WARNING: .t2f-base ancestor NOT saved (' + (_baseSaveError.message || _baseSaveError) + '); next import applies text whole (no 3-way).')
       }
       addMessage('[batch] 取り出し完了(' + batchStrategy + '): 成功 ' + okCount + '件 (イベント ' + eventCount + ' / コモン ' + commonCount + ')、失敗 ' + errCount + '件' +
-        (conflictSkipped.length > 0 ? '、衝突未解決で除外 ' + conflictSkipped.length + '件' : ''))
+        (conflictSkipped.length > 0 ? '、衝突未解決で除外 ' + conflictSkipped.length + '件' : '') +
+        (markerCarried.length > 0 ? '、目印ごと取り出し ' + markerCarried.length + '件' : ''))
       addMessage('[batch] 出力先: ' + outDir)
       if (overwrittenCount > 0) {
         addMessage('[batch] 既存テキスト ' + overwrittenCount + '件を上書きしました(取り出しはマージしません)。')
@@ -3134,8 +3159,15 @@ function resolveText2Frame () {
       if (conflictSkipped.length > 0) {
         addMessage('[batch] 衝突未解決で取り出さなかったファイル: ' + conflictSkipped.slice(0, FAILURE_LINES).join(', ') +
           (conflictSkipped.length > FAILURE_LINES ? ' ほか' : ''))
-        addMessage('[batch] ツクールで目印3行を消して残す方を決めたあと、もう一度この一括取り出しを上書きで実行してください。')
+        addMessage('[batch] 統合はできません。ツクールで目印3行を消すか、上書きで取り出してテキスト側で解決してください。')
         console.warn('[batch] skipped (unresolved conflict markers): ' + conflictSkipped.join(', '))
+      }
+      if (markerCarried.length > 0) {
+        addMessage('[batch] 目印ごと取り出したファイル ' + markerCarried.length + '件: ' + markerCarried.slice(0, FAILURE_LINES).join(', ') +
+          (markerCarried.length > FAILURE_LINES ? ' ほか' : ''))
+        addMessage('[batch] 祖先(.t2f-base)は更新していません。テキストの目印3行を消して残す方を決めたあと、')
+        addMessage('[batch] Text2Frameの一括反映を上書きで実行してください。')
+        console.warn('[batch] exported with unresolved markers (ancestor not advanced): ' + markerCarried.join(', '))
       }
       if (conflicted.length > 0) {
         addMessage('[batch] 衝突あり(両方残し) ' + conflicted.length + '件: ' + conflicted.slice(0, FAILURE_LINES).join(', ') +
@@ -3149,7 +3181,7 @@ function resolveText2Frame () {
         addMessage('[batch] 他 ' + (failures.length - FAILURE_LINES) + '件の失敗はコンソール(F8)を参照してください。')
       }
       console.log('[batch] Completed (' + batchStrategy + '): ' + okCount + ' success (event ' + eventCount + ' / common ' + commonCount + '), ' +
-        errCount + ' errors, ' + conflicted.length + ' with conflicts -> ' + outDir +
+        errCount + ' errors, ' + conflicted.length + ' with conflicts, ' + markerCarried.length + ' with unresolved markers -> ' + outDir +
         (overwrittenCount > 0 ? ' (overwrote ' + overwrittenCount + ' existing text file(s))' : ''))
       return
     }
@@ -3175,10 +3207,15 @@ function resolveText2Frame () {
     // txtファイルを出力
     /** ********************************************** */
     writeData(Laurus.Frame2Text.TextPath, outputText)
+    // 目印ごと取り出した場合は祖先を進めない(祖先に目印が入ると次回の 3-way が壊れる)。
+    const _exportedMarkers = hasConflictMarker(map_events)
+    if (_exportedMarkers) {
+      addMessage('未解決の衝突の目印ごと取り出したため、祖先(.t2f-base)は更新していません。テキストの目印3行を消して残す方を決めたあと、反映を上書きで実行してください。')
+    }
     // 取り出し直後は text==game。overwrite でも次回反映の 3-way 祖先を更新する。
     try {
       const _T2Fx = resolveText2Frame()
-      if (_T2Fx && _T2Fx.saveBaseText && _T2Fx.deriveBaseId) {
+      if (!_exportedMarkers && _T2Fx && _T2Fx.saveBaseText && _T2Fx.deriveBaseId) {
         const _root = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH
         const _id = _T2Fx.deriveBaseId(Laurus.Frame2Text.TextPath, {})
         _T2Fx.saveBaseText(_root, _id.locale, _id.key, outputText)
@@ -3400,18 +3437,18 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           baseText,
           fallbackHeader: module.exports.renderFrontMatter(Object.assign({ locale }, t), t.kind)
         })
-        // 未解決の目印が残っているものは書かずに見送る(解決してから取り出し直させる)。
+        // 統合できないものは書かずに見送る(上書きなら目印ごと取り出せる)。
         if (built.skipped) {
           results.push({ ok: true, textPath, skipped: built.skipped })
           return
         }
         fs.mkdirSync(path.dirname(textPath), { recursive: true })
         fs.writeFileSync(textPath, built.text, 'utf8')
-        // 衝突が残っているときは祖先を進めない(解決してから取り出し直させる)。
-        if (!built.conflicts) {
+        // 衝突・目印が残っているときは祖先を進めない(祖先に目印が入ると次回の 3-way が壊れる)。
+        if (!built.conflicts && !built.markers) {
           try { fs.writeFileSync(path.join(baseDir, t.key + '.txt'), built.text, 'utf8') } catch (e) { baseSaveError = baseSaveError || e }
         }
-        results.push({ ok: true, textPath, conflicts: built.conflicts })
+        results.push({ ok: true, textPath, conflicts: built.conflicts, markers: built.markers })
       } catch (error) {
         results.push({ ok: false, key: t.key, error: error.message })
       }
@@ -3419,11 +3456,17 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const failures = results.filter(function (r) { return !r.ok })
     const conflicted = results.filter(function (r) { return r.ok && r.conflicts })
     const skipped = results.filter(function (r) { return r.skipped })
-    console.log(JSON.stringify({ total: results.length, failed: failures.length, conflicts: conflicted.length, skipped: skipped.length, strategy: batchStrategy, results }, null, 2))
+    const carried = results.filter(function (r) { return r.ok && r.markers })
+    console.log(JSON.stringify({ total: results.length, failed: failures.length, conflicts: conflicted.length, skipped: skipped.length, carried: carried.length, strategy: batchStrategy, results }, null, 2))
     if (skipped.length > 0) {
-      console.warn('[batch] ' + skipped.length + ' file(s) skipped: unresolved conflict markers ' +
-        '(resolve the 3 marker lines, then push that side out with --strategy overwrite): ' +
+      console.warn('[batch] ' + skipped.length + ' file(s) skipped: cannot merge across unresolved conflict markers ' +
+        '(resolve them, or pull with --strategy overwrite and resolve in the text): ' +
         skipped.map(function (r) { return r.textPath }).join(', '))
+    }
+    if (carried.length > 0) {
+      console.warn('[batch] ' + carried.length + ' file(s) exported with unresolved markers; .t2f-base not advanced ' +
+        '(resolve the markers in the text, then import with --strategy overwrite): ' +
+        carried.map(function (r) { return r.textPath }).join(', '))
     }
     if (conflicted.length > 0) {
       // 衝突は失敗ではない(両方残して書き出してある)。ただし祖先は進めていないので知らせる。

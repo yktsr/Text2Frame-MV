@@ -157,6 +157,29 @@ describe('t2f-sync controller', function () {
       expect(mapList().some(function (c) { return c.code === 108 })).to.equal(true)
     })
 
+    it('pulling with overwrite carries the markers into the text, so it can be resolved there', function () {
+      const res = sync.pullDataFile(mapPath(), Object.assign({}, opts, { strategy: 'overwrite' }))
+      expect(res[0].markers).to.equal(true)
+
+      const text = fs.readFileSync(evText(), 'utf8')
+      expect(text).to.contain('=== どちらかを残し') // 目印ごと出ている
+      expect(text).to.contain('テキストの版')
+      expect(text).to.contain('ゲームの版')
+      // 祖先に目印を取り込むと次回の 3-way が壊れるので進めない。
+      expect(fs.readFileSync(path.join(tmp, '.t2f-base', 'ja', 'map001_event001_page1.txt'), 'utf8'))
+        .to.not.contain('=== どちらかを残し')
+
+      // テキストで目印3行と片方を消し、上書きで反映すれば三者が揃う。
+      const header = text.slice(0, text.indexOf('\n---\n') + 5)
+      fs.writeFileSync(evText(), header + '\n<Face: (0)><Background: Window><WindowPosition: Bottom>\nテキストの版\n')
+      const push = sync.pushFile(evText(), Object.assign({}, opts, { strategy: 'overwrite' }))
+      expect(push.ok).to.equal(true)
+      expect(mapList().some(function (c) { return c.code === 108 })).to.equal(false)
+      expect(texts(mapList())).to.eql(['テキストの版'])
+      // 揃ったので、次の統合反映は衝突しない。
+      expect(sync.pushFile(evText(), opts).conflicts || 0).to.equal(0)
+    })
+
     it('resolving in the game then pulling with overwrite clears it for good', function () {
       resolveInGame()
       sync.pullDataFile(mapPath(), Object.assign({}, opts, { strategy: 'overwrite' }))
