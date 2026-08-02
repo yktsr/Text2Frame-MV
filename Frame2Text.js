@@ -13,6 +13,8 @@
 // ・NW.js(MV同梱)でtext/<locale>や.t2f-baseのディレクトリ作成に失敗する不具合の修正
 // ・一括取り出しの実行結果に出力先・内訳・上書き件数・失敗理由を表示するよう改善
 // ・取り出したテキストで、文章の後に必ず1行空けて次のコマンドと切り離すよう改善
+// ・統合の取り出しで、取り出し前にテキストへ書いた内容が次の反映で消える不具合の修正
+//   (祖先(.t2f-base)にマージ結果を保存していたため、次の3-wayが「ゲームが消した」と誤読していました)
 // ・衝突したときの直し方(目印を消して反対側へ「上書き」で押し出す)をヘルプと案内文に明記
 // ・目印が残っていても「上書き」なら取り出せるよう改善。ツクールを開かずテキストだけで衝突を解決できます
 //   (統合は従来どおり見送り。目印ごと取り出したときは祖先(.t2f-base)を進めません)
@@ -2895,8 +2897,14 @@ function resolveText2Frame () {
 
     // 取り出し(ゲーム→テキスト)の本文を作る。merge のときだけ既存テキスト・祖先と 3-way する。
     // fs には触らない(ゲーム内は BASE_PATH、CLI は cwd と基準が違うため入出力は呼び出し側)。
-    // 戻り値: { text, conflicts, markers } / 見送ったときは { skipped: 'game'|'text' }(text は返さない)。
+    // 戻り値: { text, baseText, conflicts, markers } / 見送ったときは { skipped: 'game'|'text' }。
     // markers は「書き出した本文に未解決の目印が入っている」印。呼び出し側は祖先を進めないこと。
+    //
+    // baseText は .t2f-base へ保存する内容で、text とは別物。祖先は「テキストとゲームが
+    // 実際に一致していた地点」でなければならず、取り出しで書き換えるのはテキストのほうなので、
+    // 祖先には書き換えなかった側=ゲームを入れる(反映が祖先にテキストを入れるのと対称)。
+    // ここに merge 結果を入れると、ゲームが一度も到達していない状態が祖先になり、次の反映で
+    // 3-way が「ゲームが消した」と誤読して、取り出し前にテキストへ書いた分が黙って消える。
     const buildPullText = function (opts) {
       opts = opts || {}
       const list = opts.list || []
@@ -2910,10 +2918,13 @@ function resolveText2Frame () {
       // 目印入りのテキストにマージしても同じく二重化する。
       if (merge && hasConflictMarkerInText(existingText)) return { skipped: 'text', conflicts: 0 }
       const header = normalizeHeader((existingText && frontMatterHeader(existingText)) || opts.fallbackHeader || '')
+      const gameText = header + decompile(list, englishTag, { pretty: true }) + '\n'
       // 既存テキストが無ければ突き合わせる相手がいないので、merge でも素の取り出しと同じ。
       if (!merge || !existingText) {
         return {
-          text: header + decompile(list, englishTag, { pretty: true }) + '\n',
+          // 上書きでは text がそのままゲームの内容なので、祖先も同じもので良い。
+          text: gameText,
+          baseText: gameText,
           conflicts: 0,
           // 目印を含んだまま書き出した。祖先に取り込むと次回の 3-way が目印込みになるので進めない。
           markers: gameMarkers
@@ -2929,7 +2940,7 @@ function resolveText2Frame () {
         baseBody: opts.baseText ? stripFrontMatter(opts.baseText) : '',
         englishTag
       })
-      return { text: header + r.text + '\n', conflicts: r.conflicts || 0 }
+      return { text: header + r.text + '\n', baseText: gameText, conflicts: r.conflicts || 0 }
     }
 
     // data ディレクトリを走査し、出力対象(イベント/コモンイベント)の routing メタだけを返す。
@@ -3037,7 +3048,8 @@ function resolveText2Frame () {
         logger.error('[merge-pull] ' + r.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath)
         logger.error('[merge-pull] 衝突が残っているため .t2f-base は更新していません。テキストの目印3行を消して残す方を決めたあと、反映を上書きで実行してください。 / conflicts remain; resolve the text, then import with overwrite')
       } else {
-        try { T2F.saveBaseText(root, id.locale, id.key, written) } catch (e) {}
+        // 祖先はゲーム側(r.baseText)。マージ結果を入れると次の反映でテキストの内容が消える。
+        try { T2F.saveBaseText(root, id.locale, id.key, r.baseText) } catch (e) {}
       }
       return
     }
@@ -3142,7 +3154,9 @@ function resolveText2Frame () {
           } else if (built.markers) {
             markerCarried.push(t.key)
           } else {
-            try { _fs.writeFileSync(_path.join(_baseDir, t.key + '.txt'), built.text, 'utf8') } catch (e) { _baseSaveError = _baseSaveError || e }
+            // 祖先はゲーム側(built.baseText)。マージ結果を入れるとゲームが到達していない
+            // 状態が祖先になり、次の反映でテキストの内容が消える。
+            try { _fs.writeFileSync(_path.join(_baseDir, t.key + '.txt'), built.baseText, 'utf8') } catch (e) { _baseSaveError = _baseSaveError || e }
           }
           if (t.kind === 'event') eventCount++
           else commonCount++
@@ -3459,7 +3473,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         fs.writeFileSync(textPath, built.text, 'utf8')
         // 衝突・目印が残っているときは祖先を進めない(祖先に目印が入ると次回の 3-way が壊れる)。
         if (!built.conflicts && !built.markers) {
-          try { fs.writeFileSync(path.join(baseDir, t.key + '.txt'), built.text, 'utf8') } catch (e) { baseSaveError = baseSaveError || e }
+          // 祖先はゲーム側(built.baseText)。理由は in-engine 側の同じ箇所を参照。
+          try { fs.writeFileSync(path.join(baseDir, t.key + '.txt'), built.baseText, 'utf8') } catch (e) { baseSaveError = baseSaveError || e }
         }
         results.push({ ok: true, textPath, conflicts: built.conflicts, markers: built.markers })
       } catch (error) {

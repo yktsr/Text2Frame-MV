@@ -124,6 +124,53 @@ describe('t2f-sync controller', function () {
     expect(fs.readFileSync(basePath, 'utf8')).to.equal(baseBefore)
   })
 
+  // 祖先(.t2f-base)は「テキストとゲームが実際に一致していた地点」でなければならない。
+  // 取り出しが書き換えるのはテキストなので、祖先にはゲーム側が入る。ここを間違えて
+  // マージ結果を祖先にすると、次の反映で 3-way が「ゲームが消した」と誤読して、
+  // 取り出し前にテキストへ書いた分が衝突 0 件のまま黙って消える。
+  it('pull records the game side as the ancestor, not the merged text', function () {
+    const mapPath = path.join(tmp, 'data', 'Map001.json')
+    sync.pullDataFile(mapPath, opts)
+
+    const basePath = path.join(tmp, '.t2f-base', 'ja', 'map001_event001_page1.txt')
+    const gameOnly = fs.readFileSync(basePath, 'utf8')
+    // テキストにだけ注釈を足してから取り出す(ゲームには入っていない内容)。
+    fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8') + '\n<comment>\nテキスト側のメモ\n</comment>\n')
+
+    sync.pullDataFile(mapPath, opts)
+
+    // 祖先はゲームのまま。マージ結果(メモ入り)になっていない。
+    expect(fs.readFileSync(basePath, 'utf8')).to.equal(gameOnly)
+    expect(fs.readFileSync(basePath, 'utf8')).to.not.contain('テキスト側のメモ')
+    expect(fs.readFileSync(evText(), 'utf8')).to.contain('テキスト側のメモ') // テキストには残る
+  })
+
+  it('a text-only edit made before a pull still reaches the game on the next push', function () {
+    const mapPath = path.join(tmp, 'data', 'Map001.json')
+    sync.pullDataFile(mapPath, opts)
+    // 取り出しより前にテキストへ書く
+    fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8') + '\n<comment>\nテキスト側のメモ\n</comment>\n')
+    // 開発者がゲーム側を別の場所で変える -> 取り出し(merge)は正しくマージする
+    const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
+    map.events[1].pages[0].list[1].parameters[0] = 'ゲーム側の変更'
+    fs.writeFileSync(mapPath, JSON.stringify(map))
+    sync.pullDataFile(mapPath, opts)
+    expect(fs.readFileSync(evText(), 'utf8')).to.contain('テキスト側のメモ')
+    expect(fs.readFileSync(evText(), 'utf8')).to.contain('ゲーム側の変更')
+
+    const res = sync.pushFile(evText(), opts)
+
+    expect(res.ok).to.equal(true)
+    expect(res.conflicts || 0).to.equal(0)
+    const list = mapList()
+    // 取り出し前に書いた注釈がゲームへ入っている(ここが抜けていた)
+    expect(list.some(function (c) {
+      return (c.code === 108 || c.code === 408) && String(c.parameters[0]).indexOf('テキスト側のメモ') !== -1
+    })).to.equal(true)
+    // ツクール側で足した構造も残っている
+    expect(list.some(function (c) { return c.code === 121 })).to.equal(true)
+  })
+
   // 衝突後の脱出手順(ヘルプ・案内文が指示している 2 手)を固定する。
   // 「目印のある方で決めて、反対側へ上書きで押し出す」でなければ祖先が古いままになる。
   describe('escaping a push conflict', function () {

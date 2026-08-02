@@ -33,7 +33,7 @@ interface Frame2TextModule {
         existingText?: string;
         baseText?: string;
         fallbackHeader?: string;
-    }) => { text?: string; conflicts?: number; markers?: boolean; skipped?: 'game' | 'text' };
+    }) => { text?: string; baseText?: string; conflicts?: number; markers?: boolean; skipped?: 'game' | 'text' };
     VERSION?: string;
 }
 
@@ -195,7 +195,7 @@ export function exportToTextFile(
         // Not when the text still carries unresolved markers — an ancestor with markers in it
         // makes the next 3-way merge them again.
         if (!built.markers) {
-            saveBaseFor(workspaceRoot, target, written);
+            saveBaseFor(workspaceRoot, target, built.baseText as string);
         }
         return { ok: true, textPath: target.textPath, markers: built.markers };
     } catch (e) {
@@ -218,9 +218,15 @@ function snapshotIdFor(target: ExportTarget): { locale: string; key: string } {
     };
 }
 
-function saveBaseFor(workspaceRoot: string, target: ExportTarget, written: string): void {
+/**
+ * BASE は「テキストとゲームが実際に一致していた地点」。取り出しで書き換えるのはテキストなので、
+ * 祖先には書き換えなかった側 = ゲーム(buildPullText の baseText)を入れる。マージ結果を入れると
+ * ゲームが到達していない状態が祖先になり、次の反映で 3-way が「ゲームが消した」と誤読して、
+ * 取り出し前にテキストへ書いた内容が黙って消える。
+ */
+function saveBaseFor(workspaceRoot: string, target: ExportTarget, gameSideText: string): void {
     const id = snapshotIdFor(target);
-    saveBaseSnapshot(workspaceRoot, id.locale, id.key, written);
+    saveBaseSnapshot(workspaceRoot, id.locale, id.key, gameSideText);
 }
 
 function recordDataStateFor(context: vscode.ExtensionContext, workspaceRoot: string, target: ExportTarget): void {
@@ -295,7 +301,7 @@ export function mergePullToText(
         // The just-written text becomes the new common ancestor — unless it still has conflicts
         // to resolve. Advancing past an unresolved conflict breaks the next 3-way.
         if (!built.conflicts && !built.markers) {
-            saveBaseFor(workspaceRoot, target, written);
+            saveBaseFor(workspaceRoot, target, built.baseText as string);
         }
         return { ok: true, textPath: target.textPath, conflicts: built.conflicts, markers: built.markers };
     } catch (e) {
