@@ -79,7 +79,9 @@ for f in Text2Frame.es.mjs Text2Frame.cjs.js Text2Frame.umd.js; do
   cmp -s "dist/$f" "$f" || fail "ルートの $f を更新できませんでした"
 done
 ok "ルートのバンドル3つを作り直しました"
+BUNDLES_STALE=0
 if ! git diff --quiet -- Text2Frame.es.mjs Text2Frame.cjs.js Text2Frame.umd.js; then
+  BUNDLES_STALE=1
   printf '\033[33m!!\033[0m ルートのバンドルが更新されました。公開前にコミットしてください:\n'
   printf '   git add Text2Frame.es.mjs Text2Frame.cjs.js Text2Frame.umd.js\n'
 fi
@@ -110,8 +112,38 @@ for f in Text2Frame.js Frame2Text.js; do
 done
 ok "$(basename "$VSIX") ($EXT_CHANNEL / 同梱コンパイラはリポジトリと一致)"
 
-step "できたもの"
-ls -1sh "$OUT"
+# --- 一覧 --------------------------------------------------------------------
+# 成果物の一覧を release/MANIFEST.txt に残す。手元でも CI でも同じものが出るので、
+# GitHub Actions はこのディレクトリをそのまま artifact に上げれば済む。
+step "一覧"
+sha256 () {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1
+  else shasum -a 256 "$1" | cut -d' ' -f1; fi
+}
+MANIFEST="$OUT/MANIFEST.txt"
+{
+  echo "Text2Frame-MV release artifacts"
+  echo "generated : $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  echo "commit    : $(git rev-parse HEAD 2>/dev/null || echo 'n/a')"
+  echo "branch    : $(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'n/a')"
+  echo "plugin/npm: $PKG_VERSION"
+  echo "vscode ext: $EXT_VERSION ($EXT_CHANNEL)"
+  echo
+  printf '%10s  %-64s  %s\n' BYTES SHA256 FILE
+  for f in "$OUT"/*; do
+    [ "$f" = "$MANIFEST" ] && continue
+    printf '%10s  %-64s  %s\n' "$(wc -c < "$f" | tr -d ' ')" "$(sha256 "$f")" "$(basename "$f")"
+  done
+  echo
+  echo "checks"
+  echo "  vsix bundled compiler == repo : OK"
+  if [ "$BUNDLES_STALE" -eq 1 ]; then
+    echo "  committed cjs/es/umd bundles  : STALE (作り直したものをコミットしてください)"
+  else
+    echo "  committed cjs/es/umd bundles  : OK"
+  fi
+} > "$MANIFEST"
+cat "$MANIFEST"
 cat <<EOS
 
 公開はしていません。次にやることは RELEASE.md を参照:

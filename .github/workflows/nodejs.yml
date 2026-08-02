@@ -76,3 +76,40 @@ jobs:
           name: vscode-extension-vsix-${{ github.run_number }}
           path: vscode-extension/text2frame-language-support-*.vsix
           if-no-files-found: error
+
+  # リリース物を3つまとめて作り、一覧(MANIFEST.txt)ごと artifact に上げる。
+  # 手元の `npm run pack:all` と同じ tools/pack-all.sh を呼ぶので、CI で採れたものと
+  # 手元で作ったものが同じ手順・同じ検証を通っていることが保証される。
+  # 検査は core / extension ジョブが済ませているので --skip-tests で二度手間を避ける。
+  package:
+    name: Package all artifacts
+    needs: [core, extension]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          cache: 'npm'
+      - name: Install dependencies (core)
+        run: npm ci
+      - name: Install dependencies (extension)
+        run: npm ci
+        working-directory: vscode-extension
+      - name: Pack all
+        run: npm run pack:all -- --skip-tests
+      - name: Summary
+        run: |
+          {
+            echo '## リリース物'
+            echo
+            echo '```'
+            cat release/MANIFEST.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ github.run_number }}
+          path: release/
+          if-no-files-found: error

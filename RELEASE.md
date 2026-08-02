@@ -46,6 +46,38 @@ npm run pack:all -- --stable         # 拡張を安定版として作る
 npm run pack:all -- --out /tmp/rel   # 出力先を変える
 ```
 
+一覧は `release/MANIFEST.txt` に残ります。版番号・コミット・各ファイルの
+サイズと SHA256・検証結果が入っているので、配布物の取り違えはこれで照合できます。
+
+```
+Text2Frame-MV release artifacts
+generated : 2026-08-02T09:46:16Z
+commit    : 9613dab1e939f4d8b43907c9df6451ce884d060e
+plugin/npm: 2.3.0
+vscode ext: 0.1.1 (pre)
+
+     BYTES  SHA256                                    FILE
+    182887  71b44846df69bc...                         Frame2Text.js
+    ...
+checks
+  vsix bundled compiler == repo : OK
+  committed cjs/es/umd bundles  : OK
+```
+
+## CI から取る
+
+[.github/workflows/nodejs.yml](.github/workflows/nodejs.yml) の `package` ジョブが
+**同じ `tools/pack-all.sh`** を呼び、`release/` をまるごと artifact
+（`release-<run番号>`）に上げます。手元で作ったものと CI のものが同じ手順・同じ検証を
+通っていることになります。
+
+- `core` と `extension` ジョブの後に走ります（検査は済んでいるので `--skip-tests`）
+- `MANIFEST.txt` はジョブの Summary にも出るので、ダウンロードしなくても一覧を見られます
+- push（master）と PR の両方で走ります
+
+タグを打つ前に中身を確かめたいときは、CI の artifact を取ってきて
+`shasum -a 256` を MANIFEST と突き合わせてください。
+
 以下は、個別にやる場合と背景の説明です。
 
 ## 0. 共通の事前チェック
