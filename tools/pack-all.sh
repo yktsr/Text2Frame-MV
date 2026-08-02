@@ -63,17 +63,28 @@ fi
 rm -rf "$OUT"
 mkdir -p "$OUT"
 
-# --- 1. ツクール用プラグイン -------------------------------------------------
-# 配布物はビルド成果物ではなくリポジトリの生ファイルそのもの。GitHub Releases に添付する。
-step "1/3 ツクール用プラグイン"
-cp Text2Frame.js Frame2Text.js "$OUT/"
-ok "Text2Frame.js / Frame2Text.js"
-
-# --- 2. npm パッケージ -------------------------------------------------------
-# rollup は dist/ に出すが、公開されるのは package.json の files に並んだ「ルートの」
-# バンドル。ここで作り直してからでないと古いものが同梱される (RELEASE.md B-1)。
-step "2/3 npm パッケージ"
+# --- 1. ビルド ---------------------------------------------------------------
+# rollup(dist/ へ) + 刻印。刻印は「利用者の手元にある1枚がどの版をいつ作ったものか」を
+# 辿るためのもので、プラグインは単体で配るため他にメタデータの置き場が無い。
+step "1/3 ビルドと刻印"
 npm run build:dist
+BANNER="$(head -1 dist/Text2Frame.js)"
+case "$BANNER" in
+  '/* Text2Frame-MV | version: '*) ok "$BANNER" ;;
+  *) fail "刻印が入っていません: $BANNER" ;;
+esac
+
+# --- 2. ツクール用プラグイン / npm パッケージ ---------------------------------
+# GitHub Releases に添付するのは刻印付きのほう(dist/)。生ファイルは刻印が無く、
+# 利用者が手元の1枚を見てもいつのものか分からない。
+step "2/3 ツクール用プラグイン / npm パッケージ"
+cp dist/Text2Frame.js dist/Frame2Text.js "$OUT/"
+for f in Text2Frame.js Frame2Text.js; do
+  head -1 "$OUT/$f" | grep -q '^/\* Text2Frame-MV | version: ' || fail "$OUT/$f に刻印がありません"
+done
+ok "Text2Frame.js / Frame2Text.js (刻印付き)"
+# 公開されるのは package.json の files に並んだ「ルートの」バンドル。ここで作り直して
+# からでないと古いものが同梱される (RELEASE.md B-1)。
 cp dist/Text2Frame.es.mjs dist/Text2Frame.cjs.js dist/Text2Frame.umd.js .
 for f in Text2Frame.es.mjs Text2Frame.cjs.js Text2Frame.umd.js; do
   cmp -s "dist/$f" "$f" || fail "ルートの $f を更新できませんでした"
