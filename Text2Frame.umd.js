@@ -1,4 +1,3 @@
-/* Text2Frame-MV dist | version: 2.3.0 | build: local */
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('path'), require('fs'), require('node:events'), require('node:child_process'), require('node:path'), require('node:fs'), require('node:process')) :
 	typeof define === 'function' && define.amd ? define(['path', 'fs', 'node:events', 'node:child_process', 'node:path', 'node:fs', 'node:process'], factory) :

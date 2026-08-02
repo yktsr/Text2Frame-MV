@@ -1,4 +1,3 @@
-/* Text2Frame-MV dist | version: 2.3.0 | build: local */
 'use strict';
 
 var require$$0$1 = require('path');

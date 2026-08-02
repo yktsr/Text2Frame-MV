@@ -25,10 +25,11 @@ npm run pack:all
 
 ```
 release/
-  Text2Frame.js                              ← GitHub Releases に添付する生ファイル
+  Text2Frame.js                              ← GitHub Releases に添付する(刻印付き)
   Frame2Text.js
   yktsr-text2frame-mv-2.3.0.tgz              ← npm publish するもの / ローカル検証にも使う
   text2frame-language-support-0.1.1.vsix     ← vsce publish するもの
+  MANIFEST.txt                               ← 一覧(版・コミット・SHA256・検証結果)
 ```
 
 やること:
@@ -74,6 +75,10 @@ checks
 - `core` と `extension` ジョブの後に走ります（検査は済んでいるので `--skip-tests`）
 - `MANIFEST.txt` はジョブの Summary にも出るので、ダウンロードしなくても一覧を見られます
 - push（master）と PR の両方で走ります
+- **成果物のアップロードはこのジョブだけ**です。以前は `core` が `dist/*` を、
+  `extension` が `.vsix` を別々に上げていましたが、`extension` の `.vsix` には
+  `--pre-release` が付かず、pre-release のつもりの版を安定版として出せてしまうため
+  一本化しました
 
 タグを打つ前に中身を確かめたいときは、CI の artifact を取ってきて
 `shasum -a 256` を MANIFEST と突き合わせてください。
@@ -103,14 +108,38 @@ CI（[.github/workflows/nodejs.yml](.github/workflows/nodejs.yml)）が push / P
 
 ---
 
+## 手元のファイルがどの版か調べる
+
+プラグインは `.js` を1枚だけ配るので、`package.json` のような外側のメタデータが
+ありません。そのぶんファイルの先頭に刻印を入れています。**利用者から
+「動かない」と言われたら、まずこの1行を見せてもらってください。**
+
+```
+/* Text2Frame-MV | version: 2.3.0 | built: 2026-08-02T09:58:26Z | commit: b72a9dcef194 */
+```
+
+- `version` … `package.json` の版
+- `built` … ビルド時刻（UTC）
+- `commit` … そのビルドのコミット。手元ビルドで未コミットの変更があると `+dirty` が付く
+
+刻印は [tools/stamp-build-meta.js](tools/stamp-build-meta.js) が `npm run build:dist` の
+中で入れます。**刻印が付くのは `dist/Text2Frame.js` と `dist/Frame2Text.js` だけ**で、
+リポジトリルートの生ファイルには付きません。配布するのは刻印付きのほうです。
+
+cjs/es/umd バンドルには入れていません。npm 経由でしか渡らず版と公開日時はレジストリが
+持っているうえ、リポジトリにコミットする成果物なので、時刻が入ると毎ビルド差分が出て
+「古いかどうか」の判定が効かなくなるためです。
+
 ## A. ツクール用プラグイン（GitHub Releases）
 
-利用者は `js/plugins/` に置く生の `.js` を1枚ダウンロードします。ビルド成果物ではなく
-**リポジトリルートの生ファイルそのもの**が配布物です。
+利用者は `js/plugins/` に置く `.js` を1枚ダウンロードします。添付するのは
+**`npm run pack:all` が出す刻印付きの `release/Text2Frame.js` / `release/Frame2Text.js`**
+です（リポジトリルートの生ファイルではありません。刻印が無く、手元の1枚を見ても
+いつのものか分からないためです）。
 
 1. `Text2Frame.js` / `Frame2Text.js` の `@help` 内 Version 節と、ファイル冒頭の
    `// Version` コメントに変更履歴を追記する。
-2. `package.json` の `version` を上げる。
+2. `package.json` の `version` を上げる（刻印の `version` はここを読みます）。
 3. [README.md](README.md) のダウンロードバッジ（先頭付近）のリンク先バージョンを差し替える。
    `https://github.com/yktsr/Text2Frame-MV/releases/download/<version>/Text2Frame.js`
 4. コミットしてタグを打つ。既存のタグはバージョンそのまま（`2.2.4` など）:

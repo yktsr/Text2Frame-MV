@@ -34,17 +34,8 @@ jobs:
         run: npm test
       - name: Round-trip test (Frame2Text, 130 cases)
         run: npm run test_frame2text
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: Text2Frame-MV-${{ env.BUILD_VERSION }}-${{ github.run_number }}
-          path: |
-            dist/Frame2Text.js
-            dist/Text2Frame.js
-            dist/Text2Frame.cjs.js
-            dist/Text2Frame.es.mjs
-            dist/Text2Frame.umd.js
-          if-no-files-found: error
+      # 成果物のアップロードは package ジョブに一本化した(そちらが刻印付きの配布物と
+      # MANIFEST を出す)。ここは検査だけ。
 
   extension:
     name: VS Code extension (compile + lint)
@@ -65,17 +56,9 @@ jobs:
       - name: Lint
         run: npm run lint
         working-directory: vscode-extension
-      - name: Package VSIX
-        run: |
-          VERSION="$(node -e 'console.log(require("./package.json").version)')"
-          npx @vscode/vsce package --out text2frame-language-support-${VERSION}.vsix
-        working-directory: vscode-extension
-      - name: Upload VSIX artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: vscode-extension-vsix-${{ github.run_number }}
-          path: vscode-extension/text2frame-language-support-*.vsix
-          if-no-files-found: error
+      # .vsix の作成とアップロードは package ジョブへ移した。ここで作ると
+      # --pre-release が付かず、pre-release のつもりの版が安定版として出せてしまう
+      # (見た目が同じ .vsix が2つ並ぶのも取り違えのもと)。
 
   # リリース物を3つまとめて作り、一覧(MANIFEST.txt)ごと artifact に上げる。
   # 手元の `npm run pack:all` と同じ tools/pack-all.sh を呼ぶので、CI で採れたものと

@@ -1,4 +1,3 @@
-/* Text2Frame-MV dist | version: 2.3.0 | build: local */
 import require$$0$1 from 'path';
 import require$$1$1 from 'fs';
 import require$$0 from 'node:events';
