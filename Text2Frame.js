@@ -11,6 +11,7 @@
 // ・一括反映・一括取り出しコマンドを追加。すべてのイベント・コモンイベントを、1つのコマンドでゲームとテキストの間で同期できるようになりました。
 // ・Visual Studio Code 拡張に対応。反映・取り出し・英語化をUIから実行でき、シンタックスハイライトや保存時自動反映(Watch & Deploy)を利用できます。
 // ・衝突したときの直し方(目印を消して反対側へ「上書き」で押し出す)をヘルプと案内文に明記しました。同じ向きで反映し直しても直らない場合があるためです。
+// ・一括反映の「一括反映戦略」を1番目の引数へ移動しました(一番よく変える引数を先頭に。一括取り出しと同じ位置)。
 // ・不具合を修正し、安定性を向上しました。
 // 2.2.4 2024/10/06:
 // ・#126 プロジェクトを本番用にデプロイメント後、プラグインを実行しようとすると警告メッセージを表示するように改善
@@ -179,12 +180,6 @@
  * @text フォルダから一括取り込み
  * @desc 指定フォルダ内の見出し情報付きテキストを、一括でゲームへ反映します。
  *
- * @arg TextFolder
- * @text 取り込み元フォルダ名
- * @desc 走査するテキストフォルダ名です。デフォルトはtextです。
- * @type string
- * @default text
- *
  * @arg Strategy
  * @text 一括反映戦略
  * @desc merge(差分更新) / overwrite(テキストで全上書き) を選択できます。既定はmergeです。
@@ -194,6 +189,12 @@
  * @option overwrite
  * @value overwrite
  * @default merge
+ *
+ * @arg TextFolder
+ * @text 取り込み元フォルダ名
+ * @desc 走査するテキストフォルダ名です。デフォルトはtextです。
+ * @type string
+ * @default text
  *
  *
  * @command MERGE_MESSAGE_TO_EVENT
@@ -711,10 +712,12 @@
  *   IMPORT_MESSAGE_TO_CE text message.txt 3 true
  *   メッセージをコモンイベントにインポート text message.txt 3 true
  *
- * 例3:フォルダ内のテキストを一括反映する（第1引数は取り込み元フォルダ名。省略すると
- *     text。第2引数は反映のしかた。省略すると統合。全上書きは overwrite を指定）。
- *   BATCH_IMPORT_MESSAGES_FROM_FOLDER text
- *   BATCH_IMPORT_MESSAGES_FROM_FOLDER text overwrite
+ * 例3:フォルダ内のテキストを一括反映する（第1引数は反映のしかた。省略すると統合。
+ *     全上書きは overwrite を指定。第2引数は取り込み元フォルダ名。省略すると text）。
+ *   BATCH_IMPORT_MESSAGES_FROM_FOLDER
+ *   BATCH_IMPORT_MESSAGES_FROM_FOLDER overwrite
+ *   BATCH_IMPORT_MESSAGES_FROM_FOLDER overwrite text
+ *   一括反映 overwrite text
  *
  * ◆ 旧版のプラグインコマンドの引数(非推奨)
  *  最新版(ツクールMZ対応後,ver2.0.0)と旧版(ツクールMZ対応前,ver1.4.1)では、
@@ -4260,7 +4263,8 @@
     PluginManager.registerCommand('Text2Frame', 'BATCH_IMPORT_MESSAGES_FROM_FOLDER', function (args) {
       const text_folder = args.TextFolder
       const strategy = args.Strategy
-      this.pluginCommand('BATCH_IMPORT_MESSAGES_FROM_FOLDER', [text_folder, strategy])
+      // 引数順は @arg の並びと合わせる(反映のしかたが1番目)。
+      this.pluginCommand('BATCH_IMPORT_MESSAGES_FROM_FOLDER', [strategy, text_folder])
     })
   }
 
@@ -4563,8 +4567,9 @@
       case 'BATCH_IMPORT_MESSAGES_FROM_FOLDER' :
       case '一括反映' :
         addMessage('batch import from folder. \n/ フォルダから一括反映します。')
-        Laurus.Text2Frame.ImportFolder = args[0] || 'text'
-        Laurus.Text2Frame.BatchStrategy = String(args[1] || 'merge').toLowerCase()
+        // 反映のしかたは1番目(一括取り出しの BATCH_EXPORT_MESSAGES_TO_FOLDER と同じ位置)。
+        Laurus.Text2Frame.BatchStrategy = String(args[0] || 'merge').toLowerCase()
+        Laurus.Text2Frame.ImportFolder = args[1] || 'text'
         Laurus.Text2Frame.ExecMode = 'BATCH_IMPORT_MESSAGES_FROM_FOLDER'
         break
       case 'COMMAND_LINE' :

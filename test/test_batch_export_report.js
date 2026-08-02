@@ -44,11 +44,11 @@ function msgEvent (line) {
 describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   let tmp
   let cwd
-  // 実引数の並びは [DataFolder, Strategy, TextBase, Locale]。テストは呼びやすさ優先で
+  // 実引数の並びは [Strategy, DataFolder, TextBase, Locale]。テストは呼びやすさ優先で
   // strategy を末尾に置き、ここで実際の並びへ組み替える(位置がずれれば全件落ちる)。
   const run = function (dataDir, textBase, locale, strategy) {
     shown.length = 0
-    Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [dataDir, strategy, textBase, locale])
+    Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [strategy, dataDir, textBase, locale])
   }
   const line = function (needle) {
     return shown.filter(function (t) { return t.indexOf(needle) !== -1 })[0]
@@ -86,13 +86,14 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     fs.rmSync(tmp, { recursive: true, force: true })
   })
 
-  it('takes the strategy as its 2nd argument, like the batch import does', function () {
+  it('takes the strategy as its 1st argument, like the batch import does', function () {
     shown.length = 0
     Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-      [path.join(tmp, 'data'), 'merge', path.join(tmp, 'text'), 'ja'])
+      ['merge', path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja'])
 
     expect(line('取り出し完了(merge)')).to.be.a('string')
-    // 3番目・4番目がそのまま出力先とロケールとして読まれている。
+    // 2〜4番目がそのままデータ元・出力先・ロケールとして読まれている。
+    expect(line('取り出し完了(merge)')).to.contain('成功 3件')
     expect(line('出力先')).to.equal('[batch] 出力先: ' + path.join(tmp, 'text', 'ja'))
   })
 

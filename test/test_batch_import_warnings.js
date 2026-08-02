@@ -88,8 +88,10 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     }
   })
 
+  // 実引数の並びは [Strategy, TextFolder]。テストは呼びやすさ優先で root を先に取り、
+  // ここで実際の並びへ組み替える(位置がずれれば全件落ちる)。
   const runBatch = function (root, strategy) {
-    Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', [root || textRoot, strategy || 'merge'])
+    Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', [strategy || 'merge', root || textRoot])
   }
   const countShown = function (needle) {
     return shown.filter(function (t) { return t.indexOf(needle) !== -1 }).length
@@ -97,6 +99,17 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
   const line = function (needle) {
     return shown.filter(function (t) { return t.indexOf(needle) !== -1 })[0]
   }
+
+  it('takes the strategy as its 1st argument, like the batch export does', function () {
+    Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', ['overwrite', textRoot])
+
+    // 1番目が反映のしかたとして読まれ、2番目がそのまま反映元フォルダとして読まれている。
+    // (位置が入れ替わっていると 'overwrite' をフォルダ名として走査し 0 件になる)
+    expect(line('反映完了')).to.contain('成功 3件')
+    expect(line('反映元')).to.contain(textRoot)
+    // overwrite なので 3-way の祖先まわりの警告(初回反映)は出ない。
+    expect(countShown('初回反映')).to.equal(0)
+  })
 
   it('shows a repeated warning once with its count, not once per file', function () {
     runBatch()
