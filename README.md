@@ -240,7 +240,7 @@ Hello
 
 ### 2. 取り出し（JSON -> text、既定は merge）
 
-取り出し（pull）も**既定は merge**で、**既存の翻訳を残したまま**ゲーム側の新規・変更だけを取り込みます（同一箇所を双方で変えたら両方残す）。白紙から取り直したいときだけ `--strategy overwrite`。
+取り出し（pull）も**既定は merge**で、**既存の翻訳を残したまま**ゲーム側の新規・変更だけを取り込みます（同一箇所を双方で変えたら両方残す）。白紙から取り直したいときだけ `--strategy overwrite`。CLI・t2f-sync・VS Code・プラグインコマンド（`BATCH_EXPORT_MESSAGES_TO_FOLDER`）すべてで既定は merge です。
 
 ```bash
 # 単発（既定 merge：翻訳を残す）
@@ -334,7 +334,7 @@ node t2f-sync.js --watch --direction both --locale ja --strategy merge
 | 操作 | VS Code | CLI | プラグイン(MZ) |
 | --- | --- | --- | --- |
 | ゲームに反映(merge/overwrite) | パネル「ゲームに反映」 | `Text2Frame.js --mode map/common/batch [--strategy merge\|overwrite]` | `MERGE_MESSAGE_TO_EVENT`/`_TO_CE`・`IMPORT_MESSAGE_TO_*`・`BATCH_IMPORT_MESSAGES_FROM_FOLDER` |
-| ゲームから取り出し(merge/overwrite) | パネル「ゲームから取り出す」 | `Frame2Text.js --mode map/common/batch [--strategy merge\|overwrite]` | `MERGE_EVENT_TO_MESSAGE`/`_CE`(翻訳保持)・`EXPORT_*`(上書き)・`BATCH_EXPORT_MESSAGES_TO_FOLDER` |
+| ゲームから取り出し(merge/overwrite) | パネル「ゲームから取り出す」 | `Frame2Text.js --mode map/common/batch [--strategy merge\|overwrite]` | `MERGE_EVENT_TO_MESSAGE`/`_CE`(翻訳保持)・`EXPORT_*`(上書き)・`BATCH_EXPORT_MESSAGES_TO_FOLDER`(既定 merge) |
 | 3-way 祖先 | 自動 `.t2f-base` | 自動 `.t2f-base`（`--base` 任意） | 自動 `.t2f-base`（`BaseFolder`/`BaseFileName` 任意） |
 | 競合(両方残す) | あり | あり | あり |
 | 反映時のテキスト書き戻し | 保存時に自動書き戻し | — | — |

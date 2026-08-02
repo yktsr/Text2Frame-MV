@@ -7,8 +7,10 @@
 // ----------------------------------------------------------------------------
 // Version
 // 1.1.0 2026/08/02:
-// ・一括取り出しに取り出しのしかた(上書き/統合)を追加。統合はテキストに書いた内容を残したまま
-//   ゲーム側の変更だけを取り込みます(プラグインの既定は上書き、CLIは--strategyに従い既定は統合)
+// ・一括取り出しに取り出しのしかた(統合/上書き)を追加。統合はテキストに書いた内容を残したまま
+//   ゲーム側の変更だけを取り込みます(既定は統合。CLI・t2f-sync・VSCodeと同じ)
+// ・衝突しても共通の祖先を進めるよう修正。目印3行を消して決着をつければ、統合のまま
+//   反対側へ流せます(従来は上書きでしか抜けられませんでした)
 // ・未解決の衝突が残っているイベント/テキストは反映・取り出しの対象から外すよう改善
 // ・NW.js(MV同梱)でtext/<locale>や.t2f-baseのディレクトリ作成に失敗する不具合の修正
 // ・一括取り出しの実行結果に出力先・内訳・上書き件数・失敗理由を表示するよう改善
@@ -162,17 +164,17 @@
  *
  * @command BATCH_EXPORT_MESSAGES_TO_FOLDER
  * @text フォルダへ一括取り出し
- * @desc dataフォルダ内の全イベント/コモンイベントを、見出し情報付きのテキストとしてフォルダへ一括で取り出します(既定は上書き)。
+ * @desc dataフォルダ内の全イベント/コモンイベントを、見出し情報付きのテキストとしてフォルダへ一括で取り出します(既定は統合)。
  *
  * @arg Strategy
  * @text 取り出しのしかた
- * @desc overwrite(上書き)はゲームの内容でテキストを全て置き換えます。merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。既定はoverwriteです。
+ * @desc merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。overwrite(上書き)はゲームの内容でテキストを全て置き換えます(テキストに書いた内容は失われます)。既定はmergeです。
  * @type select
- * @option overwrite
- * @value overwrite
  * @option merge
  * @value merge
- * @default overwrite
+ * @option overwrite
+ * @value overwrite
+ * @default merge
  *
  * @arg DataFolder
  * @text ゲームデータのフォルダ名
@@ -279,8 +281,10 @@
  *    取り込みます。共通の祖先があれば賢く3方向で統合し、同じ場所を両方で変えた
  *    ときだけ両方を残します（下記の衝突表示）。
  *  ・BATCH_EXPORT_MESSAGES_TO_FOLDER … フォルダへ一括で取り出します。
- *    「取り出しのしかた」で上書きと統合を選べます（既定は上書き）。
- *    統合を選んだときは Text2Frame プラグインも導入されている必要があります。
+ *    「取り出しのしかた」で統合と上書きを選べます（既定は統合）。統合には
+ *    Text2Frame プラグインも導入されている必要があります。ゲームの内容で
+ *    全て取り直すときだけ上書きを選んでください（テキストに書いた内容は
+ *    残りません）。
  *
  * ◆ 共通の祖先の自動管理
  *  統合に使う「共通の祖先」は .t2f-base フォルダに自動で保存・参照されるため、
@@ -398,10 +402,11 @@
  *   コモンイベントをメッセージにエクスポート text message.txt 3
  *
  * 例3:全イベント/コモンイベントをフォルダへ一括で取り出す（第1引数は取り出しの
- *     しかた。省略すると上書き。テキストに書いた内容を残すときは merge を指定。
- *     第2引数以降はデータのフォルダ名・出力先・ロケールで、通常は省略します）。
+ *     しかた。省略すると統合で、テキストに書いた内容を残します。ゲームの内容で
+ *     全て取り直すときだけ overwrite を指定。第2引数以降はデータのフォルダ名・
+ *     出力先・ロケールで、通常は省略します）。
  *   BATCH_EXPORT_MESSAGES_TO_FOLDER
- *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge
+ *   BATCH_EXPORT_MESSAGES_TO_FOLDER overwrite
  *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge data text ja
  *
 
@@ -671,8 +676,9 @@ function resolveText2Frame () {
 
       case 'BATCH_EXPORT_MESSAGES_TO_FOLDER': {
         // 取り出しのしかたは1番目(一括反映の BATCH_IMPORT_MESSAGES_FROM_FOLDER と同じ位置)。
-        // 既定は overwrite(従来どおり)。merge はテキストに書いた内容を残す。
-        const batchStrategy = String(args[0] || 'overwrite').toLowerCase()
+        // 既定は merge。CLI・t2f-sync・VSCode と揃え、テキストに書いた内容を黙って
+        // 消さないようにする。初回(既存テキスト無し)は merge も overwrite も同じ結果。
+        const batchStrategy = String(args[0] || 'merge').toLowerCase()
         if (batchStrategy !== 'merge' && batchStrategy !== 'overwrite') {
           throw new Error('Unknown strategy: ' + args[0] + ' / 戦略は merge か overwrite を指定してください。')
         }
@@ -3068,7 +3074,7 @@ function resolveText2Frame () {
       const locale = Laurus.Frame2Text.Locale
       const textBase = Laurus.Frame2Text.TextBase
       const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
-      const batchStrategy = Laurus.Frame2Text.BatchStrategy || 'overwrite'
+      const batchStrategy = Laurus.Frame2Text.BatchStrategy || 'merge'
       let okCount = 0
       let errCount = 0
       let eventCount = 0
@@ -3085,6 +3091,20 @@ function resolveText2Frame () {
       // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する。
       let _baseSaveError = null
       const _baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH
+
+      // 統合には Text2Frame の 3-way が要る。無いままだと全ファイルが同じ理由で失敗して
+      // 原因が埋もれるので、走査に入る前に 1 回だけ理由と逃げ道を出して止める。
+      // ここで overwrite に落とすことはしない(テキストに書いた内容を黙って消すため)。
+      if (batchStrategy === 'merge') {
+        const _t2f = resolveText2Frame()
+        if (!_t2f || !_t2f.applyMergePull) {
+          addMessage('[batch] 統合(merge)での取り出しには Text2Frame プラグインが必要です。')
+          addMessage('[batch] 同じプロジェクトに導入するか、「取り出しのしかた」に overwrite を指定してください')
+          addMessage('[batch] (overwrite はテキストに書いた内容を残しません)。')
+          console.error('[batch] MERGE pull requires the Text2Frame plugin; install it or pull with overwrite')
+          return
+        }
+      }
 
       const outDir = _path.resolve(BASE_PATH, textBase, locale)
       // 出力先が掘れないと 1 件も書けないので、ここだけは中断してユーザに理由を見せる。

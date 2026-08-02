@@ -107,11 +107,23 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   })
 
   it('says how many existing text files were overwritten, and only when it happened', function () {
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja')
+    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja', 'overwrite')
     expect(line('上書きしました')).to.equal(undefined)
 
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja')
+    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja', 'overwrite')
     expect(line('上書きしました')).to.contain('既存テキスト 3件')
+  })
+
+  // 既定は merge。CLI・t2f-sync・VSCode と揃え、テキストに書いた内容を黙って消さない。
+  it('defaults to merge, keeping what was written in the text', function () {
+    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja')
+    fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)) + '\n<comment>\nテキスト側のメモ\n</comment>\n', 'utf8')
+
+    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja') // strategy 未指定
+
+    expect(line('取り出し完了(merge)')).to.be.a('string')
+    expect(readIf(textPathOf(ev1))).to.contain('テキスト側のメモ')
+    expect(line('上書きしました')).to.equal(undefined)
   })
 
   it('names the data folder when it cannot be read', function () {
@@ -162,7 +174,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     })
 
     it('is exported markers and all by overwrite, so it can be resolved in the text', function () {
-      run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja')
+      run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja', 'overwrite')
 
       const text = fs.readFileSync(kept(), 'utf8')
       expect(text).to.contain('=== どちらかを残し') // 目印ごとテキストへ出ている
@@ -247,6 +259,26 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     expect(function () {
       run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja', 'rebase')
     }).to.throw(/Unknown strategy/)
+  })
+
+  // merge が既定になったので、Text2Frame を入れていない人はここで必ず当たる。
+  // 全ファイルが同じ理由で失敗して原因が埋もれないよう、走査前に 1 回だけ止める。
+  // 黙って overwrite に落とすことはしない(テキストに書いた内容が消えるため)。
+  it('stops once with a reason when merge is asked for without the Text2Frame plugin', function () {
+    // 3-way を持たない Text2Frame(古い版・未導入相当)を共有グローバルに置く。
+    // resolveText2Frame はこれを先に見るので、require のフォールバックまで進まない。
+    const saved = globalThis.$LaurusText2Frame
+    globalThis.$LaurusText2Frame = { saveBaseText: function () {} }
+    try {
+      run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja', 'merge')
+    } finally {
+      globalThis.$LaurusText2Frame = saved
+    }
+
+    expect(line('Text2Frame プラグインが必要です')).to.be.a('string')
+    expect(line('overwrite を指定してください')).to.be.a('string')
+    expect(line('取り出し完了')).to.equal(undefined) // 1件も書いていない
+    expect(fs.existsSync(textPathOf(ev1))).to.equal(false)
   })
 
   it('reports each failing key with its reason', function () {
