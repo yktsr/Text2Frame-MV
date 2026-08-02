@@ -96,7 +96,13 @@ export function writeBackAndRefreshBase(
             getOutput().appendLine(`    write-back failed: ${ex.error}`);
         }
     }
-    // overwrite の直後も text==game なので、merge と同じく祖先を更新する。
+    // overwrite の直後も text==game なので、merge と同じく祖先を更新する。ただし衝突が残って
+    // いるときは進めない(祖先が衝突の先に行くと次回の 3-way が壊れる)。プラグイン・CLI・
+    // t2f-sync と同じ規則。目印3行を消して反対側へ上書きで押し出すと、そこで祖先が揃う。
+    if (hadConflict) {
+        getOutput().appendLine('    BASE not advanced (conflicts to resolve)');
+        return;
+    }
     saveBaseSnapshot(workspaceRoot, snap.locale, snap.key, finalText);
 }
 

@@ -242,6 +242,9 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
     let written = 0;
     let fail = 0;
     let conflicts = 0;
+    // 目印が未解決で統合を見送ったもの / 目印ごと書き出したもの(どちらも祖先は進まない)。
+    let skipped = 0;
+    let markers = 0;
     for (const it of enumerateDataTargets(dataDir)) {
         const target: ExportTarget = {
             kind: it.kind,
@@ -258,18 +261,33 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
         const res = mode === 'merge'
             ? mergePullToText(context, root, target)
             : exportToTextFile(context, root, target);
-        if (res.ok) {
+        if (res.ok && res.skipped) {
+            // 目印をまたぐ統合はできない。書いていないので written には数えない。
+            skipped++;
+            out.appendLine(`SKIP ${path.relative(root, target.textPath)}  未解決の衝突の目印が${res.skipped === 'game' ? 'ゲーム側' : 'テキスト'}に残っています`);
+        } else if (res.ok) {
             written++;
             conflicts += res.conflicts || 0;
-            out.appendLine(`OK   ${path.relative(root, target.textPath)}` + (res.conflicts ? `  (${res.conflicts} 競合)` : ''));
+            if (res.markers) {
+                markers++;
+            }
+            out.appendLine(`OK   ${path.relative(root, target.textPath)}`
+                + (res.conflicts ? `  (${res.conflicts} 競合)` : '')
+                + (res.markers ? '  (目印ごと取り出し。祖先は据え置き)' : ''));
         } else {
             fail++;
             out.appendLine(`FAIL ${path.relative(root, target.textPath)}  ${res.error}`);
         }
     }
-    out.appendLine(`=== done: ${written} written, ${fail} fail, ${conflicts} conflicts ===`);
-    const msg = `Text2Frame: ${purpose} 完了 (${language}) — ${written} 件` + (fail ? ` / ${fail} 失敗` : '') + (conflicts ? ` / ${conflicts} 競合(両方残し)` : '');
-    if (fail > 0 || conflicts > 0) {
+    out.appendLine(`=== done: ${written} written, ${fail} fail, ${conflicts} conflicts, ${skipped} skipped, ${markers} with markers ===`);
+    if (skipped > 0) {
+        out.appendLine('SKIP したファイルは、目印3行を消すか「全部取り直す」で目印ごと取り出してテキスト側で解決してください。');
+    }
+    const msg = `Text2Frame: ${purpose} 完了 (${language}) — ${written} 件`
+        + (fail ? ` / ${fail} 失敗` : '')
+        + (conflicts ? ` / ${conflicts} 競合(両方残し)` : '')
+        + (skipped ? ` / ${skipped} 件は目印が未解決で除外` : '');
+    if (fail > 0 || conflicts > 0 || skipped > 0) {
         vscode.window.showWarningMessage(msg, '詳細').then((p) => { if (p) { out.show(true); } });
     } else {
         vscode.window.showInformationMessage(msg);
