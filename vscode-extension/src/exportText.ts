@@ -3,7 +3,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import {
     parseFrontMatter,
-    frontMatterBody,
     loadModule,
     workspaceRootFor,
     mapPathFor,
@@ -20,6 +19,21 @@ import {
 
 interface Frame2TextModule {
     decompile: (list: unknown[], englishTag: boolean, options?: { pretty?: boolean; translationOnly?: boolean }) => string;
+    /**
+     * The one place that turns "a target's commands" into "the text to write" — shared with the
+     * plugin, the CLI and t2f-sync so all four behave identically. Handles the 3-way merge, the
+     * front matter header, and the conflict-marker guards.
+     *   skipped: refused (merge cannot cross unresolved markers); nothing should be written
+     *   markers: written, but the text still carries unresolved markers -> do NOT advance BASE
+     */
+    buildPullText: (opts: {
+        list: unknown[];
+        englishTag?: boolean;
+        strategy?: string;
+        existingText?: string;
+        baseText?: string;
+        fallbackHeader?: string;
+    }) => { text?: string; conflicts?: number; markers?: boolean; skipped?: 'game' | 'text' };
     VERSION?: string;
 }
 
@@ -50,6 +64,10 @@ export interface ExportResult {
     error?: string;
     conflicts?: number;
     warnings?: string[];
+    /** Refused: merge cannot cross the unresolved markers on that side. Nothing was written. */
+    skipped?: 'game' | 'text';
+    /** Written, but the text still carries unresolved markers (BASE was left alone). */
+    markers?: boolean;
 }
 
 let outputChannel: vscode.OutputChannel | undefined;
@@ -105,19 +123,6 @@ function renderFrontMatter(target: ExportTarget, version?: string): string {
     return lines.join('\n') + '\n';
 }
 
-/** Keep the existing front matter header (through the closing `---`) if present. */
-function existingFrontMatterHeader(text: string): string | undefined {
-    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    if (normalized.indexOf('---\n') !== 0) {
-        return undefined;
-    }
-    const endIndex = normalized.indexOf('\n---\n', 4);
-    if (endIndex < 0) {
-        return undefined;
-    }
-    return normalized.slice(0, endIndex + 5); // includes trailing "\n---\n"
-}
-
 /** Read the event command list for a target from the workspace data JSON. */
 function readEventList(workspaceRoot: string, target: ExportTarget): unknown[] {
     if (target.kind === 'common') {
@@ -162,41 +167,68 @@ export function exportToTextFile(
     }
     try {
         const list = readEventList(workspaceRoot, target);
-        const body = mod.decompile(list, englishTagSetting(), { pretty: true, translationOnly: !!target.translationOnly });
 
-        let header: string | undefined;
-        if (!target.translationOnly && target.frontMatterSource) {
-            header = existingFrontMatterHeader(target.frontMatterSource);
-        }
-        if (!header) {
-            header = renderFrontMatter(target, mod.VERSION);
+        // The conversation-only sidecar is a lossy extract, not a deployable file: it never
+        // routes, never becomes an ancestor, and buildPullText has no translationOnly mode.
+        if (target.translationOnly) {
+            const body = mod.decompile(list, englishTagSetting(), { pretty: true, translationOnly: true });
+            writeTextFile(target.textPath, renderFrontMatter(target, mod.VERSION) + '\n' + body + '\n');
+            return { ok: true, textPath: target.textPath };
         }
 
-        const dir = path.dirname(target.textPath);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        const written = header + '\n' + body + '\n';
-        fs.writeFileSync(target.textPath, written, 'utf8');
+        const built = mod.buildPullText({
+            list,
+            englishTag: englishTagSetting(),
+            strategy: 'overwrite',
+            // The header comes from whatever the caller is replacing (the open document, or the
+            // file on disk for a batch overwrite); buildPullText falls back when there is none.
+            existingText: target.frontMatterSource || '',
+            fallbackHeader: renderFrontMatter(target, mod.VERSION)
+        });
+        const written = built.text as string;
+        writeTextFile(target.textPath, written);
         // Record the data baseline: after a pull, text matches data, so a later
         // deploy should not flag this data file as externally changed.
-        const dataPath = target.kind === 'common'
-            ? commonEventsPathFor(workspaceRoot)
-            : (target.mapId ? mapPathFor(workspaceRoot, target.mapId) : undefined);
-        if (dataPath) {
-            recordDataState(context, dataPath);
-        }
+        recordDataStateFor(context, workspaceRoot, target);
         // Establish the 3-way common ancestor (BASE) from this export, so the first
-        // subsequent merge deploy is already a true 3-way. Skip the lossy conversation-only
-        // sidecar (it is not the deployable file). Mirrors deploy's snapshot id derivation.
-        if (!target.translationOnly) {
-            const key = path.basename(target.textPath, path.extname(target.textPath));
-            const locale = target.locale || path.basename(path.dirname(target.textPath)) || 'default';
-            saveBaseSnapshot(workspaceRoot, locale, key, written);
+        // subsequent merge deploy is already a true 3-way. Mirrors deploy's snapshot id derivation.
+        // Not when the text still carries unresolved markers — an ancestor with markers in it
+        // makes the next 3-way merge them again.
+        if (!built.markers) {
+            saveBaseFor(workspaceRoot, target, written);
         }
-        return { ok: true, textPath: target.textPath };
+        return { ok: true, textPath: target.textPath, markers: built.markers };
     } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+}
+
+function writeTextFile(textPath: string, contents: string): void {
+    const dir = path.dirname(textPath);
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(textPath, contents, 'utf8');
+}
+
+function snapshotIdFor(target: ExportTarget): { locale: string; key: string } {
+    return {
+        key: path.basename(target.textPath, path.extname(target.textPath)),
+        locale: target.locale || path.basename(path.dirname(target.textPath)) || 'default'
+    };
+}
+
+function saveBaseFor(workspaceRoot: string, target: ExportTarget, written: string): void {
+    const id = snapshotIdFor(target);
+    saveBaseSnapshot(workspaceRoot, id.locale, id.key, written);
+}
+
+function recordDataStateFor(context: vscode.ExtensionContext, workspaceRoot: string, target: ExportTarget): void {
+    const dataPath = target.kind === 'common'
+        ? commonEventsPathFor(workspaceRoot)
+        : (target.mapId ? mapPathFor(workspaceRoot, target.mapId) : undefined);
+    if (dataPath) {
+        recordDataState(context, dataPath);
     }
 }
 
@@ -216,54 +248,56 @@ export function mergePullToText(
     workspaceRoot: string,
     target: ExportTarget
 ): ExportResult {
-    const t2f = loadText2Frame(context, workspaceRoot);
-    if (!t2f.mod) {
+    const { mod, tried } = loadFrame2Text(context, workspaceRoot);
+    if (!mod) {
+        const out = getOutput();
+        out.appendLine('[export] Frame2Text could not be loaded. Candidates:');
+        tried.forEach((t) => out.appendLine('  - ' + t));
+        out.show(true);
+        return { ok: false, error: 'Frame2Text.js を読み込めませんでした(詳細は出力 "Text2Frame Export")。設定 text2frame.modulePath で本体の場所を指定してください。' };
+    }
+    // buildPullText resolves Text2Frame itself for the 3-way, but load it here too: it primes the
+    // shared global and lets us report the extension's modulePath candidates when it is missing.
+    if (!loadText2Frame(context, workspaceRoot).mod) {
         return { ok: false, error: 'Text2Frame.js を読み込めませんでした。設定 text2frame.modulePath を確認してください。' };
     }
     try {
         const gameCommands = readEventList(workspaceRoot, target); // ours
-        const key = path.basename(target.textPath, path.extname(target.textPath));
-        const locale = target.locale || path.basename(path.dirname(target.textPath)) || 'default';
+        const id = snapshotIdFor(target);
 
         let existingText = '';
         if (fs.existsSync(target.textPath)) {
             existingText = fs.readFileSync(target.textPath, 'utf8');
         }
-        let baseBody = '';
-        const baseP = baseSnapshotPath(workspaceRoot, locale, key);
+        let baseText = '';
+        const baseP = baseSnapshotPath(workspaceRoot, id.locale, id.key);
         if (fs.existsSync(baseP)) {
-            baseBody = frontMatterBody(fs.readFileSync(baseP, 'utf8'));
+            baseText = fs.readFileSync(baseP, 'utf8');
         }
 
-        // The whole 3-way/decompile logic lives in the shared core (Text2Frame.applyMergePull),
-        // so CLI, plugin and this extension all behave identically.
-        const r = t2f.mod.applyMergePull({
-            gameCommands,
-            textBody: existingText ? frontMatterBody(existingText) : '',
-            baseBody,
-            englishTag: englishTagSetting()
+        // The whole 3-way/decompile/guard logic lives in the shared core (Frame2Text.buildPullText),
+        // so CLI, plugin, t2f-sync and this extension all behave identically.
+        const built = mod.buildPullText({
+            list: gameCommands,
+            englishTag: englishTagSetting(),
+            strategy: 'merge',
+            existingText,
+            baseText,
+            fallbackHeader: renderFrontMatter(target, mod.VERSION)
         });
-
-        let header = existingText ? existingFrontMatterHeader(existingText) : undefined;
-        if (!header) {
-            header = renderFrontMatter(target, t2f.mod.VERSION);
+        // Merging across unresolved markers would re-merge the markers themselves and double them.
+        if (built.skipped) {
+            return { ok: true, textPath: target.textPath, skipped: built.skipped };
         }
-        const dir = path.dirname(target.textPath);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
+        const written = built.text as string;
+        writeTextFile(target.textPath, written);
+        recordDataStateFor(context, workspaceRoot, target);
+        // The just-written text becomes the new common ancestor — unless it still has conflicts
+        // to resolve. Advancing past an unresolved conflict breaks the next 3-way.
+        if (!built.conflicts && !built.markers) {
+            saveBaseFor(workspaceRoot, target, written);
         }
-        const written = header + '\n' + r.text + '\n';
-        fs.writeFileSync(target.textPath, written, 'utf8');
-
-        const dataPath = target.kind === 'common'
-            ? commonEventsPathFor(workspaceRoot)
-            : (target.mapId ? mapPathFor(workspaceRoot, target.mapId) : undefined);
-        if (dataPath) {
-            recordDataState(context, dataPath);
-        }
-        // The just-written text becomes the new common ancestor.
-        saveBaseSnapshot(workspaceRoot, locale, key, written);
-        return { ok: true, textPath: target.textPath, conflicts: r.conflicts, warnings: r.warnings };
+        return { ok: true, textPath: target.textPath, conflicts: built.conflicts, markers: built.markers };
     } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -310,7 +344,11 @@ export function exportCurrentFile(context: vscode.ExtensionContext): void {
         return;
     }
     const result = mergePullToText(context, workspaceRoot, target);
-    if (result.ok) {
+    if (result.ok && result.skipped === 'game') {
+        vscode.window.showWarningMessage('Text2Frame: ゲーム側に未解決の衝突の目印が残っているため統合できません。ツクールで目印3行を消すか、「全部取り直す」で目印ごと取り出してテキスト側で解決してください。');
+    } else if (result.ok && result.skipped) {
+        vscode.window.showWarningMessage('Text2Frame: テキストに未解決の衝突の目印が残っているため統合できません。目印3行を消して残す方を決めたあと、反映してください。');
+    } else if (result.ok) {
         const c = result.conflicts || 0;
         vscode.window.showInformationMessage(`Text2Frame: ゲームから取り出しました${c ? `（${c} 件の競合は両方残しました。確認してください）` : ''}`);
     } else {
