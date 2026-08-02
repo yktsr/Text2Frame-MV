@@ -16,6 +16,7 @@
 // ・衝突したときの直し方(目印を消して反対側へ「上書き」で押し出す)をヘルプと案内文に明記
 // ・目印が残っていても「上書き」なら取り出せるよう改善。ツクールを開かずテキストだけで衝突を解決できます
 //   (統合は従来どおり見送り。目印ごと取り出したときは祖先(.t2f-base)を進めません)
+// ・一括取り出しの「取り出しのしかた」を2番目の引数へ移動(一括反映と同じ位置に統一)
 // ・MZプラグインコマンドの一括取り出しでロケールと出力先の引数が入れ替わる不具合の修正
 // 1.0.1 2024/09/07:
 // ・#125 プラグインコマンドMZを変換する際、オブジェクト型を取り扱えない不具合の修正
@@ -167,6 +168,16 @@
  * @type string
  * @default data
  *
+ * @arg Strategy
+ * @text 取り出しのしかた
+ * @desc overwrite(上書き)はゲームの内容でテキストを全て置き換えます。merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。既定はoverwriteです。
+ * @type select
+ * @option overwrite
+ * @value overwrite
+ * @option merge
+ * @value merge
+ * @default overwrite
+ *
  * @arg TextBase
  * @text テキストベースディレクトリ
  * @desc 出力先のテキストベースディレクトリです。デフォルトはtextです。通常、設定する必要はありません。
@@ -177,16 +188,6 @@
  * @desc 出力先の言語サブフォルダ名です。デフォルトはjaです。通常、設定する必要はありません。
  * @type string
  * @default ja
- *
- * @arg Strategy
- * @text 取り出しのしかた
- * @desc overwrite(上書き)はゲームの内容でテキストを全て置き換えます。merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。既定はoverwriteです。
- * @type select
- * @option overwrite
- * @value overwrite
- * @option merge
- * @value merge
- * @default overwrite
  *
  * @param Default Scenario Folder
  * @text 出力フォルダ名
@@ -569,7 +570,8 @@ function resolveText2Frame () {
       const locale = args.Locale || 'ja'
       const text_base = args.TextBase || 'text'
       const strategy = args.Strategy || 'overwrite'
-      this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER', [data_dir, text_base, locale, strategy])
+      // 引数順は @arg の並びと合わせる(取り出しのしかたが2番目)。
+      this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER', [data_dir, strategy, text_base, locale])
     })
   }
 
@@ -659,13 +661,14 @@ function resolveText2Frame () {
 
       case 'BATCH_EXPORT_MESSAGES_TO_FOLDER': {
         Laurus.Frame2Text.DataFolder = args[0] || 'data'
-        Laurus.Frame2Text.TextBase = args[1] || 'text'
-        Laurus.Frame2Text.Locale = args[2] || 'ja'
+        // 取り出しのしかたは2番目(一括反映の BATCH_IMPORT_MESSAGES_FROM_FOLDER と同じ位置)。
         // 既定は overwrite(従来どおり)。merge はテキストに書いた内容を残す。
-        const batchStrategy = String(args[3] || 'overwrite').toLowerCase()
+        const batchStrategy = String(args[1] || 'overwrite').toLowerCase()
         if (batchStrategy !== 'merge' && batchStrategy !== 'overwrite') {
-          throw new Error('Unknown strategy: ' + args[3] + ' / 戦略は merge か overwrite を指定してください。')
+          throw new Error('Unknown strategy: ' + args[1] + ' / 戦略は merge か overwrite を指定してください。')
         }
+        Laurus.Frame2Text.TextBase = args[2] || 'text'
+        Laurus.Frame2Text.Locale = args[3] || 'ja'
         Laurus.Frame2Text.BatchStrategy = batchStrategy
         Laurus.Frame2Text.ExecMode = 'BATCH_EXPORT_MESSAGES_TO_FOLDER'
         break
