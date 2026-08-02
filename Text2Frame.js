@@ -7,12 +7,17 @@
 // ----------------------------------------------------------------------------
 // Version
 // 2.3.0:
-// ・テキストの反映に「統合(merge)」を追加。RPGツクール上のUI編集(移動・分岐・スイッチ等)を壊さずに、テキストで行った編集をゲームへ反映できるようになりました(既定)。従来の「上書き(overwrite)」も選べます。
-// ・一括反映・一括取り出しコマンドを追加。すべてのイベント・コモンイベントを、1つのコマンドでゲームとテキストの間で同期できるようになりました。
-// ・Visual Studio Code 拡張に対応。反映・取り出し・英語化をUIから実行でき、シンタックスハイライトや保存時自動反映(Watch & Deploy)を利用できます。
-// ・衝突したときの直し方(目印を消して反対側へ「上書き」で押し出す)をヘルプと案内文に明記しました。同じ向きで反映し直しても直らない場合があるためです。
-// ・一括反映の「一括反映戦略」を1番目の引数へ移動しました(一番よく変える引数を先頭に。一括取り出しと同じ位置)。
-// ・不具合を修正し、安定性を向上しました。
+// ・#132 一括反映/一括取り出しコマンドを追加
+//   すべてのイベント・コモンイベントを、1つのコマンドでゲームとテキストの間で同期できるようになった。
+// ・#137 Visual Studio Code 拡張に対応
+//   反映・取り出し・英語化をUIから実行でき、シンタックスハイライトや保存時自動反映(Watch & Deploy)を利用できます。
+// ・#137 不具合を修正し、安定性を向上しました。
+//   - 移動ルート設定の直後に選択肢を置くと、反映時にエラーで止まる不具合の修正
+//   - 分岐の最後が移動ルートで終わっていると、選択肢の構造が壊れて正しく反映されない不具合の修正
+//   - 一部の移動コマンドやショップ処理を含むテキストで、反映が異常終了する不具合の修正
+//   - スキップ分岐(Skip)を含むイベントが、書き出し→反映で丸ごと消える不具合の修正
+//   - 空行を含むメッセージが、書き出し→反映で行ごと消える不具合の修正
+//   - 移動ルートのスクリプトや全角スペースだけの行が、反映時に壊れる/消える不具合の修正
 // 2.2.4 2024/10/06:
 // ・#126 プロジェクトを本番用にデプロイメント後、プラグインを実行しようとすると警告メッセージを表示するように改善
 // 2.2.3 2024/09/07:
@@ -445,16 +450,16 @@
  *    （ゲーム側の内容）
  *    === どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===
  *
- *  直し方は「目印が入った方で決めて、反対側へ流す」の2手です。
+ *  直し方は「目印を削除し意図通りに編集した後、逆の操作を行う」の2ステップです。
  *
  * ◆ 反映で衝突した（目印がゲームに入った）とき
  *     1. ツクールをセーブせずに開き直し、目印のある周辺をUIで編集して
  *        目印3行を消し、残す方だけにする。
- *     2. Frame2Text の「BATCH_EXPORT_MESSAGES_TO_FOLDER」を統合(merge)で実行する。
+ *     2. Frame2Text の「BATCH_EXPORT_MESSAGES_TO_FOLDER」を実行する。
  *
  * ◆ 取り出しで衝突した（目印がテキストに入った）とき
  *     1. テキストエディタで目印3行を消し、残す方だけにする。
- *     2. 「BATCH_IMPORT_MESSAGES_FROM_FOLDER」を統合(merge)で実行する。
+ *     2. 「BATCH_IMPORT_MESSAGES_FROM_FOLDER」を実行する。
  *
  *  ※ 衝突を解消しないまま、同じプラグインコマンドは実行しないでください。
  *    同じ向きにもう一度実行しても衝突は直りません。
@@ -464,22 +469,23 @@
  *    （例えば、ゲームからテキストへの取り出し時に衝突した場合は、
  *    衝突を解消後、テキストからゲームへの反映を実行してください。）
  *
- *
- *
  * ◆ 一括取り出し・反映時にプラグインコマンドが意図通りに動作しないとき
  *  ゲームかテキストのどちらかを真と決めて、強制的に上書きすることで解決できます。
  *  反対側にしかない内容は失われます。
  *     1. ゲームを真としてテキストを上書きしたいとき
  *        Frame2Text の「BATCH_EXPORT_MESSAGES_TO_FOLDER」を上書き(overwrite)で実行する。
+ *        BATCH_EXPORT_MESSAGES_TO_FOLDER overwrite
  *     2. テキストを真としてゲームを上書きしたいとき
  *        「BATCH_IMPORT_MESSAGES_FROM_FOLDER」を上書き(overwrite)で実行する。
+ *        BATCH_IMPORT_MESSAGES_FROM_FOLDER overwrite
  *
  *  差分反映に使う「共通の祖先」はプロジェクトの .t2f-base フォルダに自動で保存・参照
- *  されます。このフォルダを削除すると次回は初回扱いになり、直ることがあります。
+ *  されます。このフォルダを削除すると状態が初期化され直ることがあります。
  *
- * ◆ ボタン操作で使いたい場合
- *  Visual Studio Code 拡張「Text2Frame Language Support」を使うと、反映・取り出し・
- *  英語化をUIから実行できます（専門用語もやさしく表示されます）。
+ * --------------------------------------
+ * プラグインコマンドではなく、UIから使いたい場合
+ *  Visual Studio Code 拡張「Text2Frame Language Support」を使うと、
+ *  一括反映・取り出し・英語化をUIから実行できます（補完や文法の説明表示が自動で行われます）。
  *
  * -------------------------------------
  * Version 2.2.4 までの手順
@@ -9899,6 +9905,54 @@
       })
     }
 
+    /* Frame2Text(逆変換)の解決。ゲーム内(NW.js)では require が効かないため共有グローバルから取り、
+     * 無ければ(CLI/Node)require にフォールバックする。古い NW.js には globalThis が無いので window/global も見る。 */
+    const resolveFrame2Text = function () {
+      const glob = (typeof globalThis !== 'undefined')
+        ? globalThis
+        : (typeof window !== 'undefined')
+            ? window
+            : (typeof global !== 'undefined') ? global : null
+      let F2T = (glob && glob.$LaurusFrame2Text && glob.$LaurusFrame2Text.decompile) ? glob.$LaurusFrame2Text : null
+      if (!F2T && typeof require !== 'undefined') {
+        try { F2T = require('./Frame2Text.js') } catch (e) { /* try next */ }
+        if (!F2T) { try { F2T = require(require('path').join(__dirname, 'Frame2Text.js')) } catch (e) { /* give up */ } }
+      }
+      return F2T
+    }
+
+    /* 比較用の正規化: コマンド列を「テキストへ往復させた形」に揃える。
+     *
+     * ツクールのデータは末尾の省略可能な引数を落とすことがある(MVの101は4つ、MZは話者名込みで5つ。
+     * 124/204 の末尾、205 の移動ルート内の indent なども同様)。一方 compile が作るのは常に省略なしの形。
+     * 祖先(.t2f-base)はテキストで保存されるため、素の JSON で比べるとツクールが書いた行が
+     * 軒並み「変更あり」に見え、実際には誰も触っていない箇所で衝突が出る。
+     *
+     * テキストで区別できない差は「同じ」として扱うのが正しいので、両辺を同じ往復に通して比べる。
+     * 出力に使うのは各辺の元のコマンドなので、正規化でデータが書き換わることはない。
+     * 往復でコマンド列そのものが変わるもの(未対応コマンド等)は正規化せず、生の JSON で比べる。 */
+    const normalizeKeyFactory = function () {
+      const cache = new Map()
+      const F2T = resolveFrame2Text()
+      const canRoundTrip = !!(F2T && F2T.decompile)
+      return function (unit) {
+        const raw = JSON.stringify(unit)
+        if (cache.has(raw)) return cache.get(raw)
+        let out = raw
+        if (canRoundTrip) {
+          try {
+            const back = compile(F2T.decompile(unit.concat([{ code: 0, indent: 0, parameters: [] }]), false, { pretty: true }))
+            const same = back.length === unit.length && back.every(function (c, i) {
+              return c.code === unit[i].code && c.indent === unit[i].indent
+            })
+            if (same) out = JSON.stringify(back)
+          } catch (e) { /* 正規化できないものは生の JSON のまま比べる */ }
+        }
+        cache.set(raw, out)
+        return out
+      }
+    }
+
     /* 3-way マージ(diff3 方式・両方残す)。base=共通祖先, ours=現JSON, theirs=テキスト。
      * 釣り合った単位で base↔ours / base↔theirs を LCS 対応し、両方が同じ箇所を別々に変えた領域は
      * 「衝突」として両方を残し 108 コメントで囲む(非破壊・常に valid)。
@@ -9909,7 +9963,7 @@
         while (copy.length > 0 && copy[copy.length - 1] && copy[copy.length - 1].code === 0) copy.pop()
         return copy
       }
-      const key = function (unit) { return JSON.stringify(unit) }
+      const key = normalizeKeyFactory()
       const B = groupIntoBalancedUnits(stripBottom(base_commands))
       const O = groupIntoBalancedUnits(stripBottom(ours_commands))
       const T = groupIntoBalancedUnits(stripBottom(theirs_commands))
@@ -9955,6 +10009,10 @@
         }
         return hunks
       }
+      // 変わっていない部分は base ではなく ours(現JSON)の実データをそのまま出す。
+      // 祖先はテキストへ往復した形なので、これをしないと誰も触っていないコマンドまで
+      // 正規化後の形(省略した引数を補った形)に書き換わり、無用な差分になる。
+      for (const p of lcsPairs(Bk, Ok)) B[p[0]] = O[p[1]]
       const oH = diffHunks(Bk, Ok)
       const tH = diffHunks(Bk, Tk)
 
@@ -10225,18 +10283,7 @@
         merged = gameCommands.slice()
       }
       if (!merged.length || merged[merged.length - 1].code !== 0) merged.push({ code: 0, indent: 0, parameters: [] })
-      // decompile は Frame2Text 側。ゲーム内(NW.js)では require が効かないため共有グローバルから取り、
-      // 無ければ(CLI/Node)require にフォールバックする。古い NW.js には globalThis が無いので window/global も見る。
-      const glob = (typeof globalThis !== 'undefined')
-        ? globalThis
-        : (typeof window !== 'undefined')
-            ? window
-            : (typeof global !== 'undefined') ? global : null
-      let F2T = (glob && glob.$LaurusFrame2Text && glob.$LaurusFrame2Text.decompile) ? glob.$LaurusFrame2Text : null
-      if (!F2T && typeof require !== 'undefined') {
-        try { F2T = require('./Frame2Text.js') } catch (e) { /* try next */ }
-        if (!F2T) { try { F2T = require(require('path').join(__dirname, 'Frame2Text.js')) } catch (e) { /* give up */ } }
-      }
+      const F2T = resolveFrame2Text()
       if (!F2T || !F2T.decompile) { throw new Error('取り出し(merge)には Frame2Text プラグインが必要です。同じプロジェクトに導入してください。 / MERGE pull requires the Frame2Text plugin to be loaded.') }
       const text = F2T.decompile(merged, englishTag, { pretty: true })
       return { text, conflicts, warnings }

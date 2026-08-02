@@ -80,4 +80,52 @@ describe('ThreeWayMerge (applyThreeWayMerge) Test', function () {
     expect(res.commands.filter(function (c) { return c.code === 404 })).to.have.lengthOf(1)
     expect(res.conflicts).to.equal(0)
   })
+  // ツクールMVのデータは末尾の省略可能な引数を落とす(MVの101は4つ、MZは話者名込みで5つ)。
+  // 祖先(.t2f-base)はテキストで保存され、compile は常に省略なしの形を作るので、素の JSON で
+  // 比べるとツクールが書いた行が軒並み「変更あり」に見え、誰も触っていない箇所で衝突が出る。
+  describe('parameters the text cannot express (RPG Maker MV omits trailing ones)', function () {
+    // MV のエディタが書く「文章の表示」。話者名の引数が無い。
+    const mvMsg = function (text) {
+      return [
+        { code: 101, indent: 0, parameters: ['', 0, 0, 2] },
+        { code: 401, indent: 0, parameters: [text] }
+      ]
+    }
+
+    it('does not see a conflict just because MV omitted the 5th parameter of 101', function () {
+      // 取り出し(merge)の直後: 祖先とテキストはテキスト往復した形、ゲームは MV のまま。
+      const base = msg('Hello').concat([bottom])
+      const ours = mvMsg('Hello').concat([bottom])
+      const theirs = msg('Bonjour').concat([bottom]) // テキストで解決した内容
+
+      const res = applyThreeWayMerge(base, ours, theirs)
+
+      expect(res.conflicts).to.equal(0)
+      expect(texts(res.commands)).to.eql(['Bonjour'])
+    })
+
+    it('leaves untouched MV commands byte-identical instead of canonicalising them', function () {
+      const base = msg('Hello').concat(msg('World')).concat([bottom])
+      const ours = mvMsg('Hello').concat(mvMsg('World')).concat([bottom])
+      const theirs = msg('Hello').concat(msg('World')).concat([bottom]) // 誰も触っていない
+
+      const res = applyThreeWayMerge(base, ours, theirs)
+
+      expect(res.conflicts).to.equal(0)
+      expect(res.commands.filter(function (c) { return c.code === 101 })
+        .every(function (c) { return c.parameters.length === 4 })).to.equal(true)
+    })
+
+    it('still applies a text edit next to an MV-shaped command', function () {
+      const base = msg('Hello').concat([bottom])
+      const ours = mvMsg('Hello').concat([sw(5)]).concat([bottom]) // ツクールでスイッチを追加
+      const theirs = msg('Bonjour').concat([bottom]) // テキストで翻訳
+
+      const res = applyThreeWayMerge(base, ours, theirs)
+
+      expect(res.conflicts).to.equal(0)
+      expect(texts(res.commands)).to.eql(['Bonjour'])
+      expect(codes(res.commands)).to.include(121) // ツクールの追加も残る
+    })
+  })
 })
