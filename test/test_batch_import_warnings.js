@@ -159,7 +159,7 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     runBatch()
 
     expect(line('衝突が未解決のファイル')).to.contain('e1')
-    expect(line('祖先(.t2f-base)を更新していません')).to.be.a('string')
+    expect(line('ツクールで目印3行を消して')).to.be.a('string')
   })
 
   it('names each failing file with its reason', function () {

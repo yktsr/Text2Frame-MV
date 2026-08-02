@@ -194,9 +194,8 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     expect(line('上書きしました')).to.equal(undefined)
   })
 
-  it('merge keeps both on a conflict and does not advance the ancestor', function () {
+  it('merge keeps both on a conflict and advances the ancestor to the game side', function () {
     run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja')
-    const baseBefore = readIf(basePathOf(ev1))
     // テキストとゲームが同じ行を別々に変える
     fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)).replace('こんにちは', 'テキスト側の変更'), 'utf8')
     setEvent1(['ゲーム側の変更'])
@@ -208,9 +207,12 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     expect(text).to.contain('ゲーム側の変更')
     expect(text).to.contain('=== どちらかを残し')
     expect(line('衝突あり(両方残し)')).to.contain(ev1)
-    expect(line('祖先(.t2f-base)を更新していません')).to.be.a('string')
-    // 祖先は据え置き(進めると次回の 3-way が壊れる)
-    expect(readIf(basePathOf(ev1))).to.equal(baseBefore)
+    expect(line('一括反映(merge)を実行してください')).to.be.a('string')
+    // 祖先はゲーム側へ進める。据え置くと、テキストで解決したあとの反映で衝突が再発する。
+    const base = readIf(basePathOf(ev1))
+    expect(base).to.contain('ゲーム側の変更')
+    expect(base).to.not.contain('テキスト側の変更')
+    expect(base).to.not.contain('=== どちらかを残し')
   })
 
   it('lets a front-matter strategy override the command argument', function () {

@@ -144,7 +144,7 @@ function pullTarget (target, opts) {
     console.warn('[pull] skipped: cannot merge across unresolved conflict markers in the ' + built.skipped + '. ' +
       (built.skipped === 'game'
         ? 'Resolve them in the editor, or pull with --strategy overwrite and resolve in the text: '
-        : 'Resolve them in the text, then push with --strategy overwrite: ') + textPath)
+        : 'Resolve them in the text, then push: ') + textPath)
     return { ok: true, textPath, skipped: built.skipped }
   }
   const conflicts = built.conflicts || 0
@@ -158,12 +158,14 @@ function pullTarget (target, opts) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(textPath, written, 'utf8')
   if (o.guard) o.guard.record(textPath, written)
-  // 衝突・目印が残っているときは共通祖先を進めない(Git 流)。目印を消したあとは反対側へ
-  // 上書きで押し出す必要がある(同じ向きのやり直しでは祖先が古いままで再発する)。
   if (conflicts) {
-    console.warn('[pull] ' + conflicts + ' conflict(s) kept both; .t2f-base not updated ' +
-      '(resolve the markers, then push with --strategy overwrite): ' + textPath)
-  } else if (markers) {
+    console.warn('[pull] ' + conflicts + ' conflict(s) kept both ' +
+      '(resolve the markers in the text, then push): ' + textPath)
+  }
+  // 祖先に目印が入ると次回の 3-way がそれを再マージするので、そのときだけ進めない。
+  // 衝突しただけなら進める(目印はテキストのみ)。据え置くと、テキストで解決したあとの
+  // push で同じ衝突がゲーム側に再発する。
+  if (markers) {
     console.warn('[pull] exported with unresolved markers; .t2f-base not updated ' +
       '(resolve the markers in the text, then push with --strategy overwrite): ' + textPath)
   } else {

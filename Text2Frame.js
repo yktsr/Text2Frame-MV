@@ -100,8 +100,8 @@
  * @url https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Text2Frame.js
  *
  * @command IMPORT_MESSAGE_TO_EVENT
- * @text イベントに上書きインポート
- * @desc テキストを正としてイベントへ反映します(strategy=overwrite相当)。既定は末尾追加、IsOverwrite=trueで全置換です。UI編集を残したい場合はMERGEを使ってください。
+ * @text イベントにインポート
+ * @desc イベントにメッセージをインポートします。取り込み元ファイルの情報や、取り込み先のマップ・イベント・ページID等を指定します。
  *
  * @arg FileFolder
  * @text 取り込み元フォルダ名
@@ -144,8 +144,8 @@
  * @default false
  *
  * @command IMPORT_MESSAGE_TO_CE
- * @text コモンイベントに上書きインポート
- * @desc テキストを正としてコモンイベントへ反映します(strategy=overwrite相当)。既定は末尾追加、IsOverwrite=trueで全置換です。UI編集を残したい場合はMERGEを使ってください。
+ * @text コモンイベントにインポート
+ * @desc コモンイベントにメッセージをインポートします。取り込み元ファイルの情報や、取り込み先のコモンイベントID等を指定します。
  *
  * @arg FileFolder
  * @text 取り込み元フォルダ名
@@ -178,11 +178,11 @@
  *
  * @command BATCH_IMPORT_MESSAGES_FROM_FOLDER
  * @text フォルダから一括取り込み
- * @desc 指定フォルダ内の見出し情報付きテキストを、一括でゲームへ反映します。
+ * @desc 指定フォルダ内の見出し情報付きテキストを、一括でゲームへ反映します。通常のイベント、コモンイベントのすべてが一括で取り込まれます。見出し情報付きテキストの作成には、Frame2Text の BATCH_EXPORT_MESSAGES_TO_FOLDER を使用してください。
  *
  * @arg Strategy
  * @text 一括反映戦略
- * @desc merge(差分更新) / overwrite(テキストで全上書き) を選択できます。既定はmergeです。
+ * @desc merge(差分更新) / overwrite(テキストの内容で全上書き) を選択できます。既定はmergeです。
  * @type select
  * @option merge
  * @value merge
@@ -199,7 +199,7 @@
  *
  * @command MERGE_MESSAGE_TO_EVENT
  * @text テキストをイベントにマージ
- * @desc 既存イベントを保ちつつテキストを賢く反映します。テキストに見出し情報（どのイベントに反映するべきか）が書かれている場合は、取り込み先マップID、取り込み先イベントID、取り込み先ページID は省略できます。祖先フォルダ名は通常指定する必要はありません。
+ * @desc 既存イベントを破壊せず、指定したテキストの内容を差分反映します。このコマンドは特別の事情がある場合に利用するエキスパート向けプラグインコマンドです。通常は、BATCH_IMPORT_MESSAGES_FROM_FOLDER を利用することを推奨します。詳細はwikiの該当ページを確認してください。テキストに見出し情報が書かれている場合には、取り込み先マップID、取り込み先イベントID、取り込み先ページID は省略できます。祖先フォルダ名は通常設定する必要はありません。
  *
  * @arg FileFolder
  * @text 取り込み元フォルダ名
@@ -240,7 +240,7 @@
  *
  * @command MERGE_MESSAGE_TO_CE
  * @text テキストをコモンイベントにマージ
- * @desc 既存コモンイベントを保ちつつテキストを賢く反映します。テキストに見出し情報（どのイベントに反映するべきか）が書かれている場合は、取り込み先マップID、取り込み先イベントID、取り込み先ページID は省略できます。祖先フォルダ名は通常指定する必要はありません。
+ * @desc 既存コモンイベントを破壊せず、指定したテキストの内容を差分反映します。このコマンドは特別の事情がある場合に利用するエキスパート向けプラグインコマンドです。通常は、BATCH_IMPORT_MESSAGES_FROM_FOLDER を利用することを推奨します。詳細はwikiの該当ページを確認してください。テキストに見出し情報が書かれている場合には、取り込み先コモンイベントID は省略できます。祖先フォルダ名は通常設定する必要はありません。
  *
  * @arg FileFolder
  * @text 取り込み元フォルダ名
@@ -369,10 +369,10 @@
  * から実行することを想定しています。
  *
  * テキスト→ゲームの「反映」だけでなく、ゲーム→テキストの「取り出し」（逆変換
- * プラグイン Frame2Text）にも対応し、双方向に編集できます。反映・取り出しとも
- * 既定は「安全な統合」で、テキストの編集とツクール上のUI編集（移動・分岐・
- * スイッチ等）の両方をできるだけ残します。コマンド操作が苦手な場合は、ボタン
- * 操作で使える Visual Studio Code 拡張もあります（詳しくは後述）。
+ * プラグイン Frame2Text）にも対応し、双方向に編集できます。
+ * テキストの編集とツクール上のUI編集（移動・分岐・スイッチ等）の両方をできる
+ * だけ残します。プラグインコマンド操作が苦手な場合は、ボタン操作で使える
+ * Visual Studio Code 拡張もあります。
  *
  * また、追加機能としてフェードインやBGM再生等のイベントコマンドも組み込むこ
  * とができます。追加機能の詳細はこのREADMEの下部に記載していますので、そちら
@@ -385,6 +385,105 @@
  * Wikiのほうが閲覧しやすいと思いますので、RPGツクールMV・MZ上では読みづらい
  * と感じた場合は、こちらをご覧ください。
  *
+ * -------------------------------------
+ * Version 2.3.0 以降の推奨手順
+ * -------------------------------------
+ * 0. dataフォルダのバックアップをとっておく。(重要)
+ * 0. 逆変換プラグイン Frame2Text を導入しておく。(重要)
+ *
+ * 1. 任意のマップ・位置に空のイベントをひとつ作成します。
+ *
+ * 2. 以下のうちいずれかを記述したプラグインコマンドを作成する。
+ *    BATCH_EXPORT_MESSAGES_TO_FOLDER
+ *    フォルダへ一括取り出し
+ *     これらは全く同じ機能なのでどちらを使ってもかまいません。
+ *     このコマンドは、 Frame2Text を導入しないと呼ぶことができません。
+ *
+ * 3. 作成したイベントコマンドをテストプレイかイベントテストで実行する。
+ *     実行前に Frame2Text を管理画面からONにして「プロジェクトの保存」を
+ *    実行しておきましょう。
+ *
+ * 4. text/ja フォルダ以下にゲームの内容がText2Frame記法で書き出される。
+ *     RPG ツクールのプロジェクトがあるディレクトリに、text という
+ *    フォルダが作成され、その中に、すべてのイベントとコモンイベントが
+ *    書き出されます。
+ *
+ * 5. text/ja フォルダ以下のテキストを自由に編集する。
+ *     記法については、「テキストファイルの書き方」を参照してください。
+ *
+ * 6. 以下のうちいずれかを記述したプラグインコマンドを作成する。
+ *    BATCH_IMPORT_MESSAGES_FROM_FOLDER
+ *    フォルダから一括取り込み
+ *     これらは全く同じ機能なのでどちらを使ってもかまいません。
+ *
+ * 7. 作成したイベントコマンドをテストプレイかイベントテストで実行する。
+ *     実行前に本プラグインを管理画面からONにして「プロジェクトの保存」を
+ *    実行しておきましょう。
+ *
+ * 8. 変更箇所がゲームに取り込まれる。
+ *     あなたがテキストで編集した箇所だけがゲームに取り込まれます。
+ *    テキストの変更とゲームの変更が衝突した場合の解消手順は、
+ *    「変更が衝突した場合の解消方法」を参照してください。
+ *
+ * 9. ツクールのUIの変更をテキストに書き出す。
+ *    反対にツクールUIで行った変更をテキストに書き出すには、
+ *    2と3の手順を再度実行してください。
+ *    テキストの変更とゲームの変更が衝突した場合の解消手順は、
+ *    「変更が衝突した場合の解消方法」を参照してください。
+ *
+ * --------------------------------------
+ * 変更が衝突した場合の解消方法
+ * --------------------------------------
+ *  同じ場所をテキストとゲームの両方で変更したときは、次の目印3行が挿入された上で、
+ *  両方の変更が残ります（どちらの変更も失われることはありません）。
+ *  テキストからゲームへの反映ならゲームに、
+ *  ゲームからテキストへの取り出しならテキストに入ります。
+ *
+ *    === テキストの変更 / from text ===
+ *    （テキスト側の内容）
+ *    === ゲームの変更 / from game ===
+ *    （ゲーム側の内容）
+ *    === どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===
+ *
+ *  直し方は「目印が入った方で決めて、反対側へ流す」の2手です。
+ *
+ * ◆ 反映で衝突した（目印がゲームに入った）とき
+ *     1. ツクールをセーブせずに開き直し、目印のある周辺をUIで編集して
+ *        目印3行を消し、残す方だけにする。
+ *     2. Frame2Text の「BATCH_EXPORT_MESSAGES_TO_FOLDER」を統合(merge)で実行する。
+ *
+ * ◆ 取り出しで衝突した（目印がテキストに入った）とき
+ *     1. テキストエディタで目印3行を消し、残す方だけにする。
+ *     2. 「BATCH_IMPORT_MESSAGES_FROM_FOLDER」を統合(merge)で実行する。
+ *
+ *  ※ 衝突を解消しないまま、同じプラグインコマンドは実行しないでください。
+ *    同じ向きにもう一度実行しても衝突は直りません。
+ *    また、目印が残っている間は、次の反映・取り出しの対象から外れます。
+ *    衝突を解消後、その衝突の解消を反映するために、行なった操作と
+ *    反対の操作を行なってください。
+ *    （例えば、ゲームからテキストへの取り出し時に衝突した場合は、
+ *    衝突を解消後、テキストからゲームへの反映を実行してください。）
+ *
+ *
+ *
+ * ◆ 一括取り出し・反映時にプラグインコマンドが意図通りに動作しないとき
+ *  ゲームかテキストのどちらかを真と決めて、強制的に上書きすることで解決できます。
+ *  反対側にしかない内容は失われます。
+ *     1. ゲームを真としてテキストを上書きしたいとき
+ *        Frame2Text の「BATCH_EXPORT_MESSAGES_TO_FOLDER」を上書き(overwrite)で実行する。
+ *     2. テキストを真としてゲームを上書きしたいとき
+ *        「BATCH_IMPORT_MESSAGES_FROM_FOLDER」を上書き(overwrite)で実行する。
+ *
+ *  差分反映に使う「共通の祖先」はプロジェクトの .t2f-base フォルダに自動で保存・参照
+ *  されます。このフォルダを削除すると次回は初回扱いになり、直ることがあります。
+ *
+ * ◆ ボタン操作で使いたい場合
+ *  Visual Studio Code 拡張「Text2Frame Language Support」を使うと、反映・取り出し・
+ *  英語化をUIから実行できます（専門用語もやさしく表示されます）。
+ *
+ * -------------------------------------
+ * Version 2.2.4 までの手順
+ * -------------------------------------
  *
  * -------------------------------------
  * ツクールMVでの実行方法
@@ -473,63 +572,6 @@
  *    IDが1のマップの、IDが1のイベントの、IDが1のページに書き出したことに
  *    なります。
  *
- *
- * --------------------------------------
- * 反映のしかた（上書き / 統合）と、ゲームからの取り出し
- * --------------------------------------
- * ◆ 反映（テキスト→ゲーム）
- *  ・IMPORT_MESSAGE_TO_EVENT / IMPORT_MESSAGE_TO_CE …「上書き」。テキストの
- *    内容をそのまま書き込みます（末尾追加、または全置換）。
- *  ・MERGE_MESSAGE_TO_EVENT / MERGE_MESSAGE_TO_CE …「統合」（おすすめ）。
- *    ツクール上で加えたUI編集（移動・分岐・スイッチ等）を残したまま、
- *    テキストの会話などを反映します。共通の祖先があれば賢く3方向で統合し、
- *    同じ場所を両方で変えたときだけ両方を残します（下記の競合表示）。
- *  ・BATCH_IMPORT_MESSAGES_FROM_FOLDER … フォルダ内のテキストを一括で反映します（既定は統合）。
- *
- * ◆ 取り出し（ゲーム→テキスト）: 逆変換プラグイン Frame2Text
- *  ゲームの内容をテキストへ書き出します。既定は「安全な統合」で、既にある翻訳
- *  などを残しつつ、ゲーム側で増えた・変わった箇所だけを取り込みます。
- *
- * ◆ 共通の祖先の自動管理
- *  統合に使う「共通の祖先」は .t2f-base フォルダに自動で保存・参照されるため、
- *  通常は指定不要です。
- *
- * ◆ 衝突（同じ場所を両方で変えたとき）の直し方
- *  同じ場所をテキストとゲームの両方で変更したときは、次の目印で両方を残します。
- *
- *    === テキストの変更 / from text ===
- *    （テキスト側の内容）
- *    === ゲームの変更 / from game ===
- *    （ゲーム側の内容）
- *    === どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===
- *
- *  直し方は「目印のある方で決めて、反対側へ上書きで押し出す」の2手です。
- *
- *  ・反映で衝突した（目印がゲームに入った）とき
- *     1. ツクールをセーブせずに開き直し、目印3行を消して残す方だけにする
- *     2. Frame2Text の「取り出し」を上書きで実行する
- *
- *  ・取り出しで衝突した（目印がテキストに入った）とき
- *     1. テキストの目印3行を消して残す方だけにする
- *     2. 「反映」を上書き（IMPORT_MESSAGE_TO_EVENT 等）で実行する
- *
- *  衝突したファイルは共通の祖先を更新していません。上の2手でテキスト・ゲーム・
- *  祖先の3つが揃い、次からまた統合が使えるようになります。
- *
- * ◆ ツクールを開かずに、テキストだけで解決したいとき
- *  反映で衝突して目印がゲームに入った場合でも、Frame2Text の「取り出し」を上書き
- *  で実行すれば目印ごとテキストへ書き出せます（目印は注釈として往復します）。
- *  テキストで目印3行を消したあと、「反映」を上書きで実行すれば揃います。
- *
- *  ※ 目印を消しただけで同じ向きにもう一度実行しても直るとは限りません。祖先が
- *    古いままなので、反対側の変更を残した場合は同じ衝突がまた出ます。必ず反対側
- *    へ「上書き」で押し出してください。
- *  ※ 目印をまたぐ「統合」はできません（目印ごと再度まとめてしまい、目印が二重・
- *    三重に増えるためです）。上書きは常に通ります。
- *
- * ◆ ボタン操作で使いたい場合
- *  Visual Studio Code 拡張「Text2Frame Language Support」を使うと、反映・取り出し・
- *  英語化をUIから実行できます（専門用語もやさしく表示されます）。
  *
  *
  * --------------------------------------
@@ -4170,8 +4212,14 @@
  * --------------------------------------
  * RPGツクールMV/MZのイベントコマンドを、Text2Frameの記法に則ったテキストに
  * エクスポートするプラグインである、Frame2Textも公開しています。
- * 取り出し（ゲーム→テキスト）は既定で「安全な統合」のため、既にある翻訳を
- * 残したまま、ゲーム側の変更だけを取り込めます（反映と対になる双方向の流れ）。
+ * BATCH_IMPORT_MESSAGES_FROM_FOLDER
+ * (フォルダ内のテキストを一括でゲームに反映)の対となる
+ * BATCH_EXPORT_MESSAGES_TO_FOLDER
+ * (ゲームの内容をテキストに一括書き出し)が公開されており、
+ * これらを組み合わせることで、UIに関係する部分はツクールUIで、
+ * シナリオに関係する部分は、テキストエディタで、
+ * といったワークフローが可能になります。
+ *
  * ダウンロードは以下のURLからお願いします。
  * https://x.gd/KPbTj
  *   (ヘルプドキュメントの表示の都合上、短縮URLを使っています)
@@ -4427,12 +4475,12 @@
       // 未解決の衝突が残ったままマージすると、目印ごと再マージされて目印が二重・三重に増え、
       // どちらが自分の変更か分からなくなる。解決を促して止める(上書き反映は逃げ道として通す)。
       if (hasConflictMarker(existing_events)) {
-        throw new Error('未解決の衝突がゲーム側に残っています。ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を上書きで実行してください。' +
-          ' / unresolved conflict markers in the game data; resolve in the editor, then pull with overwrite')
+        throw new Error('未解決の衝突がゲーム側に残っています。ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を実行してください。' +
+          ' / unresolved conflict markers in the game data; resolve in the editor, then pull')
       }
       if (hasConflictMarker(event_command_list)) {
-        throw new Error('未解決の衝突がテキストに残っています。目印3行を消して残す方を決めたあと、反映を上書きで実行してください。' +
-          ' / unresolved conflict markers in the text; resolve them, then import with overwrite')
+        throw new Error('未解決の衝突がテキストに残っています。目印3行を消して残す方を決めたあと、もう一度反映してください。' +
+          ' / unresolved conflict markers in the text; resolve them and import again')
       }
       // 祖先(BASE): 明示 BasePath 優先。無ければ .t2f-base/<locale>/<key> を自動参照。
       let base_cmds = null
@@ -4478,6 +4526,10 @@
     }
 
     // マージ反映後、反映したテキストを次回の祖先として保存する(明示 BasePath 使用時も最新化)。
+    // 衝突していても保存する: 祖先が示すのは「ここまでのテキストの変更はゲームが見た」であって
+    // 「一致した」ではなく、テキストの変更は(目印の中とはいえ)ゲームに入っている。据え置くと、
+    // ツクールで解決したあとの取り出しで同じ衝突がテキスト側に再発する。
+    // 衝突時はゲーム側に目印が残るので、次の反映・取り出しは既存のガードが止める。
     const saveMergeBase = function (baseRoot, baseId, textPath) {
       if (baseRoot && baseId) { try { saveBaseText(baseRoot, baseId.locale, baseId.key, readText(textPath)) } catch (e) {} }
     }
@@ -10298,8 +10350,8 @@
       if (conflicted.length > 0) {
         addMessage('[batch-import] 衝突が未解決のファイル ' + conflicted.length + '件: ' + conflicted.slice(0, DETAIL_LINES).join(', ') +
           (conflicted.length > DETAIL_LINES ? ' ほか' : ''))
-        addMessage('[batch-import] 衝突したファイルは祖先(.t2f-base)を更新していません。ツクールで目印3行を消して残す方を決めたあと、')
-        addMessage('[batch-import] Frame2Textの一括取り出しを上書きで実行してください(反映のやり直しでは直りません)。')
+        addMessage('[batch-import] ツクールで目印3行を消して残す方を決めたあと、')
+        addMessage('[batch-import] Frame2Textの一括取り出しを実行してください(反映のやり直しでは直りません)。')
       }
       failures.slice(0, DETAIL_LINES).forEach(function (f) { addMessage('[batch-import] 失敗: ' + f) })
       if (failures.length > DETAIL_LINES) {
@@ -10413,8 +10465,8 @@
           merged.commands.concat([getCommandBottomEvent()])
         writeData(Laurus.Text2Frame.MapPath, map_data)
         // 衝突が残っているときは共通祖先を進めない(Git 流。解決してから再実行させる)。
-        if (merged.conflicts) addWarning('衝突が残っているため祖先(.t2f-base)は更新していません。ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を上書きで実行してください(反映のやり直しでは直りません)。 / conflicts remain; resolve in the editor, then pull with overwrite')
-        else saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath)
+        if (merged.conflicts) addWarning('ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を実行してください。 / conflicts remain; resolve in the editor, then pull')
+        saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath)
         addMessage('Success / 書き出し成功！\n======> MapID: ' + Laurus.Text2Frame.MapID + ' -> EventID: ' + Laurus.Text2Frame.EventID + ' -> PageID: ' + Laurus.Text2Frame.PageID)
         break
       }
@@ -10428,8 +10480,8 @@
         ce_data[Laurus.Text2Frame.CommonEventID].list =
           merged.commands.concat([getCommandBottomEvent()])
         writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
-        if (merged.conflicts) addWarning('衝突が残っているため祖先(.t2f-base)は更新していません。ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を上書きで実行してください(反映のやり直しでは直りません)。 / conflicts remain; resolve in the editor, then pull with overwrite')
-        else saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath)
+        if (merged.conflicts) addWarning('ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を実行してください。 / conflicts remain; resolve in the editor, then pull')
+        saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath)
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break
       }
