@@ -3162,7 +3162,10 @@ function resolveText2Frame () {
         (markerCarried.length > 0 ? '、目印ごと取り出し ' + markerCarried.length + '件' : ''))
       addMessage('[batch] 出力先: ' + outDir)
       if (overwrittenCount > 0) {
-        addMessage('[batch] 既存テキスト ' + overwrittenCount + '件を上書きしました(取り出しはマージしません)。')
+        // 「取り出しはマージしません」と書いていた名残があったが、一括取り出しは統合を選べる。
+        // この行は上書きしたファイルだけを数えているので、統合との違いを言って対処に繋げる。
+        addMessage('[batch] 既存テキスト ' + overwrittenCount + '件を上書きしました(テキストに書いた内容は残っていません)。')
+        addMessage('[batch] 残したいときは「取り出しのしかた」に merge を指定してください。')
       }
       // $gameMessage は行数が限られるため、失敗の詳細は先頭数件だけ出して残りはコンソールへ回す。
       const FAILURE_LINES = 5
