@@ -3036,11 +3036,15 @@ function resolveText2Frame () {
 
     // data ディレクトリを走査し、出力対象(イベント/コモンイベント)の routing メタだけを返す。
     // textPath/locale は付けない(呼び出し側が textBase/locale/key.txt を組み立てる)。
-    const enumerateTargets = function (dataDir) {
+    /* onlyFile を渡すと、そのデータファイル1つぶんの対象だけを返す。
+     * 同期監視は変わったファイルの分だけ処理したいので、全 Map を読み直さずに済ませる。 */
+    const enumerateTargets = function (dataDir, onlyFile) {
       const _fs = require('fs')
       const _path = require('path')
       const targets = []
-      _fs.readdirSync(dataDir).filter(function (f) { return /^Map\d+\.json$/.test(f) }).sort().forEach(function (fileName) {
+      const wanted = onlyFile ? _path.basename(onlyFile) : null
+      const keep = function (f) { return !wanted || f.toLowerCase() === wanted.toLowerCase() }
+      _fs.readdirSync(dataDir).filter(function (f) { return /^Map\d+\.json$/.test(f) && keep(f) }).sort().forEach(function (fileName) {
         const m = fileName.match(/^Map(\d+)\.json$/)
         if (!m) return
         const mapId = String(parseInt(m[1], 10))
@@ -3056,7 +3060,7 @@ function resolveText2Frame () {
         })
       })
       const commonPath = _path.join(dataDir, 'CommonEvents.json')
-      if (_fs.existsSync(commonPath)) {
+      if (keep('CommonEvents.json') && _fs.existsSync(commonPath)) {
         const commonData = JSON.parse(_fs.readFileSync(commonPath, 'utf8'))
         if (Array.isArray(commonData)) {
           commonData.forEach(function (ce, index) {
@@ -3068,7 +3072,70 @@ function resolveText2Frame () {
       return targets
     }
 
-    Laurus.Frame2Text.export = { decompile, VERSION, enumerateTargets, renderFrontMatter, buildPullText, stripFrontMatter, frontMatterHeader, frontMatterMeta }
+    /* ターゲット1件をテキストへ取り出す。一括取り出しと同期監視の両方から呼ぶ。
+     * 一括取り出しはこれを全ターゲットに回すだけ、同期監視は変わったファイルの分だけ回す。
+     * (全件を回す一括コマンドを変更のたびに呼ぶと、実プロジェクト規模ではゲームが数秒止まる)
+     *
+     * opts: { dataDir, target, outPath, baseDir, englishTag, strategy, locale }
+     * 戻り値: { ok, skipped, conflicts, markers, overwritten, baseSaveError, error }
+     * 投げずに戻り値で返す。呼び出し側が件数をまとめて報告するため。 */
+    const pullTargetToText = function (opts) {
+      const _fs = require('fs')
+      const _path = require('path')
+      const t = opts.target
+      try {
+        let list = []
+        if (t.kind === 'event') {
+          const mapData = JSON.parse(_fs.readFileSync(_path.join(opts.dataDir, 'Map' + ('000' + String(t.mapId)).slice(-3) + '.json'), 'utf8'))
+          list = mapData.events[Number(t.eventId)].pages[Number(t.pageId) - 1].list || []
+        } else {
+          const ceData = JSON.parse(_fs.readFileSync(_path.join(opts.dataDir, 'CommonEvents.json'), 'utf8'))
+          list = ceData[Number(t.commonEventId)].list || []
+        }
+        let existingText = ''
+        try { existingText = _fs.readFileSync(opts.outPath, 'utf8') } catch (e) { existingText = '' }
+        // テキストの front matter に strategy: があれば、そのファイルだけ引数より優先する
+        // (一括反映・t2f-sync と同じ規則)。
+        const metaStrategy = frontMatterMeta(existingText).strategy
+        const entryStrategy = String(metaStrategy || opts.strategy).toLowerCase() === 'merge' ? 'merge' : 'overwrite'
+        let baseText = ''
+        if (entryStrategy === 'merge') {
+          try { baseText = _fs.readFileSync(_path.join(opts.baseDir, t.key + '.txt'), 'utf8') } catch (e) { baseText = '' }
+        }
+        const built = buildPullText({
+          list,
+          englishTag: opts.englishTag,
+          strategy: entryStrategy,
+          existingText,
+          baseText,
+          fallbackHeader: renderFrontMatter(Object.assign({ locale: opts.locale }, t), t.kind)
+        })
+        // 未解決の目印が残っているものは書かずに見送る(このファイルだけ飛ばす)。
+        if (built.skipped) return { ok: true, skipped: built.skipped }
+        _fs.writeFileSync(opts.outPath, built.text, 'utf8')
+        let baseSaveError = null
+        // 祖先に目印が入ると次回の 3-way がそれを再マージするので、そのときだけ進めない。
+        // 衝突しただけ(目印はテキストのみ)なら進める。理由は単発取り出しの同じ箇所を参照。
+        if (!built.markers) {
+          // 祖先はゲーム側(built.baseText)。マージ結果を入れるとゲームが到達していない
+          // 状態が祖先になり、次の反映でテキストの内容が消える。
+          try { _fs.writeFileSync(_path.join(opts.baseDir, t.key + '.txt'), built.baseText, 'utf8') } catch (e) { baseSaveError = e }
+        }
+        return {
+          ok: true,
+          text: built.text,
+          conflicts: built.conflicts || 0,
+          markers: !!built.markers,
+          // 全上書きで既存を潰したときだけ true(merge は上書きではない)。
+          overwritten: entryStrategy !== 'merge' && !!existingText,
+          baseSaveError
+        }
+      } catch (e) {
+        return { ok: false, error: (e && e.message) || String(e) }
+      }
+    }
+
+    Laurus.Frame2Text.export = { decompile, VERSION, enumerateTargets, pullTargetToText, renderFrontMatter, buildPullText, stripFrontMatter, frontMatterHeader, frontMatterMeta }
     // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
     // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
     // window / global にもフォールバックする(Text2Frame 側の $LaurusText2Frame と対称)。
@@ -3153,7 +3220,6 @@ function resolveText2Frame () {
         return
       }
       const _path = require('path')
-      const _fs = require('fs')
       const dataDir = _path.isAbsolute(Laurus.Frame2Text.DataFolder) ? Laurus.Frame2Text.DataFolder : _path.resolve(BASE_PATH, Laurus.Frame2Text.DataFolder)
       const locale = Laurus.Frame2Text.Locale
       const textBase = Laurus.Frame2Text.TextBase
@@ -3218,60 +3284,33 @@ function resolveText2Frame () {
       }
 
       targets.forEach(function (t) {
-        try {
-          let list = []
-          if (t.kind === 'event') {
-            const mapData = JSON.parse(_fs.readFileSync(_path.join(dataDir, 'Map' + ('000' + String(t.mapId)).slice(-3) + '.json'), 'utf8'))
-            list = mapData.events[Number(t.eventId)].pages[Number(t.pageId) - 1].list || []
-          } else {
-            const ceData = JSON.parse(_fs.readFileSync(_path.join(dataDir, 'CommonEvents.json'), 'utf8'))
-            list = ceData[Number(t.commonEventId)].list || []
-          }
-          const outPath = _path.resolve(BASE_PATH, textBase, locale, t.key + '.txt')
-          let existingText = ''
-          try { existingText = _fs.readFileSync(outPath, 'utf8') } catch (e) { existingText = '' }
-          // テキストの front matter に strategy: があれば、そのファイルだけコマンド引数より優先する
-          // (一括反映・t2f-sync と同じ規則)。
-          const metaStrategy = frontMatterMeta(existingText).strategy
-          const entryStrategy = String(metaStrategy || batchStrategy).toLowerCase() === 'merge' ? 'merge' : 'overwrite'
-          let baseText = ''
-          if (entryStrategy === 'merge') {
-            try { baseText = _fs.readFileSync(_path.join(_baseDir, t.key + '.txt'), 'utf8') } catch (e) { baseText = '' }
-          }
-          const built = buildPullText({
-            list,
-            englishTag,
-            strategy: entryStrategy,
-            existingText,
-            baseText,
-            fallbackHeader: renderFrontMatter(Object.assign({ locale }, t), t.kind)
-          })
-          // 未解決の目印が残っているものは書かずに見送る(このファイルだけ飛ばし、他は通す)。
-          if (built.skipped) {
-            conflictSkipped.push(t.key)
-            return
-          }
-          // 全上書きで既存を潰した件数だけ知らせる(merge は上書きではない)。
-          if (entryStrategy !== 'merge' && existingText) overwrittenCount++
-          _fs.writeFileSync(outPath, built.text, 'utf8')
-          if (built.conflicts) conflicted.push(t.key)
-          // 祖先に目印が入ると次回の 3-way がそれを再マージするので、そのときだけ進めない。
-          // 衝突しただけ(目印はテキストのみ)なら進める。理由は単発取り出しの同じ箇所を参照。
-          if (built.markers) {
-            markerCarried.push(t.key)
-          } else {
-            // 祖先はゲーム側(built.baseText)。マージ結果を入れるとゲームが到達していない
-            // 状態が祖先になり、次の反映でテキストの内容が消える。
-            try { _fs.writeFileSync(_path.join(_baseDir, t.key + '.txt'), built.baseText, 'utf8') } catch (e) { _baseSaveError = _baseSaveError || e }
-          }
-          if (t.kind === 'event') eventCount++
-          else commonCount++
-          okCount++
-        } catch (e) {
+        // 1件ぶんの取り出しは同期監視と共通(pullTargetToText)。ここは件数の集計だけ行う。
+        const r = pullTargetToText({
+          dataDir,
+          target: t,
+          outPath: _path.resolve(BASE_PATH, textBase, locale, t.key + '.txt'),
+          baseDir: _baseDir,
+          englishTag,
+          strategy: batchStrategy,
+          locale
+        })
+        if (!r.ok) {
           errCount++
-          failures.push(t.key + ': ' + ((e && e.message) || String(e)))
-          console.error('[batch] ' + t.key + ': ' + String(e))
+          failures.push(t.key + ': ' + r.error)
+          console.error('[batch] ' + t.key + ': ' + r.error)
+          return
         }
+        if (r.skipped) {
+          conflictSkipped.push(t.key)
+          return
+        }
+        if (r.overwritten) overwrittenCount++
+        if (r.conflicts) conflicted.push(t.key)
+        if (r.markers) markerCarried.push(t.key)
+        if (r.baseSaveError) _baseSaveError = _baseSaveError || r.baseSaveError
+        if (t.kind === 'event') eventCount++
+        else commonCount++
+        okCount++
       })
       if (_baseSaveError) {
         addMessage('[batch] 警告: .t2f-base の祖先を保存できませんでした (' + (_baseSaveError.message || _baseSaveError) + ')。次回反映は祖先無し扱いとなり、テキストを全反映します(3-wayになりません)。')
