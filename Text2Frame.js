@@ -202,6 +202,55 @@
  * @default text
  *
  *
+ * @command START_SYNC_WATCH
+ * @text 同期監視の開始
+ * @desc テキストとゲームデータを見張って、変わったファイルだけを自動で反映・取り出しします。プレイテストを閉じると止まります。ツクールのエディタは閉じて使ってください。
+ *
+ * @arg Strategy
+ * @text 同期のしかた
+ * @desc merge(統合)はもう片方に書いた内容を残します。overwrite(上書き)は全て置き換えます。既定はmergeです。
+ * @type select
+ * @option merge
+ * @value merge
+ * @option overwrite
+ * @value overwrite
+ * @default merge
+ *
+ * @arg Direction
+ * @text 監視する向き
+ * @desc both(双方向) / push(テキスト→ゲームのみ) / pull(ゲーム→テキストのみ)。既定はbothです。
+ * @type select
+ * @option both
+ * @value both
+ * @option push
+ * @value push
+ * @option pull
+ * @value pull
+ * @default both
+ *
+ * @arg Locale
+ * @text 言語
+ * @desc 監視する text/<言語>/ のサブフォルダ名です。デフォルトはjaです。
+ * @type string
+ * @default ja
+ *
+ * @arg TextBase
+ * @text テキストのフォルダ名
+ * @desc テキストのベースディレクトリです。デフォルトはtextです。通常、設定する必要はありません。
+ * @type string
+ * @default text
+ *
+ * @arg DataFolder
+ * @text ゲームデータのフォルダ名
+ * @desc ゲームデータのフォルダ名です。デフォルトはdataです。通常、設定する必要はありません。
+ * @type string
+ * @default data
+ *
+ * @command STOP_SYNC_WATCH
+ * @text 同期監視の停止
+ * @desc 同期監視を止めます。プレイテストを閉じても止まります。
+ *
+ *
  * @command MERGE_MESSAGE_TO_EVENT
  * @text テキストをイベントにマージ
  * @desc 既存イベントを破壊せず、指定したテキストの内容を差分反映します。このコマンドは特別の事情がある場合に利用するエキスパート向けプラグインコマンドです。通常は、BATCH_IMPORT_MESSAGES_FROM_FOLDER を利用することを推奨します。詳細はwikiの該当ページを確認してください。テキストに見出し情報が書かれている場合には、取り込み先マップID、取り込み先イベントID、取り込み先ページID は省略できます。祖先フォルダ名は通常設定する必要はありません。
@@ -480,6 +529,47 @@
  * ◆ 差分反映に使う「共通の祖先」はプロジェクトの .t2f-base フォルダに自動で
  *  保存・参照されます。このフォルダを削除すると状態が初期化され必ず上書きさ
  *  れます。
+ *
+ * --------------------------------------
+ * 自動で同期する（同期監視）
+ * --------------------------------------
+ *  毎回プラグインコマンドを実行するかわりに、テキストとゲームデータを見張って、
+ *  変わったファイルだけを自動で反映・取り出しさせることができます。
+ *
+ *     START_SYNC_WATCH
+ *     同期監視の開始
+ *      これらは全く同じ機能なのでどちらを使ってもかまいません。
+ *      止めるときは STOP_SYNC_WATCH（同期監視の停止）を実行します。
+ *
+ *  引数は順に「同期のしかた」「向き」「言語」「テキストのフォルダ名」
+ *  「ゲームデータのフォルダ名」で、すべて省略できます。
+ *
+ *     START_SYNC_WATCH
+ *     START_SYNC_WATCH merge push
+ *     START_SYNC_WATCH merge both ja text data
+ *
+ *  ◆ 使う前に知っておくこと
+ *   ・監視はゲームのプロセスで動きます。**プレイテストを閉じると止まります。**
+ *   ・**実行中のゲームの画面は変わりません。** ゲームは起動時に読んだデータを
+ *     持ち続けるためです。反映を確かめるには F5 でリロードしてください。
+ *   ・進行状況はコンソール（F8）に出ます。ゲーム画面には出ません。
+ *   ・取り出しには Frame2Text が必要です（向きに push を指定すれば不要）。
+ *
+ *  ◆ ツクールのエディタは閉じて使ってください
+ *   エディタで「プロジェクトの保存」をすると data フォルダが丸ごと書き戻り、
+ *   反映済みの内容が失われます。また、その保存はデータ全体の変更として観測され
+ *   ます。まとまった変更を見つけたときは保存とみなして自動取り出しを見送り、
+ *   コンソールにその旨を出します。必要なら一括取り出しを手で実行してください。
+ *
+ *   Game.exe（ツクールMZでは game.exe）から直接ゲームを起動し、エディタを閉じた
+ *   まま置いておくのがおすすめの使い方です。
+ *
+ *  ◆ 監視の対象
+ *   text/<言語>/ 直下の .txt と、data 直下の Map***.json / CommonEvents.json です。
+ *   テキストをさらにサブフォルダに分けている場合、そこは監視されません。
+ *
+ *  ターミナルを使える場合は、ゲームを起動しなくても同じことができます。
+ *  「npx t2f-sync --watch」を参照してください。
  *
  * --------------------------------------
  * Visual Studio Code のプラグイン
@@ -4343,6 +4433,14 @@
       // 引数順は @arg の並びと合わせる(反映のしかたが1番目)。
       this.pluginCommand('BATCH_IMPORT_MESSAGES_FROM_FOLDER', [strategy, text_folder])
     })
+    PluginManager.registerCommand('Text2Frame', 'START_SYNC_WATCH', function (args) {
+      // 引数順は @arg の並びと合わせる(同期のしかたが1番目)。
+      this.pluginCommand('START_SYNC_WATCH',
+        [args.Strategy, args.Direction, args.Locale, args.TextBase, args.DataFolder])
+    })
+    PluginManager.registerCommand('Text2Frame', 'STOP_SYNC_WATCH', function () {
+      this.pluginCommand('STOP_SYNC_WATCH', [])
+    })
   }
 
   var Laurus = typeof Laurus !== 'undefined' ? Laurus : {} // eslint-disable-line no-var, no-use-before-define
@@ -4652,6 +4750,26 @@
         Laurus.Text2Frame.BatchStrategy = String(args[0] || 'merge').toLowerCase()
         Laurus.Text2Frame.ImportFolder = args[1] || 'text'
         Laurus.Text2Frame.ExecMode = 'BATCH_IMPORT_MESSAGES_FROM_FOLDER'
+        break
+      case 'START_SYNC_WATCH' :
+      case '同期監視の開始' :
+        // やり方が1番目なのは一括コマンドと同じ。以降は向き・言語・フォルダ。
+        Laurus.Text2Frame.SyncStrategy = String(args[0] || 'merge').toLowerCase()
+        Laurus.Text2Frame.SyncDirection = String(args[1] || 'both').toLowerCase()
+        Laurus.Text2Frame.SyncLocale = args[2] || 'ja'
+        Laurus.Text2Frame.SyncTextBase = args[3] || 'text'
+        Laurus.Text2Frame.SyncDataFolder = args[4] || 'data'
+        if (Laurus.Text2Frame.SyncStrategy !== 'merge' && Laurus.Text2Frame.SyncStrategy !== 'overwrite') {
+          throw new Error('Unknown strategy: ' + args[0] + ' / 同期のしかたは merge か overwrite を指定してください。')
+        }
+        if (['both', 'push', 'pull'].indexOf(Laurus.Text2Frame.SyncDirection) === -1) {
+          throw new Error('Unknown direction: ' + args[1] + ' / 向きは both か push か pull を指定してください。')
+        }
+        Laurus.Text2Frame.ExecMode = 'START_SYNC_WATCH'
+        break
+      case 'STOP_SYNC_WATCH' :
+      case '同期監視の停止' :
+        Laurus.Text2Frame.ExecMode = 'STOP_SYNC_WATCH'
         break
       case 'COMMAND_LINE' :
         Laurus.Text2Frame = Object.assign(Laurus.Text2Frame, args[0])
@@ -10336,6 +10454,268 @@
     }
 
     if (Laurus.Text2Frame.ExecMode === 'LIBRARY_EXPORT') {
+      return
+    }
+
+    /* ---------------- 同期監視 (START_SYNC_WATCH / STOP_SYNC_WATCH) ----------------
+     * text と data を見張って、変わったファイルだけを自動で反映・取り出しする。
+     * npx t2f-sync --watch と同じことを、ターミナル無しで回すためのもの。
+     *
+     * ・監視はゲームのプロセスに載るので、プレイテストを閉じると止まる。
+     * ・実行中のゲームの画面は変わらない($dataMap は起動時に読んだきり)。確認は F5 でリロード。
+     * ・chokidar は npm 依存でプラグイン利用者の手元に無いため、Node 組み込みの fs.watch で作る。
+     *   一括取り出しが作る配置(text/<言語>/*.txt, data/*.json)はフラットなので再帰監視は要らない。 */
+    if (Laurus.Text2Frame.ExecMode === 'STOP_SYNC_WATCH') {
+      if (!Laurus.Text2Frame._syncWatch) {
+        addMessage('[sync] 同期監視は動いていません。')
+        return
+      }
+      Laurus.Text2Frame._syncWatch.stop()
+      Laurus.Text2Frame._syncWatch = null
+      addMessage('[sync] 同期監視を停止しました。')
+      console.log('[sync] stopped')
+      return
+    }
+
+    if (Laurus.Text2Frame.ExecMode === 'START_SYNC_WATCH') {
+      if (typeof require === 'undefined') {
+        addMessage('[sync] Node.js environment not available')
+        return
+      }
+      // 二重起動すると監視が重なって同じ変更を何度も処理する。状態を出して何もしない。
+      if (Laurus.Text2Frame._syncWatch) {
+        const cur = Laurus.Text2Frame._syncWatch.opts
+        addMessage('[sync] 同期監視はすでに動いています(' + cur.direction + ' / ' + cur.strategy + ' / ' + cur.locale + ')。')
+        addMessage('[sync] 設定を変えるときは STOP_SYNC_WATCH で止めてから開始してください。')
+        return
+      }
+      const _fs = require('fs')
+      const _path = require('path')
+      const { BASE_PATH } = getDirParams()
+      const opts = {
+        strategy: Laurus.Text2Frame.SyncStrategy || 'merge',
+        direction: Laurus.Text2Frame.SyncDirection || 'both',
+        locale: Laurus.Text2Frame.SyncLocale || 'ja',
+        textBase: Laurus.Text2Frame.SyncTextBase || 'text',
+        dataFolder: Laurus.Text2Frame.SyncDataFolder || 'data'
+      }
+      const textRoot = _path.resolve(BASE_PATH, opts.textBase, opts.locale)
+      const dataDir = _path.resolve(BASE_PATH, opts.dataFolder)
+      const baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH
+      const baseDir = _path.join(baseRoot, '.t2f-base', String(opts.locale || 'default'))
+      const englishTag = String(Laurus.Text2Frame.EnglishTag) !== 'false'
+      const wantPush = opts.direction === 'push' || opts.direction === 'both'
+      const wantPull = opts.direction === 'pull' || opts.direction === 'both'
+
+      const F2T = resolveFrame2Text()
+      if (wantPull && (!F2T || !F2T.pullTargetToText)) {
+        addMessage('[sync] 取り出しには Frame2Text プラグインが必要です。')
+        addMessage('[sync] 同じプロジェクトに導入するか、向きに push を指定してください。')
+        console.error('[sync] pull requires the Frame2Text plugin; install it or use direction=push')
+        return
+      }
+      if (wantPush && !_fs.existsSync(textRoot)) {
+        addMessage('[sync] テキストのフォルダがありません: ' + textRoot)
+        addMessage('[sync] 先に Frame2Text の一括取り出しを実行してください。')
+        console.error('[sync] text folder not found: ' + textRoot)
+        return
+      }
+
+      const rel = function (p) { try { return _path.relative(BASE_PATH, p) || p } catch (e) { return p } }
+
+      /* 自分が書いたファイルの変更イベントを1回だけ無視する。これが無いと
+       * 反映 -> data 変更 -> 取り出し -> text 変更 -> 反映 ... と無限に回る。
+       * t2f-sync の createEchoGuard と同じ考え方(内容で自分の書き込みを見分ける)。 */
+      const guard = (function () {
+        let hash
+        try {
+          const crypto = require('crypto')
+          hash = function (s) { return crypto.createHash('sha1').update(String(s)).digest('hex') }
+        } catch (e) {
+          // crypto が無い環境では内容そのものを持つ。件数が少ないので実用上問題ない。
+          hash = function (s) { return String(s) }
+        }
+        const own = {}
+        const read = function (p) { try { return _fs.readFileSync(p, 'utf8') } catch (e) { return null } }
+        return {
+          record: function (p, content) { own[_path.resolve(p)] = hash(content) },
+          recordFile: function (p) { const c = read(p); if (c !== null) own[_path.resolve(p)] = hash(c) },
+          isEcho: function (p) {
+            const key = _path.resolve(p)
+            if (!(key in own)) return false
+            const cur = read(key)
+            const was = own[key]
+            delete own[key]
+            return cur !== null && was === hash(cur)
+          }
+        }
+      })()
+
+      /* 監視を張る直前に書かれたファイルの変更イベントは、張った後から遅れて届く
+       * (一括取り出しの直後に監視を始めると必ず起きる)。開始時の mtime とサイズを控えておき、
+       * それと同じままのファイルは処理しない。中身を読まないので大きなプロジェクトでも軽い。
+       * 一度判定したら控えを捨てるので、以降の本当の変更はそのまま処理される。 */
+      const settled = {}
+      const stampOf = function (p) {
+        try { const st = _fs.statSync(p); return st.mtimeMs + ':' + st.size } catch (e) { return null }
+      }
+      const seedSettled = function (dir, re) {
+        let names = []
+        try { names = _fs.readdirSync(dir) } catch (e) { return }
+        names.forEach(function (n) {
+          if (!re.test(n)) return
+          const p = _path.join(dir, n)
+          const s = stampOf(p)
+          if (s) settled[p] = s
+        })
+      }
+      const isUnchangedSinceStart = function (abs) {
+        const key = _path.resolve(abs)
+        if (!(key in settled)) return false
+        const was = settled[key]
+        delete settled[key]
+        return was === stampOf(key)
+      }
+
+      const pushOne = function (abs) {
+        if (guard.isEcho(abs)) return
+        let res
+        try {
+          res = applyTextFile({ textPath: abs, strategy: opts.strategy, backup: true })
+        } catch (e) {
+          console.error('[sync] 反映で例外: ' + rel(abs) + ': ' + ((e && e.message) || e))
+          return
+        }
+        if (!res || !res.ok) {
+          console.error('[sync] 反映に失敗: ' + rel(abs) + ': ' + ((res && res.error) || 'unknown error'))
+          return
+        }
+        // 反映が書いた data は自分の書き込み。取り出しに跳ね返らせない。
+        if (res.dataPath) guard.recordFile(res.dataPath)
+        console.log('[sync] 反映: ' + rel(abs) + ' -> ' + rel(res.dataPath || '') +
+          (res.conflicts ? ' (衝突 ' + res.conflicts + '件。目印3行を消して残す方を決めてください)' : ''));
+        (res.warnings || []).forEach(function (w) { console.warn('[sync] ' + w) })
+      }
+
+      const pullOne = function (abs) {
+        let targets = []
+        try {
+          targets = F2T.enumerateTargets(dataDir, abs)
+        } catch (e) {
+          console.error('[sync] データを読めませんでした: ' + rel(abs) + ': ' + ((e && e.message) || e))
+          return
+        }
+        targets.forEach(function (t) {
+          const outPath = _path.join(textRoot, t.key + '.txt')
+          const r = F2T.pullTargetToText({
+            dataDir, target: t, outPath, baseDir, englishTag, strategy: opts.strategy, locale: opts.locale
+          })
+          if (!r.ok) {
+            console.error('[sync] 取り出しに失敗: ' + t.key + ': ' + r.error)
+            return
+          }
+          if (r.skipped) {
+            console.warn('[sync] 未解決の衝突があるため取り出しを見送りました(' + r.skipped + '側): ' + t.key)
+            return
+          }
+          // 取り出しが書いたテキストは自分の書き込み。反映に跳ね返らせない。
+          guard.record(outPath, r.text)
+          console.log('[sync] 取り出し: ' + t.key + (r.conflicts ? ' (衝突 ' + r.conflicts + '件)' : ''))
+        })
+      }
+
+      // ツクールで「プロジェクトの保存」をすると data/*.json が丸ごと書き戻る。
+      // それを1件ずつ取り出すと全マップぶん走ってゲームが数秒止まり、衝突も大量に出る。
+      // 窓の中でこの件数を超えたら保存とみなして見送り、手動の一括取り出しに誘導する。
+      const DATA_BURST_LIMIT = 3
+      const DEBOUNCE_MS = 250
+      const pending = { text: {}, data: {} }
+      let timer = null
+
+      const flush = function () {
+        timer = null
+        const textFiles = Object.keys(pending.text)
+        const dataFiles = Object.keys(pending.data)
+        pending.text = {}
+        pending.data = {}
+        textFiles.forEach(pushOne)
+        if (dataFiles.length > DATA_BURST_LIMIT) {
+          console.warn('[sync] data の変更が ' + dataFiles.length + '件ありました。ツクールのプロジェクト保存とみなして自動取り出しを見送ります。')
+          console.warn('[sync] 必要なら Frame2Text の BATCH_EXPORT_MESSAGES_TO_FOLDER を手で実行してください。')
+          return
+        }
+        dataFiles.forEach(pullOne)
+      }
+
+      const schedule = function (bucket, abs) {
+        bucket[abs] = true
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(flush, DEBOUNCE_MS)
+      }
+
+      const watchers = []
+      const startWatch = function (dir, onFile) {
+        try {
+          const w = _fs.watch(dir, function (eventType, fileName) {
+            // fileName が取れない環境では対象を特定できないので何もしない(まれ)。
+            if (!fileName) return
+            onFile(_path.join(dir, String(fileName)))
+          })
+          w.on('error', function (e) { console.error('[sync] 監視でエラー: ' + dir + ': ' + ((e && e.message) || e)) })
+          watchers.push(w)
+          return true
+        } catch (e) {
+          console.error('[sync] 監視を開始できませんでした: ' + dir + ': ' + ((e && e.message) || e))
+          return false
+        }
+      }
+
+      let started = false
+      if (wantPush) {
+        seedSettled(textRoot, /\.txt$/i)
+        started = startWatch(textRoot, function (abs) {
+          if (!/\.txt$/i.test(abs)) return
+          if (!_fs.existsSync(abs)) return
+          if (isUnchangedSinceStart(abs)) return
+          schedule(pending.text, abs)
+        }) || started
+      }
+      if (wantPull) {
+        seedSettled(dataDir, /^(Map\d+|CommonEvents)\.json$/i)
+        started = startWatch(dataDir, function (abs) {
+          if (!/^(Map\d+|CommonEvents)\.json$/i.test(_path.basename(abs))) return
+          if (!_fs.existsSync(abs)) return
+          if (isUnchangedSinceStart(abs)) return
+          if (guard.isEcho(abs)) return
+          schedule(pending.data, abs)
+        }) || started
+      }
+      if (!started) {
+        watchers.forEach(function (w) { try { w.close() } catch (e) {} })
+        addMessage('[sync] 監視を開始できませんでした。コンソール(F8)を確認してください。')
+        return
+      }
+
+      Laurus.Text2Frame._syncWatch = {
+        opts,
+        stop: function () {
+          if (timer) clearTimeout(timer)
+          timer = null
+          watchers.forEach(function (w) { try { w.close() } catch (e) {} })
+        }
+      }
+
+      const watched = []
+      if (wantPush) watched.push(rel(textRoot))
+      if (wantPull) watched.push(rel(dataDir))
+      addMessage('[sync] 同期監視を開始しました(' + opts.direction + ' / ' + opts.strategy + ' / ' + opts.locale + ')。')
+      addMessage('[sync] 監視中: ' + watched.join(' + '))
+      addMessage('[sync] 進行状況はコンソール(F8)に出ます。ゲームを閉じるか STOP_SYNC_WATCH で止まります。')
+      console.log('[sync] watching ' + watched.join(' + ') + ' (direction=' + opts.direction + ', strategy=' + opts.strategy + ')')
+      console.log('[sync] 反映してもこのゲームの画面は変わりません。確認するには F5 でリロードしてください。')
+      if (wantPush) {
+        console.log('[sync] 注意: ツクールのエディタで「プロジェクトの保存」をすると data/*.json が丸ごと書き戻り、反映済みの内容が失われます。エディタは閉じて使ってください。')
+      }
       return
     }
 
