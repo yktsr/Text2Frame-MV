@@ -93,12 +93,27 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
   const runBatch = function (root, strategy) {
     Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', [strategy || 'merge', root || textRoot])
   }
+  /* 画面幅(半角55)を超えるメッセージは addMessage が自動で折り返すため、
+   * 1つの文章が複数の $gameMessage 行にまたがる。行ごとではなく通しの文字列から探し、
+   * 次のメッセージの先頭([batch] など)までを「1つの文章」として返す。 */
+  const messageOf = function (needle) {
+    const all = shown.join('')
+    const at = all.indexOf(needle)
+    if (at === -1) return undefined
+    const PREFIX = /\[(batch-import|batch|sync)\]/g
+    let start = 0
+    let end = all.length
+    let m
+    while ((m = PREFIX.exec(all)) !== null) {
+      if (m.index <= at) start = m.index
+      else { end = m.index; break }
+    }
+    return all.slice(start, end)
+  }
   const countShown = function (needle) {
-    return shown.filter(function (t) { return t.indexOf(needle) !== -1 }).length
+    return shown.join('').split(needle).length - 1
   }
-  const line = function (needle) {
-    return shown.filter(function (t) { return t.indexOf(needle) !== -1 })[0]
-  }
+  const line = messageOf
 
   it('takes the strategy as its 1st argument, like the batch export does', function () {
     Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', ['overwrite', textRoot])

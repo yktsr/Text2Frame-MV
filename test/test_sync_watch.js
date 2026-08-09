@@ -78,7 +78,12 @@ describe('START_SYNC_WATCH / STOP_SYNC_WATCH', function () {
     Game_Interpreter.prototype.pluginCommandText2Frame('STOP_SYNC_WATCH', [])
     return shown.slice()
   }
-  const line = function (out, needle) { return out.filter(function (t) { return t.indexOf(needle) !== -1 })[0] }
+  /* 画面幅(半角55)を超えるメッセージは addMessage が自動で折り返すので、
+   * 1つの文章が複数行にまたがる。行ごとではなく通しの文字列から探す。 */
+  const line = function (out, needle) {
+    const all = out.join('')
+    return all.indexOf(needle) === -1 ? undefined : all
+  }
 
   beforeEach(function () {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-watch-'))
