@@ -257,6 +257,12 @@
  * @default true
  * @type boolean
  *
+ * @param OmitDefaultTags
+ * @text 既定と同じタグを省略する
+ * @desc 顔・背景・位置が既定値と同じときタグを書きません。3つとも既定ならタグ行ごと消えて、テキストが読みやすくなります。デフォルト値はtrueです。
+ * @default true
+ * @type boolean
+ *
  * @help
  * 本プラグインはツクールMV・MZのイベントコマンドを、テキストファイル(.txtファ
  * イルなど)に取り出すための開発支援プラグインです。テキストからゲームへ取り込む
@@ -341,6 +347,39 @@
  *      1件ずつの統合です。
  *    EXPORT_EVENT_TO_MESSAGE / EXPORT_CE_TO_MESSAGE
  *      1件ずつの上書きです。
+ *
+ * --------------------------------------
+ * 既定と同じタグを省略する
+ * --------------------------------------
+ *  取り出したテキストは、メッセージごとに次の行が付きます。
+ *
+ *    <顔: (0)><背景: ウインドウ><位置: 下>
+ *    やめて！ラーの翼神竜の特殊能力で、
+ *
+ *  この3つが既定値と同じときは書きません。3つとも既定なら行ごと消えるので、
+ *  セリフだけが並んだ読みやすいテキストになります。
+ *
+ *    やめて！ラーの翼神竜の特殊能力で、
+ *
+ *  顔だけ指定しているなら <顔: Actor1(2)> だけが残ります。
+ *
+ *  ◆ 何が「既定」か
+ *   Text2Frame のプラグインパラメータ「位置のデフォルト値」「背景のデフォルト値」です。
+ *   タグが無いとき Text2Frame がこの値を補うので、同じ値なら書いても書かなくても
+ *   取り込み結果は変わりません。
+ *   したがって、あなたがこれらのパラメータを変えていれば、その値が省略の基準になります。
+ *   顔にはパラメータが無く、空の顔は常に省略できます。
+ *
+ *  ◆ 元に戻したいとき
+ *   プラグインパラメータ「既定と同じタグを省略する」を false にして取り出し直すと、
+ *   従来どおり全部書き出します。
+ *
+ *  ◆ 切り替えたときの差分について
+ *   次の取り出しで、既存のテキストがすべて新しい形になります。差分は大きく出ますが、
+ *   取り込んだ結果は変わりません。衝突も起きません。
+ *
+ *  ※ ウィンドウの区切りは、メッセージのあいだの空行が担っています。
+ *    タグ行が無くなっても、空行を消さない限り別々のウィンドウのままです。
  *
  * --------------------------------------
  * 変更が衝突した場合の解消方法
@@ -605,6 +644,7 @@ function resolveText2Frame () {
     Laurus.Frame2Text.DisplayMsg = true
     Laurus.Frame2Text.DisplayWarning = true
     Laurus.Frame2Text.EnglishTag = true
+    Laurus.Frame2Text.OmitDefaultTags = true
 
     globalThis.Game_Interpreter = {}
     Game_Interpreter.prototype = {}
@@ -623,6 +663,8 @@ function resolveText2Frame () {
     Laurus.Frame2Text.DisplayMsg = String(Laurus.Frame2Text.Parameters.DisplayMsg) === 'true'
     Laurus.Frame2Text.DisplayWarning = String(Laurus.Frame2Text.Parameters.DisplayWarning) === 'true'
     Laurus.Frame2Text.EnglishTag = String(Laurus.Frame2Text.Parameters.EnglishTag) === 'true'
+    // 未設定(古いプラグイン設定のまま)なら省略する。既定を true にしているため。
+    Laurus.Frame2Text.OmitDefaultTags = String(Laurus.Frame2Text.Parameters.OmitDefaultTags) !== 'false'
     let PATH_SEP = '/'
     let BASE_PATH = '.'
     if (typeof require !== 'undefined') {
@@ -1390,9 +1432,26 @@ function resolveText2Frame () {
       // イベントコード毎にループ
       const pretty = !!(options && options.pretty)
       const translationOnly = !!(options && options.translationOnly)
+      /* 既定と同じ顔・背景・位置のタグを書かない。3つとも既定ならタグ行ごと消える。
+       * 実プロジェクトでは「文章の表示」の 43.8% がこれに当たり、タグ行が雑音になっている。 */
+      const omitDefaults = (options && options.omitDefaults !== undefined)
+        ? !!options.omitDefaults
+        : String(Laurus.Frame2Text.OmitDefaultTags) !== 'false'
+      /* 省略してよいのは「タグが無いとき compile が補う値」と同じときだけ。出荷時の既定
+       * (ウインドウ/下)を基準にすると、プラグインパラメータを変えているプロジェクトで壊れる。
+       * Text2Frame が居ないと何を補われるか分からないので、そのときは背景・位置を省略しない。 */
+      let msgDefaults = null
+      if (omitDefaults) {
+        const T2F = resolveText2Frame()
+        if (T2F && T2F.getMessageDefaults) {
+          try { msgDefaults = T2F.getMessageDefaults() } catch (e) { msgDefaults = null }
+        }
+      }
       let text = ''
       // 直前に出力したのがメッセージ本文(401)か。本文と次のコマンドの間に空行を入れるのに使う。
       let afterMessageText = false
+      // タグ行をまるごと省いたとき、続く本文(401)にウィンドウの区切り(空行)を任せる。
+      let blockStartPending = false
       map_events.forEach(function (event) {
         if (typeof event !== 'object') {
           return
@@ -1432,18 +1491,41 @@ function resolveText2Frame () {
           const windowPosition = getWindowPositionValue(event.parameters[3])
           const name = event.parameters[4]
 
+          // 顔にはプラグインパラメータが無く、compile は必ず ''/0 を補う。
+          // なので空の顔は Text2Frame が居なくても省ける。
+          const omitFace = omitDefaults && face === '' && Number(faceId) === 0
+          // 背景・位置は文字列に直してから比べる。生の数値で比べると、未定義など
+          // 想定外の値を getXValue が既定へ寄せる分がずれる。
+          const omitBackground = omitDefaults && msgDefaults !== null &&
+            background === getBackgroundValue(msgDefaults.background)
+          const omitWindowPosition = omitDefaults && msgDefaults !== null &&
+            windowPosition === getWindowPositionValue(msgDefaults.windowPosition)
+
           const faceTag = EnglishTag ? `<Face: ${face}(${faceId})>` : `<顔: ${face}(${faceId})>`
           const backgroundTag = EnglishTag ? `<Background: ${background}>` : `<背景: ${background}>`
           const windowPositionTag = EnglishTag ? `<WindowPosition: ${windowPosition}>` : `<位置: ${windowPosition}>`
           const nameTagStr = EnglishTag ? `<Name: ${name}>` : `<名前: ${name}>`
           const nameTag = name === '' || name === undefined ? '' : nameTagStr
 
-          addMessageBlockStart()
-          text += faceTag + backgroundTag + windowPositionTag + nameTag
+          const tags = (omitFace ? '' : faceTag) + (omitBackground ? '' : backgroundTag) +
+            (omitWindowPosition ? '' : windowPositionTag) + nameTag
+          if (tags === '') {
+            // タグ行が空になったので行ごと出さない。ウィンドウの区切り(空行)は続く本文に任せる。
+            // ここで空行だけ出すと、本文の改行と重なって空行が二重になる。
+            blockStartPending = true
+          } else {
+            addMessageBlockStart()
+            text += tags
+          }
         }
         if (event.code === 401) {
           const showText = event.parameters[0]
-          addNewLineIndent(indent)
+          if (blockStartPending) {
+            addMessageBlockStart()
+            blockStartPending = false
+          } else {
+            addNewLineIndent(indent)
+          }
           // 空のメッセージ行は <br> マーカーにする。素の空行は「ウィンドウ区切り」と
           // 解釈されるため(空行+平文=新ウィンドウ)、空401をそのまま空行で出すと
           // 往復で失われたりウィンドウが分割される。<br> は compile が空401へ戻す。
@@ -2973,6 +3055,8 @@ function resolveText2Frame () {
         if (text !== textBefore) {
           afterMessageText = event.code === 401
         }
+        // 101 の直後は必ず 401 が来るが、来なかったときに区切りを持ち越さない。
+        if (event.code !== 101 && event.code !== 401) blockStartPending = false
       })
       return text
     }
@@ -3094,7 +3178,7 @@ function resolveText2Frame () {
       // 目印入りのテキストにマージしても同じく二重化する。
       if (merge && hasConflictMarkerInText(existingText)) return { skipped: 'text', conflicts: 0 }
       const header = normalizeHeader((existingText && frontMatterHeader(existingText)) || opts.fallbackHeader || '')
-      const gameText = header + decompile(list, englishTag, { pretty: true }) + '\n'
+      const gameText = header + decompile(list, englishTag, { pretty: true, omitDefaults: opts.omitDefaults }) + '\n'
       // 既存テキストが無ければ突き合わせる相手がいないので、merge でも素の取り出しと同じ。
       if (!merge || !existingText) {
         return {
@@ -3190,6 +3274,7 @@ function resolveText2Frame () {
         const built = buildPullText({
           list,
           englishTag: opts.englishTag,
+          omitDefaults: opts.omitDefaults,
           strategy: entryStrategy,
           existingText,
           baseText,
@@ -3517,6 +3602,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-t, --text-dir <dir>', 'text base directory (batch)', 'text')
     .option('-v, --verbose', 'debug mode', false)
     .option('-w, --english_tag <true/false>', 'english tag', 'true')
+    .option('--omit-default-tags <true/false>', 'omit face/background/position tags that match the defaults', 'true')
     .option('-s, --strategy <merge|overwrite>', 'pull strategy (default merge: keep translations; overwrite: replace)', /^(merge|overwrite)$/i, 'merge')
     .option('-b, --base <path>', 'ancestor text path for merge (optional; auto .t2f-base when omitted)')
     .parse()
@@ -3601,6 +3687,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       CommonEventPath: options.input_path,
       CommonEventID: options.common_event_id,
       EnglishTag: options.english_tag,
+      OmitDefaultTags: options.omitDefaultTags,
       BasePath: options.base,
       ExecMode: _pullOverwrite ? 'EXPORT_EVENT_TO_MESSAGE' : 'MERGE_EVENT_TO_MESSAGE'
     }
@@ -3616,6 +3703,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       CommonEventPath: options.input_path,
       CommonEventID: options.common_event_id,
       EnglishTag: options.english_tag,
+      OmitDefaultTags: options.omitDefaultTags,
       BasePath: options.base,
       ExecMode: _pullOverwrite ? 'EXPORT_CE_TO_MESSAGE' : 'MERGE_CE_TO_MESSAGE'
     }
@@ -3657,6 +3745,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const locale = options.locale
     const textDir = options.textDir
     const englishTag = String(options.english_tag) === 'true'
+    // 既定と同じタグの省略。プラグインパラメータと同じ既定(省略する)。
+    const omitDefaults = String(options.omitDefaultTags) !== 'false'
     // map/common モードと同じく -s を尊重する(既定 merge)。既存テキストが無ければ結果は全上書きと同じ。
     const batchStrategy = _pullOverwrite ? 'overwrite' : 'merge'
     // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する(既存 dir は existsSync でガード)。
@@ -3688,6 +3778,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         const built = module.exports.buildPullText({
           list,
           englishTag,
+          omitDefaults,
           strategy: entryStrategy,
           existingText,
           baseText,
