@@ -204,7 +204,7 @@
  *
  * @command START_SYNC_WATCH
  * @text 同期監視の開始
- * @desc テキストとゲームデータを見張って、変わったファイルだけを自動で反映・取り出しします。プレイテストを閉じると止まります。ツクールのエディタは閉じて使ってください。
+ * @desc テキストとゲームデータを見張って、変わったファイルだけを自動で反映・取り出しします。プレイテストを閉じると止まります。
  *
  * @arg Strategy
  * @text 同期のしかた
@@ -555,14 +555,11 @@
  *   ・進行状況はコンソール（F8）に出ます。ゲーム画面には出ません。
  *   ・取り出しには Frame2Text が必要です（向きに push を指定すれば不要）。
  *
- *  ◆ ツクールのエディタは閉じて使ってください
+ *  ◆ ツクールの保存は使わないでください
  *   エディタで「プロジェクトの保存」をすると data フォルダが丸ごと書き戻り、
- *   反映済みの内容が失われます。また、その保存はデータ全体の変更として観測され
- *   ます。まとまった変更を見つけたときは保存とみなして自動取り出しを見送り、
- *   コンソールにその旨を出します。必要なら一括取り出しを手で実行してください。
- *
- *   Game.exe（ツクールMZでは game.exe）から直接ゲームを起動し、エディタを閉じた
- *   まま置いておくのがおすすめの使い方です。
+ *   反映済みの内容が失われてしまいます。したがって、まとまった変更を見つけ
+ *   たときは保存とみなして自動取り出しを見送り、コンソールにその旨を出しま
+ *   す。必要なら一括取り出しを手で実行してください。
  *
  *  ◆ 監視の対象
  *   text/<言語>/ 直下の .txt と、data 直下の Map***.json / CommonEvents.json です。
@@ -4521,11 +4518,91 @@
     const RESTART_NOTICE = 'Please restart RPG Maker MV(Editor) WITHOUT save. \n' +
       '**セーブせずに**プロジェクトファイルを開き直してください'
 
+    /* $gameMessage の1行に収まる幅(半角換算)。ツクールMVの既定
+     * (ウィンドウ 816px - 余白 18px×2 = 780px、半角1文字 14px)で 55 文字ぶん。
+     * MZ の既定は約 60 なので、狭いMVに合わせておけば両方で収まる。
+     * これを超えた文章は画面の外に出て読めなくなるため、出す前に折り返す。 */
+    const MESSAGE_LINE_WIDTH = 55
+    // これより手前の切りどころは無視して幅いっぱいまで詰める。
+    const MIN_BREAK_WIDTH = 33
+    // 最終行がこれより短いと泣き別れに見えるので、直前の行と分け直す。
+    const MIN_TAIL_WIDTH = 10
+    // 全角(和文・全角記号)は2、それ以外は1として数える。
+    // U+3000(全角空白)や句読点も U+2E80-U+A4CF に入る。半角カナ(U+FF61-)は幅1のまま。
+    const charWidth = function (ch) { return /[\u2E80-\uA4CF\uFF00-\uFF60\uFFE0-\uFFE6]/.test(ch) ? 2 : 1 }
+    const displayWidth = function (s) {
+      let w = 0
+      for (const ch of String(s)) w += charWidth(ch)
+      return w
+    }
+    // ここで切れると読みやすい文字。句読点や閉じ括弧の「後ろ」、空白の位置で折る。
+    // 裏を返せばこれらは行頭に来てはいけない文字(禁則)でもある。
+    const BREAK_AFTER = /[、。！？」』）\]｝}：；,.!?)]/
+    // 禁則で1〜2文字はみ出すぶんには、ウィンドウの余白(左右18px)に収まるので許す。
+    // 句点だけが次の行に取り残されるより読みやすい。
+    const KINSOKU_SLACK = 2
+    /* 1行に収まらない文章を折り返して行の配列にする。元からある改行はそのまま行の区切りにする。
+     * 切りどころが無ければ幅で切る(長いパスなどは途中で切れるが、画面外に消えるよりはよい)。 */
+    const wrapMessageText = function (text) {
+      const out = []
+      String(text).split('\n').forEach(function (line) {
+        if (displayWidth(line) <= MESSAGE_LINE_WIDTH) {
+          out.push(line)
+          return
+        }
+        let cur = ''
+        let w = 0
+        let breakAt = -1
+        for (const ch of line) {
+          const cw = charWidth(ch)
+          // 句読点や閉じ括弧が行頭に落ちそうなときは、はみ出させてでも前の行に残す。
+          if (w + cw > MESSAGE_LINE_WIDTH && BREAK_AFTER.test(ch) &&
+              w + cw <= MESSAGE_LINE_WIDTH + KINSOKU_SLACK) {
+            cur += ch
+            w += cw
+            breakAt = cur.length
+            continue
+          }
+          if (w + cw > MESSAGE_LINE_WIDTH) {
+            // 切りどころが行頭に寄りすぎているときは使わない(短い行が量産されるため)。
+            const useBreak = breakAt > 0 && breakAt <= cur.length &&
+              displayWidth(cur.slice(0, breakAt)) >= MIN_BREAK_WIDTH
+            const cut = useBreak ? breakAt : cur.length
+            out.push(cur.slice(0, cut))
+            cur = cur.slice(cut).replace(/^ +/, '')
+            w = displayWidth(cur)
+            breakAt = -1
+          }
+          cur += ch
+          w += cw
+          if (ch === ' ' || BREAK_AFTER.test(ch)) breakAt = cur.length
+        }
+        if (cur !== '') out.push(cur)
+        // 最後が1〜2文字だけ泣き別れると読みにくい。直前の行と合わせて2等分し直す。
+        const n = out.length
+        if (n >= 2 && displayWidth(out[n - 1]) < MIN_TAIL_WIDTH) {
+          const joined = out[n - 2] + out[n - 1]
+          const half = Math.ceil(displayWidth(joined) / 2)
+          let acc = 0
+          let at = 0
+          for (const ch of joined) {
+            if (acc >= half) break
+            acc += charWidth(ch)
+            at += ch.length
+          }
+          out[n - 2] = joined.slice(0, at)
+          out[n - 1] = joined.slice(at)
+        }
+      })
+      return out
+    }
+
     const addMessage = function (text) {
       // _quiet 中(applyTextFile 経由)は 1 ファイルごとの成功報告や案内を出さない。
       // 出すと一括反映でファイル数ぶん同じ文言が並ぶ。呼び出し側がまとめて報告する。
       if (Laurus.Text2Frame.DisplayMsg && !Laurus.Text2Frame._quiet) {
-        $gameMessage.add(text)
+        // allText() は _texts を改行で繋ぐので、行ごとに add しても見た目は変わらない。
+        wrapMessageText(text).forEach(function (l) { $gameMessage.add(l) })
       }
     }
 
@@ -4537,7 +4614,7 @@
       // _quiet 中(applyTextFile 経由)は呼び出し側が _warnings を受け取って報告する。
       // ここで出すと一括反映でファイル数ぶん同じ文言が並ぶため、表示は呼び出し側に任せる。
       if (Laurus.Text2Frame.DisplayWarning && !Laurus.Text2Frame._quiet) {
-        $gameMessage.add(warning)
+        wrapMessageText(warning).forEach(function (l) { $gameMessage.add(l) })
       }
     }
 

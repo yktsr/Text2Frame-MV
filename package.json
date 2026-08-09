@@ -28,7 +28,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "mocha test/test_json_eq.js && mocha --reporter-options maxDiffSize=100000 test/test_frame2text.js && mocha --no-esm test/test_front_matter.js && mocha --no-esm test/test_apply_text_file.js && mocha --no-esm test/test_merge3.js && mocha --no-esm test/test_plugin_merge3.js && mocha --no-esm test/test_cli_merge.js && mocha --no-esm test/test_strategy.js && mocha --no-esm test/test_front_matter_first.js && mocha --no-esm test/test_export_folder.js && mocha --no-esm test/test_plugin_pull_merge.js && mocha --no-esm test/test_batch_import_warnings.js && mocha --no-esm test/test_batch_export_report.js && mocha --no-esm test/test_sync_controller.js && mocha --no-esm test/test_sync_watch.js",
+    "test": "mocha test/test_json_eq.js && mocha --reporter-options maxDiffSize=100000 test/test_frame2text.js && mocha --no-esm test/test_front_matter.js && mocha --no-esm test/test_apply_text_file.js && mocha --no-esm test/test_merge3.js && mocha --no-esm test/test_plugin_merge3.js && mocha --no-esm test/test_cli_merge.js && mocha --no-esm test/test_strategy.js && mocha --no-esm test/test_front_matter_first.js && mocha --no-esm test/test_export_folder.js && mocha --no-esm test/test_plugin_pull_merge.js && mocha --no-esm test/test_batch_import_warnings.js && mocha --no-esm test/test_batch_export_report.js && mocha --no-esm test/test_sync_controller.js && mocha --no-esm test/test_sync_watch.js && mocha --no-esm test/test_message_wrap.js",
     "test_text2frame": "mocha --inline-diffs test/test_json_eq.js",
     "test_frame2text": "mocha --reporter-options maxDiffSize=100000 --inline-diffs test/test_frame2text.js",
     "test_export_folder": "mocha --no-esm test/test_export_folder.js",

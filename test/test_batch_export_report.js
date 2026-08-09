@@ -50,9 +50,24 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     shown.length = 0
     Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [strategy, dataDir, textBase, locale])
   }
-  const line = function (needle) {
-    return shown.filter(function (t) { return t.indexOf(needle) !== -1 })[0]
+  /* 画面幅(半角55)を超えるメッセージは addMessage が自動で折り返すため、
+   * 1つの文章が複数の $gameMessage 行にまたがる。行ごとではなく通しの文字列から探し、
+   * 次のメッセージの先頭([batch] など)までを「1つの文章」として返す。 */
+  const messageOf = function (needle) {
+    const all = shown.join('')
+    const at = all.indexOf(needle)
+    if (at === -1) return undefined
+    const PREFIX = /\[(batch-import|batch|sync)\]/g
+    let start = 0
+    let end = all.length
+    let m
+    while ((m = PREFIX.exec(all)) !== null) {
+      if (m.index <= at) start = m.index
+      else { end = m.index; break }
+    }
+    return all.slice(start, end)
   }
+  const line = messageOf
   const textPathOf = function (key) { return path.join(tmp, 'text', 'ja', key + '.txt') }
   const basePathOf = function (key) { return path.join(tmp, '.t2f-base', 'ja', key + '.txt') }
   const ev1 = 'map001_event001_page1'
@@ -94,7 +109,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     expect(line('取り出し完了(merge)')).to.be.a('string')
     // 2〜4番目がそのままデータ元・出力先・ロケールとして読まれている。
     expect(line('取り出し完了(merge)')).to.contain('成功 3件')
-    expect(line('出力先')).to.equal('[batch] 出力先: ' + path.join(tmp, 'text', 'ja'))
+    expect(line('出力先')).to.contain(path.join(tmp, 'text', 'ja'))
   })
 
   it('reports the count, the kind breakdown and the output directory', function () {
