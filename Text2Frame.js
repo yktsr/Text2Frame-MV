@@ -204,7 +204,7 @@
  *
  * @command START_SYNC_WATCH
  * @text 同期監視の開始
- * @desc テキストとゲームデータを見張って、変わったファイルだけを自動で反映・取り出しします。プレイテストを閉じると止まります。
+ * @desc テキストとゲームデータを監視し、変更を自動で反映・取り出しします。テストプレイを閉じると止まります。
  *
  * @arg Strategy
  * @text 同期のしかた
@@ -230,7 +230,7 @@
  *
  * @arg Locale
  * @text 言語
- * @desc 監視する text/<言語>/ のサブフォルダ名です。デフォルトはjaです。
+ * @desc 監視する text/<言語>/ のサブフォルダ名です。デフォルトはjaです。既定はjaです。
  * @type string
  * @default ja
  *
@@ -549,7 +549,7 @@
  *     START_SYNC_WATCH merge both ja text data
  *
  *  ◆ 使う前に知っておくこと
- *   ・監視はゲームのプロセスで動きます。**プレイテストを閉じると止まります。**
+ *   ・監視はゲームの実行中のみ動作します。**プレイテストを閉じると止まります。**
  *   ・**実行中のゲームの画面は変わりません。** ゲームは起動時に読んだデータを
  *     持ち続けるためです。反映を確かめるには F5 でリロードしてください。
  *   ・進行状況はコンソール（F8）に出ます。ゲーム画面には出ません。
@@ -5011,6 +5011,22 @@
           getWindowPosition(Laurus.Text2Frame.WindowPosition),
           ''
         ]
+      }
+    }
+
+    /* 取り出し側が「タグが無いとき compile が補う値」を知るための窓口。
+     * 数値で返すのは、タグの文字列は英語/日本語で変わってもJSON側の値は変わらないため。
+     *
+     * 取り出しはこれと同じ値のときだけタグを省ける。出荷時の既定(ウインドウ/下)を基準に
+     * すると、プラグインパラメータを変えているプロジェクトで壊れる。例えば背景の既定を
+     * 「暗くする」にしている人から <Background: Window> を省くと、取り込みで「暗くする」が
+     * 補われ、ゲームの見た目が変わってしまう。
+     *
+     * 値はコマンド実行のたびに読み直されるので、控えではなく関数で返す。 */
+    const getMessageDefaults = function () {
+      return {
+        background: getBackground(Laurus.Text2Frame.Background),
+        windowPosition: getWindowPosition(Laurus.Text2Frame.WindowPosition)
       }
     }
 
@@ -10507,7 +10523,7 @@
       return { text, conflicts, warnings }
     }
 
-    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId, CONFLICT_MARKERS, hasConflictMarker }
+    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId, getMessageDefaults, CONFLICT_MARKERS, hasConflictMarker }
     // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
     // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
     // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。
