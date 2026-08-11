@@ -6,7 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 1.1.0 2026/08/02:
+// 2.3.0 2026/08/02:
 // ・一括取り出しに取り出しのしかた(統合/上書き)を追加。統合はテキストに書いた内容を残したまま
 //   ゲーム側の変更だけを取り込みます(既定は統合。CLI・t2f-sync・VSCodeと同じ)
 // ・衝突しても共通の祖先を進めるよう修正。目印3行を消して決着をつければ、統合のまま
@@ -69,6 +69,22 @@
  * @type number
  * @default 1
  *
+ * @arg Strategy
+ * @text 取り出しのしかた
+ * @desc merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます。overwriteは全上書きです。既定はmergeです。
+ * @type select
+ * @option 統合 / merge
+ * @value merge
+ * @option 【取り扱い注意】全上書き / overwrite
+ * @value overwrite
+ * @default merge
+ *
+ * @arg BaseFolder
+ * @text 祖先フォルダ名
+ * @desc 統合(merge)の共通祖先テキストのフォルダ名です。デフォルト値は.t2f-baseで、通常設定する必要はありません。
+ * @type string
+ * @default .t2f-base
+ *
  * @command EXPORT_CE_TO_MESSAGE
  * @text コモンイベントをエクスポート
  * @desc テキストにコモンイベントをエクスポートします。出力するコモンイベントのIDや、出力先のファイルの情報を指定します。
@@ -91,76 +107,21 @@
  * @type common_event
  * @default 1
  *
- * @command MERGE_EVENT_TO_MESSAGE
- * @text イベントを取り出す(統合)
- * @desc ゲームのイベントをテキストへ取り出します。テキストに書いた内容を残したまま、ゲーム側の変更だけを取り込みます(共通の祖先は自動)。
- *
- * @arg FileFolder
- * @text 取り込み先フォルダ名
- * @desc テキストファイルのフォルダ名。デフォルトはtextです。
- * @type string
- * @default text
- *
- * @arg FileName
- * @text 取り込み先ファイル名
- * @desc テキストファイル名。デフォルトはmessage.txtです。
- * @type string
- * @default message.txt
- *
- * @arg MapID
- * @text マップID
- * @type number
- * @default 1
- *
- * @arg EventID
- * @text イベントID
- * @type number
- * @default 2
- *
- * @arg PageID
- * @text ページID
- * @type number
- * @default 1
+ * @arg Strategy
+ * @text 取り出しのしかた
+ * @desc merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます。overwriteは全上書きです。既定はmergeです。
+ * @type select
+ * @option 統合 / merge
+ * @value merge
+ * @option 【取り扱い注意】全上書き / overwrite
+ * @value overwrite
+ * @default merge
  *
  * @arg BaseFolder
- * @text 祖先フォルダ名(任意)
- * @desc 3-way の共通祖先テキストのフォルダ名。空なら自動(.t2f-base)。
+ * @text 祖先フォルダ名
+ * @desc 統合(merge)の共通祖先テキストのフォルダ名です。デフォルト値は.t2f-baseで、通常設定する必要はありません。
  * @type string
- * @default
- *
- * @arg BaseFileName
- * @text 祖先ファイル名(任意)
- * @type string
- * @default
- *
- * @command MERGE_CE_TO_MESSAGE
- * @text コモンイベントを取り出す(統合)
- * @desc ゲームのコモンイベントをテキストへ取り出します。テキストに書いた内容を残したまま、ゲーム側の変更だけを取り込みます(共通の祖先は自動)。
- *
- * @arg FileFolder
- * @text 取り込み先フォルダ名
- * @type string
- * @default text
- *
- * @arg FileName
- * @text 取り込み先ファイル名
- * @type string
- * @default message.txt
- *
- * @arg CommonEventID
- * @text コモンイベントID
- * @type common_event
- * @default 1
- *
- * @arg BaseFolder
- * @text 祖先フォルダ名(任意)
- * @type string
- * @default
- *
- * @arg BaseFileName
- * @text 祖先ファイル名(任意)
- * @type string
- * @default
+ * @default .t2f-base
  *
  * @command BATCH_EXPORT_MESSAGES_TO_FOLDER
  * @text フォルダへ一括取り出し
@@ -340,13 +301,14 @@
  *  白紙から取り出したいときに使います。
  *
  * ◆ プラグインコマンドとの対応
+ *  どちらも「取り出しのしかた」で統合と上書きを選べます（既定は統合）。
  *    BATCH_EXPORT_MESSAGES_TO_FOLDER
- *     「取り出しのしかた」で統合と上書きを選べます（既定は統合）。
  *      全イベント・全コモンイベントが対象です。
- *    MERGE_EVENT_TO_MESSAGE / MERGE_CE_TO_MESSAGE
- *      1件ずつの統合です。
  *    EXPORT_EVENT_TO_MESSAGE / EXPORT_CE_TO_MESSAGE
- *      1件ずつの上書きです。
+ *      1件ずつ取り出します。
+ *
+ *  ※ 旧 MERGE_EVENT_TO_MESSAGE / MERGE_CE_TO_MESSAGE は廃止しました。
+ *    EXPORT_* の「取り出しのしかた」に統合(merge)を指定してください。
  *
  * --------------------------------------
  * 既定と同じタグを省略する
@@ -645,6 +607,8 @@ function resolveText2Frame () {
     Laurus.Frame2Text.DisplayWarning = true
     Laurus.Frame2Text.EnglishTag = true
     Laurus.Frame2Text.OmitDefaultTags = true
+    // 単発取り出しのしかた。COMMAND_LINE(CLI)が毎回上書きする。
+    Laurus.Frame2Text.Strategy = 'merge'
 
     globalThis.Game_Interpreter = {}
     Game_Interpreter.prototype = {}
@@ -665,6 +629,8 @@ function resolveText2Frame () {
     Laurus.Frame2Text.EnglishTag = String(Laurus.Frame2Text.Parameters.EnglishTag) === 'true'
     // 未設定(古いプラグイン設定のまま)なら省略する。既定を true にしているため。
     Laurus.Frame2Text.OmitDefaultTags = String(Laurus.Frame2Text.Parameters.OmitDefaultTags) !== 'false'
+    // 単発取り出しのしかた。コマンドの引数解決で毎回決め直す。
+    Laurus.Frame2Text.Strategy = 'merge'
     let PATH_SEP = '/'
     let BASE_PATH = '.'
     if (typeof require !== 'undefined') {
@@ -692,19 +658,15 @@ function resolveText2Frame () {
       const map_id = args.MapID
       const event_id = args.EventID
       const page_id = args.PageID
-      this.pluginCommand('EXPORT_EVENT_TO_MESSAGE', [file_folder, file_name, map_id, event_id, page_id])
+      this.pluginCommand('EXPORT_EVENT_TO_MESSAGE',
+        [file_folder, file_name, map_id, event_id, page_id, args.Strategy, args.BaseFolder, args.FileName])
     })
     PluginManager.registerCommand('Frame2Text', 'EXPORT_CE_TO_MESSAGE', function (args) {
       const file_folder = args.FileFolder
       const file_name = args.FileName
       const common_event_id = args.CommonEventID
-      this.pluginCommand('EXPORT_CE_TO_MESSAGE', [file_folder, file_name, common_event_id])
-    })
-    PluginManager.registerCommand('Frame2Text', 'MERGE_EVENT_TO_MESSAGE', function (args) {
-      this.pluginCommand('MERGE_EVENT_TO_MESSAGE', [args.FileFolder, args.FileName, args.MapID, args.EventID, args.PageID, args.BaseFolder, args.BaseFileName])
-    })
-    PluginManager.registerCommand('Frame2Text', 'MERGE_CE_TO_MESSAGE', function (args) {
-      this.pluginCommand('MERGE_CE_TO_MESSAGE', [args.FileFolder, args.FileName, args.CommonEventID, args.BaseFolder, args.BaseFileName])
+      this.pluginCommand('EXPORT_CE_TO_MESSAGE',
+        [file_folder, file_name, common_event_id, args.Strategy, args.BaseFolder, args.FileName])
     })
     PluginManager.registerCommand('Frame2Text', 'BATCH_EXPORT_MESSAGES_TO_FOLDER', function (args) {
       const data_dir = args.DataFolder || 'data'
@@ -826,20 +788,36 @@ function resolveText2Frame () {
 
     Laurus.Frame2Text.ExecMode = command.toUpperCase()
     // 入力ファイル(MAPXXX.json)、出力ファイル(message.txt)の情報
+    /* 単発の取り出しコマンドの「取り出しのしかた」。反映側の add に当たるものは無い。
+     * 省略時は統合: 一括取り出し・CLI・t2f-sync・VS Code と揃え、テキストに書いた内容を
+     * 黙って消さない。 */
+    const resolveExportStrategy = function (explicit) {
+      const s = String(explicit == null ? '' : explicit).toLowerCase()
+      if (s === 'merge' || s === 'overwrite') return s
+      if (s !== '' && s !== 'undefined') {
+        throw new Error('Unknown strategy: ' + explicit +
+          ' / 取り出しのしかたは merge か overwrite を指定してください。')
+      }
+      return 'merge'
+    }
+
     switch (Laurus.Frame2Text.ExecMode) {
       // for custom plugin command
       case 'EXPORT_EVENT_TO_MESSAGE':
       case 'イベントをメッセージにエクスポ－ト':
+        Laurus.Frame2Text.ExecMode = 'EXPORT_EVENT_TO_MESSAGE'
         if (args[0]) Laurus.Frame2Text.FileFolder = args[0]
         if (args[1]) Laurus.Frame2Text.FileName = args[1]
         if (args[2]) Laurus.Frame2Text.MapID = args[2]
         if (args[3]) Laurus.Frame2Text.EventID = args[3]
         if (args[4]) Laurus.Frame2Text.PageID = args[4]
+        Laurus.Frame2Text.Strategy = resolveExportStrategy(args[5])
         if (args[0] || args[1]) {
           Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
           Laurus.Frame2Text.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${(
             '000' + Laurus.Frame2Text.MapID
           ).slice(-3)}.json`
+          Laurus.Frame2Text.BasePath = (args[6] && args[7]) ? `${BASE_PATH}${PATH_SEP}${args[6]}${PATH_SEP}${args[7]}` : undefined
         }
         addMessage(
           '======> MapID: ' +
@@ -852,37 +830,17 @@ function resolveText2Frame () {
         break
       case 'EXPORT_CE_TO_MESSAGE':
       case 'コモンイベントをメッセージにエクスポート':
-        if (args.length === 3) {
-          Laurus.Frame2Text.ExecMode = 'EXPORT_CE_TO_MESSAGE'
-          Laurus.Frame2Text.FileFolder = args[0]
-          Laurus.Frame2Text.FileName = args[1]
-          Laurus.Frame2Text.CommonEventID = args[2]
-          Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
-          Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
-        }
-        addMessage('=====> Common EventID: ' + Laurus.Frame2Text.CommonEventID)
-        break
-      case 'MERGE_EVENT_TO_MESSAGE':
+        Laurus.Frame2Text.ExecMode = 'EXPORT_CE_TO_MESSAGE'
         if (args[0]) Laurus.Frame2Text.FileFolder = args[0]
         if (args[1]) Laurus.Frame2Text.FileName = args[1]
-        if (args[2]) Laurus.Frame2Text.MapID = args[2]
-        if (args[3]) Laurus.Frame2Text.EventID = args[3]
-        if (args[4]) Laurus.Frame2Text.PageID = args[4]
+        if (args[2]) Laurus.Frame2Text.CommonEventID = args[2]
+        Laurus.Frame2Text.Strategy = resolveExportStrategy(args[3])
         if (args[0] || args[1]) {
           Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
-          Laurus.Frame2Text.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Frame2Text.MapID).slice(-3)}.json`
-          Laurus.Frame2Text.BasePath = (args[5] && args[6]) ? `${BASE_PATH}${PATH_SEP}${args[5]}${PATH_SEP}${args[6]}` : undefined
+          Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
+          Laurus.Frame2Text.BasePath = (args[4] && args[5]) ? `${BASE_PATH}${PATH_SEP}${args[4]}${PATH_SEP}${args[5]}` : undefined
         }
-        addMessage('======> (merge) MapID: ' + Laurus.Frame2Text.MapID + ' -> EventID: ' + Laurus.Frame2Text.EventID + ' -> PageID: ' + Laurus.Frame2Text.PageID)
-        break
-      case 'MERGE_CE_TO_MESSAGE':
-        Laurus.Frame2Text.FileFolder = args[0]
-        Laurus.Frame2Text.FileName = args[1]
-        Laurus.Frame2Text.CommonEventID = args[2]
-        Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
-        Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
-        Laurus.Frame2Text.BasePath = (args[3] && args[4]) ? `${BASE_PATH}${PATH_SEP}${args[3]}${PATH_SEP}${args[4]}` : undefined
-        addMessage('=====> (merge) Common EventID: ' + Laurus.Frame2Text.CommonEventID)
+        addMessage('=====> Common EventID: ' + Laurus.Frame2Text.CommonEventID)
         break
 
       case 'BATCH_EXPORT_MESSAGES_TO_FOLDER': {
@@ -3198,7 +3156,8 @@ function resolveText2Frame () {
         gameCommands: list,
         textBody: stripFrontMatter(existingText),
         baseBody: opts.baseText ? stripFrontMatter(opts.baseText) : '',
-        englishTag
+        englishTag,
+        omitDefaults: opts.omitDefaults
       })
       return { text: header + r.text + '\n', baseText: gameText, conflicts: r.conflicts || 0 }
     }
@@ -3318,68 +3277,6 @@ function resolveText2Frame () {
       if (glob) glob.$LaurusFrame2Text = Laurus.Frame2Text.export
     } catch (e) { /* noop */ }
     if (Laurus.Frame2Text.ExecMode === 'LIBRARY_EXPORT') {
-      return
-    }
-
-    // MERGE pull(ゲーム→テキスト。テキストに書いた内容を残しつつゲーム変更を取り込む)。
-    // push の 3-way を鏡写しにし、Text2Frame.applyMergePull で結果テキストを得る。
-    if (Laurus.Frame2Text.ExecMode === 'MERGE_EVENT_TO_MESSAGE' || Laurus.Frame2Text.ExecMode === 'MERGE_CE_TO_MESSAGE') {
-      const isCE = Laurus.Frame2Text.ExecMode === 'MERGE_CE_TO_MESSAGE'
-      const T2F = resolveText2Frame()
-      if (!T2F || !T2F.applyMergePull) { throw new Error('取り出し(merge)には Text2Frame プラグインが必要です。同じプロジェクトに導入してください。 / MERGE pull requires the Text2Frame plugin to be loaded.') }
-      let gameCommands
-      if (isCE) {
-        const ce = readJsonData(Laurus.Frame2Text.CommonEventPath)
-        if (ce.length - 1 < Laurus.Frame2Text.CommonEventID) {
-          throw new Error('Common Event not found. / コモンイベントが見つかりません。: ' + Laurus.Frame2Text.CommonEventID)
-        }
-        gameCommands = ce[Laurus.Frame2Text.CommonEventID].list
-      } else {
-        const md = readJsonData(Laurus.Frame2Text.MapPath)
-        if (!md.events[Laurus.Frame2Text.EventID]) {
-          throw new Error('EventID not found. / EventIDが見つかりません。\n' + 'Event ID: ' + Laurus.Frame2Text.EventID)
-        }
-        const pageID = Number(Laurus.Frame2Text.PageID) - 1
-        if (!md.events[Laurus.Frame2Text.EventID].pages[pageID]) {
-          throw new Error('PageID not found. / PageIDが見つかりません。\n' + 'Page ID: ' + Laurus.Frame2Text.PageID)
-        }
-        gameCommands = md.events[Laurus.Frame2Text.EventID].pages[pageID].list
-      }
-      const outPath = Laurus.Frame2Text.TextPath
-      let existingText = ''
-      try { existingText = readText(outPath) } catch (e) { existingText = '' }
-      const root = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : '.'
-      const id = T2F.deriveBaseId(outPath, {})
-      let baseText = ''
-      if (Laurus.Frame2Text.BasePath) {
-        try { baseText = readText(Laurus.Frame2Text.BasePath) } catch (e) { baseText = '' }
-      } else {
-        baseText = T2F.readBaseText(root, id.locale, id.key) || ''
-      }
-      const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
-      const fallbackHeader = '---\ngenerator: text2frame-mv@' + VERSION + '\nkind: ' + (isCE ? 'common' : 'event') + '\n' + (isCE ? ('commonEventId: ' + Laurus.Frame2Text.CommonEventID) : ('mapId: ' + Laurus.Frame2Text.MapID + '\neventId: ' + Laurus.Frame2Text.EventID + '\npageId: ' + (Laurus.Frame2Text.PageID || '1'))) + '\n---\n'
-      const r = buildPullText({ list: gameCommands, englishTag, strategy: 'merge', existingText, baseText, fallbackHeader })
-      // 単発コマンドは対象が1つしかないので、見送りは黙って成功にせず理由を出して止める。
-      if (r.skipped === 'game') {
-        throw new Error('未解決の衝突がゲーム側に残っています。ツクールで目印3行を消して残す方を決めたあと、もう一度取り出してください。テキスト側で解決したいときは上書きで取り出すと目印ごと出てきます。' +
-          ' / unresolved conflict markers in the game data; resolve in the editor and pull again, or pull with overwrite to resolve in the text')
-      }
-      if (r.skipped) {
-        throw new Error('未解決の衝突がテキストに残っています。目印3行を消して残す方を決めたあと、Text2Frameの「反映」を実行してください。' +
-          ' / unresolved conflict markers in the text; resolve them, then import')
-      }
-      const written = r.text
-      try { mkdirpSync(require('path').dirname(outPath)) } catch (e) {}
-      writeData(outPath, written)
-      if (r.conflicts) {
-        logger.error('[merge-pull] ' + r.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath)
-        logger.error('[merge-pull] テキストの目印3行を消して残す方を決めたあと、反映(merge)を実行してください。 / resolve the text, then import with merge')
-      }
-      // 祖先はゲーム側(r.baseText)。マージ結果を入れると次の反映でテキストの内容が消える。
-      // 衝突していても進める: ゲームの変更は(目印の中とはいえ)テキストに入っており、
-      // 祖先が示すのは「ここまでのゲームの変更はテキストが見た」であって「一致した」ではない。
-      // 据え置くと、テキストで解決したあとの反映で同じ衝突がゲーム側に再発する。
-      try { T2F.saveBaseText(root, id.locale, id.key, r.baseText) } catch (e) {}
       return
     }
 
@@ -3528,7 +3425,8 @@ function resolveText2Frame () {
     }
 
     /** ******************************* */
-    // エクスポートモード: 全体を上書き
+    // 取り出し(単発)。merge は既存テキストを残して 3-way、overwrite は全上書き。
+    // 一括取り出し・CLI・t2f-sync・VS Code と同じ buildPullText を通す。
     /** ******************************* */
     const isCEExport = Laurus.Frame2Text.ExecMode === 'EXPORT_CE_TO_MESSAGE' ||
       Laurus.Frame2Text.ExecMode === 'コモンイベントをメッセージにエクスポート'
@@ -3541,25 +3439,62 @@ function resolveText2Frame () {
     const exportEntry = isCEExport
       ? { commonEventId: Laurus.Frame2Text.CommonEventID }
       : { mapId: exportMapId, eventId: Laurus.Frame2Text.EventID, pageId: Laurus.Frame2Text.PageID }
-    const outputText = renderFrontMatter(exportEntry, exportKind) +
-      decompile(map_events, EnglishTag, { pretty: true }) + '\n'
+    const outPath = Laurus.Frame2Text.TextPath
+    const exportStrategy = Laurus.Frame2Text.Strategy === 'merge' ? 'merge' : 'overwrite'
+    const _T2Fx = resolveText2Frame()
+    if (exportStrategy === 'merge' && (!_T2Fx || !_T2Fx.applyMergePull)) {
+      throw new Error('取り出し(merge)には Text2Frame プラグインが必要です。同じプロジェクトに導入してください。 / MERGE pull requires the Text2Frame plugin to be loaded.')
+    }
+    const _exportId = (_T2Fx && _T2Fx.deriveBaseId) ? _T2Fx.deriveBaseId(outPath, {}) : null
+    const _exportRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH
+    // 全上書きでは既存テキストを読まない。読むと buildPullText が既存の見出しを引き継ぎ、
+    // 引数で指定した宛先と食い違う。統合のときだけ突き合わせる相手として要る。
+    let existingText = ''
+    let baseText = ''
+    if (exportStrategy === 'merge') {
+      try { existingText = readText(outPath) } catch (e) { existingText = '' }
+      if (Laurus.Frame2Text.BasePath) {
+        try { baseText = readText(Laurus.Frame2Text.BasePath) } catch (e) { baseText = '' }
+      } else if (_exportId && _T2Fx.readBaseText) {
+        baseText = _T2Fx.readBaseText(_exportRoot, _exportId.locale, _exportId.key) || ''
+      }
+    }
+    const built = buildPullText({
+      list: map_events,
+      englishTag: EnglishTag,
+      strategy: exportStrategy,
+      existingText,
+      baseText,
+      fallbackHeader: renderFrontMatter(exportEntry, exportKind)
+    })
+    // 単発コマンドは対象が1つしかないので、見送りは黙って成功にせず理由を出して止める。
+    if (built.skipped === 'game') {
+      throw new Error('未解決の衝突がゲーム側に残っています。ツクールで目印3行を消して残す方を決めたあと、もう一度取り出してください。テキスト側で解決したいときは上書きで取り出すと目印ごと出てきます。' +
+        ' / unresolved conflict markers in the game data; resolve in the editor and pull again, or pull with overwrite to resolve in the text')
+    }
+    if (built.skipped) {
+      throw new Error('未解決の衝突がテキストに残っています。目印3行を消して残す方を決めたあと、Text2Frameの「反映」を実行してください。' +
+        ' / unresolved conflict markers in the text; resolve them, then import')
+    }
+    const outputText = built.text
 
     /** ********************************************** */
     // txtファイルを出力
     /** ********************************************** */
-    writeData(Laurus.Frame2Text.TextPath, outputText)
+    try { mkdirpSync(require('path').dirname(outPath)) } catch (e) { /* best effort */ }
+    writeData(outPath, outputText)
+    if (built.conflicts) {
+      logger.error('[merge-pull] ' + built.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath)
+      logger.error('[merge-pull] テキストの目印3行を消して残す方を決めたあと、反映(merge)を実行してください。 / resolve the text, then import with merge')
+    }
     // 目印ごと取り出した場合は祖先を進めない(祖先に目印が入ると次回の 3-way が壊れる)。
-    const _exportedMarkers = hasConflictMarker(map_events)
-    if (_exportedMarkers) {
+    if (built.markers) {
       addMessage('未解決の衝突の目印ごと取り出したため、祖先(.t2f-base)は更新していません。テキストの目印3行を消して残す方を決めたあと、反映を上書きで実行してください。')
     }
-    // 取り出し直後は text==game。overwrite でも次回反映の 3-way 祖先を更新する。
+    // 祖先はゲーム側(built.baseText)。マージ結果を入れると次の反映でテキストの内容が消える。
     try {
-      const _T2Fx = resolveText2Frame()
-      if (!_exportedMarkers && _T2Fx && _T2Fx.saveBaseText && _T2Fx.deriveBaseId) {
-        const _root = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH
-        const _id = _T2Fx.deriveBaseId(Laurus.Frame2Text.TextPath, {})
-        _T2Fx.saveBaseText(_root, _id.locale, _id.key, outputText)
+      if (!built.markers && _exportId && _T2Fx && _T2Fx.saveBaseText) {
+        _T2Fx.saveBaseText(_exportRoot, _exportId.locale, _exportId.key, built.baseText)
       }
     } catch (e) { /* best effort */ }
 
@@ -3689,7 +3624,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       EnglishTag: options.english_tag,
       OmitDefaultTags: options.omitDefaultTags,
       BasePath: options.base,
-      ExecMode: _pullOverwrite ? 'EXPORT_EVENT_TO_MESSAGE' : 'MERGE_EVENT_TO_MESSAGE'
+      Strategy: _pullOverwrite ? 'overwrite' : 'merge',
+      ExecMode: 'EXPORT_EVENT_TO_MESSAGE'
     }
     Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', [Frame2Text])
   } else if (options.mode === 'common') {
@@ -3705,7 +3641,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       EnglishTag: options.english_tag,
       OmitDefaultTags: options.omitDefaultTags,
       BasePath: options.base,
-      ExecMode: _pullOverwrite ? 'EXPORT_CE_TO_MESSAGE' : 'MERGE_CE_TO_MESSAGE'
+      Strategy: _pullOverwrite ? 'overwrite' : 'merge',
+      ExecMode: 'EXPORT_CE_TO_MESSAGE'
     }
     Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', [Frame2Text])
   } else if (options.mode === 'decompile') {

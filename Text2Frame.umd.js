@@ -3773,7 +3773,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			// http://opensource.org/licenses/mit-license.php
 			// ----------------------------------------------------------------------------
 			// Version
-			// 1.1.0 2026/08/02:
+			// 2.3.0 2026/08/02:
 			// ・一括取り出しに取り出しのしかた(統合/上書き)を追加。統合はテキストに書いた内容を残したまま
 			//   ゲーム側の変更だけを取り込みます(既定は統合。CLI・t2f-sync・VSCodeと同じ)
 			// ・衝突しても共通の祖先を進めるよう修正。目印3行を消して決着をつければ、統合のまま
@@ -3836,6 +3836,22 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			 * @type number
 			 * @default 1
 			 *
+			 * @arg Strategy
+			 * @text 取り出しのしかた
+			 * @desc merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます。overwriteは全上書きです。既定はmergeです。
+			 * @type select
+			 * @option 統合 / merge
+			 * @value merge
+			 * @option 【取り扱い注意】全上書き / overwrite
+			 * @value overwrite
+			 * @default merge
+			 *
+			 * @arg BaseFolder
+			 * @text 祖先フォルダ名
+			 * @desc 統合(merge)の共通祖先テキストのフォルダ名です。デフォルト値は.t2f-baseで、通常設定する必要はありません。
+			 * @type string
+			 * @default .t2f-base
+			 *
 			 * @command EXPORT_CE_TO_MESSAGE
 			 * @text コモンイベントをエクスポート
 			 * @desc テキストにコモンイベントをエクスポートします。出力するコモンイベントのIDや、出力先のファイルの情報を指定します。
@@ -3858,76 +3874,21 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			 * @type common_event
 			 * @default 1
 			 *
-			 * @command MERGE_EVENT_TO_MESSAGE
-			 * @text イベントを取り出す(統合)
-			 * @desc ゲームのイベントをテキストへ取り出します。テキストに書いた内容を残したまま、ゲーム側の変更だけを取り込みます(共通の祖先は自動)。
-			 *
-			 * @arg FileFolder
-			 * @text 取り込み先フォルダ名
-			 * @desc テキストファイルのフォルダ名。デフォルトはtextです。
-			 * @type string
-			 * @default text
-			 *
-			 * @arg FileName
-			 * @text 取り込み先ファイル名
-			 * @desc テキストファイル名。デフォルトはmessage.txtです。
-			 * @type string
-			 * @default message.txt
-			 *
-			 * @arg MapID
-			 * @text マップID
-			 * @type number
-			 * @default 1
-			 *
-			 * @arg EventID
-			 * @text イベントID
-			 * @type number
-			 * @default 2
-			 *
-			 * @arg PageID
-			 * @text ページID
-			 * @type number
-			 * @default 1
+			 * @arg Strategy
+			 * @text 取り出しのしかた
+			 * @desc merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます。overwriteは全上書きです。既定はmergeです。
+			 * @type select
+			 * @option 統合 / merge
+			 * @value merge
+			 * @option 【取り扱い注意】全上書き / overwrite
+			 * @value overwrite
+			 * @default merge
 			 *
 			 * @arg BaseFolder
-			 * @text 祖先フォルダ名(任意)
-			 * @desc 3-way の共通祖先テキストのフォルダ名。空なら自動(.t2f-base)。
+			 * @text 祖先フォルダ名
+			 * @desc 統合(merge)の共通祖先テキストのフォルダ名です。デフォルト値は.t2f-baseで、通常設定する必要はありません。
 			 * @type string
-			 * @default
-			 *
-			 * @arg BaseFileName
-			 * @text 祖先ファイル名(任意)
-			 * @type string
-			 * @default
-			 *
-			 * @command MERGE_CE_TO_MESSAGE
-			 * @text コモンイベントを取り出す(統合)
-			 * @desc ゲームのコモンイベントをテキストへ取り出します。テキストに書いた内容を残したまま、ゲーム側の変更だけを取り込みます(共通の祖先は自動)。
-			 *
-			 * @arg FileFolder
-			 * @text 取り込み先フォルダ名
-			 * @type string
-			 * @default text
-			 *
-			 * @arg FileName
-			 * @text 取り込み先ファイル名
-			 * @type string
-			 * @default message.txt
-			 *
-			 * @arg CommonEventID
-			 * @text コモンイベントID
-			 * @type common_event
-			 * @default 1
-			 *
-			 * @arg BaseFolder
-			 * @text 祖先フォルダ名(任意)
-			 * @type string
-			 * @default
-			 *
-			 * @arg BaseFileName
-			 * @text 祖先ファイル名(任意)
-			 * @type string
-			 * @default
+			 * @default .t2f-base
 			 *
 			 * @command BATCH_EXPORT_MESSAGES_TO_FOLDER
 			 * @text フォルダへ一括取り出し
@@ -4107,13 +4068,14 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			 *  白紙から取り出したいときに使います。
 			 *
 			 * ◆ プラグインコマンドとの対応
+			 *  どちらも「取り出しのしかた」で統合と上書きを選べます（既定は統合）。
 			 *    BATCH_EXPORT_MESSAGES_TO_FOLDER
-			 *     「取り出しのしかた」で統合と上書きを選べます（既定は統合）。
 			 *      全イベント・全コモンイベントが対象です。
-			 *    MERGE_EVENT_TO_MESSAGE / MERGE_CE_TO_MESSAGE
-			 *      1件ずつの統合です。
 			 *    EXPORT_EVENT_TO_MESSAGE / EXPORT_CE_TO_MESSAGE
-			 *      1件ずつの上書きです。
+			 *      1件ずつ取り出します。
+			 *
+			 *  ※ 旧 MERGE_EVENT_TO_MESSAGE / MERGE_CE_TO_MESSAGE は廃止しました。
+			 *    EXPORT_* の「取り出しのしかた」に統合(merge)を指定してください。
 			 *
 			 * --------------------------------------
 			 * 既定と同じタグを省略する
@@ -4411,6 +4373,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    Laurus.Frame2Text.DisplayWarning = true;
 			    Laurus.Frame2Text.EnglishTag = true;
 			    Laurus.Frame2Text.OmitDefaultTags = true;
+			    // 単発取り出しのしかた。COMMAND_LINE(CLI)が毎回上書きする。
+			    Laurus.Frame2Text.Strategy = 'merge';
 
 			    globalThis.Game_Interpreter = {};
 			    Game_Interpreter.prototype = {};
@@ -4431,6 +4395,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    Laurus.Frame2Text.EnglishTag = String(Laurus.Frame2Text.Parameters.EnglishTag) === 'true';
 			    // 未設定(古いプラグイン設定のまま)なら省略する。既定を true にしているため。
 			    Laurus.Frame2Text.OmitDefaultTags = String(Laurus.Frame2Text.Parameters.OmitDefaultTags) !== 'false';
+			    // 単発取り出しのしかた。コマンドの引数解決で毎回決め直す。
+			    Laurus.Frame2Text.Strategy = 'merge';
 			    let PATH_SEP = '/';
 			    let BASE_PATH = '.';
 			    if (typeof commonjsRequire !== 'undefined') {
@@ -4458,19 +4424,15 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      const map_id = args.MapID;
 			      const event_id = args.EventID;
 			      const page_id = args.PageID;
-			      this.pluginCommand('EXPORT_EVENT_TO_MESSAGE', [file_folder, file_name, map_id, event_id, page_id]);
+			      this.pluginCommand('EXPORT_EVENT_TO_MESSAGE',
+			        [file_folder, file_name, map_id, event_id, page_id, args.Strategy, args.BaseFolder, args.FileName]);
 			    });
 			    PluginManager.registerCommand('Frame2Text', 'EXPORT_CE_TO_MESSAGE', function (args) {
 			      const file_folder = args.FileFolder;
 			      const file_name = args.FileName;
 			      const common_event_id = args.CommonEventID;
-			      this.pluginCommand('EXPORT_CE_TO_MESSAGE', [file_folder, file_name, common_event_id]);
-			    });
-			    PluginManager.registerCommand('Frame2Text', 'MERGE_EVENT_TO_MESSAGE', function (args) {
-			      this.pluginCommand('MERGE_EVENT_TO_MESSAGE', [args.FileFolder, args.FileName, args.MapID, args.EventID, args.PageID, args.BaseFolder, args.BaseFileName]);
-			    });
-			    PluginManager.registerCommand('Frame2Text', 'MERGE_CE_TO_MESSAGE', function (args) {
-			      this.pluginCommand('MERGE_CE_TO_MESSAGE', [args.FileFolder, args.FileName, args.CommonEventID, args.BaseFolder, args.BaseFileName]);
+			      this.pluginCommand('EXPORT_CE_TO_MESSAGE',
+			        [file_folder, file_name, common_event_id, args.Strategy, args.BaseFolder, args.FileName]);
 			    });
 			    PluginManager.registerCommand('Frame2Text', 'BATCH_EXPORT_MESSAGES_TO_FOLDER', function (args) {
 			      const data_dir = args.DataFolder || 'data';
@@ -4592,20 +4554,36 @@ Expecting one of '${allowedValues.join("', '")}'`);
 
 			    Laurus.Frame2Text.ExecMode = command.toUpperCase();
 			    // 入力ファイル(MAPXXX.json)、出力ファイル(message.txt)の情報
+			    /* 単発の取り出しコマンドの「取り出しのしかた」。反映側の add に当たるものは無い。
+			     * 省略時は統合: 一括取り出し・CLI・t2f-sync・VS Code と揃え、テキストに書いた内容を
+			     * 黙って消さない。 */
+			    const resolveExportStrategy = function (explicit) {
+			      const s = String(explicit == null ? '' : explicit).toLowerCase();
+			      if (s === 'merge' || s === 'overwrite') return s
+			      if (s !== '' && s !== 'undefined') {
+			        throw new Error('Unknown strategy: ' + explicit +
+			          ' / 取り出しのしかたは merge か overwrite を指定してください。')
+			      }
+			      return 'merge'
+			    };
+
 			    switch (Laurus.Frame2Text.ExecMode) {
 			      // for custom plugin command
 			      case 'EXPORT_EVENT_TO_MESSAGE':
 			      case 'イベントをメッセージにエクスポ－ト':
+			        Laurus.Frame2Text.ExecMode = 'EXPORT_EVENT_TO_MESSAGE';
 			        if (args[0]) Laurus.Frame2Text.FileFolder = args[0];
 			        if (args[1]) Laurus.Frame2Text.FileName = args[1];
 			        if (args[2]) Laurus.Frame2Text.MapID = args[2];
 			        if (args[3]) Laurus.Frame2Text.EventID = args[3];
 			        if (args[4]) Laurus.Frame2Text.PageID = args[4];
+			        Laurus.Frame2Text.Strategy = resolveExportStrategy(args[5]);
 			        if (args[0] || args[1]) {
 			          Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`;
 			          Laurus.Frame2Text.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${(
 		            '000' + Laurus.Frame2Text.MapID
 		          ).slice(-3)}.json`;
+			          Laurus.Frame2Text.BasePath = (args[6] && args[7]) ? `${BASE_PATH}${PATH_SEP}${args[6]}${PATH_SEP}${args[7]}` : undefined;
 			        }
 			        addMessage(
 			          '======> MapID: ' +
@@ -4618,37 +4596,17 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			        break
 			      case 'EXPORT_CE_TO_MESSAGE':
 			      case 'コモンイベントをメッセージにエクスポート':
-			        if (args.length === 3) {
-			          Laurus.Frame2Text.ExecMode = 'EXPORT_CE_TO_MESSAGE';
-			          Laurus.Frame2Text.FileFolder = args[0];
-			          Laurus.Frame2Text.FileName = args[1];
-			          Laurus.Frame2Text.CommonEventID = args[2];
-			          Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`;
-			          Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`;
-			        }
-			        addMessage('=====> Common EventID: ' + Laurus.Frame2Text.CommonEventID);
-			        break
-			      case 'MERGE_EVENT_TO_MESSAGE':
+			        Laurus.Frame2Text.ExecMode = 'EXPORT_CE_TO_MESSAGE';
 			        if (args[0]) Laurus.Frame2Text.FileFolder = args[0];
 			        if (args[1]) Laurus.Frame2Text.FileName = args[1];
-			        if (args[2]) Laurus.Frame2Text.MapID = args[2];
-			        if (args[3]) Laurus.Frame2Text.EventID = args[3];
-			        if (args[4]) Laurus.Frame2Text.PageID = args[4];
+			        if (args[2]) Laurus.Frame2Text.CommonEventID = args[2];
+			        Laurus.Frame2Text.Strategy = resolveExportStrategy(args[3]);
 			        if (args[0] || args[1]) {
 			          Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`;
-			          Laurus.Frame2Text.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Frame2Text.MapID).slice(-3)}.json`;
-			          Laurus.Frame2Text.BasePath = (args[5] && args[6]) ? `${BASE_PATH}${PATH_SEP}${args[5]}${PATH_SEP}${args[6]}` : undefined;
+			          Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`;
+			          Laurus.Frame2Text.BasePath = (args[4] && args[5]) ? `${BASE_PATH}${PATH_SEP}${args[4]}${PATH_SEP}${args[5]}` : undefined;
 			        }
-			        addMessage('======> (merge) MapID: ' + Laurus.Frame2Text.MapID + ' -> EventID: ' + Laurus.Frame2Text.EventID + ' -> PageID: ' + Laurus.Frame2Text.PageID);
-			        break
-			      case 'MERGE_CE_TO_MESSAGE':
-			        Laurus.Frame2Text.FileFolder = args[0];
-			        Laurus.Frame2Text.FileName = args[1];
-			        Laurus.Frame2Text.CommonEventID = args[2];
-			        Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`;
-			        Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`;
-			        Laurus.Frame2Text.BasePath = (args[3] && args[4]) ? `${BASE_PATH}${PATH_SEP}${args[3]}${PATH_SEP}${args[4]}` : undefined;
-			        addMessage('=====> (merge) Common EventID: ' + Laurus.Frame2Text.CommonEventID);
+			        addMessage('=====> Common EventID: ' + Laurus.Frame2Text.CommonEventID);
 			        break
 
 			      case 'BATCH_EXPORT_MESSAGES_TO_FOLDER': {
@@ -6964,7 +6922,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			        gameCommands: list,
 			        textBody: stripFrontMatter(existingText),
 			        baseBody: opts.baseText ? stripFrontMatter(opts.baseText) : '',
-			        englishTag
+			        englishTag,
+			        omitDefaults: opts.omitDefaults
 			      });
 			      return { text: header + r.text + '\n', baseText: gameText, conflicts: r.conflicts || 0 }
 			    };
@@ -7084,68 +7043,6 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      if (glob) glob.$LaurusFrame2Text = Laurus.Frame2Text.export;
 			    } catch (e) { /* noop */ }
 			    if (Laurus.Frame2Text.ExecMode === 'LIBRARY_EXPORT') {
-			      return
-			    }
-
-			    // MERGE pull(ゲーム→テキスト。テキストに書いた内容を残しつつゲーム変更を取り込む)。
-			    // push の 3-way を鏡写しにし、Text2Frame.applyMergePull で結果テキストを得る。
-			    if (Laurus.Frame2Text.ExecMode === 'MERGE_EVENT_TO_MESSAGE' || Laurus.Frame2Text.ExecMode === 'MERGE_CE_TO_MESSAGE') {
-			      const isCE = Laurus.Frame2Text.ExecMode === 'MERGE_CE_TO_MESSAGE';
-			      const T2F = resolveText2Frame();
-			      if (!T2F || !T2F.applyMergePull) { throw new Error('取り出し(merge)には Text2Frame プラグインが必要です。同じプロジェクトに導入してください。 / MERGE pull requires the Text2Frame plugin to be loaded.') }
-			      let gameCommands;
-			      if (isCE) {
-			        const ce = readJsonData(Laurus.Frame2Text.CommonEventPath);
-			        if (ce.length - 1 < Laurus.Frame2Text.CommonEventID) {
-			          throw new Error('Common Event not found. / コモンイベントが見つかりません。: ' + Laurus.Frame2Text.CommonEventID)
-			        }
-			        gameCommands = ce[Laurus.Frame2Text.CommonEventID].list;
-			      } else {
-			        const md = readJsonData(Laurus.Frame2Text.MapPath);
-			        if (!md.events[Laurus.Frame2Text.EventID]) {
-			          throw new Error('EventID not found. / EventIDが見つかりません。\n' + 'Event ID: ' + Laurus.Frame2Text.EventID)
-			        }
-			        const pageID = Number(Laurus.Frame2Text.PageID) - 1;
-			        if (!md.events[Laurus.Frame2Text.EventID].pages[pageID]) {
-			          throw new Error('PageID not found. / PageIDが見つかりません。\n' + 'Page ID: ' + Laurus.Frame2Text.PageID)
-			        }
-			        gameCommands = md.events[Laurus.Frame2Text.EventID].pages[pageID].list;
-			      }
-			      const outPath = Laurus.Frame2Text.TextPath;
-			      let existingText = '';
-			      try { existingText = readText(outPath); } catch (e) { existingText = ''; }
-			      const root = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : '.';
-			      const id = T2F.deriveBaseId(outPath, {});
-			      let baseText = '';
-			      if (Laurus.Frame2Text.BasePath) {
-			        try { baseText = readText(Laurus.Frame2Text.BasePath); } catch (e) { baseText = ''; }
-			      } else {
-			        baseText = T2F.readBaseText(root, id.locale, id.key) || '';
-			      }
-			      const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false';
-			      const fallbackHeader = '---\ngenerator: text2frame-mv@' + VERSION + '\nkind: ' + (isCE ? 'common' : 'event') + '\n' + (isCE ? ('commonEventId: ' + Laurus.Frame2Text.CommonEventID) : ('mapId: ' + Laurus.Frame2Text.MapID + '\neventId: ' + Laurus.Frame2Text.EventID + '\npageId: ' + (Laurus.Frame2Text.PageID || '1'))) + '\n---\n';
-			      const r = buildPullText({ list: gameCommands, englishTag, strategy: 'merge', existingText, baseText, fallbackHeader });
-			      // 単発コマンドは対象が1つしかないので、見送りは黙って成功にせず理由を出して止める。
-			      if (r.skipped === 'game') {
-			        throw new Error('未解決の衝突がゲーム側に残っています。ツクールで目印3行を消して残す方を決めたあと、もう一度取り出してください。テキスト側で解決したいときは上書きで取り出すと目印ごと出てきます。' +
-			          ' / unresolved conflict markers in the game data; resolve in the editor and pull again, or pull with overwrite to resolve in the text')
-			      }
-			      if (r.skipped) {
-			        throw new Error('未解決の衝突がテキストに残っています。目印3行を消して残す方を決めたあと、Text2Frameの「反映」を実行してください。' +
-			          ' / unresolved conflict markers in the text; resolve them, then import')
-			      }
-			      const written = r.text;
-			      try { mkdirpSync(require('path').dirname(outPath)); } catch (e) {}
-			      writeData(outPath, written);
-			      if (r.conflicts) {
-			        logger.error('[merge-pull] ' + r.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath);
-			        logger.error('[merge-pull] テキストの目印3行を消して残す方を決めたあと、反映(merge)を実行してください。 / resolve the text, then import with merge');
-			      }
-			      // 祖先はゲーム側(r.baseText)。マージ結果を入れると次の反映でテキストの内容が消える。
-			      // 衝突していても進める: ゲームの変更は(目印の中とはいえ)テキストに入っており、
-			      // 祖先が示すのは「ここまでのゲームの変更はテキストが見た」であって「一致した」ではない。
-			      // 据え置くと、テキストで解決したあとの反映で同じ衝突がゲーム側に再発する。
-			      try { T2F.saveBaseText(root, id.locale, id.key, r.baseText); } catch (e) {}
 			      return
 			    }
 
@@ -7294,7 +7191,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    }
 
 			    /** ******************************* */
-			    // エクスポートモード: 全体を上書き
+			    // 取り出し(単発)。merge は既存テキストを残して 3-way、overwrite は全上書き。
+			    // 一括取り出し・CLI・t2f-sync・VS Code と同じ buildPullText を通す。
 			    /** ******************************* */
 			    const isCEExport = Laurus.Frame2Text.ExecMode === 'EXPORT_CE_TO_MESSAGE' ||
 			      Laurus.Frame2Text.ExecMode === 'コモンイベントをメッセージにエクスポート';
@@ -7307,25 +7205,62 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    const exportEntry = isCEExport
 			      ? { commonEventId: Laurus.Frame2Text.CommonEventID }
 			      : { mapId: exportMapId, eventId: Laurus.Frame2Text.EventID, pageId: Laurus.Frame2Text.PageID };
-			    const outputText = renderFrontMatter(exportEntry, exportKind) +
-			      decompile(map_events, EnglishTag, { pretty: true }) + '\n';
+			    const outPath = Laurus.Frame2Text.TextPath;
+			    const exportStrategy = Laurus.Frame2Text.Strategy === 'merge' ? 'merge' : 'overwrite';
+			    const _T2Fx = resolveText2Frame();
+			    if (exportStrategy === 'merge' && (!_T2Fx || !_T2Fx.applyMergePull)) {
+			      throw new Error('取り出し(merge)には Text2Frame プラグインが必要です。同じプロジェクトに導入してください。 / MERGE pull requires the Text2Frame plugin to be loaded.')
+			    }
+			    const _exportId = (_T2Fx && _T2Fx.deriveBaseId) ? _T2Fx.deriveBaseId(outPath, {}) : null;
+			    const _exportRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH;
+			    // 全上書きでは既存テキストを読まない。読むと buildPullText が既存の見出しを引き継ぎ、
+			    // 引数で指定した宛先と食い違う。統合のときだけ突き合わせる相手として要る。
+			    let existingText = '';
+			    let baseText = '';
+			    if (exportStrategy === 'merge') {
+			      try { existingText = readText(outPath); } catch (e) { existingText = ''; }
+			      if (Laurus.Frame2Text.BasePath) {
+			        try { baseText = readText(Laurus.Frame2Text.BasePath); } catch (e) { baseText = ''; }
+			      } else if (_exportId && _T2Fx.readBaseText) {
+			        baseText = _T2Fx.readBaseText(_exportRoot, _exportId.locale, _exportId.key) || '';
+			      }
+			    }
+			    const built = buildPullText({
+			      list: map_events,
+			      englishTag: EnglishTag,
+			      strategy: exportStrategy,
+			      existingText,
+			      baseText,
+			      fallbackHeader: renderFrontMatter(exportEntry, exportKind)
+			    });
+			    // 単発コマンドは対象が1つしかないので、見送りは黙って成功にせず理由を出して止める。
+			    if (built.skipped === 'game') {
+			      throw new Error('未解決の衝突がゲーム側に残っています。ツクールで目印3行を消して残す方を決めたあと、もう一度取り出してください。テキスト側で解決したいときは上書きで取り出すと目印ごと出てきます。' +
+			        ' / unresolved conflict markers in the game data; resolve in the editor and pull again, or pull with overwrite to resolve in the text')
+			    }
+			    if (built.skipped) {
+			      throw new Error('未解決の衝突がテキストに残っています。目印3行を消して残す方を決めたあと、Text2Frameの「反映」を実行してください。' +
+			        ' / unresolved conflict markers in the text; resolve them, then import')
+			    }
+			    const outputText = built.text;
 
 			    /** ********************************************** */
 			    // txtファイルを出力
 			    /** ********************************************** */
-			    writeData(Laurus.Frame2Text.TextPath, outputText);
+			    try { mkdirpSync(require('path').dirname(outPath)); } catch (e) { /* best effort */ }
+			    writeData(outPath, outputText);
+			    if (built.conflicts) {
+			      logger.error('[merge-pull] ' + built.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath);
+			      logger.error('[merge-pull] テキストの目印3行を消して残す方を決めたあと、反映(merge)を実行してください。 / resolve the text, then import with merge');
+			    }
 			    // 目印ごと取り出した場合は祖先を進めない(祖先に目印が入ると次回の 3-way が壊れる)。
-			    const _exportedMarkers = hasConflictMarker(map_events);
-			    if (_exportedMarkers) {
+			    if (built.markers) {
 			      addMessage('未解決の衝突の目印ごと取り出したため、祖先(.t2f-base)は更新していません。テキストの目印3行を消して残す方を決めたあと、反映を上書きで実行してください。');
 			    }
-			    // 取り出し直後は text==game。overwrite でも次回反映の 3-way 祖先を更新する。
+			    // 祖先はゲーム側(built.baseText)。マージ結果を入れると次の反映でテキストの内容が消える。
 			    try {
-			      const _T2Fx = resolveText2Frame();
-			      if (!_exportedMarkers && _T2Fx && _T2Fx.saveBaseText && _T2Fx.deriveBaseId) {
-			        const _root = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH;
-			        const _id = _T2Fx.deriveBaseId(Laurus.Frame2Text.TextPath, {});
-			        _T2Fx.saveBaseText(_root, _id.locale, _id.key, outputText);
+			      if (!built.markers && _exportId && _T2Fx && _T2Fx.saveBaseText) {
+			        _T2Fx.saveBaseText(_exportRoot, _exportId.locale, _exportId.key, built.baseText);
 			      }
 			    } catch (e) { /* best effort */ }
 
@@ -7455,7 +7390,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      EnglishTag: options.english_tag,
 			      OmitDefaultTags: options.omitDefaultTags,
 			      BasePath: options.base,
-			      ExecMode: _pullOverwrite ? 'EXPORT_EVENT_TO_MESSAGE' : 'MERGE_EVENT_TO_MESSAGE'
+			      Strategy: _pullOverwrite ? 'overwrite' : 'merge',
+			      ExecMode: 'EXPORT_EVENT_TO_MESSAGE'
 			    };
 			    Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', [Frame2Text]);
 			  } else if (options.mode === 'common') {
@@ -7471,7 +7407,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      EnglishTag: options.english_tag,
 			      OmitDefaultTags: options.omitDefaultTags,
 			      BasePath: options.base,
-			      ExecMode: _pullOverwrite ? 'EXPORT_CE_TO_MESSAGE' : 'MERGE_CE_TO_MESSAGE'
+			      Strategy: _pullOverwrite ? 'overwrite' : 'merge',
+			      ExecMode: 'EXPORT_CE_TO_MESSAGE'
 			    };
 			    Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', [Frame2Text]);
 			  } else if (options.mode === 'decompile') {
@@ -7750,15 +7687,34 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			 * @type number
 			 * @default 1
 			 *
-			 * @arg IsOverwrite
-			 * @text 【取り扱い注意】上書きする
-			 * @desc 通常イベントの末尾に追加しますが、上書きに変更できます。trueのとき上書きです。デフォルト値はfalseです。
+			 * @arg Strategy
+			 * @text 反映のしかた
+			 * @desc merge(統合)はツクールで加えた編集を残したまま反映します。overwriteは全上書き、addはイベント末尾に追記です。既定はmergeです。
 			 * @type select
-			 * @option true(!!!上書きする!!!)
-			 * @value true
-			 * @option false(上書きしない)
-			 * @value false
-			 * @default false
+			 * @option 統合 / merge
+			 * @value merge
+			 * @option 【取り扱い注意】全上書き / overwrite
+			 * @value overwrite
+			 * @option 末尾に追記 / add
+			 * @value add
+			 * @default merge
+			 *
+			 * @arg WriteBack
+			 * @text 結果をテキストに書き戻す
+			 * @desc 統合(merge)のときだけ働きます。衝突はテキストだけに出て、ゲームには入りません。省略時はプラグインパラメータに従います。
+			 * @type select
+			 * @option 毎回書き戻す / always
+			 * @value always
+			 * @option 衝突したときだけ / onConflict
+			 * @value onConflict
+			 * @option 書き戻さない / off
+			 * @value off
+			 *
+			 * @arg BaseFolder
+			 * @text 祖先フォルダ名
+			 * @desc 統合(merge)の共通祖先テキストのフォルダ名です。デフォルト値は.t2f-baseで、通常設定する必要はありません。
+			 * @type string
+			 * @default .t2f-base
 			 *
 			 * @command IMPORT_MESSAGE_TO_CE
 			 * @text コモンイベントにインポート
@@ -7782,15 +7738,34 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			 * @type common_event
 			 * @default 1
 			 *
-			 * @arg IsOverwrite
-			 * @text 【取り扱い注意】上書きする
-			 * @desc 通常イベントの末尾に追加しますが、上書きに変更できます。trueのとき上書きです。デフォルト値はfalseです。
+			 * @arg Strategy
+			 * @text 反映のしかた
+			 * @desc merge(統合)はツクールで加えた編集を残したまま反映します。overwriteは全上書き、addはイベント末尾に追記です。既定はmergeです。
 			 * @type select
-			 * @option true(!!!上書きする!!!)
-			 * @value true
-			 * @option false(上書きしない)
-			 * @value false
-			 * @default false
+			 * @option 統合 / merge
+			 * @value merge
+			 * @option 【取り扱い注意】全上書き / overwrite
+			 * @value overwrite
+			 * @option 末尾に追記 / add
+			 * @value add
+			 * @default merge
+			 *
+			 * @arg WriteBack
+			 * @text 結果をテキストに書き戻す
+			 * @desc 統合(merge)のときだけ働きます。衝突はテキストだけに出て、ゲームには入りません。省略時はプラグインパラメータに従います。
+			 * @type select
+			 * @option 毎回書き戻す / always
+			 * @value always
+			 * @option 衝突したときだけ / onConflict
+			 * @value onConflict
+			 * @option 書き戻さない / off
+			 * @value off
+			 *
+			 * @arg BaseFolder
+			 * @text 祖先フォルダ名
+			 * @desc 統合(merge)の共通祖先テキストのフォルダ名です。デフォルト値は.t2f-baseで、通常設定する必要はありません。
+			 * @type string
+			 * @default .t2f-base
 			 *
 			 *
 			 * @command BATCH_IMPORT_MESSAGES_FROM_FOLDER
@@ -7806,6 +7781,17 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			 * @option overwrite
 			 * @value overwrite
 			 * @default merge
+			 *
+			 * @arg WriteBack
+			 * @text 結果をテキストに書き戻す
+			 * @desc 反映結果をテキストにも書きます。衝突はテキストだけに出て、ゲームには入りません。省略時はプラグインパラメータに従います。
+			 * @type select
+			 * @option 毎回書き戻す / always
+			 * @value always
+			 * @option 衝突したときだけ / onConflict
+			 * @value onConflict
+			 * @option 書き戻さない / off
+			 * @value off *
 			 *
 			 * @arg TextFolder
 			 * @text 取り込み元フォルダ名
@@ -7861,76 +7847,6 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			 * @command STOP_SYNC_WATCH
 			 * @text 同期監視の停止
 			 * @desc 同期監視を止めます。プレイテストを閉じても止まります。
-			 *
-			 *
-			 * @command MERGE_MESSAGE_TO_EVENT
-			 * @text テキストをイベントにマージ
-			 * @desc 既存イベントを破壊せず、指定したテキストの内容を差分反映します。このコマンドは特別の事情がある場合に利用するエキスパート向けプラグインコマンドです。通常は、BATCH_IMPORT_MESSAGES_FROM_FOLDER を利用することを推奨します。詳細はwikiの該当ページを確認してください。テキストに見出し情報が書かれている場合には、取り込み先マップID、取り込み先イベントID、取り込み先ページID は省略できます。祖先フォルダ名は通常設定する必要はありません。
-			 *
-			 * @arg FileFolder
-			 * @text 取り込み元フォルダ名
-			 * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
-			 * @type string
-			 * @default text
-			 *
-			 * @arg FileName
-			 * @text 取り込み元ファイル名
-			 * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
-			 * @type string
-			 * @default message.txt
-			 *
-			 * @arg MapID
-			 * @text 取り込み先マップID
-			 * @desc 取り込み先となるマップのIDを設定します。デフォルト値は1です。テキストの見出し情報に mapId があればそちらが優先されます。Frame2Textから出力したテキストを利用する場合、通常設定する必要はありません。
-			 * @type number
-			 * @default 1
-			 *
-			 * @arg EventID
-			 * @text 取り込み先イベントID
-			 * @desc 取り込み先となるイベントのIDを設定します。デフォルト値は2です。テキストの見出し情報に eventId があればそちらが優先されます。Frame2Textから出力したテキストを利用する場合、通常設定する必要はありません。
-			 * @type number
-			 * @default 2
-			 *
-			 * @arg PageID
-			 * @text 取り込み先ページID
-			 * @desc 取り込み先となるページのIDを設定します。デフォルト値は1です。テキストの見出し情報に pageId があればそちらが優先されます。Frame2Textから出力したテキストを利用する場合、通常設定する必要はありません。
-			 * @type number
-			 * @default 1
-			 *
-			 * @arg BaseFolder
-			 * @text 祖先フォルダ名
-			 * @desc 3wayマージの共通祖先テキストのフォルダ名を設定します。デフォルト値は.t2f-baseです。通常設定する必要はありません。
-			 * @type string
-			 * @default .t2f-base
-			 *
-			 *
-			 * @command MERGE_MESSAGE_TO_CE
-			 * @text テキストをコモンイベントにマージ
-			 * @desc 既存コモンイベントを破壊せず、指定したテキストの内容を差分反映します。このコマンドは特別の事情がある場合に利用するエキスパート向けプラグインコマンドです。通常は、BATCH_IMPORT_MESSAGES_FROM_FOLDER を利用することを推奨します。詳細はwikiの該当ページを確認してください。テキストに見出し情報が書かれている場合には、取り込み先コモンイベントID は省略できます。祖先フォルダ名は通常設定する必要はありません。
-			 *
-			 * @arg FileFolder
-			 * @text 取り込み元フォルダ名
-			 * @desc テキストファイルを保存しておくフォルダ名を設定します。デフォルトはtextです。
-			 * @type string
-			 * @default text
-			 *
-			 * @arg FileName
-			 * @text 取り込み元ファイル名
-			 * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
-			 * @type string
-			 * @default message.txt
-			 *
-			 * @arg CommonEventID
-			 * @text 取り込み先コモンイベントID
-			 * @desc 出力先のコモンイベントIDを設定します。デフォルト値は1です。テキストの front matter に commonEventId があればそちらが優先されます。
-			 * @type common_event
-			 * @default 1
-			 *
-			 * @arg BaseFolder
-			 * @text 祖先フォルダ名
-			 * @desc 3wayマージの共通祖先テキストのフォルダ名を設定します。デフォルト値は.t2f-baseです。通常設定する必要はありません。
-			 * @type string
-			 * @default .t2f-base
 			 *
 			 *
 			 * @param Default Window Position
@@ -8002,6 +7918,18 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			 * @desc 行頭に置いた場合、その行をコメントとして処理する記号を定義します。デフォルト値は「％」（半角パーセント）です。
 			 * @default %
 			 * @type string
+			 *
+			 * @param WriteBackAfterMerge
+			 * @text 反映結果をテキストに書き戻す
+			 * @desc 統合(merge)で反映したあと、結果をテキストにも書きます。衝突はテキストだけに出て、ゲームには入りません。デフォルト値は「毎回」です。
+			 * @default always
+			 * @type select
+			 * @option 毎回書き戻す / always
+			 * @value always
+			 * @option 衝突したときだけ / onConflict
+			 * @value onConflict
+			 * @option 書き戻さない / off
+			 * @value off
 			 *
 			 * @param IsDebug
 			 * @text デバッグモードを利用する
@@ -8102,8 +8030,6 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			 * --------------------------------------
 			 *  同じ場所をテキストとゲームの両方で変更したときは、次の目印3行が挿入された
 			 *  上で、両方の変更が残ります（どちらの変更も失われることはありません）。
-			 *  テキストからゲームへの反映ならゲームに、
-			 *  ゲームからテキストへの取り出しならテキストに入ります。
 			 *
 			 *    === テキストの変更 / from text ===
 			 *    （テキスト側の内容）
@@ -8111,21 +8037,34 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			 *    （ゲーム側の内容）
 			 *    === どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===
 			 *
-			 *  直し方は「目印を削除し意図通りに編集した後、逆の操作を行って解消を反映」
-			 *  です。
+			 *  直し方は「目印が入った側で残す方を決め、目印3行を消す」ことです。
 			 *
-			 * ◆ ゲームへの反映で衝突した（目印がゲームに入った）とき
+			 * ◆ 反映（テキスト→ゲーム）で衝突したとき
+			 *  プラグインパラメータ「反映結果をテキストに書き戻す」が既定（毎回）のままなら、
+			 *  目印は【テキスト】に入ります。ゲームには自分の版だけが書かれるので、
+			 *  ツクールで開いても目印は入っておらず、そのまま遊べます。
+			 *
+			 *     1. テキストエディタで目印3行を消し、残す方だけにする。
+			 *     2. もう一度「BATCH_IMPORT_MESSAGES_FROM_FOLDER」を実行する。
+			 *
+			 *  書き戻しを「off」にしている場合は、目印は【ゲーム】に入ります。
+			 *
 			 *     1. ツクールをセーブせずに開き直し、目印のある周辺をUIで編集して
 			 *        目印3行を消し、意図通りに編集する。
 			 *     2. Frame2Text の「BATCH_EXPORT_MESSAGES_TO_FOLDER」を実行する。
 			 *
-			 * ◆ テキストへの取り出しで衝突した（目印がテキストに入った）とき
+			 * ◆ 取り出し（ゲーム→テキスト）で衝突したとき
+			 *  目印はテキストに入ります。
+			 *
 			 *     1. テキストエディタで目印3行を消し、残す方だけにする。
 			 *     2. 「BATCH_IMPORT_MESSAGES_FROM_FOLDER」を実行する。
 			 *
-			 *  ※ 衝突を解消しないまま、同じプラグインコマンドは実行しないでください。
-			 *    同じ向きにもう一度実行しても衝突は直りません。
-			 *    また、目印が残っている間は、次の反映・取り出しの対象から外れます。
+			 *  ※ 目印を消さないまま実行すると、そのファイルは対象から外れます
+			 *    （目印ごと再マージすると二重・三重に増えるためです）。
+			 *
+			 *  ※ 書き戻しは、テキストにコメント行（％で始まる行）があると見送られます。
+			 *    コメント行はゲームに取り込まれないため、書き戻すと消えてしまうからです。
+			 *    残したいメモは <comment> タグを使ってください。
 			 *
 			 * ◆ 一括取り出し・反映時にプラグインコマンドが意図通りに動作しないとき
 			 *  ゲームかテキストのどちらかを真と決めて、強制的に上書きすることで解決でき
@@ -8474,20 +8413,29 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			 * メータで指定したテキストファイルやマップIDとは違うパラメータで実行ができま
 			 * す。
 			 *
-			 * 例1:text/message.txtをマップIDが1, イベントIDが2, ページIDが3で上書きせず
-			 *     に取り込む。
-			 *   IMPORT_MESSAGE_TO_EVENT text message.txt 1 2 3 false
-			 *   メッセージをイベントにインポート text message.txt 1 2 3 false
+			 *  反映のしかた(7番目/5番目)には merge・overwrite・add を指定できます。
+			 *  省略すると統合(merge)です。add は従来の「末尾に追記」です。
 			 *
-			 * 例2:text/message.txtをIDが3のコモンイベントに上書きしてに取り込む。
-			 *   IMPORT_MESSAGE_TO_CE text message.txt 3 true
-			 *   メッセージをコモンイベントにインポート text message.txt 3 true
+			 * 例1:text/message.txtをマップIDが1, イベントIDが2, ページIDが3へ統合で
+			 *     取り込む。
+			 *   IMPORT_MESSAGE_TO_EVENT text message.txt 1 2 3
+			 *   メッセージをイベントにインポート text message.txt 1 2 3
+			 *
+			 * 例1-2:同じ場所へ、末尾に追記する(従来の既定)。
+			 *   IMPORT_MESSAGE_TO_EVENT text message.txt 1 2 3 "" add
+			 *
+			 * 例2:text/message.txtをIDが3のコモンイベントに上書きして取り込む。
+			 *   IMPORT_MESSAGE_TO_CE text message.txt 3 "" overwrite
+			 *   メッセージをコモンイベントにインポート text message.txt 3 "" overwrite
 			 *
 			 * 例3:フォルダ内のテキストを一括反映する（第1引数は反映のしかた。省略すると統合。
-			 *     全上書きは overwrite を指定。第2引数は取り込み元フォルダ名。省略すると text）。
+			 *     全上書きは overwrite を指定。第2引数は取り込み元フォルダ名。省略すると text。
+			 *     第3引数は結果をテキストに書き戻すか。always/onConflict/off。
+			 *     省略するとプラグインパラメータに従う）。
 			 *   BATCH_IMPORT_MESSAGES_FROM_FOLDER
 			 *   BATCH_IMPORT_MESSAGES_FROM_FOLDER overwrite
 			 *   BATCH_IMPORT_MESSAGES_FROM_FOLDER overwrite text
+			 *   BATCH_IMPORT_MESSAGES_FROM_FOLDER merge text off
 			 *   一括反映 overwrite text
 			 *
 			 * ◆ 旧版のプラグインコマンドの引数(非推奨)
@@ -11997,6 +11945,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
 
 			  // for MZ plugin command
 			  if (typeof PluginManager !== 'undefined' && PluginManager.registerCommand) {
+			    // IsOverwrite は @arg から外したが、それ以前に保存されたコマンドにはまだ入っている。
+			    // Strategy が無いときの手掛かりとして引き続き渡す(引数解決側で解釈する)。
 			    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_EVENT', function (args) {
 			      const file_folder = args.FileFolder;
 			      const file_name = args.FileName;
@@ -12005,7 +11955,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      const page_id = args.PageID;
 			      const is_overwrite = args.IsOverwrite;
 			      this.pluginCommand('IMPORT_MESSAGE_TO_EVENT',
-			        [file_folder, file_name, map_id, event_id, page_id, is_overwrite]);
+			        [file_folder, file_name, map_id, event_id, page_id, is_overwrite,
+			          args.Strategy, args.WriteBack, args.BaseFolder, args.FileName]);
 			    });
 			    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_CE', function (args) {
 			      const file_folder = args.FileFolder;
@@ -12013,36 +11964,16 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      const common_event_id = args.CommonEventID;
 			      const is_overwrite = args.IsOverwrite;
 			      this.pluginCommand('IMPORT_MESSAGE_TO_CE',
-			        [file_folder, file_name, common_event_id, is_overwrite]);
-			    });
-			    PluginManager.registerCommand('Text2Frame', 'MERGE_MESSAGE_TO_EVENT', function (args) {
-			      const file_folder = args.FileFolder;
-			      const file_name = args.FileName;
-			      const map_id = args.MapID;
-			      const event_id = args.EventID;
-			      const page_id = args.PageID;
-			      const base_folder = args.BaseFolder;
-			      const base_file_name = args.FileName;
-			      this.pluginCommand('MERGE_MESSAGE_TO_EVENT',
-			        [file_folder, file_name, map_id, event_id, page_id, base_folder, base_file_name]);
-			    });
-			    PluginManager.registerCommand('Text2Frame', 'MERGE_MESSAGE_TO_CE', function (args) {
-			      const file_folder = args.FileFolder;
-			      const file_name = args.FileName;
-			      const common_event_id = args.CommonEventID;
-			      const base_folder = args.BaseFolder;
-			      const base_file_name = args.FileName;
-			      this.pluginCommand('MERGE_MESSAGE_TO_CE',
-			        [file_folder, file_name, common_event_id, base_folder, base_file_name]);
+			        [file_folder, file_name, common_event_id, is_overwrite,
+			          args.Strategy, args.WriteBack, args.BaseFolder, args.FileName]);
 			    });
 			    PluginManager.registerCommand('Text2Frame', 'BATCH_IMPORT_MESSAGES_FROM_FOLDER', function (args) {
 			      const text_folder = args.TextFolder;
 			      const strategy = args.Strategy;
-			      // 引数順は @arg の並びと合わせる(反映のしかたが1番目)。
-			      this.pluginCommand('BATCH_IMPORT_MESSAGES_FROM_FOLDER', [strategy, text_folder]);
+			      const write_back = args.WriteBack;
+			      this.pluginCommand('BATCH_IMPORT_MESSAGES_FROM_FOLDER', [strategy, write_back, text_folder]);
 			    });
 			    PluginManager.registerCommand('Text2Frame', 'START_SYNC_WATCH', function (args) {
-			      // 引数順は @arg の並びと合わせる(同期のしかたが1番目)。
 			      this.pluginCommand('START_SYNC_WATCH',
 			        [args.Strategy, args.Direction, args.Locale, args.TextBase, args.DataFolder]);
 			    });
@@ -12070,6 +12001,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    Laurus.Text2Frame.DisplayMsg = true;
 			    Laurus.Text2Frame.DisplayWarning = true;
 			    Laurus.Text2Frame.BatchStrategy = 'diff';
+			    // 単発反映のしかた。COMMAND_LINE(CLI / applyTextFile)が毎回上書きする。
+			    Laurus.Text2Frame.Strategy = 'merge';
+			    // PluginManager が無い経路(CLI / t2f-sync / ライブラリ)は書き戻さない。
+			    // 呼び出し側が applyTextFile の writeBack で明示したときだけ有効になる。
+			    Laurus.Text2Frame.WriteBackAfterMerge = 'off';
 			    Laurus.Text2Frame.TextPath = 'dummy';
 			    Laurus.Text2Frame.MapPath = 'dummy';
 			    Laurus.Text2Frame.CommonEventPath = 'dummy';
@@ -12094,7 +12030,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    Laurus.Text2Frame.IsDebug = (String(Laurus.Text2Frame.Parameters.IsDebug) === 'true');
 			    Laurus.Text2Frame.DisplayMsg = (String(Laurus.Text2Frame.Parameters.DisplayMsg) === 'true');
 			    Laurus.Text2Frame.DisplayWarning = (String(Laurus.Text2Frame.Parameters.DisplayWarning) === 'true');
+			    // 未設定(古いプラグイン設定を引き継いだプロジェクト)は既定の「毎回」。
+			    Laurus.Text2Frame.WriteBackAfterMerge = String(Laurus.Text2Frame.Parameters.WriteBackAfterMerge || 'always');
 			    Laurus.Text2Frame.BatchStrategy = 'diff';
+			    // 単発反映のしかた。コマンドの引数解決で毎回決め直す。
+			    Laurus.Text2Frame.Strategy = 'merge';
 			    let PATH_SEP = '/';
 			    let BASE_PATH = '.';
 			    if (typeof commonjsRequire !== 'undefined') {
@@ -12286,7 +12226,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 
 			    // MERGE(反映): 祖先(BASE)を解決し 3-way / overwrite を自動選択して
 			    // マージ後のコマンド列を返す。event / CE で共通。祖先の保存キー(baseRoot/baseId)も返す。
-			    const resolveMergeCommands = function (existing_events, event_command_list, textPath, explicitBasePath) {
+			    const resolveMergeCommands = function (existing_events, event_command_list, textPath, explicitBasePath, keepOurs) {
 			      // 未解決の衝突が残ったままマージすると、目印ごと再マージされて目印が二重・三重に増え、
 			      // どちらが自分の変更か分からなくなる。解決を促して止める(上書き反映は逃げ道として通す)。
 			      if (hasConflictMarker(existing_events)) {
@@ -12325,7 +12265,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			        addWarning('初回反映: 祖先が無いため現在のゲーム状態を祖先として記録しテキストで反映しました / no ancestor: recorded current game state as base');
 			      }
 			      if (base_cmds && hasContent) {
-			        merge_result = applyThreeWayMerge(base_cmds, existing_events, event_command_list);
+			        merge_result = applyThreeWayMerge(base_cmds, existing_events, event_command_list, { keepOurs });
 			        if (merge_result.conflicts) {
 			          addWarning('3-way merge: ' + merge_result.conflicts + ' conflict(s) kept both / 衝突を両方残しました');
 			          // 一括反映が「どのファイルが衝突したか」を名指しできるよう、_warnings と同じ要領で外へ渡す。
@@ -12337,7 +12277,14 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			        merge_result = { commands: overwriteCmds, warnings: [] };
 			      }
 			      for (let wi = 0; wi < merge_result.warnings.length; wi++) addWarning(merge_result.warnings[wi]);
-			      return { commands: merge_result.commands, baseRoot, baseId, conflicts: merge_result.conflicts || 0 }
+			      return {
+			        commands: merge_result.commands,
+			        // 衝突しなかった場合や 3-way を通らなかった場合は両者同じ。呼び出し側で分けなくて済むよう常に埋める。
+			        commandsOurs: merge_result.commandsOurs || merge_result.commands,
+			        baseRoot,
+			        baseId,
+			        conflicts: merge_result.conflicts || 0
+			      }
 			    };
 
 			    // マージ反映後、反映したテキストを次回の祖先として保存する(明示 BasePath 使用時も最新化)。
@@ -12347,6 +12294,114 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    // 衝突時はゲーム側に目印が残るので、次の反映・取り出しは既存のガードが止める。
 			    const saveMergeBase = function (baseRoot, baseId, textPath) {
 			      if (baseRoot && baseId) { try { saveBaseText(baseRoot, baseId.locale, baseId.key, readText(textPath)); } catch (e) {} }
+			    };
+
+			    /* ---------------- マージバック(書き戻し) ----------------
+			     * 反映のあと、マージ結果をテキストにも書く。衝突したときは目印をテキストだけに置き、
+			     * ゲームには自分の版(目印なし)を書くので、直す場所がテキストに一本化される。
+			     * ツクールを開かずに、統合(merge)のまま決着できる。 */
+
+			    // 書き戻せない条件を先に潰す。1つでも当てはまれば従来どおり(目印を両側)に落とす。
+			    // 先に判定しないと「ゲームには ours、テキストは書けなかった」でテキスト側の版が消える。
+			    const planWriteBack = function (scenario_text) {
+			      // WriteBack は今回の実行ぶん(コマンド引数で上書きできる)。無ければプラグインパラメータ。
+			      const mode = String(Laurus.Text2Frame.WriteBack || Laurus.Text2Frame.WriteBackAfterMerge || 'off').toLowerCase();
+			      if (mode !== 'always' && mode !== 'onconflict') return { mode: 'off' }
+			      const F2T = resolveFrame2Text();
+			      if (!F2T || !F2T.buildPullText) {
+			        return { mode: 'off', reason: '書き戻しには Frame2Text プラグインが必要です。同じプロジェクトに導入してください。 / write-back requires the Frame2Text plugin' }
+			      }
+			      // コメントアウト行はコンパイル前に捨てられる(eraseCommentOutLines)ため、
+			      // コマンド列から作り直す書き戻しでは復元できない。消すくらいなら書き戻さない。
+			      const commentRe = new RegExp('^ *' + Laurus.Text2Frame.CommentOutChar, 'm');
+			      if (commentRe.test(String(scenario_text))) {
+			        return { mode: 'off', reason: 'コメント行(' + Laurus.Text2Frame.CommentOutChar + ')があるため書き戻しを見送りました。消えてしまうためです。残したいメモは <comment> を使ってください。 / skipped write-back to preserve comment lines' }
+			      }
+			      return { mode: mode === 'always' ? 'always' : 'onConflict', F2T }
+			    };
+
+			    // コマンド列を、いま反映したテキストの front matter を引き継いだテキストにする。
+			    // タグの言語・既定タグの省略は Frame2Text 側の設定に従う(取り出しと同じ見た目にするため)。
+			    // 省略の指定は渡さない: decompile が Laurus.Frame2Text.OmitDefaultTags へ落とす。
+			    const renderMergedText = function (F2T, commands, scenario_text) {
+			      const list = commands.slice();
+			      if (!list.length || list[list.length - 1].code !== 0) list.push(getCommandBottomEvent());
+			      return F2T.buildPullText({
+			        list,
+			        strategy: 'overwrite',
+			        existingText: scenario_text,
+			        englishTag: String(Laurus.Frame2Text && Laurus.Frame2Text.EnglishTag) !== 'false'
+			      }).text
+			    };
+
+			    /* 反映結果をテキストへ書き戻す。ゲームを書く前に呼ぶこと(書けなければゲームを触らない)。
+			     * 戻り値の baseText は、書けたときだけ「ゲームに書いたものの text 形」。
+			     * 内容が同じなら書かない: always でも、変わっていないファイルの mtime を動かさない。 */
+			    const writeBackMergedText = function (plan, merged, textPath, scenario_text) {
+			      if (plan.mode === 'off') return { written: false }
+			      if (plan.mode === 'onConflict' && !merged.conflicts) return { written: false }
+			      const fsLib = require$$1$1;
+			      let text;
+			      let baseText;
+			      try {
+			        text = renderMergedText(plan.F2T, merged.commands, scenario_text);
+			        // 祖先はゲームに書いたほう。テキスト(目印つき)を祖先にすると次の 3-way が目印を再マージする。
+			        baseText = merged.commandsOurs === merged.commands
+			          ? text
+			          : renderMergedText(plan.F2T, merged.commandsOurs, scenario_text);
+			      } catch (e) {
+			        addWarning('書き戻しのテキスト生成に失敗しました: ' + ((e && e.message) || e) + ' / failed to render write-back text');
+			        return { written: false, failed: true }
+			      }
+			      if (text === scenario_text) return { written: false, unchanged: true, baseText }
+			      try {
+			        backupOnce(fsLib, textPath);
+			        fsLib.writeFileSync(textPath, text, 'utf8');
+			      } catch (e) {
+			        addWarning('書き戻しに失敗しました(反映は行っていません): ' + ((e && e.message) || e) + ' / write-back failed; the game was left untouched');
+			        return { written: false, failed: true }
+			      }
+			      return { written: true, text, baseText }
+			    };
+
+			    /* MERGE 反映の本体。テキストを先に書き、書けたときだけゲームには目印なしの版を書く。
+			     * 書けなかったときは中断する(ゲームに ours だけ入ってテキスト側の版が消えるのを防ぐ)。 */
+			    const mergeWithWriteBack = function (existing_events, event_command_list, textPath, explicitBasePath, scenario_text) {
+			      const plan = planWriteBack(scenario_text);
+			      if (plan.reason) addWarning(plan.reason);
+			      const merged = resolveMergeCommands(existing_events, event_command_list, textPath, explicitBasePath, plan.mode !== 'off');
+			      const wb = writeBackMergedText(plan, merged, textPath, scenario_text);
+			      if (wb.failed) {
+			        throw new Error('書き戻せなかったため反映を中止しました。テキストもゲームも変更していません。' +
+			          ' / write-back failed; nothing was written')
+			      }
+			      merged.writeBack = wb;
+			      merged.commandsForGame = (wb.written || wb.unchanged) ? merged.commandsOurs : merged.commands;
+			      // 一括反映が「どのファイルを書き戻したか」を報告できるよう、_warnings と同じ要領で外へ渡す。
+			      if (wb.written) Laurus.Text2Frame._writeBack = { path: textPath, text: wb.text };
+			      return merged
+			    };
+
+			    // 書き戻したときの祖先は「ゲームに書いたものの text 形」。書き戻していなければ従来どおり
+			    // 反映したテキスト。一律に前者へ変えると、衝突していない反映で祖先にゲーム側の構造が入り、
+			    // 次の反映でその構造が消える。
+			    const saveBaseAfterMerge = function (merged, textPath) {
+			      const wb = merged.writeBack;
+			      if (wb && (wb.written || wb.unchanged) && wb.baseText && merged.baseRoot && merged.baseId) {
+			        try { saveBaseText(merged.baseRoot, merged.baseId.locale, merged.baseId.key, wb.baseText); } catch (e) {}
+			        return
+			      }
+			      saveMergeBase(merged.baseRoot, merged.baseId, textPath);
+			    };
+
+			    // 衝突が残っているときの案内。直す場所は「目印が入った側」。
+			    const warnConflictsRemain = function (merged) {
+			      if (!merged.conflicts) return
+			      if (merged.writeBack && merged.writeBack.written) {
+			        addWarning('テキストに目印3行が入りました。残す方を決めて目印を消し、もう一度反映してください。 / conflicts were written into the text; resolve them there and import again');
+			      } else {
+			        addWarning('ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を実行してください。 / conflicts remain; resolve in the editor, then pull');
+			      }
 			    };
 
 			    // overwrite 反映の直後も text==game なので、同じく祖先を更新する。
@@ -12360,76 +12415,84 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      } catch (e) { /* best effort */ }
 			    };
 
+			    /* 単発の反映コマンド(IMPORT_*)の「反映のしかた」を決める。
+			     * 一括・CLI・front matter が使う resolveStrategy とは別にしてある: add(末尾に追記)は
+			     * 2回流すと内容が二重になるので、走査で回るところに出してはいけない。
+			     * legacyOverwrite は旧来の上書き真偽値(true/false/未指定)。 */
+			    const resolveImportStrategy = function (explicit, legacyOverwrite) {
+			      const s = String(explicit == null ? '' : explicit).toLowerCase();
+			      if (s === 'merge' || s === 'overwrite' || s === 'add') return s
+			      if (s !== '' && s !== 'undefined') {
+			        throw new Error('Unknown strategy: ' + explicit +
+			          ' / 反映のしかたは merge か overwrite か add を指定してください。')
+			      }
+			      if (legacyOverwrite === true) return 'overwrite'
+			      if (legacyOverwrite === false) return 'add'
+			      // どちらも無し。一括反映・CLI・VS Code と同じく統合にする。
+			      // 以前は「末尾に追記」だったので、黙って変えずに知らせる。
+			      addWarning('反映のしかたを省略したので統合(merge)で反映しました。従来どおり末尾に追記するには add を指定してください。 / strategy omitted; used merge');
+			      return 'merge'
+			    };
+
 			    Laurus.Text2Frame.ExecMode = command.toUpperCase();
 
 			    switch (Laurus.Text2Frame.ExecMode) {
 			      // for custom plugin command
 			      case 'IMPORT_MESSAGE_TO_EVENT' :
-			      case 'メッセージをイベントにインポート' :
+			      case 'メッセージをイベントにインポート' : {
 			        addMessage('import message to event. \n/ メッセージをイベントにインポートします。');
+			        Laurus.Text2Frame.ExecMode = 'IMPORT_MESSAGE_TO_EVENT';
 			        if (args[0]) Laurus.Text2Frame.FileFolder = args[0];
 			        if (args[1]) Laurus.Text2Frame.FileName = args[1];
 			        if (args[2]) Laurus.Text2Frame.MapID = args[2];
 			        if (args[3]) Laurus.Text2Frame.EventID = args[3];
+			        // 旧来の上書き真偽値。未指定と false を区別するため三値で持つ。
+			        let legacyOverwrite;
 			        if (args[4] && (args[4].toLowerCase() === 'true' || args[4].toLowerCase() === 'false')) {
-			          Laurus.Text2Frame.IsOverwrite = args[4].toLowerCase() === 'true';
+			          legacyOverwrite = args[4].toLowerCase() === 'true';
 			          addWarning('【警告】5番目の引数に上書き判定を設定することは非推奨に');
-			          addWarning('なりました。ページIDを設定してください。上書き判定は6番');
+			          addWarning('なりました。ページIDを設定してください。反映のしかたは7番');
 			          addWarning('目に設定してください。(警告はオプションでOFFにできます)');
 			        } else if (args[4]) {
 			          Laurus.Text2Frame.PageID = args[4];
 			        }
-			        if (args[5] && args[5].toLowerCase() === 'true') Laurus.Text2Frame.IsOverwrite = true;
+			        if (args[5]) legacyOverwrite = String(args[5]).toLowerCase() === 'true';
+			        Laurus.Text2Frame.Strategy = resolveImportStrategy(args[6], legacyOverwrite);
+			        Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite';
+			        Laurus.Text2Frame.WriteBack = String(args[7] || Laurus.Text2Frame.WriteBackAfterMerge || 'off');
+			        // テキストに見出し情報があれば、反映先はそちらに従う(実行部で上書きする)。
+			        Laurus.Text2Frame.RouteByFrontMatter = true;
 			        if (args[0] || args[1]) {
 			          const { PATH_SEP, BASE_PATH } = getDirParams();
 			          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
 			          Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
+			          Laurus.Text2Frame.BasePath = (args[8] && args[9]) ? `${BASE_PATH}${PATH_SEP}${args[8]}${PATH_SEP}${args[9]}` : undefined;
 			        }
 			        break
+			      }
 			      case 'IMPORT_MESSAGE_TO_CE' :
-			      case 'メッセージをコモンイベントにインポート' :
-			        if (args.length === 4) {
-			          addMessage('import message to common event. \n/ メッセージをコモンイベントにインポートします。');
-			          Laurus.Text2Frame.ExecMode = 'IMPORT_MESSAGE_TO_CE';
-			          Laurus.Text2Frame.FileFolder = args[0];
-			          Laurus.Text2Frame.FileName = args[1];
-			          Laurus.Text2Frame.CommonEventID = args[2];
-			          Laurus.Text2Frame.IsOverwrite = (args[3] === 'true');
-			          const { PATH_SEP, BASE_PATH } = getDirParams();
-			          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
-			          Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`;
-			        }
-			        break
-			      case 'MERGE_MESSAGE_TO_EVENT' :
-			        addMessage('merge message to event. \n/ マージでイベントに反映します。');
+			      case 'メッセージをコモンイベントにインポート' : {
+			        addMessage('import message to common event. \n/ メッセージをコモンイベントにインポートします。');
+			        Laurus.Text2Frame.ExecMode = 'IMPORT_MESSAGE_TO_CE';
 			        if (args[0]) Laurus.Text2Frame.FileFolder = args[0];
 			        if (args[1]) Laurus.Text2Frame.FileName = args[1];
-			        if (args[2]) Laurus.Text2Frame.MapID = args[2];
-			        if (args[3]) Laurus.Text2Frame.EventID = args[3];
-			        if (args[4]) Laurus.Text2Frame.PageID = args[4];
+			        if (args[2]) Laurus.Text2Frame.CommonEventID = args[2];
+			        const legacyOverwrite = args[3] === undefined || args[3] === '' || args[3] === null
+			          ? undefined
+			          : String(args[3]).toLowerCase() === 'true';
+			        Laurus.Text2Frame.Strategy = resolveImportStrategy(args[4], legacyOverwrite);
+			        Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite';
+			        Laurus.Text2Frame.WriteBack = String(args[5] || Laurus.Text2Frame.WriteBackAfterMerge || 'off');
+			        // テキストに見出し情報があれば、反映先はそちらに従う(実行部で上書きする)。
+			        Laurus.Text2Frame.RouteByFrontMatter = true;
 			        if (args[0] || args[1]) {
 			          const { PATH_SEP, BASE_PATH } = getDirParams();
 			          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
-			          Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
-			          Laurus.Text2Frame.BasePath = (args[5] && args[6]) ? `${BASE_PATH}${PATH_SEP}${args[5]}${PATH_SEP}${args[6]}` : undefined;
-			        }
-			        // プラグインコマンドの MERGE は、テキストの front matter があれば反映先を front matter に従わせる。
-			        // 実際の上書きは front matter パース後(実行部)で行う。CLI/applyTextFile は COMMAND_LINE 経由でここを通らない。
-			        Laurus.Text2Frame.RouteByFrontMatter = true;
-			        break
-			      case 'MERGE_MESSAGE_TO_CE' :
-			        addMessage('merge message to common event. \n/ マージでコモンイベントに反映します。');
-			        Laurus.Text2Frame.FileFolder = args[0];
-			        Laurus.Text2Frame.FileName = args[1];
-			        Laurus.Text2Frame.CommonEventID = args[2];
-			        {
-			          const { PATH_SEP, BASE_PATH } = getDirParams();
-			          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
 			          Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`;
-			          Laurus.Text2Frame.BasePath = (args[3] && args[4]) ? `${BASE_PATH}${PATH_SEP}${args[3]}${PATH_SEP}${args[4]}` : undefined;
+			          Laurus.Text2Frame.BasePath = (args[6] && args[7]) ? `${BASE_PATH}${PATH_SEP}${args[6]}${PATH_SEP}${args[7]}` : undefined;
 			        }
-			        Laurus.Text2Frame.RouteByFrontMatter = true;
 			        break
+			      }
 
 			      case 'BATCH_IMPORT_MESSAGES_FROM_FOLDER' :
 			      case '一括反映' :
@@ -12437,6 +12500,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			        // 反映のしかたは1番目(一括取り出しの BATCH_EXPORT_MESSAGES_TO_FOLDER と同じ位置)。
 			        Laurus.Text2Frame.BatchStrategy = String(args[0] || 'merge').toLowerCase();
 			        Laurus.Text2Frame.ImportFolder = args[1] || 'text';
+			        // 書き戻しは2番目。省略時はプラグインパラメータ(既定は毎回)。
+			        Laurus.Text2Frame.WriteBack = String(args[1] || Laurus.Text2Frame.WriteBackAfterMerge || 'off');
 			        Laurus.Text2Frame.ExecMode = 'BATCH_IMPORT_MESSAGES_FROM_FOLDER';
 			        break
 			      case 'START_SYNC_WATCH' :
@@ -17802,7 +17867,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			     * 釣り合った単位で base↔ours / base↔theirs を LCS 対応し、両方が同じ箇所を別々に変えた領域は
 			     * 「衝突」として両方を残し 108 コメントで囲む(非破壊・常に valid)。
 			     * 戻り値: { commands: 適用後(終端コードなし), conflicts: 件数, warnings }。 */
-			    const applyThreeWayMerge = function (base_commands, ours_commands, theirs_commands) {
+			    const applyThreeWayMerge = function (base_commands, ours_commands, theirs_commands, options) {
 			      const stripBottom = function (cmds) {
 			        const copy = cmds.slice();
 			        while (copy.length > 0 && copy[copy.length - 1] && copy[copy.length - 1].code === 0) copy.pop();
@@ -17864,7 +17929,21 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      const result = [];
 			      const warnings = [];
 			      let conflicts = 0;
-			      const pushAll = function (units) { for (const u of units) for (const c of u) result.push(c); };
+			      /* keepOurs: 衝突したハンクを「ゲーム側の版だけ・目印なし」にした列も並行して作る。
+			       * 書き戻し(マージバック)で、目印はテキストに、ゲームには遊べる形を書くために使う。
+			       * 要らないときは配列自体を作らない(一括反映は数千ページ回るため)。 */
+			      const keepOurs = !!(options && options.keepOurs);
+			      const resultOurs = keepOurs ? [] : null;
+			      const pushAll = function (units) {
+			        for (const u of units) {
+			          for (const c of u) {
+			            result.push(c);
+			            if (keepOurs) resultOurs.push(c);
+			          }
+			        }
+			      };
+			      // 衝突の枝だけ、2つの列に別々のものを積む。
+			      const pushOnly = function (target, units) { for (const u of units) for (const c of u) target.push(c); };
 			      const pushComment = function (text, indent) { result.push({ code: 108, indent: indent || 0, parameters: [text] }); };
 			      const keyOf = function (units) { return units.map(key).join('') };
 
@@ -17929,17 +18008,19 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			          // 非エンジニアにも分かる日本語ラベル。タグ記号(< >)はコメント内でも
 			          // 文法警告の元になるため使わない(=== の目印で表現)。
 			          pushComment(CONFLICT_MARKERS[0], ind);
-			          pushAll(tReg);
+			          pushOnly(result, tReg);
 			          pushComment(CONFLICT_MARKERS[1], ind);
-			          pushAll(oReg);
+			          pushOnly(result, oReg);
 			          pushComment(CONFLICT_MARKERS[2], ind);
+			          // ゲームへ書くほうは自分の版だけ。目印を入れないので、そのまま遊べる。
+			          if (keepOurs) pushOnly(resultOurs, oReg);
 			          // 衝突の件数は戻り値の conflicts で返す。ここで警告文を積むと、呼び出し側が出す
 			          // 「N件の衝突を両方残しました」と同じ内容が衝突の数だけ重なるため積まない。
 			        }
 			        pos = baseHi;
 			      }
 
-			      return { commands: result, conflicts, warnings }
+			      return { commands: result, commandsOurs: resultOurs, conflicts, warnings }
 			    };
 
 			    // 監視ツール用: 対象データJSONの初回バックアップ(.bak が無いときだけ pristine 状態を退避)。
@@ -17977,9 +18058,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      const prevWarnings = Laurus.Text2Frame._warnings;
 			      const prevQuiet = Laurus.Text2Frame._quiet;
 			      const prevConflicts = Laurus.Text2Frame._conflicts;
+			      const prevWriteBack = Laurus.Text2Frame._writeBack;
 			      Laurus.Text2Frame._warnings = [];
 			      Laurus.Text2Frame._quiet = true;
 			      Laurus.Text2Frame._conflicts = 0;
+			      Laurus.Text2Frame._writeBack = null;
 			      try {
 			        const parsed = parseFrontMatter(readText(textPath));
 			        const meta = parsed.meta || {};
@@ -18015,7 +18098,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			            IsOverwrite: overwrite,
 			            BasePath: opts.basePath,
 			            BaseRoot: opts.baseRoot,
-			            ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_EVENT' : 'MERGE_MESSAGE_TO_EVENT'
+			            // 呼び出し側が明示したときだけ書き戻す。CLI / t2f-sync は渡さないので off。
+			            WriteBack: String(opts.writeBack || 'off'),
+			            // resolveStrategy は merge|overwrite しか返さないので、add はここに来ない。
+			            Strategy: strategy,
+			            ExecMode: 'IMPORT_MESSAGE_TO_EVENT'
 			          }]);
 			        } else if (kind === 'common') {
 			          const commonEventId = opts.commonEventId || meta.commonEventId;
@@ -18037,13 +18124,30 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			            IsOverwrite: overwrite,
 			            BasePath: opts.basePath,
 			            BaseRoot: opts.baseRoot,
-			            ExecMode: strategy === 'overwrite' ? 'IMPORT_MESSAGE_TO_CE' : 'MERGE_MESSAGE_TO_CE'
+			            // 呼び出し側が明示したときだけ書き戻す。CLI / t2f-sync は渡さないので off。
+			            WriteBack: String(opts.writeBack || 'off'),
+			            Strategy: strategy,
+			            ExecMode: 'IMPORT_MESSAGE_TO_CE'
 			          }]);
 			        } else {
 			          throw new Error('unknown kind: ' + kind)
 			        }
 
-			        return { ok: true, textPath, kind, target, dataPath, warnings: Laurus.Text2Frame._warnings.slice(), conflicts: Laurus.Text2Frame._conflicts || 0 }
+			        const wb = Laurus.Text2Frame._writeBack;
+			        return {
+			          ok: true,
+			          textPath,
+			          kind,
+			          target,
+			          dataPath,
+			          warnings: Laurus.Text2Frame._warnings.slice(),
+			          conflicts: Laurus.Text2Frame._conflicts || 0,
+			          // 書き戻したテキスト。監視で動かすときは、これを自分の書き込みとして記録しないと
+			          // 反映 -> 書き戻し -> 監視が拾う -> 反映 のループになる。
+			          writtenBack: !!wb,
+			          writeBackPath: wb ? wb.path : undefined,
+			          writeBackText: wb ? wb.text : undefined
+			        }
 			      } catch (error) {
 			        return {
 			          ok: false,
@@ -18058,6 +18162,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			        Laurus.Text2Frame._warnings = prevWarnings;
 			        Laurus.Text2Frame._quiet = prevQuiet;
 			        Laurus.Text2Frame._conflicts = prevConflicts;
+			        Laurus.Text2Frame._writeBack = prevWriteBack;
 			      }
 			    };
 
@@ -18130,7 +18235,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      if (!merged.length || merged[merged.length - 1].code !== 0) merged.push({ code: 0, indent: 0, parameters: [] });
 			      const F2T = resolveFrame2Text();
 			      if (!F2T || !F2T.decompile) { throw new Error('取り出し(merge)には Frame2Text プラグインが必要です。同じプロジェクトに導入してください。 / MERGE pull requires the Frame2Text plugin to be loaded.') }
-			      const text = F2T.decompile(merged, englishTag, { pretty: true });
+			      // omitDefaults は省略時 undefined のまま渡す。decompile 側が Frame2Text の
+			      // プラグインパラメータへ落とすので、指定しない呼び出しの挙動は変わらない。
+			      const text = F2T.decompile(merged, englishTag, { pretty: true, omitDefaults: opts.omitDefaults });
 			      return { text, conflicts, warnings }
 			    };
 
@@ -18468,6 +18575,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      // 失敗と衝突は件数だけだと対処できないので、キーを控えて名指しで出す。
 			      const failures = [];
 			      const conflicted = [];
+			      // 目印が残ったまま再実行したもの。書き戻しを使うと毎回ここに来るので、失敗とは別に数える。
+			      const unresolved = [];
+			      let writtenBack = 0;
 			      const keyOfFile = function (fileName) { return _path.basename(fileName, _path.extname(fileName)) };
 			      files.forEach(function (fileName) {
 			        let meta;
@@ -18476,11 +18586,19 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			        if (!meta || !meta.kind) { skipped++; return }
 			        // Command Strategy arg is the default; a per-file front-matter `strategy:` overrides it.
 			        const entryStrategy = meta.strategy ? (resolveStrategy(meta.strategy) || { strategy }).strategy : strategy;
-			        const res = applyTextFile({ textPath: fileName, strategy: entryStrategy, backup: true });
+			        const res = applyTextFile({
+			          textPath: fileName,
+			          strategy: entryStrategy,
+			          backup: true,
+			          writeBack: Laurus.Text2Frame.WriteBack
+			        });
 			        if (res && res.ok) {
 			          ok++;
 			          if (res.kind === 'common') commonCount++;
 			          else eventCount++;
+			          if (res.writtenBack) writtenBack++;
+			        } else if (res && /未解決の衝突/.test(String(res.error))) {
+			          unresolved.push(keyOfFile(fileName));
 			        } else {
 			          fail++;
 			          failures.push(keyOfFile(fileName) + ': ' + ((res && res.error) || 'unknown error'));
@@ -18499,13 +18617,26 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      addMessage('[batch-import] 反映完了: 成功 ' + ok + '件 (イベント ' + eventCount + ' / コモン ' + commonCount + ')、失敗 ' + fail + '件' +
 			        (skipped > 0 ? '、見出し情報なしで対象外 ' + skipped + '件' : ''));
 			      addMessage('[batch-import] 反映元: ' + root);
+			      if (writtenBack > 0) addMessage('[batch-import] テキストに書き戻し: ' + writtenBack + '件');
 			      // $gameMessage は行数が限られるため、詳細は先頭数件だけ出して残りはコンソールへ回す。
 			      const DETAIL_LINES = 5;
+			      const nameList = function (keys) {
+			        return keys.slice(0, DETAIL_LINES).join(', ') + (keys.length > DETAIL_LINES ? ' ほか' : '')
+			      };
 			      if (conflicted.length > 0) {
-			        addMessage('[batch-import] 衝突が未解決のファイル ' + conflicted.length + '件: ' + conflicted.slice(0, DETAIL_LINES).join(', ') +
-			          (conflicted.length > DETAIL_LINES ? ' ほか' : ''));
-			        addMessage('[batch-import] ツクールで目印3行を消して残す方を決めたあと、');
-			        addMessage('[batch-import] Frame2Textの一括取り出しを実行してください(反映のやり直しでは直りません)。');
+			        addMessage('[batch-import] 衝突 ' + conflicted.length + '件: ' + nameList(conflicted));
+			        if (writtenBack > 0) {
+			          addMessage('[batch-import] 目印はテキストに入っています。残す方を決めて目印3行を消し、');
+			          addMessage('[batch-import] もう一度この一括反映を実行してください。');
+			        } else {
+			          addMessage('[batch-import] ツクールで目印3行を消して残す方を決めたあと、');
+			          addMessage('[batch-import] Frame2Textの一括取り出しを実行してください(反映のやり直しでは直りません)。');
+			        }
+			      }
+			      if (unresolved.length > 0) {
+			        addMessage('[batch-import] 目印が残っていて反映できないファイル ' + unresolved.length + '件: ' + nameList(unresolved));
+			        addMessage('[batch-import] 目印3行を消して残す方を決めてから、もう一度実行してください。');
+			        unresolved.forEach(function (k) { console.warn('[batch-import] unresolved markers: ' + k); });
 			      }
 			      failures.slice(0, DETAIL_LINES).forEach(function (f) { addMessage('[batch-import] 失敗: ' + f); });
 			      if (failures.length > DETAIL_LINES) {
@@ -18513,7 +18644,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      }
 			      failures.forEach(function (f) { console.error('[batch-import] failed: ' + f); });
 			      console.log('[batch-import] Completed: ' + ok + ' success (event ' + eventCount + ' / common ' + commonCount + '), ' +
-			        fail + ' errors, ' + skipped + ' skipped (no front matter), ' + conflicted.length + ' with conflicts <- ' + root);
+			        fail + ' errors, ' + skipped + ' skipped (no front matter), ' + conflicted.length + ' with conflicts, ' +
+			        unresolved.length + ' with unresolved markers, ' + writtenBack + ' written back <- ' + root);
 			      // 1 件でも反映していればエディタの再読み込みが必要。案内はここで 1 回だけ。
 			      if (ok > 0) {
 			        addMessage('\n');
@@ -18528,13 +18660,16 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			    const event_command_list = compile(parsed.body);
 			    event_command_list.push(getCommandBottomEvent());
 
-			    // プラグインコマンドの MERGE 系のみ: front matter があれば反映先ルーティングをそれに従わせる(引数より優先)。
-			    // フラグはプラグインコマンドの引数解決時だけ立つ(CLI/applyTextFile は立てない)。毎回消費して漏らさない。
+			    /* 単発の反映コマンドのみ: front matter があれば反映先をそれに従わせる(引数より優先)。
+			     * 「テキストが行き先を書いていれば、それに従う」の1本槍にする。front matter を持つのは
+			     * 取り出しで作ったテキストだけなので、引数で行き先を指定する使い方とはまず衝突しない。
+			     * フラグはプラグインコマンドの引数解決時だけ立つ(CLI/applyTextFile は自分で解決済み)。
+			     * 毎回消費して漏らさない。 */
 			    const routeByFrontMatter = Laurus.Text2Frame.RouteByFrontMatter === true;
 			    Laurus.Text2Frame.RouteByFrontMatter = false;
 			    if (routeByFrontMatter) {
 			      const fmeta = parsed.meta || {};
-			      if (Laurus.Text2Frame.ExecMode === 'MERGE_MESSAGE_TO_EVENT') {
+			      if (Laurus.Text2Frame.ExecMode === 'IMPORT_MESSAGE_TO_EVENT') {
 			        if (fmeta.mapId != null) {
 			          Laurus.Text2Frame.MapID = fmeta.mapId;
 			          const { PATH_SEP, BASE_PATH } = getDirParams();
@@ -18542,7 +18677,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			        }
 			        if (fmeta.eventId != null) Laurus.Text2Frame.EventID = fmeta.eventId;
 			        if (fmeta.pageId != null) Laurus.Text2Frame.PageID = fmeta.pageId;
-			      } else if (Laurus.Text2Frame.ExecMode === 'MERGE_MESSAGE_TO_CE') {
+			      } else if (Laurus.Text2Frame.ExecMode === 'IMPORT_MESSAGE_TO_CE') {
 			        if (fmeta.commonEventId != null) Laurus.Text2Frame.CommonEventID = fmeta.commonEventId;
 			      }
 			    }
@@ -18562,16 +18697,27 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			          map_data.events[Laurus.Text2Frame.EventID].pages.push(getDefaultPage());
 			        }
 
-			        let map_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list;
-			        if (Laurus.Text2Frame.IsOverwrite) {
-			          map_events = [];
+			        if (Laurus.Text2Frame.Strategy === 'merge') {
+			          const existing_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list;
+			          const merged = mergeWithWriteBack(existing_events, event_command_list, Laurus.Text2Frame.TextPath, Laurus.Text2Frame.BasePath, scenario_text);
+			          map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list =
+			            merged.commandsForGame.concat([getCommandBottomEvent()]);
+			          writeData(Laurus.Text2Frame.MapPath, map_data);
+			          warnConflictsRemain(merged);
+			          saveBaseAfterMerge(merged, Laurus.Text2Frame.TextPath);
+			        } else {
+			          // overwrite は全置換、add は末尾に追記。
+			          let map_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list;
+			          if (Laurus.Text2Frame.IsOverwrite) {
+			            map_events = [];
+			          }
+			          map_events.pop();
+			          map_events = map_events.concat(event_command_list);
+			          map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list = map_events;
+			          writeData(Laurus.Text2Frame.MapPath, map_data);
+			          // 全上書きのときだけ text==game になる(追記モードは一致しないので祖先を更新しない)。
+			          if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, parsed.meta);
 			        }
-			        map_events.pop();
-			        map_events = map_events.concat(event_command_list);
-			        map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list = map_events;
-			        writeData(Laurus.Text2Frame.MapPath, map_data);
-			        // 全上書きのときだけ text==game になる(追記モードは一致しないので祖先を更新しない)。
-			        if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, parsed.meta);
 			        addMessage(
 			          'Success / 書き出し成功！\n' +
 			            '======> MapID: ' +
@@ -18592,50 +18738,26 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			          )
 			        }
 
-			        let ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list;
-			        if (Laurus.Text2Frame.IsOverwrite) {
-			          ce_events = [];
+			        if (Laurus.Text2Frame.Strategy === 'merge') {
+			          const existing_ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list;
+			          const merged = mergeWithWriteBack(existing_ce_events, event_command_list, Laurus.Text2Frame.TextPath, Laurus.Text2Frame.BasePath, scenario_text);
+			          ce_data[Laurus.Text2Frame.CommonEventID].list =
+			            merged.commandsForGame.concat([getCommandBottomEvent()]);
+			          writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
+			          warnConflictsRemain(merged);
+			          saveBaseAfterMerge(merged, Laurus.Text2Frame.TextPath);
+			        } else {
+			          // overwrite は全置換、add は末尾に追記。
+			          let ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list;
+			          if (Laurus.Text2Frame.IsOverwrite) {
+			            ce_events = [];
+			          }
+			          ce_events.pop();
+			          ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list);
+			          writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
+			          // 全上書きのときだけ text==game になる(追記モードは一致しないので祖先を更新しない)。
+			          if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, parsed.meta);
 			        }
-			        ce_events.pop();
-			        ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list);
-			        writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
-			        // 全上書きのときだけ text==game になる(追記モードは一致しないので祖先を更新しない)。
-			        if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, parsed.meta);
-			        addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID);
-			        break
-			      }
-			      case 'MERGE_MESSAGE_TO_EVENT': {
-			        const map_data = readJsonData(Laurus.Text2Frame.MapPath);
-			        if (!map_data.events[Laurus.Text2Frame.EventID]) {
-			          throw new Error('EventID not found. / EventIDが見つかりません。\n' + 'Event ID: ' + Laurus.Text2Frame.EventID)
-			        }
-			        const pageID = Number(Laurus.Text2Frame.PageID) - 1;
-			        while (!map_data.events[Laurus.Text2Frame.EventID].pages[pageID]) {
-			          map_data.events[Laurus.Text2Frame.EventID].pages.push(getDefaultPage());
-			        }
-			        const existing_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list;
-			        const merged = resolveMergeCommands(existing_events, event_command_list, Laurus.Text2Frame.TextPath, Laurus.Text2Frame.BasePath);
-			        map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list =
-			          merged.commands.concat([getCommandBottomEvent()]);
-			        writeData(Laurus.Text2Frame.MapPath, map_data);
-			        // 衝突が残っているときは共通祖先を進めない(Git 流。解決してから再実行させる)。
-			        if (merged.conflicts) addWarning('ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を実行してください。 / conflicts remain; resolve in the editor, then pull');
-			        saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath);
-			        addMessage('Success / 書き出し成功！\n======> MapID: ' + Laurus.Text2Frame.MapID + ' -> EventID: ' + Laurus.Text2Frame.EventID + ' -> PageID: ' + Laurus.Text2Frame.PageID);
-			        break
-			      }
-			      case 'MERGE_MESSAGE_TO_CE': {
-			        const ce_data = readJsonData(Laurus.Text2Frame.CommonEventPath);
-			        if (ce_data.length - 1 < Laurus.Text2Frame.CommonEventID) {
-			          throw new Error('Common Event not found. / コモンイベントが見つかりません。: ' + Laurus.Text2Frame.CommonEventID)
-			        }
-			        const existing_ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list;
-			        const merged = resolveMergeCommands(existing_ce_events, event_command_list, Laurus.Text2Frame.TextPath, Laurus.Text2Frame.BasePath);
-			        ce_data[Laurus.Text2Frame.CommonEventID].list =
-			          merged.commands.concat([getCommandBottomEvent()]);
-			        writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
-			        if (merged.conflicts) addWarning('ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を実行してください。 / conflicts remain; resolve in the editor, then pull');
-			        saveMergeBase(merged.baseRoot, merged.baseId, Laurus.Text2Frame.TextPath);
 			        addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID);
 			        break
 			      }

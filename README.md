@@ -24,6 +24,8 @@ Simple compiler to convert text to event.
 * Version 2.3.0：
   * テキストファイルの取り込み方法を強化し、従来の「追記」、「上書き」の他に、変更の「統合」が選べるようになりました。この統合モードは、RPGツクール上のUIを使ったゲーム編集を壊すことなく、テキストファイルで行った編集をゲームに反映することができるようになりました。
   * 一括反映コマンド、一括取り出しコマンドを追加しました。従来、一つのテキストを一つのイベントに書き込むには、一つのプラグインコマンドが必要でしたが、すべてのイベント・コモンイベントを一括で処理する機能を追加しました。これにより、コマンドを一つ実行するだけで、ゲームとテキストを同期できるようになりました。
+  * テキストとゲームを**自動で双方向同期**できるようになりました。テキストを保存すればゲームへ、ツクールでイベントを直せばテキストへ、それぞれ自動で追従します。ターミナルからの `npx t2f-sync --watch` に加え、**プラグインコマンド `START_SYNC_WATCH`** でも起動できるため、npm や Node.js の導入なしで使えます。詳細は「[テキストとゲームを同期する（SYNC）](#テキストとゲームを同期するsync)」を参照してください。
+  * 取り出したテキストから、**既定値と同じ顔・背景・位置のタグを省く**ようにしました。3つとも既定ならタグ行ごと消え、セリフだけが並びます。取り込んだ結果は変わりません。
   * [Visual Studio Code](https://code.visualstudio.com)の[Plugin](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support)に対応しました。プラグインコマンドの実行をUI上から簡単に行えるようになりました。ボタンひとつでゲームとテキストを相互に同期できるようになり、従来難しかった、文法のミスもシンタックスハイライト機能により、視覚的にわかるようになりました。Watch & Deploy 機能により、テキストの変更を監視し、テキストファイルを保存すると自動的にゲームに反映できるようになりました。詳細な機能や使い方は[マーケットプレイス](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support)を参照してください。
   * 不具合を修正し、安定性を向上しました。
 ![./introduce_Text2Frame_plugin.png](./vscode.png)
@@ -80,6 +82,62 @@ const { compile, applyTextFile } = require('@yktsr/text2frame-mv')
 ```
 
 （GitHub から直接入れることもできます: `npm install -D github:yktsr/Text2Frame-MV`。ただし `npx` は使えず `node node_modules/@yktsr/text2frame-mv/t2f-sync.js ...` になります）
+
+
+## テキストとゲームを同期する（SYNC）
+
+テキストを書き換えたらゲームへ、ツクールで直したらテキストへ。**両方向を自動で追従**させる機能です。
+どちらか一方だけが「正しい」わけではなく、**両側の編集を残したまま**突き合わせます（3-way マージ）。
+同じ場所を両方で変えたときだけ、どちらも捨てずに[目印付きで両方残し](#競合したときの表示両方残す)ます。
+
+同じ同期が **3つの入口**から使えます。結果は同じなので、混ぜて使っても構いません。
+
+| 入口 | 起動方法 | 必要なもの |
+| --- | --- | --- |
+| **プラグインコマンド** | ゲーム内で `START_SYNC_WATCH` | Text2Frame.js と Frame2Text.js だけ |
+| **VS Code 拡張** | 「保存時に自動反映」を ON | [VS Code 拡張](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support) |
+| **ターミナル (CLI)** | `npx t2f-sync --watch` | Node.js / npm |
+
+### プラグインコマンドで同期する（ターミナル不要）
+
+いちばん手軽な方法です。npm も Node.js も要りません。プラグインを2つ入れて、プレイテストから実行します。
+
+```
+START_SYNC_WATCH                 # 同期監視の開始（既定: merge / both / ja）
+START_SYNC_WATCH merge push      # テキスト→ゲームのみ
+STOP_SYNC_WATCH                  # 同期監視の停止
+```
+
+MV では上記をプラグインコマンドにそのまま書きます（日本語の別名 `同期監視の開始` / `同期監視の停止` も使えます）。
+MZ ではプラグイン「Text2Frame」のコマンド「同期監視の開始」を選び、引数を画面から設定します。
+
+MV の引数は順に、方式（`merge`/`overwrite`）・方向（`both`/`push`/`pull`）・言語・テキストフォルダ・データフォルダです。すべて省略できます。
+
+開始すると `text/<言語>/` 直下と `data/` 直下を見張り、
+
+- **テキストを保存した** → そのファイルをゲームへ反映（push）
+- **`data/*.json` が変わった** → そのイベントをテキストへ取り出し（pull）
+
+を自動で行います。自分が書いたファイルは内容を覚えているので、text→game→text のピンポンは起きません。
+
+覚えておくこと:
+
+- 監視は**ゲームのプロセスで動く**ので、プレイテストを閉じると止まります。
+- **実行中のゲームの画面は変わりません**（起動時に読んだデータを持ち続けるため）。確認は F5 でリロードしてください。
+- 進行状況はコンソール（F8）に出ます。
+- ツクールのエディタは**閉じて**使ってください。エディタの「プロジェクトの保存」は `data` を丸ごと書き戻すため、まとまった変更を見つけたときは保存とみなして自動取り出しを見送ります。
+- 監視対象は `text/<言語>/` 直下と `data/` 直下だけです（サブフォルダは見ません）。
+- `chokidar` などの外部ライブラリは使わず、Node 組み込みの `fs.watch` で動くので、npm 導入なしで使えます。
+
+### ターミナルから同期する（t2f-sync）
+
+npm を使える環境なら、ゲームを起動しなくても同期できます。オプションの一覧は
+「[4. 双方向同期（t2f-sync）](#4-双方向同期t2f-sync)」を参照してください。
+
+```bash
+npx t2f-sync --watch                                   # 双方向に自動同期
+npx t2f-sync --direction pull --locale en              # 一度だけ、英語を取り出す
+```
 
 
 ## プラグイン固有の文法
@@ -308,23 +366,8 @@ node t2f-sync.js --watch --direction both --locale ja --strategy merge
 - 取り出しは既定 `merge` なので**翻訳を残したまま**ゲーム側の変更だけを取り込みます。祖先（`.t2f-base`）も両方向で更新されます。
 - ⚠️ **RPGツクールを開いたまま使う場合の注意**: ツクールはプロジェクト保存時に `data/*.json` を丸ごと書き戻すため、反映済みの内容が保存操作で失われることがあります。反映後はツクール側を**セーブせずに開き直して**ください。
 
-#### ターミナルを使わない場合（プラグインコマンド）
-
-同じ双方向同期を、**プラグインコマンドから**起動できます。ターミナルも npm も要りません。
-
-```
-START_SYNC_WATCH                 # 同期監視の開始（既定: both / merge / ja）
-START_SYNC_WATCH merge push      # テキスト→ゲームのみ
-STOP_SYNC_WATCH                  # 同期監視の停止
-```
-
-MZ ではプラグイン「Text2Frame」のコマンド「同期監視の開始」を選びます。
-
-- 監視は**ゲームのプロセスで動く**ので、プレイテストを閉じると止まります。
-- **実行中のゲームの画面は変わりません**（起動時に読んだデータを持ち続けるため）。確認は F5 でリロード。
-- 進行状況はコンソール（F8）に出ます。
-- ツクールのエディタは**閉じて**使ってください。エディタの「プロジェクトの保存」は `data` を丸ごと書き戻します。まとまった変更を見つけたときは保存とみなして自動取り出しを見送ります。
-- `chokidar` は使わず Node 組み込みの `fs.watch` で動くので、npm 導入なしでも使えます。監視対象は `text/<言語>/` 直下と `data/` 直下です（サブフォルダは対象外）。
+> ターミナルも npm も使わずに同じ同期をしたい場合は、プラグインコマンド `START_SYNC_WATCH` があります
+> （「[テキストとゲームを同期する（SYNC）](#テキストとゲームを同期するsync)」を参照）。
 
 ### strategy 一覧（text→JSON の反映方式）
 
@@ -361,8 +404,8 @@ MZ ではプラグイン「Text2Frame」のコマンド「同期監視の開始�
 
 | 操作 | VS Code | CLI | プラグイン(MZ) |
 | --- | --- | --- | --- |
-| ゲームに反映(merge/overwrite) | パネル「ゲームに反映」 | `Text2Frame.js --mode map/common/batch [--strategy merge\|overwrite]` | `MERGE_MESSAGE_TO_EVENT`/`_TO_CE`・`IMPORT_MESSAGE_TO_*`・`BATCH_IMPORT_MESSAGES_FROM_FOLDER` |
-| ゲームから取り出し(merge/overwrite) | パネル「ゲームから取り出す」 | `Frame2Text.js --mode map/common/batch [--strategy merge\|overwrite]` | `MERGE_EVENT_TO_MESSAGE`/`_CE`(翻訳保持)・`EXPORT_*`(上書き)・`BATCH_EXPORT_MESSAGES_TO_FOLDER`(既定 merge) |
+| ゲームに反映(merge/overwrite) | パネル「ゲームに反映」 | `Text2Frame.js --mode map/common/batch [--strategy merge\|overwrite]` | `IMPORT_MESSAGE_TO_EVENT`/`_TO_CE`(反映のしかたで merge/overwrite/add)・`BATCH_IMPORT_MESSAGES_FROM_FOLDER` |
+| ゲームから取り出し(merge/overwrite) | パネル「ゲームから取り出す」 | `Frame2Text.js --mode map/common/batch [--strategy merge\|overwrite]` | `EXPORT_EVENT_TO_MESSAGE`/`_CE`(取り出しのしかたで merge/overwrite)・`BATCH_EXPORT_MESSAGES_TO_FOLDER` |
 | 3-way 祖先 | 自動 `.t2f-base` | 自動 `.t2f-base`（`--base` 任意） | 自動 `.t2f-base`（`BaseFolder`/`BaseFileName` 任意） |
 | 競合(両方残す) | あり | あり | あり |
 | 反映時のテキスト書き戻し | 保存時に自動書き戻し | — | — |

@@ -63,8 +63,10 @@ describe('Frame2Text Test', function() {
         const map_id      = '1';
         const event_id    = '1';
         const page_id     = '1';
+        // 往復の検査なので、既存テキストと突き合わせない全上書きで取り出す
+        // (取り出しの既定は merge)。
         Game_Interpreter.prototype.pluginCommandFrame2Text('EXPORT_EVENT_TO_MESSAGE', [
-            folder_name, file_name, map_id, event_id, page_id
+            folder_name, file_name, map_id, event_id, page_id, 'overwrite'
         ]);
 
         const overwrite   = 'true';

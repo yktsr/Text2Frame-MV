@@ -173,8 +173,40 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
 
     runBatch()
 
-    expect(line('衝突が未解決のファイル')).to.contain('e1')
+    expect(line('衝突 1件')).to.contain('e1')
+    // 書き戻していない(Frame2Text が無い)ので、直す場所はゲーム側のまま。
     expect(line('ツクールで目印3行を消して')).to.be.a('string')
+  })
+
+  /* add(末尾に追記)は単発の IMPORT コマンドだけのもの。一括で通すと走査のたびに
+   * 内容が二重になるので、front matter に書かれていても既定へ落とす。 */
+  it('ignores strategy: add in front matter and falls back to the default', function () {
+    entries = ['e1.txt']
+    let writtenMap = null
+    readText = function (s) {
+      if (s.indexOf('.t2f-base') !== -1) throw new Error('no ancestor')
+      if (/e1\.txt$/.test(s)) {
+        return '---\nkind: event\nstrategy: add\nmapId: 1\neventId: 1\npageId: 1\nlocale: ja\n---\n\nBonjour 1\n'
+      }
+      if (s.indexOf('Map001') !== -1) return writtenMap || JSON.stringify(mapData)
+      throw new Error('unexpected read: ' + s)
+    }
+    fs.writeFileSync.restore()
+    sinon.stub(fs, 'writeFileSync').callsFake(function (p, data) {
+      if (String(p).indexOf('Map001') !== -1) writtenMap = String(data)
+    })
+    const lines = function () {
+      return JSON.parse(writtenMap).events[1].pages[0].list
+        .filter(function (c) { return c.code === 401 })
+        .map(function (c) { return c.parameters[0] })
+    }
+
+    runBatch()
+    expect(lines()).to.eql(['Bonjour 1'])
+
+    // 2回目でも増えない(add なら 'Bonjour 1' が2つ並ぶ)。
+    runBatch()
+    expect(lines()).to.eql(['Bonjour 1'])
   })
 
   it('names each failing file with its reason', function () {
@@ -211,8 +243,10 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
 
     runBatch()
 
-    expect(line('反映完了')).to.contain('失敗 1件')
-    expect(line('失敗: e1')).to.contain('未解決の衝突がゲーム側に残っています')
+    // 目印が残っているのは「失敗」ではなく「まだ直していない」。書き戻しを使うと毎回ここに来るため、
+    // 失敗の件数とは分けて数え、ファイル名を名指しする。
+    expect(line('反映完了')).to.contain('失敗 0件')
+    expect(line('目印が残っていて反映できないファイル 1件')).to.contain('e1')
     // 反映を止めたので、目印が二重化するような書き込みは起きていない。
     expect(fs.writeFileSync.called).to.equal(false)
   })
@@ -230,7 +264,7 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
 
     runBatch()
 
-    expect(line('失敗: e1')).to.contain('未解決の衝突がテキストに残っています')
+    expect(line('目印が残っていて反映できないファイル 1件')).to.contain('e1')
     expect(fs.writeFileSync.called).to.equal(false)
   })
 
