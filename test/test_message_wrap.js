@@ -93,7 +93,7 @@ describe('message wrapping for $gameMessage', function () {
   // Frame2Text 側(取り出し)。出力先のパスがそのまま入るので長くなりやすい。
   it('wraps a long path message and loses nothing (Frame2Text)', function () {
     Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-      ['merge', path.join(tmp, 'data'), outDir, 'ja'])
+      ['merge', 'ja', outDir, path.join(tmp, 'data')])
 
     expect(shown.length).to.be.greaterThan(0)
     expectFits()
@@ -104,7 +104,7 @@ describe('message wrapping for $gameMessage', function () {
   // Text2Frame 側(反映)。同じ折り返しを別実装で持っているので両方を確かめる。
   it('wraps a long path message and loses nothing (Text2Frame)', function () {
     Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-      ['merge', path.join(outDir, 'ja')])
+      ['merge', 'off', path.join(outDir, 'ja')])
 
     expect(shown.length).to.be.greaterThan(0)
     expectFits()
@@ -134,7 +134,7 @@ describe('message wrapping for $gameMessage', function () {
 
   it('keeps the embedded newline of the restart notice as a line break', function () {
     Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-      ['merge', path.join(tmp, 'text')])
+      ['merge', 'off', path.join(tmp, 'text')])
 
     // 反映元が無いので案内は出ないが、出るときは \n が行の区切りになる。
     // ここでは折り返しが幅を壊していないことだけ確かめる。

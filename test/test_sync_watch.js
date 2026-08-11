@@ -109,7 +109,7 @@ describe('START_SYNC_WATCH / STOP_SYNC_WATCH', function () {
     process.mainModule = { filename: path.join(tmp, 'game.js') }
     // 監視の前に一度取り出して、見出し付きテキストと祖先をそろえておく(実際の使い方と同じ)。
     Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-      ['merge', path.join(tmp, 'data'), path.join(tmp, 'text'), 'ja'])
+      ['merge', 'ja', path.join(tmp, 'text'), path.join(tmp, 'data')])
   })
 
   afterEach(function () {
