@@ -18,7 +18,7 @@ import {
  */
 
 interface Frame2TextModule {
-    decompile: (list: unknown[], englishTag: boolean, options?: { pretty?: boolean; translationOnly?: boolean }) => string;
+    decompile: (list: unknown[], englishTag: boolean, options?: { pretty?: boolean; translationOnly?: boolean; omitDefaults?: boolean }) => string;
     /**
      * The one place that turns "a target's commands" into "the text to write" — shared with the
      * plugin, the CLI and t2f-sync so all four behave identically. Handles the 3-way merge, the
@@ -29,6 +29,7 @@ interface Frame2TextModule {
     buildPullText: (opts: {
         list: unknown[];
         englishTag?: boolean;
+        omitDefaults?: boolean;
         strategy?: string;
         existingText?: string;
         baseText?: string;
@@ -98,6 +99,15 @@ function loadText2Frame(context: vscode.ExtensionContext, workspaceRoot: string 
 
 function englishTagSetting(): boolean {
     return vscode.workspace.getConfiguration('text2frame').get<boolean>('englishTag', true);
+}
+
+/**
+ * Drop face/background/position tags that match what a deploy would fill in anyway.
+ * Purely cosmetic: the compiler supplies the same values when the tags are absent, so the
+ * game is unchanged either way. Off means every message carries its full tag line.
+ */
+function omitDefaultTagsSetting(): boolean {
+    return vscode.workspace.getConfiguration('text2frame').get<boolean>('omitDefaultTags', true);
 }
 
 /** Build a minimal front matter header from a target. */
@@ -171,7 +181,11 @@ export function exportToTextFile(
         // The conversation-only sidecar is a lossy extract, not a deployable file: it never
         // routes, never becomes an ancestor, and buildPullText has no translationOnly mode.
         if (target.translationOnly) {
-            const body = mod.decompile(list, englishTagSetting(), { pretty: true, translationOnly: true });
+            const body = mod.decompile(list, englishTagSetting(), {
+                pretty: true,
+                translationOnly: true,
+                omitDefaults: omitDefaultTagsSetting()
+            });
             writeTextFile(target.textPath, renderFrontMatter(target, mod.VERSION) + '\n' + body + '\n');
             return { ok: true, textPath: target.textPath };
         }
@@ -179,6 +193,7 @@ export function exportToTextFile(
         const built = mod.buildPullText({
             list,
             englishTag: englishTagSetting(),
+            omitDefaults: omitDefaultTagsSetting(),
             strategy: 'overwrite',
             // The header comes from whatever the caller is replacing (the open document, or the
             // file on disk for a batch overwrite); buildPullText falls back when there is none.
@@ -286,6 +301,7 @@ export function mergePullToText(
         const built = mod.buildPullText({
             list: gameCommands,
             englishTag: englishTagSetting(),
+            omitDefaults: omitDefaultTagsSetting(),
             strategy: 'merge',
             existingText,
             baseText,

@@ -2,7 +2,7 @@
   "name": "text2frame-language-support",
   "displayName": "Text2Frame Language Support",
   "description": "Language support for Text2Frame visual novel scripts",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "yktsr",
   "license": "MIT",
   "icon": "icon.png",
@@ -200,6 +200,11 @@
           "type": "boolean",
           "default": true,
           "description": "テキスト書き出し時に英語タグを使う。 / Use English tags when exporting (data -> text)."
+        },
+        "text2frame.omitDefaultTags": {
+          "type": "boolean",
+          "default": true,
+          "description": "テキスト書き出し時、既定値と同じ顔・背景・位置のタグを書かない(3つとも既定ならタグ行ごと省く)。省いた所は反映時に既定値が補われるため、ゲームの見た目は変わりません。 / When exporting (data -> text), omit face/background/position tags that match the defaults (the whole tag line disappears when all three do). Apply fills the defaults back in, so the game is unchanged."
         },
         "text2frame.locale": {
           "type": "string",
