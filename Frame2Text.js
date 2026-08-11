@@ -129,30 +129,30 @@
  *
  * @arg Strategy
  * @text 取り出しのしかた
- * @desc merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。overwrite(上書き)はゲームの内容でテキストを全て置き換えます(テキストに書いた内容は失われます)。既定はmergeです。
+ * @desc merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。overwriteはゲームの内容で全上書きです。既定はmergeです。
  * @type select
- * @option merge
+ * @option 統合 / merge
  * @value merge
- * @option overwrite
+ * @option 【取り扱い注意】全上書き / overwrite
  * @value overwrite
  * @default merge
+ *
+ * @arg Locale
+ * @text 言語
+ * @desc 出力先の言語サブフォルダ名です。デフォルトはjaです。多言語にしないなら設定する必要はありません。
+ * @type string
+ * @default ja
+ *
+ * @arg TextBase
+ * @text 出力先フォルダ名
+ * @desc 出力先のテキストベースディレクトリです。デフォルトはtextです。通常、設定する必要はありません。
+ * @default text
  *
  * @arg DataFolder
  * @text ゲームデータのフォルダ名
  * @desc 走査対象のゲームデータのフォルダ名です。デフォルトはdataです。通常、設定する必要はありません。
  * @type string
  * @default data
- *
- * @arg TextBase
- * @text テキストベースディレクトリ
- * @desc 出力先のテキストベースディレクトリです。デフォルトはtextです。通常、設定する必要はありません。
- * @default text
- *
- * @arg Locale
- * @text ロケール
- * @desc 出力先の言語サブフォルダ名です。デフォルトはjaです。通常、設定する必要はありません。
- * @type string
- * @default ja
  *
  * @param Default Scenario Folder
  * @text 出力フォルダ名
@@ -488,13 +488,19 @@
  *   EXPORT_CE_TO_MESSAGE text message.txt 3
  *   コモンイベントをメッセージにエクスポート text message.txt 3
  *
- * 例3:全イベント/コモンイベントをフォルダへ一括で取り出す（第1引数は取り出しの
- *     しかた。省略すると統合で、テキストに書いた内容を残します。ゲームの内容で
- *     全て取り直すときだけ overwrite を指定。第2引数以降はデータのフォルダ名・
- *     出力先・ロケールで、通常は省略します）。
+ * 例3:全イベント/コモンイベントをフォルダへ一括で取り出す。引数はよく変える順に
+ *     並んでいます。
+ *     第1: 取り出しのしかた(merge/overwrite)。省略すると統合で、テキストに
+ *          書いた内容を残します。ゲームの内容で全て取り直すときだけ overwrite。
+ *     第2: 言語(出力先の言語サブフォルダ名)。省略すると ja。
+ *     第3: 出力先フォルダ名。省略すると text。
+ *     第4: ゲームデータのフォルダ名。省略すると data。
  *   BATCH_EXPORT_MESSAGES_TO_FOLDER
  *   BATCH_EXPORT_MESSAGES_TO_FOLDER overwrite
- *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge data text ja
+ *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge en
+ *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge ja text data
+ *   フォルダへ一括取り出し overwrite
+ *   一括取り出し overwrite
  *
  * -------------------------------------
  * ツクールMZでの実行方法
@@ -669,12 +675,10 @@ function resolveText2Frame () {
         [file_folder, file_name, common_event_id, args.Strategy, args.BaseFolder, args.FileName])
     })
     PluginManager.registerCommand('Frame2Text', 'BATCH_EXPORT_MESSAGES_TO_FOLDER', function (args) {
-      const data_dir = args.DataFolder || 'data'
-      const locale = args.Locale || 'ja'
-      const text_base = args.TextBase || 'text'
-      const strategy = args.Strategy || 'overwrite'
-      // 引数順は @arg の並びと合わせる(取り出しのしかたが1番目)。
-      this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER', [strategy, data_dir, text_base, locale])
+      // 引数順は @arg の並びと合わせる。よく変えるものから順に
+      // 取り出しのしかた -> 言語 -> 出力先 -> データフォルダ。
+      this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER',
+        [args.Strategy, args.Locale, args.TextBase, args.DataFolder])
     })
   }
 
@@ -843,17 +847,20 @@ function resolveText2Frame () {
         addMessage('=====> Common EventID: ' + Laurus.Frame2Text.CommonEventID)
         break
 
-      case 'BATCH_EXPORT_MESSAGES_TO_FOLDER': {
-        // 取り出しのしかたは1番目(一括反映の BATCH_IMPORT_MESSAGES_FROM_FOLDER と同じ位置)。
+      case 'BATCH_EXPORT_MESSAGES_TO_FOLDER':
+      case 'フォルダへ一括取り出し':
+      case '一括取り出し': {
+        // よく変えるものから順に: 取り出しのしかた -> 言語 -> 出力先 -> データフォルダ。
+        // @arg の並び・registerCommand の渡し順と揃えること。
         // 既定は merge。CLI・t2f-sync・VSCode と揃え、テキストに書いた内容を黙って
         // 消さないようにする。初回(既存テキスト無し)は merge も overwrite も同じ結果。
         const batchStrategy = String(args[0] || 'merge').toLowerCase()
         if (batchStrategy !== 'merge' && batchStrategy !== 'overwrite') {
-          throw new Error('Unknown strategy: ' + args[0] + ' / 戦略は merge か overwrite を指定してください。')
+          throw new Error('Unknown strategy: ' + args[0] + ' / 取り出しのしかたは merge か overwrite を指定してください。')
         }
-        Laurus.Frame2Text.DataFolder = args[1] || 'data'
+        Laurus.Frame2Text.Locale = args[1] || 'ja'
         Laurus.Frame2Text.TextBase = args[2] || 'text'
-        Laurus.Frame2Text.Locale = args[3] || 'ja'
+        Laurus.Frame2Text.DataFolder = args[3] || 'data'
         Laurus.Frame2Text.BatchStrategy = batchStrategy
         Laurus.Frame2Text.ExecMode = 'BATCH_EXPORT_MESSAGES_TO_FOLDER'
         break

@@ -88,10 +88,11 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     }
   })
 
-  // 実引数の並びは [Strategy, TextFolder]。テストは呼びやすさ優先で root を先に取り、
-  // ここで実際の並びへ組み替える(位置がずれれば全件落ちる)。
-  const runBatch = function (root, strategy) {
-    Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', [strategy || 'merge', root || textRoot])
+  // 実引数の並びはよく変える順に [Strategy, WriteBack, TextFolder]。テストは呼びやすさ
+  // 優先で root を先に取り、ここで実際の並びへ組み替える(位置がずれれば全件落ちる)。
+  const runBatch = function (root, strategy, writeBack) {
+    Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
+      [strategy || 'merge', writeBack || 'off', root || textRoot])
   }
   /* 画面幅(半角55)を超えるメッセージは addMessage が自動で折り返すため、
    * 1つの文章が複数の $gameMessage 行にまたがる。行ごとではなく通しの文字列から探し、
@@ -116,10 +117,10 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
   const line = messageOf
 
   it('takes the strategy as its 1st argument, like the batch export does', function () {
-    Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', ['overwrite', textRoot])
+    Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', ['overwrite', 'off', textRoot])
 
-    // 1番目が反映のしかたとして読まれ、2番目がそのまま反映元フォルダとして読まれている。
-    // (位置が入れ替わっていると 'overwrite' をフォルダ名として走査し 0 件になる)
+    // 1番目が反映のしかた、2番目が書き戻し、3番目が反映元フォルダとして読まれている。
+    // (位置が入れ替わっていると 'overwrite' や 'off' をフォルダ名として走査し 0 件になる)
     expect(line('反映完了')).to.contain('成功 3件')
     expect(line('反映元')).to.contain(textRoot)
     // overwrite なので 3-way の祖先まわりの警告(初回反映)は出ない。

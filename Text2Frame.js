@@ -224,12 +224,12 @@
  * @desc 指定フォルダ内の見出し情報付きテキストを、一括でゲームへ反映します。通常のイベント、コモンイベントのすべてが一括で取り込まれます。見出し情報付きテキストの作成には、Frame2Text の BATCH_EXPORT_MESSAGES_TO_FOLDER を使用してください。
  *
  * @arg Strategy
- * @text 一括反映戦略
- * @desc merge(差分更新) / overwrite(テキストの内容で全上書き) を選択できます。既定はmergeです。
+ * @text 反映のしかた
+ * @desc merge(統合)はツクールで加えた編集を残したまま反映します。overwriteは全上書きです。既定はmergeです。
  * @type select
- * @option merge
+ * @option 統合 / merge
  * @value merge
- * @option overwrite
+ * @option 【取り扱い注意】全上書き / overwrite
  * @value overwrite
  * @default merge
  *
@@ -242,11 +242,11 @@
  * @option 衝突したときだけ / onConflict
  * @value onConflict
  * @option 書き戻さない / off
- * @value off *
+ * @value off
  *
  * @arg TextFolder
  * @text 取り込み元フォルダ名
- * @desc 走査するテキストフォルダ名です。デフォルトはtextです。
+ * @desc 走査するテキストフォルダ名です。デフォルトはtextです。通常、設定する必要はありません。
  * @type string
  * @default text
  *
@@ -879,15 +879,17 @@
  *   IMPORT_MESSAGE_TO_CE text message.txt 3 "" overwrite
  *   メッセージをコモンイベントにインポート text message.txt 3 "" overwrite
  *
- * 例3:フォルダ内のテキストを一括反映する（第1引数は反映のしかた。省略すると統合。
- *     全上書きは overwrite を指定。第2引数は取り込み元フォルダ名。省略すると text。
- *     第3引数は結果をテキストに書き戻すか。always/onConflict/off。
- *     省略するとプラグインパラメータに従う）。
+ * 例3:フォルダ内のテキストを一括反映する。引数はよく変える順に並んでいます。
+ *     第1: 反映のしかた(merge/overwrite)。省略すると統合。
+ *     第2: 結果をテキストに書き戻すか(always/onConflict/off)。
+ *          省略するとプラグインパラメータに従う。
+ *     第3: 取り込み元フォルダ名。省略すると text。
  *   BATCH_IMPORT_MESSAGES_FROM_FOLDER
  *   BATCH_IMPORT_MESSAGES_FROM_FOLDER overwrite
- *   BATCH_IMPORT_MESSAGES_FROM_FOLDER overwrite text
- *   BATCH_IMPORT_MESSAGES_FROM_FOLDER merge text off
- *   一括反映 overwrite text
+ *   BATCH_IMPORT_MESSAGES_FROM_FOLDER merge off
+ *   BATCH_IMPORT_MESSAGES_FROM_FOLDER merge always text
+ *   フォルダから一括取り込み overwrite
+ *   一括反映 overwrite
  *
  * ◆ 旧版のプラグインコマンドの引数(非推奨)
  *  最新版(ツクールMZ対応後,ver2.0.0)と旧版(ツクールMZ対応前,ver1.4.1)では、
@@ -4947,13 +4949,14 @@
       }
 
       case 'BATCH_IMPORT_MESSAGES_FROM_FOLDER' :
+      case 'フォルダから一括取り込み' :
       case '一括反映' :
         addMessage('batch import from folder. \n/ フォルダから一括反映します。')
-        // 反映のしかたは1番目(一括取り出しの BATCH_EXPORT_MESSAGES_TO_FOLDER と同じ位置)。
+        // よく変えるものから順に: 反映のしかた -> 書き戻し -> フォルダ名。
+        // @arg の並び・registerCommand の渡し順と揃えること(ずれると folder に always が入る)。
         Laurus.Text2Frame.BatchStrategy = String(args[0] || 'merge').toLowerCase()
-        Laurus.Text2Frame.ImportFolder = args[1] || 'text'
-        // 書き戻しは2番目。省略時はプラグインパラメータ(既定は毎回)。
         Laurus.Text2Frame.WriteBack = String(args[1] || Laurus.Text2Frame.WriteBackAfterMerge || 'off')
+        Laurus.Text2Frame.ImportFolder = args[2] || 'text'
         Laurus.Text2Frame.ExecMode = 'BATCH_IMPORT_MESSAGES_FROM_FOLDER'
         break
       case 'START_SYNC_WATCH' :
