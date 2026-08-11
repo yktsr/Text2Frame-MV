@@ -501,11 +501,12 @@
  *  ※ 目印を消さないまま実行すると、そのファイルは対象から外れます
  *    （目印ごと再マージすると二重・三重に増えるためです）。
  *
- *  ※ コメント行（％で始まる行）は、テキストを作り直す反映・取り出しのどちらでも
- *    残ります。ゲームには取り込まれない行なので、元のテキストを見て元の位置へ
+ *  ※ コメント行（％で始まる行）と、あなたが入れた書き方（余分な空行・タグ行の
+ *    字下げ・タグ名の大文字小文字）は、テキストを作り直す反映・取り出しのどちらでも
+ *    残ります。いずれもゲームには入らないものなので、元のテキストを見て元の位置へ
  *    書き戻しています。ただし、その周りの内容がゲーム側で大きく書き換わった場合は
  *    位置がずれることがあります（消えることはありません）。ずれた可能性があるときは
- *    ファイル名を挙げて知らせます。
+ *    ファイル名を挙げて知らせます。詳しくは「コメントアウト」を参照してください。
  *
  * ◆ 一括取り出し・反映時にプラグインコマンドが意図通りに動作しないとき
  *  ゲームかテキストのどちらかを真と決めて、強制的に上書きすることで解決でき
@@ -822,6 +823,18 @@
  *  残ります（ゲームに無い行なので、元のテキストを見て書き戻しています）。
  *  ただし、その周りの内容がゲーム側で大きく書き換わったときは位置がずれることが
  *  あります。そのときはファイル名を挙げて知らせます。
+ *
+ *  ◆ 書き方も残ります
+ *  あなたが読みやすさのために入れた、次のものも同じように残ります。
+ *   ・余分な空行（場面の区切りに2行3行と空けたもの、本文の先頭・末尾の空行）
+ *   ・タグ行の字下げ（例: 「  <If: スイッチ, 1, ON>」）
+ *   ・タグ名の大文字小文字（例: 「<script>」と「<Script>」）
+ *  いずれもゲームには入らないものなので、残してもゲームの中身は変わりません。
+ *
+ *  残らないものもあります。
+ *   ・<script> ブロックの中の空行の数（ブロックの中身はゲームに入るためです）
+ *   ・ゲーム側で内容が変わってしまった行の字下げ（その行はゲームの内容になります）
+ *   ・空行が無いところに空行は増えません（メッセージが2つに割れてしまうためです）
  *
  *
  * ◆ 見出しについて（Version 2.3.0以降）
@@ -5121,54 +5134,117 @@
         .join('\n')
     }
 
-    /* eraseCommentOutLines の対。コマンド列から作り直した本文へ、元のコメント行を戻す。
+    /* ブロックの開始・終了タグを含む行。getBlockStatement の正規表現は行頭に縛られて
+     * いないので、この手の行を字下げすると、その空白がブロックの中身として取り込まれる
+     * (「  </comment>」の 2 文字が 408 の注釈行になる)。綴りを戻してはいけない行。 */
+    const BLOCK_DELIMITER_RE =
+      /<\/?\s*(script|sc|スクリプト|comment|co|注釈|showscrollingtext|sst|文章のスクロール表示)\b/i
+    // タグだけの行か。この形の行は、字下げもタグ名の大小もコマンド列に影響しない。
+    const isTagOnlyLine = function (line) { return /^\s*<.*>\s*$/.test(line) }
+    /* 突き合わせの鍵。「意味が同じなら同じ鍵」になるようにする。
+     * タグ行は前後の空白を落とし、タグ名だけ小文字化する。引数は触らない
+     * (<Face: A(0)> と <Face: a(0)> は別のファイルを指すので別物のままにする)。 */
+    const authoredKeyOf = function (line) {
+      if (!isTagOnlyLine(line) || BLOCK_DELIMITER_RE.test(line)) return line
+      return line.trim().replace(/(<\s*\/?\s*)([A-Za-z_]+)/g, function (m, open, name) {
+        return open + name.toLowerCase()
+      })
+    }
+
+    /* eraseCommentOutLines の対。コマンド列から作り直した本文へ、書き手が入れたもののうち
+     * コンパイルで落ちたものを戻す。戻すのは次の3つで、いずれも「戻してもコマンド列が
+     * 変わらない」ことを実測で確かめてある:
+     *   ・コメント行(%)  … compile 対象外。どこへ置いても取り込み結果が変わらない
+     *   ・空行の幅       … 既にある空行を増やす分だけ
+     *   ・タグ行の綴り   … 字下げとタグ名の大文字小文字
      *
-     * コメント行は compile 対象外なので、どこへ入れても取り込み結果は変わらない。
-     * 賭けているのは位置だけで、内容が消えることはない。ここが安全の根拠。
+     * 行ではなく「単位」で突き合わせる。単位は内容行1つか、連続した空行のかたまり1つ。
+     * かたまりは幅を無視して同じ単位とみなすので、幅の違いが対応付けを壊さない。
+     * 対応が取れた単位は元のテキストの綴りで出し、取れなかったところは作り直した本文の
+     * ものを出す。空行のかたまりは両方にあるときだけ幅が戻るので、
+     * **空行が無いところに空行が生まれる経路が存在しない**(メッセージが割れない)。
+     * ただし <script> ブロックの中の空行は本文なので、幅を取り違える余地が残る。
+     * 呼び出し側が compile で検算し、食い違えば styleRestored の分を捨てること。
      *
-     * 元の本文からコメントを抜いた列(= compile が見たもの)と、作り直した本文とを行 LCS で
-     * 対応付け、各コメントを次の規則で置く。順番に意味がある:
-     *   1. 元の「直後の行」が生きていれば、その手前。% は続く内容へのメモとして書かれる
-     *   2. 直後の行が消えていれば、直前の生きている行のすぐ後ろ。消えた行の代わりに入った
-     *      塊の先頭になる。ここを「次に残っている行の手前」にすると差し替わった内容の
-     *      後ろへ落ち、実測で位置一致が 99.9% -> 71.5% まで下がる
+     * コメント行の着地規則は順番に意味がある:
+     *   1. 元の「直後の単位」が生きていれば、その手前。% は続く内容へのメモとして書かれる
+     *   2. 消えていれば、直前の生きている単位のすぐ後ろ = 差し替わった塊の先頭。
+     *      ここを「次に残っている単位の手前」にすると差し替わった内容の後ろへ落ち、
+     *      実測で位置一致が 99.9% -> 71.5% まで下がる
      *   3. どちらも無ければ本文の先頭
      *
-     * 戻り値: { text, approximate }。approximate は「手掛かりが1つも残っていなかった」件数。
-     * 呼び出し側が警告に使う。実データでは 0 件で、そこまで壊れるのは稀。 */
-    const COMMENT_RESTORE_MAX_CELLS = 4000000
-    const restoreCommentOutLines = function (originalBody, regeneratedBody, commentOutChar) {
+     * 戻り値: { text, approximate, styleRestored }。
+     *   approximate   … 手掛かりが1つも残っていなかったコメントの件数(警告用)
+     *   styleRestored … 空行の幅かタグ行の綴りを戻したか(呼び出し側の検算のきっかけ) */
+    const AUTHORED_RESTORE_MAX_CELLS = 4000000
+    const restoreAuthoredLines = function (originalBody, regeneratedBody, commentOutChar) {
       const original = String(originalBody === undefined || originalBody === null ? '' : originalBody)
       const regenerated = String(regeneratedBody === undefined || regeneratedBody === null ? '' : regeneratedBody)
       // compile が落とす行と揃えること。判定がずれると戻す行と落ちる行が食い違う。
       // 省略時はプラグインパラメータ(Frame2Text から呼ぶときは指定できないため)。
       const re = new RegExp('^ *' + (commentOutChar || Laurus.Text2Frame.CommentOutChar))
       const origLines = uniformNewLineCode(original).split('\n')
-      const notes = []
-      const stripped = []
-      origLines.forEach(function (line) {
-        if (re.test(line)) notes.push({ at: stripped.length, text: line })
-        else stripped.push(line)
-      })
-      if (notes.length === 0) return { text: regenerated, approximate: 0 }
 
-      const regen = uniformNewLineCode(regenerated).split('\n')
-      const m = stripped.length
-      const n = regen.length
+      /* 作り直した結果が元と同じなら戻すものは無い。実データでは 5301 中 4347 件がこれで、
+       * 一括処理の大半は対応付けまで行かない。
+       * 「元が正規形かどうか」では判定できないことに注意: 元が <script> で作り直しが
+       * <Script> のような、元が正規形でも綴りが違う場合を取りこぼす。 */
+      if (original === regenerated) return { text: regenerated, approximate: 0, styleRestored: false }
+
+      /* 単位に切る。コメント行は単位から外して控え、空行のかたまりは切らない
+       * (かたまりの中に書いたメモが、かたまりの手前へ動いてしまわないように)。 */
+      const toUnits = function (lines, keepNotes) {
+        const units = []
+        const notes = []
+        let i = 0
+        while (i < lines.length) {
+          const line = lines[i]
+          if (re.test(line)) {
+            if (keepNotes) notes.push({ at: units.length, text: line })
+            i++
+            continue
+          }
+          if (line === '') {
+            let width = 0
+            while (i < lines.length && lines[i] === '') { width++; i++ }
+            units.push({ blank: true, width, key: '' })
+            continue
+          }
+          units.push({ blank: false, text: line, key: authoredKeyOf(line) })
+          i++
+        }
+        return { units, notes }
+      }
+      const origSide = toUnits(origLines, true)
+      const regenSide = toUnits(uniformNewLineCode(regenerated).split('\n'), false)
+      const O = origSide.units
+      const R = regenSide.units
+      const notes = origSide.notes
+      const render = function (u) {
+        if (!u.blank) return [u.text]
+        const out = []
+        for (let k = 0; k < u.width; k++) out.push('')
+        return out
+      }
+
+      const m = O.length
+      const n = R.length
       // 対応付けをあきらめる大きさ。実データは最大 727 行なので通常は届かない。
-      if ((m + 1) * (n + 1) > COMMENT_RESTORE_MAX_CELLS) {
+      if ((m + 1) * (n + 1) > AUTHORED_RESTORE_MAX_CELLS) {
         return {
-          text: notes.map(function (nt) { return nt.text }).concat(regen).join('\n'),
-          approximate: notes.length
+          text: notes.map(function (nt) { return nt.text })
+            .concat(uniformNewLineCode(regenerated).split('\n')).join('\n'),
+          approximate: notes.length,
+          styleRestored: false
         }
       }
 
-      // stripped[i] が regen の何行目に対応するか(対応が無ければ -1)。
+      // O[i] が R の何番目に対応するか(対応が無ければ -1)。
       const dp = []
       for (let i = 0; i <= m; i++) dp.push(new Array(n + 1).fill(0))
       for (let i = 1; i <= m; i++) {
         for (let j = 1; j <= n; j++) {
-          dp[i][j] = stripped[i - 1] === regen[j - 1]
+          dp[i][j] = O[i - 1].key === R[j - 1].key
             ? dp[i - 1][j - 1] + 1
             : Math.max(dp[i - 1][j], dp[i][j - 1])
         }
@@ -5177,8 +5253,18 @@
       let x = m
       let y = n
       while (x > 0 && y > 0) {
-        if (stripped[x - 1] === regen[y - 1]) { map[x - 1] = y - 1; x--; y-- } else if (dp[x - 1][y] >= dp[x][y - 1]) x--
+        if (O[x - 1].key === R[y - 1].key) { map[x - 1] = y - 1; x--; y-- } else if (dp[x - 1][y] >= dp[x][y - 1]) x--
         else y--
+      }
+
+      // 対応が取れた単位は元の綴りで出す。ここで字下げ・タグ名の大小・空行の幅が戻る。
+      const replacement = new Array(n).fill(null)
+      let styleRestored = false
+      for (let i = 0; i < m; i++) {
+        const j = map[i]
+        if (j < 0) continue
+        replacement[j] = O[i]
+        if (render(O[i]).join('\n') !== render(R[j]).join('\n')) styleRestored = true
       }
 
       const inserts = {}
@@ -5186,10 +5272,10 @@
       notes.forEach(function (nt) {
         let pos = null
         if (nt.at < m && map[nt.at] >= 0) {
-          // 1. 直後の行が生きている
+          // 1. 直後の単位が生きている
           pos = map[nt.at]
         } else {
-          // 2. 直後の行は消えた。直前の生きている行のすぐ後ろ = 差し替わった塊の先頭。
+          // 2. 直後の単位は消えた。直前の生きている単位のすぐ後ろ = 差し替わった塊の先頭。
           for (let k = nt.at - 1; k >= 0; k--) {
             if (map[k] >= 0) { pos = map[k] + 1; break }
           }
@@ -5204,11 +5290,45 @@
       })
 
       const out = []
-      for (let k = 0; k <= n; k++) {
-        if (inserts[k]) Array.prototype.push.apply(out, inserts[k])
-        if (k < n) out.push(regen[k])
+      for (let j = 0; j <= n; j++) {
+        if (inserts[j]) Array.prototype.push.apply(out, inserts[j])
+        if (j < n) Array.prototype.push.apply(out, render(replacement[j] || R[j]))
       }
-      return { text: out.join('\n'), approximate }
+      return { text: out.join('\n'), approximate, styleRestored }
+    }
+
+    /* 検算に落ちたときの逃げ道。元の本文から「戻す対象の書き方」だけを均し、
+     * コメント行は残す。こうすると restoreAuthoredLines が書き方を戻さなくなる。 */
+    const eraseAuthoredStyle = function (originalBody, commentOutChar) {
+      const re = new RegExp('^ *' + (commentOutChar || Laurus.Text2Frame.CommentOutChar))
+      const out = []
+      let prevBlank = false
+      uniformNewLineCode(String(originalBody || '')).split('\n').forEach(function (line) {
+        if (re.test(line)) { out.push(line); return }
+        if (line === '') { if (!prevBlank) out.push(line); prevBlank = true; return }
+        prevBlank = false
+        out.push(isTagOnlyLine(line) ? authoredKeyOf(line) : line)
+      })
+      return out.join('\n')
+    }
+
+    /* 書き方(空行の幅・タグ行の綴り)まで戻したときは、コマンド列が変わっていないことを
+     * compile で確かめる。単位の対応付けだけでは <script> ブロックの中の空行の幅を
+     * 取り違える余地があり、そこを踏むと次の反映でゲームの内容が変わってしまう。
+     * 食い違ったらコメント行だけ戻した版へ落とす(段階的に劣化させる)。
+     * コメント行だけの復元は構造的に安全なので検算しない(毎回コンパイルするのは無駄)。 */
+    const restoreAuthoredLinesChecked = function (originalBody, regeneratedBody, commentOutChar) {
+      const r = restoreAuthoredLines(originalBody, regeneratedBody, commentOutChar)
+      if (!r.styleRestored) return r
+      let same = false
+      try {
+        same = JSON.stringify(compile(r.text)) === JSON.stringify(compile(regeneratedBody))
+      } catch (e) { same = false }
+      if (same) return r
+      // 書き方の復元だけ捨てる。コメント行は、正規形に均した本文に対して戻し直す。
+      const commentsOnly = restoreAuthoredLines(
+        eraseAuthoredStyle(originalBody, commentOutChar), regeneratedBody, commentOutChar)
+      return { text: commentsOnly.text, approximate: commentsOnly.approximate, styleRestored: false }
     }
 
     const getValidNumberOrDefault = function (value, defaultValue = 0) {
@@ -11105,7 +11225,7 @@
       return true
     }
 
-    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId, getMessageDefaults, startSyncWatch, restoreCommentOutLines, parseFrontMatter, CONFLICT_MARKERS, hasConflictMarker }
+    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId, getMessageDefaults, startSyncWatch, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter, CONFLICT_MARKERS, hasConflictMarker }
     // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
     // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
     // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。
