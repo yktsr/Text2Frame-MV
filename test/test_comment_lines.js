@@ -30,9 +30,9 @@ const T2F = require('../Text2Frame.js')
  * この関数の安全の根拠は精度ではなく「% はコンパイル対象外」であること。だから
  * どこへ入れても取り込み結果は変わらず、最悪でもテキストの中で位置がずれるだけ。
  * その不変条件を毎回確かめる。 */
-describe('restoreCommentOutLines', function () {
+describe('restoreAuthoredLines', function () {
   const restore = function (original, regenerated) {
-    return T2F.restoreCommentOutLines(original, regenerated, '%')
+    return T2F.restoreAuthoredLines(original, regenerated, '%')
   }
   // 復元結果から % を抜くと、必ず元の再生成テキストに戻ること。
   const strip = function (text) {
@@ -171,8 +171,109 @@ describe('restoreCommentOutLines', function () {
   })
 
   it('uses the plugin parameter when no comment char is given', function () {
-    const r = T2F.restoreCommentOutLines('% メモ\nこんにちは\n', 'こんにちは\n')
+    const r = T2F.restoreAuthoredLines('% メモ\nこんにちは\n', 'こんにちは\n')
 
     expect(r.text).to.equal('% メモ\nこんにちは\n')
+  })
+
+  /* 書き手が入れた空行・字下げ・タグの綴りも、コンパイルで落ちるので作り直すと消える。
+   * 戻すが、% と違って空行には意味がある(メッセージの区切り)。
+   * だから「既にある空行を広げる」だけにし、無いところには絶対に入れない。 */
+  describe('the writing style', function () {
+    // 復元しても compile 結果が変わらないこと。空行を扱う以上、これが安全の根拠。
+    const sameCommands = function (a, b) {
+      return JSON.stringify(T2F.compile(a)) === JSON.stringify(T2F.compile(b))
+    }
+    const checkStyle = function (original, regenerated) {
+      const r = restore(original, regenerated)
+      expect(sameCommands(r.text, regenerated), '復元してもコマンド列が変わらない').to.equal(true)
+      return r
+    }
+
+    it('widens a blank run back to what the writer typed', function () {
+      const r = checkStyle('あ\n\n\n\nい\n', 'あ\n\nい\n')
+
+      expect(r.text).to.equal('あ\n\n\n\nい\n')
+      expect(r.styleRestored).to.equal(true)
+    })
+
+    /* 取り出したテキストの本文は空行で始まるので、先頭の空行も「かたまり」として
+     * 突き合う。末尾も同じ。幅を戻せるのは両方にかたまりがあるときだけで、
+     * 作り直した側に無ければ戻さない(そこが「無いところに入れない」の境目)。 */
+    it('keeps the blank lines at the top and the bottom', function () {
+      const r = checkStyle('\n\nあ\n\n\n', '\nあ\n')
+
+      expect(r.text).to.equal('\n\nあ\n\n\n')
+    })
+
+    /* ここが崩れると 1つのメッセージが2つのウィンドウに割れる。
+     * 空行のかたまりは元と再生成の両方にあるときだけ幅が戻るので、原理的に起きない。 */
+    it('never puts a blank line where the rebuilt text has none', function () {
+      // 元は2行が1つのメッセージ。ゲームがそれを別のセリフに変えた。
+      const r = checkStyle('いちぎょうめ\nにぎょうめ\n', 'ゲームの版\n')
+
+      expect(r.text).to.equal('ゲームの版\n')
+      expect(r.text.indexOf('\n\n')).to.equal(-1)
+    })
+
+    it('restores the indentation of a tag line', function () {
+      const r = checkStyle('  <Face: a(0)>\nこんにちは\n', '<Face: a(0)>\nこんにちは\n')
+
+      expect(r.text).to.equal('  <Face: a(0)>\nこんにちは\n')
+      expect(r.styleRestored).to.equal(true)
+    })
+
+    it('restores the letter case of a tag name', function () {
+      const r = checkStyle('<Switch: 1, ON>\n', '<switch: 1, ON>\n')
+
+      expect(r.text).to.equal('<Switch: 1, ON>\n')
+    })
+
+    /* ブロックの開始・終了タグだけは綴りを戻さない。getBlockStatement の正規表現は
+     * 行頭に縛られていないので、字下げするとその空白がブロックの中身になる
+     * (「  </comment>」の2文字が注釈の1行になる)。実データで踏んだ。 */
+    it('leaves the block delimiters alone, indentation and all', function () {
+      const r = checkStyle('  <comment>\nメモ\n  </comment>\n', '<comment>\nメモ\n</comment>\n')
+
+      expect(r.text).to.equal('<comment>\nメモ\n</comment>\n')
+      expect(r.styleRestored).to.equal(false)
+    })
+
+    // タグ名だけを小文字にして比べる。引数まで見ないと別のファイルを指す指定が混ざる。
+    it('does not confuse <Face: A(0)> with <Face: a(0)>', function () {
+      const r = checkStyle('<Face: A(0)>\nこんにちは\n', '<Face: a(0)>\nこんにちは\n')
+
+      // ゲームは a(0) を指している。A(0) に戻してはいけない。
+      expect(r.text).to.equal('<Face: a(0)>\nこんにちは\n')
+    })
+
+    // 内容行の字下げは本文の一部。ゲームが変えたなら、その内容をそのまま出す。
+    it('does not re-apply indentation to a line the game changed', function () {
+      const r = checkStyle('  こんにちは\n', 'ゲームの版\n')
+
+      expect(r.text).to.equal('ゲームの版\n')
+    })
+
+    it('reports that it changed nothing when the text is already canonical', function () {
+      const r = restore('あ\n\nい\n', 'あ\n\nい\n')
+
+      expect(r.styleRestored).to.equal(false)
+    })
+
+    /* <script> ブロックの中の空行は本文なので、幅を戻すとコマンド列が変わる。
+     * 単位の対応付けだけでは見分けられないので、compile の検算が効いて
+     * 書き方の復元だけ捨て、% の復元は残る(段階的に劣化させる)。 */
+    it('drops only the style restoration when the check fails, keeping the comments', function () {
+      const original = '% メモ\n<script>\nlet a = 1\n\n\nlet b = 2\n</script>\n'
+      const regenerated = '<Script>\nlet a = 1\n\nlet b = 2\n</Script>\n'
+
+      const r = restore(original, regenerated)
+
+      // コマンド列は再生成のまま(script の中の空行が増えていない)。
+      expect(sameCommands(r.text, regenerated)).to.equal(true)
+      // メモは残る。
+      expect(r.text).to.contain('% メモ')
+      expect(r.styleRestored).to.equal(false)
+    })
   })
 })

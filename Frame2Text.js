@@ -312,11 +312,15 @@
  *  反映していない編集は失われます。ゲームを真として取り直したいときや、
  *  白紙から取り出したいときに使います。
  *
- * ◆ コメント行（％で始まる行）はどちらでも残ります
- *  コメント行はゲームに取り込まれない行なので、ゲームの内容で置き換える対象が
- *  そもそもありません。元のテキストを見て、元の位置へ書き戻しています。
+ * ◆ コメント行と書き方はどちらでも残ります
+ *  次のものはゲームに取り込まれないので、ゲームの内容で置き換える対象がそもそも
+ *  ありません。元のテキストを見て、元の位置・元の書き方へ戻しています。
+ *   ・コメント行（％で始まる行）
+ *   ・余分な空行（場面の区切りに2行3行と空けたもの、本文の先頭・末尾の空行）
+ *   ・タグ行の字下げ、タグ名の大文字小文字
  *  その周りの内容がゲーム側で大きく書き換わったときは位置がずれることがあり、
  *  そのときはファイル名を挙げて知らせます（消えることはありません）。
+ *  なお <script> ブロックの中の空行の数は、中身がゲームに入るので残りません。
  *
  * ◆ プラグインコマンドとの対応
  *  どちらも「取り出しのしかた」で統合と上書きを選べます（既定は統合）。
@@ -3206,12 +3210,12 @@ function resolveText2Frame () {
       const restoreComments = function (fullText) {
         if (!previousText) return { text: fullText, approximate: 0 }
         const t2f = resolveText2Frame()
-        if (!t2f || !t2f.restoreCommentOutLines || !t2f.parseFrontMatter) return { text: fullText, approximate: 0 }
+        if (!t2f || !t2f.restoreAuthoredLines || !t2f.parseFrontMatter) return { text: fullText, approximate: 0 }
         // 見出しは frontMatterHeader がそのまま引き継いでおり、その中の % は既に残っている。
         // 一緒に扱うと二重になるので、本文だけを通す。
         const parsed = t2f.parseFrontMatter(fullText)
         const head = parsed.header || ''
-        const r = t2f.restoreCommentOutLines(t2f.parseFrontMatter(previousText).body, parsed.body)
+        const r = t2f.restoreAuthoredLines(t2f.parseFrontMatter(previousText).body, parsed.body)
         return { text: head + r.text, approximate: r.approximate || 0 }
       }
 
