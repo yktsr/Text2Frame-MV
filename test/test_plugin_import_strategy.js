@@ -17,10 +17,10 @@ globalThis.PluginManager = {
       'Default MapID': '1',
       'Default EventID': '1',
       'Default PageID': '1',
+      // 2.2.4 までの既定値のまま(= 末尾に追記)。省略時のフォールバックの検査に使う。
       IsOverwrite: 'false',
       'Comment Out Char': '%',
       IsDebug: 'false',
-      // 反映のしかたを省略したときの案内を観測するため、警告表示を有効にしておく。
       DisplayWarning: 'true'
     }
   },
@@ -78,7 +78,7 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
 
   it('3-way merges writer text with dev switch when a base is given', function () {
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-      ['text', 'message.txt', '1', '1', '1', '', 'merge', 'off', 'base', 'ancestor.txt'])
+      ['text', 'message.txt', '1', '1', '1', 'merge', 'off', 'base', 'ancestor.txt'])
     expect(written).to.not.equal(null)
     const list = eventList()
     expect(list.some(function (c) { return c.code === 121 })).to.equal(true)
@@ -89,7 +89,7 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
     // 祖先が無い初回反映は現在のゲーム状態を祖先とみなし、完全表現のテキストをそのまま反映する。
     // テキストに無いスイッチ(121)は削除される(overlay 廃止・TOFU 一本化)。
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-      ['text', 'message.txt', '1', '1', '1', '', 'merge', 'off'])
+      ['text', 'message.txt', '1', '1', '1', 'merge', 'off'])
     expect(written).to.not.equal(null)
     const list = eventList()
     expect(list.some(function (c) { return c.code === 121 })).to.equal(false)
@@ -99,7 +99,7 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
   it('front matter routes the import, overriding the arg (front matter eventId 1 wins over arg 2)', function () {
     // front matter は mapId:1 eventId:1 pageId:1。引数 EventID には 2 を渡すが front matter が優先される。
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-      ['text', 'message.txt', '1', '2', '1', '', 'merge', 'off'])
+      ['text', 'message.txt', '1', '2', '1', 'merge', 'off'])
     expect(written).to.not.equal(null)
     const map = JSON.parse(written)
     // イベント1(front matter の宛先)が反映され、イベント2(引数の宛先)は無傷。
@@ -109,7 +109,7 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
 
   it('passing the ancestor folder explicitly still does 3-way (keeps switch, applies text)', function () {
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-      ['text', 'message.txt', '1', '1', '1', '', 'merge', 'off', 'base', 'ancestor.txt'])
+      ['text', 'message.txt', '1', '1', '1', 'merge', 'off', 'base', 'ancestor.txt'])
     expect(written).to.not.equal(null)
     const list = eventList()
     expect(list.some(function (c) { return c.code === 121 })).to.equal(true)
@@ -117,12 +117,13 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
   })
 
   /* MERGE_MESSAGE_TO_* を廃止し、反映のしかたは IMPORT の引数1つになった。
-   * 3つの値がそれぞれ別の反映になること、旧来の真偽値も引き続き効くことを固定する。 */
+   * その枠は元々「上書きするか」の true/false だったところで、意味は変えずに
+   * merge/overwrite/add も受ける。旧来の書き方が動き続けることを固定する。 */
   describe('choosing the strategy', function () {
     // withBase を立てると祖先(base/ancestor.txt)を使う。立てないと祖先なし = TOFU。
-    const run = function (strategy, legacyOverwrite, withBase) {
+    const run = function (strategy, withBase) {
       Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-        ['text', 'message.txt', '1', '1', '1', legacyOverwrite, strategy, 'off']
+        ['text', 'message.txt', '1', '1', '1', strategy, 'off']
           .concat(withBase ? ['base', 'ancestor.txt'] : []))
       return eventList()
     }
@@ -142,37 +143,24 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
     })
 
     it('merge keeps the switch and applies the text', function () {
-      const list = run('merge', undefined, true)
+      const list = run('merge', true)
 
       expect(texts(list)).to.include('Bonjour')
       expect(list.some(function (c) { return c.code === 121 })).to.equal(true)
     })
 
-    // 旧来の6番目の引数(上書き真偽値)は、strategy を書かない限り効き続ける。
-    it('still honours the legacy overwrite boolean', function () {
-      expect(texts(run(undefined, 'true'))).to.eql(['Bonjour'])
-      expect(texts(run(undefined, 'false'))).to.eql(['Hello', 'Bonjour'])
+    /* 既に書かれているプラグインコマンドは true/false のまま。同じ枠なので、
+     * true=全上書き / false=末尾に追記のまま動き続ける(ここが崩れると既存作品が壊れる)。 */
+    it('reads the legacy true/false in the same slot with the same meaning', function () {
+      expect(texts(run('true'))).to.eql(texts(run('overwrite')))
+      expect(texts(run('false'))).to.eql(texts(run('add')))
     })
 
-    it('lets the strategy win over the legacy boolean', function () {
-      expect(texts(run('add', 'true'))).to.eql(['Hello', 'Bonjour'])
-    })
-
-    // 省略は merge。以前は「末尾に追記」だったので、黙って変えずに知らせる。
-    it('defaults to merge and says so when nothing is given', function () {
-      const warnings = []
-      const add = $gameMessage.add
-      $gameMessage.add = function (s) { warnings.push(String(s)) }
-      let list
-      try {
-        list = run(undefined, undefined, true)
-      } finally {
-        $gameMessage.add = add
-      }
-
-      expect(texts(list)).to.include('Bonjour')
-      expect(list.some(function (c) { return c.code === 121 })).to.equal(true)
-      expect(warnings.join('\n')).to.contain('統合(merge)で反映しました')
+    /* 省略時はプラグインパラメータ。このテストの設定は IsOverwrite: 'false' なので、
+     * 2.2.4 までと同じ「末尾に追記」になる。 */
+    it('falls back to the plugin parameter when the slot is empty', function () {
+      expect(texts(run(undefined))).to.eql(['Hello', 'Bonjour'])
+      expect(texts(run(''))).to.eql(['Hello', 'Bonjour'])
     })
 
     it('refuses a strategy it does not know', function () {
@@ -207,7 +195,7 @@ describe('IMPORT_MESSAGE_TO_EVENT strategy=merge on an empty target', function (
 
   it('applies text whole (incl. switch) when target is empty', function () {
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-      ['text', 'message.txt', '1', '1', '1', '', 'merge', 'off'])
+      ['text', 'message.txt', '1', '1', '1', 'merge', 'off'])
     expect(written).to.not.equal(null)
     const list = JSON.parse(written).events[1].pages[0].list
     expect(list.some(function (c) { return c.code === 121 })).to.equal(true) // empty -> overwrite applies switch
@@ -245,7 +233,7 @@ describe('IMPORT_MESSAGE_TO_EVENT strategy=merge on an empty target WITH a base 
 
   it('re-applies text (not empty) even when a base exists', function () {
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-      ['text', 'message.txt', '1', '1', '1', '', 'merge', 'off', 'base', 'ancestor.txt'])
+      ['text', 'message.txt', '1', '1', '1', 'merge', 'off', 'base', 'ancestor.txt'])
     expect(written).to.not.equal(null)
     const list = JSON.parse(written).events[1].pages[0].list
     expect(list.some(function (c) { return c.code === 121 })).to.equal(true) // switch applied

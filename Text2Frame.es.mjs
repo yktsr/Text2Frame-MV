@@ -7698,7 +7698,7 @@ function requireText2Frame () {
 		 *
 		 * @arg Strategy
 		 * @text 反映のしかた
-		 * @desc merge(統合)はツクールで加えた編集を残したまま反映します。overwriteは全上書き、addはイベント末尾に追記です。既定はmergeです。
+		 * @desc merge(統合)はツクールで加えた編集を残したまま反映します。overwriteは全上書き、addはイベント末尾に追記です。省略するとプラグインパラメータに従います。
 		 * @type select
 		 * @option 統合 / merge
 		 * @value merge
@@ -7706,7 +7706,6 @@ function requireText2Frame () {
 		 * @value overwrite
 		 * @option 末尾に追記 / add
 		 * @value add
-		 * @default merge
 		 *
 		 * @arg WriteBack
 		 * @text 結果をテキストに書き戻す
@@ -7749,7 +7748,7 @@ function requireText2Frame () {
 		 *
 		 * @arg Strategy
 		 * @text 反映のしかた
-		 * @desc merge(統合)はツクールで加えた編集を残したまま反映します。overwriteは全上書き、addはイベント末尾に追記です。既定はmergeです。
+		 * @desc merge(統合)はツクールで加えた編集を残したまま反映します。overwriteは全上書き、addはイベント末尾に追記です。省略するとプラグインパラメータに従います。
 		 * @type select
 		 * @option 統合 / merge
 		 * @value merge
@@ -7757,7 +7756,6 @@ function requireText2Frame () {
 		 * @value overwrite
 		 * @option 末尾に追記 / add
 		 * @value add
-		 * @default merge
 		 *
 		 * @arg WriteBack
 		 * @text 結果をテキストに書き戻す
@@ -7917,10 +7915,16 @@ function requireText2Frame () {
 		 * @type number
 		 *
 		 * @param IsOverwrite
-		 * @text 【取り扱い注意】上書きする
-		 * @desc 通常イベントの末尾に追加しますが、上書きに変更できます。trueのとき上書きです。デフォルト値はfalseです。
-		 * @default false
-		 * @type boolean
+		 * @text 反映のしかた(既定)
+		 * @desc プラグインコマンドで反映のしかたを省略したときに使われます。merge(統合)はツクールで加えた編集を残します。旧設定のtrue(全上書き)/false(末尾に追記)もそのまま使えます。
+		 * @default merge
+		 * @type select
+		 * @option 統合 / merge
+		 * @value merge
+		 * @option 【取り扱い注意】全上書き / overwrite
+		 * @value overwrite
+		 * @option 末尾に追記 / add
+		 * @value add
 		 *
 		 * @param Comment Out Char
 		 * @text コメントアウト記号
@@ -8422,20 +8426,27 @@ function requireText2Frame () {
 		 * メータで指定したテキストファイルやマップIDとは違うパラメータで実行ができま
 		 * す。
 		 *
-		 *  反映のしかた(7番目/5番目)には merge・overwrite・add を指定できます。
-		 *  省略すると統合(merge)です。add は従来の「末尾に追記」です。
+		 *  反映のしかたは、以前「上書きするか」を書いていた枠(イベントなら6番目、
+		 *  コモンイベントなら4番目)にそのまま書きます。
+		 *    merge     … 統合。ツクールで加えた編集を残して反映します。
+		 *    overwrite … 全上書き。true と書いても同じです。
+		 *    add       … 末尾に追記。false と書いても同じです。
+		 *  省略するとプラグインパラメータ「反映のしかた(既定)」に従います。
+		 *  true / false で書かれた既存のプラグインコマンドは、意味が変わりません。
 		 *
 		 * 例1:text/message.txtをマップIDが1, イベントIDが2, ページIDが3へ統合で
 		 *     取り込む。
-		 *   IMPORT_MESSAGE_TO_EVENT text message.txt 1 2 3
-		 *   メッセージをイベントにインポート text message.txt 1 2 3
+		 *   IMPORT_MESSAGE_TO_EVENT text message.txt 1 2 3 merge
+		 *   メッセージをイベントにインポート text message.txt 1 2 3 merge
 		 *
-		 * 例1-2:同じ場所へ、末尾に追記する(従来の既定)。
-		 *   IMPORT_MESSAGE_TO_EVENT text message.txt 1 2 3 "" add
+		 * 例1-2:同じ場所へ、末尾に追記する。下2つは同じ意味です。
+		 *   IMPORT_MESSAGE_TO_EVENT text message.txt 1 2 3 add
+		 *   IMPORT_MESSAGE_TO_EVENT text message.txt 1 2 3 false
 		 *
 		 * 例2:text/message.txtをIDが3のコモンイベントに上書きして取り込む。
-		 *   IMPORT_MESSAGE_TO_CE text message.txt 3 "" overwrite
-		 *   メッセージをコモンイベントにインポート text message.txt 3 "" overwrite
+		 *     下2つは同じ意味です。
+		 *   IMPORT_MESSAGE_TO_CE text message.txt 3 overwrite
+		 *   メッセージをコモンイベントにインポート text message.txt 3 true
 		 *
 		 * 例3:フォルダ内のテキストを一括反映する。引数はよく変える順に並んでいます。
 		 *     第1: 反映のしかた(merge/overwrite)。省略すると統合。
@@ -11956,27 +11967,28 @@ function requireText2Frame () {
 
 		  // for MZ plugin command
 		  if (typeof PluginManager !== 'undefined' && PluginManager.registerCommand) {
-		    // IsOverwrite は @arg から外したが、それ以前に保存されたコマンドにはまだ入っている。
-		    // Strategy が無いときの手掛かりとして引き続き渡す(引数解決側で解釈する)。
+		    /* 反映のしかたは、旧来の上書き真偽値と同じ枠に入れる(true/false も受ける)。
+		     * IsOverwrite は @arg から外したが、それ以前に保存されたコマンドにはまだ入っているので、
+		     * Strategy が空のときの手掛かりとして使う。 */
 		    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_EVENT', function (args) {
 		      const file_folder = args.FileFolder;
 		      const file_name = args.FileName;
 		      const map_id = args.MapID;
 		      const event_id = args.EventID;
 		      const page_id = args.PageID;
-		      const is_overwrite = args.IsOverwrite;
+		      const strategy = args.Strategy || args.IsOverwrite;
 		      this.pluginCommand('IMPORT_MESSAGE_TO_EVENT',
-		        [file_folder, file_name, map_id, event_id, page_id, is_overwrite,
-		          args.Strategy, args.WriteBack, args.BaseFolder, args.FileName]);
+		        [file_folder, file_name, map_id, event_id, page_id, strategy,
+		          args.WriteBack, args.BaseFolder, args.FileName]);
 		    });
 		    PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_CE', function (args) {
 		      const file_folder = args.FileFolder;
 		      const file_name = args.FileName;
 		      const common_event_id = args.CommonEventID;
-		      const is_overwrite = args.IsOverwrite;
+		      const strategy = args.Strategy || args.IsOverwrite;
 		      this.pluginCommand('IMPORT_MESSAGE_TO_CE',
-		        [file_folder, file_name, common_event_id, is_overwrite,
-		          args.Strategy, args.WriteBack, args.BaseFolder, args.FileName]);
+		        [file_folder, file_name, common_event_id, strategy,
+		          args.WriteBack, args.BaseFolder, args.FileName]);
 		    });
 		    PluginManager.registerCommand('Text2Frame', 'BATCH_IMPORT_MESSAGES_FROM_FOLDER', function (args) {
 		      const text_folder = args.TextFolder;
@@ -11996,6 +12008,26 @@ function requireText2Frame () {
 		  var Laurus = typeof Laurus !== 'undefined' ? Laurus : {}; // eslint-disable-line no-var, no-use-before-define
 		  Laurus.Text2Frame = {};
 
+		  /* 「反映のしかた」の別名表。
+		   * この設定は元々 true/false(上書きする/しない)の2択で、既に出荷されている。
+		   * 枠はそのまま残し、merge/overwrite/add も受けられるようにする。
+		   * true=全上書き / false=末尾に追記 は元の意味そのままなので、旧来の指定は動きが変わらない。 */
+		  const IMPORT_STRATEGY_ALIASES = {
+		    true: 'overwrite',
+		    false: 'add',
+		    merge: 'merge',
+		    overwrite: 'overwrite',
+		    add: 'add'
+		  };
+		  // 解釈できなければ null(呼び出し側で「未指定」か「誤り」かを決める)。
+		  const toImportStrategy = function (value) {
+		    if (value === undefined || value === null || value === '') return null
+		    const key = String(value).toLowerCase();
+		    return Object.prototype.hasOwnProperty.call(IMPORT_STRATEGY_ALIASES, key)
+		      ? IMPORT_STRATEGY_ALIASES[key]
+		      : null
+		  };
+
 		  if (typeof PluginManager === 'undefined') {
 		    // for test, command line
 		    Laurus.Text2Frame.WindowPosition = 'Bottom';
@@ -12014,6 +12046,8 @@ function requireText2Frame () {
 		    Laurus.Text2Frame.BatchStrategy = 'diff';
 		    // 単発反映のしかた。COMMAND_LINE(CLI / applyTextFile)が毎回上書きする。
 		    Laurus.Text2Frame.Strategy = 'merge';
+		    // 引数を省略したときの既定。PluginManager が無い経路では常に統合。
+		    Laurus.Text2Frame.DefaultStrategy = 'merge';
 		    // PluginManager が無い経路(CLI / t2f-sync / ライブラリ)は書き戻さない。
 		    // 呼び出し側が applyTextFile の writeBack で明示したときだけ有効になる。
 		    Laurus.Text2Frame.WriteBackAfterMerge = 'off';
@@ -12037,6 +12071,9 @@ function requireText2Frame () {
 		    Laurus.Text2Frame.EventID = String(Laurus.Text2Frame.Parameters['Default EventID']);
 		    Laurus.Text2Frame.PageID = String(Laurus.Text2Frame.Parameters['Default PageID']);
 		    Laurus.Text2Frame.IsOverwrite = (String(Laurus.Text2Frame.Parameters.IsOverwrite) === 'true');
+		    /* 引数を省略したときの既定。同じ設定が旧版では true/false だったので、
+		     * 保存済みの false(=末尾に追記) はその意味のまま引き継ぐ。新規導入の既定は merge。 */
+		    Laurus.Text2Frame.DefaultStrategy = toImportStrategy(Laurus.Text2Frame.Parameters.IsOverwrite) || 'merge';
 		    Laurus.Text2Frame.CommentOutChar = String(Laurus.Text2Frame.Parameters['Comment Out Char']);
 		    Laurus.Text2Frame.IsDebug = (String(Laurus.Text2Frame.Parameters.IsDebug) === 'true');
 		    Laurus.Text2Frame.DisplayMsg = (String(Laurus.Text2Frame.Parameters.DisplayMsg) === 'true');
@@ -12427,22 +12464,20 @@ function requireText2Frame () {
 		    };
 
 		    /* 単発の反映コマンド(IMPORT_*)の「反映のしかた」を決める。
+		     * 旧来の上書き真偽値と同じ枠で受ける。true=全上書き / false=末尾に追記なので、
+		     * 既に書かれているプラグインコマンドは意味が変わらない。
+		     * 省略時はプラグインパラメータ「反映のしかた(既定)」。
+		     *
 		     * 一括・CLI・front matter が使う resolveStrategy とは別にしてある: add(末尾に追記)は
-		     * 2回流すと内容が二重になるので、走査で回るところに出してはいけない。
-		     * legacyOverwrite は旧来の上書き真偽値(true/false/未指定)。 */
-		    const resolveImportStrategy = function (explicit, legacyOverwrite) {
-		      const s = String(explicit == null ? '' : explicit).toLowerCase();
-		      if (s === 'merge' || s === 'overwrite' || s === 'add') return s
-		      if (s !== '' && s !== 'undefined') {
-		        throw new Error('Unknown strategy: ' + explicit +
-		          ' / 反映のしかたは merge か overwrite か add を指定してください。')
+		     * 2回流すと内容が二重になるので、走査で回るところに出してはいけない。 */
+		    const resolveImportStrategy = function (value) {
+		      const s = toImportStrategy(value);
+		      if (s) return s
+		      if (value === undefined || value === null || value === '') {
+		        return Laurus.Text2Frame.DefaultStrategy || 'merge'
 		      }
-		      if (legacyOverwrite === true) return 'overwrite'
-		      if (legacyOverwrite === false) return 'add'
-		      // どちらも無し。一括反映・CLI・VS Code と同じく統合にする。
-		      // 以前は「末尾に追記」だったので、黙って変えずに知らせる。
-		      addWarning('反映のしかたを省略したので統合(merge)で反映しました。従来どおり末尾に追記するには add を指定してください。 / strategy omitted; used merge');
-		      return 'merge'
+		      throw new Error('Unknown strategy: ' + value +
+		        ' / 反映のしかたは merge か overwrite か add を指定してください。')
 		    };
 
 		    Laurus.Text2Frame.ExecMode = command.toUpperCase();
@@ -12457,27 +12492,28 @@ function requireText2Frame () {
 		        if (args[1]) Laurus.Text2Frame.FileName = args[1];
 		        if (args[2]) Laurus.Text2Frame.MapID = args[2];
 		        if (args[3]) Laurus.Text2Frame.EventID = args[3];
-		        // 旧来の上書き真偽値。未指定と false を区別するため三値で持つ。
-		        let legacyOverwrite;
-		        if (args[4] && (args[4].toLowerCase() === 'true' || args[4].toLowerCase() === 'false')) {
-		          legacyOverwrite = args[4].toLowerCase() === 'true';
-		          addWarning('【警告】5番目の引数に上書き判定を設定することは非推奨に');
-		          addWarning('なりました。ページIDを設定してください。反映のしかたは7番');
+		        /* 5番目は旧版(ver1.4.1)ではページIDではなく上書き判定だった。反映のしかたとして
+		         * 読めるものならそちら、そうでなければページID。数字と取り違えることはない。 */
+		        let strategyArg;
+		        if (toImportStrategy(args[4])) {
+		          strategyArg = args[4];
+		          addWarning('【警告】5番目の引数に反映のしかたを設定することは非推奨に');
+		          addWarning('なりました。ページIDを設定してください。反映のしかたは6番');
 		          addWarning('目に設定してください。(警告はオプションでOFFにできます)');
 		        } else if (args[4]) {
 		          Laurus.Text2Frame.PageID = args[4];
 		        }
-		        if (args[5]) legacyOverwrite = String(args[5]).toLowerCase() === 'true';
-		        Laurus.Text2Frame.Strategy = resolveImportStrategy(args[6], legacyOverwrite);
+		        if (args[5]) strategyArg = args[5];
+		        Laurus.Text2Frame.Strategy = resolveImportStrategy(strategyArg);
 		        Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite';
-		        Laurus.Text2Frame.WriteBack = String(args[7] || Laurus.Text2Frame.WriteBackAfterMerge || 'off');
+		        Laurus.Text2Frame.WriteBack = String(args[6] || Laurus.Text2Frame.WriteBackAfterMerge || 'off');
 		        // テキストに見出し情報があれば、反映先はそちらに従う(実行部で上書きする)。
 		        Laurus.Text2Frame.RouteByFrontMatter = true;
 		        if (args[0] || args[1]) {
 		          const { PATH_SEP, BASE_PATH } = getDirParams();
 		          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
 		          Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
-		          Laurus.Text2Frame.BasePath = (args[8] && args[9]) ? `${BASE_PATH}${PATH_SEP}${args[8]}${PATH_SEP}${args[9]}` : undefined;
+		          Laurus.Text2Frame.BasePath = (args[7] && args[8]) ? `${BASE_PATH}${PATH_SEP}${args[7]}${PATH_SEP}${args[8]}` : undefined;
 		        }
 		        break
 		      }
@@ -12488,19 +12524,17 @@ function requireText2Frame () {
 		        if (args[0]) Laurus.Text2Frame.FileFolder = args[0];
 		        if (args[1]) Laurus.Text2Frame.FileName = args[1];
 		        if (args[2]) Laurus.Text2Frame.CommonEventID = args[2];
-		        const legacyOverwrite = args[3] === undefined || args[3] === '' || args[3] === null
-		          ? undefined
-		          : String(args[3]).toLowerCase() === 'true';
-		        Laurus.Text2Frame.Strategy = resolveImportStrategy(args[4], legacyOverwrite);
+		        // 4番目は旧来の上書き真偽値と同じ枠。merge/overwrite/add も受ける。
+		        Laurus.Text2Frame.Strategy = resolveImportStrategy(args[3]);
 		        Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite';
-		        Laurus.Text2Frame.WriteBack = String(args[5] || Laurus.Text2Frame.WriteBackAfterMerge || 'off');
+		        Laurus.Text2Frame.WriteBack = String(args[4] || Laurus.Text2Frame.WriteBackAfterMerge || 'off');
 		        // テキストに見出し情報があれば、反映先はそちらに従う(実行部で上書きする)。
 		        Laurus.Text2Frame.RouteByFrontMatter = true;
 		        if (args[0] || args[1]) {
 		          const { PATH_SEP, BASE_PATH } = getDirParams();
 		          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
 		          Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`;
-		          Laurus.Text2Frame.BasePath = (args[6] && args[7]) ? `${BASE_PATH}${PATH_SEP}${args[6]}${PATH_SEP}${args[7]}` : undefined;
+		          Laurus.Text2Frame.BasePath = (args[5] && args[6]) ? `${BASE_PATH}${PATH_SEP}${args[5]}${PATH_SEP}${args[6]}` : undefined;
 		        }
 		        break
 		      }
