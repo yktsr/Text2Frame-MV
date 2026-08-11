@@ -44,12 +44,12 @@ function msgEvent (line) {
 describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   let tmp
   let cwd
-  // 実引数の並びはよく変える順に [Strategy, Locale, TextBase, DataFolder]。テストは
+  // 実引数の並びはよく変える順に [Strategy, Watch, Locale, TextBase, DataFolder]。テストは
   // 呼びやすさ優先で strategy を末尾に置き、ここで実際の並びへ組み替える
-  // (位置がずれれば全件落ちる)。
+  // (位置がずれれば全件落ちる)。監視は既定の off のまま。
   const run = function (dataDir, textBase, locale, strategy) {
     shown.length = 0
-    Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [strategy, locale, textBase, dataDir])
+    Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [strategy, 'off', locale, textBase, dataDir])
   }
   /* 画面幅(半角55)を超えるメッセージは addMessage が自動で折り返すため、
    * 1つの文章が複数の $gameMessage 行にまたがる。行ごとではなく通しの文字列から探し、
@@ -105,10 +105,10 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   it('takes the strategy as its 1st argument, like the batch import does', function () {
     shown.length = 0
     Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-      ['merge', 'ja', path.join(tmp, 'text'), path.join(tmp, 'data')])
+      ['merge', 'off', 'ja', path.join(tmp, 'text'), path.join(tmp, 'data')])
 
     expect(line('取り出し完了(merge)')).to.be.a('string')
-    // 2〜4番目がそのまま言語・出力先・データ元として読まれている。
+    // 3〜5番目がそのまま言語・出力先・データ元として読まれている。
     expect(line('取り出し完了(merge)')).to.contain('成功 3件')
     expect(line('出力先')).to.contain(path.join(tmp, 'text', 'ja'))
   })

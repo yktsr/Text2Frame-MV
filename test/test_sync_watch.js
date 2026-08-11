@@ -34,7 +34,7 @@ require('../Frame2Text.js')
 
 /* 監視は実際の fs.watch とタイマーで動くので、ここだけは本物のファイルを使う。
  * デバウンス(250ms)ぶん待つ必要があるため、待ち時間は余裕をみて取る。 */
-describe('START_SYNC_WATCH / STOP_SYNC_WATCH', function () {
+describe('sync watch (the batch commands\' watch option) / STOP_SYNC_WATCH', function () {
   this.timeout(10000)
   const SETTLE = 900
   const ARM = 300
@@ -60,16 +60,26 @@ describe('START_SYNC_WATCH / STOP_SYNC_WATCH', function () {
   }
   const wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms) }) }
 
-  const start = function (strategy, direction) {
+  /* 監視は単独のコマンドではなく、一括反映・一括取り出しの「見張る」オプション。
+   * 引数は [Strategy, Watch, WriteBack, Locale, TextFolder, DataFolder]。 */
+  const start = function (strategy, direction, writeBack) {
     shown.length = 0
-    Game_Interpreter.prototype.pluginCommandText2Frame('START_SYNC_WATCH',
-      [strategy || 'merge', direction || 'both', 'ja', path.join(tmp, 'text'), path.join(tmp, 'data')])
+    Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
+      [strategy || 'merge', direction || 'both', writeBack || 'off', 'ja',
+        path.join(tmp, 'text'), path.join(tmp, 'data')])
+    return shown.slice()
+  }
+  // 取り出し側の入口(Frame2Text)。[Strategy, Watch, Locale, TextBase, DataFolder]。
+  const startFromExport = function (direction) {
+    shown.length = 0
+    Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER',
+      ['merge', direction || 'pull', 'ja', path.join(tmp, 'text'), path.join(tmp, 'data')])
     return shown.slice()
   }
   /* fs.watch(macOS の FSEvents)は張った直後の変更を取りこぼす。
    * 監視が効き始めるまで少し待ってから変更を起こす。 */
-  const startArmed = async function (strategy, direction) {
-    const out = start(strategy, direction)
+  const startArmed = async function (strategy, direction, writeBack) {
+    const out = start(strategy, direction, writeBack)
     await wait(ARM)
     return out
   }
@@ -109,7 +119,7 @@ describe('START_SYNC_WATCH / STOP_SYNC_WATCH', function () {
     process.mainModule = { filename: path.join(tmp, 'game.js') }
     // 監視の前に一度取り出して、見出し付きテキストと祖先をそろえておく(実際の使い方と同じ)。
     Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-      ['merge', 'ja', path.join(tmp, 'text'), path.join(tmp, 'data')])
+      ['merge', 'off', 'ja', path.join(tmp, 'text'), path.join(tmp, 'data')])
   })
 
   afterEach(function () {
@@ -225,9 +235,10 @@ describe('START_SYNC_WATCH / STOP_SYNC_WATCH', function () {
   // 一括取り出しの直後に監視を始めると必ず起きるので、中身が変わっていなければ処理しない。
   // (大きなプロジェクトだと、開始直後に全ファイルの反映が走ってゲームが固まる)
   it('ignores the settling events from files written just before it started', async function () {
-    // beforeEach の一括取り出しで書かれたばかりのテキストがある状態で監視を始める。
-    const before = readIf(path.join(tmp, 'data', 'CommonEvents.json'))
+    // 一括反映が書いたばかりのファイルがある状態で監視が始まる(必ずこの順になる)。
+    // その書き込みを監視が拾い直すと、開始直後に全ファイルぶんの処理が走ってゲームが固まる。
     await startArmed()
+    const before = readIf(path.join(tmp, 'data', 'CommonEvents.json'))
     await wait(SETTLE)
 
     expect(readIf(path.join(tmp, 'data', 'CommonEvents.json'))).to.equal(before)
@@ -246,20 +257,95 @@ describe('START_SYNC_WATCH / STOP_SYNC_WATCH', function () {
     expect(readIf(textPath(ev1))).to.not.contain('ゲームだけの変更')
   })
 
-  it('rejects an unknown strategy or direction instead of silently picking one', function () {
+  it('rejects an unknown strategy or watch value instead of silently picking one', function () {
     expect(function () {
-      Game_Interpreter.prototype.pluginCommandText2Frame('START_SYNC_WATCH', ['rebase', 'both'])
+      Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', ['rebase', 'both'])
     }).to.throw(/Unknown strategy/)
     expect(function () {
-      Game_Interpreter.prototype.pluginCommandText2Frame('START_SYNC_WATCH', ['merge', 'sideways'])
-    }).to.throw(/Unknown direction/)
+      Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', ['merge', 'sideways'])
+    }).to.throw(/Unknown watch/)
+    expect(function () {
+      Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', ['merge', 'sideways'])
+    }).to.throw(/Unknown watch/)
+  })
+
+  // 既定は見張らない。一括だけ実行したつもりが監視が残ると、テストプレイの間ずっと
+  // ファイルを書き続けることになる。
+  it('does not watch unless asked to', function () {
+    const out = start('merge', 'off')
+
+    expect(line(out, '同期監視を開始しました')).to.equal(undefined)
+    expect(line(stop(), '動いていません')).to.be.a('string')
+  })
+
+  /* 監視は開始後の変更しか拾わない(seedSettled)。一括の続きとして始めることで、
+   * 開始前からある食い違いが必ず先に解消される。これが単独コマンドを畳んだ理由。 */
+  it('applies the divergence that existed before it started', async function () {
+    fs.writeFileSync(textPath(ev1), readIf(textPath(ev1)).replace('こんにちは', '先に直してあった'), 'utf8')
+
+    await startArmed()
+
+    expect(texts()).to.eql(['先に直してあった'])
+  })
+
+  // 取り出し側から始めても同じ監視。止めるコマンドは Text2Frame のひとつだけ。
+  it('starts from the batch export too, and the same stop command stops it', async function () {
+    const out = startFromExport('pull')
+    expect(line(out, '同期監視を開始しました')).to.contain('pull')
+    await wait(ARM)
+
+    const map = JSON.parse(readIf(mapPath()))
+    map.events[1].pages[0].list.find(function (c) { return c.code === 401 }).parameters[0] = 'ツクールで直した'
+    fs.writeFileSync(mapPath(), JSON.stringify(map), 'utf8')
+    await wait(SETTLE)
+
+    expect(readIf(textPath(ev1))).to.contain('ツクールで直した')
+    expect(line(stop(), '停止しました')).to.be.a('string')
+  })
+
+  /* 監視中の反映も一括反映と同じ書き戻し設定に従う。目印はテキストだけに入り、
+   * ゲームには自分の版だけが書かれる(ツクールで開いてもそのまま遊べる)。 */
+  describe('write-back while watching', function () {
+    // 祖先=「こんにちは」の状態から、テキストとゲームの同じ場所を別々に変える。
+    const diverge = function () {
+      const map = JSON.parse(readIf(mapPath()))
+      map.events[1].pages[0].list.find(function (c) { return c.code === 401 }).parameters[0] = 'ゲームの変更'
+      fs.writeFileSync(mapPath(), JSON.stringify(map), 'utf8')
+      fs.writeFileSync(textPath(ev1), readIf(textPath(ev1)).replace('こんにちは', 'テキストの変更'), 'utf8')
+    }
+
+    it('puts the conflict markers in the text, not in the game', async function () {
+      // 監視を張る前に食い違わせ、監視は push だけ(取り出しに拾わせない)。
+      diverge()
+      await startArmed('merge', 'push', 'always')
+      fs.writeFileSync(textPath(ev1), readIf(textPath(ev1)) + '\n')
+      await wait(SETTLE)
+
+      expect(readIf(textPath(ev1))).to.contain('=== ゲームの変更 / from game ===')
+      expect(texts().join('\n')).to.not.contain('=== ')
+    })
+
+    // 書き戻したテキストを自分の書き込みとして記録しないと、監視が拾って反映が再走する。
+    it('does not re-run the import on the text it just wrote back', async function () {
+      await startArmed('merge', 'both', 'always')
+
+      fs.writeFileSync(textPath(ev1), readIf(textPath(ev1)).replace('こんにちは', '一度だけ'), 'utf8')
+      await wait(SETTLE)
+      const textAfter = readIf(textPath(ev1))
+      const dataAfter = readIf(mapPath())
+
+      await wait(SETTLE)
+      expect(readIf(textPath(ev1))).to.equal(textAfter)
+      expect(readIf(mapPath())).to.equal(dataAfter)
+      expect(texts()).to.eql(['一度だけ'])
+    })
   })
 
   // ヘルプに書く名前は必ず case に入れる(一括コマンドで案内と実装がずれた前例がある)。
   it('works under the Japanese command aliases', function () {
     shown.length = 0
-    Game_Interpreter.prototype.pluginCommandText2Frame('同期監視の開始',
-      ['merge', 'both', 'ja', path.join(tmp, 'text'), path.join(tmp, 'data')])
+    Game_Interpreter.prototype.pluginCommandText2Frame('一括反映',
+      ['merge', 'both', 'off', 'ja', path.join(tmp, 'text'), path.join(tmp, 'data')])
     expect(line(shown.slice(), '同期監視を開始しました')).to.be.a('string')
 
     shown.length = 0

@@ -137,6 +137,18 @@
  * @value overwrite
  * @default merge
  *
+ * @arg Watch
+ * @text 取り出しのあとも見張る
+ * @desc 取り出し後もゲームとテキストを見張り、変更を自動で追従します。テストプレイを閉じると止まります。既定は見張りません。
+ * @type select
+ * @option 見張らない / off
+ * @value off
+ * @option 双方向で見張る / both
+ * @value both
+ * @option ゲーム→テキストだけ見張る / pull
+ * @value pull
+ * @default off
+ *
  * @arg Locale
  * @text 言語
  * @desc 出力先の言語サブフォルダ名です。デフォルトはjaです。多言語にしないなら設定する必要はありません。
@@ -492,15 +504,41 @@
  *     並んでいます。
  *     第1: 取り出しのしかた(merge/overwrite)。省略すると統合で、テキストに
  *          書いた内容を残します。ゲームの内容で全て取り直すときだけ overwrite。
- *     第2: 言語(出力先の言語サブフォルダ名)。省略すると ja。
- *     第3: 出力先フォルダ名。省略すると text。
- *     第4: ゲームデータのフォルダ名。省略すると data。
+ *     第2: 取り出しのあとも見張るか(off/both/pull)。省略すると見張りません。
+ *     第3: 言語(出力先の言語サブフォルダ名)。省略すると ja。
+ *     第4: 出力先フォルダ名。省略すると text。
+ *     第5: ゲームデータのフォルダ名。省略すると data。
  *   BATCH_EXPORT_MESSAGES_TO_FOLDER
  *   BATCH_EXPORT_MESSAGES_TO_FOLDER overwrite
- *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge en
- *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge ja text data
+ *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge both
+ *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge off en
+ *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge off ja text data
  *   フォルダへ一括取り出し overwrite
- *   一括取り出し overwrite
+ *   一括取り出し merge both
+ *
+ * --------------------------------------
+ * 自動で同期する（同期監視）
+ * --------------------------------------
+ *  一括取り出しの「取り出しのあとも見張る」に off 以外を指定すると、取り出した
+ *  あとも、ゲームとテキストを見張って変更を自動で追従します。
+ *  まず全部を取り出して食い違いを無くしてから見張り始めるので、ゲームを正として
+ *  同期を始めたいときはこちらを使ってください。
+ *
+ *     BATCH_EXPORT_MESSAGES_TO_FOLDER merge both  双方向で見張る
+ *     BATCH_EXPORT_MESSAGES_TO_FOLDER merge pull  ゲーム→テキストだけ見張る
+ *
+ *  逆に、テキストを正として始めたいときは Text2Frame の一括反映から見張ります。
+ *
+ *     BATCH_IMPORT_MESSAGES_FROM_FOLDER merge both
+ *
+ *  ◆ 使う前に知っておくこと
+ *   ・見張るには Text2Frame プラグインが必要です（監視の実体はそちらにあります）。
+ *   ・監視はゲームの実行中のみ動作します。プレイテストを閉じると止まります。
+ *   ・止めるときは Text2Frame の「同期監視の停止」(STOP_SYNC_WATCH)を実行します。
+ *     どちらから始めた場合も、止めるコマンドはこのひとつです。
+ *   ・進行状況はコンソール（F8）に出ます。ゲーム画面には出ません。
+ *   ・エディタで「プロジェクトの保存」をすると data フォルダが丸ごと書き戻り、
+ *     反映済みの内容が失われます。ツクールのエディタは閉じて使ってください。
  *
  * -------------------------------------
  * ツクールMZでの実行方法
@@ -676,9 +714,9 @@ function resolveText2Frame () {
     })
     PluginManager.registerCommand('Frame2Text', 'BATCH_EXPORT_MESSAGES_TO_FOLDER', function (args) {
       // 引数順は @arg の並びと合わせる。よく変えるものから順に
-      // 取り出しのしかた -> 言語 -> 出力先 -> データフォルダ。
+      // 取り出しのしかた -> 見張る -> 言語 -> 出力先 -> データフォルダ。
       this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-        [args.Strategy, args.Locale, args.TextBase, args.DataFolder])
+        [args.Strategy, args.Watch, args.Locale, args.TextBase, args.DataFolder])
     })
   }
 
@@ -850,7 +888,7 @@ function resolveText2Frame () {
       case 'BATCH_EXPORT_MESSAGES_TO_FOLDER':
       case 'フォルダへ一括取り出し':
       case '一括取り出し': {
-        // よく変えるものから順に: 取り出しのしかた -> 言語 -> 出力先 -> データフォルダ。
+        // よく変えるものから順に: 取り出しのしかた -> 見張る -> 言語 -> 出力先 -> データフォルダ。
         // @arg の並び・registerCommand の渡し順と揃えること。
         // 既定は merge。CLI・t2f-sync・VSCode と揃え、テキストに書いた内容を黙って
         // 消さないようにする。初回(既存テキスト無し)は merge も overwrite も同じ結果。
@@ -858,9 +896,16 @@ function resolveText2Frame () {
         if (batchStrategy !== 'merge' && batchStrategy !== 'overwrite') {
           throw new Error('Unknown strategy: ' + args[0] + ' / 取り出しのしかたは merge か overwrite を指定してください。')
         }
-        Laurus.Frame2Text.Locale = args[1] || 'ja'
-        Laurus.Frame2Text.TextBase = args[2] || 'text'
-        Laurus.Frame2Text.DataFolder = args[3] || 'data'
+        // 見張りかた。off 以外はそのまま監視の向きになる。@option は off/both/pull だけ出すが、
+        // 手で書く MV のために push も受ける(検証は Text2Frame の監視側と同じ4値)。
+        const batchWatch = String(args[1] || 'off').toLowerCase()
+        if (['off', 'both', 'push', 'pull'].indexOf(batchWatch) === -1) {
+          throw new Error('Unknown watch: ' + args[1] + ' / 見張りかたは off か both か pull を指定してください。')
+        }
+        Laurus.Frame2Text.Watch = batchWatch
+        Laurus.Frame2Text.Locale = args[2] || 'ja'
+        Laurus.Frame2Text.TextBase = args[3] || 'text'
+        Laurus.Frame2Text.DataFolder = args[4] || 'data'
         Laurus.Frame2Text.BatchStrategy = batchStrategy
         Laurus.Frame2Text.ExecMode = 'BATCH_EXPORT_MESSAGES_TO_FOLDER'
         break
@@ -3428,6 +3473,25 @@ function resolveText2Frame () {
       console.log('[batch] Completed (' + batchStrategy + '): ' + okCount + ' success (event ' + eventCount + ' / common ' + commonCount + '), ' +
         errCount + ' errors, ' + conflicted.length + ' with conflicts, ' + markerCarried.length + ' with unresolved markers -> ' + outDir +
         (overwrittenCount > 0 ? ' (overwrote ' + overwrittenCount + ' existing text file(s))' : ''))
+      /* 見張るのは一括取り出しのあと。先に全部揃えてから始めるので、監視は「開始後の変更」
+       * だけを見ればよくなる。監視の実体は Text2Frame にあり、状態も向こうが持つ
+       * (どちらから始めても STOP_SYNC_WATCH ひとつで止まる)。 */
+      const batchWatch = Laurus.Frame2Text.Watch || 'off'
+      if (batchWatch !== 'off') {
+        const _t2fWatch = resolveText2Frame()
+        if (!_t2fWatch || !_t2fWatch.startSyncWatch) {
+          addMessage('[batch] 見張るには Text2Frame プラグインが必要です。取り出しは終わっています。')
+          console.error('[batch] watch requires the Text2Frame plugin to be loaded')
+          return
+        }
+        _t2fWatch.startSyncWatch({
+          strategy: batchStrategy,
+          direction: batchWatch,
+          locale,
+          textBase,
+          dataFolder: Laurus.Frame2Text.DataFolder
+        })
+      }
       return
     }
 
