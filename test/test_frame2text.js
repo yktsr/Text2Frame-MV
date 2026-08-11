@@ -39,7 +39,8 @@ describe('Frame2Text Test', function() {
       fs.readFile(test.expfile, 'utf8', function(err, expected_data) {
         let event_2_message = "";
         let message_2_event = "";
-        const read_count = index * 3;
+        // 取り出しの最中か、反映の最中か。同じ Map001.json でも返すものが違うため。
+        let phase = 'export';
 
         // 書き込みはパスで振り分ける(祖先スナップショットの保存が挟まっても壊れないように)。
         writeFileSyncStub.callsFake(function(file_path, data, encoding) {
@@ -52,11 +53,16 @@ describe('Frame2Text Test', function() {
           }
           return file_path;
         });
-        readFileSyncStub.onCall(read_count).returns(expected_data);
-        readFileSyncStub.onCall(read_count + 1).callsFake(function(file_path, encoding) {
-          return event_2_message;
+        /* 読み込みもパスで振り分ける。呼び出し回数で並べると、経路に読み込みが
+         * 1つ増えただけで全件ずれる(実際に一度そうなった)。 */
+        readFileSyncStub.callsFake(function(file_path, encoding) {
+          const p = String(file_path);
+          if (p.indexOf('.t2f-base') !== -1) { throw new Error('no base'); } // 祖先は無い扱い
+          if (/\.json$/i.test(p)) {
+            return phase === 'export' ? expected_data : test_map_data;
+          }
+          return event_2_message;   // 取り出したテキスト(取り出し前は空文字)
         });
-        readFileSyncStub.onCall(read_count + 2).returns(test_map_data);
 
         const folder_name = '';
         const file_name   = '';
@@ -69,6 +75,7 @@ describe('Frame2Text Test', function() {
             folder_name, file_name, map_id, event_id, page_id, 'overwrite'
         ]);
 
+        phase = 'import';
         const overwrite   = 'true';
         Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT', [
             folder_name, file_name, map_id, event_id, page_id, overwrite

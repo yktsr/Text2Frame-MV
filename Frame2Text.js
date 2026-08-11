@@ -312,6 +312,12 @@
  *  反映していない編集は失われます。ゲームを真として取り直したいときや、
  *  白紙から取り出したいときに使います。
  *
+ * ◆ コメント行（％で始まる行）はどちらでも残ります
+ *  コメント行はゲームに取り込まれない行なので、ゲームの内容で置き換える対象が
+ *  そもそもありません。元のテキストを見て、元の位置へ書き戻しています。
+ *  その周りの内容がゲーム側で大きく書き換わったときは位置がずれることがあり、
+ *  そのときはファイル名を挙げて知らせます（消えることはありません）。
+ *
  * ◆ プラグインコマンドとの対応
  *  どちらも「取り出しのしかた」で統合と上書きを選べます（既定は統合）。
  *    BATCH_EXPORT_MESSAGES_TO_FOLDER
@@ -3189,13 +3195,36 @@ function resolveText2Frame () {
       if (merge && hasConflictMarkerInText(existingText)) return { skipped: 'text', conflicts: 0 }
       const header = normalizeHeader((existingText && frontMatterHeader(existingText)) || opts.fallbackHeader || '')
       const gameText = header + decompile(list, englishTag, { pretty: true, omitDefaults: opts.omitDefaults }) + '\n'
+
+      /* コメント行(既定は %)はコマンドにならないので、コマンド列から作り直した本文には
+       * 残らない。前のテキストが分かるときは、そこから元の位置へ戻す。
+       * 全上書きでも戻す: % はゲームに入らないため「ゲームの内容で全部置き換える」という
+       * 約束の対象外(置き換える相手が存在しない)。
+       * previousText を existingText と分けているのは、単発の全上書き取り出しが見出しの
+       * 引き継ぎを避けるため existingText を意図して渡さないから。 */
+      const previousText = opts.previousText || existingText
+      const restoreComments = function (fullText) {
+        if (!previousText) return { text: fullText, approximate: 0 }
+        const t2f = resolveText2Frame()
+        if (!t2f || !t2f.restoreCommentOutLines || !t2f.parseFrontMatter) return { text: fullText, approximate: 0 }
+        // 見出しは frontMatterHeader がそのまま引き継いでおり、その中の % は既に残っている。
+        // 一緒に扱うと二重になるので、本文だけを通す。
+        const parsed = t2f.parseFrontMatter(fullText)
+        const head = parsed.header || ''
+        const r = t2f.restoreCommentOutLines(t2f.parseFrontMatter(previousText).body, parsed.body)
+        return { text: head + r.text, approximate: r.approximate || 0 }
+      }
+
       // 既存テキストが無ければ突き合わせる相手がいないので、merge でも素の取り出しと同じ。
       if (!merge || !existingText) {
+        const restored = restoreComments(gameText)
         return {
-          // 上書きでは text がそのままゲームの内容なので、祖先も同じもので良い。
-          text: gameText,
+          text: restored.text,
+          // 祖先はゲームが持っているものなので、コメントは戻さない(読むときは compile が落とす)。
           baseText: gameText,
           conflicts: 0,
+          approximate: restored.approximate,
+          warnings: [],
           // 目印を含んだまま書き出した。祖先に取り込むと次回の 3-way が目印込みになるので進めない。
           markers: gameMarkers
         }
@@ -3211,7 +3240,15 @@ function resolveText2Frame () {
         englishTag,
         omitDefaults: opts.omitDefaults
       })
-      return { text: header + r.text + '\n', baseText: gameText, conflicts: r.conflicts || 0 }
+      const restored = restoreComments(header + r.text + '\n')
+      return {
+        text: restored.text,
+        baseText: gameText,
+        conflicts: r.conflicts || 0,
+        approximate: restored.approximate,
+        // applyMergePull の警告はこれまで捨てられていた(祖先が無いときの上書き警告など)。
+        warnings: r.warnings || []
+      }
     }
 
     // data ディレクトリを走査し、出力対象(イベント/コモンイベント)の routing メタだけを返す。
@@ -3257,7 +3294,7 @@ function resolveText2Frame () {
      * (全件を回す一括コマンドを変更のたびに呼ぶと、実プロジェクト規模ではゲームが数秒止まる)
      *
      * opts: { dataDir, target, outPath, baseDir, englishTag, strategy, locale }
-     * 戻り値: { ok, skipped, conflicts, markers, overwritten, baseSaveError, error }
+     * 戻り値: { ok, skipped, conflicts, markers, overwritten, approximate, warnings, baseSaveError, error }
      * 投げずに戻り値で返す。呼び出し側が件数をまとめて報告するため。 */
     const pullTargetToText = function (opts) {
       const _fs = require('fs')
@@ -3309,6 +3346,9 @@ function resolveText2Frame () {
           markers: !!built.markers,
           // 全上書きで既存を潰したときだけ true(merge は上書きではない)。
           overwritten: entryStrategy !== 'merge' && !!existingText,
+          // 周りが大きく変わって、コメント行(%)の位置があやしくなった件数。
+          approximate: built.approximate || 0,
+          warnings: built.warnings || [],
           baseSaveError
         }
       } catch (e) {
@@ -3357,6 +3397,8 @@ function resolveText2Frame () {
       const conflicted = []
       // 上書きで、目印が残ったままテキストへ書き出したもの(祖先は進めない)。
       const markerCarried = []
+      // 周りが大きく変わって、コメント行(%)の位置があやしくなったもの。
+      const approxComments = []
       // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する。
       let _baseSaveError = null
       const _baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH
@@ -3426,6 +3468,9 @@ function resolveText2Frame () {
         if (r.overwritten) overwrittenCount++
         if (r.conflicts) conflicted.push(t.key)
         if (r.markers) markerCarried.push(t.key)
+        if (r.approximate) approxComments.push(t.key)
+        const pullWarnings = r.warnings || []
+        pullWarnings.forEach(function (w) { console.warn('[batch] ' + t.key + ': ' + w) })
         if (r.baseSaveError) _baseSaveError = _baseSaveError || r.baseSaveError
         if (t.kind === 'event') eventCount++
         else commonCount++
@@ -3465,6 +3510,12 @@ function resolveText2Frame () {
           (conflicted.length > FAILURE_LINES ? ' ほか' : ''))
         addMessage('[batch] テキストの目印3行を消して残す方を決めたあと、Text2Frameの一括反映(merge)を実行してください。')
         console.warn('[batch] conflicts kept both: ' + conflicted.join(', '))
+      }
+      if (approxComments.length > 0) {
+        addMessage('[batch] コメント行の位置があやしいファイル ' + approxComments.length + '件: ' +
+          approxComments.slice(0, FAILURE_LINES).join(', ') + (approxComments.length > FAILURE_LINES ? ' ほか' : ''))
+        addMessage('[batch] 周りが大きく変わったため、目で確かめてください(消えてはいません)。')
+        console.warn('[batch] comment lines may have moved: ' + approxComments.join(', '))
       }
       failures.slice(0, FAILURE_LINES).forEach(function (f) { addMessage('[batch] 失敗: ' + f) })
       if (failures.length > FAILURE_LINES) {
@@ -3530,11 +3581,18 @@ function resolveText2Frame () {
         baseText = _T2Fx.readBaseText(_exportRoot, _exportId.locale, _exportId.key) || ''
       }
     }
+    /* コメント行を戻す元は existingText とは別に渡す。全上書きでも % は残すが、
+     * existingText を渡すと見出しまで引き継いでしまうため(すぐ上の理由)。 */
+    let previousText = existingText
+    if (!previousText) {
+      try { previousText = readText(outPath) } catch (e) { previousText = '' }
+    }
     const built = buildPullText({
       list: map_events,
       englishTag: EnglishTag,
       strategy: exportStrategy,
       existingText,
+      previousText,
       baseText,
       fallbackHeader: renderFrontMatter(exportEntry, exportKind)
     })
@@ -3558,6 +3616,11 @@ function resolveText2Frame () {
       logger.error('[merge-pull] ' + built.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath)
       logger.error('[merge-pull] テキストの目印3行を消して残す方を決めたあと、反映(merge)を実行してください。 / resolve the text, then import with merge')
     }
+    if (built.approximate) {
+      addMessage('コメント行 ' + built.approximate + '件は周りが大きく変わったため、位置がずれているかもしれません(消えてはいません)。')
+    }
+    const exportWarnings = built.warnings || []
+    exportWarnings.forEach(function (w) { addMessage(w) })
     // 目印ごと取り出した場合は祖先を進めない(祖先に目印が入ると次回の 3-way が壊れる)。
     if (built.markers) {
       addMessage('未解決の衝突の目印ごと取り出したため、祖先(.t2f-base)は更新していません。テキストの目印3行を消して残す方を決めたあと、反映を上書きで実行してください。')
@@ -3805,7 +3868,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           // 祖先はゲーム側(built.baseText)。理由は in-engine 側の同じ箇所を参照。
           try { fs.writeFileSync(path.join(baseDir, t.key + '.txt'), built.baseText, 'utf8') } catch (e) { baseSaveError = baseSaveError || e }
         }
-        results.push({ ok: true, textPath, conflicts: built.conflicts, markers: built.markers })
+        results.push({ ok: true, textPath, conflicts: built.conflicts, markers: built.markers, approximate: built.approximate })
       } catch (error) {
         results.push({ ok: false, key: t.key, error: error.message })
       }
@@ -3814,7 +3877,12 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const conflicted = results.filter(function (r) { return r.ok && r.conflicts })
     const skipped = results.filter(function (r) { return r.skipped })
     const carried = results.filter(function (r) { return r.ok && r.markers })
-    console.log(JSON.stringify({ total: results.length, failed: failures.length, conflicts: conflicted.length, skipped: skipped.length, carried: carried.length, strategy: batchStrategy, results }, null, 2))
+    const approx = results.filter(function (r) { return r.ok && r.approximate })
+    console.log(JSON.stringify({ total: results.length, failed: failures.length, conflicts: conflicted.length, skipped: skipped.length, carried: carried.length, approximate: approx.length, strategy: batchStrategy, results }, null, 2))
+    if (approx.length > 0) {
+      console.warn('[batch] ' + approx.length + ' file(s) may have moved comment lines (nothing was lost; the surrounding text changed): ' +
+        approx.map(function (r) { return r.textPath }).join(', '))
+    }
     if (skipped.length > 0) {
       console.warn('[batch] ' + skipped.length + ' file(s) skipped: cannot merge across unresolved conflict markers ' +
         '(resolve them, or pull with --strategy overwrite and resolve in the text): ' +

@@ -162,6 +162,12 @@ function pullTarget (target, opts) {
     console.warn('[pull] ' + conflicts + ' conflict(s) kept both ' +
       '(resolve the markers in the text, then push): ' + textPath)
   }
+  // コメント行(%)は元の位置へ戻すが、周りが大きく変わると位置があやしくなる。消えてはいない。
+  if (built.approximate) {
+    console.warn('[pull] ' + built.approximate + ' comment line(s) may have moved (nothing lost): ' + textPath)
+  }
+  const pullWarnings = built.warnings || []
+  pullWarnings.forEach(function (w) { console.warn('[pull] ' + w + ': ' + textPath) })
   // 祖先に目印が入ると次回の 3-way がそれを再マージするので、そのときだけ進めない。
   // 衝突しただけなら進める(目印はテキストのみ)。据え置くと、テキストで解決したあとの
   // push で同じ衝突がゲーム側に再発する。
