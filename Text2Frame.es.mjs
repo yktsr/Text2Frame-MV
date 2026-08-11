@@ -4081,6 +4081,12 @@ function requireFrame2Text () {
 		 *  反映していない編集は失われます。ゲームを真として取り直したいときや、
 		 *  白紙から取り出したいときに使います。
 		 *
+		 * ◆ コメント行（％で始まる行）はどちらでも残ります
+		 *  コメント行はゲームに取り込まれない行なので、ゲームの内容で置き換える対象が
+		 *  そもそもありません。元のテキストを見て、元の位置へ書き戻しています。
+		 *  その周りの内容がゲーム側で大きく書き換わったときは位置がずれることがあり、
+		 *  そのときはファイル名を挙げて知らせます（消えることはありません）。
+		 *
 		 * ◆ プラグインコマンドとの対応
 		 *  どちらも「取り出しのしかた」で統合と上書きを選べます（既定は統合）。
 		 *    BATCH_EXPORT_MESSAGES_TO_FOLDER
@@ -6957,13 +6963,36 @@ function requireFrame2Text () {
 		      if (merge && hasConflictMarkerInText(existingText)) return { skipped: 'text', conflicts: 0 }
 		      const header = normalizeHeader((existingText && frontMatterHeader(existingText)) || opts.fallbackHeader || '');
 		      const gameText = header + decompile(list, englishTag, { pretty: true, omitDefaults: opts.omitDefaults }) + '\n';
+
+		      /* コメント行(既定は %)はコマンドにならないので、コマンド列から作り直した本文には
+		       * 残らない。前のテキストが分かるときは、そこから元の位置へ戻す。
+		       * 全上書きでも戻す: % はゲームに入らないため「ゲームの内容で全部置き換える」という
+		       * 約束の対象外(置き換える相手が存在しない)。
+		       * previousText を existingText と分けているのは、単発の全上書き取り出しが見出しの
+		       * 引き継ぎを避けるため existingText を意図して渡さないから。 */
+		      const previousText = opts.previousText || existingText;
+		      const restoreComments = function (fullText) {
+		        if (!previousText) return { text: fullText, approximate: 0 }
+		        const t2f = resolveText2Frame();
+		        if (!t2f || !t2f.restoreCommentOutLines || !t2f.parseFrontMatter) return { text: fullText, approximate: 0 }
+		        // 見出しは frontMatterHeader がそのまま引き継いでおり、その中の % は既に残っている。
+		        // 一緒に扱うと二重になるので、本文だけを通す。
+		        const parsed = t2f.parseFrontMatter(fullText);
+		        const head = parsed.header || '';
+		        const r = t2f.restoreCommentOutLines(t2f.parseFrontMatter(previousText).body, parsed.body);
+		        return { text: head + r.text, approximate: r.approximate || 0 }
+		      };
+
 		      // 既存テキストが無ければ突き合わせる相手がいないので、merge でも素の取り出しと同じ。
 		      if (!merge || !existingText) {
+		        const restored = restoreComments(gameText);
 		        return {
-		          // 上書きでは text がそのままゲームの内容なので、祖先も同じもので良い。
-		          text: gameText,
+		          text: restored.text,
+		          // 祖先はゲームが持っているものなので、コメントは戻さない(読むときは compile が落とす)。
 		          baseText: gameText,
 		          conflicts: 0,
+		          approximate: restored.approximate,
+		          warnings: [],
 		          // 目印を含んだまま書き出した。祖先に取り込むと次回の 3-way が目印込みになるので進めない。
 		          markers: gameMarkers
 		        }
@@ -6979,7 +7008,15 @@ function requireFrame2Text () {
 		        englishTag,
 		        omitDefaults: opts.omitDefaults
 		      });
-		      return { text: header + r.text + '\n', baseText: gameText, conflicts: r.conflicts || 0 }
+		      const restored = restoreComments(header + r.text + '\n');
+		      return {
+		        text: restored.text,
+		        baseText: gameText,
+		        conflicts: r.conflicts || 0,
+		        approximate: restored.approximate,
+		        // applyMergePull の警告はこれまで捨てられていた(祖先が無いときの上書き警告など)。
+		        warnings: r.warnings || []
+		      }
 		    };
 
 		    // data ディレクトリを走査し、出力対象(イベント/コモンイベント)の routing メタだけを返す。
@@ -7025,7 +7062,7 @@ function requireFrame2Text () {
 		     * (全件を回す一括コマンドを変更のたびに呼ぶと、実プロジェクト規模ではゲームが数秒止まる)
 		     *
 		     * opts: { dataDir, target, outPath, baseDir, englishTag, strategy, locale }
-		     * 戻り値: { ok, skipped, conflicts, markers, overwritten, baseSaveError, error }
+		     * 戻り値: { ok, skipped, conflicts, markers, overwritten, approximate, warnings, baseSaveError, error }
 		     * 投げずに戻り値で返す。呼び出し側が件数をまとめて報告するため。 */
 		    const pullTargetToText = function (opts) {
 		      const _fs = require$$1$1;
@@ -7077,6 +7114,9 @@ function requireFrame2Text () {
 		          markers: !!built.markers,
 		          // 全上書きで既存を潰したときだけ true(merge は上書きではない)。
 		          overwritten: entryStrategy !== 'merge' && !!existingText,
+		          // 周りが大きく変わって、コメント行(%)の位置があやしくなった件数。
+		          approximate: built.approximate || 0,
+		          warnings: built.warnings || [],
 		          baseSaveError
 		        }
 		      } catch (e) {
@@ -7125,6 +7165,8 @@ function requireFrame2Text () {
 		      const conflicted = [];
 		      // 上書きで、目印が残ったままテキストへ書き出したもの(祖先は進めない)。
 		      const markerCarried = [];
+		      // 周りが大きく変わって、コメント行(%)の位置があやしくなったもの。
+		      const approxComments = [];
 		      // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する。
 		      let _baseSaveError = null;
 		      const _baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH;
@@ -7194,6 +7236,9 @@ function requireFrame2Text () {
 		        if (r.overwritten) overwrittenCount++;
 		        if (r.conflicts) conflicted.push(t.key);
 		        if (r.markers) markerCarried.push(t.key);
+		        if (r.approximate) approxComments.push(t.key);
+		        const pullWarnings = r.warnings || [];
+		        pullWarnings.forEach(function (w) { console.warn('[batch] ' + t.key + ': ' + w); });
 		        if (r.baseSaveError) _baseSaveError = _baseSaveError || r.baseSaveError;
 		        if (t.kind === 'event') eventCount++;
 		        else commonCount++;
@@ -7233,6 +7278,12 @@ function requireFrame2Text () {
 		          (conflicted.length > FAILURE_LINES ? ' ほか' : ''));
 		        addMessage('[batch] テキストの目印3行を消して残す方を決めたあと、Text2Frameの一括反映(merge)を実行してください。');
 		        console.warn('[batch] conflicts kept both: ' + conflicted.join(', '));
+		      }
+		      if (approxComments.length > 0) {
+		        addMessage('[batch] コメント行の位置があやしいファイル ' + approxComments.length + '件: ' +
+		          approxComments.slice(0, FAILURE_LINES).join(', ') + (approxComments.length > FAILURE_LINES ? ' ほか' : ''));
+		        addMessage('[batch] 周りが大きく変わったため、目で確かめてください(消えてはいません)。');
+		        console.warn('[batch] comment lines may have moved: ' + approxComments.join(', '));
 		      }
 		      failures.slice(0, FAILURE_LINES).forEach(function (f) { addMessage('[batch] 失敗: ' + f); });
 		      if (failures.length > FAILURE_LINES) {
@@ -7298,11 +7349,18 @@ function requireFrame2Text () {
 		        baseText = _T2Fx.readBaseText(_exportRoot, _exportId.locale, _exportId.key) || '';
 		      }
 		    }
+		    /* コメント行を戻す元は existingText とは別に渡す。全上書きでも % は残すが、
+		     * existingText を渡すと見出しまで引き継いでしまうため(すぐ上の理由)。 */
+		    let previousText = existingText;
+		    if (!previousText) {
+		      try { previousText = readText(outPath); } catch (e) { previousText = ''; }
+		    }
 		    const built = buildPullText({
 		      list: map_events,
 		      englishTag: EnglishTag,
 		      strategy: exportStrategy,
 		      existingText,
+		      previousText,
 		      baseText,
 		      fallbackHeader: renderFrontMatter(exportEntry, exportKind)
 		    });
@@ -7326,6 +7384,11 @@ function requireFrame2Text () {
 		      logger.error('[merge-pull] ' + built.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath);
 		      logger.error('[merge-pull] テキストの目印3行を消して残す方を決めたあと、反映(merge)を実行してください。 / resolve the text, then import with merge');
 		    }
+		    if (built.approximate) {
+		      addMessage('コメント行 ' + built.approximate + '件は周りが大きく変わったため、位置がずれているかもしれません(消えてはいません)。');
+		    }
+		    const exportWarnings = built.warnings || [];
+		    exportWarnings.forEach(function (w) { addMessage(w); });
 		    // 目印ごと取り出した場合は祖先を進めない(祖先に目印が入ると次回の 3-way が壊れる)。
 		    if (built.markers) {
 		      addMessage('未解決の衝突の目印ごと取り出したため、祖先(.t2f-base)は更新していません。テキストの目印3行を消して残す方を決めたあと、反映を上書きで実行してください。');
@@ -7573,7 +7636,7 @@ function requireFrame2Text () {
 		          // 祖先はゲーム側(built.baseText)。理由は in-engine 側の同じ箇所を参照。
 		          try { fs.writeFileSync(path.join(baseDir, t.key + '.txt'), built.baseText, 'utf8'); } catch (e) { baseSaveError = baseSaveError || e; }
 		        }
-		        results.push({ ok: true, textPath, conflicts: built.conflicts, markers: built.markers });
+		        results.push({ ok: true, textPath, conflicts: built.conflicts, markers: built.markers, approximate: built.approximate });
 		      } catch (error) {
 		        results.push({ ok: false, key: t.key, error: error.message });
 		      }
@@ -7582,7 +7645,12 @@ function requireFrame2Text () {
 		    const conflicted = results.filter(function (r) { return r.ok && r.conflicts });
 		    const skipped = results.filter(function (r) { return r.skipped });
 		    const carried = results.filter(function (r) { return r.ok && r.markers });
-		    console.log(JSON.stringify({ total: results.length, failed: failures.length, conflicts: conflicted.length, skipped: skipped.length, carried: carried.length, strategy: batchStrategy, results }, null, 2));
+		    const approx = results.filter(function (r) { return r.ok && r.approximate });
+		    console.log(JSON.stringify({ total: results.length, failed: failures.length, conflicts: conflicted.length, skipped: skipped.length, carried: carried.length, approximate: approx.length, strategy: batchStrategy, results }, null, 2));
+		    if (approx.length > 0) {
+		      console.warn('[batch] ' + approx.length + ' file(s) may have moved comment lines (nothing was lost; the surrounding text changed): ' +
+		        approx.map(function (r) { return r.textPath }).join(', '));
+		    }
 		    if (skipped.length > 0) {
 		      console.warn('[batch] ' + skipped.length + ' file(s) skipped: cannot merge across unresolved conflict markers ' +
 		        '(resolve them, or pull with --strategy overwrite and resolve in the text): ' +
@@ -8123,9 +8191,11 @@ function requireText2Frame () {
 		 *  ※ 目印を消さないまま実行すると、そのファイルは対象から外れます
 		 *    （目印ごと再マージすると二重・三重に増えるためです）。
 		 *
-		 *  ※ 書き戻しは、テキストにコメント行（％で始まる行）があると見送られます。
-		 *    コメント行はゲームに取り込まれないため、書き戻すと消えてしまうからです。
-		 *    残したいメモは <comment> タグを使ってください。
+		 *  ※ コメント行（％で始まる行）は、テキストを作り直す反映・取り出しのどちらでも
+		 *    残ります。ゲームには取り込まれない行なので、元のテキストを見て元の位置へ
+		 *    書き戻しています。ただし、その周りの内容がゲーム側で大きく書き換わった場合は
+		 *    位置がずれることがあります（消えることはありません）。ずれた可能性があるときは
+		 *    ファイル名を挙げて知らせます。
 		 *
 		 * ◆ 一括取り出し・反映時にプラグインコマンドが意図通りに動作しないとき
 		 *  ゲームかテキストのどちらかを真と決めて、強制的に上書きすることで解決でき
@@ -8436,6 +8506,12 @@ function requireText2Frame () {
 		 *
 		 *  なお、コメントアウト記号はプラグインパラメータから自由に変更可能です。
 		 *  「%」はあくまでデフォルト値です。
+		 *
+		 *  コメント行はゲームに取り込まれませんが、テキストからは消えません。
+		 *  Frame2Text で取り出したり、反映結果をテキストに書き戻したりしても、元の位置に
+		 *  残ります（ゲームに無い行なので、元のテキストを見て書き戻しています）。
+		 *  ただし、その周りの内容がゲーム側で大きく書き換わったときは位置がずれることが
+		 *  あります。そのときはファイル名を挙げて知らせます。
 		 *
 		 *
 		 * ◆ 見出しについて（Version 2.3.0以降）
@@ -12425,27 +12501,26 @@ function requireText2Frame () {
 		      if (!F2T || !F2T.buildPullText) {
 		        return { mode: 'off', reason: '書き戻しには Frame2Text プラグインが必要です。同じプロジェクトに導入してください。 / write-back requires the Frame2Text plugin' }
 		      }
-		      // コメントアウト行はコンパイル前に捨てられる(eraseCommentOutLines)ため、
-		      // コマンド列から作り直す書き戻しでは復元できない。消すくらいなら書き戻さない。
-		      const commentRe = new RegExp('^ *' + Laurus.Text2Frame.CommentOutChar, 'm');
-		      if (commentRe.test(String(scenario_text))) {
-		        return { mode: 'off', reason: 'コメント行(' + Laurus.Text2Frame.CommentOutChar + ')があるため書き戻しを見送りました。消えてしまうためです。残したいメモは <comment> を使ってください。 / skipped write-back to preserve comment lines' }
-		      }
+		      // コメントアウト行(既定は %)はコンパイル前に捨てられる(eraseCommentOutLines)が、
+		      // 書き戻しは元テキストを持っているので buildPullText が元の位置へ戻す。見送りは不要。
 		      return { mode: mode === 'always' ? 'always' : 'onConflict', F2T }
 		    };
 
 		    // コマンド列を、いま反映したテキストの front matter を引き継いだテキストにする。
 		    // タグの言語・既定タグの省略は Frame2Text 側の設定に従う(取り出しと同じ見た目にするため)。
 		    // 省略の指定は渡さない: decompile が Laurus.Frame2Text.OmitDefaultTags へ落とす。
+		    // scenario_text を渡すので、コメント行(%)は buildPullText が元の位置へ戻す。
+		    // 戻り値: { text, approximate }。approximate は位置があやしいコメントの件数。
 		    const renderMergedText = function (F2T, commands, scenario_text) {
 		      const list = commands.slice();
 		      if (!list.length || list[list.length - 1].code !== 0) list.push(getCommandBottomEvent());
-		      return F2T.buildPullText({
+		      const built = F2T.buildPullText({
 		        list,
 		        strategy: 'overwrite',
 		        existingText: scenario_text,
 		        englishTag: String(Laurus.Frame2Text && Laurus.Frame2Text.EnglishTag) !== 'false'
-		      }).text
+		      });
+		      return { text: built.text, approximate: built.approximate || 0 }
 		    };
 
 		    /* 反映結果をテキストへ書き戻す。ゲームを書く前に呼ぶこと(書けなければゲームを触らない)。
@@ -12457,15 +12532,22 @@ function requireText2Frame () {
 		      const fsLib = require$$1$1;
 		      let text;
 		      let baseText;
+		      let approximate = 0;
 		      try {
-		        text = renderMergedText(plan.F2T, merged.commands, scenario_text);
+		        const built = renderMergedText(plan.F2T, merged.commands, scenario_text);
+		        text = built.text;
+		        approximate = built.approximate;
 		        // 祖先はゲームに書いたほう。テキスト(目印つき)を祖先にすると次の 3-way が目印を再マージする。
 		        baseText = merged.commandsOurs === merged.commands
 		          ? text
-		          : renderMergedText(plan.F2T, merged.commandsOurs, scenario_text);
+		          : renderMergedText(plan.F2T, merged.commandsOurs, scenario_text).text;
 		      } catch (e) {
 		        addWarning('書き戻しのテキスト生成に失敗しました: ' + ((e && e.message) || e) + ' / failed to render write-back text');
 		        return { written: false, failed: true }
+		      }
+		      if (approximate > 0) {
+		        addWarning('コメント行 ' + approximate + '件は周りが大きく変わったため、位置がずれているかもしれません。 / ' +
+		          approximate + ' comment line(s) may have moved: the surrounding text changed');
 		      }
 		      if (text === scenario_text) return { written: false, unchanged: true, baseText }
 		      try {
@@ -12481,7 +12563,7 @@ function requireText2Frame () {
 		    /* MERGE 反映の本体。テキストを先に書き、書けたときだけゲームには目印なしの版を書く。
 		     * 書けなかったときは中断する(ゲームに ours だけ入ってテキスト側の版が消えるのを防ぐ)。 */
 		    const mergeWithWriteBack = function (existing_events, event_command_list, textPath, explicitBasePath, scenario_text) {
-		      const plan = planWriteBack(scenario_text);
+		      const plan = planWriteBack();
 		      if (plan.reason) addWarning(plan.reason);
 		      const merged = resolveMergeCommands(existing_events, event_command_list, textPath, explicitBasePath, plan.mode !== 'off');
 		      const wb = writeBackMergedText(plan, merged, textPath, scenario_text);
@@ -12690,14 +12772,16 @@ function requireText2Frame () {
 		      return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
 		    };
 
+		    /* 戻り値の header は見出しブロックそのもの(--- から --- まで、末尾の改行こみ)。
+		     * 本文だけを差し替えて元に戻すために使う(見出しの中身は触らない)。 */
 		    const parseFrontMatter = function (text) {
 		      const normalized = uniformNewLineCode(text);
 		      if (normalized.indexOf('---\n') !== 0) {
-		        return { meta: {}, body: text }
+		        return { meta: {}, body: text, header: '' }
 		      }
 		      const endIndex = normalized.indexOf('\n---\n', 4);
 		      if (endIndex < 0) {
-		        return { meta: {}, body: text }
+		        return { meta: {}, body: text, header: '' }
 		      }
 
 		      const header = normalized.slice(4, endIndex);
@@ -12713,7 +12797,7 @@ function requireText2Frame () {
 		        const unquoted = raw.replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1');
 		        meta[key] = unquoted;
 		      });
-		      return { meta, body }
+		      return { meta, body, header: normalized.slice(0, endIndex + 5) }
 		    };
 
 		    /* コメントアウト行を削除する関数 */
@@ -12724,6 +12808,96 @@ function requireText2Frame () {
 		        .split('\n')
 		        .filter((x) => !x.match(re))
 		        .join('\n')
+		    };
+
+		    /* eraseCommentOutLines の対。コマンド列から作り直した本文へ、元のコメント行を戻す。
+		     *
+		     * コメント行は compile 対象外なので、どこへ入れても取り込み結果は変わらない。
+		     * 賭けているのは位置だけで、内容が消えることはない。ここが安全の根拠。
+		     *
+		     * 元の本文からコメントを抜いた列(= compile が見たもの)と、作り直した本文とを行 LCS で
+		     * 対応付け、各コメントを次の規則で置く。順番に意味がある:
+		     *   1. 元の「直後の行」が生きていれば、その手前。% は続く内容へのメモとして書かれる
+		     *   2. 直後の行が消えていれば、直前の生きている行のすぐ後ろ。消えた行の代わりに入った
+		     *      塊の先頭になる。ここを「次に残っている行の手前」にすると差し替わった内容の
+		     *      後ろへ落ち、実測で位置一致が 99.9% -> 71.5% まで下がる
+		     *   3. どちらも無ければ本文の先頭
+		     *
+		     * 戻り値: { text, approximate }。approximate は「手掛かりが1つも残っていなかった」件数。
+		     * 呼び出し側が警告に使う。実データでは 0 件で、そこまで壊れるのは稀。 */
+		    const COMMENT_RESTORE_MAX_CELLS = 4000000;
+		    const restoreCommentOutLines = function (originalBody, regeneratedBody, commentOutChar) {
+		      const original = String(originalBody === undefined || originalBody === null ? '' : originalBody);
+		      const regenerated = String(regeneratedBody === undefined || regeneratedBody === null ? '' : regeneratedBody);
+		      // compile が落とす行と揃えること。判定がずれると戻す行と落ちる行が食い違う。
+		      // 省略時はプラグインパラメータ(Frame2Text から呼ぶときは指定できないため)。
+		      const re = new RegExp('^ *' + (commentOutChar || Laurus.Text2Frame.CommentOutChar));
+		      const origLines = uniformNewLineCode(original).split('\n');
+		      const notes = [];
+		      const stripped = [];
+		      origLines.forEach(function (line) {
+		        if (re.test(line)) notes.push({ at: stripped.length, text: line });
+		        else stripped.push(line);
+		      });
+		      if (notes.length === 0) return { text: regenerated, approximate: 0 }
+
+		      const regen = uniformNewLineCode(regenerated).split('\n');
+		      const m = stripped.length;
+		      const n = regen.length;
+		      // 対応付けをあきらめる大きさ。実データは最大 727 行なので通常は届かない。
+		      if ((m + 1) * (n + 1) > COMMENT_RESTORE_MAX_CELLS) {
+		        return {
+		          text: notes.map(function (nt) { return nt.text }).concat(regen).join('\n'),
+		          approximate: notes.length
+		        }
+		      }
+
+		      // stripped[i] が regen の何行目に対応するか(対応が無ければ -1)。
+		      const dp = [];
+		      for (let i = 0; i <= m; i++) dp.push(new Array(n + 1).fill(0));
+		      for (let i = 1; i <= m; i++) {
+		        for (let j = 1; j <= n; j++) {
+		          dp[i][j] = stripped[i - 1] === regen[j - 1]
+		            ? dp[i - 1][j - 1] + 1
+		            : Math.max(dp[i - 1][j], dp[i][j - 1]);
+		        }
+		      }
+		      const map = new Array(m).fill(-1);
+		      let x = m;
+		      let y = n;
+		      while (x > 0 && y > 0) {
+		        if (stripped[x - 1] === regen[y - 1]) { map[x - 1] = y - 1; x--; y--; } else if (dp[x - 1][y] >= dp[x][y - 1]) x--;
+		        else y--;
+		      }
+
+		      const inserts = {};
+		      let approximate = 0;
+		      notes.forEach(function (nt) {
+		        let pos = null;
+		        if (nt.at < m && map[nt.at] >= 0) {
+		          // 1. 直後の行が生きている
+		          pos = map[nt.at];
+		        } else {
+		          // 2. 直後の行は消えた。直前の生きている行のすぐ後ろ = 差し替わった塊の先頭。
+		          for (let k = nt.at - 1; k >= 0; k--) {
+		            if (map[k] >= 0) { pos = map[k] + 1; break }
+		          }
+		        }
+		        /* 3. 手掛かりが1つも残っていない。あやしいと数えるのはここだけ。
+		         * 2 は「消えた行の代わりに入ったものの手前」で、実測では狙いどおりに着地する。
+		         * ここを「アンカーが空行だったら」まで広げると、実データで 1696 中 1124 件が
+		         * 警告になり報告が使い物にならなくなる(タグ行の書式移行で 2 に落ちるため)。 */
+		        if (pos === null) { pos = 0; approximate++; }
+		        if (!inserts[pos]) inserts[pos] = [];
+		        inserts[pos].push(nt.text);
+		      });
+
+		      const out = [];
+		      for (let k = 0; k <= n; k++) {
+		        if (inserts[k]) Array.prototype.push.apply(out, inserts[k]);
+		        if (k < n) out.push(regen[k]);
+		      }
+		      return { text: out.join('\n'), approximate }
 		    };
 
 		    const getValidNumberOrDefault = function (value, defaultValue = 0) {
@@ -18515,6 +18689,12 @@ function requireText2Frame () {
 		          // 取り出しが書いたテキストは自分の書き込み。反映に跳ね返らせない。
 		          guard.record(outPath, r.text);
 		          console.log('[sync] 取り出し: ' + t.key + (r.conflicts ? ' (衝突 ' + r.conflicts + '件)' : ''));
+		          // コメント行(%)は元の位置へ戻すが、周りが大きく変わると位置があやしくなる。
+		          if (r.approximate) {
+		            console.warn('[sync] コメント行 ' + r.approximate + '件の位置があやしくなりました(消えてはいません): ' + t.key);
+		          }
+		          const pullWarnings = r.warnings || [];
+		          pullWarnings.forEach(function (w) { console.warn('[sync] ' + t.key + ': ' + w); });
 		        });
 		      };
 
@@ -18614,7 +18794,7 @@ function requireText2Frame () {
 		      return true
 		    };
 
-		    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId, getMessageDefaults, startSyncWatch, CONFLICT_MARKERS, hasConflictMarker };
+		    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId, getMessageDefaults, startSyncWatch, restoreCommentOutLines, parseFrontMatter, CONFLICT_MARKERS, hasConflictMarker };
 		    // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
 		    // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
 		    // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。

@@ -202,20 +202,58 @@ describe('write-back after merge', function () {
     expect(texts(mapList())).to.eql(['テキストの版'])
   })
 
-  /* コメント行はコンパイル前に捨てられるので、コマンド列から作り直す書き戻しでは復元できない。
-   * 消すくらいなら書き戻さない。この判定を落とすと、% を書いた人のメモが黙って消える。 */
-  it('skips the write-back rather than dropping comment lines', function () {
+  /* コメント行(%)は compile が落とすのでコマンド列に残らないが、書き戻しは元テキストを
+   * 持っているので元の位置へ戻す。従来はこのファイルの書き戻しごと見送っていた。 */
+  it('keeps comment lines instead of skipping the write-back', function () {
     fs.writeFileSync(basePath(), header + '\nHello\n')
     writeMap(msg('ゲームの版'))
     fs.writeFileSync(textPath, header + '\n% 一幕の書き出し\nテキストの版\n')
 
     const res = push('always')
 
+    expect(res.writtenBack).to.equal(true)
+    const text = readText()
+    expect(text).to.contain('% 一幕の書き出し')
+    // メモは元どおり「テキストの版」の手前に戻る。
+    const lines = text.split('\n')
+    expect(lines[lines.indexOf('% 一幕の書き出し') + 1]).to.equal('テキストの版')
+    // 書き戻せたので目印はテキストだけ。ゲームは自分の版のまま遊べる。
+    expect(text).to.contain(MARKER)
+    expect(markers(mapList())).to.have.lengthOf(0)
+    // コメント行はゲームには入らない(コマンドにならないため)。
+    expect(JSON.stringify(mapList())).to.not.contain('一幕の書き出し')
+  })
+
+  it('keeps comment lines when nothing conflicts, too', function () {
+    fs.writeFileSync(basePath(), header + '\nHello\n')
+    writeMap(msg('Hello'))
+    fs.writeFileSync(textPath, header + '\n% 一幕: 酒場\nテキストの版\n% おわり\n')
+
+    const res = push('always')
+
+    expect(res.ok).to.equal(true)
+    expect(res.conflicts).to.equal(0)
+    const text = readText()
+    expect(text).to.contain('% 一幕: 酒場')
+    expect(text).to.contain('% おわり')
+    expect(texts(mapList())).to.eql(['テキストの版'])
+  })
+
+  /* 復元したうえで元と同じなら書かない。ここが崩れると、% のあるファイルだけ
+   * 毎回 mtime が動き、監視が拾って回り続ける。 */
+  it('does not rewrite an unchanged file that has comment lines', function () {
+    fs.writeFileSync(basePath(), header + '\nHello\n')
+    writeMap(msg('Hello'))
+    fs.writeFileSync(textPath, header + '\n% 一幕: 酒場\nテキストの版\n')
+    push('always')
+    const settled = readText()
+    const before = fs.statSync(textPath)
+
+    const res = push('always')
+
     expect(res.writtenBack).to.equal(false)
-    expect(readText()).to.contain('% 一幕の書き出し')
-    expect(res.warnings.join('\n')).to.contain('コメント行')
-    // 書き戻せないので、テキスト側の版が消えないよう目印はゲームに入る(従来どおり)。
-    expect(markers(mapList())).to.have.lengthOf(3)
+    expect(fs.statSync(textPath).mtimeMs).to.equal(before.mtimeMs)
+    expect(readText()).to.equal(settled)
   })
 
   /* ゲーム内(NW.js)では require が効かないので、Frame2Text が無ければ書き戻せない。
