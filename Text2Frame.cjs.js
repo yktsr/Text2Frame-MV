@@ -7918,7 +7918,7 @@ function requireText2Frame () {
 		 *
 		 * @param IsOverwrite
 		 * @text 反映のしかた(既定)
-		 * @desc プラグインコマンドで反映のしかたを省略したときに使われます。merge(統合)はツクールで加えた編集を残します。旧設定のtrue(全上書き)/false(末尾に追記)もそのまま使えます。
+		 * @desc プラグインコマンドで反映のしかたを省略したときに使われます。merge(統合)はツクールで加えた編集を残します。
 		 * @default merge
 		 * @type select
 		 * @option 統合 / merge
@@ -7927,6 +7927,10 @@ function requireText2Frame () {
 		 * @value overwrite
 		 * @option 末尾に追記 / add
 		 * @value add
+		 * @option 【旧設定】上書きする(= overwrite)
+		 * @value true
+		 * @option 【旧設定】上書きしない(= add)
+		 * @value false
 		 *
 		 * @param Comment Out Char
 		 * @text コメントアウト記号
