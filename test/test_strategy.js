@@ -23,6 +23,12 @@ describe('resolveStrategy', function () {
     expect(resolveStrategy('merge3')).to.equal(null)
     expect(resolveStrategy('sync')).to.equal(null)
   })
+
+  /* add(末尾に追記)は単発の IMPORT コマンドだけのもの。ここを通る一括反映・CLI・
+   * front matter の strategy: に出すと、走査のたびに内容が二重になる。 */
+  it('does not accept add, which is only for the single-file import command', function () {
+    expect(resolveStrategy('add')).to.equal(null)
+  })
 })
 
 describe('merge strategy auto behavior (via applyTextFile)', function () {

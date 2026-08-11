@@ -43,7 +43,7 @@ const gameMap = {
 // existing text already translated to Hello
 const existingText = '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n\nHello\n'
 
-describe('Frame2Text plugin MERGE_EVENT_TO_MESSAGE (pull without ancestor)', function () {
+describe('Frame2Text plugin EXPORT_EVENT_TO_MESSAGE with strategy=merge (pull without ancestor)', function () {
   let written
   beforeEach(function () {
     written = null
@@ -67,8 +67,8 @@ describe('Frame2Text plugin MERGE_EVENT_TO_MESSAGE (pull without ancestor)', fun
   it('no ancestor → overwrites text from game (overlay removed; translation not preserved)', function () {
     // overlay 廃止により、祖先が無い pull はゲーム内容でテキストを生成する。
     // 翻訳を保つには先に export で祖先を作る必要がある(3-way は test_sync_controller で担保)。
-    Game_Interpreter.prototype.pluginCommandFrame2Text('MERGE_EVENT_TO_MESSAGE',
-      ['text', 'message.txt', '1', '1', '1', '', ''])
+    Game_Interpreter.prototype.pluginCommandFrame2Text('EXPORT_EVENT_TO_MESSAGE',
+      ['text', 'message.txt', '1', '1', '1', 'merge', '', ''])
     expect(written).to.not.equal(null)
     expect(written.indexOf('こんにちは')).to.be.greaterThan(-1)
     expect(written.indexOf('Hello')).to.equal(-1)

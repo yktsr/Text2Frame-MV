@@ -122,6 +122,36 @@ describe('omitting message tags that match the defaults', function () {
     expectRoundTrip(list, { omitDefaults: false })
   })
 
+  /* buildPullText の統合(merge)は Text2Frame.applyMergePull を経由して本文を作る。
+   * 上書きの経路だけに option を通すと、VS Code の「ゲームから取り出す」(既定=統合)で
+   * 設定が効かないという分かりにくい壊れ方をする。両方の経路で効くことを確かめる。 */
+  describe('the option reaches both buildPullText strategies', function () {
+    const header = '---\nkind: common\ncommonEventId: 1\n---\n'
+    const list = msg('', 0, 0, 2, '', 'こんにちは').concat([bottom])
+    const full = '<Face: (0)><Background: Window><WindowPosition: Bottom>'
+    const pull = function (strategy, omitDefaults, existingText) {
+      return frame2text.buildPullText({
+        list,
+        strategy,
+        omitDefaults,
+        existingText: existingText || '',
+        baseText: existingText || '',
+        fallbackHeader: header
+      }).text
+    }
+
+    it('omits on both when on', function () {
+      expect(pull('overwrite', true), 'overwrite').to.not.contain(full)
+      // 既存テキストと祖先があってはじめて 3-way に入る(無ければ素の取り出しと同じ経路)。
+      expect(pull('merge', true, header + 'こんにちは\n'), 'merge').to.not.contain(full)
+    })
+
+    it('keeps every tag on both when off', function () {
+      expect(pull('overwrite', false), 'overwrite').to.contain(full)
+      expect(pull('merge', false, header + full + '\nこんにちは\n'), 'merge').to.contain(full)
+    })
+  })
+
   /* 省略は見た目だけの話で、取り込んだ結果は変わってはいけない。
    * 手元のテストデータ全件で、省略ON/OFF が同じコマンド列に戻ることを確かめる。 */
   it('produces the same commands with and without omission, across all fixtures', function () {
