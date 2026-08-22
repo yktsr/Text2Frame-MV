@@ -31,7 +31,7 @@ globalThis.PluginManager = {
 require('../Text2Frame.js')
 
 describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
-  const textRoot = path.resolve('/virt/text/ja')
+  const textRoot = path.resolve('/virt/text')
   const eventPage = function (list) { return { list } }
   const msg = function (line) {
     return [
@@ -48,7 +48,7 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     ]
   }
   const textFor = function (eventId) {
-    return '---\nkind: event\nmapId: 1\neventId: ' + eventId + '\npageId: 1\nlocale: ja\n---\n\nBonjour ' + eventId + '\n'
+    return '---\nkind: event\nmapId: 1\neventId: ' + eventId + '\npageId: 1\n---\n\nBonjour ' + eventId + '\n'
   }
 
   // 既定は「祖先なし = TOFU 警告が全ファイルで出る」状況。個別テストで上書きする。
@@ -88,12 +88,12 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     }
   })
 
-  // 実引数の並びはよく変える順に [Strategy, Watch, WriteBack, Locale, TextFolder, DataFolder]。
+  // 実引数の並びはよく変える順に [Strategy, WriteBack, TextFolder]。
   // テストは呼びやすさ優先で root を先に取り、ここで実際の並びへ組み替える
-  // (位置がずれれば全件落ちる)。監視は既定の off のまま。
+  // (位置がずれれば全件落ちる)。
   const runBatch = function (root, strategy, writeBack) {
     Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-      [strategy || 'merge', 'off', writeBack || 'off', 'ja', root || textRoot])
+      [strategy || 'merge', writeBack || 'off', root || textRoot])
   }
   /* 画面幅(半角55)を超えるメッセージは addMessage が自動で折り返すため、
    * 1つの文章が複数の $gameMessage 行にまたがる。行ごとではなく通しの文字列から探し、
@@ -119,10 +119,9 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
 
   it('takes the strategy as its 1st argument, like the batch export does', function () {
     Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-      ['overwrite', 'off', 'off', 'ja', textRoot])
+      ['overwrite', 'off', textRoot])
 
-    // 1番目が反映のしかた、2番目が見張りかた、3番目が書き戻し、4番目が言語、
-    // 5番目が反映元フォルダとして読まれている。
+    // 1番目が反映方法、2番目が書き戻し、3番目が反映元フォルダとして読まれている。
     // (位置が入れ替わっていると 'overwrite' や 'off' をフォルダ名として走査し 0 件になる)
     expect(line('反映完了')).to.contain('成功 3件')
     expect(line('反映元')).to.contain(textRoot)
@@ -170,7 +169,7 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     entries = ['e1.txt']
     readText = function (s) {
       if (s.indexOf('.t2f-base') !== -1) return '---\nkind: event\n---\n\nHello\n'
-      if (/e1\.txt$/.test(s)) return '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\nlocale: ja\n---\n\nHello\n\nBonjour\n'
+      if (/e1\.txt$/.test(s)) return '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n\nHello\n\nBonjour\n'
       if (s.indexOf('Map001') !== -1) return JSON.stringify(conflictMap)
       throw new Error('unexpected read: ' + s)
     }
@@ -182,15 +181,15 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     expect(line('ツクールで目印3行を消して')).to.be.a('string')
   })
 
-  /* add(末尾に追記)は単発の IMPORT コマンドだけのもの。一括で通すと走査のたびに
-   * 内容が二重になるので、front matter に書かれていても既定へ落とす。 */
-  it('ignores strategy: add in front matter and falls back to the default', function () {
+  /* add(末尾に追記)は単発の取り込みと同じく一括反映でも使える(提案2 の一貫性)。
+   * 冪等ではないので、流すたびにイベント末尾へ積み上がる。 */
+  it('honors strategy: add in front matter, appending on every run', function () {
     entries = ['e1.txt']
     let writtenMap = null
     readText = function (s) {
       if (s.indexOf('.t2f-base') !== -1) throw new Error('no ancestor')
       if (/e1\.txt$/.test(s)) {
-        return '---\nkind: event\nstrategy: add\nmapId: 1\neventId: 1\npageId: 1\nlocale: ja\n---\n\nBonjour 1\n'
+        return '---\nkind: event\nstrategy: add\nmapId: 1\neventId: 1\npageId: 1\n---\n\nBonjour 1\n'
       }
       if (s.indexOf('Map001') !== -1) return writtenMap || JSON.stringify(mapData)
       throw new Error('unexpected read: ' + s)
@@ -206,11 +205,11 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     }
 
     runBatch()
-    expect(lines()).to.eql(['Bonjour 1'])
+    expect(lines()).to.eql(['Hello 1', 'Bonjour 1'])
 
-    // 2回目でも増えない(add なら 'Bonjour 1' が2つ並ぶ)。
+    // add は冪等でないので、2回流すと末尾にもう一度積まれる。
     runBatch()
-    expect(lines()).to.eql(['Bonjour 1'])
+    expect(lines()).to.eql(['Hello 1', 'Bonjour 1', 'Bonjour 1'])
   })
 
   it('names each failing file with its reason', function () {
@@ -218,7 +217,7 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     const prev = readText
     readText = function (s) {
       // kind はあるが eventId が無い => applyTextFile がエラーを返す
-      if (/broken\.txt$/.test(s)) return '---\nkind: event\nmapId: 1\nlocale: ja\n---\n\nどこへ？\n'
+      if (/broken\.txt$/.test(s)) return '---\nkind: event\nmapId: 1\n---\n\nどこへ？\n'
       return prev(s)
     }
 
@@ -260,7 +259,7 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     const prev = readText
     readText = function (s) {
       if (/e1\.txt$/.test(s)) {
-        return '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\nlocale: ja\n---\n\n' +
+        return '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n\n' +
           '<comment>\n=== テキストの変更 / from text ===\n</comment>\n\nBonjour\n'
       }
       return prev(s)
@@ -307,5 +306,45 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     entries = []
     runBatch()
     expect(line('テキストが見つかりませんでした')).to.contain(textRoot)
+  })
+  /* 提案2 の要求そのもの。単一の取り込みと一括反映の差は「宛先の指し方」だけで、
+   * 反映方法も既定も同じにする。1件だけの一括反映は単一の取り込みと同じ結果になる。 */
+  describe('consistency with the single-file import', function () {
+    let written
+    const listOf = function () {
+      return JSON.parse(written).events[1].pages[0].list
+        .filter(function (c) { return c.code === 401 })
+        .map(function (c) { return c.parameters[0] })
+    }
+
+    beforeEach(function () {
+      written = null
+      entries = ['e1.txt']
+      readText = function (s) {
+        if (s.indexOf('.t2f-base') !== -1) throw new Error('no ancestor')
+        if (/e1\.txt$/.test(s)) return textFor(1)
+        if (s.indexOf('Map001') !== -1) return JSON.stringify(mapData)
+        throw new Error('unexpected read: ' + s)
+      }
+      fs.writeFileSync.restore()
+      sinon.stub(fs, 'writeFileSync').callsFake(function (p, data) {
+        if (String(p).indexOf('Map001') !== -1) written = String(data)
+      })
+    })
+
+    it('a one-file batch import with the defaults matches the single import', function () {
+      // 単一の取り込み(反映方法は省略 = プラグインパラメータの既定)。
+      Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
+        [textRoot, 'e1.txt', '1', '1', '1'])
+      const single = listOf()
+
+      written = null
+      // 一括反映も反映方法を省略する。どちらも既定の add(末尾に追記)になる。
+      Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
+        [undefined, 'off', textRoot])
+
+      expect(single).to.eql(['Hello 1', 'Bonjour 1'])
+      expect(listOf()).to.eql(single)
+    })
   })
 })

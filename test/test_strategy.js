@@ -24,10 +24,10 @@ describe('resolveStrategy', function () {
     expect(resolveStrategy('sync')).to.equal(null)
   })
 
-  /* add(末尾に追記)は単発の IMPORT コマンドだけのもの。ここを通る一括反映・CLI・
-   * front matter の strategy: に出すと、走査のたびに内容が二重になる。 */
-  it('does not accept add, which is only for the single-file import command', function () {
-    expect(resolveStrategy('add')).to.equal(null)
+  /* add(末尾に追記)は一括反映の既定でもある(単発の取り込みと揃えるため)。
+   * 冪等ではないので、繰り返し流す同期監視は START_DATA_SYNC 側で merge を既定にしてある。 */
+  it('accepts add, which the batch import uses as its default', function () {
+    expect(resolveStrategy('add')).to.eql({ strategy: 'add' })
   })
 })
 

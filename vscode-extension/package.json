@@ -206,15 +206,10 @@
           "default": true,
           "description": "テキスト書き出し時、既定値と同じ顔・背景・位置のタグを書かない(3つとも既定ならタグ行ごと省く)。省いた所は反映時に既定値が補われるため、ゲームの見た目は変わりません。 / When exporting (data -> text), omit face/background/position tags that match the defaults (the whole tag line disappears when all three do). Apply fills the defaults back in, so the game is unchanged."
         },
-        "text2frame.locale": {
-          "type": "string",
-          "default": "ja",
-          "description": "作業する言語(text/<言語>/ フォルダ)。例: ja / en。「ゲームに反映」「ゲームから書き出し」「言語を追加」はこの言語フォルダを対象にします。 / Working language (the text/<language>/ folder), e.g. ja / en. Apply / Pull / Add-a-language all operate on this language folder."
-        },
         "text2frame.textBaseDir": {
           "type": "string",
           "default": "text",
-          "description": "テキストファイルの保存されているディレクトリを指定する。 / Base directory (relative to workspace) for text files."
+          "description": "テキストファイルの保存されているディレクトリを指定する。「ゲームに反映」「ゲームから取り出す」はこのディレクトリを対象にします。 / Base directory (relative to workspace) for text files. Apply / Pull operate on this directory."
         },
         "text2frame.dataDir": {
           "type": "string",

@@ -34,7 +34,7 @@ require('../Frame2Text.js')
 
 /* 監視は実際の fs.watch とタイマーで動くので、ここだけは本物のファイルを使う。
  * デバウンス(250ms)ぶん待つ必要があるため、待ち時間は余裕をみて取る。 */
-describe('sync watch (the batch commands\' watch option) / STOP_SYNC_WATCH', function () {
+describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
   this.timeout(10000)
   const SETTLE = 900
   const ARM = 300
@@ -51,7 +51,7 @@ describe('sync watch (the batch commands\' watch option) / STOP_SYNC_WATCH', fun
   }
   const bottom = { code: 0, indent: 0, parameters: [] }
   const mapPath = function () { return path.join(tmp, 'data', 'Map001.json') }
-  const textPath = function (key) { return path.join(tmp, 'text', 'ja', key + '.txt') }
+  const textPath = function (key) { return path.join(tmp, 'text', key + '.txt') }
   const ev1 = 'map001_event001_page1'
   const readIf = function (p) { try { return fs.readFileSync(p, 'utf8') } catch (e) { return '' } }
   const texts = function () {
@@ -60,20 +60,13 @@ describe('sync watch (the batch commands\' watch option) / STOP_SYNC_WATCH', fun
   }
   const wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms) }) }
 
-  /* 監視は単独のコマンドではなく、一括反映・一括取り出しの「見張る」オプション。
-   * 引数は [Strategy, Watch, WriteBack, Locale, TextFolder, DataFolder]。 */
+  /* 同期は単独のコマンド。引数は [Direction, Strategy, WriteBack, TextFolder, DataFolder]。
+   * 初回に一括で揃えてから見張りに入る。 */
   const start = function (strategy, direction, writeBack) {
     shown.length = 0
-    Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-      [strategy || 'merge', direction || 'both', writeBack || 'off', 'ja',
+    Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC',
+      [direction || 'both', strategy || 'merge', writeBack || 'off',
         path.join(tmp, 'text'), path.join(tmp, 'data')])
-    return shown.slice()
-  }
-  // 取り出し側の入口(Frame2Text)。[Strategy, Watch, Locale, TextBase, DataFolder]。
-  const startFromExport = function (direction) {
-    shown.length = 0
-    Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-      ['merge', direction || 'pull', 'ja', path.join(tmp, 'text'), path.join(tmp, 'data')])
     return shown.slice()
   }
   /* fs.watch(macOS の FSEvents)は張った直後の変更を取りこぼす。
@@ -85,7 +78,7 @@ describe('sync watch (the batch commands\' watch option) / STOP_SYNC_WATCH', fun
   }
   const stop = function () {
     shown.length = 0
-    Game_Interpreter.prototype.pluginCommandText2Frame('STOP_SYNC_WATCH', [])
+    Game_Interpreter.prototype.pluginCommandText2Frame('STOP_DATA_SYNC', [])
     return shown.slice()
   }
   /* 画面幅(半角55)を超えるメッセージは addMessage が自動で折り返すので、
@@ -119,11 +112,11 @@ describe('sync watch (the batch commands\' watch option) / STOP_SYNC_WATCH', fun
     process.mainModule = { filename: path.join(tmp, 'game.js') }
     // 監視の前に一度取り出して、見出し付きテキストと祖先をそろえておく(実際の使い方と同じ)。
     Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-      ['merge', 'off', 'ja', path.join(tmp, 'text'), path.join(tmp, 'data')])
+      ['merge', path.join(tmp, 'text'), path.join(tmp, 'data')])
   })
 
   afterEach(function () {
-    try { Game_Interpreter.prototype.pluginCommandText2Frame('STOP_SYNC_WATCH', []) } catch (e) { /* ignore */ }
+    try { Game_Interpreter.prototype.pluginCommandText2Frame('STOP_DATA_SYNC', []) } catch (e) { /* ignore */ }
     process.mainModule = mainModule
     process.chdir(cwd)
     fs.rmSync(tmp, { recursive: true, force: true })
@@ -132,19 +125,19 @@ describe('sync watch (the batch commands\' watch option) / STOP_SYNC_WATCH', fun
   it('reports what it is watching and leaves the watcher running', function () {
     const out = start()
 
-    expect(line(out, '同期監視を開始しました')).to.contain('both')
+    expect(line(out, '同期を開始しました')).to.contain('both')
     expect(line(out, '監視中')).to.contain('text')
     expect(line(out, '監視中')).to.contain('data')
   })
 
   // 二重に監視すると同じ変更を2回処理する。開始は冪等にする。
   it('does not start a second watcher while one is running', function () {
-    expect(line(start(), '同期監視を開始しました')).to.be.a('string')
+    expect(line(start(), '同期を開始しました')).to.be.a('string')
 
     const out = start()
 
     expect(line(out, 'すでに動いています')).to.be.a('string')
-    expect(line(out, '同期監視を開始しました')).to.equal(undefined)
+    expect(line(out, '同期を開始しました')).to.equal(undefined)
     // 1回止めれば止まる(2つ動いていたら1回目の停止で終わらない)。
     expect(line(stop(), '停止しました')).to.be.a('string')
     expect(line(stop(), '動いていません')).to.be.a('string')
@@ -257,24 +250,26 @@ describe('sync watch (the batch commands\' watch option) / STOP_SYNC_WATCH', fun
     expect(readIf(textPath(ev1))).to.not.contain('ゲームだけの変更')
   })
 
-  it('rejects an unknown strategy or watch value instead of silently picking one', function () {
+  it('rejects an unknown direction or strategy instead of silently picking one', function () {
     expect(function () {
-      Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', ['rebase', 'both'])
+      Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC', ['sideways'])
+    }).to.throw(/Unknown direction/)
+    expect(function () {
+      Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC', ['both', 'rebase'])
     }).to.throw(/Unknown strategy/)
     expect(function () {
-      Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', ['merge', 'sideways'])
-    }).to.throw(/Unknown watch/)
-    expect(function () {
-      Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', ['merge', 'sideways'])
-    }).to.throw(/Unknown watch/)
+      Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', ['rebase'])
+    }).to.throw(/Unknown strategy/)
   })
 
-  // 既定は見張らない。一括だけ実行したつもりが監視が残ると、テストプレイの間ずっと
-  // ファイルを書き続けることになる。
-  it('does not watch unless asked to', function () {
-    const out = start('merge', 'off')
+  /* 一括反映は見張らない。既定が add(冪等でない)になったので、一括のオプションとして
+   * 見張ると同じテキストを繰り返し積み上げてしまう。だから同期は別コマンドにしてある。 */
+  it('is not started by the batch import', function () {
+    shown.length = 0
+    Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
+      ['merge', 'off', path.join(tmp, 'text')])
 
-    expect(line(out, '同期監視を開始しました')).to.equal(undefined)
+    expect(line(shown.slice(), '同期を開始しました')).to.equal(undefined)
     expect(line(stop(), '動いていません')).to.be.a('string')
   })
 
@@ -288,10 +283,10 @@ describe('sync watch (the batch commands\' watch option) / STOP_SYNC_WATCH', fun
     expect(texts()).to.eql(['先に直してあった'])
   })
 
-  // 取り出し側から始めても同じ監視。止めるコマンドは Text2Frame のひとつだけ。
-  it('starts from the batch export too, and the same stop command stops it', async function () {
-    const out = startFromExport('pull')
-    expect(line(out, '同期監視を開始しました')).to.contain('pull')
+  // ゲーム→テキストだけの向きでも、同じコマンドで始めて同じコマンドで止まる。
+  it('honours direction=pull, and the same stop command stops it', async function () {
+    const out = start('merge', 'pull')
+    expect(line(out, '同期を開始しました')).to.contain('pull')
     await wait(ARM)
 
     const map = JSON.parse(readIf(mapPath()))
@@ -344,12 +339,12 @@ describe('sync watch (the batch commands\' watch option) / STOP_SYNC_WATCH', fun
   // ヘルプに書く名前は必ず case に入れる(一括コマンドで案内と実装がずれた前例がある)。
   it('works under the Japanese command aliases', function () {
     shown.length = 0
-    Game_Interpreter.prototype.pluginCommandText2Frame('一括反映',
-      ['merge', 'both', 'off', 'ja', path.join(tmp, 'text'), path.join(tmp, 'data')])
-    expect(line(shown.slice(), '同期監視を開始しました')).to.be.a('string')
+    Game_Interpreter.prototype.pluginCommandText2Frame('テキストとゲームの同期を開始',
+      ['both', 'merge', 'off', path.join(tmp, 'text'), path.join(tmp, 'data')])
+    expect(line(shown.slice(), '同期を開始しました')).to.be.a('string')
 
     shown.length = 0
-    Game_Interpreter.prototype.pluginCommandText2Frame('同期監視の停止', [])
+    Game_Interpreter.prototype.pluginCommandText2Frame('テキストとゲームの同期を停止', [])
     expect(line(shown.slice(), '停止しました')).to.be.a('string')
   })
 })

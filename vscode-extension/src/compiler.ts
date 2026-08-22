@@ -158,18 +158,32 @@ export function dataChangedExternally(context: vscode.ExtensionContext, dataPath
 
 /**
  * BASE snapshot storage for 3-way merge. The snapshot is the last-synced text
- * for a target, kept under .t2f-base/<locale>/<key>.txt (gitignored). It is the
+ * for a target, kept under .t2f-base/<key>.txt (gitignored). It is the
  * common ancestor: writer edits (current text) and dev edits (current JSON) are
  * merged against it.
+ *
+ * The key is the text file's path relative to the workspace root, so text/ and
+ * text_en/ keep separate ancestors even when they hold the same file names.
+ * Same rule as Text2Frame.deriveBaseId — change both together.
  */
-export function baseSnapshotPath(workspaceRoot: string, locale: string, key: string): string {
-    return path.join(workspaceRoot, '.t2f-base', locale, key + '.txt');
+export function snapshotKeyFor(workspaceRoot: string, textPath: string): string {
+    const abs = path.resolve(textPath);
+    const noExt = abs.slice(0, abs.length - path.extname(abs).length);
+    const rel = path.relative(path.resolve(workspaceRoot), noExt);
+    if (rel && !path.isAbsolute(rel) && rel.split(path.sep)[0] !== '..') {
+        return rel.split(path.sep).join('/');
+    }
+    // Outside the workspace: fall back to the containing folder name plus the file name.
+    return [path.basename(path.dirname(noExt)) || 'default', path.basename(noExt)].join('/');
 }
-export function hasBaseSnapshot(workspaceRoot: string, locale: string, key: string): boolean {
-    return fs.existsSync(baseSnapshotPath(workspaceRoot, locale, key));
+export function baseSnapshotPath(workspaceRoot: string, key: string): string {
+    return path.join(workspaceRoot, '.t2f-base', key + '.txt');
 }
-export function saveBaseSnapshot(workspaceRoot: string, locale: string, key: string, content: string): void {
-    const target = baseSnapshotPath(workspaceRoot, locale, key);
+export function hasBaseSnapshot(workspaceRoot: string, key: string): boolean {
+    return fs.existsSync(baseSnapshotPath(workspaceRoot, key));
+}
+export function saveBaseSnapshot(workspaceRoot: string, key: string, content: string): void {
+    const target = baseSnapshotPath(workspaceRoot, key);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, content, 'utf8');
 }

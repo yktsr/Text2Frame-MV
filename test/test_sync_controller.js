@@ -38,13 +38,13 @@ describe('t2f-sync controller', function () {
         { code: 0, indent: 0, parameters: [] }
       ] }
     ]))
-    opts = { root: tmp, dataDir: 'data', textDir: 'text', locale: 'ja', strategy: 'merge' }
+    opts = { root: tmp, dataDir: 'data', textDir: 'text', strategy: 'merge' }
   })
   afterEach(function () {
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }
   })
 
-  const evText = function () { return path.join(tmp, 'text', 'ja', 'map001_event001_page1.txt') }
+  const evText = function () { return path.join(tmp, 'text', 'map001_event001_page1.txt') }
   const mapList = function () {
     return JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8')).events[1].pages[0].list
   }
@@ -59,7 +59,7 @@ describe('t2f-sync controller', function () {
     expect(text).to.contain('kind: event')
     expect(text).to.contain('mapId: 1')
     expect(text).to.contain('Hello')
-    expect(fs.existsSync(path.join(tmp, '.t2f-base', 'ja', 'map001_event001_page1.txt'))).to.equal(true)
+    expect(fs.existsSync(path.join(tmp, '.t2f-base', 'text', 'map001_event001_page1.txt'))).to.equal(true)
   })
 
   it('push applies the text to the game and keeps dev structure under merge', function () {
@@ -98,7 +98,7 @@ describe('t2f-sync controller', function () {
   // ツクールで解決したあとの取り出しで同じ衝突がテキスト側に再発する。
   it('push with a conflict still advances .t2f-base to the text side', function () {
     sync.pullDataFile(path.join(tmp, 'data', 'Map001.json'), opts) // base := Hello
-    const basePath = path.join(tmp, '.t2f-base', 'ja', 'map001_event001_page1.txt')
+    const basePath = path.join(tmp, '.t2f-base', 'text', 'map001_event001_page1.txt')
     // Diverge both sides on the same line → genuine 3-way conflict.
     fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8').replace('Hello', 'Bonjour')) // theirs (text)
     const mapPath = path.join(tmp, 'data', 'Map001.json')
@@ -122,7 +122,7 @@ describe('t2f-sync controller', function () {
   it('pull with a conflict still advances .t2f-base to the game side', function () {
     const mapPath = path.join(tmp, 'data', 'Map001.json')
     sync.pullDataFile(mapPath, opts) // base := Hello
-    const basePath = path.join(tmp, '.t2f-base', 'ja', 'map001_event001_page1.txt')
+    const basePath = path.join(tmp, '.t2f-base', 'text', 'map001_event001_page1.txt')
     // Diverge both sides on the same line → conflict on pull.
     fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8').replace('Hello', 'Bonjour')) // theirs (text)
     const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
@@ -170,7 +170,7 @@ describe('t2f-sync controller', function () {
     const mapPath = path.join(tmp, 'data', 'Map001.json')
     sync.pullDataFile(mapPath, opts)
 
-    const basePath = path.join(tmp, '.t2f-base', 'ja', 'map001_event001_page1.txt')
+    const basePath = path.join(tmp, '.t2f-base', 'text', 'map001_event001_page1.txt')
     const gameOnly = fs.readFileSync(basePath, 'utf8')
     // テキストにだけ注釈を足してから取り出す(ゲームには入っていない内容)。
     fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8') + '\n<comment>\nテキスト側のメモ\n</comment>\n')
@@ -257,7 +257,7 @@ describe('t2f-sync controller', function () {
       expect(text).to.contain('テキストの版')
       expect(text).to.contain('ゲームの版')
       // 祖先に目印を取り込むと次回の 3-way が壊れるので進めない。
-      expect(fs.readFileSync(path.join(tmp, '.t2f-base', 'ja', 'map001_event001_page1.txt'), 'utf8'))
+      expect(fs.readFileSync(path.join(tmp, '.t2f-base', 'text', 'map001_event001_page1.txt'), 'utf8'))
         .to.not.contain('=== どちらかを残し')
 
       // テキストで目印3行と片方を消し、上書きで反映すれば三者が揃う。

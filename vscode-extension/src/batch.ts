@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor, baseSnapshotPath, hasBaseSnapshot } from './compiler';
+import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor, baseSnapshotPath, hasBaseSnapshot, snapshotKeyFor } from './compiler';
 import { exportToTextFile, mergePullToText, ExportTarget } from './exportText';
 import { writeBackAndRefreshBase } from './deploy';
 
 /**
- * Batch operations, scoped to the chosen language folder text/<language>/:
+ * Batch operations over the text folder (text/ by default, `text2frame.textBaseDir`):
  *   - ゲームに反映(すべて): push every text file into the game (safe merge).
  *   - ゲームから取り出す(すべて): pull the game into text, merging (keeps your edits).
  *   - 全部取り直す: pull the game into text, overwriting (discard edits).
@@ -24,48 +24,11 @@ function getOutput(): vscode.OutputChannel {
     return outputChannel;
 }
 
-function localeSetting(): string {
-    const c = vscode.workspace.getConfiguration('text2frame');
-    return c.get<string>('locale') || c.get<string>('targetLocale') || 'ja';
-}
 function textBaseSetting(): string {
     return vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text');
 }
 function strategySetting(): string {
     return vscode.workspace.getConfiguration('text2frame').get<string>('strategy', 'merge');
-}
-
-const LAST_LANG_KEY = 'text2frame.lastLanguage';
-
-/**
- * Ask which language folder to work on. Lists existing text/<lang>/ folders plus an option
- * to type a new language. Defaults to the last-used language, else the `locale` setting (ja).
- */
-async function languagePick(context: vscode.ExtensionContext, root: string, purpose: string): Promise<string | undefined> {
-    const base = path.join(root, textBaseSetting());
-    let existing: string[] = [];
-    if (fs.existsSync(base)) {
-        existing = fs.readdirSync(base, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
-    }
-    const def = context.workspaceState.get<string>(LAST_LANG_KEY) || localeSetting();
-    const ordered = [def, ...existing.filter((l) => l !== def)];
-    const NEW = '＋ 新しい言語を入力…';
-    const items: vscode.QuickPickItem[] = ordered.map((l) => ({ label: l, description: l === def ? '既定' : '' }));
-    items.push({ label: NEW });
-    const pick = await vscode.window.showQuickPick(items, { placeHolder: `言語を選択（${purpose}）` });
-    if (!pick) {
-        return undefined;
-    }
-    let lang = pick.label;
-    if (lang === NEW) {
-        const input = await vscode.window.showInputBox({ prompt: '言語コードを入力（例: en, zh, ko）', validateInput: (v) => (v && v.trim() ? undefined : '言語コードを入力してください') });
-        if (!input) {
-            return undefined;
-        }
-        lang = input.trim();
-    }
-    await context.workspaceState.update(LAST_LANG_KEY, lang);
-    return lang;
 }
 
 /** Recursively collect *.txt files under a directory. */
@@ -144,7 +107,7 @@ export function enumerateDataTargets(dataDir: string): DataItem[] {
     return items;
 }
 
-/** ゲームに反映(すべて): push every text file in the chosen language folder into the game. */
+/** ゲームに反映(すべて): push every text file under the text folder into the game. */
 export async function deployAll(context: vscode.ExtensionContext): Promise<void> {
     const root = workspaceRootFor();
     if (!root) {
@@ -156,11 +119,7 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
         vscode.window.showErrorMessage('Text2Frame: コンパイラ (Text2Frame.js) が見つかりません。');
         return;
     }
-    const language = await languagePick(context, root, 'ゲームに反映');
-    if (!language) {
-        return;
-    }
-    const textDir = path.join(root, textBaseSetting(), language);
+    const textDir = path.join(root, textBaseSetting());
     const files = walkTextFiles(textDir).filter((f) => parseFrontMatter(fs.readFileSync(f, 'utf8')).hasFrontMatter);
     if (files.length === 0) {
         vscode.window.showInformationMessage(`Text2Frame: ${path.relative(root, textDir)} に反映対象がありません。先に「ゲームから取り出す」で用意してください。`);
@@ -168,7 +127,7 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
     }
 
     const out = getOutput();
-    out.appendLine(`=== ゲームに反映(すべて) ${language}: ${files.length} files ===`);
+    out.appendLine(`=== ゲームに反映(すべて) ${path.relative(root, textDir) || '.'}: ${files.length} files ===`);
     let ok = 0;
     let fail = 0;
     let warn = 0;
@@ -179,17 +138,16 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
             const fileText = fs.readFileSync(file, 'utf8');
             const { meta } = parseFrontMatter(fileText);
             const { opts, label } = resolveTarget(meta, root);
-            const key = path.basename(file, path.extname(file));
-            const locale = meta.locale || path.basename(path.dirname(file)) || 'default';
+            const key = snapshotKeyFor(root, file);
             const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, backup: true };
-            if (mergeLike && hasBaseSnapshot(root, locale, key)) {
-                applyOpts.basePath = baseSnapshotPath(root, locale, key);
+            if (mergeLike && hasBaseSnapshot(root, key)) {
+                applyOpts.basePath = baseSnapshotPath(root, key);
             }
             const res = mod.applyTextFile(applyOpts);
             if (res.ok) {
                 ok++;
                 warn += res.warnings.length;
-                writeBackAndRefreshBase(context, root, meta, file, fileText, res, { locale, key }, mergeLike);
+                writeBackAndRefreshBase(context, root, meta, file, fileText, res, { key }, mergeLike);
                 out.appendLine(`OK   ${label}  <- ${path.relative(root, file)}` + (res.warnings.length ? `  (${res.warnings.length} warn)` : ''));
             } else {
                 fail++;
@@ -201,7 +159,7 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
         }
     }
     out.appendLine(`=== done: ${ok} ok, ${fail} fail, ${warn} warnings ===`);
-    const msg = `Text2Frame: ゲームに反映 完了 (${language}) — ${ok} 成功 / ${fail} 失敗`;
+    const msg = `Text2Frame: ゲームに反映 完了 — ${ok} 成功 / ${fail} 失敗`;
     if (fail > 0) {
         vscode.window.showWarningMessage(msg, '詳細').then((p) => { if (p) { out.show(true); } });
     } else {
@@ -222,22 +180,18 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
         return;
     }
     const purpose = mode === 'merge' ? 'ゲームから取り出す' : '全部取り直す';
-    const language = await languagePick(context, root, purpose);
-    if (!language) {
-        return;
-    }
+    const outDir = path.join(root, textBaseSetting());
     if (mode === 'overwrite') {
         const yes = await vscode.window.showWarningMessage(
-            `Text2Frame: ${language} のテキストをゲームの内容で全部上書きします。編集内容は失われます。よろしいですか？`,
+            `Text2Frame: ${path.relative(root, outDir) || '.'} のテキストをゲームの内容で全部上書きします。編集内容は失われます。よろしいですか？`,
             { modal: true }, '全部取り直す'
         );
         if (yes !== '全部取り直す') {
             return;
         }
     }
-    const outDir = path.join(root, textBaseSetting(), language);
     const out = getOutput();
-    out.appendLine(`=== ${purpose} ${language} -> ${path.relative(root, outDir)} ===`);
+    out.appendLine(`=== ${purpose} -> ${path.relative(root, outDir) || '.'} ===`);
 
     let written = 0;
     let fail = 0;
@@ -252,8 +206,7 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
             eventId: it.eventId,
             pageId: it.pageId,
             commonEventId: it.commonEventId,
-            textPath: path.join(outDir, it.key + '.txt'),
-            locale: language
+            textPath: path.join(outDir, it.key + '.txt')
         };
         if (mode === 'overwrite' && fs.existsSync(target.textPath)) {
             target.frontMatterSource = fs.readFileSync(target.textPath, 'utf8');
@@ -283,7 +236,7 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
     if (skipped > 0) {
         out.appendLine('SKIP したファイルは、目印3行を消すか「全部取り直す」で目印ごと取り出してテキスト側で解決してください。');
     }
-    const msg = `Text2Frame: ${purpose} 完了 (${language}) — ${written} 件`
+    const msg = `Text2Frame: ${purpose} 完了 — ${written} 件`
         + (fail ? ` / ${fail} 失敗` : '')
         + (conflicts ? ` / ${conflicts} 競合(両方残し)` : '')
         + (skipped ? ` / ${skipped} 件は目印が未解決で除外` : '');
