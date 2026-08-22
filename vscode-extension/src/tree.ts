@@ -24,17 +24,13 @@ class T2FNode extends vscode.TreeItem {
     }
 }
 
-function localeSetting(): string {
-    const c = vscode.workspace.getConfiguration('text2frame');
-    return c.get<string>('locale') || c.get<string>('targetLocale') || 'ja';
-}
 function textBaseSetting(): string {
     return vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text');
 }
 
-/** Text file path for a leaf node, by convention text/<locale>/key.txt. */
+/** Text file path for a leaf node, by convention text/key.txt. */
 function textPathForLeaf(root: string, node: T2FNode): string {
-    const base = path.join(root, textBaseSetting(), localeSetting());
+    const base = path.join(root, textBaseSetting());
     if (node.nodeType === 'common') {
         return path.join(base, `common${String(node.data.commonEventId).padStart(3, '0')}.txt`);
     }

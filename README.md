@@ -72,8 +72,8 @@ Simple compiler to convert text to event.
 npm install -D @yktsr/text2frame-mv
 
 npx t2f-sync --watch                              # テキスト⇄ゲームを双方向に自動同期
-npx text2frame --mode batch --text-dir text --locale ja      # 反映(text -> game)
-npx frame2text --mode batch --data-dir data --locale ja       # 取り出し(game -> text)
+npx text2frame --mode batch --text-dir text      # 反映(text -> game)
+npx frame2text --mode batch --data-dir data       # 取り出し(game -> text)
 ```
 
 ライブラリとして:
@@ -121,12 +121,12 @@ MZ ではプラグインのコマンドを選び、引数「反映のあとも�
 
 MV の引数はよく変える順です。すべて省略できます。
 
-- 一括反映: 方式（`merge`/`overwrite`）・見張りかた（`off`/`both`/`push`）・書き戻し・言語・テキストフォルダ・データフォルダ
-- 一括取り出し: 方式（`merge`/`overwrite`）・見張りかた（`off`/`both`/`pull`）・言語・テキストフォルダ・データフォルダ
+- 一括反映: 方式（`merge`/`overwrite`）・見張りかた（`off`/`both`/`push`）・書き戻し・テキストフォルダ・データフォルダ
+- 一括取り出し: 方式（`merge`/`overwrite`）・見張りかた（`off`/`both`/`pull`）・テキストフォルダ・データフォルダ
 
 見張りかたの既定は `off` なので、これまでどおり一括処理だけを実行することもできます。
 
-開始すると `text/<言語>/` 直下と `data/` 直下を見張り、
+開始すると `text/` 直下と `data/` 直下を見張り、
 
 - **テキストを保存した** → そのファイルをゲームへ反映（push）
 - **`data/*.json` が変わった** → そのイベントをテキストへ取り出し（pull）
@@ -139,7 +139,7 @@ MV の引数はよく変える順です。すべて省略できます。
 - **実行中のゲームの画面は変わりません**（起動時に読んだデータを持ち続けるため）。確認は F5 でリロードしてください。
 - 進行状況はコンソール（F8）に出ます。
 - ツクールのエディタは**閉じて**使ってください。エディタの「プロジェクトの保存」は `data` を丸ごと書き戻すため、まとまった変更を見つけたときは保存とみなして自動取り出しを見送ります。
-- 監視対象は `text/<言語>/` 直下と `data/` 直下だけです（サブフォルダは見ません）。
+- 監視対象は `text/` 直下と `data/` 直下だけです（サブフォルダは見ません）。
 - `chokidar` などの外部ライブラリは使わず、Node 組み込みの `fs.watch` で動くので、npm 導入なしで使えます。
 
 ### ターミナルから同期する（t2f-sync）
@@ -149,7 +149,7 @@ npm を使える環境なら、ゲームを起動しなくても同期できま�
 
 ```bash
 npx t2f-sync --watch                                   # 双方向に自動同期
-npx t2f-sync --direction pull --locale en              # 一度だけ、英語を取り出す
+npx t2f-sync --direction pull --text-dir text-en       # 一度だけ、英語版のフォルダへ取り出す
 ```
 
 
@@ -313,7 +313,6 @@ kind: event
 mapId: 1
 eventId: 1
 pageId: 1
-locale: en
 key: map001_event001_page001
 ---
 <Face: (0)><Background: Window><WindowPosition: Bottom>
@@ -336,14 +335,14 @@ Hello
 
 ```bash
 # 単発（既定 merge：翻訳を残す）
-node Frame2Text.js --mode map --input_path data/Map001.json --output_path text/en/map001_event001_page1.txt --event_id 1 --page_id 1
+node Frame2Text.js --mode map --input_path data/Map001.json --output_path text-en/map001_event001_page1.txt --event_id 1 --page_id 1
 # 全部取り直す（上書き）
-node Frame2Text.js --mode map --strategy overwrite --input_path data/Map001.json --output_path text/en/map001_event001_page1.txt --event_id 1 --page_id 1
-# 一括（data/ を走査し text/<locale>/ 配下へ front matter 付きで書き出し）
-node Frame2Text.js --mode batch --data-dir data --locale en --text-dir text --english_tag true
+node Frame2Text.js --mode map --strategy overwrite --input_path data/Map001.json --output_path text-en/map001_event001_page1.txt --event_id 1 --page_id 1
+# 一括（data/ を走査し text-en/ 配下へ front matter 付きで書き出し）
+node Frame2Text.js --mode batch --data-dir data --text-dir text-en --english_tag true
 ```
 
-3-way の祖先は `.t2f-base/<言語>/<key>.txt` に**自動保存/自動参照**されます（`--base` で明示も可・通常不要）。
+3-way の祖先は `.t2f-base/<テキストの置き場所>/<key>.txt` に**自動保存/自動参照**されます（`--base` で明示も可・通常不要）。
 
 ### 3. 一括反映（text -> JSON、既定は merge）
 
@@ -353,14 +352,14 @@ node Frame2Text.js --mode batch --data-dir data --locale en --text-dir text --en
 # text/ 配下の front matter 付き .txt を再帰走査して一括反映
 node Text2Frame.js --mode batch --text-dir text
 
-# 言語を選んで反映（取り出しの --locale と対称。多言語プロジェクトではこちら）
-node Text2Frame.js --mode batch --text-dir text --locale en
+# フォルダを選んで反映（取り出しの --text-dir と対称。多言語プロジェクトではこちら）
+node Text2Frame.js --mode batch --text-dir text-en
 ```
 
 `--strategy` を省略すると `merge`（既定）です。全上書きしたいときだけ `--strategy overwrite` を付けます。
 
-- **front matter で振り分け**: 各 `.txt` は自分の front matter（`kind`/`mapId`/`eventId`/`pageId`/`commonEventId`、任意で `strategy`/`basePath`/`locale`）に従って反映先が決まります。front matter を持たない `.txt` はスキップされます。
-- **言語の選択（`--locale`）**: `text/ja` と `text/en` の両方がある状態で `--locale` を省略すると、**同じイベントに全言語が順に反映され最後の1つだけが残ります**（警告を表示します）。多言語プロジェクトでは取り出し時と同じく `--locale <name>` で1つ選んでください。判定は front matter の `locale`、無ければ親フォルダ名です。
+- **front matter で振り分け**: 各 `.txt` は自分の front matter（`kind`/`mapId`/`eventId`/`pageId`/`commonEventId`、任意で `strategy`/`basePath`）に従って反映先が決まります。front matter を持たない `.txt` はスキップされます。
+- **フォルダの選択（`--text-dir`）**: 同じイベントを指すテキストが複数のフォルダにあると、**順に反映され最後の1つだけが残ります**。多言語プロジェクトでは取り出し時と同じく `--text-dir <dir>` で1つ選んでください。
 - **front matter での strategy 指定（任意）**: ファイル先頭に `strategy: overwrite` 等を書くと、そのファイルだけ方式を上書きできます（`basePath` で 3-way の祖先も指定可）。
 - **監視**: `--watch` を付けると text ディレクトリを監視し、変更・追加された `.txt` を自動で再反映します。
 
@@ -373,8 +372,8 @@ node Text2Frame.js --mode batch --text-dir text --locale en
 npm run sync_once
 # 監視して自動同期（text 変更 -> 反映 / data 変更 -> 取り出し）
 npm run sync
-# 方向や言語を指定
-node t2f-sync.js --watch --direction both --locale ja --strategy merge
+# 方向やフォルダを指定
+node t2f-sync.js --watch --direction both --text-dir text --strategy merge
 ```
 
 | オプション | 既定 | 説明 |
@@ -382,7 +381,6 @@ node t2f-sync.js --watch --direction both --locale ja --strategy merge
 | `--direction <both\|push\|pull>` | `both` | 同期方向 |
 | `-t, --text-dir <dir>` | `text` | テキストのベースディレクトリ |
 | `-d, --data-dir <dir>` | `data` | ゲームデータディレクトリ |
-| `-l, --locale <name>` | `ja` | 言語サブフォルダ |
 | `-s, --strategy <merge\|overwrite>` | `merge` | 反映・取り出しの方式 |
 | `--watch` / `--debounce <ms>` / `--poll` | - | 監視モード |
 
@@ -402,7 +400,7 @@ node t2f-sync.js --watch --direction both --locale ja --strategy merge
 | `merge`（既定） | **JSON 構造を保ちつつテキストを賢く反映**。自動判定で、祖先があれば 3-way マージ（同一箇所の相反変更のみ**両方残す**）、祖先が無ければ現在のゲーム状態を祖先として記録した上でテキストを反映（初回=TOFU、以後は 3-way）。移動/分岐/スイッチ等の UI 編集を、祖先があれば消しません。 | 通常はこれ。まず書き出し（export）で祖先を作ってから編集する運用に最適 |
 | `overwrite` | **テキストを完全な正として全上書き**（テキストに無い JSON 側コマンドは削除） | 初回取り込み・完全再生成・テキストが唯一の正のとき |
 
-**3-way の祖先（BASE）は `.t2f-base/<言語>/<key>.txt` に自動保存・自動参照**されます（VS Code / CLI / プラグインで共通・相互運用可、`.gitignore` 済）。`--base`/`BaseFolder` は明示したいときだけの任意指定です。
+**3-way の祖先（BASE）は `.t2f-base/<テキストの置き場所>/<key>.txt` に自動保存・自動参照**されます（VS Code / CLI / プラグインで共通・相互運用可、`.gitignore` 済）。`--base`/`BaseFolder` は明示したいときだけの任意指定です。
 
 #### 競合したときの表示（両方残す）
 同じ箇所をテキストとゲームの**両方で変更**した 3-way マージでは、どちらも捨てずに次の目印付きで両方を残します。
@@ -436,8 +434,8 @@ node t2f-sync.js --watch --direction both --locale ja --strategy merge
 
 ### 英語化の固定フロー（推奨）
 
-1. ja を --mode batch で出力
-2. text/en 配下を翻訳
+1. `--mode batch --text-dir text-en` で英語版のフォルダへ出力
+2. text-en 配下を翻訳
 3. batch で JSON へ反映（既定 `merge`。UI 編集を残したまま会話だけ反映されます）
 4. 失敗レコードは CLI の JSON レポートで確認
 
@@ -463,8 +461,8 @@ node t2f-sync.js --watch --direction both --locale ja --strategy merge
 npm install -D @yktsr/text2frame-mv
 
 npx t2f-sync --watch                                    # 双方向同期
-npx text2frame --mode batch --text-dir text --locale ja # 反映
-npx frame2text --mode batch --data-dir data --locale ja  # 取り出し
+npx text2frame --mode batch --text-dir text  # 反映
+npx frame2text --mode batch --data-dir data  # 取り出し
 ```
 
 ### Show help
@@ -477,7 +475,6 @@ Options:
   -t, --text_path <name>                      single-file mode (map/common): input text file
   --text-dir <dir>                            batch mode: text base directory (default: "text")
   -d, --data-dir <dir>                        game data directory (default: "data")
-  -l, --locale <name>                         batch mode: only deploy text of this locale
   -o, --output_path <name>                    output file path
   -e, --event_id <name>                       event file id
   -p, --page_id <name>                        page id
@@ -497,7 +494,7 @@ Options:
     SYNOPSIS
         node Text2Frame.js --mode map --text_path <text> [--output_path <map json>] [--event_id <id>] [--page_id <id>] [--strategy merge|overwrite] [--base <ancestor text>]
         node Text2Frame.js --mode common --text_path <text> [--output_path <common json>] [--common_event_id <id>] [--strategy merge|overwrite] [--base <ancestor text>]
-        node Text2Frame.js --mode batch [--text-dir <dir>] [--locale <name>] [--strategy merge|overwrite] [--watch]
+        node Text2Frame.js --mode batch [--text-dir <dir>] [--strategy merge|overwrite] [--watch]
         node Text2Frame.js --mode compile
         node Text2Frame.js --mode test
     DESCRIPTION
@@ -510,13 +507,13 @@ Options:
           マップへのイベント反映モードです。読み込むテキスト、出力マップ、対象イベント/ページを指定します。
           テキストに front matter があれば `--output_path`(mapId から導出) / `--event_id` / `--page_id` は
           省略でき、front matter の値が使われます(明示した引数が優先)。
-          例: $ node Text2Frame.js --mode map --text_path text/ja/map001_event001_page1.txt
-          例1：$ node Text2Frame.js --mode map --text_path text/ja/map001_event001_page1.txt --output_path data/Map001.json --event_id 1 --page_id 1
+          例: $ node Text2Frame.js --mode map --text_path text/map001_event001_page1.txt
+          例1：$ node Text2Frame.js --mode map --text_path text/map001_event001_page1.txt --output_path data/Map001.json --event_id 1 --page_id 1
           例2(全上書き)：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -p 1 --strategy overwrite
 
         node Text2Frame.js --mode common ...
           コモンイベントへの反映モードです。読み込むテキスト、出力先、対象コモンイベントIDを指定します。
-          例1：$ node Text2Frame.js --mode common --text_path text/ja/common001.txt --output_path data/CommonEvents.json --common_event_id 1
+          例1：$ node Text2Frame.js --mode common --text_path text/common001.txt --output_path data/CommonEvents.json --common_event_id 1
           例2(全上書き)：$ node Text2Frame.js -m common -t test/basic.txt -o data/CommonEvents.json -c 1 --strategy overwrite
 
         node Text2Frame.js --mode batch ...
@@ -677,7 +674,7 @@ $ npm run test
 ### Round-trip check（実データ検証）
 書き出し(Frame2Text)→取り込み(Text2Frame)の往復で、コマンドリストが完全一致するかを実データで検証します。
 ```
-$ npm run verify-roundtrip -- sample/data --locale=ja --en=true
+$ npm run verify-roundtrip -- sample/data --en=true
 ```
 
 ## ライセンス

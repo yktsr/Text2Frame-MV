@@ -107,10 +107,9 @@ function pullTarget (target, opts) {
   const o = opts || {}
   const root = o.root || process.cwd()
   const dataDir = path.resolve(root, o.dataDir || 'data')
-  const locale = o.locale || 'ja'
   const englishTag = o.englishTag !== false
   const strategy = o.strategy || 'merge'
-  const textPath = path.resolve(root, o.textDir || 'text', locale, target.key + '.txt')
+  const textPath = path.resolve(root, o.textDir || 'text', target.key + '.txt')
 
   let list = []
   if (target.kind === 'event') {
@@ -127,7 +126,7 @@ function pullTarget (target, opts) {
 
   // 本文の組み立ては Frame2Text の buildPullText に一本化する(プラグイン/CLI と同じ挙動)。
   const existing = readIfExists(textPath)
-  const id = T2F.deriveBaseId(textPath, { locale })
+  const id = T2F.deriveBaseId(textPath, root)
   // push と同じく、テキストの front matter の strategy: を1ファイル単位の指定として優先する。
   const metaStrategy = F2T.frontMatterMeta(existing || '').strategy
   const entryStrategy = String(metaStrategy || strategy).toLowerCase() === 'overwrite' ? 'overwrite' : 'merge'
@@ -136,8 +135,8 @@ function pullTarget (target, opts) {
     englishTag,
     strategy: entryStrategy,
     existingText: existing || '',
-    baseText: (entryStrategy === 'merge' && T2F.readBaseText(root, id.locale, id.key)) || '',
-    fallbackHeader: F2T.renderFrontMatter(Object.assign({ locale }, target), target.kind)
+    baseText: (entryStrategy === 'merge' && T2F.readBaseText(root, id.key)) || '',
+    fallbackHeader: F2T.renderFrontMatter(target, target.kind)
   })
   // 目印をまたいだ統合はできない(目印ごと再マージして二重化するため)。上書きなら取り出せる。
   if (built.skipped) {
@@ -176,9 +175,9 @@ function pullTarget (target, opts) {
       '(resolve the markers in the text, then push with --strategy overwrite): ' + textPath)
   } else {
     try {
-      const id = T2F.deriveBaseId(textPath, { locale })
+      const id = T2F.deriveBaseId(textPath, root)
       // 祖先はゲーム側(built.baseText)。マージ結果を入れると次の push でテキストが消える。
-      T2F.saveBaseText(root, id.locale, id.key, built.baseText)
+      T2F.saveBaseText(root, id.key, built.baseText)
     } catch (e) { /* best effort */ }
   }
   return { ok: true, textPath, conflicts, markers }
@@ -211,7 +210,7 @@ function syncOnce (opts) {
   const root = o.root || process.cwd()
   const dir = o.direction || 'both'
   const dataDir = path.resolve(root, o.dataDir || 'data')
-  const textRoot = path.resolve(root, o.textDir || 'text', o.locale || 'ja')
+  const textRoot = path.resolve(root, o.textDir || 'text')
   const results = { pulled: [], pushed: [] }
 
   if (dir === 'pull' || dir === 'both') {
@@ -243,7 +242,6 @@ if (require.main === module) {
     .option('--direction <both|push|pull>', 'sync direction', /^(both|push|pull)$/i, 'both')
     .option('-t, --text-dir <dir>', 'text base directory', 'text')
     .option('-d, --data-dir <dir>', 'game data directory', 'data')
-    .option('-l, --locale <name>', 'language subfolder', 'ja')
     .option('-s, --strategy <merge|overwrite>', 'sync strategy', /^(merge|overwrite)$/i, 'merge')
     .option('-w, --english_tag <true/false>', 'english tag on pull', 'true')
     .option('--watch', 'watch both sides and sync on change', false)
@@ -259,7 +257,6 @@ if (require.main === module) {
     root,
     dataDir: options.dataDir,
     textDir: options.textDir,
-    locale: options.locale,
     strategy: String(options.strategy).toLowerCase(),
     englishTag: String(options.english_tag) !== 'false',
     direction: String(options.direction).toLowerCase(),
@@ -299,7 +296,7 @@ if (require.main === module) {
     try { chokidar = require('chokidar') } catch (e) {
       throw new Error('chokidar is required for --watch. Run: npm install')
     }
-    const textRoot = path.resolve(root, opts.textDir, opts.locale)
+    const textRoot = path.resolve(root, opts.textDir)
     const dataDir = path.resolve(root, opts.dataDir)
     const usePolling = !!options.poll || /wsl\.localhost|[/\\]mnt[/\\]/.test(root)
     const debounceMs = parseInt(options.debounce, 10) || 250

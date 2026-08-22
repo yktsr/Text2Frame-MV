@@ -7,7 +7,7 @@
  *
  *   1. snapshot  : read every Map###.json / CommonEvents.json, remember each
  *                  event/page (and common) command `list`.
- *   2. export    : decompile each non-empty list -> text/<locale>/<key>.txt
+ *   2. export    : decompile each non-empty list -> text/<key>.txt
  *                  (front matter + body), like "Export All".
  *   3. deploy    : applyTextFile(import) each text file back into data,
  *                  like "Deploy All".
@@ -19,7 +19,7 @@
  * git afterwards (e.g. `git checkout -- <dataDir>`).
  *
  * Usage:
- *   node tools/verify-roundtrip.js [dataDir] [--text=text] [--locale=ja]
+ *   node tools/verify-roundtrip.js [dataDir] [--text=text]
  *                                  [--en=true] [--max=20]
  *   (dataDir default: sample/data)
  */
@@ -32,7 +32,7 @@ const f2t = require(path.join(repoRoot, 'Frame2Text.js'))
 
 // --- args ---
 const rawArgs = process.argv.slice(2)
-const opts = { text: 'text', locale: 'ja', en: 'true', max: '20' }
+const opts = { text: 'text', en: 'true', max: '20' }
 let dataDirArg = null
 for (const a of rawArgs) {
   const m = a.match(/^--([^=]+)=(.*)$/)
@@ -40,7 +40,6 @@ for (const a of rawArgs) {
 }
 const dataDir = path.resolve(repoRoot, dataDirArg || 'sample/data')
 const textBase = path.resolve(repoRoot, opts.text)
-const locale = opts.locale
 const englishTag = String(opts.en) !== 'false'
 const maxDiffs = parseInt(opts.max, 10) || 20
 
@@ -166,7 +165,7 @@ if (fs.existsSync(cePath)) {
 console.log('[verify] dataDir=' + path.relative(repoRoot, dataDir) + ' targets=' + targets.length + ' englishTag=' + englishTag)
 
 // --- 2. export (data -> text) ---
-const outDir = path.join(textBase, locale)
+const outDir = textBase
 fs.mkdirSync(outDir, { recursive: true })
 let exported = 0
 for (const t of targets) {
@@ -186,7 +185,9 @@ console.log('[verify] exported ' + exported + ' text files -> ' + path.relative(
 const deployFails = []
 for (const t of targets) {
   const textPath = path.join(outDir, t.key + '.txt')
-  const o = { textPath, kind: t.kind, strategy: 'import', overwrite: true }
+  // 取り出したテキストをそのまま戻して同じ JSON になるかを見るので、反映は全上書き。
+  // ('import' は廃止済みの名前で、resolveStrategy が受け付けず全件失敗していた)
+  const o = { textPath, kind: t.kind, strategy: 'overwrite' }
   if (t.kind === 'common') { o.commonEventId = t.commonEventId; o.commonEventPath = cePath } else { o.mapId = t.mapId; o.eventId = t.eventId; o.pageId = t.pageId; o.mapPath = t.dataPath }
   const res = t2f.applyTextFile(o)
   if (!res.ok) deployFails.push({ key: t.key, error: (res.error || '').split('\n')[0], line: res.errorLineText })

@@ -285,7 +285,7 @@ npm install ../yktsr-text2frame-mv-<version>.tgz
 あとは `data/Map001.json` と `data/CommonEvents.json` のあるプロジェクトで:
 
 ```bash
-npx frame2text --mode batch --data-dir data --text-dir text --locale ja   # 取り出し
+npx frame2text --mode batch --data-dir data --text-dir text   # 取り出し
 npx text2frame --mode batch --text-dir text                               # 反映
 npx t2f-sync --help                                                       # 双方向同期
 ```

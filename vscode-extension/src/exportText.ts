@@ -9,7 +9,8 @@ import {
     commonEventsPathFor,
     recordDataState,
     saveBaseSnapshot,
-    baseSnapshotPath
+    baseSnapshotPath,
+    snapshotKeyFor
 } from './compiler';
 
 /**
@@ -55,8 +56,6 @@ export interface ExportTarget {
     /** Reuse this file's existing front matter header if present. */
     frontMatterSource?: string;
     translationOnly?: boolean;
-    /** Optional locale metadata (informational; ignored on deploy). */
-    locale?: string;
 }
 
 export interface ExportResult {
@@ -115,10 +114,6 @@ function renderFrontMatter(target: ExportTarget, version?: string): string {
     const lines = ['---'];
     // 来歴: 書き出しに使った変換スクリプトのバージョン(import 時は無視される)。
     lines.push(`generator: text2frame-mv@${version || 'unknown'}`);
-    // 言語メタ(任意・情報用。import 時は無視される)。
-    if (target.locale) {
-        lines.push(`locale: ${target.locale}`);
-    }
     lines.push(`kind: ${target.kind}`);
     if (target.kind === 'common') {
         lines.push(`commonEventId: ${target.commonEventId}`);
@@ -226,11 +221,8 @@ function writeTextFile(textPath: string, contents: string): void {
     fs.writeFileSync(textPath, contents, 'utf8');
 }
 
-function snapshotIdFor(target: ExportTarget): { locale: string; key: string } {
-    return {
-        key: path.basename(target.textPath, path.extname(target.textPath)),
-        locale: target.locale || path.basename(path.dirname(target.textPath)) || 'default'
-    };
+function snapshotIdFor(workspaceRoot: string, target: ExportTarget): { key: string } {
+    return { key: snapshotKeyFor(workspaceRoot, target.textPath) };
 }
 
 /**
@@ -240,8 +232,7 @@ function snapshotIdFor(target: ExportTarget): { locale: string; key: string } {
  * 取り出し前にテキストへ書いた内容が黙って消える。
  */
 function saveBaseFor(workspaceRoot: string, target: ExportTarget, gameSideText: string): void {
-    const id = snapshotIdFor(target);
-    saveBaseSnapshot(workspaceRoot, id.locale, id.key, gameSideText);
+    saveBaseSnapshot(workspaceRoot, snapshotIdFor(workspaceRoot, target).key, gameSideText);
 }
 
 function recordDataStateFor(context: vscode.ExtensionContext, workspaceRoot: string, target: ExportTarget): void {
@@ -284,14 +275,14 @@ export function mergePullToText(
     }
     try {
         const gameCommands = readEventList(workspaceRoot, target); // ours
-        const id = snapshotIdFor(target);
+        const id = snapshotIdFor(workspaceRoot, target);
 
         let existingText = '';
         if (fs.existsSync(target.textPath)) {
             existingText = fs.readFileSync(target.textPath, 'utf8');
         }
         let baseText = '';
-        const baseP = baseSnapshotPath(workspaceRoot, id.locale, id.key);
+        const baseP = baseSnapshotPath(workspaceRoot, id.key);
         if (fs.existsSync(baseP)) {
             baseText = fs.readFileSync(baseP, 'utf8');
         }

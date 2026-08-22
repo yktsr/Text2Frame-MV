@@ -32,7 +32,7 @@ describe('write-back after merge', function () {
     ]
   }
   const bottom = { code: 0, indent: 0, parameters: [] }
-  const header = '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\nlocale: ja\n---\n'
+  const header = '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n'
   const MARKER = '=== どちらかを残し'
 
   const writeMap = function (list) {
@@ -52,7 +52,7 @@ describe('write-back after merge', function () {
     })
   }
   const readText = function () { return fs.readFileSync(textPath, 'utf8') }
-  const basePath = function () { return path.join(tmp, '.t2f-base', 'ja', 'map001_event001_page1.txt') }
+  const basePath = function () { return path.join(tmp, '.t2f-base', 'text', 'map001_event001_page1.txt') }
   const push = function (writeBack) {
     return text2frame.applyTextFile({ textPath, mapPath, baseRoot: tmp, strategy: 'merge', writeBack })
   }
@@ -62,9 +62,9 @@ describe('write-back after merge', function () {
     dataDir = path.join(tmp, 'data')
     fs.mkdirSync(dataDir)
     mapPath = path.join(dataDir, 'Map001.json')
-    textPath = path.join(tmp, 'text', 'ja', 'map001_event001_page1.txt')
+    textPath = path.join(tmp, 'text', 'map001_event001_page1.txt')
     fs.mkdirSync(path.dirname(textPath), { recursive: true })
-    fs.mkdirSync(path.join(tmp, '.t2f-base', 'ja'), { recursive: true })
+    fs.mkdirSync(path.join(tmp, '.t2f-base', 'text'), { recursive: true })
   })
   afterEach(function () {
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }

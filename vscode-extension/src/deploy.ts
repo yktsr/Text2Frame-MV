@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, isDeployable, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot } from './compiler';
+import { parseFrontMatter, isDeployable, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot, snapshotKeyFor } from './compiler';
 import { exportToTextFile, mergePullToText, ExportTarget } from './exportText';
 
 export { isDeployable };
@@ -43,14 +43,12 @@ function getOutput(): vscode.OutputChannel {
 }
 
 /**
- * Identity of the 3-way BASE snapshot for a single file: locale from front matter (or the
- * parent folder name as a fallback), key from the file name. Kept consistent with the
- * locale/key used by Seed Locale / Deploy Locale so single-file deploys share the same ancestor.
+ * Identity of the 3-way BASE snapshot for a single file: the text's path relative to the
+ * workspace root. Kept consistent with the batch commands so single-file and batch deploys
+ * share the same ancestor.
  */
-function snapshotIdFor(meta: { [key: string]: string }, textPath: string): { locale: string; key: string } {
-    const key = path.basename(textPath, path.extname(textPath));
-    const locale = meta.locale || path.basename(path.dirname(textPath)) || 'default';
-    return { locale, key };
+function snapshotIdFor(workspaceRoot: string, textPath: string): { key: string } {
+    return { key: snapshotKeyFor(workspaceRoot, textPath) };
 }
 
 /**
@@ -69,7 +67,7 @@ export function writeBackAndRefreshBase(
     textPath: string,
     originalText: string,
     result: { warnings: string[]; conflicts?: number },
-    snap: { locale: string; key: string },
+    snap: { key: string },
     mergeLike: boolean
 ): void {
     const mode = vscode.workspace.getConfiguration('text2frame').get<string>('writeBackAfterMerge', 'onConflict');
@@ -104,7 +102,7 @@ export function writeBackAndRefreshBase(
     if (hadConflict) {
         getOutput().appendLine('    conflicts to resolve (BASE = deployed text)');
     }
-    saveBaseSnapshot(workspaceRoot, snap.locale, snap.key, hadConflict ? originalText : finalText);
+    saveBaseSnapshot(workspaceRoot, snap.key, hadConflict ? originalText : finalText);
 }
 
 /** Locate and load the compiler module that exports applyTextFile(). */
@@ -211,15 +209,15 @@ export async function deployDocument(
     // Default to 3-way merge: attach the BASE snapshot (common ancestor) when present so a
     // merge deploy reconciles writer text edits with external JSON edits, instead of overlaying.
     const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
-    const snap = snapshotIdFor(meta, document.uri.fsPath);
+    const snap = snapshotIdFor(workspaceRoot, document.uri.fsPath);
     const applyOpts: { [key: string]: unknown } = {
         textPath: document.uri.fsPath,
         ...resolved.opts,
         strategy,
         backup: true
     };
-    if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.locale, snap.key)) {
-        applyOpts.basePath = baseSnapshotPath(workspaceRoot, snap.locale, snap.key);
+    if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.key)) {
+        applyOpts.basePath = baseSnapshotPath(workspaceRoot, snap.key);
     }
     const result = mod.applyTextFile(applyOpts);
 
@@ -302,15 +300,15 @@ export function deployFile(
     const strategy = vscode.workspace.getConfiguration('text2frame').get<string>('strategy') || 'merge';
     // Default to 3-way merge: attach the BASE snapshot (common ancestor) when present.
     const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
-    const snap = snapshotIdFor(meta, filePath);
+    const snap = snapshotIdFor(workspaceRoot, filePath);
     const applyOpts: { [key: string]: unknown } = {
         textPath: filePath,
         ...resolved.opts,
         strategy,
         backup: true
     };
-    if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.locale, snap.key)) {
-        applyOpts.basePath = baseSnapshotPath(workspaceRoot, snap.locale, snap.key);
+    if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.key)) {
+        applyOpts.basePath = baseSnapshotPath(workspaceRoot, snap.key);
     }
     const result = mod.applyTextFile(applyOpts);
     if (result && result.ok) {
