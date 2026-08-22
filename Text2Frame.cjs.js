@@ -3783,7 +3783,7 @@ function requireFrame2Text () {
 		// ・衝突しても共通の祖先を進めるよう修正。目印3行を消して決着をつければ、統合のまま
 		//   反対側へ流せます(従来は上書きでしか抜けられませんでした)
 		// ・未解決の衝突が残っているイベント/テキストは反映・取り出しの対象から外すよう改善
-		// ・NW.js(MV同梱)でtext/<locale>や.t2f-baseのディレクトリ作成に失敗する不具合の修正
+		// ・NW.js(MV同梱)でtextや.t2f-baseのディレクトリ作成に失敗する不具合の修正
 		// ・一括取り出しの実行結果に出力先・内訳・上書き件数・失敗理由を表示するよう改善
 		// ・取り出したテキストで、文章の後に必ず1行空けて次のコマンドと切り離すよう改善
 		// ・統合の取り出しで、取り出し前にテキストへ書いた内容が次の反映で消える不具合の修正
@@ -3791,8 +3791,10 @@ function requireFrame2Text () {
 		// ・衝突したときの直し方(目印を消して反対側へ「上書き」で押し出す)をヘルプと案内文に明記
 		// ・目印が残っていても「上書き」なら取り出せるよう改善。ツクールを開かずテキストだけで衝突を解決できます
 		//   (統合は従来どおり見送り。目印ごと取り出したときは祖先(.t2f-base)を進めません)
-		// ・一括取り出しの「取り出しのしかた」を1番目の引数へ移動(一番よく変える引数を先頭に。一括反映と同じ位置)
-		// ・MZプラグインコマンドの一括取り出しでロケールと出力先の引数が入れ替わる不具合の修正
+		// ・一括取り出しの「取り出し方法」を1番目の引数へ移動(一番よく変える引数を先頭に。一括反映と同じ位置)
+		// ・テキストの置き場所から言語(locale)の概念を廃止。text/<言語>/ ではなく text/ 直下へ取り出します
+		//   複数の版を持つときは出力先フォルダを分けてください(CLI の --locale と見出しの locale: 行も廃止)
+		// ・一括取り出しの「取り出しのあとも見張る」を廃止。同期は Text2Frame の START_DATA_SYNC を使います
 		// 1.0.1 2024/09/07:
 		// ・#125 プラグインコマンドMZを変換する際、オブジェクト型を取り扱えない不具合の修正
 		// 1.0.0 2024/01/20 Initial Version
@@ -3899,7 +3901,7 @@ function requireFrame2Text () {
 		 * @desc dataフォルダ内の全イベント/コモンイベントを、見出し情報付きのテキストとしてフォルダへ一括で取り出します(既定は統合)。
 		 *
 		 * @arg Strategy
-		 * @text 取り出しのしかた
+		 * @text 取り出し方法
 		 * @desc merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。overwriteはゲームの内容で全上書きです。既定はmergeです。
 		 * @type select
 		 * @option 統合 / merge
@@ -3907,24 +3909,6 @@ function requireFrame2Text () {
 		 * @option 【取り扱い注意】全上書き / overwrite
 		 * @value overwrite
 		 * @default merge
-		 *
-		 * @arg Watch
-		 * @text 取り出しのあとも見張る
-		 * @desc 取り出し後もゲームとテキストを見張り、変更を自動で追従します。テストプレイを閉じると止まります。既定は見張りません。
-		 * @type select
-		 * @option 見張らない / off
-		 * @value off
-		 * @option 双方向で見張る / both
-		 * @value both
-		 * @option ゲーム→テキストだけ見張る / pull
-		 * @value pull
-		 * @default off
-		 *
-		 * @arg Locale
-		 * @text 言語
-		 * @desc 出力先の言語サブフォルダ名です。デフォルトはjaです。多言語にしないなら設定する必要はありません。
-		 * @type string
-		 * @default ja
 		 *
 		 * @arg TextBase
 		 * @text 出力先フォルダ名
@@ -4050,12 +4034,12 @@ function requireFrame2Text () {
 		 *     実行前に本プラグインと Text2Frame を管理画面からONにして
 		 *    「プロジェクトの保存」を実行しておきましょう。
 		 *
-		 * 4. text/ja フォルダ以下にゲームの内容がText2Frame記法で書き出される。
+		 * 4. text フォルダ以下にゲームの内容がText2Frame記法で書き出される。
 		 *     RPG ツクールのプロジェクトがあるディレクトリに、text という
 		 *    フォルダが作成され、その中に、すべてのイベントとコモンイベントが
 		 *    書き出されます。
 		 *
-		 * 5. text/ja フォルダ以下のテキストを自由に編集する。
+		 * 5. text フォルダ以下のテキストを自由に編集する。
 		 *     記法については、Text2Frame の「テキストファイルの書き方」を
 		 *    参照してください。
 		 *
@@ -4283,40 +4267,32 @@ function requireFrame2Text () {
 		 *
 		 * 例3:全イベント/コモンイベントをフォルダへ一括で取り出す。引数はよく変える順に
 		 *     並んでいます。
-		 *     第1: 取り出しのしかた(merge/overwrite)。省略すると統合で、テキストに
+		 *     第1: 取り出し方法(merge/overwrite)。省略すると統合で、テキストに
 		 *          書いた内容を残します。ゲームの内容で全て取り直すときだけ overwrite。
-		 *     第2: 取り出しのあとも見張るか(off/both/pull)。省略すると見張りません。
-		 *     第3: 言語(出力先の言語サブフォルダ名)。省略すると ja。
-		 *     第4: 出力先フォルダ名。省略すると text。
-		 *     第5: ゲームデータのフォルダ名。省略すると data。
+		 *     第2: 出力先フォルダ名。省略すると text。
+		 *     第3: ゲームデータのフォルダ名。省略すると data。
 		 *   BATCH_EXPORT_MESSAGES_TO_FOLDER
 		 *   BATCH_EXPORT_MESSAGES_TO_FOLDER overwrite
-		 *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge both
-		 *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge off en
-		 *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge off ja text data
+		 *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge text-en
+		 *   BATCH_EXPORT_MESSAGES_TO_FOLDER merge text data
 		 *   フォルダへ一括取り出し overwrite
-		 *   一括取り出し merge both
+		 *   一括取り出し merge
 		 *
 		 * --------------------------------------
-		 * 自動で同期する（同期監視）
+		 * 発展: テキストとゲームを自動で同期する
 		 * --------------------------------------
-		 *  一括取り出しの「取り出しのあとも見張る」に off 以外を指定すると、取り出した
-		 *  あとも、ゲームとテキストを見張って変更を自動で追従します。
-		 *  まず全部を取り出して食い違いを無くしてから見張り始めるので、ゲームを正として
-		 *  同期を始めたいときはこちらを使ってください。
+		 *  取り出したあとも、ゲームとテキストを見張って変更を自動で追従させることが
+		 *  できます。Text2Frame の START_DATA_SYNC（テキストとゲームの同期を開始）を
+		 *  実行してください。まず一括で両方を揃えてから見張り始めます。
 		 *
-		 *     BATCH_EXPORT_MESSAGES_TO_FOLDER merge both  双方向で見張る
-		 *     BATCH_EXPORT_MESSAGES_TO_FOLDER merge pull  ゲーム→テキストだけ見張る
-		 *
-		 *  逆に、テキストを正として始めたいときは Text2Frame の一括反映から見張ります。
-		 *
-		 *     BATCH_IMPORT_MESSAGES_FROM_FOLDER merge both
+		 *     START_DATA_SYNC            双方向で同期する
+		 *     START_DATA_SYNC pull       ゲーム→テキストだけ同期する
 		 *
 		 *  ◆ 使う前に知っておくこと
-		 *   ・見張るには Text2Frame プラグインが必要です（監視の実体はそちらにあります）。
-		 *   ・監視はゲームの実行中のみ動作します。プレイテストを閉じると止まります。
-		 *   ・止めるときは Text2Frame の「同期監視の停止」(STOP_SYNC_WATCH)を実行します。
-		 *     どちらから始めた場合も、止めるコマンドはこのひとつです。
+		 *   ・同期には Text2Frame プラグインが必要です（同期の実体はそちらにあります）。
+		 *   ・同期はゲームの実行中のみ動作します。プレイテストを閉じると止まります。
+		 *   ・止めるときは Text2Frame の「テキストとゲームの同期を停止」(STOP_DATA_SYNC)
+		 *     を実行します。
 		 *   ・進行状況はコンソール（F8）に出ます。ゲーム画面には出ません。
 		 *   ・エディタで「プロジェクトの保存」をすると data フォルダが丸ごと書き戻り、
 		 *     反映済みの内容が失われます。ツクールのエディタは閉じて使ってください。
@@ -4494,9 +4470,9 @@ function requireFrame2Text () {
 		    });
 		    PluginManager.registerCommand('Frame2Text', 'BATCH_EXPORT_MESSAGES_TO_FOLDER', function (args) {
 		      // 引数順は @arg の並びと合わせる。よく変えるものから順に
-		      // 取り出しのしかた -> 見張る -> 言語 -> 出力先 -> データフォルダ。
+		      // 取り出し方法 -> 出力先 -> データフォルダ。
 		      this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-		        [args.Strategy, args.Watch, args.Locale, args.TextBase, args.DataFolder]);
+		        [args.Strategy, args.TextBase, args.DataFolder]);
 		    });
 		  }
 
@@ -4668,24 +4644,16 @@ function requireFrame2Text () {
 		      case 'BATCH_EXPORT_MESSAGES_TO_FOLDER':
 		      case 'フォルダへ一括取り出し':
 		      case '一括取り出し': {
-		        // よく変えるものから順に: 取り出しのしかた -> 見張る -> 言語 -> 出力先 -> データフォルダ。
+		        // よく変えるものから順に: 取り出し方法 -> 出力先 -> データフォルダ。
 		        // @arg の並び・registerCommand の渡し順と揃えること。
 		        // 既定は merge。CLI・t2f-sync・VSCode と揃え、テキストに書いた内容を黙って
 		        // 消さないようにする。初回(既存テキスト無し)は merge も overwrite も同じ結果。
 		        const batchStrategy = String(args[0] || 'merge').toLowerCase();
 		        if (batchStrategy !== 'merge' && batchStrategy !== 'overwrite') {
-		          throw new Error('Unknown strategy: ' + args[0] + ' / 取り出しのしかたは merge か overwrite を指定してください。')
+		          throw new Error('Unknown strategy: ' + args[0] + ' / 取り出し方法は merge か overwrite を指定してください。')
 		        }
-		        // 見張りかた。off 以外はそのまま監視の向きになる。@option は off/both/pull だけ出すが、
-		        // 手で書く MV のために push も受ける(検証は Text2Frame の監視側と同じ4値)。
-		        const batchWatch = String(args[1] || 'off').toLowerCase();
-		        if (['off', 'both', 'push', 'pull'].indexOf(batchWatch) === -1) {
-		          throw new Error('Unknown watch: ' + args[1] + ' / 見張りかたは off か both か pull を指定してください。')
-		        }
-		        Laurus.Frame2Text.Watch = batchWatch;
-		        Laurus.Frame2Text.Locale = args[2] || 'ja';
-		        Laurus.Frame2Text.TextBase = args[3] || 'text';
-		        Laurus.Frame2Text.DataFolder = args[4] || 'data';
+		        Laurus.Frame2Text.TextBase = args[1] || 'text';
+		        Laurus.Frame2Text.DataFolder = args[2] || 'data';
 		        Laurus.Frame2Text.BatchStrategy = batchStrategy;
 		        Laurus.Frame2Text.ExecMode = 'BATCH_EXPORT_MESSAGES_TO_FOLDER';
 		        break
@@ -6874,6 +6842,17 @@ function requireFrame2Text () {
 		      }
 		    };
 
+		    /* テキストのフォルダに対応する祖先の置き場所。Text2Frame の同名の実装と対になっている
+		     * (取り出しは Text2Frame が無くても動く必要があるため、依存を作らずここに持つ。
+		     * 規約を変えるときは両方直すこと)。 */
+		    const baseDirForTextDir = function (root, textDir) {
+		      const _path = require$$0$1;
+		      const abs = _path.resolve(String(textDir));
+		      const rel = _path.relative(_path.resolve(String(root)), abs);
+		      const sub = (rel && !_path.isAbsolute(rel) && rel.split(_path.sep)[0] !== '..') ? rel : _path.basename(abs);
+		      return _path.join(String(root), '.t2f-base', sub)
+		    };
+
 		    // 書き出したテキストに載せる front matter(YAMLヘッダ)を生成する。
 		    const renderFrontMatter = function (entry, kind) {
 		      const lines = ['---'];
@@ -6888,7 +6867,6 @@ function requireFrame2Text () {
 		      } else {
 		        put('commonEventId', entry.commonEventId);
 		      }
-		      if (entry.locale) lines.push('locale: ' + String(entry.locale));
 		      if (entry.key) lines.push('key: ' + String(entry.key));
 		      lines.push('---\n\n');
 		      return lines.join('\n')
@@ -7026,7 +7004,7 @@ function requireFrame2Text () {
 		    };
 
 		    // data ディレクトリを走査し、出力対象(イベント/コモンイベント)の routing メタだけを返す。
-		    // textPath/locale は付けない(呼び出し側が textBase/locale/key.txt を組み立てる)。
+		    // textPath は付けない(呼び出し側が textBase/key.txt を組み立てる)。
 		    /* onlyFile を渡すと、そのデータファイル1つぶんの対象だけを返す。
 		     * 同期監視は変わったファイルの分だけ処理したいので、全 Map を読み直さずに済ませる。 */
 		    const enumerateTargets = function (dataDir, onlyFile) {
@@ -7067,7 +7045,7 @@ function requireFrame2Text () {
 		     * 一括取り出しはこれを全ターゲットに回すだけ、同期監視は変わったファイルの分だけ回す。
 		     * (全件を回す一括コマンドを変更のたびに呼ぶと、実プロジェクト規模ではゲームが数秒止まる)
 		     *
-		     * opts: { dataDir, target, outPath, baseDir, englishTag, strategy, locale }
+		     * opts: { dataDir, target, outPath, baseDir, englishTag, strategy }
 		     * 戻り値: { ok, skipped, conflicts, markers, overwritten, approximate, warnings, baseSaveError, error }
 		     * 投げずに戻り値で返す。呼び出し側が件数をまとめて報告するため。 */
 		    const pullTargetToText = function (opts) {
@@ -7100,7 +7078,7 @@ function requireFrame2Text () {
 		          strategy: entryStrategy,
 		          existingText,
 		          baseText,
-		          fallbackHeader: renderFrontMatter(Object.assign({ locale: opts.locale }, t), t.kind)
+		          fallbackHeader: renderFrontMatter(t, t.kind)
 		        });
 		        // 未解決の目印が残っているものは書かずに見送る(このファイルだけ飛ばす)。
 		        if (built.skipped) return { ok: true, skipped: built.skipped }
@@ -7130,7 +7108,7 @@ function requireFrame2Text () {
 		      }
 		    };
 
-		    Laurus.Frame2Text.export = { decompile, VERSION, enumerateTargets, pullTargetToText, renderFrontMatter, buildPullText, stripFrontMatter, frontMatterHeader, frontMatterMeta };
+		    Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, pullTargetToText, renderFrontMatter, buildPullText, stripFrontMatter, frontMatterHeader, frontMatterMeta };
 		    // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
 		    // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
 		    // window / global にもフォールバックする(Text2Frame 側の $LaurusText2Frame と対称)。
@@ -7154,7 +7132,6 @@ function requireFrame2Text () {
 		      }
 		      const _path = require$$0$1;
 		      const dataDir = _path.isAbsolute(Laurus.Frame2Text.DataFolder) ? Laurus.Frame2Text.DataFolder : _path.resolve(BASE_PATH, Laurus.Frame2Text.DataFolder);
-		      const locale = Laurus.Frame2Text.Locale;
 		      const textBase = Laurus.Frame2Text.TextBase;
 		      const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false';
 		      const batchStrategy = Laurus.Frame2Text.BatchStrategy || 'merge';
@@ -7191,7 +7168,7 @@ function requireFrame2Text () {
 		        }
 		      }
 
-		      const outDir = _path.resolve(BASE_PATH, textBase, locale);
+		      const outDir = _path.resolve(BASE_PATH, textBase);
 		      // 出力先が掘れないと 1 件も書けないので、ここだけは中断してユーザに理由を見せる。
 		      try {
 		        mkdirpSync(outDir);
@@ -7200,7 +7177,8 @@ function requireFrame2Text () {
 		        console.error('[batch] failed to create output directory: ' + outDir + ' (' + (e.message || e) + ')');
 		        return
 		      }
-		      const _baseDir = _path.join(_baseRoot, '.t2f-base', String(locale || 'default'));
+		      // 祖先はテキストの置き場所ごとに分ける(Text2Frame の deriveBaseId と同じ規約)。
+		      const _baseDir = baseDirForTextDir(_baseRoot, outDir);
 		      try { mkdirpSync(_baseDir); } catch (e) { _baseSaveError = _baseSaveError || e; }
 
 		      // データフォルダが無いと readdirSync が投げる。生の例外ではなくパスを見せて止める。
@@ -7223,11 +7201,10 @@ function requireFrame2Text () {
 		        const r = pullTargetToText({
 		          dataDir,
 		          target: t,
-		          outPath: _path.resolve(BASE_PATH, textBase, locale, t.key + '.txt'),
+		          outPath: _path.resolve(BASE_PATH, textBase, t.key + '.txt'),
 		          baseDir: _baseDir,
 		          englishTag,
-		          strategy: batchStrategy,
-		          locale
+		          strategy: batchStrategy
 		        });
 		        if (!r.ok) {
 		          errCount++;
@@ -7298,25 +7275,9 @@ function requireFrame2Text () {
 		      console.log('[batch] Completed (' + batchStrategy + '): ' + okCount + ' success (event ' + eventCount + ' / common ' + commonCount + '), ' +
 		        errCount + ' errors, ' + conflicted.length + ' with conflicts, ' + markerCarried.length + ' with unresolved markers -> ' + outDir +
 		        (overwrittenCount > 0 ? ' (overwrote ' + overwrittenCount + ' existing text file(s))' : ''));
-		      /* 見張るのは一括取り出しのあと。先に全部揃えてから始めるので、監視は「開始後の変更」
-		       * だけを見ればよくなる。監視の実体は Text2Frame にあり、状態も向こうが持つ
-		       * (どちらから始めても STOP_SYNC_WATCH ひとつで止まる)。 */
-		      const batchWatch = Laurus.Frame2Text.Watch || 'off';
-		      if (batchWatch !== 'off') {
-		        const _t2fWatch = resolveText2Frame();
-		        if (!_t2fWatch || !_t2fWatch.startSyncWatch) {
-		          addMessage('[batch] 見張るには Text2Frame プラグインが必要です。取り出しは終わっています。');
-		          console.error('[batch] watch requires the Text2Frame plugin to be loaded');
-		          return
-		        }
-		        _t2fWatch.startSyncWatch({
-		          strategy: batchStrategy,
-		          direction: batchWatch,
-		          locale,
-		          textBase,
-		          dataFolder: Laurus.Frame2Text.DataFolder
-		        });
-		      }
+		      /* 取り出したあと自動で追従させたいときは、Text2Frame の START_DATA_SYNC を使う。
+		       * 一括取り出しのオプションではなく単独のコマンドにしてある(一括反映の既定が
+		       * add になり、見張りながら繰り返す動作と噛み合わないため)。 */
 		      return
 		    }
 
@@ -7341,8 +7302,8 @@ function requireFrame2Text () {
 		    if (exportStrategy === 'merge' && (!_T2Fx || !_T2Fx.applyMergePull)) {
 		      throw new Error('取り出し(merge)には Text2Frame プラグインが必要です。同じプロジェクトに導入してください。 / MERGE pull requires the Text2Frame plugin to be loaded.')
 		    }
-		    const _exportId = (_T2Fx && _T2Fx.deriveBaseId) ? _T2Fx.deriveBaseId(outPath, {}) : null;
 		    const _exportRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH;
+		    const _exportId = (_T2Fx && _T2Fx.deriveBaseId) ? _T2Fx.deriveBaseId(outPath, _exportRoot) : null;
 		    // 全上書きでは既存テキストを読まない。読むと buildPullText が既存の見出しを引き継ぎ、
 		    // 引数で指定した宛先と食い違う。統合のときだけ突き合わせる相手として要る。
 		    let existingText = '';
@@ -7352,7 +7313,7 @@ function requireFrame2Text () {
 		      if (Laurus.Frame2Text.BasePath) {
 		        try { baseText = readText(Laurus.Frame2Text.BasePath); } catch (e) { baseText = ''; }
 		      } else if (_exportId && _T2Fx.readBaseText) {
-		        baseText = _T2Fx.readBaseText(_exportRoot, _exportId.locale, _exportId.key) || '';
+		        baseText = _T2Fx.readBaseText(_exportRoot, _exportId.key) || '';
 		      }
 		    }
 		    /* コメント行を戻す元は existingText とは別に渡す。全上書きでも % は残すが、
@@ -7402,7 +7363,7 @@ function requireFrame2Text () {
 		    // 祖先はゲーム側(built.baseText)。マージ結果を入れると次の反映でテキストの内容が消える。
 		    try {
 		      if (!built.markers && _exportId && _T2Fx && _T2Fx.saveBaseText) {
-		        _T2Fx.saveBaseText(_exportRoot, _exportId.locale, _exportId.key, built.baseText);
+		        _T2Fx.saveBaseText(_exportRoot, _exportId.key, built.baseText);
 		      }
 		    } catch (e) { /* best effort */ }
 
@@ -7441,7 +7402,6 @@ function requireFrame2Text () {
 		    .option('-p, --page_id <name>', 'page id', '1')
 		    .option('-c, --common_event_id <name>', 'common event id')
 		    .option('-d, --data-dir <dir>', 'game data directory', 'data')
-		    .option('-l, --locale <locale>', 'output language subfolder (batch)', 'ja')
 		    .option('-t, --text-dir <dir>', 'text base directory (batch)', 'text')
 		    .option('-v, --verbose', 'debug mode', false)
 		    .option('-w, --english_tag <true/false>', 'english tag', 'true')
@@ -7463,7 +7423,7 @@ function requireFrame2Text () {
     DESCRIPTION
         node Frame2Text.js --mode batch
           イベントの一括変換モードです。
-          PRGツクールのdataディレクトリを読み込み、 すべてのイベントを text/ja フォルダに書き出します。
+          PRGツクールのdataディレクトリを読み込み、 すべてのイベントを text フォルダに書き出します。
           例1：$ node Frame2Text.js --mode batch
           例2：$ node Frame2Text.js -m batch
 
@@ -7480,12 +7440,12 @@ function requireFrame2Text () {
           --watch を付与すると、テキストの変更を監視し、自動でゲームに反映することができます。
           例4: $ node Text2Frame.js --mode batch --watch
 
-          --locale を付与すると、ベースディレクトリ以下のディレクトリを指定することができます。
+          --text-dir でテキストのフォルダを分けておけば、複数の版を並行して持てます。
           典型的な利用方法として、言語ごとのテキストの管理が挙げられます。
-          例えば、Frame2Textを利用しゲームの内容をenフォルダへ書き出し、テキストを英語で書き直した後、
+          例えば、Frame2Textを利用しゲームの内容をtext-enフォルダへ書き出し、テキストを英語で書き直した後、
           下記のコマンドでその内容をゲームに反映できます。
-          例5: $ node Frame2Text.js --mode batch --locale en
-               $ node Text2Frame.js --mode batch --locale en
+          例5: $ node Frame2Text.js --mode batch --text-dir text-en
+               $ node Text2Frame.js --mode batch --text-dir text-en
 
         node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
           マップイベントのテキスト出力モードです。
@@ -7587,7 +7547,6 @@ function requireFrame2Text () {
 		    if (!fs.existsSync(dataDir)) {
 		      throw new Error('Data directory not found: ' + dataDir)
 		    }
-		    const locale = options.locale;
 		    const textDir = options.textDir;
 		    const englishTag = String(options.english_tag) === 'true';
 		    // 既定と同じタグの省略。プラグインパラメータと同じ既定(省略する)。
@@ -7597,7 +7556,8 @@ function requireFrame2Text () {
 		    // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する(既存 dir は existsSync でガード)。
 		    let baseSaveError = null;
 		    const baseRoot = process.cwd();
-		    const baseDir = path.join(baseRoot, '.t2f-base', String(locale || 'default'));
+		    // 祖先はテキストの置き場所ごとに分ける(Text2Frame の deriveBaseId と同じ規約)。
+		    const baseDir = module.exports.baseDirForTextDir(baseRoot, path.resolve(textDir));
 		    try { if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true }); } catch (e) { baseSaveError = baseSaveError || e; }
 		    const results = [];
 		    module.exports.enumerateTargets(dataDir).forEach(function (t) {
@@ -7610,7 +7570,7 @@ function requireFrame2Text () {
 		          const ceData = JSON.parse(fs.readFileSync(path.join(dataDir, 'CommonEvents.json'), 'utf8'));
 		          list = ceData[Number(t.commonEventId)].list || [];
 		        }
-		        const textPath = path.resolve(textDir, locale, t.key + '.txt');
+		        const textPath = path.resolve(textDir, t.key + '.txt');
 		        let existingText = '';
 		        try { existingText = fs.readFileSync(textPath, 'utf8'); } catch (e) { existingText = ''; }
 		        // テキストの front matter に strategy: があれば、そのファイルだけ -s より優先する。
@@ -7627,7 +7587,7 @@ function requireFrame2Text () {
 		          strategy: entryStrategy,
 		          existingText,
 		          baseText,
-		          fallbackHeader: module.exports.renderFrontMatter(Object.assign({ locale }, t), t.kind)
+		          fallbackHeader: module.exports.renderFrontMatter(t, t.kind)
 		        });
 		        // 統合できないものは書かずに見送る(上書きなら目印ごと取り出せる)。
 		        if (built.skipped) {
@@ -7705,6 +7665,14 @@ function requireText2Frame () {
 		// 2.3.0: 2026/08/03
 		// ・#132 一括反映/一括取り出しコマンドを追加
 		//   すべてのイベント・コモンイベントを、1つのコマンドでゲームとテキストの間で同期できるようになった。
+		//   反映方法は単一の取り込みと同じ add(末尾に追記) / merge(統合) / overwrite(全上書き)で、
+		//   既定も単一の取り込みと同じ add。既存ユーザの挙動は変わらない。
+		// ・#137 テキストとゲームの同期コマンド START_DATA_SYNC / STOP_DATA_SYNC を追加
+		//   一括で両方を揃えてから、以降の変更を自動で追従する。一括反映/一括取り出しの
+		//   オプションではなく単独のコマンドにした(一括反映の既定 add は繰り返し流せないため)。
+		// ・#137 テキストの置き場所から言語(locale)の概念を廃止
+		//   text/<言語>/ ではなく text/ 直下に置く。複数の版を持つときは取り込み元フォルダを
+		//   分ける。CLI の --locale と、テキスト見出しの locale: 行も廃止。
 		// ・#137 Visual Studio Code 拡張に対応
 		//   反映・取り出し・英語化をUIから実行でき、シンタックスハイライトや保存時自動反映(Watch & Deploy)を利用できます。
 		// ・#137 不具合を修正し、安定性を向上
@@ -7835,19 +7803,19 @@ function requireText2Frame () {
 		 * @default 1
 		 *
 		 * @arg Strategy
-		 * @text 反映のしかた
-		 * @desc merge(統合)はツクールで加えた編集を残したまま反映します。overwriteは全上書き、addはイベント末尾に追記です。省略するとプラグインパラメータに従います。
+		 * @text 反映方法
+		 * @desc addはイベント末尾に追記、overwriteは全上書きです。merge(統合)はツクールで加えた編集を残したまま反映しますが、Frame2Textプラグインが必要です。省略するとプラグインパラメータに従います。
 		 * @type select
+		 * @option 末尾に追記 / add
+		 * @value add
 		 * @option 統合 / merge
 		 * @value merge
 		 * @option 【取り扱い注意】全上書き / overwrite
 		 * @value overwrite
-		 * @option 末尾に追記 / add
-		 * @value add
 		 *
 		 * @arg WriteBack
 		 * @text 結果をテキストに書き戻す
-		 * @desc 統合(merge)のときだけ働きます。衝突はテキストだけに出て、ゲームには入りません。省略時はプラグインパラメータに従います。
+		 * @desc 引数Strategyが統合(merge)のときだけ働きます。ツクール側でイベントが修正されていた場合に、その部分をテキストにも反映できます。この引数ではその条件を設定します。
 		 * @type select
 		 * @option 毎回書き戻す / always
 		 * @value always
@@ -7858,7 +7826,7 @@ function requireText2Frame () {
 		 *
 		 * @arg BaseFolder
 		 * @text 祖先フォルダ名
-		 * @desc 統合(merge)の共通祖先テキストのフォルダ名です。デフォルト値は.t2f-baseで、通常設定する必要はありません。
+		 * @desc 統合(merge)処理に必要な共通祖先テキストのフォルダ名です。デフォルト値は.t2f-baseで、通常設定する必要はありません。
 		 * @type string
 		 * @default .t2f-base
 		 *
@@ -7885,19 +7853,19 @@ function requireText2Frame () {
 		 * @default 1
 		 *
 		 * @arg Strategy
-		 * @text 反映のしかた
-		 * @desc merge(統合)はツクールで加えた編集を残したまま反映します。overwriteは全上書き、addはイベント末尾に追記です。省略するとプラグインパラメータに従います。
+		 * @text 反映方法
+		 * @desc addはコモンイベント末尾に追記、overwriteは全上書きです。merge(統合)はツクールで加えた編集を残したまま反映しますが、Frame2Textプラグインが必要です。省略するとプラグインパラメータに従います。
 		 * @type select
+		 * @option 末尾に追記 / add
+		 * @value add
 		 * @option 統合 / merge
 		 * @value merge
 		 * @option 【取り扱い注意】全上書き / overwrite
 		 * @value overwrite
-		 * @option 末尾に追記 / add
-		 * @value add
 		 *
 		 * @arg WriteBack
 		 * @text 結果をテキストに書き戻す
-		 * @desc 統合(merge)のときだけ働きます。衝突はテキストだけに出て、ゲームには入りません。省略時はプラグインパラメータに従います。
+		 * @desc 引数Strategyが統合(merge)のときだけ働きます。ツクール側でイベントが修正されていた場合に、その部分をテキストにも反映できます。この引数ではその条件を設定します。
 		 * @type select
 		 * @option 毎回書き戻す / always
 		 * @value always
@@ -7908,7 +7876,7 @@ function requireText2Frame () {
 		 *
 		 * @arg BaseFolder
 		 * @text 祖先フォルダ名
-		 * @desc 統合(merge)の共通祖先テキストのフォルダ名です。デフォルト値は.t2f-baseで、通常設定する必要はありません。
+		 * @desc 統合(merge)処理に必要な共通祖先テキストのフォルダ名です。デフォルト値は.t2f-baseで、通常設定する必要はありません。
 		 * @type string
 		 * @default .t2f-base
 		 *
@@ -7918,30 +7886,20 @@ function requireText2Frame () {
 		 * @desc 指定フォルダ内の見出し情報付きテキストを、一括でゲームへ反映します。通常のイベント、コモンイベントのすべてが一括で取り込まれます。見出し情報付きテキストの作成には、Frame2Text の BATCH_EXPORT_MESSAGES_TO_FOLDER を使用してください。
 		 *
 		 * @arg Strategy
-		 * @text 反映のしかた
-		 * @desc merge(統合)はツクールで加えた編集を残したまま反映します。overwriteは全上書きです。既定はmergeです。
+		 * @text 反映方法
+		 * @desc 単一の取り込みと同じ意味です。既定はaddで、イベント末尾に追記します。merge(統合)にはFrame2Textプラグインが必要です。
 		 * @type select
+		 * @option 末尾に追記 / add
+		 * @value add
 		 * @option 統合 / merge
 		 * @value merge
 		 * @option 【取り扱い注意】全上書き / overwrite
 		 * @value overwrite
-		 * @default merge
-		 *
-		 * @arg Watch
-		 * @text 反映のあとも見張る
-		 * @desc 反映後もテキストとゲームを見張り、変更を自動で追従します。テストプレイを閉じると止まります。既定は見張りません。
-		 * @type select
-		 * @option 見張らない / off
-		 * @value off
-		 * @option 双方向で見張る / both
-		 * @value both
-		 * @option テキスト→ゲームだけ見張る / push
-		 * @value push
-		 * @default off
+		 * @default add
 		 *
 		 * @arg WriteBack
 		 * @text 結果をテキストに書き戻す
-		 * @desc 反映結果をテキストにも書きます。衝突はテキストだけに出て、ゲームには入りません。省略時はプラグインパラメータに従います。
+		 * @desc 引数Strategyが統合(merge)のときだけ働きます。ツクール側でイベントが修正されていた場合に、その部分をテキストにも反映できます。この引数ではその条件を設定します。
 		 * @type select
 		 * @option 毎回書き戻す / always
 		 * @value always
@@ -7950,28 +7908,66 @@ function requireText2Frame () {
 		 * @option 書き戻さない / off
 		 * @value off
 		 *
-		 * @arg Locale
-		 * @text 言語
-		 * @desc 見張るときの text/<言語>/ のサブフォルダ名です。反映そのものは取り込み元フォルダ配下を全部たどるので影響しません。
-		 * @type string
-		 * @default ja
-		 *
 		 * @arg TextFolder
 		 * @text 取り込み元フォルダ名
 		 * @desc 走査するテキストフォルダ名です。デフォルトはtextです。通常、設定する必要はありません。
 		 * @type string
 		 * @default text
 		 *
+		 *
+		 * @command START_DATA_SYNC
+		 * @text テキストとゲームの同期を開始
+		 * @desc テキストとゲームを一括で揃えたあと、以降の変更を自動で追従します。テストプレイを閉じると止まります。
+		 *
+		 * @arg Direction
+		 * @text 同期の向き
+		 * @desc bothはテキストとゲームの両方向です。pushはテキスト→ゲームだけ、pullはゲーム→テキストだけです。bothとpullにはFrame2Textプラグインが必要です。
+		 * @type select
+		 * @option 両方向 / both
+		 * @value both
+		 * @option テキスト→ゲームだけ / push
+		 * @value push
+		 * @option ゲーム→テキストだけ / pull
+		 * @value pull
+		 * @default both
+		 *
+		 * @arg Strategy
+		 * @text 反映方法
+		 * @desc 同期の反映方法です。既定はmerge(統合)で、テキストとゲームの両方の編集を残します。
+		 * @type select
+		 * @option 統合 / merge
+		 * @value merge
+		 * @option 【取り扱い注意】全上書き / overwrite
+		 * @value overwrite
+		 * @default merge
+		 *
+		 * @arg WriteBack
+		 * @text 結果をテキストに書き戻す
+		 * @desc 引数Strategyが統合(merge)のときだけ働きます。ツクール側でイベントが修正されていた場合に、その部分をテキストにも反映できます。この引数ではその条件を設定します。
+		 * @type select
+		 * @option 毎回書き戻す / always
+		 * @value always
+		 * @option 衝突したときだけ / onConflict
+		 * @value onConflict
+		 * @option 書き戻さない / off
+		 * @value off
+		 *
+		 * @arg TextFolder
+		 * @text テキストのフォルダ名
+		 * @desc 同期するテキストフォルダ名です。デフォルトはtextです。通常、設定する必要はありません。
+		 * @type string
+		 * @default text
+		 *
 		 * @arg DataFolder
 		 * @text ゲームデータのフォルダ名
-		 * @desc 見張るときのゲームデータのフォルダ名です。デフォルトはdataです。通常、設定する必要はありません。
+		 * @desc 同期するゲームデータのフォルダ名です。デフォルトはdataです。通常、設定する必要はありません。
 		 * @type string
 		 * @default data
 		 *
 		 *
-		 * @command STOP_SYNC_WATCH
-		 * @text 同期監視の停止
-		 * @desc 一括反映・一括取り出しの「見張る」で始めた同期監視を止めます。プレイテストを閉じても止まります。
+		 * @command STOP_DATA_SYNC
+		 * @text テキストとゲームの同期を停止
+		 * @desc START_DATA_SYNCで始めた同期を止めます。プレイテストを閉じても止まります。
 		 *
 		 *
 		 * @param Default Window Position
@@ -8033,16 +8029,16 @@ function requireText2Frame () {
 		 * @type number
 		 *
 		 * @param IsOverwrite
-		 * @text 反映のしかた(既定)
-		 * @desc プラグインコマンドで反映のしかたを省略したときに使われます。merge(統合)はツクールで加えた編集を残します。
-		 * @default merge
+		 * @text 反映方法(既定)
+		 * @desc プラグインコマンドで反映方法を省略したときに使われます。既定はaddで、イベント末尾に追記します。merge(統合)にはFrame2Textプラグインが必要です。
+		 * @default add
 		 * @type select
+		 * @option 末尾に追記 / add
+		 * @value add
 		 * @option 統合 / merge
 		 * @value merge
 		 * @option 【取り扱い注意】全上書き / overwrite
 		 * @value overwrite
-		 * @option 末尾に追記 / add
-		 * @value add
 		 * @option 【旧設定】上書きする(= overwrite)
 		 * @value true
 		 * @option 【旧設定】上書きしない(= add)
@@ -8097,12 +8093,6 @@ function requireText2Frame () {
 		 * テストプレイおよびイベントテスト（イベントエディタ上で右クリック→テスト）
 		 * から実行することを想定しています。
 		 *
-		 * テキスト→ゲームの「反映」だけでなく、ゲーム→テキストの「取り出し」（逆変換
-		 * プラグイン Frame2Text）にも対応し、双方向に編集できます。
-		 * テキストの編集とツクール上のUI編集（移動・分岐・スイッチ等）の両方をできる
-		 * だけ残します。プラグインコマンド操作が苦手な場合は、ボタン操作で使える
-		 * Visual Studio Code 拡張もあります。
-		 *
 		 * また、追加機能としてフェードインやBGM再生等のイベントコマンドも組み込むこ
 		 * とができます。追加機能の詳細はこのREADMEの下部に記載していますので、そちら
 		 * をご覧ください
@@ -8115,169 +8105,7 @@ function requireText2Frame () {
 		 * と感じた場合は、こちらをご覧ください。
 		 *
 		 * -------------------------------------
-		 * Version 2.3.0 以降の推奨手順
-		 * -------------------------------------
-		 * 0. dataフォルダのバックアップをとっておく。(重要)
-		 * 0. 逆変換プラグイン Frame2Text を導入しておく。(重要)
-		 *
-		 * 1. 任意のマップ・位置に空のイベントをひとつ作成します。
-		 *
-		 * 2. 以下のうちいずれかを記述したプラグインコマンドを作成する。
-		 *    BATCH_EXPORT_MESSAGES_TO_FOLDER
-		 *    フォルダへ一括取り出し
-		 *     これらは全く同じ機能なのでどちらを使ってもかまいません。
-		 *     このコマンドは、 Frame2Text を導入しないと呼ぶことができません。
-		 *
-		 * 3. 作成したイベントコマンドをテストプレイかイベントテストで実行する。
-		 *     実行前に Frame2Text を管理画面からONにして「プロジェクトの保存」を
-		 *    実行しておきましょう。
-		 *
-		 * 4. text/ja フォルダ以下にゲームの内容がText2Frame記法で書き出される。
-		 *     RPG ツクールのプロジェクトがあるディレクトリに、text という
-		 *    フォルダが作成され、その中に、すべてのイベントとコモンイベントが
-		 *    書き出されます。
-		 *
-		 * 5. text/ja フォルダ以下のテキストを自由に編集する。
-		 *     記法については、「テキストファイルの書き方」を参照してください。
-		 *
-		 * 6. 以下のうちいずれかを記述したプラグインコマンドを作成する。
-		 *    BATCH_IMPORT_MESSAGES_FROM_FOLDER
-		 *    フォルダから一括取り込み
-		 *     これらは全く同じ機能なのでどちらを使ってもかまいません。
-		 *
-		 * 7. 作成したイベントコマンドをテストプレイかイベントテストで実行する。
-		 *     実行前に本プラグインを管理画面からONにして「プロジェクトの保存」を
-		 *    実行しておきましょう。
-		 *
-		 * 8. 変更箇所がゲームに取り込まれる。
-		 *     あなたがテキストで編集した箇所だけがゲームに取り込まれます。
-		 *    テキストの変更とゲームの変更が衝突した場合の解消手順は、
-		 *    「変更が衝突した場合の解消方法」を参照してください。
-		 *
-		 * 9. ツクールのUIの変更をテキストに書き出す。
-		 *    反対にツクールUIで行った変更をテキストに書き出すには、
-		 *    2と3の手順を再度実行してください。
-		 *    テキストの変更とゲームの変更が衝突した場合の解消手順は、
-		 *    「変更が衝突した場合の解消方法」を参照してください。
-		 *
-		 * --------------------------------------
-		 * 変更が衝突した場合の解消方法
-		 * --------------------------------------
-		 *  同じ場所をテキストとゲームの両方で変更したときは、次の目印3行が挿入された
-		 *  上で、両方の変更が残ります（どちらの変更も失われることはありません）。
-		 *
-		 *    === テキストの変更 / from text ===
-		 *    （テキスト側の内容）
-		 *    === ゲームの変更 / from game ===
-		 *    （ゲーム側の内容）
-		 *    === どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===
-		 *
-		 *  直し方は「目印が入った側で残す方を決め、目印3行を消す」ことです。
-		 *
-		 * ◆ 反映（テキスト→ゲーム）で衝突したとき
-		 *  プラグインパラメータ「反映結果をテキストに書き戻す」が既定（毎回）のままなら、
-		 *  目印は【テキスト】に入ります。ゲームには自分の版だけが書かれるので、
-		 *  ツクールで開いても目印は入っておらず、そのまま遊べます。
-		 *
-		 *     1. テキストエディタで目印3行を消し、残す方だけにする。
-		 *     2. もう一度「BATCH_IMPORT_MESSAGES_FROM_FOLDER」を実行する。
-		 *
-		 *  書き戻しを「off」にしている場合は、目印は【ゲーム】に入ります。
-		 *
-		 *     1. ツクールをセーブせずに開き直し、目印のある周辺をUIで編集して
-		 *        目印3行を消し、意図通りに編集する。
-		 *     2. Frame2Text の「BATCH_EXPORT_MESSAGES_TO_FOLDER」を実行する。
-		 *
-		 * ◆ 取り出し（ゲーム→テキスト）で衝突したとき
-		 *  目印はテキストに入ります。
-		 *
-		 *     1. テキストエディタで目印3行を消し、残す方だけにする。
-		 *     2. 「BATCH_IMPORT_MESSAGES_FROM_FOLDER」を実行する。
-		 *
-		 *  ※ 目印を消さないまま実行すると、そのファイルは対象から外れます
-		 *    （目印ごと再マージすると二重・三重に増えるためです）。
-		 *
-		 *  ※ コメント行（％で始まる行）と、あなたが入れた書き方（余分な空行・タグ行の
-		 *    字下げ・タグ名の大文字小文字）は、テキストを作り直す反映・取り出しのどちらでも
-		 *    残ります。いずれもゲームには入らないものなので、元のテキストを見て元の位置へ
-		 *    書き戻しています。ただし、その周りの内容がゲーム側で大きく書き換わった場合は
-		 *    位置がずれることがあります（消えることはありません）。ずれた可能性があるときは
-		 *    ファイル名を挙げて知らせます。詳しくは「コメントアウト」を参照してください。
-		 *
-		 * ◆ 一括取り出し・反映時にプラグインコマンドが意図通りに動作しないとき
-		 *  ゲームかテキストのどちらかを真と決めて、強制的に上書きすることで解決でき
-		 *  ます。このとき、反対側にしかない内容は失われます。
-		 *     1. ゲームを真としてテキストを上書きしたいとき
-		 *        Frame2Text の「BATCH_EXPORT_MESSAGES_TO_FOLDER」を上書き(overwrite)で
-		 *        実行する。
-		 *        BATCH_EXPORT_MESSAGES_TO_FOLDER overwrite
-		 *     2. テキストを真としてゲームを上書きしたいとき
-		 *        「BATCH_IMPORT_MESSAGES_FROM_FOLDER」を上書き(overwrite)で実行する。
-		 *        BATCH_IMPORT_MESSAGES_FROM_FOLDER overwrite
-		 *
-		 * ◆ 差分反映に使う「共通の祖先」はプロジェクトの .t2f-base フォルダに自動で
-		 *  保存・参照されます。このフォルダを削除すると状態が初期化され必ず上書きさ
-		 *  れます。
-		 *
-		 * --------------------------------------
-		 * 自動で同期する（同期監視）
-		 * --------------------------------------
-		 *  毎回プラグインコマンドを実行するかわりに、テキストとゲームデータを見張って、
-		 *  変わったファイルだけを自動で反映・取り出しさせることができます。
-		 *
-		 *  一括反映の「反映のあとも見張る」に off 以外を指定してください。
-		 *  まず全部を反映して食い違いを無くし、そのあと変更を見張り続けます。
-		 *
-		 *     BATCH_IMPORT_MESSAGES_FROM_FOLDER merge both
-		 *     一括反映 merge both
-		 *      引数は順に「反映のしかた」「見張りかた」「書き戻し」「言語」
-		 *      「取り込み元フォルダ名」「ゲームデータのフォルダ名」で、すべて省略できます。
-		 *      見張りかたは off（既定）/ both（双方向）/ push（テキスト→ゲームだけ）です。
-		 *
-		 *     一括反映 merge push        テキストを直したらゲームへ、だけを見張る
-		 *     一括反映 merge both always 衝突の目印はテキストに入れる（既定）
-		 *
-		 *  ゲームを正として始めたいときは、Frame2Text の一括取り出しから見張ります。
-		 *
-		 *     BATCH_EXPORT_MESSAGES_TO_FOLDER merge both
-		 *
-		 *  止めるときは STOP_SYNC_WATCH（同期監視の停止）を実行します。どちらから
-		 *  始めた場合も、止めるコマンドは Text2Frame のものひとつです。
-		 *
-		 *  ◆ 使う前に知っておくこと
-		 *   ・監視はゲームの実行中のみ動作します。**プレイテストを閉じると止まります。**
-		 *   ・**実行中のゲームの画面は変わりません。** ゲームは起動時に読んだデータを
-		 *     持ち続けるためです。反映を確かめるには F5 でリロードしてください。
-		 *   ・進行状況はコンソール（F8）に出ます。ゲーム画面には出ません。
-		 *   ・取り出しには Frame2Text が必要です（向きに push を指定すれば不要）。
-		 *
-		 *  ◆ ツクールの保存は使わないでください
-		 *   エディタで「プロジェクトの保存」をすると data フォルダが丸ごと書き戻り、
-		 *   反映済みの内容が失われてしまいます。したがって、まとまった変更を見つけ
-		 *   たときは保存とみなして自動取り出しを見送り、コンソールにその旨を出しま
-		 *   す。必要なら一括取り出しを手で実行してください。
-		 *
-		 *  ◆ 監視の対象
-		 *   text/<言語>/ 直下の .txt と、data 直下の Map***.json / CommonEvents.json です。
-		 *   テキストをさらにサブフォルダに分けている場合、そこは監視されません。
-		 *
-		 *  ターミナルを使える場合は、ゲームを起動しなくても同じことができます。
-		 *  「npx t2f-sync --watch」を参照してください。
-		 *
-		 * --------------------------------------
-		 * Visual Studio Code のプラグイン
-		 * --------------------------------------
-		 * プラグインコマンドではなく、Visual Studio Codeというエディタを使えば、
-		 * テキストを編集しながら、UIのボタンひとつで、一括反映、一括取り出しの
-		 * コマンドを実行できます。
-		 * また、文字列の補完や文法の説明表示が自動で行われます。
-		 * 下記からVisual Studio Code 拡張「Text2Frame Language Support」を利用
-		 * することができます。
-		 * https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support
-		 *
-		 *
-		 * -------------------------------------
-		 * Version 2.2.4 までの手順
+		 * 基本の使い方(イベント1つにテキストを取り込む)
 		 * -------------------------------------
 		 *
 		 * -------------------------------------
@@ -8367,6 +8195,174 @@ function requireText2Frame () {
 		 *    IDが1のマップの、IDが1のイベントの、IDが1のページに書き出したことに
 		 *    なります。
 		 *
+		 *
+		 *
+		 * -------------------------------------
+		 * 発展: フォルダごとまとめて取り出す・反映する(Version 2.3.0 以降)
+		 * -------------------------------------
+		 * イベントの数が増えて1つずつ取り込むのが面倒になったら、フォルダごとまとめて
+		 * 扱えます。ゲーム→テキストの「取り出し」には逆変換プラグイン Frame2Text が
+		 * 必要です。テキストの編集とツクール上のUI編集（移動・分岐・スイッチ等）は、
+		 * どちらもできるだけ残します。
+		 *
+		 * 0. dataフォルダのバックアップをとっておく。(重要)
+		 * 0. 逆変換プラグイン Frame2Text を導入しておく。(重要)
+		 *
+		 * 1. 任意のマップ・位置に空のイベントをひとつ作成します。
+		 *
+		 * 2. 以下のうちいずれかを記述したプラグインコマンドを作成する。
+		 *    BATCH_EXPORT_MESSAGES_TO_FOLDER
+		 *    フォルダへ一括取り出し
+		 *     これらは全く同じ機能なのでどちらを使ってもかまいません。
+		 *     このコマンドは、 Frame2Text を導入しないと呼ぶことができません。
+		 *
+		 * 3. 作成したイベントコマンドをテストプレイかイベントテストで実行する。
+		 *     実行前に Frame2Text を管理画面からONにして「プロジェクトの保存」を
+		 *    実行しておきましょう。
+		 *
+		 * 4. text フォルダ以下にゲームの内容がText2Frame記法で書き出される。
+		 *     RPG ツクールのプロジェクトがあるディレクトリに、text という
+		 *    フォルダが作成され、その中に、すべてのイベントとコモンイベントが
+		 *    書き出されます。
+		 *
+		 * 5. text フォルダ以下のテキストを自由に編集する。
+		 *     記法については、「テキストファイルの書き方」を参照してください。
+		 *
+		 * 6. 以下のうちいずれかを記述したプラグインコマンドを作成する。
+		 *    BATCH_IMPORT_MESSAGES_FROM_FOLDER
+		 *    フォルダから一括取り込み
+		 *     これらは全く同じ機能なのでどちらを使ってもかまいません。
+		 *     引数「反映方法」は単一の取り込みと同じで、既定は add（末尾に追記）です。
+		 *     取り出したテキストを編集して反映し直す使い方では merge（統合）を指定
+		 *    してください。
+		 *        BATCH_IMPORT_MESSAGES_FROM_FOLDER merge
+		 *
+		 * 7. 作成したイベントコマンドをテストプレイかイベントテストで実行する。
+		 *     実行前に本プラグインを管理画面からONにして「プロジェクトの保存」を
+		 *    実行しておきましょう。
+		 *
+		 * 8. 変更箇所がゲームに取り込まれる。
+		 *     あなたがテキストで編集した箇所だけがゲームに取り込まれます。
+		 *    テキストの変更とゲームの変更が衝突した場合の解消手順は、
+		 *    「変更が衝突した場合の解消方法」を参照してください。
+		 *
+		 * 9. ツクールのUIの変更をテキストに書き出す。
+		 *    反対にツクールUIで行った変更をテキストに書き出すには、
+		 *    2と3の手順を再度実行してください。
+		 *    テキストの変更とゲームの変更が衝突した場合の解消手順は、
+		 *    「変更が衝突した場合の解消方法」を参照してください。
+		 *
+		 * --------------------------------------
+		 * 変更が衝突した場合の解消方法
+		 * --------------------------------------
+		 *  同じ場所をテキストとゲームの両方で変更したときは、次の目印3行が挿入された
+		 *  上で、両方の変更が残ります（どちらの変更も失われることはありません）。
+		 *
+		 *    === テキストの変更 / from text ===
+		 *    （テキスト側の内容）
+		 *    === ゲームの変更 / from game ===
+		 *    （ゲーム側の内容）
+		 *    === どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===
+		 *
+		 *  直し方は「目印が入った側で残す方を決め、目印3行を消す」ことです。
+		 *
+		 * ◆ 反映（テキスト→ゲーム）で衝突したとき
+		 *  プラグインパラメータ「反映結果をテキストに書き戻す」が既定（毎回）のままなら、
+		 *  目印は【テキスト】に入ります。ゲームには自分の版だけが書かれるので、
+		 *  ツクールで開いても目印は入っておらず、そのまま遊べます。
+		 *
+		 *     1. テキストエディタで目印3行を消し、残す方だけにする。
+		 *     2. もう一度「BATCH_IMPORT_MESSAGES_FROM_FOLDER」を実行する。
+		 *
+		 *  書き戻しを「off」にしている場合は、目印は【ゲーム】に入ります。
+		 *
+		 *     1. ツクールをセーブせずに開き直し、目印のある周辺をUIで編集して
+		 *        目印3行を消し、意図通りに編集する。
+		 *     2. Frame2Text の「BATCH_EXPORT_MESSAGES_TO_FOLDER」を実行する。
+		 *
+		 * ◆ 取り出し（ゲーム→テキスト）で衝突したとき
+		 *  目印はテキストに入ります。
+		 *
+		 *     1. テキストエディタで目印3行を消し、残す方だけにする。
+		 *     2. 「BATCH_IMPORT_MESSAGES_FROM_FOLDER」を実行する。
+		 *
+		 *  ※ 目印を消さないまま実行すると、そのファイルは対象から外れます
+		 *    （目印ごと再マージすると二重・三重に増えるためです）。
+		 *
+		 *  ※ コメント行（％で始まる行）と、あなたが入れた書き方（余分な空行・タグ行の
+		 *    字下げ・タグ名の大文字小文字）は、テキストを作り直す反映・取り出しのどちらでも
+		 *    残ります。いずれもゲームには入らないものなので、元のテキストを見て元の位置へ
+		 *    書き戻しています。ただし、その周りの内容がゲーム側で大きく書き換わった場合は
+		 *    位置がずれることがあります（消えることはありません）。ずれた可能性があるときは
+		 *    ファイル名を挙げて知らせます。詳しくは「コメントアウト」を参照してください。
+		 *
+		 * ◆ 一括取り出し・反映時にプラグインコマンドが意図通りに動作しないとき
+		 *  ゲームかテキストのどちらかを真と決めて、強制的に上書きすることで解決でき
+		 *  ます。このとき、反対側にしかない内容は失われます。
+		 *     1. ゲームを真としてテキストを上書きしたいとき
+		 *        Frame2Text の「BATCH_EXPORT_MESSAGES_TO_FOLDER」を上書き(overwrite)で
+		 *        実行する。
+		 *        BATCH_EXPORT_MESSAGES_TO_FOLDER overwrite
+		 *     2. テキストを真としてゲームを上書きしたいとき
+		 *        「BATCH_IMPORT_MESSAGES_FROM_FOLDER」を上書き(overwrite)で実行する。
+		 *        BATCH_IMPORT_MESSAGES_FROM_FOLDER overwrite
+		 *
+		 * ◆ 差分反映に使う「共通の祖先」はプロジェクトの .t2f-base フォルダに自動で
+		 *  保存・参照されます。このフォルダを削除すると状態が初期化され必ず上書きさ
+		 *  れます。
+		 *
+		 * --------------------------------------
+		 * 発展: テキストとゲームを自動で同期する
+		 * --------------------------------------
+		 *  毎回プラグインコマンドを実行するかわりに、テキストとゲームデータを見張って、
+		 *  変わったファイルだけを自動で反映・取り出しさせることができます。
+		 *
+		 *     START_DATA_SYNC
+		 *     テキストとゲームの同期を開始
+		 *      まず一括で両方を揃えてから、そのあとの変更を見張り続けます。
+		 *      引数は順に「同期の向き」「反映方法」「書き戻し」「テキストのフォルダ名」
+		 *      「ゲームデータのフォルダ名」で、すべて省略できます。
+		 *      同期の向きは both（既定・双方向）/ push（テキスト→ゲームだけ）/
+		 *      pull（ゲーム→テキストだけ）です。
+		 *
+		 *     START_DATA_SYNC push        テキストを直したらゲームへ、だけを見張る
+		 *     START_DATA_SYNC both merge always
+		 *                                 衝突の目印はテキストに入れる（既定）
+		 *
+		 *  止めるときは STOP_DATA_SYNC（テキストとゲームの同期を停止）を実行します。
+		 *
+		 *  ◆ 使う前に知っておくこと
+		 *   ・同期はゲームの実行中のみ動作します。**プレイテストを閉じると止まります。**
+		 *   ・**実行中のゲームの画面は変わりません。** ゲームは起動時に読んだデータを
+		 *     持ち続けるためです。反映を確かめるには F5 でリロードしてください。
+		 *   ・進行状況はコンソール（F8）に出ます。ゲーム画面には出ません。
+		 *   ・取り出しには Frame2Text が必要です（向きに push を指定すれば不要）。
+		 *   ・反映方法の既定は merge（統合）です。一括反映の既定（add）とは異なります。
+		 *     繰り返し流すため、追記だと同じ内容が積み上がってしまうためです。
+		 *
+		 *  ◆ ツクールの保存は使わないでください
+		 *   エディタで「プロジェクトの保存」をすると data フォルダが丸ごと書き戻り、
+		 *   反映済みの内容が失われてしまいます。したがって、まとまった変更を見つけ
+		 *   たときは保存とみなして自動取り出しを見送り、コンソールにその旨を出しま
+		 *   す。必要なら一括取り出しを手で実行してください。
+		 *
+		 *  ◆ 監視の対象
+		 *   text 直下の .txt と、data 直下の Map***.json / CommonEvents.json です。
+		 *   テキストをさらにサブフォルダに分けている場合、そこは監視されません。
+		 *
+		 *  ターミナルを使える場合は、ゲームを起動しなくても同じことができます。
+		 *  「npx t2f-sync --watch」を参照してください。
+		 *
+		 * --------------------------------------
+		 * Visual Studio Code のプラグイン
+		 * --------------------------------------
+		 * プラグインコマンドではなく、Visual Studio Codeというエディタを使えば、
+		 * テキストを編集しながら、UIのボタンひとつで、一括反映、一括取り出しの
+		 * コマンドを実行できます。
+		 * また、文字列の補完や文法の説明表示が自動で行われます。
+		 * 下記からVisual Studio Code 拡張「Text2Frame Language Support」を利用
+		 * することができます。
+		 * https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support
 		 *
 		 *
 		 * --------------------------------------
@@ -8542,7 +8538,6 @@ function requireText2Frame () {
 		 * mapId: 185
 		 * eventId: 4
 		 * pageId: 1
-		 * locale: ja
 		 * key: map185_event004_page1
 		 * ---
 		 * この見出しは、このテキストファイルがどのイベントに取り込まれるべきかが書かれ
@@ -8576,12 +8571,13 @@ function requireText2Frame () {
 		 * メータで指定したテキストファイルやマップIDとは違うパラメータで実行ができま
 		 * す。
 		 *
-		 *  反映のしかたは、以前「上書きするか」を書いていた枠(イベントなら6番目、
+		 *  反映方法は、以前「上書きするか」を書いていた枠(イベントなら6番目、
 		 *  コモンイベントなら4番目)にそのまま書きます。
+		 *    add       … 末尾に追記。false と書いても同じです。既定はこれです。
 		 *    merge     … 統合。ツクールで加えた編集を残して反映します。
+		 *                 逆変換プラグイン Frame2Text が必要です。
 		 *    overwrite … 全上書き。true と書いても同じです。
-		 *    add       … 末尾に追記。false と書いても同じです。
-		 *  省略するとプラグインパラメータ「反映のしかた(既定)」に従います。
+		 *  省略するとプラグインパラメータ「反映方法(既定)」に従います。
 		 *  true / false で書かれた既存のプラグインコマンドは、意味が変わりません。
 		 *
 		 * 例1:text/message.txtをマップIDが1, イベントIDが2, ページIDが3へ統合で
@@ -8599,19 +8595,30 @@ function requireText2Frame () {
 		 *   メッセージをコモンイベントにインポート text message.txt 3 true
 		 *
 		 * 例3:フォルダ内のテキストを一括反映する。引数はよく変える順に並んでいます。
-		 *     第1: 反映のしかた(merge/overwrite)。省略すると統合。
-		 *     第2: 反映のあとも見張るか(off/both/push)。省略すると見張らない。
-		 *     第3: 結果をテキストに書き戻すか(always/onConflict/off)。
+		 *     単一の取り込みとの違いは、宛先の指し方(テキストの見出し情報に従う)だけ
+		 *     で、反映方法も既定も単一の取り込みと同じです。
+		 *     第1: 反映方法(add/merge/overwrite)。省略すると末尾に追記。
+		 *     第2: 結果をテキストに書き戻すか(always/onConflict/off)。
 		 *          省略するとプラグインパラメータに従う。
-		 *     第4: 見張るときの言語。省略すると ja。
-		 *     第5: 取り込み元フォルダ名。省略すると text。
-		 *     第6: 見張るときのゲームデータのフォルダ名。省略すると data。
+		 *     第3: 取り込み元フォルダ名。省略すると text。
 		 *   BATCH_IMPORT_MESSAGES_FROM_FOLDER
 		 *   BATCH_IMPORT_MESSAGES_FROM_FOLDER overwrite
-		 *   BATCH_IMPORT_MESSAGES_FROM_FOLDER merge both
-		 *   BATCH_IMPORT_MESSAGES_FROM_FOLDER merge off always ja text
+		 *   BATCH_IMPORT_MESSAGES_FROM_FOLDER merge
+		 *   BATCH_IMPORT_MESSAGES_FROM_FOLDER merge always text
 		 *   フォルダから一括取り込み overwrite
-		 *   一括反映 merge both
+		 *   一括反映 merge
+		 *
+		 * 例4:テキストとゲームの同期を始める・止める。引数はすべて省略できます。
+		 *     第1: 同期の向き(both/push/pull)。省略すると双方向。
+		 *     第2: 反映方法(merge/overwrite)。省略すると統合。
+		 *     第3: 結果をテキストに書き戻すか(always/onConflict/off)。
+		 *     第4: テキストのフォルダ名。省略すると text。
+		 *     第5: ゲームデータのフォルダ名。省略すると data。
+		 *   START_DATA_SYNC
+		 *   START_DATA_SYNC push
+		 *   STOP_DATA_SYNC
+		 *   テキストとゲームの同期を開始 push
+		 *   テキストとゲームの同期を停止
 		 *
 		 * ◆ 旧版のプラグインコマンドの引数(非推奨)
 		 *  最新版(ツクールMZ対応後,ver2.0.0)と旧版(ツクールMZ対応前,ver1.4.1)では、
@@ -12145,12 +12152,18 @@ function requireText2Frame () {
 		    });
 		    PluginManager.registerCommand('Text2Frame', 'BATCH_IMPORT_MESSAGES_FROM_FOLDER', function (args) {
 		      // 引数順は @arg の並びと合わせる。よく変えるものから順に
-		      // 反映のしかた -> 見張る -> 書き戻し -> 言語 -> 取り込み元 -> データフォルダ。
+		      // 反映方法 -> 書き戻し -> 取り込み元。
 		      this.pluginCommand('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-		        [args.Strategy, args.Watch, args.WriteBack, args.Locale, args.TextFolder, args.DataFolder]);
+		        [args.Strategy, args.WriteBack, args.TextFolder]);
 		    });
-		    PluginManager.registerCommand('Text2Frame', 'STOP_SYNC_WATCH', function () {
-		      this.pluginCommand('STOP_SYNC_WATCH', []);
+		    PluginManager.registerCommand('Text2Frame', 'START_DATA_SYNC', function (args) {
+		      // 引数順は @arg の並びと合わせる。
+		      // 向き -> 反映方法 -> 書き戻し -> テキスト -> データフォルダ。
+		      this.pluginCommand('START_DATA_SYNC',
+		        [args.Direction, args.Strategy, args.WriteBack, args.TextFolder, args.DataFolder]);
+		    });
+		    PluginManager.registerCommand('Text2Frame', 'STOP_DATA_SYNC', function () {
+		      this.pluginCommand('STOP_DATA_SYNC', []);
 		    });
 		  }
 
@@ -12168,14 +12181,12 @@ function requireText2Frame () {
 		    overwrite: 'overwrite',
 		    add: 'add'
 		  };
-		  /* 一括コマンドの「見張る」。off 以外は監視の向きそのものなので、値をそのまま向きに使う。
-		   * 一括反映の @option は off/both/push、一括取り出しは off/both/pull だけ出すが、
-		   * 手で書く MV のために4つとも受ける。 */
-		  const normalizeWatch = function (value) {
-		    if (value === undefined || value === null || value === '') return 'off'
+		  /* 同期の向き。省略時は両方向。push はテキスト->ゲームだけ、pull はゲーム->テキストだけ。 */
+		  const normalizeDirection = function (value) {
+		    if (value === undefined || value === null || value === '') return 'both'
 		    const key = String(value).toLowerCase();
-		    if (['off', 'both', 'push', 'pull'].indexOf(key) === -1) {
-		      throw new Error('Unknown watch: ' + value + ' / 見張りかたは off か both か push か pull を指定してください。')
+		    if (['both', 'push', 'pull'].indexOf(key) === -1) {
+		      throw new Error('Unknown direction: ' + value + ' / 同期の向きは both か push か pull を指定してください。')
 		    }
 		    return key
 		  };
@@ -12207,8 +12218,8 @@ function requireText2Frame () {
 		    Laurus.Text2Frame.BatchStrategy = 'diff';
 		    // 単発反映のしかた。COMMAND_LINE(CLI / applyTextFile)が毎回上書きする。
 		    Laurus.Text2Frame.Strategy = 'merge';
-		    // 引数を省略したときの既定。PluginManager が無い経路では常に統合。
-		    Laurus.Text2Frame.DefaultStrategy = 'merge';
+		    // 引数を省略したときの既定。プラグインコマンドと同じく末尾に追記。
+		    Laurus.Text2Frame.DefaultStrategy = 'add';
 		    // PluginManager が無い経路(CLI / t2f-sync / ライブラリ)は書き戻さない。
 		    // 呼び出し側が applyTextFile の writeBack で明示したときだけ有効になる。
 		    Laurus.Text2Frame.WriteBackAfterMerge = 'off';
@@ -12233,8 +12244,9 @@ function requireText2Frame () {
 		    Laurus.Text2Frame.PageID = String(Laurus.Text2Frame.Parameters['Default PageID']);
 		    Laurus.Text2Frame.IsOverwrite = (String(Laurus.Text2Frame.Parameters.IsOverwrite) === 'true');
 		    /* 引数を省略したときの既定。同じ設定が旧版では true/false だったので、
-		     * 保存済みの false(=末尾に追記) はその意味のまま引き継ぐ。新規導入の既定は merge。 */
-		    Laurus.Text2Frame.DefaultStrategy = toImportStrategy(Laurus.Text2Frame.Parameters.IsOverwrite) || 'merge';
+		     * 保存済みの true(=全上書き) / false(=末尾に追記) はその意味のまま引き継ぐ。
+		     * 新規導入の既定は add(末尾に追記)で、これは旧版の既定と同じ。 */
+		    Laurus.Text2Frame.DefaultStrategy = toImportStrategy(Laurus.Text2Frame.Parameters.IsOverwrite) || 'add';
 		    Laurus.Text2Frame.CommentOutChar = String(Laurus.Text2Frame.Parameters['Comment Out Char']);
 		    Laurus.Text2Frame.IsDebug = (String(Laurus.Text2Frame.Parameters.IsDebug) === 'true');
 		    Laurus.Text2Frame.DisplayMsg = (String(Laurus.Text2Frame.Parameters.DisplayMsg) === 'true');
@@ -12446,7 +12458,7 @@ function requireText2Frame () {
 		        throw new Error('未解決の衝突がテキストに残っています。目印3行を消して残す方を決めたあと、もう一度反映してください。' +
 		          ' / unresolved conflict markers in the text; resolve them and import again')
 		      }
-		      // 祖先(BASE): 明示 BasePath 優先。無ければ .t2f-base/<locale>/<key> を自動参照。
+		      // 祖先(BASE): 明示 BasePath 優先。無ければ .t2f-base/<key> を自動参照。
 		      let base_cmds = null;
 		      let baseRoot = null;
 		      let baseId = null;
@@ -12454,13 +12466,12 @@ function requireText2Frame () {
 		        // 祖先は「ユーザーのプロジェクト(cwd)」直下の .t2f-base に置く(ツール本体の場所ではない)。
 		        baseRoot = Laurus.Text2Frame.BaseRoot ||
 		          ((typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH);
-		        const meta = parseFrontMatter(readText(textPath)).meta;
-		        baseId = deriveBaseId(textPath, meta);
+		        baseId = deriveBaseId(textPath, baseRoot);
 		      } catch (e) { baseRoot = null; }
 		      if (explicitBasePath) {
 		        try { base_cmds = compile(parseFrontMatter(readText(explicitBasePath)).body); } catch (e) { base_cmds = null; }
 		      } else if (baseRoot && baseId) {
-		        const bt = readBaseText(baseRoot, baseId.locale, baseId.key);
+		        const bt = readBaseText(baseRoot, baseId.key);
 		        if (bt) { try { base_cmds = compile(parseFrontMatter(bt).body); } catch (e) { base_cmds = null; } }
 		      }
 		      let merge_result;
@@ -12502,7 +12513,7 @@ function requireText2Frame () {
 		    // ツクールで解決したあとの取り出しで同じ衝突がテキスト側に再発する。
 		    // 衝突時はゲーム側に目印が残るので、次の反映・取り出しは既存のガードが止める。
 		    const saveMergeBase = function (baseRoot, baseId, textPath) {
-		      if (baseRoot && baseId) { try { saveBaseText(baseRoot, baseId.locale, baseId.key, readText(textPath)); } catch (e) {} }
+		      if (baseRoot && baseId) { try { saveBaseText(baseRoot, baseId.key, readText(textPath)); } catch (e) {} }
 		    };
 
 		    /* ---------------- マージバック(書き戻し) ----------------
@@ -12603,7 +12614,7 @@ function requireText2Frame () {
 		    const saveBaseAfterMerge = function (merged, textPath) {
 		      const wb = merged.writeBack;
 		      if (wb && (wb.written || wb.unchanged) && wb.baseText && merged.baseRoot && merged.baseId) {
-		        try { saveBaseText(merged.baseRoot, merged.baseId.locale, merged.baseId.key, wb.baseText); } catch (e) {}
+		        try { saveBaseText(merged.baseRoot, merged.baseId.key, wb.baseText); } catch (e) {}
 		        return
 		      }
 		      saveMergeBase(merged.baseRoot, merged.baseId, textPath);
@@ -12620,31 +12631,32 @@ function requireText2Frame () {
 		    };
 
 		    // overwrite 反映の直後も text==game なので、同じく祖先を更新する。
-		    // 読み込み済みのテキスト/メタを受け取り、ファイルを読み直さない。
-		    const saveBaseAfterOverwrite = function (textPath, text, meta) {
+		    // 読み込み済みのテキストを受け取り、ファイルを読み直さない。
+		    const saveBaseAfterOverwrite = function (textPath, text) {
 		      try {
 		        const root = Laurus.Text2Frame.BaseRoot ||
 		          ((typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH);
-		        const id = deriveBaseId(textPath, meta);
-		        if (root && id) saveBaseText(root, id.locale, id.key, text);
+		        const id = deriveBaseId(textPath, root);
+		        if (root && id) saveBaseText(root, id.key, text);
 		      } catch (e) { /* best effort */ }
 		    };
 
 		    /* 単発の反映コマンド(IMPORT_*)の「反映のしかた」を決める。
 		     * 旧来の上書き真偽値と同じ枠で受ける。true=全上書き / false=末尾に追記なので、
 		     * 既に書かれているプラグインコマンドは意味が変わらない。
-		     * 省略時はプラグインパラメータ「反映のしかた(既定)」。
+		     * 省略時はプラグインパラメータ「反映方法(既定)」。
 		     *
-		     * 一括・CLI・front matter が使う resolveStrategy とは別にしてある: add(末尾に追記)は
-		     * 2回流すと内容が二重になるので、走査で回るところに出してはいけない。 */
+		     * 一括反映も「単一の取り込みをまとめて行うもの」なので同じ3択・同じ既定を通す。
+		     * add(末尾に追記)は2回流すと内容が二重になる(冪等でない)。そのため同期監視は
+		     * 一括反映のオプションではなく、merge を既定とする START_DATA_SYNC に分けてある。 */
 		    const resolveImportStrategy = function (value) {
 		      const s = toImportStrategy(value);
 		      if (s) return s
 		      if (value === undefined || value === null || value === '') {
-		        return Laurus.Text2Frame.DefaultStrategy || 'merge'
+		        return Laurus.Text2Frame.DefaultStrategy || 'add'
 		      }
 		      throw new Error('Unknown strategy: ' + value +
-		        ' / 反映のしかたは merge か overwrite か add を指定してください。')
+		        ' / 反映方法は add か merge か overwrite を指定してください。')
 		    };
 
 		    Laurus.Text2Frame.ExecMode = command.toUpperCase();
@@ -12710,24 +12722,35 @@ function requireText2Frame () {
 		      case 'フォルダから一括取り込み' :
 		      case '一括反映' : {
 		        addMessage('batch import from folder. \n/ フォルダから一括反映します。');
-		        // よく変えるものから順に: 反映のしかた -> 見張る -> 書き戻し -> 言語 -> 取り込み元 -> データフォルダ。
+		        // よく変えるものから順に: 反映方法 -> 書き戻し -> 取り込み元。
 		        // @arg の並び・registerCommand の渡し順と揃えること(ずれると folder に always が入る)。
-		        const batchStrategy = String(args[0] || 'merge').toLowerCase();
-		        if (batchStrategy !== 'merge' && batchStrategy !== 'overwrite') {
-		          throw new Error('Unknown strategy: ' + args[0] + ' / 反映のしかたは merge か overwrite を指定してください。')
-		        }
-		        Laurus.Text2Frame.BatchStrategy = batchStrategy;
-		        Laurus.Text2Frame.Watch = normalizeWatch(args[1]);
-		        Laurus.Text2Frame.WriteBack = String(args[2] || Laurus.Text2Frame.WriteBackAfterMerge || 'off');
-		        Laurus.Text2Frame.SyncLocale = args[3] || 'ja';
-		        Laurus.Text2Frame.ImportFolder = args[4] || 'text';
-		        Laurus.Text2Frame.SyncDataFolder = args[5] || 'data';
+		        /* 一括反映は「単一の取り込みをまとめて行うもの」なので、反映方法も単一と同じ
+		         * add/merge/overwrite の3つを取り、既定も単一と同じ add にする。 */
+		        Laurus.Text2Frame.BatchStrategy = resolveImportStrategy(args[0]);
+		        Laurus.Text2Frame.WriteBack = String(args[1] || Laurus.Text2Frame.WriteBackAfterMerge || 'off');
+		        Laurus.Text2Frame.ImportFolder = args[2] || 'text';
 		        Laurus.Text2Frame.ExecMode = 'BATCH_IMPORT_MESSAGES_FROM_FOLDER';
 		        break
 		      }
-		      case 'STOP_SYNC_WATCH' :
-		      case '同期監視の停止' :
-		        Laurus.Text2Frame.ExecMode = 'STOP_SYNC_WATCH';
+		      case 'START_DATA_SYNC' :
+		      case 'テキストとゲームの同期を開始' : {
+		        addMessage('start data sync. \n/ テキストとゲームの同期を開始します。');
+		        // よく変えるものから順に: 向き -> 反映方法 -> 書き戻し -> テキスト -> データフォルダ。
+		        const syncStrategy = String(args[1] || 'merge').toLowerCase();
+		        if (syncStrategy !== 'merge' && syncStrategy !== 'overwrite') {
+		          throw new Error('Unknown strategy: ' + args[1] + ' / 同期の反映方法は merge か overwrite を指定してください。')
+		        }
+		        Laurus.Text2Frame.SyncDirection = normalizeDirection(args[0]);
+		        Laurus.Text2Frame.SyncStrategy = syncStrategy;
+		        Laurus.Text2Frame.WriteBack = String(args[2] || Laurus.Text2Frame.WriteBackAfterMerge || 'off');
+		        Laurus.Text2Frame.ImportFolder = args[3] || 'text';
+		        Laurus.Text2Frame.SyncDataFolder = args[4] || 'data';
+		        Laurus.Text2Frame.ExecMode = 'START_DATA_SYNC';
+		        break
+		      }
+		      case 'STOP_DATA_SYNC' :
+		      case 'テキストとゲームの同期を停止' :
+		        Laurus.Text2Frame.ExecMode = 'STOP_DATA_SYNC';
 		        break
 		      case 'COMMAND_LINE' :
 		        Laurus.Text2Frame = Object.assign(Laurus.Text2Frame, args[0]);
@@ -18162,9 +18185,12 @@ function requireText2Frame () {
 		      return event_command_list
 		    };
 
-		    // 反映方式は merge(既定・構造保持の賢い反映) / overwrite(全上書き) の2つ。未指定は merge。未知は null。
+		    /* 反映方法は add(末尾に追記) / merge(構造保持の賢い反映) / overwrite(全上書き) の3つ。
+		     * 未指定は merge(CLI と t2f-sync の既定)。未知は null。
+		     * プラグインコマンドの既定は別で、resolveImportStrategy がプラグインパラメータから決める。 */
 		    const resolveStrategy = function (name) {
 		      const s = String(name == null ? 'merge' : name).toLowerCase();
+		      if (s === 'add') return { strategy: 'add' }
 		      if (s === 'merge') return { strategy: 'merge' }
 		      if (s === 'overwrite') return { strategy: 'overwrite' }
 		      return null
@@ -18455,7 +18481,7 @@ function requireText2Frame () {
 		      }
 		      const _resolvedStrategy = resolveStrategy(opts.strategy);
 		      if (!_resolvedStrategy) {
-		        return { ok: false, textPath, warnings: [], error: 'Unknown strategy: ' + opts.strategy + ' (expected: merge|overwrite)' }
+		        return { ok: false, textPath, warnings: [], error: 'Unknown strategy: ' + opts.strategy + ' (expected: add|merge|overwrite)' }
 		      }
 		      const strategy = _resolvedStrategy.strategy;
 
@@ -18504,7 +18530,7 @@ function requireText2Frame () {
 		            BaseRoot: opts.baseRoot,
 		            // 呼び出し側が明示したときだけ書き戻す。CLI / t2f-sync は渡さないので off。
 		            WriteBack: String(opts.writeBack || 'off'),
-		            // resolveStrategy は merge|overwrite しか返さないので、add はここに来ない。
+		            // add はイベント末尾への追記。IsOverwrite が false のまま追記側に落ちる。
 		            Strategy: strategy,
 		            ExecMode: 'IMPORT_MESSAGE_TO_EVENT'
 		          }]);
@@ -18571,10 +18597,12 @@ function requireText2Frame () {
 		    };
 
 		    /* 3-way 共通祖先(BASE)スナップショットの規約。VSCode 拡張と同一:
-		     * <root>/.t2f-base/<locale>/<key>.txt。CLI/プラグインが作る祖先は VSCode と相互運用可能。 */
-		    const baseSnapshotPathCore = function (root, locale, key) {
+		     * <root>/.t2f-base/<テキストの置き場所>/<key>.txt。CLI/プラグインが作る祖先は VSCode と相互運用可能。
+		     * 置き場所で分けるのは、翻訳や体験版のようにテキストのフォルダを分けて使うとき、
+		     * 同じイベントを指すテキストが複数あっても祖先が混ざらないようにするため。 */
+		    const baseSnapshotPathCore = function (root, key) {
 		      const path = require$$0$1;
-		      return path.join(root, '.t2f-base', String(locale || 'default'), String(key) + '.txt')
+		      return path.join(root, '.t2f-base', String(key) + '.txt')
 		    };
 		    // ディレクトリを親から順に掘る(mkdir -p 相当)。
 		    // MV 同梱の NW.js は Node 9 系のため fs.mkdirSync の recursive オプションを無視し、
@@ -18594,23 +18622,40 @@ function requireText2Frame () {
 		        if (!e || e.code !== 'EEXIST') throw e
 		      }
 		    };
-		    const readBaseText = function (root, locale, key) {
-		      try { return require('fs').readFileSync(baseSnapshotPathCore(root, locale, key), 'utf8') } catch (e) { return null }
+		    const readBaseText = function (root, key) {
+		      try { return require('fs').readFileSync(baseSnapshotPathCore(root, key), 'utf8') } catch (e) { return null }
 		    };
-		    const saveBaseText = function (root, locale, key, text) {
+		    const saveBaseText = function (root, key, text) {
 		      try {
 		        const fs = require('fs');
 		        const path = require('path');
-		        const p = baseSnapshotPathCore(root, locale, key);
+		        const p = baseSnapshotPathCore(root, key);
 		        mkdirpSync(path.dirname(p));
 		        fs.writeFileSync(p, text, 'utf8');
 		      } catch (e) { /* best effort */ }
 		    };
-		    const deriveBaseId = function (textPath, meta) {
+		    /* 祖先の置き場所を決める。root(プロジェクト)からの相対パスをそのまま鍵にするので、
+		     * text/ と text_en/ に同じ名前のテキストがあっても別々の祖先になる。
+		     * root の外にあるテキスト(CLI に絶対パスを渡した場合など)は、入っているフォルダ名で分ける。 */
+		    /* テキストのフォルダに対応する祖先の置き場所。deriveBaseId と同じ規約を、
+		     * 1件ずつではなくフォルダ単位で解いたもの(一括取り出し・同期監視が使う)。 */
+		    const baseDirForTextDir = function (root, textDir) {
 		      const path = require$$0$1;
-		      const key = path.basename(String(textPath), path.extname(String(textPath)));
-		      const locale = (meta && meta.locale) || path.basename(path.dirname(String(textPath))) || 'default';
-		      return { locale, key }
+		      const abs = path.resolve(String(textDir));
+		      const rel = path.relative(path.resolve(String(root)), abs);
+		      const sub = (rel && !path.isAbsolute(rel) && rel.split(path.sep)[0] !== '..') ? rel : path.basename(abs);
+		      return path.join(String(root), '.t2f-base', sub)
+		    };
+		    const deriveBaseId = function (textPath, root) {
+		      const path = require$$0$1;
+		      const abs = path.resolve(String(textPath));
+		      const noExt = abs.slice(0, abs.length - path.extname(abs).length);
+		      const asKey = function (p) { return p.split(path.sep).join('/') };
+		      if (root) {
+		        const rel = path.relative(path.resolve(String(root)), noExt);
+		        if (rel && !path.isAbsolute(rel) && rel.split(path.sep)[0] !== '..') return { key: asKey(rel) }
+		      }
+		      return { key: asKey(path.join(path.basename(path.dirname(noExt)) || 'default', path.basename(noExt))) }
 		    };
 
 		    /* pull-merge(ゲーム→テキスト)。push の 3-way を鏡写しにし、結果を decompile でテキスト化する。
@@ -18658,13 +18703,12 @@ function requireText2Frame () {
 		    /* ---------------- 同期監視 ----------------
 		     * text と data を見張って、変わったファイルだけを自動で反映・取り出しする。
 		     * npx t2f-sync --watch と同じことを、ターミナル無しで回すためのもの。
-		     * 一括反映 / 一括取り出しの「監視」オプションから呼ばれる(単独のコマンドは無い)。
-		     * 止めるのは STOP_SYNC_WATCH。
+		     * START_DATA_SYNC(と Frame2Text からの呼び出し)から使う。止めるのは STOP_DATA_SYNC。
 		     *
 		     * ・監視はゲームのプロセスに載るので、プレイテストを閉じると止まる。
 		     * ・実行中のゲームの画面は変わらない($dataMap は起動時に読んだきり)。確認は F5 でリロード。
 		     * ・chokidar は npm 依存でプラグイン利用者の手元に無いため、Node 組み込みの fs.watch で作る。
-		     *   一括取り出しが作る配置(text/<言語>/*.txt, data/*.json)はフラットなので再帰監視は要らない。
+		     *   一括取り出しが作る配置(text/*.txt, data/*.json)はフラットなので再帰監視は要らない。
 		     *
 		     * 戻り値: 監視を始められたら true。始められなかった理由は addMessage で出す。 */
 		    const startSyncWatch = function (o) {
@@ -18675,7 +18719,6 @@ function requireText2Frame () {
 		      const opts = {
 		        strategy: (o && o.strategy) || 'merge',
 		        direction: (o && o.direction) || 'both',
-		        locale: (o && o.locale) || 'ja',
 		        textBase: (o && o.textBase) || 'text',
 		        dataFolder: (o && o.dataFolder) || 'data',
 		        // 監視の反映も一括反映と同じ書き戻し設定に従う。指定が無ければプラグインパラメータ。
@@ -18684,17 +18727,18 @@ function requireText2Frame () {
 		      // 二重起動すると監視が重なって同じ変更を何度も処理する。状態を出して何もしない。
 		      if (Laurus.Text2Frame._syncWatch) {
 		        const cur = Laurus.Text2Frame._syncWatch.opts;
-		        addMessage('[sync] 同期監視はすでに動いています(' + cur.direction + ' / ' + cur.strategy + ' / ' + cur.locale + ')。');
-		        addMessage('[sync] 設定を変えるときは STOP_SYNC_WATCH で止めてから開始してください。');
+		        addMessage('[sync] 同期はすでに動いています(' + cur.direction + ' / ' + cur.strategy + ')。');
+		        addMessage('[sync] 設定を変えるときは STOP_DATA_SYNC で止めてから開始してください。');
 		        return false
 		      }
 		      const _fs = require$$1$1;
 		      const _path = require$$0$1;
 		      const { BASE_PATH } = getDirParams();
-		      const textRoot = _path.resolve(BASE_PATH, opts.textBase, opts.locale);
+		      const textRoot = _path.resolve(BASE_PATH, opts.textBase);
 		      const dataDir = _path.resolve(BASE_PATH, opts.dataFolder);
 		      const baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH;
-		      const baseDir = _path.join(baseRoot, '.t2f-base', String(opts.locale || 'default'));
+		      // 祖先はテキストの置き場所ごとに分ける(deriveBaseId と同じ規約)。
+		      const baseDir = baseDirForTextDir(baseRoot, textRoot);
 		      const englishTag = String(Laurus.Text2Frame.EnglishTag) !== 'false';
 		      const wantPush = opts.direction === 'push' || opts.direction === 'both';
 		      const wantPull = opts.direction === 'pull' || opts.direction === 'both';
@@ -18802,7 +18846,7 @@ function requireText2Frame () {
 		        targets.forEach(function (t) {
 		          const outPath = _path.join(textRoot, t.key + '.txt');
 		          const r = F2T.pullTargetToText({
-		            dataDir, target: t, outPath, baseDir, englishTag, strategy: opts.strategy, locale: opts.locale
+		            dataDir, target: t, outPath, baseDir, englishTag, strategy: opts.strategy
 		          });
 		          if (!r.ok) {
 		            console.error('[sync] 取り出しに失敗: ' + t.key + ': ' + r.error);
@@ -18908,10 +18952,10 @@ function requireText2Frame () {
 		      const watched = [];
 		      if (wantPush) watched.push(rel(textRoot));
 		      if (wantPull) watched.push(rel(dataDir));
-		      addMessage('[sync] 同期監視を開始しました(' + opts.direction + ' / ' + opts.strategy + ' / ' + opts.locale + ')。');
+		      addMessage('[sync] 同期を開始しました(' + opts.direction + ' / ' + opts.strategy + ')。');
 		      addMessage('[sync] 監視中: ' + watched.join(' + '));
 		      // 止めるコマンドは Text2Frame にしかない(一括取り出しから始めたときも同じ)。
-		      addMessage('[sync] 進行状況はコンソール(F8)に出ます。ゲームを閉じるか、Text2Frameの「同期監視の停止」(STOP_SYNC_WATCH)で止まります。');
+		      addMessage('[sync] 進行状況はコンソール(F8)に出ます。ゲームを閉じるか、Text2Frameの「テキストとゲームの同期を停止」(STOP_DATA_SYNC)で止まります。');
 		      console.log('[sync] watching ' + watched.join(' + ') + ' (direction=' + opts.direction + ', strategy=' + opts.strategy + ')');
 		      console.log('[sync] 反映してもこのゲームの画面は変わりません。確認するには F5 でリロードしてください。');
 		      if (wantPush) {
@@ -18920,61 +18964,21 @@ function requireText2Frame () {
 		      return true
 		    };
 
-		    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId, getMessageDefaults, startSyncWatch, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter, CONFLICT_MARKERS, hasConflictMarker };
-		    // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
-		    // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
-		    // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。
-		    try {
-		      const glob = (typeof globalThis !== 'undefined')
-		        ? globalThis
-		        : (typeof window !== 'undefined')
-		            ? window
-		            : (typeof commonjsGlobal !== 'undefined') ? commonjsGlobal : null;
-		      if (glob) glob.$LaurusText2Frame = Laurus.Text2Frame.export;
-		    } catch (e) { /* noop */ }
-
-		    if (Laurus.Text2Frame.ExecMode === 'LIBRARY_EXPORT') {
-		      return
-		    }
-
-		    if (Laurus.Text2Frame.ExecMode === 'STOP_SYNC_WATCH') {
-		      if (!Laurus.Text2Frame._syncWatch) {
-		        addMessage('[sync] 同期監視は動いていません。');
-		        return
-		      }
-		      Laurus.Text2Frame._syncWatch.stop();
-		      Laurus.Text2Frame._syncWatch = null;
-		      addMessage('[sync] 同期監視を停止しました。');
-		      console.log('[sync] stopped');
-		      return
-		    }
-
-		    if (Laurus.Text2Frame.ExecMode === 'BATCH_IMPORT_MESSAGES_FROM_FOLDER') {
+		    /* 一括反映の本体。BATCH_IMPORT_MESSAGES_FROM_FOLDER と、START_DATA_SYNC の初回同期の
+		     * 両方から呼ぶ。o: { importFolder, strategy, writeBack }
+		     * 戻り値: { ok, fail, root } */
+		    const runBatchImport = function (o) {
 		      if (typeof commonjsRequire === 'undefined') {
 		        addMessage('[batch-import] Node.js environment not available');
-		        return
+		        return { ok: 0, fail: 0, root: '' }
 		      }
 		      const _fs = require$$1$1;
 		      const _path = require$$0$1;
 		      const { BASE_PATH } = getDirParams();
-		      const root = _path.isAbsolute(Laurus.Text2Frame.ImportFolder) ? Laurus.Text2Frame.ImportFolder : _path.resolve(BASE_PATH, Laurus.Text2Frame.ImportFolder);
-		      const strategy = Laurus.Text2Frame.BatchStrategy || 'merge';
-		      /* 見張るのは一括反映のあと。先に全部揃えてから始めるので、監視は「開始後の変更」
-		       * だけを見ればよくなる。逆順にすると、いま書いたファイルを監視が拾い直す。
-		       * (監視側の seedSettled が開始時点のファイルを控えるので、ここで書いた分は流れない)
-		       * 反映するものが1件も無くても見張る。テキストがまだ無い状態から
-		       * 「ゲームを直したらテキストに出す」を始めたい、という使い方があるため。 */
-		      const startWatchIfAsked = function () {
-		        if (!Laurus.Text2Frame.Watch || Laurus.Text2Frame.Watch === 'off') return
-		        startSyncWatch({
-		          strategy,
-		          direction: Laurus.Text2Frame.Watch,
-		          locale: Laurus.Text2Frame.SyncLocale,
-		          textBase: Laurus.Text2Frame.ImportFolder,
-		          dataFolder: Laurus.Text2Frame.SyncDataFolder,
-		          writeBack: Laurus.Text2Frame.WriteBack
-		        });
-		      };
+		      const importFolder = o.importFolder || 'text';
+		      const root = _path.isAbsolute(importFolder) ? importFolder : _path.resolve(BASE_PATH, importFolder);
+		      const strategy = o.strategy || 'add';
+		      const writeBack = o.writeBack;
 		      const walk = function (dir) {
 		        let out = [];
 		        let entries = [];
@@ -18990,15 +18994,13 @@ function requireText2Frame () {
 		      if (!_fs.existsSync(root)) {
 		        addMessage('[batch-import] 反映元フォルダが見つかりません / import folder not found: ' + root);
 		        console.error('[batch-import] import folder not found: ' + root);
-		        startWatchIfAsked();
-		        return
+		        return { ok: 0, fail: 0, root }
 		      }
 		      const files = walk(root);
 		      if (files.length === 0) {
 		        addMessage('[batch-import] テキストが見つかりませんでした。反映元フォルダを確認してください / no text files found: ' + root);
 		        console.warn('[batch-import] no text files found under ' + root);
-		        startWatchIfAsked();
-		        return
+		        return { ok: 0, fail: 0, root }
 		      }
 
 		      let ok = 0;
@@ -19027,7 +19029,7 @@ function requireText2Frame () {
 		          textPath: fileName,
 		          strategy: entryStrategy,
 		          backup: true,
-		          writeBack: Laurus.Text2Frame.WriteBack
+		          writeBack
 		        });
 		        if (res && res.ok) {
 		          ok++;
@@ -19054,6 +19056,10 @@ function requireText2Frame () {
 		      addMessage('[batch-import] 反映完了: 成功 ' + ok + '件 (イベント ' + eventCount + ' / コモン ' + commonCount + ')、失敗 ' + fail + '件' +
 		        (skipped > 0 ? '、見出し情報なしで対象外 ' + skipped + '件' : ''));
 		      addMessage('[batch-import] 反映元: ' + root);
+		      /* add は流すたびにイベント末尾へ積む(冪等でない)。同じテキストを2回流すと
+		       * 内容が二重になるので、そうと分かるように反映方法を毎回出す。 */
+		      if (strategy === 'add') addMessage('[batch-import] 反映方法: 末尾に追記(add)。同じテキストを再度反映すると二重になります。');
+		      else addMessage('[batch-import] 反映方法: ' + strategy);
 		      if (writtenBack > 0) addMessage('[batch-import] テキストに書き戻し: ' + writtenBack + '件');
 		      // $gameMessage は行数が限られるため、詳細は先頭数件だけ出して残りはコンソールへ回す。
 		      const DETAIL_LINES = 5;
@@ -19089,7 +19095,86 @@ function requireText2Frame () {
 		        addMessage(RESTART_NOTICE);
 		        console.log(RESTART_NOTICE);
 		      }
-		      startWatchIfAsked();
+		      return { ok, fail, root }
+		    };
+
+		    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId, baseDirForTextDir, getMessageDefaults, startSyncWatch, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter, CONFLICT_MARKERS, hasConflictMarker };
+		    // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
+		    // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
+		    // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。
+		    try {
+		      const glob = (typeof globalThis !== 'undefined')
+		        ? globalThis
+		        : (typeof window !== 'undefined')
+		            ? window
+		            : (typeof commonjsGlobal !== 'undefined') ? commonjsGlobal : null;
+		      if (glob) glob.$LaurusText2Frame = Laurus.Text2Frame.export;
+		    } catch (e) { /* noop */ }
+
+		    if (Laurus.Text2Frame.ExecMode === 'LIBRARY_EXPORT') {
+		      return
+		    }
+
+		    if (Laurus.Text2Frame.ExecMode === 'STOP_DATA_SYNC') {
+		      if (!Laurus.Text2Frame._syncWatch) {
+		        addMessage('[sync] 同期は動いていません。');
+		        return
+		      }
+		      Laurus.Text2Frame._syncWatch.stop();
+		      Laurus.Text2Frame._syncWatch = null;
+		      addMessage('[sync] 同期を停止しました。');
+		      console.log('[sync] stopped');
+		      return
+		    }
+
+		    /* テキストとゲームの同期を始める。まず一括で両者を揃えてから見張りに入る。
+		     * 「一括取り出し -> 一括反映 -> 監視」は t2f-sync の一度きり同期と同じ順序。
+		     * 一括反映のオプションではなく単独のコマンドにしてあるのは、一括反映の既定が
+		     * add(冪等でない)になり、見張りながら繰り返す動作と噛み合わないため。 */
+		    if (Laurus.Text2Frame.ExecMode === 'START_DATA_SYNC') {
+		      if (typeof commonjsRequire === 'undefined') {
+		        addMessage('[sync] Node.js environment not available');
+		        return
+		      }
+		      const direction = Laurus.Text2Frame.SyncDirection || 'both';
+		      const syncStrategy = Laurus.Text2Frame.SyncStrategy || 'merge';
+		      const textFolder = Laurus.Text2Frame.ImportFolder || 'text';
+		      const dataFolder = Laurus.Text2Frame.SyncDataFolder || 'data';
+		      const writeBack = Laurus.Text2Frame.WriteBack;
+		      /* 二重起動の判定は startSyncWatch も持っているが、ここでも先に見ておく。
+		       * 後ろで断ると、断ったのに初回の一括だけ済んでいる状態になる。 */
+		      if (Laurus.Text2Frame._syncWatch) {
+		        const cur = Laurus.Text2Frame._syncWatch.opts;
+		        addMessage('[sync] 同期はすでに動いています(' + cur.direction + ' / ' + cur.strategy + ')。');
+		        addMessage('[sync] 設定を変えるときは STOP_DATA_SYNC で止めてから開始してください。');
+		        return
+		      }
+		      const wantPull = direction === 'both' || direction === 'pull';
+		      const wantPush = direction === 'both' || direction === 'push';
+		      const F2T = resolveFrame2Text();
+		      if (wantPull && (!F2T || !F2T.pullTargetToText || !interpreter.pluginCommandFrame2Text)) {
+		        addMessage('[sync] ゲーム→テキストの同期には Frame2Text プラグインが必要です。');
+		        addMessage('[sync] 同じプロジェクトに導入するか、向きに push を指定してください。');
+		        console.error('[sync] pull requires the Frame2Text plugin; install it or use direction=push');
+		        return
+		      }
+		      // 初回の一括は取り出し -> 反映の順。逆にすると、いま書いたテキストを反映が読み直す。
+		      if (wantPull) {
+		        interpreter.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [syncStrategy, textFolder, dataFolder]);
+		      }
+		      if (wantPush) {
+		        runBatchImport({ importFolder: textFolder, strategy: syncStrategy, writeBack });
+		      }
+		      startSyncWatch({ strategy: syncStrategy, direction, textBase: textFolder, dataFolder, writeBack });
+		      return
+		    }
+
+		    if (Laurus.Text2Frame.ExecMode === 'BATCH_IMPORT_MESSAGES_FROM_FOLDER') {
+		      runBatchImport({
+		        importFolder: Laurus.Text2Frame.ImportFolder,
+		        strategy: Laurus.Text2Frame.BatchStrategy || 'add',
+		        writeBack: Laurus.Text2Frame.WriteBack
+		      });
 		      return
 		    }
 
@@ -19154,7 +19239,7 @@ function requireText2Frame () {
 		          map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list = map_events;
 		          writeData(Laurus.Text2Frame.MapPath, map_data);
 		          // 全上書きのときだけ text==game になる(追記モードは一致しないので祖先を更新しない)。
-		          if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, parsed.meta);
+		          if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text);
 		        }
 		        addMessage(
 		          'Success / 書き出し成功！\n' +
@@ -19194,7 +19279,7 @@ function requireText2Frame () {
 		          ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list);
 		          writeData(Laurus.Text2Frame.CommonEventPath, ce_data);
 		          // 全上書きのときだけ text==game になる(追記モードは一致しないので祖先を更新しない)。
-		          if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, parsed.meta);
+		          if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text);
 		        }
 		        addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID);
 		        break
