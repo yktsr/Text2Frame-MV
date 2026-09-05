@@ -3141,7 +3141,8 @@ function resolveText2Frame () {
 
     // 取り出し(ゲーム→テキスト)の本文を作る。merge のときだけ既存テキスト・祖先と 3-way する。
     // fs には触らない(ゲーム内は BASE_PATH、CLI は cwd と基準が違うため入出力は呼び出し側)。
-    // 戻り値: { text, baseText, conflicts, markers } / 見送ったときは { skipped: 'game'|'text' }。
+    // 戻り値: { text, baseText, conflicts, markers, approximate, warnings }
+    // 見送ったときは { skipped: 'game'|'text' }。
     // markers は「書き出した本文に未解決の目印が入っている」印。呼び出し側は祖先を進めないこと。
     //
     // baseText は .t2f-base へ保存する内容で、text とは別物。祖先は「テキストとゲームが
@@ -3164,9 +3165,11 @@ function resolveText2Frame () {
       const header = normalizeHeader((existingText && frontMatterHeader(existingText)) || opts.fallbackHeader || '')
       const gameText = header + decompile(list, englishTag, { pretty: true, omitDefaults: opts.omitDefaults }) + '\n'
 
-      /* コメント行(既定は %)はコマンドにならないので、コマンド列から作り直した本文には
-       * 残らない。前のテキストが分かるときは、そこから元の位置へ戻す。
-       * 全上書きでも戻す: % はゲームに入らないため「ゲームの内容で全部置き換える」という
+      /* コメント行(既定は %)・空行の幅・タグ行の綴り(字下げと大文字小文字)は、
+       * コマンドにならないのでコマンド列から作り直した本文には残らない。前のテキストが
+       * 分かるときは、そこから元の位置・元の書き方へ戻す(規則は Text2Frame の
+       * restoreAuthoredLines を参照)。
+       * 全上書きでも戻す: どれもゲームに入らないため「ゲームの内容で全部置き換える」という
        * 約束の対象外(置き換える相手が存在しない)。
        * previousText を existingText と分けているのは、単発の全上書き取り出しが見出しの
        * 引き継ぎを避けるため existingText を意図して渡さないから。 */
@@ -3222,7 +3225,7 @@ function resolveText2Frame () {
     // data ディレクトリを走査し、出力対象(イベント/コモンイベント)の routing メタだけを返す。
     // textPath は付けない(呼び出し側が textBase/key.txt を組み立てる)。
     /* onlyFile を渡すと、そのデータファイル1つぶんの対象だけを返す。
-     * 同期監視は変わったファイルの分だけ処理したいので、全 Map を読み直さずに済ませる。 */
+     * 同期は変わったファイルの分だけ処理したいので、全 Map を読み直さずに済ませる。 */
     const enumerateTargets = function (dataDir, onlyFile) {
       const _fs = require('fs')
       const _path = require('path')
@@ -3257,8 +3260,8 @@ function resolveText2Frame () {
       return targets
     }
 
-    /* ターゲット1件をテキストへ取り出す。一括取り出しと同期監視の両方から呼ぶ。
-     * 一括取り出しはこれを全ターゲットに回すだけ、同期監視は変わったファイルの分だけ回す。
+    /* ターゲット1件をテキストへ取り出す。一括取り出しと同期の両方から呼ぶ。
+     * 一括取り出しはこれを全ターゲットに回すだけ、同期は変わったファイルの分だけ回す。
      * (全件を回す一括コマンドを変更のたびに呼ぶと、実プロジェクト規模ではゲームが数秒止まる)
      *
      * opts: { dataDir, target, outPath, baseDir, englishTag, strategy }
@@ -3300,8 +3303,7 @@ function resolveText2Frame () {
         if (built.skipped) return { ok: true, skipped: built.skipped }
         _fs.writeFileSync(opts.outPath, built.text, 'utf8')
         let baseSaveError = null
-        // 祖先に目印が入ると次回の 3-way がそれを再マージするので、そのときだけ進めない。
-        // 衝突しただけ(目印はテキストのみ)なら進める。理由は単発取り出しの同じ箇所を参照。
+        // 目印ごと取り出したときだけ祖先を進めない(理由は単発取り出しの同じ箇所)。
         if (!built.markers) {
           // 祖先はゲーム側(built.baseText)。マージ結果を入れるとゲームが到達していない
           // 状態が祖先になり、次の反映でテキストの内容が消える。
@@ -3413,7 +3415,7 @@ function resolveText2Frame () {
       }
 
       targets.forEach(function (t) {
-        // 1件ぶんの取り出しは同期監視と共通(pullTargetToText)。ここは件数の集計だけ行う。
+        // 1件ぶんの取り出しは同期と共通(pullTargetToText)。ここは件数の集計だけ行う。
         const r = pullTargetToText({
           dataDir,
           target: t,
@@ -3491,9 +3493,8 @@ function resolveText2Frame () {
       console.log('[batch] Completed (' + batchStrategy + '): ' + okCount + ' success (event ' + eventCount + ' / common ' + commonCount + '), ' +
         errCount + ' errors, ' + conflicted.length + ' with conflicts, ' + markerCarried.length + ' with unresolved markers -> ' + outDir +
         (overwrittenCount > 0 ? ' (overwrote ' + overwrittenCount + ' existing text file(s))' : ''))
-      /* 取り出したあと自動で追従させたいときは、Text2Frame の START_DATA_SYNC を使う。
-       * 一括取り出しのオプションではなく単独のコマンドにしてある(一括反映の既定が
-       * add になり、見張りながら繰り返す動作と噛み合わないため)。 */
+      // 取り出したあと自動で追従させたいときは Text2Frame の START_DATA_SYNC を使う
+      // (単独のコマンドにしてある理由はそちらの実行部を参照)。
       return
     }
 
@@ -3572,7 +3573,10 @@ function resolveText2Frame () {
     }
     const exportWarnings = built.warnings || []
     exportWarnings.forEach(function (w) { addMessage(w) })
-    // 目印ごと取り出した場合は祖先を進めない(祖先に目印が入ると次回の 3-way が壊れる)。
+    /* 目印ごと取り出した場合は祖先を進めない。祖先に目印が入ると次回の 3-way が
+     * その目印ごと再マージし、目印が二重・三重に増えるため。
+     * 衝突しただけ(目印はテキストだけ)なら進める。据え置くと、テキストで解決したあとの
+     * 反映で同じ衝突が再発する。取り出しの3経路で同じ規則。 */
     if (built.markers) {
       addMessage('未解決の衝突の目印ごと取り出したため、祖先(.t2f-base)は更新していません。テキストの目印3行を消して残す方を決めたあと、反映を上書きで実行してください。')
     }
@@ -3812,8 +3816,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         }
         fs.mkdirSync(path.dirname(textPath), { recursive: true })
         fs.writeFileSync(textPath, built.text, 'utf8')
-        // 祖先に目印が入ると次回の 3-way がそれを再マージするので、そのときだけ進めない。
-        // 衝突しただけなら進める。理由は in-engine 側の同じ箇所を参照。
+        // 目印ごと取り出したときだけ祖先を進めない(理由は単発取り出しの同じ箇所)。
         if (!built.markers) {
           // 祖先はゲーム側(built.baseText)。理由は in-engine 側の同じ箇所を参照。
           try { fs.writeFileSync(path.join(baseDir, t.key + '.txt'), built.baseText, 'utf8') } catch (e) { baseSaveError = baseSaveError || e }
