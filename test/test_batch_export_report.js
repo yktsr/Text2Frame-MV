@@ -250,7 +250,8 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     expect(base).to.not.contain('=== どちらかを残し')
   })
 
-  it('lets a front-matter strategy override the command argument', function () {
+  // 取り出しのしかたは引数だけで決まる。front matter の strategy: は読まない。
+  it('ignores a front-matter strategy and follows the command argument', function () {
     run(path.join(tmp, 'data'), path.join(tmp, 'text'))
     // このファイルだけ overwrite 指定 + 翻訳あり
     fs.writeFileSync(textPathOf(ev1),
@@ -259,10 +260,10 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
 
     run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'merge')
 
-    // merge を指定したが、このファイルは front matter に従って全上書きされる
+    // 引数どおり統合されるので、テキストに書いた翻訳は残る。
     const text = readIf(textPathOf(ev1))
     expect(text).to.contain('ゲームが正')
-    expect(text).to.not.contain('Bonjour')
+    expect(text).to.contain('Bonjour')
   })
 
   it('skips a merge whose text still has conflict markers', function () {
