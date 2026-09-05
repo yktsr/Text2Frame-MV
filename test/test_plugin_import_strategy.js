@@ -54,14 +54,20 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
   const theirsText = '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n\nBonjour\n'
   const baseText = 'Hello\n'
   let written
+  /* 祖先フォルダを指す引数は廃止したので、祖先は .t2f-base の自動参照だけになった。
+   * 祖先ありの場面はこのフラグで作る(false なら読めない = 初回反映)。 */
+  let hasBase
 
   beforeEach(function () {
     written = null
+    hasBase = false
     sinon.stub(fs, 'readFileSync').callsFake(function (p) {
       const s = String(p)
-      if (s.indexOf('.t2f-base') !== -1) throw new Error('no auto base') // explicit-base scenarios only
+      if (s.indexOf('.t2f-base') !== -1) {
+        if (!hasBase) throw new Error('no auto base')
+        return baseText
+      }
       if (s.indexOf('Map001') !== -1) return JSON.stringify(oursMap)
-      if (s.indexOf('ancestor') !== -1) return baseText
       if (s.indexOf('message.txt') !== -1) return theirsText
       throw new Error('unexpected read: ' + s)
     })
@@ -81,8 +87,9 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
   }
 
   it('3-way merges writer text with dev switch when a base is given', function () {
+    hasBase = true
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-      ['text', 'message.txt', '1', '1', '1', 'merge', 'off', 'base', 'ancestor.txt'])
+      ['text', 'message.txt', '1', '1', '1', 'merge', 'off'])
     expect(written).to.not.equal(null)
     const list = eventList()
     expect(list.some(function (c) { return c.code === 121 })).to.equal(true)
@@ -111,7 +118,9 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
     expect(texts(map.events[2].pages[0].list)).to.eql(['Other event'])
   })
 
-  it('passing the ancestor folder explicitly still does 3-way (keeps switch, applies text)', function () {
+  // 祖先フォルダの位置引数は廃止した。余った位置に値を書いても祖先には効かない。
+  it('ignores anything left in the old ancestor-folder argument slots', function () {
+    hasBase = true
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
       ['text', 'message.txt', '1', '1', '1', 'merge', 'off', 'base', 'ancestor.txt'])
     expect(written).to.not.equal(null)
@@ -120,15 +129,37 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
     expect(texts(list)).to.include('Bonjour')
   })
 
+  /* 書き戻しは以前まったく検証しておらず、綴り間違いが黙って「書き戻さない」に
+   * なっていた(planWriteBack が always/onConflict 以外をすべて off として扱うため)。 */
+  describe('choosing the write-back', function () {
+    const run = function (writeBack) {
+      Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
+        ['text', 'message.txt', '1', '1', '1', 'merge', writeBack])
+    }
+
+    // 通る値は投げない(日本語・英語・大文字小文字)。対応付けそのものは
+    // 実際に書き戻す test_writeback.js で確かめる。
+    it('accepts the Japanese names and the English ones in any casing', function () {
+      const ok = ['毎回書き戻す', '衝突したときだけ', '書き戻さない', 'always', 'onconflict', 'OFF']
+      ok.forEach(function (v) { expect(function () { run(v) }, v).to.not.throw() })
+    })
+
+    // ここが本命。黙って off になると、書き戻したつもりのテキストが更新されない。
+    it('refuses a write-back it does not know instead of silently turning it off', function () {
+      expect(function () { run('alway') })
+        .to.throw(/always\(毎回書き戻す\).*onConflict\(衝突したときだけ\).*off\(書き戻さない\)/)
+    })
+  })
+
   /* MERGE_MESSAGE_TO_* を廃止し、反映のしかたは IMPORT の引数1つになった。
    * その枠は元々「上書きするか」の true/false だったところで、意味は変えずに
    * merge/overwrite/add も受ける。旧来の書き方が動き続けることを固定する。 */
   describe('choosing the strategy', function () {
-    // withBase を立てると祖先(base/ancestor.txt)を使う。立てないと祖先なし = TOFU。
+    // withBase を立てると祖先(.t2f-base)を使う。立てないと祖先なし = TOFU。
     const run = function (strategy, withBase) {
+      hasBase = !!withBase
       Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-        ['text', 'message.txt', '1', '1', '1', strategy, 'off']
-          .concat(withBase ? ['base', 'ancestor.txt'] : []))
+        ['text', 'message.txt', '1', '1', '1', strategy, 'off'])
       return eventList()
     }
 
@@ -165,6 +196,19 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
     it('falls back to the plugin parameter when the slot is empty', function () {
       expect(texts(run(undefined))).to.eql(['Hello', 'Bonjour'])
       expect(texts(run(''))).to.eql(['Hello', 'Bonjour'])
+    })
+
+    /* MVのプラグインコマンドは手書きなので、記法の他の部分と同じく日本語でも書ける。
+     * 表記は MZ の @option とヘルプに合わせる。 */
+    it('reads the Japanese names as the same three choices', function () {
+      expect(texts(run('統合', true))).to.eql(texts(run('merge', true)))
+      expect(texts(run('末尾に追記'))).to.eql(texts(run('add')))
+      expect(texts(run('上書き'))).to.eql(texts(run('overwrite')))
+    })
+
+    it('names both spellings when it refuses a strategy', function () {
+      expect(function () { run('append') })
+        .to.throw(/add\(末尾に追記\).*merge\(統合\).*overwrite\(上書き\)/)
     })
 
     it('refuses a strategy it does not know', function () {
@@ -221,9 +265,8 @@ describe('IMPORT_MESSAGE_TO_EVENT strategy=merge on an empty target WITH a base 
     written = null
     sinon.stub(fs, 'readFileSync').callsFake(function (p) {
       const s = String(p)
-      if (s.indexOf('.t2f-base') !== -1) throw new Error('no auto base') // explicit-base scenario only
+      if (s.indexOf('.t2f-base') !== -1) return baseText // 祖先は自動参照のみ
       if (s.indexOf('Map001') !== -1) return JSON.stringify(emptyMap)
-      if (s.indexOf('ancestor') !== -1) return baseText
       if (s.indexOf('message.txt') !== -1) return theirsText
       throw new Error('unexpected read: ' + s)
     })
@@ -237,7 +280,7 @@ describe('IMPORT_MESSAGE_TO_EVENT strategy=merge on an empty target WITH a base 
 
   it('re-applies text (not empty) even when a base exists', function () {
     Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-      ['text', 'message.txt', '1', '1', '1', 'merge', 'off', 'base', 'ancestor.txt'])
+      ['text', 'message.txt', '1', '1', '1', 'merge', 'off'])
     expect(written).to.not.equal(null)
     const list = JSON.parse(written).events[1].pages[0].list
     expect(list.some(function (c) { return c.code === 121 })).to.equal(true) // switch applied

@@ -6,20 +6,11 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 2.3.0: 2026/08/03
+// 2.3.0: 2026/09/05
 // ・#132 一括反映/一括取り出しコマンドを追加
-//   すべてのイベント・コモンイベントを、1つのコマンドでゲームとテキストの間で同期できるようになった。
-//   反映方法は単一の取り込みと同じ add(末尾に追記) / merge(統合) / overwrite(上書き)で、
-//   既定も単一の取り込みと同じ add。既存ユーザの挙動は変わらない。
-// ・#137 テキストとゲームの同期コマンド START_DATA_SYNC / STOP_DATA_SYNC を追加
-//   一括で両方を揃えてから、以降の変更を自動で追従する。一括反映/一括取り出しの
-//   オプションではなく単独のコマンドにした(一括反映の既定 add は繰り返し流せないため)。
-// ・#137 テキストの置き場所から言語(locale)の概念を廃止
-//   text/<言語>/ ではなく text/ 直下に置く。複数の版を持つときは取り込み元フォルダを
-//   分ける。CLI の --locale と、テキスト見出しの locale: 行も廃止。
+// ・#137 テキストとゲームを自動同期するコマンドを追加
 // ・#137 Visual Studio Code 拡張に対応
-//   反映・取り出し・英語化をUIから実行でき、シンタックスハイライトや保存時自動反映(Watch & Deploy)を利用できます。
-// ・#137 不具合を修正し、安定性を向上
+// ・#137 下記の不具合修正
 //   - 移動ルート設定の直後に選択肢を置くと、反映時にエラーで止まる不具合の修正
 //   - 分岐の最後が移動ルートで終わっていると、選択肢の構造が壊れて正しく反映されない不具合の修正
 //   - 一部の移動コマンドやショップ処理を含むテキストで、反映が異常終了する不具合の修正
@@ -168,12 +159,6 @@
  * @option 書き戻さない / off
  * @value off
  *
- * @arg BaseFolder
- * @text 祖先フォルダ名
- * @desc 統合(merge)処理に必要な共通祖先テキストのフォルダ名です。デフォルト値は.t2f-baseで、通常設定する必要はありません。
- * @type string
- * @default .t2f-base
- *
  * @command IMPORT_MESSAGE_TO_CE
  * @text コモンイベントにインポート
  * @desc コモンイベントにメッセージをインポートします。取り込み元ファイルの情報や、取り込み先のコモンイベントID等を指定します。
@@ -218,16 +203,16 @@
  * @option 書き戻さない / off
  * @value off
  *
- * @arg BaseFolder
- * @text 祖先フォルダ名
- * @desc 統合(merge)処理に必要な共通祖先テキストのフォルダ名です。デフォルト値は.t2f-baseで、通常設定する必要はありません。
- * @type string
- * @default .t2f-base
- *
  *
  * @command BATCH_IMPORT_MESSAGES_FROM_FOLDER
  * @text フォルダから一括取り込み
  * @desc 指定フォルダ内の見出し情報付きテキストを、一括でゲームへ反映します。通常のイベント、コモンイベントのすべてが一括で取り込まれます。見出し情報付きテキストの作成には、Frame2Text の BATCH_EXPORT_MESSAGES_TO_FOLDER を使用してください。
+ *
+ * @arg TextFolder
+ * @text 取り込み元フォルダ名
+ * @desc 走査するテキストフォルダ名です。デフォルトはtextです。
+ * @type string
+ * @default text
  *
  * @arg Strategy
  * @text 反映方法
@@ -252,12 +237,6 @@
  * @option 書き戻さない / off
  * @value off
  *
- * @arg TextFolder
- * @text 取り込み元フォルダ名
- * @desc 走査するテキストフォルダ名です。デフォルトはtextです。
- * @type string
- * @default text
- *
  *
  * @command START_DATA_SYNC
  * @text テキストとゲームの同期を開始
@@ -274,6 +253,12 @@
  * @option ゲーム→テキストだけ / pull
  * @value pull
  * @default both
+ *
+ * @arg TextFolder
+ * @text テキストのフォルダ名
+ * @desc 同期するテキストフォルダ名です。デフォルトはtextです。
+ * @type string
+ * @default text
  *
  * @arg Strategy
  * @text 反映方法
@@ -295,18 +280,7 @@
  * @value onConflict
  * @option 書き戻さない / off
  * @value off
- *
- * @arg TextFolder
- * @text テキストのフォルダ名
- * @desc 同期するテキストフォルダ名です。デフォルトはtextです。
- * @type string
- * @default text
- *
- * @arg DataFolder
- * @text ゲームデータのフォルダ名
- * @desc 同期するゲームデータのフォルダ名です。デフォルトはdataです。通常、設定する必要はありません。
- * @type string
- * @default data
+ * @default always
  *
  *
  * @command STOP_DATA_SYNC
@@ -4542,8 +4516,7 @@
       const page_id = args.PageID
       const strategy = args.Strategy || args.IsOverwrite
       this.pluginCommand('IMPORT_MESSAGE_TO_EVENT',
-        [file_folder, file_name, map_id, event_id, page_id, strategy,
-          args.WriteBack, args.BaseFolder, args.FileName])
+        [file_folder, file_name, map_id, event_id, page_id, strategy, args.WriteBack])
     })
     PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_CE', function (args) {
       const file_folder = args.FileFolder
@@ -4551,20 +4524,19 @@
       const common_event_id = args.CommonEventID
       const strategy = args.Strategy || args.IsOverwrite
       this.pluginCommand('IMPORT_MESSAGE_TO_CE',
-        [file_folder, file_name, common_event_id, strategy,
-          args.WriteBack, args.BaseFolder, args.FileName])
+        [file_folder, file_name, common_event_id, strategy, args.WriteBack])
     })
     PluginManager.registerCommand('Text2Frame', 'BATCH_IMPORT_MESSAGES_FROM_FOLDER', function (args) {
-      // 引数順は @arg の並びと合わせる。よく変えるものから順に
-      // 反映方法 -> 書き戻し -> 取り込み元。
+      // 引数順は @arg の並びと合わせる。単体の取り込みと同じく取り込み元が先。
+      // 取り込み元 -> 反映方法 -> 書き戻し。
       this.pluginCommand('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-        [args.Strategy, args.WriteBack, args.TextFolder])
+        [args.TextFolder, args.Strategy, args.WriteBack])
     })
     PluginManager.registerCommand('Text2Frame', 'START_DATA_SYNC', function (args) {
       // 引数順は @arg の並びと合わせる。
-      // 向き -> 反映方法 -> 書き戻し -> テキスト -> データフォルダ。
+      // 向き -> テキストのフォルダ -> 反映方法 -> 書き戻し。
       this.pluginCommand('START_DATA_SYNC',
-        [args.Direction, args.Strategy, args.WriteBack, args.TextFolder, args.DataFolder])
+        [args.Direction, args.TextFolder, args.Strategy, args.WriteBack])
     })
     PluginManager.registerCommand('Text2Frame', 'STOP_DATA_SYNC', function () {
       this.pluginCommand('STOP_DATA_SYNC', [])
@@ -4577,31 +4549,70 @@
   /* 「反映のしかた」の別名表。
    * この設定は元々 true/false(上書きする/しない)の2択で、既に出荷されている。
    * 枠はそのまま残し、merge/overwrite/add も受けられるようにする。
-   * true=上書き / false=末尾に追記 は元の意味そのままなので、旧来の指定は動きが変わらない。 */
+   * true=上書き / false=末尾に追記 は元の意味そのままなので、旧来の指定は動きが変わらない。
+   * 日本語は MZ の @option とヘルプの表記に合わせる(MVの引数は手書きなので、
+   * 他の記法と同じく日本語でも書けるようにしておく)。 */
   const IMPORT_STRATEGY_ALIASES = {
     true: 'overwrite',
     false: 'add',
     merge: 'merge',
     overwrite: 'overwrite',
-    add: 'add'
+    add: 'add',
+    統合: 'merge',
+    上書き: 'overwrite',
+    末尾に追記: 'add'
   }
+  const IMPORT_STRATEGY_HINT = '反映方法は add(末尾に追記) か merge(統合) か overwrite(上書き) を指定してください。'
+
+  /* 「結果をテキストに書き戻す」の別名表。 */
+  const WRITE_BACK_ALIASES = {
+    always: 'always',
+    onconflict: 'onConflict',
+    off: 'off',
+    毎回書き戻す: 'always',
+    衝突したときだけ: 'onConflict',
+    書き戻さない: 'off'
+  }
+  const WRITE_BACK_HINT = '書き戻しは always(毎回書き戻す) か onConflict(衝突したときだけ) か off(書き戻さない) を指定してください。'
+
+  /* 同期の向きの別名表。省略時は双方向。 */
+  const DIRECTION_ALIASES = {
+    both: 'both',
+    push: 'push',
+    pull: 'pull',
+    双方向: 'both',
+    'テキスト→ゲームだけ': 'push',
+    'ゲーム→テキストだけ': 'pull'
+  }
+  const DIRECTION_HINT = '同期の向きは both(双方向) か push(テキスト→ゲームだけ) か pull(ゲーム→テキストだけ) を指定してください。'
+
+  const lookupAlias = function (table, value) {
+    if (value === undefined || value === null || value === '') return null
+    const key = String(value).toLowerCase()
+    return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : null
+  }
+
   /* 同期の向き。省略時は双方向。push はテキスト->ゲームだけ、pull はゲーム->テキストだけ。 */
   const normalizeDirection = function (value) {
     if (value === undefined || value === null || value === '') return 'both'
-    const key = String(value).toLowerCase()
-    if (['both', 'push', 'pull'].indexOf(key) === -1) {
-      throw new Error('Unknown direction: ' + value + ' / 同期の向きは both か push か pull を指定してください。')
-    }
-    return key
+    const d = lookupAlias(DIRECTION_ALIASES, value)
+    if (!d) throw new Error('Unknown direction: ' + value + ' / ' + DIRECTION_HINT)
+    return d
+  }
+
+  /* 書き戻しのしかた。解釈できない値は投げる。
+   * 素通しにすると planWriteBack が always/onConflict 以外をすべて off として扱うため、
+   * 綴り間違いが黙って「書き戻さない」になってしまう。 */
+  const resolveWriteBack = function (value, fallback) {
+    if (value === undefined || value === null || value === '') return fallback
+    const w = lookupAlias(WRITE_BACK_ALIASES, value)
+    if (!w) throw new Error('Unknown write-back: ' + value + ' / ' + WRITE_BACK_HINT)
+    return w
   }
 
   // 解釈できなければ null(呼び出し側で「未指定」か「誤り」かを決める)。
   const toImportStrategy = function (value) {
-    if (value === undefined || value === null || value === '') return null
-    const key = String(value).toLowerCase()
-    return Object.prototype.hasOwnProperty.call(IMPORT_STRATEGY_ALIASES, key)
-      ? IMPORT_STRATEGY_ALIASES[key]
-      : null
+    return lookupAlias(IMPORT_STRATEGY_ALIASES, value)
   }
 
   if (typeof PluginManager === 'undefined') {
@@ -4609,6 +4620,7 @@
     Laurus.Text2Frame.WindowPosition = 'Bottom'
     Laurus.Text2Frame.Background = 'Window'
     Laurus.Text2Frame.FileFolder = 'test'
+    Laurus.Text2Frame.DefaultFileFolder = 'text'
     Laurus.Text2Frame.FileName = 'basic.txt'
     Laurus.Text2Frame.CommonEventID = '1'
     Laurus.Text2Frame.MapID = '1'
@@ -4651,6 +4663,9 @@
      * 保存済みの true(=上書き) / false(=末尾に追記) はその意味のまま引き継ぐ。
      * 新規導入の既定は add(末尾に追記)で、これは旧版の既定と同じ。 */
     Laurus.Text2Frame.DefaultStrategy = toImportStrategy(Laurus.Text2Frame.Parameters.IsOverwrite) || 'add'
+    /* 取り込み元フォルダの控え。FileFolder は IMPORT_* が実行のたびに書き換えるので、
+     * 一括反映がそれを見ると直前のコマンドのフォルダを引き継いでしまう。 */
+    Laurus.Text2Frame.DefaultFileFolder = String(Laurus.Text2Frame.Parameters['Default Scenario Folder'] || 'text')
     Laurus.Text2Frame.CommentOutChar = String(Laurus.Text2Frame.Parameters['Comment Out Char'])
     Laurus.Text2Frame.IsDebug = (String(Laurus.Text2Frame.Parameters.IsDebug) === 'true')
     Laurus.Text2Frame.DisplayMsg = (String(Laurus.Text2Frame.Parameters.DisplayMsg) === 'true')
@@ -4929,15 +4944,18 @@
     // 先に判定しないと「ゲームには ours、テキストは書けなかった」でテキスト側の版が消える。
     const planWriteBack = function (scenario_text) {
       // WriteBack は今回の実行ぶん(コマンド引数で上書きできる)。無ければプラグインパラメータ。
-      const mode = String(Laurus.Text2Frame.WriteBack || Laurus.Text2Frame.WriteBackAfterMerge || 'off').toLowerCase()
-      if (mode !== 'always' && mode !== 'onconflict') return { mode: 'off' }
+      /* 値の解釈はここ1箇所。プラグインコマンドは resolveWriteBack が先に弾くが、
+       * applyTextFile(CLI / t2f-sync / VS Code)は素の値が来るので別名もここで吸収する。 */
+      const mode = lookupAlias(WRITE_BACK_ALIASES, Laurus.Text2Frame.WriteBack) ||
+        lookupAlias(WRITE_BACK_ALIASES, Laurus.Text2Frame.WriteBackAfterMerge) || 'off'
+      if (mode !== 'always' && mode !== 'onConflict') return { mode: 'off' }
       const F2T = resolveFrame2Text()
       if (!F2T || !F2T.buildPullText) {
         return { mode: 'off', reason: '書き戻しには Frame2Text プラグインが必要です。同じプロジェクトに導入してください。 / write-back requires the Frame2Text plugin' }
       }
       // コメントアウト行(既定は %)はコンパイル前に捨てられる(eraseCommentOutLines)が、
       // 書き戻しは元テキストを持っているので buildPullText が元の位置へ戻す。見送りは不要。
-      return { mode: mode === 'always' ? 'always' : 'onConflict', F2T }
+      return { mode, F2T }
     }
 
     // コマンド列を、いま反映したテキストの front matter を引き継いだテキストにする。
@@ -5059,8 +5077,7 @@
       if (value === undefined || value === null || value === '') {
         return Laurus.Text2Frame.DefaultStrategy || 'add'
       }
-      throw new Error('Unknown strategy: ' + value +
-        ' / 反映方法は add か merge か overwrite を指定してください。')
+      throw new Error('Unknown strategy: ' + value + ' / ' + IMPORT_STRATEGY_HINT)
     }
 
     Laurus.Text2Frame.ExecMode = command.toUpperCase()
@@ -5089,14 +5106,13 @@
         if (args[5]) strategyArg = args[5]
         Laurus.Text2Frame.Strategy = resolveImportStrategy(strategyArg)
         Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite'
-        Laurus.Text2Frame.WriteBack = String(args[6] || Laurus.Text2Frame.WriteBackAfterMerge || 'off')
+        Laurus.Text2Frame.WriteBack = resolveWriteBack(args[6], Laurus.Text2Frame.WriteBackAfterMerge || 'off')
         // テキストに見出し情報があれば、反映先はそちらに従う(実行部で上書きする)。
         Laurus.Text2Frame.RouteByFrontMatter = true
         if (args[0] || args[1]) {
           const { PATH_SEP, BASE_PATH } = getDirParams()
           Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
           Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
-          Laurus.Text2Frame.BasePath = (args[7] && args[8]) ? `${BASE_PATH}${PATH_SEP}${args[7]}${PATH_SEP}${args[8]}` : undefined
         }
         break
       }
@@ -5110,14 +5126,13 @@
         // 4番目は旧来の上書き真偽値と同じ枠。merge/overwrite/add も受ける。
         Laurus.Text2Frame.Strategy = resolveImportStrategy(args[3])
         Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite'
-        Laurus.Text2Frame.WriteBack = String(args[4] || Laurus.Text2Frame.WriteBackAfterMerge || 'off')
+        Laurus.Text2Frame.WriteBack = resolveWriteBack(args[4], Laurus.Text2Frame.WriteBackAfterMerge || 'off')
         // テキストに見出し情報があれば、反映先はそちらに従う(実行部で上書きする)。
         Laurus.Text2Frame.RouteByFrontMatter = true
         if (args[0] || args[1]) {
           const { PATH_SEP, BASE_PATH } = getDirParams()
           Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
           Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
-          Laurus.Text2Frame.BasePath = (args[5] && args[6]) ? `${BASE_PATH}${PATH_SEP}${args[5]}${PATH_SEP}${args[6]}` : undefined
         }
         break
       }
@@ -5126,29 +5141,36 @@
       case 'フォルダから一括取り込み' :
       case '一括反映' : {
         addMessage('batch import from folder. \n/ フォルダから一括反映します。')
-        // よく変えるものから順に: 反映方法 -> 書き戻し -> 取り込み元。
-        // @arg の並び・registerCommand の渡し順と揃えること(ずれると folder に always が入る)。
+        // 単体の取り込みと同じ並び: 取り込み元 -> 反映方法 -> 書き戻し。
+        // @arg の並び・registerCommand の渡し順と揃えること(ずれると folder に merge が入る)。
         /* 一括反映は「単一の取り込みをまとめて行うもの」なので、反映方法も単一と同じ
-         * add/merge/overwrite の3つを取り、既定も単一と同じ add にする。 */
-        Laurus.Text2Frame.BatchStrategy = resolveImportStrategy(args[0])
-        Laurus.Text2Frame.WriteBack = String(args[1] || Laurus.Text2Frame.WriteBackAfterMerge || 'off')
-        Laurus.Text2Frame.ImportFolder = args[2] || 'text'
+         * add/merge/overwrite の3つを取り、既定も単一と同じ add にする。
+         * 取り込み元も単一と同じプラグインパラメータに落ちる。ただし FileFolder は
+         * IMPORT_* が実行のたびに書き換えるので、読み込み時に控えたほうを見る。 */
+        Laurus.Text2Frame.ImportFolder = args[0] || Laurus.Text2Frame.DefaultFileFolder || 'text'
+        Laurus.Text2Frame.BatchStrategy = resolveImportStrategy(args[1])
+        Laurus.Text2Frame.WriteBack = resolveWriteBack(args[2], Laurus.Text2Frame.WriteBackAfterMerge || 'off')
         Laurus.Text2Frame.ExecMode = 'BATCH_IMPORT_MESSAGES_FROM_FOLDER'
         break
       }
       case 'START_DATA_SYNC' :
       case 'テキストとゲームの同期を開始' : {
         addMessage('start data sync. \n/ テキストとゲームの同期を開始します。')
-        // よく変えるものから順に: 向き -> 反映方法 -> 書き戻し -> テキスト -> データフォルダ。
-        const syncStrategy = String(args[1] || 'merge').toLowerCase()
+        /* 引数の並び: 向き -> テキストのフォルダ -> 反映方法 -> 書き戻し。
+         * 向きを先頭に置くのは、末尾にすると上書きを選ぶために書き戻しまで
+         * 書かされるため。
+         * 同期はプラグインパラメータを一切見ない。省略時の既定は MZ の @arg と同じ
+         * both / text / merge / always。 */
+        const syncStrategy = resolveImportStrategy(args[2] || 'merge')
         if (syncStrategy !== 'merge' && syncStrategy !== 'overwrite') {
-          throw new Error('Unknown strategy: ' + args[1] + ' / 同期の反映方法は merge か overwrite を指定してください。')
+          // add は冪等でないので、見張りながら繰り返すと内容が増え続ける。
+          throw new Error('Unknown strategy: ' + args[2] +
+            ' / 同期の反映方法は merge(統合) か overwrite(上書き) を指定してください。')
         }
         Laurus.Text2Frame.SyncDirection = normalizeDirection(args[0])
+        Laurus.Text2Frame.ImportFolder = args[1] || 'text'
         Laurus.Text2Frame.SyncStrategy = syncStrategy
-        Laurus.Text2Frame.WriteBack = String(args[2] || Laurus.Text2Frame.WriteBackAfterMerge || 'off')
-        Laurus.Text2Frame.ImportFolder = args[3] || 'text'
-        Laurus.Text2Frame.SyncDataFolder = args[4] || 'data'
+        Laurus.Text2Frame.WriteBack = resolveWriteBack(args[3], 'always')
         Laurus.Text2Frame.ExecMode = 'START_DATA_SYNC'
         break
       }
@@ -11543,7 +11565,8 @@
       const direction = Laurus.Text2Frame.SyncDirection || 'both'
       const syncStrategy = Laurus.Text2Frame.SyncStrategy || 'merge'
       const textFolder = Laurus.Text2Frame.ImportFolder || 'text'
-      const dataFolder = Laurus.Text2Frame.SyncDataFolder || 'data'
+      // data を別名にする使い道が無いので引数から外した。他の反映コマンドも data 固定。
+      const dataFolder = 'data'
       const writeBack = Laurus.Text2Frame.WriteBack
       /* 二重起動の判定は startSyncWatch も持っているが、ここでも先に見ておく。
        * 後ろで断ると、断ったのに初回の一括だけ済んでいる状態になる。 */

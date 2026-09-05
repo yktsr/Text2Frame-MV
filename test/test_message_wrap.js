@@ -109,7 +109,7 @@ describe('message wrapping for $gameMessage', function () {
   // Text2Frame 側(反映)。同じ折り返しを別実装で持っているので両方を確かめる。
   it('wraps a long path message and loses nothing (Text2Frame)', function () {
     Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-      ['merge', 'off', outDir])
+      [outDir, 'merge', 'off'])
 
     expect(shown.length).to.be.greaterThan(0)
     expectFits()
@@ -126,7 +126,7 @@ describe('message wrapping for $gameMessage', function () {
 
   // 句点だけが次の行に取り残されると読みにくい。1文字ぶんは余白に収まるのではみ出させる。
   it('does not leave a full stop stranded at the start of a line', function () {
-    const syncArgs = ['push', 'merge', 'off', path.join(tmp, 'text'), path.join(tmp, 'data')]
+    const syncArgs = ['push', path.join(tmp, 'text'), 'merge', 'off']
     Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC', syncArgs)
     shown.length = 0
     Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC', syncArgs)
@@ -138,7 +138,7 @@ describe('message wrapping for $gameMessage', function () {
 
   it('keeps the embedded newline of the restart notice as a line break', function () {
     Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-      ['merge', 'off', path.join(tmp, 'text')])
+      [path.join(tmp, 'text'), 'merge', 'off'])
 
     // 反映元が無いので案内は出ないが、出るときは \n が行の区切りになる。
     // ここでは折り返しが幅を壊していないことだけ確かめる。
