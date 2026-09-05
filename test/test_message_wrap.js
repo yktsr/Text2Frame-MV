@@ -68,11 +68,16 @@ describe('message wrapping for $gameMessage', function () {
     // 同期は text/ が無いと開始しないので用意しておく。
     fs.mkdirSync(path.join(tmp, 'text'), { recursive: true })
     fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify({
-      events: [null, { id: 1, pages: [{ list: [
-        { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-        { code: 401, indent: 0, parameters: ['こんにちは'] },
-        { code: 0, indent: 0, parameters: [] }
-      ] }] }]
+      events: [null, {
+        id: 1,
+        pages: [{
+          list: [
+            { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+            { code: 401, indent: 0, parameters: ['こんにちは'] },
+            { code: 0, indent: 0, parameters: [] }
+          ]
+        }]
+      }]
     }), 'utf8')
     fs.writeFileSync(path.join(tmp, 'data', 'CommonEvents.json'),
       JSON.stringify([null, { id: 1, list: [{ code: 0, indent: 0, parameters: [] }] }]), 'utf8')

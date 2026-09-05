@@ -34,12 +34,14 @@ describe('CLI merge strategies (--mode map)', function () {
       events: [null, {
         id: 1,
         name: 'EV',
-        pages: [{ list: [
-          { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-          { code: 401, indent: 0, parameters: ['Hello'] },
-          { code: 121, indent: 0, parameters: [7, 7, 0, 0] }, // dev-added switch
-          { code: 0, indent: 0, parameters: [] }
-        ] }]
+        pages: [{
+          list: [
+            { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+            { code: 401, indent: 0, parameters: ['Hello'] },
+            { code: 121, indent: 0, parameters: [7, 7, 0, 0] }, // dev-added switch
+            { code: 0, indent: 0, parameters: [] }
+          ]
+        }]
       }]
     }))
     textPath = path.join(tmp, 'ev.txt')

@@ -33,11 +33,13 @@ require('../Frame2Text.js')
 const gameMap = {
   events: [null, {
     id: 1,
-    pages: [{ list: [
-      { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-      { code: 401, indent: 0, parameters: ['こんにちは'] },
-      { code: 0, indent: 0, parameters: [] }
-    ] }]
+    pages: [{
+      list: [
+        { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+        { code: 401, indent: 0, parameters: ['こんにちは'] },
+        { code: 0, indent: 0, parameters: [] }
+      ]
+    }]
   }]
 }
 // existing text already translated to Hello

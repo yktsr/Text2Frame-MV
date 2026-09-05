@@ -12,11 +12,13 @@ const T2F = require('../Text2Frame.js')
 function msgEvent (line) {
   return {
     id: 1,
-    pages: [{ list: [
-      { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-      { code: 401, indent: 0, parameters: [line] },
-      { code: 0, indent: 0, parameters: [] }
-    ] }]
+    pages: [{
+      list: [
+        { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+        { code: 401, indent: 0, parameters: [line] },
+        { code: 0, indent: 0, parameters: [] }
+      ]
+    }]
   }
 }
 function stripFrontMatter (text) {
@@ -38,11 +40,14 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI --mode batch)', function () {
     fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'),
       JSON.stringify({ events: [null, msgEvent('Hello from event')] }))
     fs.writeFileSync(path.join(tmp, 'data', 'CommonEvents.json'),
-      JSON.stringify([null, { id: 1, list: [
-        { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-        { code: 401, indent: 0, parameters: ['Hello from common'] },
-        { code: 0, indent: 0, parameters: [] }
-      ] }]))
+      JSON.stringify([null, {
+        id: 1,
+        list: [
+          { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+          { code: 401, indent: 0, parameters: ['Hello from common'] },
+          { code: 0, indent: 0, parameters: [] }
+        ]
+      }]))
   })
   afterEach(function () {
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }

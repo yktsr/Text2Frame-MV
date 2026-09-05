@@ -1,4 +1,4 @@
-import TF from "Text2Frame-MV/Text2Frame.es.mjs"
+import TF from 'Text2Frame-MV/Text2Frame.es.mjs'
 
 const date = new Date().toLocaleString()
 const text = `<comment>

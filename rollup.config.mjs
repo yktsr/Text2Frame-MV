@@ -1,10 +1,10 @@
 import commonjs from '@rollup/plugin-commonjs'
 import resolve from '@rollup/plugin-node-resolve'
 
-function removeDeveloperMode() {
+function removeDeveloperMode () {
   return {
     name: 'remove-developer-mode',
-    transform(code, id) {
+    transform (code, id) {
       if (id.endsWith('Text2Frame.js')) {
         const startIndex = code.indexOf('// developer mode')
         if (startIndex !== -1) {

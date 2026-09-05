@@ -14,10 +14,10 @@ PluginManager.parameters = function () {
     'Default MapID': '1',
     'Default EventID': '1',
     'Default PageID': '1',
-    'IsDebug': 'false',
-    'DisplayMsg': 'false',
-    'DisplayWarning': 'false',
-    'EnglishTag': 'true'
+    IsDebug: 'false',
+    DisplayMsg: 'false',
+    DisplayWarning: 'false',
+    EnglishTag: 'true'
   }
 }
 
