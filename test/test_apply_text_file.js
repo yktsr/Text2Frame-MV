@@ -111,7 +111,6 @@ describe('applyTextFile (deploy core) Test', function () {
     text2frame.applyTextFile({ textPath, mapPath, strategy: 'overwrite', overwrite: true, backup: true })
     expect(fs.readFileSync(mapPath + '.bak', 'utf8')).to.equal(pristine)
   })
-
 })
 
 describe('choice / branch compile invariants', function () {

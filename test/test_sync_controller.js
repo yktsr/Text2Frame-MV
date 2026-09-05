@@ -20,23 +20,28 @@ describe('t2f-sync controller', function () {
     fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify({
       events: [null, {
         id: 1,
-        pages: [{ list: [
-          { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-          { code: 401, indent: 0, parameters: ['Hello'] },
-          // dev-added switch。121(スイッチの操作)の引数は実データでは3つ。4つにすると
-          // テキスト往復した祖先([7,7,0])とゲーム([7,7,0,0])が食い違い、偽の衝突になる。
-          { code: 121, indent: 0, parameters: [7, 7, 0] },
-          { code: 0, indent: 0, parameters: [] }
-        ] }]
+        pages: [{
+          list: [
+            { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+            { code: 401, indent: 0, parameters: ['Hello'] },
+            // dev-added switch。121(スイッチの操作)の引数は実データでは3つ。4つにすると
+            // テキスト往復した祖先([7,7,0])とゲーム([7,7,0,0])が食い違い、偽の衝突になる。
+            { code: 121, indent: 0, parameters: [7, 7, 0] },
+            { code: 0, indent: 0, parameters: [] }
+          ]
+        }]
       }]
     }))
     fs.writeFileSync(path.join(tmp, 'data', 'CommonEvents.json'), JSON.stringify([
       null,
-      { id: 1, list: [
-        { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-        { code: 401, indent: 0, parameters: ['CommonHello'] },
-        { code: 0, indent: 0, parameters: [] }
-      ] }
+      {
+        id: 1,
+        list: [
+          { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+          { code: 401, indent: 0, parameters: ['CommonHello'] },
+          { code: 0, indent: 0, parameters: [] }
+        ]
+      }
     ]))
     opts = { root: tmp, dataDir: 'data', textDir: 'text', strategy: 'merge' }
   })
@@ -89,8 +94,8 @@ describe('t2f-sync controller', function () {
 
     sync.pullDataFile(mapPath, opts)
     const after = fs.readFileSync(evText(), 'utf8')
-    expect(after).to.contain('こんにちは')  // translation survived
-    expect(after).to.contain('NewDevLine')  // game change pulled in
+    expect(after).to.contain('こんにちは') // translation survived
+    expect(after).to.contain('NewDevLine') // game change pulled in
   })
 
   // 取り出しの鏡写し: 反映が書き換えるのはゲームなので、祖先には書き換えなかった側=テキストが
@@ -347,7 +352,7 @@ describe('t2f-sync controller', function () {
 
   it('syncOnce both directions reports pulled and pushed entries', function () {
     const r = sync.syncOnce(Object.assign({}, opts, { direction: 'both' }))
-    expect(r.pulled.length).to.equal(2)  // Map001 event + common001
+    expect(r.pulled.length).to.equal(2) // Map001 event + common001
     expect(r.pushed.length).to.equal(2)
     expect(r.pulled.concat(r.pushed).every(function (x) { return x.ok })).to.equal(true)
   })
@@ -358,8 +363,8 @@ describe('t2f-sync controller', function () {
 
     fs.writeFileSync(f, 'written-by-us')
     guard.record(f, 'written-by-us')
-    expect(guard.isEcho(f)).to.equal(true)   // our own write -> ignored
-    expect(guard.isEcho(f)).to.equal(false)  // consumed; no longer suppressed
+    expect(guard.isEcho(f)).to.equal(true) // our own write -> ignored
+    expect(guard.isEcho(f)).to.equal(false) // consumed; no longer suppressed
 
     // a write by someone else must NOT be treated as an echo
     guard.record(f, 'written-by-us')

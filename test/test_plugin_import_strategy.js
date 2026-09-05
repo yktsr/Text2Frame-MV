@@ -32,19 +32,23 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
   const oursMap = {
     events: [null, {
       id: 1,
-      pages: [{ list: [
-        { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-        { code: 401, indent: 0, parameters: ['Hello'] },
-        { code: 121, indent: 0, parameters: [7, 7, 0, 0] }, // dev-added switch
-        { code: 0, indent: 0, parameters: [] }
-      ] }]
+      pages: [{
+        list: [
+          { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+          { code: 401, indent: 0, parameters: ['Hello'] },
+          { code: 121, indent: 0, parameters: [7, 7, 0, 0] }, // dev-added switch
+          { code: 0, indent: 0, parameters: [] }
+        ]
+      }]
     }, {
       id: 2,
-      pages: [{ list: [
-        { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-        { code: 401, indent: 0, parameters: ['Other event'] },
-        { code: 0, indent: 0, parameters: [] }
-      ] }]
+      pages: [{
+        list: [
+          { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+          { code: 401, indent: 0, parameters: ['Other event'] },
+          { code: 0, indent: 0, parameters: [] }
+        ]
+      }]
     }]
   }
   const theirsText = '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n\nBonjour\n'

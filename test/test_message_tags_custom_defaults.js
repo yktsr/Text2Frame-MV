@@ -9,8 +9,8 @@ globalThis.$gameMessage = { add: function () {} }
 globalThis.PluginManager = {
   parameters: function () {
     return {
-      'Default Window Position': '上',      // 出荷時は「下」
-      'Default Background': '暗くする',      // 出荷時は「ウインドウ」
+      'Default Window Position': '上', // 出荷時は「下」
+      'Default Background': '暗くする', // 出荷時は「ウインドウ」
       'Comment Out Char': '%',
       IsOverwrite: 'false',
       'Default Scenario Folder': 'text',

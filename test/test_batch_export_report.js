@@ -34,11 +34,16 @@ globalThis.PluginManager = {
 require('../Frame2Text.js')
 
 function msgEvent (line) {
-  return { id: 1, pages: [{ list: [
-    { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-    { code: 401, indent: 0, parameters: [line] },
-    { code: 0, indent: 0, parameters: [] }
-  ] }] }
+  return {
+    id: 1,
+    pages: [{
+      list: [
+        { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+        { code: 401, indent: 0, parameters: [line] },
+        { code: 0, indent: 0, parameters: [] }
+      ]
+    }]
+  }
 }
 
 describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
@@ -165,14 +170,16 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
       fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify({
         events: [null, msgEvent('こんにちは'), {
           id: 2,
-          pages: [{ list: [
-            { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-            { code: 401, indent: 0, parameters: ['やあ'] },
-            marker('=== テキストの変更 / from text ==='),
-            marker('=== ゲームの変更 / from game ==='),
-            marker('=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='),
-            { code: 0, indent: 0, parameters: [] }
-          ] }]
+          pages: [{
+            list: [
+              { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+              { code: 401, indent: 0, parameters: ['やあ'] },
+              marker('=== テキストの変更 / from text ==='),
+              marker('=== ゲームの変更 / from game ==='),
+              marker('=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='),
+              { code: 0, indent: 0, parameters: [] }
+            ]
+          }]
         }]
       }), 'utf8')
       fs.mkdirSync(path.join(tmp, 'text'), { recursive: true })

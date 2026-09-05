@@ -21,12 +21,14 @@ function makeEvent (id, line) {
   return {
     id,
     name: 'EV' + id,
-    pages: [{ list: [
-      { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-      { code: 401, indent: 0, parameters: [line] },
-      { code: 121, indent: 0, parameters: [7, 7, 0, 0] }, // dev-added switch (structure)
-      { code: 0, indent: 0, parameters: [] }
-    ] }]
+    pages: [{
+      list: [
+        { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+        { code: 401, indent: 0, parameters: [line] },
+        { code: 121, indent: 0, parameters: [7, 7, 0, 0] }, // dev-added switch (structure)
+        { code: 0, indent: 0, parameters: [] }
+      ]
+    }]
   }
 }
 

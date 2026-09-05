@@ -58,7 +58,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
     return JSON.parse(readIf(mapPath())).events[1].pages[0].list
       .filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })
   }
-  const wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms) }) }
+  const wait = function (ms) { return new Promise(function (resolve) { setTimeout(resolve, ms) }) }
 
   /* 同期は単独のコマンド。引数は [Direction, Strategy, WriteBack, TextFolder, DataFolder]。
    * 初回に一括で揃えてから見張りに入る。 */
@@ -101,7 +101,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
       events: [null, { id: 1, pages: [{ list: msg('どうも').concat([bottom]) }] }]
     }), 'utf8')
     fs.writeFileSync(path.join(tmp, 'data', 'Map004.json'), JSON.stringify({
-      events: [null, { id: 1, pages: [{ list: msg('また') .concat([bottom]) }] }]
+      events: [null, { id: 1, pages: [{ list: msg('また').concat([bottom]) }] }]
     }), 'utf8')
     fs.writeFileSync(path.join(tmp, 'data', 'CommonEvents.json'),
       JSON.stringify([null, { id: 1, list: [bottom] }]), 'utf8')
@@ -195,7 +195,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
     const realWarn = console.warn
     console.warn = function (m) { warned.push(String(m)) }
     try {
-      ;['Map001.json', 'Map002.json', 'Map003.json', 'Map004.json'].forEach(function (f) {
+      ['Map001.json', 'Map002.json', 'Map003.json', 'Map004.json'].forEach(function (f) {
         const p = path.join(tmp, 'data', f)
         const d = JSON.parse(readIf(p))
         d.events[1].pages[0].list.find(function (c) { return c.code === 401 }).parameters[0] = '保存で書き戻った'
