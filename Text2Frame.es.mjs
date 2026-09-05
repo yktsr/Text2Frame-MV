@@ -6909,7 +6909,8 @@ function requireFrame2Text () {
 
 		    // 取り出し(ゲーム→テキスト)の本文を作る。merge のときだけ既存テキスト・祖先と 3-way する。
 		    // fs には触らない(ゲーム内は BASE_PATH、CLI は cwd と基準が違うため入出力は呼び出し側)。
-		    // 戻り値: { text, baseText, conflicts, markers } / 見送ったときは { skipped: 'game'|'text' }。
+		    // 戻り値: { text, baseText, conflicts, markers, approximate, warnings }
+		    // 見送ったときは { skipped: 'game'|'text' }。
 		    // markers は「書き出した本文に未解決の目印が入っている」印。呼び出し側は祖先を進めないこと。
 		    //
 		    // baseText は .t2f-base へ保存する内容で、text とは別物。祖先は「テキストとゲームが
@@ -6932,9 +6933,11 @@ function requireFrame2Text () {
 		      const header = normalizeHeader((existingText && frontMatterHeader(existingText)) || opts.fallbackHeader || '');
 		      const gameText = header + decompile(list, englishTag, { pretty: true, omitDefaults: opts.omitDefaults }) + '\n';
 
-		      /* コメント行(既定は %)はコマンドにならないので、コマンド列から作り直した本文には
-		       * 残らない。前のテキストが分かるときは、そこから元の位置へ戻す。
-		       * 全上書きでも戻す: % はゲームに入らないため「ゲームの内容で全部置き換える」という
+		      /* コメント行(既定は %)・空行の幅・タグ行の綴り(字下げと大文字小文字)は、
+		       * コマンドにならないのでコマンド列から作り直した本文には残らない。前のテキストが
+		       * 分かるときは、そこから元の位置・元の書き方へ戻す(規則は Text2Frame の
+		       * restoreAuthoredLines を参照)。
+		       * 全上書きでも戻す: どれもゲームに入らないため「ゲームの内容で全部置き換える」という
 		       * 約束の対象外(置き換える相手が存在しない)。
 		       * previousText を existingText と分けているのは、単発の全上書き取り出しが見出しの
 		       * 引き継ぎを避けるため existingText を意図して渡さないから。 */
@@ -6990,7 +6993,7 @@ function requireFrame2Text () {
 		    // data ディレクトリを走査し、出力対象(イベント/コモンイベント)の routing メタだけを返す。
 		    // textPath は付けない(呼び出し側が textBase/key.txt を組み立てる)。
 		    /* onlyFile を渡すと、そのデータファイル1つぶんの対象だけを返す。
-		     * 同期監視は変わったファイルの分だけ処理したいので、全 Map を読み直さずに済ませる。 */
+		     * 同期は変わったファイルの分だけ処理したいので、全 Map を読み直さずに済ませる。 */
 		    const enumerateTargets = function (dataDir, onlyFile) {
 		      const _fs = require$$1$1;
 		      const _path = require$$0$1;
@@ -7025,8 +7028,8 @@ function requireFrame2Text () {
 		      return targets
 		    };
 
-		    /* ターゲット1件をテキストへ取り出す。一括取り出しと同期監視の両方から呼ぶ。
-		     * 一括取り出しはこれを全ターゲットに回すだけ、同期監視は変わったファイルの分だけ回す。
+		    /* ターゲット1件をテキストへ取り出す。一括取り出しと同期の両方から呼ぶ。
+		     * 一括取り出しはこれを全ターゲットに回すだけ、同期は変わったファイルの分だけ回す。
 		     * (全件を回す一括コマンドを変更のたびに呼ぶと、実プロジェクト規模ではゲームが数秒止まる)
 		     *
 		     * opts: { dataDir, target, outPath, baseDir, englishTag, strategy }
@@ -7068,8 +7071,7 @@ function requireFrame2Text () {
 		        if (built.skipped) return { ok: true, skipped: built.skipped }
 		        _fs.writeFileSync(opts.outPath, built.text, 'utf8');
 		        let baseSaveError = null;
-		        // 祖先に目印が入ると次回の 3-way がそれを再マージするので、そのときだけ進めない。
-		        // 衝突しただけ(目印はテキストのみ)なら進める。理由は単発取り出しの同じ箇所を参照。
+		        // 目印ごと取り出したときだけ祖先を進めない(理由は単発取り出しの同じ箇所)。
 		        if (!built.markers) {
 		          // 祖先はゲーム側(built.baseText)。マージ結果を入れるとゲームが到達していない
 		          // 状態が祖先になり、次の反映でテキストの内容が消える。
@@ -7181,7 +7183,7 @@ function requireFrame2Text () {
 		      }
 
 		      targets.forEach(function (t) {
-		        // 1件ぶんの取り出しは同期監視と共通(pullTargetToText)。ここは件数の集計だけ行う。
+		        // 1件ぶんの取り出しは同期と共通(pullTargetToText)。ここは件数の集計だけ行う。
 		        const r = pullTargetToText({
 		          dataDir,
 		          target: t,
@@ -7259,9 +7261,8 @@ function requireFrame2Text () {
 		      console.log('[batch] Completed (' + batchStrategy + '): ' + okCount + ' success (event ' + eventCount + ' / common ' + commonCount + '), ' +
 		        errCount + ' errors, ' + conflicted.length + ' with conflicts, ' + markerCarried.length + ' with unresolved markers -> ' + outDir +
 		        (overwrittenCount > 0 ? ' (overwrote ' + overwrittenCount + ' existing text file(s))' : ''));
-		      /* 取り出したあと自動で追従させたいときは、Text2Frame の START_DATA_SYNC を使う。
-		       * 一括取り出しのオプションではなく単独のコマンドにしてある(一括反映の既定が
-		       * add になり、見張りながら繰り返す動作と噛み合わないため)。 */
+		      // 取り出したあと自動で追従させたいときは Text2Frame の START_DATA_SYNC を使う
+		      // (単独のコマンドにしてある理由はそちらの実行部を参照)。
 		      return
 		    }
 
@@ -7340,7 +7341,10 @@ function requireFrame2Text () {
 		    }
 		    const exportWarnings = built.warnings || [];
 		    exportWarnings.forEach(function (w) { addMessage(w); });
-		    // 目印ごと取り出した場合は祖先を進めない(祖先に目印が入ると次回の 3-way が壊れる)。
+		    /* 目印ごと取り出した場合は祖先を進めない。祖先に目印が入ると次回の 3-way が
+		     * その目印ごと再マージし、目印が二重・三重に増えるため。
+		     * 衝突しただけ(目印はテキストだけ)なら進める。据え置くと、テキストで解決したあとの
+		     * 反映で同じ衝突が再発する。取り出しの3経路で同じ規則。 */
 		    if (built.markers) {
 		      addMessage('未解決の衝突の目印ごと取り出したため、祖先(.t2f-base)は更新していません。テキストの目印3行を消して残す方を決めたあと、反映を上書きで実行してください。');
 		    }
@@ -7580,8 +7584,7 @@ function requireFrame2Text () {
 		        }
 		        fs.mkdirSync(path.dirname(textPath), { recursive: true });
 		        fs.writeFileSync(textPath, built.text, 'utf8');
-		        // 祖先に目印が入ると次回の 3-way がそれを再マージするので、そのときだけ進めない。
-		        // 衝突しただけなら進める。理由は in-engine 側の同じ箇所を参照。
+		        // 目印ごと取り出したときだけ祖先を進めない(理由は単発取り出しの同じ箇所)。
 		        if (!built.markers) {
 		          // 祖先はゲーム側(built.baseText)。理由は in-engine 側の同じ箇所を参照。
 		          try { fs.writeFileSync(path.join(baseDir, t.key + '.txt'), built.baseText, 'utf8'); } catch (e) { baseSaveError = baseSaveError || e; }
@@ -7648,7 +7651,7 @@ function requireText2Frame () {
 		// Version
 		// 2.3.0: 2026/09/05
 		// ・#132 一括反映/一括取り出しコマンドを追加
-		// ・#137 テキストとゲームの同期コマンド START_DATA_SYNC / STOP_DATA_SYNC を追加
+		// ・#137 テキストとゲームを自動同期するコマンドを追加
 		// ・#137 Visual Studio Code 拡張に対応
 		// ・#137 下記の不具合修正
 		//   - 移動ルート設定の直後に選択肢を置くと、反映時にエラーで止まる不具合の修正
@@ -12579,11 +12582,11 @@ function requireText2Frame () {
 		     * ゲームには自分の版(目印なし)を書くので、直す場所がテキストに一本化される。
 		     * ツクールを開かずに、統合(merge)のまま決着できる。 */
 
-		    // 書き戻せない条件を先に潰す。1つでも当てはまれば従来どおり(目印を両側)に落とす。
+		    // 書き戻せない条件を先に潰す。当てはまれば従来どおり、目印はゲーム側だけに入る。
 		    // 先に判定しないと「ゲームには ours、テキストは書けなかった」でテキスト側の版が消える。
 		    const planWriteBack = function (scenario_text) {
-		      // WriteBack は今回の実行ぶん(コマンド引数で上書きできる)。無ければプラグインパラメータ。
-		      /* 値の解釈はここ1箇所。プラグインコマンドは resolveWriteBack が先に弾くが、
+		      /* WriteBack は今回の実行ぶん(コマンド引数で上書きできる)。無ければプラグインパラメータ。
+		       * 値の解釈はここ1箇所。プラグインコマンドは resolveWriteBack が先に弾くが、
 		       * applyTextFile(CLI / t2f-sync / VS Code)は素の値が来るので別名もここで吸収する。 */
 		      const mode = lookupAlias(WRITE_BACK_ALIASES, Laurus.Text2Frame.WriteBack) ||
 		        lookupAlias(WRITE_BACK_ALIASES, Laurus.Text2Frame.WriteBackAfterMerge) || 'off';
@@ -12708,8 +12711,8 @@ function requireText2Frame () {
 		     * 省略時はプラグインパラメータ「反映方法」。
 		     *
 		     * 一括反映も「単一の取り込みをまとめて行うもの」なので同じ3択・同じ既定を通す。
-		     * add(末尾に追記)は2回流すと内容が二重になる(冪等でない)。そのため同期監視は
-		     * 一括反映のオプションではなく、merge を既定とする START_DATA_SYNC に分けてある。 */
+		     * add(末尾に追記)が冪等でないことが同期を別コマンドにした理由でもある
+		     * (START_DATA_SYNC の実行部を参照)。 */
 		    const resolveImportStrategy = function (value) {
 		      const s = toImportStrategy(value);
 		      if (s) return s
@@ -18361,7 +18364,8 @@ function requireText2Frame () {
 		    /* 3-way マージ(diff3 方式・両方残す)。base=共通祖先, ours=現JSON, theirs=テキスト。
 		     * 釣り合った単位で base↔ours / base↔theirs を LCS 対応し、両方が同じ箇所を別々に変えた領域は
 		     * 「衝突」として両方を残し 108 コメントで囲む(非破壊・常に valid)。
-		     * 戻り値: { commands: 適用後(終端コードなし), conflicts: 件数, warnings }。 */
+		     * 戻り値: { commands: 適用後(終端コードなし), commandsOurs, conflicts: 件数, warnings }。
+		     * commandsOurs は keepOurs を渡したときだけ埋まる(後述)。 */
 		    const applyThreeWayMerge = function (base_commands, ours_commands, theirs_commands, options) {
 		      const stripBottom = function (cmds) {
 		        const copy = cmds.slice();
@@ -18703,7 +18707,7 @@ function requireText2Frame () {
 		     * text/ と text_en/ に同じ名前のテキストがあっても別々の祖先になる。
 		     * root の外にあるテキスト(CLI に絶対パスを渡した場合など)は、入っているフォルダ名で分ける。 */
 		    /* テキストのフォルダに対応する祖先の置き場所。deriveBaseId と同じ規約を、
-		     * 1件ずつではなくフォルダ単位で解いたもの(一括取り出し・同期監視が使う)。 */
+		     * 1件ずつではなくフォルダ単位で解いたもの(一括取り出し・同期が使う)。 */
 		    const baseDirForTextDir = function (root, textDir) {
 		      const path = require$$0$1;
 		      const abs = path.resolve(String(textDir));
@@ -18765,10 +18769,10 @@ function requireText2Frame () {
 		        : path.resolve(rootDir, maybeRelativePath)
 		    };
 
-		    /* ---------------- 同期監視 ----------------
+		    /* ---------------- 同期(見張り) ----------------
 		     * text と data を見張って、変わったファイルだけを自動で反映・取り出しする。
 		     * npx t2f-sync --watch と同じことを、ターミナル無しで回すためのもの。
-		     * START_DATA_SYNC(と Frame2Text からの呼び出し)から使う。止めるのは STOP_DATA_SYNC。
+		     * 呼び出し元は START_DATA_SYNC だけ。止めるのは STOP_DATA_SYNC。
 		     *
 		     * ・監視はゲームのプロセスに載るので、プレイテストを閉じると止まる。
 		     * ・実行中のゲームの画面は変わらない($dataMap は起動時に読んだきり)。確認は F5 でリロード。
@@ -18786,8 +18790,9 @@ function requireText2Frame () {
 		        direction: (o && o.direction) || 'both',
 		        textBase: (o && o.textBase) || 'text',
 		        dataFolder: (o && o.dataFolder) || 'data',
-		        // 監視の反映も一括反映と同じ書き戻し設定に従う。指定が無ければプラグインパラメータ。
-		        writeBack: String((o && o.writeBack) || Laurus.Text2Frame.WriteBackAfterMerge || 'off')
+		        // 同期はプラグインパラメータを見ない(ヘルプでそう約束している)。既定はヘルプが
+		        // 宣言する always。呼び出し元は必ず渡すので、ここに落ちるのは直接呼んだときだけ。
+		        writeBack: String((o && o.writeBack) || 'always')
 		      };
 		      // 二重起動すると監視が重なって同じ変更を何度も処理する。状態を出して何もしない。
 		      if (Laurus.Text2Frame._syncWatch) {
@@ -19019,7 +19024,7 @@ function requireText2Frame () {
 		      if (wantPull) watched.push(rel(dataDir));
 		      addMessage('[sync] 同期を開始しました(' + opts.direction + ' / ' + opts.strategy + ')。');
 		      addMessage('[sync] 監視中: ' + watched.join(' + '));
-		      // 止めるコマンドは Text2Frame にしかない(一括取り出しから始めたときも同じ)。
+		      // 止めるコマンドは Text2Frame にしかない。
 		      addMessage('[sync] 進行状況はコンソール(F8)に出ます。ゲームを閉じるか、Text2Frameの「テキストとゲームの同期を停止」(STOP_DATA_SYNC)で止まります。');
 		      console.log('[sync] watching ' + watched.join(' + ') + ' (direction=' + opts.direction + ', strategy=' + opts.strategy + ')');
 		      console.log('[sync] 反映してもこのゲームの画面は変わりません。確認するには F5 でリロードしてください。');
@@ -19163,7 +19168,7 @@ function requireText2Frame () {
 		      return { ok, fail, root }
 		    };
 
-		    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId, baseDirForTextDir, getMessageDefaults, startSyncWatch, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter, CONFLICT_MARKERS, hasConflictMarker };
+		    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter, CONFLICT_MARKERS, hasConflictMarker };
 		    // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
 		    // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
 		    // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。

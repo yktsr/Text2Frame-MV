@@ -58,7 +58,9 @@ function snapshotIdFor(workspaceRoot: string, textPath: string): { key: string }
  *   - off       : never write back
  *   - onConflict: write back only when the merge kept conflicts (default)
  *   - always    : write back after every successful deploy (text mirrors JSON)
- * The BASE is set to the final text (written-back if any, else the just-deployed text).
+ * The BASE is set to the final text (written-back if any, else the just-deployed text),
+ * except on a conflict: there it is the deployed text, since the written-back one carries
+ * the markers and an ancestor with markers in it makes the next 3-way merge them again.
  */
 export function writeBackAndRefreshBase(
     context: vscode.ExtensionContext,
