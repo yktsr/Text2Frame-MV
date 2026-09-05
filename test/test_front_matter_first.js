@@ -75,13 +75,24 @@ describe('Phase E: front-matter-first batch (CLI)', function () {
     expect(texts(eventList(mapPath, 1))).to.eql(['Hello-1'])
   })
 
-  it('E-4: front matter strategy overrides the batch default (overwrite drops dev switch)', function () {
-    // Batch default is merge (keeps switch); this file requests overwrite in front matter.
+  /* front matter の strategy: は読まない(反映のしかたは引数だけで決まる)。
+   * 読んでいた頃は add が冪等でないので、流すたびに末尾へ積み上がっていた。 */
+  it('ignores a strategy: in front matter', function () {
     fs.writeFileSync(path.join(textDir, 'ev.txt'),
-      '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\nstrategy: overwrite\n---\n\nReplaced\n')
+      '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\nstrategy: add\n---\n\nBonjour\n')
     runCli(['--mode', 'batch', '--text-dir', 'text'], tmp)
+    expect(texts(eventList(mapPath, 1))).to.eql(['Bonjour'])
+    // 引数の既定は merge。祖先も揃ったので、もう一度流しても増えない。
+    runCli(['--mode', 'batch', '--text-dir', 'text'], tmp)
+    expect(texts(eventList(mapPath, 1))).to.eql(['Bonjour'])
+  })
+
+  it('takes overwrite from the CLI flag', function () {
+    fs.writeFileSync(path.join(textDir, 'ev.txt'),
+      '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n\nReplaced\n')
+    runCli(['--mode', 'batch', '--text-dir', 'text', '--strategy', 'overwrite'], tmp)
     const list = eventList(mapPath, 1)
     expect(texts(list)).to.eql(['Replaced'])
-    expect(list.some(function (c) { return c.code === 121 })).to.equal(false) // overwrite removed the switch
+    expect(list.some(function (c) { return c.code === 121 })).to.equal(false)
   })
 })

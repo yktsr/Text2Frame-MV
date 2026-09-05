@@ -204,15 +204,42 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     expect(line('ツクールで目印3行を消して')).to.be.a('string')
   })
 
+  /* 折り返しは、語の途中で切ったときだけ末尾2行を割り直す。読点や空白で切れているなら
+   * それが自然な区切りなので触らない。Frame2Text 側と対になっている挙動。 */
+  it('does not rebalance a tail that was cut at a comma', function () {
+    const withSwitch = function (line) {
+      return msg(line).concat([{ code: 121, indent: 0, parameters: [7, 7, 0, 0] }, bottom])
+    }
+    const conflictMap = { events: [null, { id: 1, pages: [eventPage(withSwitch('Hello'))] }] }
+    const conflictCommon = [null, { id: 1, list: withSwitch('Hello') }]
+    entries = ['map001_event001_page1.txt', 'common001.txt']
+    readText = function (s) {
+      if (s.indexOf('.t2f-base') !== -1) return '---\nkind: event\n---\n\nHello\n'
+      if (/map001_event001_page1\.txt$/.test(s)) {
+        return '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n\nHello\n\nBonjour\n'
+      }
+      if (/common001\.txt$/.test(s)) return '---\nkind: common\ncommonEventId: 1\n---\n\nHello\n\nBonjour\n'
+      if (s.indexOf('Map001') !== -1) return JSON.stringify(conflictMap)
+      if (s.indexOf('CommonEvents') !== -1) return JSON.stringify(conflictCommon)
+      throw new Error('unexpected read: ' + s)
+    }
+
+    runBatch()
+
+    // 読点で切れた行はそのまま。割り直すと 'map0' / '01_event001_page1, common001' になる。
+    expect(shown).to.include('[batch-import] 衝突 2件: map001_event001_page1, ')
+    expect(shown).to.include('common001')
+  })
+
   /* add(末尾に追記)は単発の取り込みと同じく一括反映でも使える(提案2 の一貫性)。
    * 冪等ではないので、流すたびにイベント末尾へ積み上がる。 */
-  it('honors strategy: add in front matter, appending on every run', function () {
+  it('appends on every run when the command asks for add', function () {
     entries = ['e1.txt']
     let writtenMap = null
     readText = function (s) {
       if (s.indexOf('.t2f-base') !== -1) throw new Error('no ancestor')
       if (/e1\.txt$/.test(s)) {
-        return '---\nkind: event\nstrategy: add\nmapId: 1\neventId: 1\npageId: 1\n---\n\nBonjour 1\n'
+        return '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n\nBonjour 1\n'
       }
       if (s.indexOf('Map001') !== -1) return writtenMap || JSON.stringify(mapData)
       throw new Error('unexpected read: ' + s)
@@ -227,12 +254,29 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
         .map(function (c) { return c.parameters[0] })
     }
 
-    runBatch()
+    runBatch(null, 'add')
     expect(lines()).to.eql(['Hello 1', 'Bonjour 1'])
 
     // add は冪等でないので、2回流すと末尾にもう一度積まれる。
-    runBatch()
+    runBatch(null, 'add')
     expect(lines()).to.eql(['Hello 1', 'Bonjour 1', 'Bonjour 1'])
+  })
+
+  /* 祖先を書けないと、次の反映は毎回 TOFU に落ちる。理由が出ないと直せないので、
+   * 反映そのものは通したうえで理由を伝える(取り出し側と同じ扱い)。 */
+  it('says why when the ancestor cannot be saved', function () {
+    fs.writeFileSync.restore()
+    sinon.stub(fs, 'writeFileSync').callsFake(function (p) {
+      if (String(p).indexOf('.t2f-base') !== -1) throw new Error('EACCES: permission denied')
+    })
+
+    runBatch()
+
+    const warn = messageOf('.t2f-base の祖先を保存できませんでした')
+    expect(warn).to.be.a('string')
+    expect(warn).to.contain('EACCES')
+    // 反映そのものは通す。
+    expect(line('成功 3件')).to.be.a('string')
   })
 
   it('names each failing file with its reason', function () {

@@ -76,7 +76,7 @@ function pushFile (textPath, opts) {
   // applyTextFile はモジュール位置基準でデータを探すため、明示的に渡す。
   const applyOpts = {
     textPath: path.resolve(textPath),
-    strategy: meta.strategy || o.strategy || 'merge',
+    strategy: o.strategy || 'merge',
     baseRoot: root,
     backup: true,
     isDebug: !!o.verbose
@@ -127,9 +127,7 @@ function pullTarget (target, opts) {
   // 本文の組み立ては Frame2Text の buildPullText に一本化する(プラグイン/CLI と同じ挙動)。
   const existing = readIfExists(textPath)
   const id = T2F.deriveBaseId(textPath, root)
-  // push と同じく、テキストの front matter の strategy: を1ファイル単位の指定として優先する。
-  const metaStrategy = F2T.frontMatterMeta(existing || '').strategy
-  const entryStrategy = String(metaStrategy || strategy).toLowerCase() === 'overwrite' ? 'overwrite' : 'merge'
+  const entryStrategy = String(strategy).toLowerCase() === 'overwrite' ? 'overwrite' : 'merge'
   const built = F2T.buildPullText({
     list,
     englishTag,

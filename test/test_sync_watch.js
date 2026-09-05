@@ -264,14 +264,15 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
   })
 
   /* add は冪等でないので、見張りながら繰り返すと内容が増え続ける。
-   * 既定は merge なので、引数に書かない限りここには来ない。 */
+   * 既定は merge なので、引数に書かない限りここには来ない。
+   * add は既知の値なので「知らない値」ではなく「同期では使えない値」だと伝える。 */
   it('refuses add, which would grow the event on every pass', function () {
     expect(function () {
       Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC', ['both', 'text', 'add'])
-    }).to.throw(/Unknown strategy/)
+    }).to.throw(/同期の反映方法に add\(末尾に追記\)は使えません/)
     expect(function () {
       Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC', ['both', 'text', '末尾に追記'])
-    }).to.throw(/Unknown strategy/)
+    }).to.throw(/同期の反映方法に add\(末尾に追記\)は使えません/)
   })
 
   // MVのプラグインコマンドは手書きなので、向きも反映方法も日本語で書ける。

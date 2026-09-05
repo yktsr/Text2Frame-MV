@@ -4712,7 +4712,8 @@
     /* $gameMessage の1行に収まる幅(半角換算)。ツクールMVの既定
      * (ウィンドウ 816px - 余白 18px×2 = 780px、半角1文字 14px)で 55 文字ぶん。
      * MZ の既定は約 60 なので、狭いMVに合わせておけば両方で収まる。
-     * これを超えた文章は画面の外に出て読めなくなるため、出す前に折り返す。 */
+     * これを超えた文章は画面の外に出て読めなくなるため、出す前に折り返す。
+     * (Frame2Text 側の同名の実装と対になっている。直すときは両方)。 */
     const MESSAGE_LINE_WIDTH = 55
     // これより手前の切りどころは無視して幅いっぱいまで詰める。
     const MIN_BREAK_WIDTH = 33
@@ -4744,6 +4745,7 @@
         let cur = ''
         let w = 0
         let breakAt = -1
+        let lastCutWasHard = false
         for (const ch of line) {
           const cw = charWidth(ch)
           // 句読点や閉じ括弧が行頭に落ちそうなときは、はみ出させてでも前の行に残す。
@@ -4759,6 +4761,7 @@
             const useBreak = breakAt > 0 && breakAt <= cur.length &&
               displayWidth(cur.slice(0, breakAt)) >= MIN_BREAK_WIDTH
             const cut = useBreak ? breakAt : cur.length
+            lastCutWasHard = !useBreak
             out.push(cur.slice(0, cut))
             cur = cur.slice(cut).replace(/^ +/, '')
             w = displayWidth(cur)
@@ -4769,9 +4772,10 @@
           if (ch === ' ' || BREAK_AFTER.test(ch)) breakAt = cur.length
         }
         if (cur !== '') out.push(cur)
-        // 最後が1〜2文字だけ泣き別れると読みにくい。直前の行と合わせて2等分し直す。
+        // 語の途中で切った結果1〜2文字だけ泣き別れたときは、直前の行と2等分し直す。
+        // 句読点や空白で切れているならそれが自然な区切りなので触らない。
         const n = out.length
-        if (n >= 2 && displayWidth(out[n - 1]) < MIN_TAIL_WIDTH) {
+        if (lastCutWasHard && n >= 2 && displayWidth(out[n - 1]) < MIN_TAIL_WIDTH) {
           const joined = out[n - 2] + out[n - 1]
           const half = Math.ceil(displayWidth(joined) / 2)
           let acc = 0
@@ -4931,8 +4935,18 @@
     // 「一致した」ではなく、テキストの変更は(目印の中とはいえ)ゲームに入っている。据え置くと、
     // ツクールで解決したあとの取り出しで同じ衝突がテキスト側に再発する。
     // 衝突時はゲーム側に目印が残るので、次の反映・取り出しは既存のガードが止める。
+    /* 祖先を書けなかったときの案内。反映そのものは済んでいるので止めないが、黙って
+     * 落とすと次の反映から毎回「初回反映: 祖先が無いため…」が出るだけで理由が分からない。
+     * 文言は取り出し側(Frame2Text の同じ事象)に揃えてある。 */
+    const warnBaseSaveFailed = function (e) {
+      addWarning('.t2f-base の祖先を保存できませんでした (' + ((e && e.message) || e) +
+        ')。次回反映は祖先無し扱いとなり、テキストを全反映します(3-wayになりません)。 / ' +
+        'ancestor NOT saved; next import applies text whole (no 3-way).')
+    }
+
     const saveMergeBase = function (baseRoot, baseId, textPath) {
-      if (baseRoot && baseId) { try { saveBaseText(baseRoot, baseId.key, readText(textPath)) } catch (e) {} }
+      if (!baseRoot || !baseId) return
+      try { saveBaseText(baseRoot, baseId.key, readText(textPath)) } catch (e) { warnBaseSaveFailed(e) }
     }
 
     /* ---------------- マージバック(書き戻し) ----------------
@@ -4942,7 +4956,7 @@
 
     // 書き戻せない条件を先に潰す。当てはまれば従来どおり、目印はゲーム側だけに入る。
     // 先に判定しないと「ゲームには ours、テキストは書けなかった」でテキスト側の版が消える。
-    const planWriteBack = function (scenario_text) {
+    const planWriteBack = function () {
       /* WriteBack は今回の実行ぶん(コマンド引数で上書きできる)。無ければプラグインパラメータ。
        * 値の解釈はここ1箇所。プラグインコマンドは resolveWriteBack が先に弾くが、
        * applyTextFile(CLI / t2f-sync / VS Code)は素の値が来るので別名もここで吸収する。 */
@@ -5015,7 +5029,7 @@
     /* MERGE 反映の本体。テキストを先に書き、書けたときだけゲームには目印なしの版を書く。
      * 書けなかったときは中断する(ゲームに ours だけ入ってテキスト側の版が消えるのを防ぐ)。 */
     const mergeWithWriteBack = function (existing_events, event_command_list, textPath, explicitBasePath, scenario_text) {
-      const plan = planWriteBack(scenario_text)
+      const plan = planWriteBack()
       if (plan.reason) addWarning(plan.reason)
       const merged = resolveMergeCommands(existing_events, event_command_list, textPath, explicitBasePath, plan.mode !== 'off')
       const wb = writeBackMergedText(plan, merged, textPath, scenario_text)
@@ -5036,7 +5050,7 @@
     const saveBaseAfterMerge = function (merged, textPath) {
       const wb = merged.writeBack
       if (wb && (wb.written || wb.unchanged) && wb.baseText && merged.baseRoot && merged.baseId) {
-        try { saveBaseText(merged.baseRoot, merged.baseId.key, wb.baseText) } catch (e) {}
+        try { saveBaseText(merged.baseRoot, merged.baseId.key, wb.baseText) } catch (e) { warnBaseSaveFailed(e) }
         return
       }
       saveMergeBase(merged.baseRoot, merged.baseId, textPath)
@@ -5060,7 +5074,7 @@
           ((typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH)
         const id = deriveBaseId(textPath, root)
         if (root && id) saveBaseText(root, id.key, text)
-      } catch (e) { /* best effort */ }
+      } catch (e) { warnBaseSaveFailed(e) }
     }
 
     /* 単発の反映コマンド(IMPORT_*)の「反映のしかた」を決める。
@@ -5164,8 +5178,10 @@
         const syncStrategy = resolveImportStrategy(args[2] || 'merge')
         if (syncStrategy !== 'merge' && syncStrategy !== 'overwrite') {
           // add は冪等でないので、見張りながら繰り返すと内容が増え続ける。
-          throw new Error('Unknown strategy: ' + args[2] +
-            ' / 同期の反映方法は merge(統合) か overwrite(上書き) を指定してください。')
+          // ここに来る値は resolveImportStrategy を通っているので必ず既知。
+          // 「知らない値」ではなく「同期では使えない値」だと分かる文言にする。
+          throw new Error('同期の反映方法に add(末尾に追記)は使えません。' +
+            'merge(統合)か overwrite(上書き)を指定してください。')
         }
         Laurus.Text2Frame.SyncDirection = normalizeDirection(args[0])
         Laurus.Text2Frame.ImportFolder = args[1] || 'text'
@@ -11052,14 +11068,14 @@
     const readBaseText = function (root, key) {
       try { return require('fs').readFileSync(baseSnapshotPathCore(root, key), 'utf8') } catch (e) { return null }
     }
+    // 書けなかったら投げる。祖先が無いと次の反映が 3-way にならないので、
+    // 呼び出し側が理由を伝えられるようにしておく(外の呼び出しは各自 catch 済み)。
     const saveBaseText = function (root, key, text) {
-      try {
-        const fs = require('fs')
-        const path = require('path')
-        const p = baseSnapshotPathCore(root, key)
-        mkdirpSync(path.dirname(p))
-        fs.writeFileSync(p, text, 'utf8')
-      } catch (e) { /* best effort */ }
+      const fs = require('fs')
+      const path = require('path')
+      const p = baseSnapshotPathCore(root, key)
+      mkdirpSync(path.dirname(p))
+      fs.writeFileSync(p, text, 'utf8')
     }
     /* 祖先の置き場所を決める。root(プロジェクト)からの相対パスをそのまま鍵にするので、
      * text/ と text_en/ に同じ名前のテキストがあっても別々の祖先になる。
@@ -11451,11 +11467,9 @@
         try { meta = parseFrontMatter(readText(fileName)).meta } catch (e) { meta = null }
         // front matter が無い/kind が無いテキストは反映先が決まらないので飛ばす。
         if (!meta || !meta.kind) { skipped++; return }
-        // Command Strategy arg is the default; a per-file front-matter `strategy:` overrides it.
-        const entryStrategy = meta.strategy ? (resolveStrategy(meta.strategy) || { strategy }).strategy : strategy
         const res = applyTextFile({
           textPath: fileName,
-          strategy: entryStrategy,
+          strategy,
           backup: true,
           writeBack
         })
@@ -11526,7 +11540,7 @@
       return { ok, fail, root }
     }
 
-    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter, CONFLICT_MARKERS, hasConflictMarker }
+    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, readBaseText, saveBaseText, deriveBaseId, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter }
     // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
     // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
     // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。
@@ -11960,18 +11974,10 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       const parsed = parseFrontMatterCli(fs.readFileSync(fileArg, { encoding: 'utf8' }))
       const meta = parsed.meta || {}
       const kind = String(meta.kind || 'event').toLowerCase()
-      // CLI --strategy is the default; a per-file front-matter `strategy:` overrides it.
-      // (resolveStrategy(undefined) would default to merge and mask the CLI flag, so only
-      // consult it when the file actually declares a strategy.)
-      const entryStrategy = meta.strategy
-        ? (module.exports.resolveStrategy(meta.strategy) || { strategy }).strategy
-        : strategy
-      const entryBasePath =
-        (meta.basePath ? path.resolve(path.dirname(fileArg), meta.basePath) : undefined) || cliBasePath
       const opts = {
         textPath: fileArg,
-        strategy: entryStrategy,
-        basePath: entryBasePath,
+        strategy,
+        basePath: cliBasePath,
         backup: true,
         isDebug: options.verbose
       }

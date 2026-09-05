@@ -326,18 +326,17 @@ describe('t2f-sync controller', function () {
     expect(fs.readFileSync(evText(), 'utf8')).to.equal(before) // 目印はテキストへ広がっていない
   })
 
-  it('pull honours a per-file strategy from the front matter', function () {
+  // 反映のしかたは引数だけで決まる。front matter の strategy: は読まない。
+  it('pull ignores a strategy in the front matter', function () {
     sync.pullDataFile(path.join(tmp, 'data', 'Map001.json'), opts)
-    // このファイルだけ overwrite 指定にして、テキスト側の編集を捨てさせる
+    // overwrite と書いてあってもテキスト側の編集は捨てない
     fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8')
       .replace('kind: event', 'kind: event\nstrategy: overwrite')
       .replace('Hello', 'Bonjour'))
 
     sync.pullDataFile(path.join(tmp, 'data', 'Map001.json'), opts) // opts は merge
 
-    const out = fs.readFileSync(evText(), 'utf8')
-    expect(out).to.contain('Hello')
-    expect(out).to.not.contain('Bonjour')
+    expect(fs.readFileSync(evText(), 'utf8')).to.contain('Bonjour')
   })
 
   it('pull with overwrite replaces the text wholesale', function () {

@@ -69,6 +69,8 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI --mode batch)', function () {
     expect(evText).to.contain('mapId: 1')
     expect(evText).to.contain('eventId: 1')
     expect(evText).to.contain('pageId: 1')
+    // 宛先は mapId/eventId/pageId で決まる。ファイル名と同じ key: は書き出さない。
+    expect(evText).to.not.contain('key: ')
     // (b) body round-trips through compile
     expect(texts(T2F.compile(stripFrontMatter(evText)))).to.include('Hello from event')
 
@@ -76,6 +78,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI --mode batch)', function () {
     expect(ceText.indexOf('---\n')).to.equal(0)
     expect(ceText).to.contain('kind: common')
     expect(ceText).to.contain('commonEventId: 1')
+    expect(ceText).to.not.contain('key: ')
     expect(texts(T2F.compile(stripFrontMatter(ceText)))).to.include('Hello from common')
   })
 
