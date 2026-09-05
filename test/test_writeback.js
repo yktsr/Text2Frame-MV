@@ -224,6 +224,26 @@ describe('write-back after merge', function () {
     expect(JSON.stringify(mapList())).to.not.contain('一幕の書き出し')
   })
 
+  /* 書き戻しの指定は日本語でも書ける(MVのプラグインコマンドは手書きのため)。
+   * 表記は MZ の @option とヘルプに合わせる。 */
+  it('takes the write-back setting in Japanese', function () {
+    setUpConflict()
+
+    const res = push('毎回書き戻す')
+
+    expect(res.writtenBack).to.equal(true)
+    expect(readText()).to.contain(MARKER)
+  })
+
+  it('takes 書き戻さない as off', function () {
+    setUpConflict()
+
+    const res = push('書き戻さない')
+
+    expect(res.writtenBack).to.equal(false)
+    expect(markers(mapList())).to.have.lengthOf(3)
+  })
+
   it('keeps comment lines when nothing conflicts, too', function () {
     fs.writeFileSync(basePath(), header + '\nHello\n')
     writeMap(msg('Hello'))

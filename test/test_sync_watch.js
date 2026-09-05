@@ -24,7 +24,9 @@ globalThis.PluginManager = {
       IsDebug: 'false',
       DisplayMsg: 'true',
       DisplayWarning: 'true',
-      EnglishTag: 'false'
+      EnglishTag: 'false',
+      // 同期はプラグインパラメータを見ない。off にしておくと、見ていないことを観測できる。
+      WriteBackAfterMerge: 'off'
     }
   },
   registerCommand: function () {}
@@ -60,13 +62,12 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
   }
   const wait = function (ms) { return new Promise(function (resolve) { setTimeout(resolve, ms) }) }
 
-  /* 同期は単独のコマンド。引数は [Direction, Strategy, WriteBack, TextFolder, DataFolder]。
-   * 初回に一括で揃えてから見張りに入る。 */
+  /* 同期は単独のコマンド。引数は [Direction, TextFolder, Strategy, WriteBack]。
+   * データフォルダは data 固定で引数から外した。初回に一括で揃えてから見張りに入る。 */
   const start = function (strategy, direction, writeBack) {
     shown.length = 0
     Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC',
-      [direction || 'both', strategy || 'merge', writeBack || 'off',
-        path.join(tmp, 'text'), path.join(tmp, 'data')])
+      [direction || 'both', path.join(tmp, 'text'), strategy || 'merge', writeBack || 'off'])
     return shown.slice()
   }
   /* fs.watch(macOS の FSEvents)は張った直後の変更を取りこぼす。
@@ -255,11 +256,58 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
       Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC', ['sideways'])
     }).to.throw(/Unknown direction/)
     expect(function () {
-      Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC', ['both', 'rebase'])
+      Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC', ['both', 'text', 'rebase'])
     }).to.throw(/Unknown strategy/)
     expect(function () {
-      Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', ['rebase'])
+      Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER', ['text', 'rebase'])
     }).to.throw(/Unknown strategy/)
+  })
+
+  /* add は冪等でないので、見張りながら繰り返すと内容が増え続ける。
+   * 既定は merge なので、引数に書かない限りここには来ない。 */
+  it('refuses add, which would grow the event on every pass', function () {
+    expect(function () {
+      Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC', ['both', 'text', 'add'])
+    }).to.throw(/Unknown strategy/)
+    expect(function () {
+      Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC', ['both', 'text', '末尾に追記'])
+    }).to.throw(/Unknown strategy/)
+  })
+
+  // MVのプラグインコマンドは手書きなので、向きも反映方法も日本語で書ける。
+  it('takes the direction and the strategy in Japanese', async function () {
+    const out = start('統合', '双方向')
+    expect(line(out, '同期を開始しました')).to.contain('both')
+    stop()
+
+    expect(line(start('統合', 'テキスト→ゲームだけ'), '同期を開始しました')).to.contain('push')
+    stop()
+    expect(line(start('統合', 'ゲーム→テキストだけ'), '同期を開始しました')).to.contain('pull')
+  })
+
+  it('names both spellings when it refuses a direction', function () {
+    expect(function () {
+      Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC', ['sideways'])
+    }).to.throw(/both\(双方向\).*push\(テキスト→ゲームだけ\).*pull\(ゲーム→テキストだけ\)/)
+  })
+
+  /* 同期はプラグインパラメータを一切見ない。引数を省くと MZ の @arg と同じ既定になる。
+   * 書き戻しはパラメータが off でも always になり、衝突の目印はテキスト側に出る。
+   * パラメータを見ていたら目印はゲーム側に入るので、そこで見分けられる。 */
+  it('defaults the write-back to always, not to the plugin parameter', function () {
+    // 祖先=こんにちは の状態から、テキストとゲームを別々に変えて衝突を作る。
+    fs.writeFileSync(textPath(ev1), readIf(textPath(ev1)).replace('こんにちは', 'テキストの版'), 'utf8')
+    const map = JSON.parse(readIf(mapPath()))
+    map.events[1].pages[0].list.find(function (c) { return c.code === 401 }).parameters[0] = 'ゲームの版'
+    fs.writeFileSync(mapPath(), JSON.stringify(map), 'utf8')
+
+    // 書き戻しの引数は省く(第4引数なし)。
+    Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC',
+      ['push', path.join(tmp, 'text'), 'merge'])
+
+    const MARKER = '=== どちらかを残し'
+    expect(readIf(textPath(ev1)), 'テキストに目印が入る').to.contain(MARKER)
+    expect(readIf(mapPath()), 'ゲームには目印が入らない').to.not.contain('どちらかを残し')
   })
 
   /* 一括反映は見張らない。既定が add(冪等でない)になったので、一括のオプションとして
@@ -267,7 +315,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
   it('is not started by the batch import', function () {
     shown.length = 0
     Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-      ['merge', 'off', path.join(tmp, 'text')])
+      [path.join(tmp, 'text'), 'merge', 'off'])
 
     expect(line(shown.slice(), '同期を開始しました')).to.equal(undefined)
     expect(line(stop(), '動いていません')).to.be.a('string')
@@ -340,7 +388,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
   it('works under the Japanese command aliases', function () {
     shown.length = 0
     Game_Interpreter.prototype.pluginCommandText2Frame('テキストとゲームの同期を開始',
-      ['both', 'merge', 'off', path.join(tmp, 'text'), path.join(tmp, 'data')])
+      ['both', path.join(tmp, 'text'), 'merge', 'off'])
     expect(line(shown.slice(), '同期を開始しました')).to.be.a('string')
 
     shown.length = 0

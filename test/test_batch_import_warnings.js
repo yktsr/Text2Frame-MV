@@ -13,7 +13,8 @@ globalThis.PluginManager = {
     return {
       'Default Window Position': 'Bottom',
       'Default Background': 'Window',
-      'Default Scenario Folder': 'text',
+      // 走査できる場所を指すよう絶対パスにしておく(フォールバックの検査に使う)。
+      'Default Scenario Folder': path.resolve('/virt/text'),
       'Default Scenario File': 'message.txt',
       'Default Common Event ID': '1',
       'Default MapID': '1',
@@ -88,12 +89,11 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     }
   })
 
-  // 実引数の並びはよく変える順に [Strategy, WriteBack, TextFolder]。
-  // テストは呼びやすさ優先で root を先に取り、ここで実際の並びへ組み替える
-  // (位置がずれれば全件落ちる)。
+  // 実引数の並びは単体の取り込みと同じく [TextFolder, Strategy, WriteBack]。
+  // 位置がずれれば全件落ちる。
   const runBatch = function (root, strategy, writeBack) {
     Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-      [strategy || 'merge', writeBack || 'off', root || textRoot])
+      [root || textRoot, strategy || 'merge', writeBack || 'off'])
   }
   /* 画面幅(半角55)を超えるメッセージは addMessage が自動で折り返すため、
    * 1つの文章が複数の $gameMessage 行にまたがる。行ごとではなく通しの文字列から探し、
@@ -117,16 +117,39 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
   }
   const line = messageOf
 
-  it('takes the strategy as its 1st argument, like the batch export does', function () {
+  it('takes the folder as its 1st argument, like the single import does', function () {
     Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-      ['overwrite', 'off', textRoot])
+      [textRoot, 'overwrite', 'off'])
 
-    // 1番目が反映方法、2番目が書き戻し、3番目が反映元フォルダとして読まれている。
+    // 1番目が反映元フォルダ、2番目が反映方法、3番目が書き戻しとして読まれている。
     // (位置が入れ替わっていると 'overwrite' や 'off' をフォルダ名として走査し 0 件になる)
     expect(line('反映完了')).to.contain('成功 3件')
     expect(line('反映元')).to.contain(textRoot)
     // overwrite なので 3-way の祖先まわりの警告(初回反映)は出ない。
     expect(countShown('初回反映')).to.equal(0)
+  })
+
+  /* ヘルプは「対象フォルダは単体での取り込みと同じプラグインパラメータを参照します」と
+   * 書いている。省略したら「取り込み元フォルダ名」(このテストでは 'text')を見る。 */
+  it('falls back to the plugin parameter when the folder is omitted', function () {
+    Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
+      [undefined, 'merge', 'off'])
+
+    expect(line('反映完了')).to.contain('成功 3件')
+    expect(line('反映元')).to.contain(textRoot)
+  })
+
+  /* FileFolder は IMPORT_* が実行のたびに書き換える。控えを見ないと、直前の単体
+   * コマンドで指定したフォルダを一括反映が引き継いでしまう。 */
+  it('does not inherit the folder from a preceding single import', function () {
+    Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
+      ['/virt/somewhere-else', 'e1.txt', '1', '1', '1', 'add', 'off'])
+    shown.length = 0
+
+    Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
+      [undefined, 'merge', 'off'])
+
+    expect(line('反映元')).to.not.contain('somewhere-else')
   })
 
   it('shows a repeated warning once with its count, not once per file', function () {
@@ -341,7 +364,7 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
       written = null
       // 一括反映も反映方法を省略する。どちらも既定の add(末尾に追記)になる。
       Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-        [undefined, 'off', textRoot])
+        [textRoot, undefined, 'off'])
 
       expect(single).to.eql(['Hello 1', 'Bonjour 1'])
       expect(listOf()).to.eql(single)

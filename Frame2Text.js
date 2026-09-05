@@ -81,12 +81,6 @@
  * @value overwrite
  * @default merge
  *
- * @arg BaseFolder
- * @text 祖先フォルダ名
- * @desc 統合(merge)の共通祖先テキストのフォルダ名です。デフォルト値は.t2f-baseで、通常設定する必要はありません。
- * @type string
- * @default .t2f-base
- *
  * @command EXPORT_CE_TO_MESSAGE
  * @text コモンイベントをエクスポート
  * @desc テキストにコモンイベントをエクスポートします。出力するコモンイベントのIDや、出力先のファイルの情報を指定します。
@@ -118,12 +112,6 @@
  * @option 【取り扱い注意】全上書き / overwrite
  * @value overwrite
  * @default merge
- *
- * @arg BaseFolder
- * @text 祖先フォルダ名
- * @desc 統合(merge)の共通祖先テキストのフォルダ名です。デフォルト値は.t2f-baseで、通常設定する必要はありません。
- * @type string
- * @default .t2f-base
  *
  * @command BATCH_EXPORT_MESSAGES_TO_FOLDER
  * @text フォルダへ一括取り出し
@@ -689,14 +677,14 @@ function resolveText2Frame () {
       const event_id = args.EventID
       const page_id = args.PageID
       this.pluginCommand('EXPORT_EVENT_TO_MESSAGE',
-        [file_folder, file_name, map_id, event_id, page_id, args.Strategy, args.BaseFolder, args.FileName])
+        [file_folder, file_name, map_id, event_id, page_id, args.Strategy])
     })
     PluginManager.registerCommand('Frame2Text', 'EXPORT_CE_TO_MESSAGE', function (args) {
       const file_folder = args.FileFolder
       const file_name = args.FileName
       const common_event_id = args.CommonEventID
       this.pluginCommand('EXPORT_CE_TO_MESSAGE',
-        [file_folder, file_name, common_event_id, args.Strategy, args.BaseFolder, args.FileName])
+        [file_folder, file_name, common_event_id, args.Strategy])
     })
     PluginManager.registerCommand('Frame2Text', 'BATCH_EXPORT_MESSAGES_TO_FOLDER', function (args) {
       // 引数順は @arg の並びと合わせる。よく変えるものから順に
@@ -845,7 +833,6 @@ function resolveText2Frame () {
           Laurus.Frame2Text.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${(
             '000' + Laurus.Frame2Text.MapID
           ).slice(-3)}.json`
-          Laurus.Frame2Text.BasePath = (args[6] && args[7]) ? `${BASE_PATH}${PATH_SEP}${args[6]}${PATH_SEP}${args[7]}` : undefined
         }
         addMessage(
           '======> MapID: ' +
@@ -866,7 +853,6 @@ function resolveText2Frame () {
         if (args[0] || args[1]) {
           Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
           Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
-          Laurus.Frame2Text.BasePath = (args[4] && args[5]) ? `${BASE_PATH}${PATH_SEP}${args[4]}${PATH_SEP}${args[5]}` : undefined
         }
         addMessage('=====> Common EventID: ' + Laurus.Frame2Text.CommonEventID)
         break
