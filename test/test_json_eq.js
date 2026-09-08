@@ -2,52 +2,56 @@ const chai = require('chai')
 const expect = chai.expect
 const sinon = require('sinon')
 const fs = require('fs')
+const path = require('path')
+const os = require('os')
 
 require('../Text2Frame.js')
 
+/* 反映を本物のファイルで通す。以前は readFileSync を「何番目の呼び出しか」で
+ * 振り分けていたが、経路に読み込みが1つ増えるだけで以降の全件がずれ、添字が
+ * スイート全体で累積するので1件だけ流すこともできなかった。何より、どのファイルを
+ * 読み書きしたかを一切見ていなかった(行き先を取り違えても通ってしまう)。 */
 describe('Text2Frame Test', function () {
   const tests = require('./test_cases.js')
-  sinon.stub(console, 'log')
-  const writeFileSyncStub = sinon.stub(fs, 'writeFileSync')
-  const readFileSyncStub = sinon.stub(fs, 'readFileSync')
-  // 祖先スナップショット(.t2f-base)の保存で実ディレクトリを作らせない。
-  sinon.stub(fs, 'mkdirSync')
+  const ROOT = path.resolve(__dirname, '..')
+  let tmp
+  let cwd
+  let mainModule
 
-  tests.forEach(function (test, index) {
-    it(test.title, function (done) {
-      fs.readFile(test.infile, 'utf8', function (err, test_input) {
-        if (err) return done(err)
-        fs.readFile(test.mapfile, 'utf8', function (err, test_map_data) {
-          if (err) return done(err)
-          fs.readFile(test.expfile, 'utf8', function (err, expected_data) {
-            if (err) return done(err)
-            let result_data = ''
-            writeFileSyncStub.callsFake(function (file_path, json_data, encoding) {
-              // 祖先スナップショットの書き込みは対象外(検証したいのはデータJSON)。
-              if (String(file_path).indexOf('.t2f-base') !== -1) { return file_path }
-              result_data = json_data
-              return file_path
-            })
-            const count = index * 2
-            readFileSyncStub.onCall(count).returns(test_input)
-            readFileSyncStub.onCall(count + 1).returns(test_map_data)
+  before(function () {
+    sinon.stub(console, 'log')
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-json-eq-'))
+    fs.mkdirSync(path.join(tmp, 'data'))
+    fs.mkdirSync(path.join(tmp, 'text'))
+    // 反映元・反映先はここから組み立てられる(getDirParams が mainModule を見る)。
+    mainModule = process.mainModule
+    process.mainModule = { filename: path.join(tmp, 'game.js') }
+    // 祖先(.t2f-base)の置き場所は cwd 基準。リポジトリを汚さないよう移しておく。
+    cwd = process.cwd()
+    process.chdir(tmp)
+  })
 
-            const folder_name = ''
-            const file_name = ''
-            const map_id = '1'
-            const event_id = '1'
-            const page_id = '1'
-            const overwrite = 'true'
-            Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-              [folder_name, file_name, map_id, event_id, page_id, overwrite])
+  after(function () {
+    sinon.restore()
+    process.chdir(cwd)
+    process.mainModule = mainModule
+    fs.rmSync(tmp, { recursive: true, force: true })
+  })
 
-            const expected_json = JSON.parse(expected_data)
-            const actual_json = JSON.parse(result_data)
-            expect(actual_json).to.eql(expected_json)
-            done()
-          })
-        })
-      })
+  const textPath = function () { return path.join(tmp, 'text', 'message.txt') }
+  const mapPath = function () { return path.join(tmp, 'data', 'Map001.json') }
+
+  tests.forEach(function (test) {
+    it(test.title, function () {
+      // フィクスチャはリポジトリ側。cwd を移してあるので絶対パスで読む。
+      fs.writeFileSync(textPath(), fs.readFileSync(path.resolve(ROOT, test.infile), 'utf8'), 'utf8')
+      fs.writeFileSync(mapPath(), fs.readFileSync(path.resolve(ROOT, test.mapfile), 'utf8'), 'utf8')
+
+      Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
+        ['text', 'message.txt', '1', '1', '1', 'true'])
+
+      const expected = JSON.parse(fs.readFileSync(path.resolve(ROOT, test.expfile), 'utf8'))
+      expect(JSON.parse(fs.readFileSync(mapPath(), 'utf8'))).to.eql(expected)
     })
   })
 })
