@@ -12324,6 +12324,20 @@ function requireText2Frame () {
 		    Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`;
 		  }
 
+		  /* MVのプラグインコマンドは引数を手書きするので、後ろの引数をまるごと省ける。
+		   * 省いた枠は「直前の実行が入れた値」ではなく読み込み時の既定(プラグインパラメータ)に
+		   * 戻す。Laurus.Text2Frame は読み込み時に1つ作って以降ずっと使い回すため、控えを
+		   * 持たないと直前のコマンドの反映元・反映先が次のコマンドに漏れる。
+		   * MZ は @arg の @default で毎回すべて埋まるので、こちらだけの話。 */
+		  Laurus.Text2Frame.Defaults = {
+		    FileFolder: Laurus.Text2Frame.FileFolder,
+		    FileName: Laurus.Text2Frame.FileName,
+		    MapID: Laurus.Text2Frame.MapID,
+		    EventID: Laurus.Text2Frame.EventID,
+		    PageID: Laurus.Text2Frame.PageID,
+		    CommonEventID: Laurus.Text2Frame.CommonEventID
+		  };
+
 		  const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
 		  Game_Interpreter.prototype.pluginCommand = function (command, args) {
 		    _Game_Interpreter_pluginCommand.apply(this, arguments);
@@ -12735,10 +12749,12 @@ function requireText2Frame () {
 		      case 'メッセージをイベントにインポート' : {
 		        addMessage('import message to event. \n/ メッセージをイベントにインポートします。');
 		        Laurus.Text2Frame.ExecMode = 'IMPORT_MESSAGE_TO_EVENT';
-		        if (args[0]) Laurus.Text2Frame.FileFolder = args[0];
-		        if (args[1]) Laurus.Text2Frame.FileName = args[1];
-		        if (args[2]) Laurus.Text2Frame.MapID = args[2];
-		        if (args[3]) Laurus.Text2Frame.EventID = args[3];
+		        // 省略した枠は既定に戻す(据え置くと直前のコマンドの行き先へ書いてしまう)。
+		        Laurus.Text2Frame.FileFolder = args[0] || Laurus.Text2Frame.Defaults.FileFolder;
+		        Laurus.Text2Frame.FileName = args[1] || Laurus.Text2Frame.Defaults.FileName;
+		        Laurus.Text2Frame.MapID = args[2] || Laurus.Text2Frame.Defaults.MapID;
+		        Laurus.Text2Frame.EventID = args[3] || Laurus.Text2Frame.Defaults.EventID;
+		        Laurus.Text2Frame.PageID = Laurus.Text2Frame.Defaults.PageID;
 		        /* 5番目は旧版(ver1.4.1)ではページIDではなく上書き判定だった。反映のしかたとして
 		         * 読めるものならそちら、そうでなければページID。数字と取り違えることはない。 */
 		        let strategyArg;
@@ -12756,31 +12772,36 @@ function requireText2Frame () {
 		        Laurus.Text2Frame.WriteBack = resolveWriteBack(args[6], Laurus.Text2Frame.WriteBackAfterMerge || 'off');
 		        // テキストに見出し情報があれば、反映先はそちらに従う(実行部で上書きする)。
 		        Laurus.Text2Frame.RouteByFrontMatter = true;
-		        if (args[0] || args[1]) {
-		          const { PATH_SEP, BASE_PATH } = getDirParams();
-		          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
-		          Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
-		        }
+		        // 祖先は自動の .t2f-base だけを使う(位置引数は廃止した)。COMMAND_LINE 経由の
+		        // 一括反映・CLI が置いていった値を引き継がないよう、ここで消す。
+		        Laurus.Text2Frame.BasePath = undefined;
+		        Laurus.Text2Frame.BaseRoot = undefined;
+		        /* パスは毎回組み立て直す。MapID だけ更新してパスを据え置くと、
+		         * 報告するマップIDと実際の書き込み先が食い違う。 */
+		        const { PATH_SEP, BASE_PATH } = getDirParams();
+		        Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
+		        Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`;
 		        break
 		      }
 		      case 'IMPORT_MESSAGE_TO_CE' :
 		      case 'メッセージをコモンイベントにインポート' : {
 		        addMessage('import message to common event. \n/ メッセージをコモンイベントにインポートします。');
 		        Laurus.Text2Frame.ExecMode = 'IMPORT_MESSAGE_TO_CE';
-		        if (args[0]) Laurus.Text2Frame.FileFolder = args[0];
-		        if (args[1]) Laurus.Text2Frame.FileName = args[1];
-		        if (args[2]) Laurus.Text2Frame.CommonEventID = args[2];
+		        // 省略した枠は既定に戻す(イベントへの反映と同じ理由)。
+		        Laurus.Text2Frame.FileFolder = args[0] || Laurus.Text2Frame.Defaults.FileFolder;
+		        Laurus.Text2Frame.FileName = args[1] || Laurus.Text2Frame.Defaults.FileName;
+		        Laurus.Text2Frame.CommonEventID = args[2] || Laurus.Text2Frame.Defaults.CommonEventID;
 		        // 4番目は旧来の上書き真偽値と同じ枠。merge/overwrite/add も受ける。
 		        Laurus.Text2Frame.Strategy = resolveImportStrategy(args[3]);
 		        Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite';
 		        Laurus.Text2Frame.WriteBack = resolveWriteBack(args[4], Laurus.Text2Frame.WriteBackAfterMerge || 'off');
 		        // テキストに見出し情報があれば、反映先はそちらに従う(実行部で上書きする)。
 		        Laurus.Text2Frame.RouteByFrontMatter = true;
-		        if (args[0] || args[1]) {
-		          const { PATH_SEP, BASE_PATH } = getDirParams();
-		          Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
-		          Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`;
-		        }
+		        Laurus.Text2Frame.BasePath = undefined;
+		        Laurus.Text2Frame.BaseRoot = undefined;
+		        const { PATH_SEP, BASE_PATH } = getDirParams();
+		        Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`;
+		        Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`;
 		        break
 		      }
 
