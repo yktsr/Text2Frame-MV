@@ -33,9 +33,13 @@ function texts (list) {
 
 describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI --mode batch)', function () {
   let tmp
+  let cwd
 
   beforeEach(function () {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-export-'))
+    // 祖先(.t2f-base)の置き場所は cwd 基準。リポジトリを汚さないよう移しておく。
+    cwd = process.cwd()
+    process.chdir(tmp)
     fs.mkdirSync(path.join(tmp, 'data'))
     fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'),
       JSON.stringify({ events: [null, msgEvent('Hello from event')] }))
@@ -50,6 +54,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER (CLI --mode batch)', function () {
       }]))
   })
   afterEach(function () {
+    process.chdir(cwd)
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }
   })
 

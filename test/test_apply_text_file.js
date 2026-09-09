@@ -14,9 +14,13 @@ describe('applyTextFile (deploy core) Test', function () {
   let mapPath
   let cePath
   let body
+  let cwd
 
   beforeEach(function () {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-test-'))
+    // 祖先(.t2f-base)の置き場所は cwd 基準。リポジトリを汚さないよう移しておく。
+    cwd = process.cwd()
+    process.chdir(tmp)
     dataDir = path.join(tmp, 'data')
     fs.mkdirSync(dataDir)
 
@@ -39,6 +43,7 @@ describe('applyTextFile (deploy core) Test', function () {
   })
 
   afterEach(function () {
+    process.chdir(cwd)
     fs.rmSync(tmp, { recursive: true, force: true })
   })
 
