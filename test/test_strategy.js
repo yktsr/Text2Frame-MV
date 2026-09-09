@@ -33,11 +33,18 @@ describe('resolveStrategy', function () {
 
 describe('merge strategy auto behavior (via applyTextFile)', function () {
   let tmp
+  let cwd
   let mapPath
   let textPath
 
-  function setup (existingList) {
+  beforeEach(function () {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 't2fstrat-'))
+    // 祖先(.t2f-base)の置き場所は cwd 基準。リポジトリを汚さないよう移しておく。
+    cwd = process.cwd()
+    process.chdir(tmp)
+  })
+
+  function setup (existingList) {
     const dataDir = path.join(tmp, 'data')
     fs.mkdirSync(dataDir)
     mapPath = path.join(dataDir, 'Map001.json')
@@ -54,7 +61,10 @@ describe('merge strategy auto behavior (via applyTextFile)', function () {
     { code: 205, indent: 0, parameters: [-1, { list: [{ code: 0 }], repeat: false, skippable: false, wait: false }] },
     { code: 0, indent: 0, parameters: [] }
   ]
-  afterEach(function () { try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) {} })
+  afterEach(function () {
+    process.chdir(cwd)
+    try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) {}
+  })
 
   it('empty target + default(merge) → overwrite (text applied whole, incl. switch)', function () {
     setup([{ code: 0, indent: 0, parameters: [] }])
