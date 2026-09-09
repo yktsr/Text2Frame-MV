@@ -1,0 +1,11 @@
+# Normalize line endings: text sources are stored and checked out with LF.
+# (Binary assets under sample/ are untracked and unaffected.)
+*.js   text eol=lf
+*.mjs  text eol=lf
+*.cjs  text eol=lf
+*.ts   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf

@@ -1,19 +1,48 @@
 {
-  "name": "Text2Frame-MV",
-  "version": "2.2.1",
+  "name": "@yktsr/text2frame-mv",
+  "version": "2.3.0",
   "description": "Simple compiler to convert text to event.",
   "main": "Text2Frame.js",
   "types": "esm.d.ts",
+  "bin": {
+    "t2f-sync": "t2f-sync.js",
+    "text2frame": "bin/text2frame.js",
+    "frame2text": "bin/frame2text.js"
+  },
+  "files": [
+    "Text2Frame.js",
+    "Frame2Text.js",
+    "t2f-sync.js",
+    "bin/",
+    "Text2Frame.cjs.js",
+    "Text2Frame.es.mjs",
+    "Text2Frame.umd.js",
+    "esm.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "mocha  --reporter-options maxDiffSize=100000 --inline-diffs test/test_json_eq.js",
+    "test": "mocha test/test_json_eq.js && mocha --reporter-options maxDiffSize=100000 test/test_frame2text.js && mocha --no-esm test/test_front_matter.js && mocha --no-esm test/test_apply_text_file.js && mocha --no-esm test/test_merge3.js && mocha --no-esm test/test_plugin_import_strategy.js && mocha --no-esm test/test_plugin_command_defaults.js && mocha --no-esm test/test_cli_merge.js && mocha --no-esm test/test_strategy.js && mocha --no-esm test/test_front_matter_first.js && mocha --no-esm test/test_export_folder.js && mocha --no-esm test/test_plugin_pull_merge.js && mocha --no-esm test/test_batch_import_warnings.js && mocha --no-esm test/test_batch_export_report.js && mocha --no-esm test/test_sync_controller.js && mocha --no-esm test/test_sync_watch.js && mocha --no-esm test/test_message_wrap.js && mocha --no-esm test/test_display_warning.js && mocha --no-esm test/test_message_tags.js && mocha --no-esm test/test_message_tags_custom_defaults.js && mocha --no-esm test/test_translation_only.js && mocha --no-esm test/test_comment_lines.js && mocha --no-esm test/test_writeback.js",
     "test_text2frame": "mocha --inline-diffs test/test_json_eq.js",
     "test_frame2text": "mocha --reporter-options maxDiffSize=100000 --inline-diffs test/test_frame2text.js",
-    "lint": "eslint --max-warnings=0 Text2Frame.js Frame2Text.js",
+    "test_export_folder": "mocha --no-esm test/test_export_folder.js",
+    "audit:prod": "npm audit --omit=dev",
+    "lint": "eslint --max-warnings=0 Text2Frame.js Frame2Text.js t2f-sync.js test/ tools/ bin/ examples/ rollup.config.mjs",
+    "watch": "node Text2Frame.js -m batch --text-dir text --watch",
+    "verify-roundtrip": "node tools/verify-roundtrip.js",
     "debug": "node Text2Frame.js",
-    "build": "vite build"
+    "build": "rollup -c",
+    "stamp:dist": "node tools/stamp-build-meta.js",
+    "build:dist": "npm run build && npm run stamp:dist",
+    "pack:all": "bash tools/pack-all.sh",
+    "sync": "node t2f-sync.js --watch",
+    "sync_once": "node t2f-sync.js"
   },
   "repository": {
     "type": "git",
@@ -23,16 +52,17 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "chai": "^4.2.0",
-    "commander": ">=6.0.0",
-    "eslint": ">=7.6.0",
-    "eslint-config-standard": "^17.1.0",
-    "mocha": ">=10.2.0",
-    "sinon": ">=9.0.2"
+    "chokidar": "^3.6.0",
+    "commander": "^12.1.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-node-resolve": "^15.2.3",
-    "vite": "^5.0.11"
+    "chai": "^4.2.0",
+    "eslint": "^8.57.0",
+    "eslint-config-standard": "^17.1.0",
+    "mocha": "^11.7.6",
+    "rollup": "^4.62.2",
+    "sinon": "^18.0.0"
   }
 }

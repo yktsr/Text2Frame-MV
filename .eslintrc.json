@@ -14,5 +14,19 @@
     },
     "rules": {
 	"camelcase": "off"
-    }
+    },
+    "overrides": [
+        {
+            "files": ["test/**/*.js"],
+            "env": {
+                "mocha": true,
+                "node": true
+            },
+            "globals": {
+                "Game_Interpreter": "writable",
+                "PluginManager": "writable",
+                "$gameMessage": "writable"
+            }
+        }
+    ]
 }

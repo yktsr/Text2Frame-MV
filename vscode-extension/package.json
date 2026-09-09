@@ -1,0 +1,253 @@
+{
+  "name": "text2frame-language-support",
+  "displayName": "Text2Frame Language Support",
+  "description": "Language support for Text2Frame visual novel scripts",
+  "version": "0.1.2",
+  "publisher": "yktsr",
+  "license": "MIT",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "RPG Maker",
+    "RPGツクール",
+    "MV",
+    "MZ",
+    "Text2Frame",
+    "localization",
+    "translation"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:text2frame",
+    "onView:text2frameCommands",
+    "onView:text2frameExplorer",
+    "workspaceContains:**/text/**/*.txt",
+    "workspaceContains:**/data/Map*.json"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "text2frame",
+        "aliases": ["Text2Frame", "text2frame"],
+        "extensions": [".t2f", ".text2frame"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "text2frame",
+        "scopeName": "source.text2frame",
+        "path": "./syntaxes/text2frame.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "text2frame.deployCurrentFile",
+        "title": "Text2Frame: ゲームに反映(このファイル) / Apply to game (this file)",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "text2frame.toggleDeployOnSave",
+        "title": "Text2Frame: 保存時に自動でゲームに反映する / Toggle apply-on-save"
+      },
+      {
+        "command": "text2frame.exportCurrentFile",
+        "title": "Text2Frame: ゲームから取り出す(このファイル) / Pull from game (this file)",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "text2frame.exportConversationOnly",
+        "title": "Text2Frame: 会話のみ書き出し / Pull conversation only"
+      },
+      {
+        "command": "text2frame.showCompiledJson",
+        "title": "Text2Frame: コンパイル結果を表示 / Show compiled JSON",
+        "icon": "$(json)"
+      },
+      {
+        "command": "text2frame.deployAll",
+        "title": "Text2Frame: ゲームに反映(すべて) / Apply to game (all)"
+      },
+      {
+        "command": "text2frame.exportAll",
+        "title": "Text2Frame: ゲームから取り出す(すべて) / Pull from game (all)"
+      },
+      {
+        "command": "text2frame.repullOverwrite",
+        "title": "Text2Frame: 全部取り直す(上書き) / Re-pull (overwrite)"
+      },
+      {
+        "command": "text2frame.tree.refresh",
+        "title": "Text2Frame: 更新 / Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "text2frame.tree.deploy",
+        "title": "デプロイ / Deploy",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "text2frame.tree.export",
+        "title": "書き出し / Export",
+        "icon": "$(cloud-download)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "text2frame",
+          "title": "Text2Frame",
+          "icon": "$(book)"
+        }
+      ]
+    },
+    "views": {
+      "text2frame": [
+        {
+          "id": "text2frameCommands",
+          "name": "操作 / Commands"
+        },
+        {
+          "id": "text2frameExplorer",
+          "name": "Maps / Common Events"
+        }
+      ]
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "text2frame.deployCurrentFile",
+          "when": "resourceLangId == text2frame || resourceExtname == .txt",
+          "group": "navigation@1"
+        },
+        {
+          "command": "text2frame.exportCurrentFile",
+          "when": "resourceLangId == text2frame || resourceExtname == .txt",
+          "group": "navigation@2"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "text2frame.tree.refresh",
+          "when": "view == text2frameExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "text2frame.deployAll",
+          "when": "view == text2frameExplorer",
+          "group": "1_batch@1"
+        },
+        {
+          "command": "text2frame.exportAll",
+          "when": "view == text2frameExplorer",
+          "group": "1_batch@2"
+        },
+        {
+          "command": "text2frame.repullOverwrite",
+          "when": "view == text2frameExplorer",
+          "group": "2_advanced@1"
+        }
+      ],
+      "commandPalette": [
+        { "command": "text2frame.tree.deploy", "when": "false" },
+        { "command": "text2frame.tree.export", "when": "false" },
+        { "command": "text2frame.tree.refresh", "when": "false" }
+      ],
+      "view/item/context": [
+        {
+          "command": "text2frame.tree.deploy",
+          "when": "view == text2frameExplorer && (viewItem == text2frame.page || viewItem == text2frame.common)",
+          "group": "inline@2"
+        },
+        {
+          "command": "text2frame.tree.export",
+          "when": "view == text2frameExplorer && (viewItem == text2frame.page || viewItem == text2frame.common)",
+          "group": "inline@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Text2Frame",
+      "properties": {
+        "text2frame.strategy": {
+          "type": "string",
+          "enum": ["merge", "overwrite"],
+          "default": "merge",
+          "enumDescriptions": [
+            "安全に反映(ゲーム側の編集を勝手に消さない・既定) / safe (keeps edits made in the game)",
+            "テキストで全部上書き(ゲーム側の編集は消えます) / overwrite everything from text"
+          ],
+          "description": "ゲームへの反映のしかた。通常は既定のままで大丈夫です。 / How text is applied to the game. The default is fine for most users."
+        },
+        "text2frame.writeBackAfterMerge": {
+          "type": "string",
+          "enum": ["off", "onConflict", "always"],
+          "default": "onConflict",
+          "enumDescriptions": [
+            "書き戻さない / never",
+            "競合したときだけ書き戻す(既定) / only when there is a conflict to resolve",
+            "反映のたびに書き戻す / after every apply"
+          ],
+          "description": "テキストとゲームで同じ所を別々に変更して競合したとき、結果をテキストに書き戻して確認・解決できるようにするか。 / When the same spot was changed both in text and in the game, whether to write the result back into the text so you can review and resolve it."
+        },
+        "text2frame.englishTag": {
+          "type": "boolean",
+          "default": true,
+          "description": "テキスト書き出し時に英語タグを使う。 / Use English tags when exporting (data -> text)."
+        },
+        "text2frame.omitDefaultTags": {
+          "type": "boolean",
+          "default": true,
+          "description": "テキスト書き出し時、既定値と同じ顔・背景・位置のタグを書かない(3つとも既定ならタグ行ごと省く)。省いた所は反映時に既定値が補われるため、ゲームの見た目は変わりません。 / When exporting (data -> text), omit face/background/position tags that match the defaults (the whole tag line disappears when all three do). Apply fills the defaults back in, so the game is unchanged."
+        },
+        "text2frame.textBaseDir": {
+          "type": "string",
+          "default": "text",
+          "description": "テキストファイルの保存されているディレクトリを指定する。「ゲームに反映」「ゲームから取り出す」はこのディレクトリを対象にします。 / Base directory (relative to workspace) for text files. Apply / Pull operate on this directory."
+        },
+        "text2frame.dataDir": {
+          "type": "string",
+          "default": "data",
+          "description": "Map###.json / CommonEvents.json が保存されているディレクトリを指定する。 / RPG Maker data directory (relative to workspace) holding Map###.json / CommonEvents.json."
+        },
+        "text2frame.modulePath": {
+          "type": "string",
+          "default": "",
+          "description": "Text2Frame 本体(Text2Frame.js)のパスを明示指定。通常指定する必要はありません。空なら自動解決されます。 / Explicit path to Text2Frame.js. Empty = auto-resolve."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile && npm run bundle-compiler",
+    "compile": "tsc -p ./",
+    "bundle-compiler": "node ./scripts/bundle-compiler.js",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.x",
+    "@typescript-eslint/parser": "^6.x",
+    "eslint": "^8.x",
+    "typescript": "^5.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yktsr/Text2Frame-MV.git",
+    "directory": "vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/yktsr/Text2Frame-MV/issues"
+  },
+  "homepage": "https://github.com/yktsr/Text2Frame-MV#readme"
+}
+

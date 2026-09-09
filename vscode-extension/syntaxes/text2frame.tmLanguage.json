@@ -1,0 +1,109 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Text2Frame",
+  "scopeName": "source.text2frame",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#block-comments"
+    },
+    {
+      "include": "#tags"
+    },
+    {
+      "include": "#messages"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.percent.text2frame",
+          "match": "^%.*$"
+        }
+      ]
+    },
+    "block-comments": {
+      "patterns": [
+        {
+          "name": "comment.block.text2frame",
+          "begin": "<(?i:comment|注釈)>",
+          "end": "</(?i:comment|注釈)>",
+          "patterns": [
+            {
+              "name": "comment.block.content.text2frame",
+              "match": ".*"
+            }
+          ]
+        }
+      ]
+    },
+    "tags": {
+      "patterns": [
+        {
+          "name": "meta.tag.text2frame",
+          "match": "<(Face|顔|FC|WindowPosition|位置|WP|Background|背景|BG|Name):\\s*([^>]+)>",
+          "captures": {
+            "1": {
+              "name": "keyword.control.text2frame"
+            },
+            "2": {
+              "name": "string.quoted.text2frame"
+            }
+          }
+        },
+        {
+          "name": "meta.tag.event.text2frame",
+          "match": "<(ShowChoices|When|WhenCancel|End|InputNumber|SelectItem|ShowScrollingText|Switch|Set|Add|Sub|Mul|Div|Mod|SelfSwitch|Timer|If|Else|Loop|RepeatAbove|BreakLoop|ExitEventProcessing|CommonEvent|Label|JumpToLabel|ChangeGold|ChangeItems|ChangeWeapons|ChangeArmors|ChangePartyMember|ChangeHp|ChangeMp|ChangeTp|ChangeState|RecoverAll|ChangeExp|ChangeLevel|ChangeParameter|ChangeSkill|ChangeEquipment|ChangeName|ChangeClass|ChangeNickname|ChangeProfile|TransferPlayer|SetVehicleLocation|SetEventLocation|ScrollMap|SetMovementRoute|GetOnOffVehicle|ChangeTransparency|ChangePlayerFollowers|GatherFollowers|ShowAnimation|ShowBalloonIcon|EraseEvent|ShowPicture|MovePicture|RotatePicture|TintPicture|ErasePicture|wait|fadeout|fadein|TintScreen|FlashScreen|ShakeScreen|SetWeatherEffect|PlayBGM|FadeoutBGM|SaveBGM|ReplayBGM|PlayBGS|FadeoutBGS|PlayME|PlaySE|StopSE|PlayMovie|BattleProcessing|IfWin|IfEscape|IfLose|ShopProcessing|Merchandise|NameInputProcessing|OpenMenuScreen|OpenSaveScreen|GameOver|ReturnToTitleScreen|ChangeBattleBGM|ChangeVictoryMe|ChangeDefeatMe|ChangeVehicleBgm|ChangeSaveAccess|ChangeMenuAccess|ChangeEncounter|ChangeFormationAccess|ChangeWindowColor|ChangeActorImages|ChangeVehicleImage|ChangeMapNameDisplay|ChangeTileset|ChangeBattleBackGround|ChangeParallax|GetLocationInfo|ChangeEnemyHp|ChangeEnemyMp|ChangeEnemyTp|ChangeEnemyState|EnemyRecoverAll|EnemyAppear|EnemyTransform|ShowBattleAnimation|ForceAction|AbortBattle|script|plugincommand|PluginCommandMZ|Jump|McWait|SwitchOn|ChangeSpeed|ChangeImage|ChangeOpacity|ChangeBlendMode|McPlaySe|McScript)(?::\\s*([^>]+))?>",
+          "captures": {
+            "1": {
+              "name": "entity.name.function.text2frame"
+            },
+            "2": {
+              "name": "variable.parameter.text2frame"
+            }
+          }
+        },
+        {
+          "name": "meta.tag.script.text2frame",
+          "begin": "<script>",
+          "end": "</script>",
+          "beginCaptures": {
+            "0": {
+              "name": "entity.name.tag.text2frame"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "entity.name.tag.text2frame"
+            }
+          },
+          "patterns": [
+            {
+              "include": "source.js"
+            }
+          ]
+        },
+        {
+          "name": "meta.tag.closing.text2frame",
+          "match": "</(comment|script|ShowScrollingText)>",
+          "captures": {
+            "0": {
+              "name": "entity.name.tag.text2frame"
+            }
+          }
+        }
+      ]
+    },
+    "messages": {
+      "patterns": [
+        {
+          "name": "string.unquoted.text2frame",
+          "match": "^[^%<].*$"
+        }
+      ]
+    }
+  }
+}

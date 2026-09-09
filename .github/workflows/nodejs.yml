@@ -1,28 +1,98 @@
 name: Node.js CI
 
-on: [pull_request]
+on:
+  push:
+    branches: [master]
+  pull_request:
 
 jobs:
-  lint_and_test:
+  core:
+    name: Core (lint + tests + round-trip)
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6
         with:
           cache: 'npm'
       - name: Install dependencies
+        run: npm ci
+      - name: Set build metadata
         run: |
-          npm ci 
-          npm run build --if-present
-      - name: Test with eslint
+          BUILD_VERSION="$(node -e 'console.log(require("./package.json").version)')"
+          echo "BUILD_VERSION=${BUILD_VERSION}" >> "$GITHUB_ENV"
+          echo "BUILD_ID=${GITHUB_SHA}" >> "$GITHUB_ENV"
+      - name: Build cjs/es/umd
         run: |
-          npm run lint
-      - name: Test Text2Frame
+          npm run build:dist
+      - name: Audit production dependencies
         run: |
-          npm run test_text2frame
-      - name: Test Frame2Text
-        run: |
-          npm run test_frame2text
+          npm run audit:prod
+      - name: Lint
+        run: npm run lint
+      - name: Test (full suite)
+        run: npm test
+      - name: Round-trip test (Frame2Text, 130 cases)
+        run: npm run test_frame2text
+      # 成果物のアップロードは package ジョブに一本化した(そちらが刻印付きの配布物と
+      # MANIFEST を出す)。ここは検査だけ。
 
+  extension:
+    name: VS Code extension (compile + lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          cache: 'npm'
+          cache-dependency-path: vscode-extension/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: vscode-extension
+      - name: Compile (tsc)
+        run: npm run compile
+        working-directory: vscode-extension
+      - name: Lint
+        run: npm run lint
+        working-directory: vscode-extension
+      # .vsix の作成とアップロードは package ジョブへ移した。ここで作ると
+      # --pre-release が付かず、pre-release のつもりの版が安定版として出せてしまう
+      # (見た目が同じ .vsix が2つ並ぶのも取り違えのもと)。
+
+  # リリース物を3つまとめて作り、一覧(MANIFEST.txt)ごと artifact に上げる。
+  # 手元の `npm run pack:all` と同じ tools/pack-all.sh を呼ぶので、CI で採れたものと
+  # 手元で作ったものが同じ手順・同じ検証を通っていることが保証される。
+  # 検査は core / extension ジョブが済ませているので --skip-tests で二度手間を避ける。
+  package:
+    name: Package all artifacts
+    needs: [core, extension]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          cache: 'npm'
+      - name: Install dependencies (core)
+        run: npm ci
+      - name: Install dependencies (extension)
+        run: npm ci
+        working-directory: vscode-extension
+      - name: Pack all
+        run: npm run pack:all -- --skip-tests
+      - name: Summary
+        run: |
+          {
+            echo '## リリース物'
+            echo
+            echo '```'
+            cat release/MANIFEST.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ github.run_number }}
+          path: release/
+          if-no-files-found: error

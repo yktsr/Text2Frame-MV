@@ -1,4 +1,4 @@
-const TF = require("Text2Frame-MV/Text2Frame.cjs.js")
+const TF = require('Text2Frame-MV/Text2Frame.cjs.js')
 
 const date = new Date().toLocaleString()
 const text = `<comment>
