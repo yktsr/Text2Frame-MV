@@ -24,6 +24,7 @@ describe('write-back after merge', function () {
   let dataDir
   let mapPath
   let textPath
+  let cwd
 
   const msg = function (text) {
     return [
@@ -59,6 +60,9 @@ describe('write-back after merge', function () {
 
   beforeEach(function () {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-wb-'))
+    // 祖先(.t2f-base)の置き場所は cwd 基準。リポジトリを汚さないよう移しておく。
+    cwd = process.cwd()
+    process.chdir(tmp)
     dataDir = path.join(tmp, 'data')
     fs.mkdirSync(dataDir)
     mapPath = path.join(dataDir, 'Map001.json')
@@ -67,6 +71,7 @@ describe('write-back after merge', function () {
     fs.mkdirSync(path.join(tmp, '.t2f-base', 'text'), { recursive: true })
   })
   afterEach(function () {
+    process.chdir(cwd)
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }
   })
 

@@ -8,8 +8,10 @@ const os = require('os')
 const ROOT = path.resolve(__dirname, '..')
 const CLI = path.join(ROOT, 'Text2Frame.js')
 
+/* 祖先(.t2f-base)は CLI を動かした cwd の下に作られる。呼び出し側が一時プロジェクトへ
+ * 移っているので cwd はそのまま引き継ぐ(リポジトリ直下に作らせない)。 */
 function runCli (args) {
-  return cp.execFileSync('node', [CLI].concat(args), { cwd: ROOT, encoding: 'utf8' })
+  return cp.execFileSync('node', [CLI].concat(args), { encoding: 'utf8' })
 }
 function listOf (mapPath) {
   return JSON.parse(fs.readFileSync(mapPath, 'utf8')).events[1].pages[0].list
@@ -26,9 +28,13 @@ describe('CLI merge strategies (--mode map)', function () {
   let mapPath
   let textPath
   let basePath
+  let cwd
 
   beforeEach(function () {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 't2fcli-'))
+    // 祖先(.t2f-base)の置き場所は cwd 基準。リポジトリを汚さないよう移しておく。
+    cwd = process.cwd()
+    process.chdir(tmp)
     mapPath = path.join(tmp, 'Map001.json')
     fs.writeFileSync(mapPath, JSON.stringify({
       events: [null, {
@@ -51,6 +57,7 @@ describe('CLI merge strategies (--mode map)', function () {
   })
 
   afterEach(function () {
+    process.chdir(cwd)
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }
   })
 

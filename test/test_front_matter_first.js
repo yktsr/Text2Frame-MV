@@ -8,8 +8,10 @@ const os = require('os')
 const ROOT = path.resolve(__dirname, '..')
 const CLI = path.join(ROOT, 'Text2Frame.js')
 
+/* cwd を省いたときは呼び出し側(= 一時プロジェクトへ移動済み)をそのまま引き継ぐ。
+ * 祖先(.t2f-base)は CLI の cwd の下に作られるので、既定をリポジトリ直下にはしない。 */
 function runCli (args, cwd) {
-  return cp.execFileSync('node', [CLI].concat(args), { cwd: cwd || ROOT, encoding: 'utf8' })
+  return cp.execFileSync('node', [CLI].concat(args), { cwd, encoding: 'utf8' })
 }
 function eventList (mapPath, id) {
   return JSON.parse(fs.readFileSync(mapPath, 'utf8')).events[id].pages[0].list
@@ -37,9 +39,13 @@ describe('Phase E: front-matter-first batch (CLI)', function () {
   let dataDir
   let textDir
   let mapPath
+  let cwd
 
   beforeEach(function () {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 't2ffm-'))
+    // 祖先(.t2f-base)の置き場所は cwd 基準。リポジトリを汚さないよう移しておく。
+    cwd = process.cwd()
+    process.chdir(tmp)
     dataDir = path.join(tmp, 'data')
     textDir = path.join(tmp, 'text')
     fs.mkdirSync(dataDir)
@@ -50,6 +56,7 @@ describe('Phase E: front-matter-first batch (CLI)', function () {
     }))
   })
   afterEach(function () {
+    process.chdir(cwd)
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }
   })
 
