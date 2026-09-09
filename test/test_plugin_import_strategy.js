@@ -72,7 +72,12 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
       throw new Error('unexpected read: ' + s)
     })
     sinon.stub(fs, 'writeFileSync').callsFake(function (p, data) {
-      if (String(p).indexOf('Map001') !== -1) written = data
+      const s = String(p)
+      if (s.indexOf('.t2f-base') !== -1) return // 祖先の保存は反映先ではない
+      /* 読み込みと同じく、想定外の行き先はここで落とす。Map001 だけ拾っていた頃は、
+       * 反映先を取り違えても written が null のままになるだけで理由が出なかった。 */
+      if (s.indexOf('Map001') === -1) throw new Error('unexpected write: ' + s)
+      written = data
     })
     sinon.stub(fs, 'mkdirSync')
     sinon.stub(console, 'log')
@@ -234,7 +239,12 @@ describe('IMPORT_MESSAGE_TO_EVENT strategy=merge on an empty target', function (
       throw new Error('unexpected read: ' + s)
     })
     sinon.stub(fs, 'writeFileSync').callsFake(function (p, data) {
-      if (String(p).indexOf('Map001') !== -1) written = data
+      const s = String(p)
+      if (s.indexOf('.t2f-base') !== -1) return // 祖先の保存は反映先ではない
+      /* 読み込みと同じく、想定外の行き先はここで落とす。Map001 だけ拾っていた頃は、
+       * 反映先を取り違えても written が null のままになるだけで理由が出なかった。 */
+      if (s.indexOf('Map001') === -1) throw new Error('unexpected write: ' + s)
+      written = data
     })
     sinon.stub(fs, 'mkdirSync')
     sinon.stub(console, 'log')
@@ -271,7 +281,12 @@ describe('IMPORT_MESSAGE_TO_EVENT strategy=merge on an empty target WITH a base 
       throw new Error('unexpected read: ' + s)
     })
     sinon.stub(fs, 'writeFileSync').callsFake(function (p, data) {
-      if (String(p).indexOf('Map001') !== -1) written = data
+      const s = String(p)
+      if (s.indexOf('.t2f-base') !== -1) return // 祖先の保存は反映先ではない
+      /* 読み込みと同じく、想定外の行き先はここで落とす。Map001 だけ拾っていた頃は、
+       * 反映先を取り違えても written が null のままになるだけで理由が出なかった。 */
+      if (s.indexOf('Map001') === -1) throw new Error('unexpected write: ' + s)
+      written = data
     })
     sinon.stub(fs, 'mkdirSync')
     sinon.stub(console, 'log')

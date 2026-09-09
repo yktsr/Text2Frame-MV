@@ -13,9 +13,13 @@ function texts (list) {
 describe('t2f-sync controller', function () {
   let tmp
   let opts
+  let cwd
 
   beforeEach(function () {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 't2fsync-'))
+    // 祖先(.t2f-base)の置き場所は cwd 基準。リポジトリを汚さないよう移しておく。
+    cwd = process.cwd()
+    process.chdir(tmp)
     fs.mkdirSync(path.join(tmp, 'data'))
     fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify({
       events: [null, {
@@ -46,6 +50,7 @@ describe('t2f-sync controller', function () {
     opts = { root: tmp, dataDir: 'data', textDir: 'text', strategy: 'merge' }
   })
   afterEach(function () {
+    process.chdir(cwd)
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }
   })
 
