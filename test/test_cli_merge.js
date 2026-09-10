@@ -77,3 +77,133 @@ describe('CLI merge strategies (--mode map)', function () {
     expect(texts(list)).to.eql(['Bonjour'])
   })
 })
+
+/* 祖先(.t2f-base)の置き場所は --root で決まる。指定しなければ cwd なので、
+ * プロジェクト直下で流す通常の使い方は今までどおり。プロジェクトの外から
+ * 絶対パスで流すときに、祖先だけが cwd に取り残されるのを防ぐためのもの。 */
+describe('CLI --root (where .t2f-base lives)', function () {
+  let proj
+  let elsewhere
+  let mapPath
+  let textPath
+  let cwd
+
+  // 開発側だけが持つスイッチ(121)。テキストには書かれていない。
+  const devSwitch = { code: 121, indent: 0, parameters: [7, 7, 0, 0] }
+  const mapWith = function (line, extra) {
+    return JSON.stringify({
+      events: [null, {
+        id: 1,
+        name: 'EV',
+        pages: [{
+          list: [
+            { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+            { code: 401, indent: 0, parameters: [line] }
+          ].concat(extra || []).concat([{ code: 0, indent: 0, parameters: [] }])
+        }]
+      }]
+    })
+  }
+  const textWith = function (line) {
+    return '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n\n' + line + '\n'
+  }
+  const baseDirs = function (dir) {
+    try { return fs.readdirSync(path.join(dir, '.t2f-base')) } catch (e) { return null }
+  }
+  const runFromElsewhere = function (args) {
+    return cp.execFileSync('node', [CLI].concat(args), { cwd: elsewhere, encoding: 'utf8' })
+  }
+  const deploy = function (extraArgs) {
+    return runFromElsewhere(['--mode', 'map', '--strategy', 'merge',
+      '--text_path', textPath, '--output_path', mapPath,
+      '--event_id', '1', '--page_id', '1'].concat(extraArgs || []))
+  }
+
+  beforeEach(function () {
+    // プロジェクトと、CLI を叩く場所を別々に用意する。
+    proj = fs.mkdtempSync(path.join(os.tmpdir(), 't2froot-proj-'))
+    elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 't2froot-cwd-'))
+    fs.mkdirSync(path.join(proj, 'data'))
+    mapPath = path.join(proj, 'data', 'Map001.json')
+    textPath = path.join(proj, 'ev.txt')
+    fs.writeFileSync(mapPath, mapWith('Hello'))
+    fs.writeFileSync(textPath, textWith('Hello'))
+    // 一時プロジェクトの外(リポジトリ)に祖先を作らせない。
+    cwd = process.cwd()
+    process.chdir(elsewhere)
+  })
+
+  afterEach(function () {
+    process.chdir(cwd)
+    for (const d of [proj, elsewhere]) {
+      try { fs.rmSync(d, { recursive: true, force: true }) } catch (e) { /* ignore */ }
+    }
+  })
+
+  it('puts the ancestor under --root, not under the current directory', function () {
+    deploy(['--root', proj])
+
+    expect(baseDirs(proj)).to.not.equal(null)
+    expect(baseDirs(elsewhere)).to.equal(null)
+  })
+
+  it('leaves the ancestor in the current directory when --root is omitted', function () {
+    deploy()
+
+    expect(baseDirs(elsewhere)).to.not.equal(null)
+    expect(baseDirs(proj)).to.equal(null)
+  })
+
+  /* --root を渡さないと、2回目の反映で祖先が見つからず TOFU(テキストが正)に落ち、
+   * テキストに書いていない開発側のスイッチがエラーなしで消える。 */
+  it('makes the second deploy a real 3-way, keeping the dev switch', function () {
+    deploy(['--root', proj])
+    // ツクール側でスイッチを足し、テキスト側は文言を直した。
+    fs.writeFileSync(mapPath, mapWith('Hello', [devSwitch]))
+    fs.writeFileSync(textPath, textWith('Bonjour'))
+
+    deploy(['--root', proj])
+
+    const list = listOf(mapPath)
+    expect(hasSwitch(list)).to.equal(true)
+    expect(texts(list)).to.eql(['Bonjour'])
+  })
+
+  it('drops the dev switch without --root, because the ancestor was left behind', function () {
+    deploy()
+    fs.writeFileSync(mapPath, mapWith('Hello', [devSwitch]))
+    fs.writeFileSync(textPath, textWith('Bonjour'))
+    // 祖先は最初の cwd にあるが、2回目は別の場所から流す。
+    const other = fs.mkdtempSync(path.join(os.tmpdir(), 't2froot-cwd2-'))
+    cp.execFileSync('node', [CLI, '--mode', 'map', '--strategy', 'merge',
+      '--text_path', textPath, '--output_path', mapPath,
+      '--event_id', '1', '--page_id', '1'], { cwd: other, encoding: 'utf8' })
+
+    expect(hasSwitch(listOf(mapPath))).to.equal(false)
+    fs.rmSync(other, { recursive: true, force: true })
+  })
+
+  /* 根の外を指したまま流すと、祖先だけが根の側に取り残される。黙って起きると
+   * 次の反映で開発側の変更が消えるので、入口で理由を出す。 */
+  it('warns when the text and the data sit outside the root', function () {
+    const r = cp.spawnSync('node', [CLI, '--mode', 'map', '--strategy', 'merge',
+      '--text_path', textPath, '--output_path', mapPath,
+      '--event_id', '1', '--page_id', '1', '--root', elsewhere],
+    { cwd: elsewhere, encoding: 'utf8' })
+
+    expect(r.status).to.equal(0) // 警告だけで、反映は止めない
+    expect(r.stderr).to.contain('--root の外にあります')
+    expect(r.stderr).to.contain('text: ' + textPath)
+    expect(r.stderr).to.contain('data: ' + mapPath)
+  })
+
+  it('says nothing when everything is inside the root', function () {
+    const r = cp.spawnSync('node', [CLI, '--mode', 'map', '--strategy', 'merge',
+      '--text_path', textPath, '--output_path', mapPath,
+      '--event_id', '1', '--page_id', '1', '--root', proj],
+    { cwd: elsewhere, encoding: 'utf8' })
+
+    expect(r.status).to.equal(0)
+    expect(r.stderr).to.not.contain('--root の外にあります')
+  })
+})

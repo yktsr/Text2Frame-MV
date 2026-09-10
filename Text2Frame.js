@@ -11857,6 +11857,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-t, --text_path <name>', 'single-file mode (map/common): input text file')
     .option('--text-dir <dir>', 'batch mode: text base directory', 'text')
     .option('-d, --data-dir <dir>', 'game data directory', 'data')
+    .option('--root <dir>', 'project root for data/, text/ and .t2f-base (default: current directory)')
     .option('-o, --output_path <name>', 'output file path')
     .option('-e, --event_id <name>', 'event file id')
     .option('-p, --page_id <name>', 'page id')
@@ -11889,14 +11890,19 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           テキストの場所は --text-dir、データの場所は --data-dir で変更できます。（既定は text / data ）
           例2: $ node Text2Frame.js --mode batch --text-dir text --data-dir data
 
+          プロジェクトの外から実行するときは --root でプロジェクトの場所を指定してください。
+          テキスト・データ・統合用の情報（.t2f-base）は、すべてこの場所を基準に決まります。
+          （既定は実行時のカレントディレクトリ）
+          例3: $ node Text2Frame.js --mode batch --root /path/to/project
+
           --watch を付与すると、テキストの変更を監視し、自動でゲームに反映することができます。
-          例3: $ node Text2Frame.js --mode batch --watch
+          例4: $ node Text2Frame.js --mode batch --watch
 
           テキストのフォルダを分けておけば、複数の版を並行して持てます。
           典型的な利用方法として、ゲームの翻訳が挙げられます。
           例えば、Frame2Textを利用しゲームの内容をtext-enフォルダへ書き出し、ゲームの内容を英語に翻訳後、
           下記のコマンドで翻訳内容をゲームに反映できます。
-          例4: $ node Frame2Text.js --mode batch --text-dir text-en
+          例5: $ node Frame2Text.js --mode batch --text-dir text-en
                $ node Text2Frame.js --mode batch --text-dir text-en
 
         node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
@@ -11934,6 +11940,31 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     process.exit(0)
   }
 
+  /* データ・テキスト・祖先(.t2f-base)はすべてここから決まる。既定は cwd なので、
+   * プロジェクト直下で流す通常の使い方は今までと同じ。 */
+  const cliRoot = options.root ? path.resolve(options.root) : process.cwd()
+  const fromRoot = function (p) { return p ? path.resolve(cliRoot, p) : undefined }
+  const cliBase = fromRoot(options.base)
+
+  /* 根の外にあるテキストやデータは、祖先だけが根の側に取り残される。さらに根の外の
+   * テキストは deriveBaseId が相対パスを作れず「フォルダ名/ファイル名」に丸めるので、
+   * 別プロジェクトの同名テキストと祖先を取り合う。どちらも黙って起きるため入口で知らせる。 */
+  const outsideRoot = []
+  const noteOutsideRoot = function (label, p) {
+    if (!p) return
+    const rel = path.relative(cliRoot, path.resolve(p))
+    if (!rel || (!path.isAbsolute(rel) && rel.split(path.sep)[0] !== '..')) return
+    outsideRoot.push(label + ': ' + path.resolve(p))
+  }
+  const reportOutsideRoot = function () {
+    if (outsideRoot.length === 0) return
+    console.warn('[warn] 次のパスが --root の外にあります / outside the project root (root: ' + cliRoot + ')')
+    outsideRoot.forEach(function (line) { console.warn('       ' + line) })
+    console.warn('  祖先(.t2f-base)は root 側に作られます。次の反映が祖先なし(テキストが正)に落ち、' +
+      'テキストに書いていないゲーム側の変更が消えることがあります。--root でプロジェクトの場所を指定してください。' +
+      ' / pass --root <project dir>')
+  }
+
   const _given = function (long, short) {
     return process.argv.some(function (a) { return a === long || a === short })
   }
@@ -11959,26 +11990,31 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   // 単一ファイルモードでも front matter を反映先のフォールバックに使う(明示した CLI 引数が優先)。
   const frontMatterOf = function (p) {
     if (!p) return {}
-    try { return parseFrontMatterCli(fs.readFileSync(path.resolve(p), { encoding: 'utf8' })).meta || {} } catch (e) { return {} }
+    try { return parseFrontMatterCli(fs.readFileSync(fromRoot(p), { encoding: 'utf8' })).meta || {} } catch (e) { return {} }
   }
   if (options.mode === 'map') {
     const fm = frontMatterOf(options.text_path)
     const eventId = options.event_id || fm.eventId
-    const mapPath = options.output_path ||
-      (fm.mapId ? path.resolve(process.cwd(), options.dataDir, 'Map' + ('000' + String(fm.mapId)).slice(-3) + '.json') : undefined)
+    const mapPath = fromRoot(options.output_path) ||
+      (fm.mapId ? path.resolve(cliRoot, options.dataDir, 'Map' + ('000' + String(fm.mapId)).slice(-3) + '.json') : undefined)
     if (!eventId) {
       throw new Error('eventId is required: pass --event_id, or put "eventId:" in the text front matter.')
     }
     if (!mapPath) {
       throw new Error('map path is required: pass --output_path, or put "mapId:" in the text front matter.')
     }
+    noteOutsideRoot('text', fromRoot(options.text_path))
+    noteOutsideRoot('data', mapPath)
+    reportOutsideRoot()
     const Text2Frame = {
       IsDebug: options.verbose,
-      TextPath: options.text_path,
+      TextPath: fromRoot(options.text_path),
       IsOverwrite: (cliSingleStrategy === 'overwrite'),
       Strategy: cliSingleStrategy,
       ExecMode: execModeFor('event'),
-      BasePath: options.base,
+      BasePath: cliBase,
+      // 祖先(.t2f-base)の置き場所。渡さないと process.cwd() に落ちる。
+      BaseRoot: cliRoot,
       MapPath: mapPath,
       EventID: String(eventId),
       PageID: String(options.page_id || fm.pageId || '1')
@@ -11987,17 +12023,21 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   } else if (options.mode === 'common') {
     const fm = frontMatterOf(options.text_path)
     const commonEventId = options.common_event_id || fm.commonEventId
-    const commonEventPath = options.output_path || path.resolve(process.cwd(), options.dataDir, 'CommonEvents.json')
+    const commonEventPath = fromRoot(options.output_path) || path.resolve(cliRoot, options.dataDir, 'CommonEvents.json')
     if (!commonEventId) {
       throw new Error('commonEventId is required: pass --common_event_id, or put "commonEventId:" in the text front matter.')
     }
+    noteOutsideRoot('text', fromRoot(options.text_path))
+    noteOutsideRoot('data', commonEventPath)
+    reportOutsideRoot()
     const Text2Frame = {
       IsDebug: options.verbose,
-      TextPath: options.text_path,
+      TextPath: fromRoot(options.text_path),
       IsOverwrite: (cliSingleStrategy === 'overwrite'),
       Strategy: cliSingleStrategy,
       ExecMode: execModeFor('common'),
-      BasePath: options.base,
+      BasePath: cliBase,
+      BaseRoot: cliRoot,
       CommonEventPath: commonEventPath,
       CommonEventID: String(commonEventId)
     }
@@ -12017,9 +12057,11 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   } else if (options.mode === 'batch') {
     // Front matter is the sole source of routing/metadata: scan the text directory for
     // front-matter .txt files and deploy each by its own header.
-    const scanRoot = path.resolve(options.textDir || 'text')
+    const scanRoot = path.resolve(cliRoot, options.textDir || 'text')
     const strategy = cliStrategy
-    const cliBasePath = options.base ? path.resolve(options.base) : undefined
+    noteOutsideRoot('text', scanRoot)
+    noteOutsideRoot('data', path.resolve(cliRoot, options.dataDir))
+    reportOutsideRoot()
 
     /* 走査対象は見出し情報(front matter)を持つテキストだけ。行き先はテキスト自身が
      * 書いているので、どのサブフォルダに置いてあっても構わない。
@@ -12038,16 +12080,18 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       const opts = {
         textPath: fileArg,
         strategy,
-        basePath: cliBasePath,
+        basePath: cliBase,
+        // 祖先(.t2f-base)の置き場所。渡さないと process.cwd() に落ちる。
+        baseRoot: cliRoot,
         backup: true,
         isDebug: options.verbose
       }
       // Resolve data paths against the project root (cwd), not the module dir, so batch
       // deploys target the invoking project's data/ (front matter carries the routing IDs).
       if (kind === 'common') {
-        opts.commonEventPath = path.resolve(process.cwd(), options.dataDir, 'CommonEvents.json')
+        opts.commonEventPath = path.resolve(cliRoot, options.dataDir, 'CommonEvents.json')
       } else if (meta.mapId) {
-        opts.mapPath = path.resolve(process.cwd(), options.dataDir, 'Map' + ('000' + String(meta.mapId)).slice(-3) + '.json')
+        opts.mapPath = path.resolve(cliRoot, options.dataDir, 'Map' + ('000' + String(meta.mapId)).slice(-3) + '.json')
       }
       return module.exports.applyTextFile(opts)
     }
@@ -12085,9 +12129,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         try { parsed = parseFrontMatterCli(fs.readFileSync(fileArg, { encoding: 'utf8' })) } catch (e) { return }
         if (!parsed.hasFrontMatter) return
         const res = deployOne(fileArg)
-        const rel = path.relative(process.cwd(), fileArg)
+        const rel = path.relative(cliRoot, fileArg)
         if (res.ok) {
-          const tgt = res.dataPath ? path.relative(process.cwd(), res.dataPath) : '?'
+          const tgt = res.dataPath ? path.relative(cliRoot, res.dataPath) : '?'
           const w = res.warnings.length ? '  (' + res.warnings.length + ' warnings)' : ''
           console.log('[' + stamp() + '] DEPLOY ' + rel + ' -> ' + tgt + '  OK' + w)
           res.warnings.forEach(function (warn) { console.log('[' + stamp() + ']   warn: ' + warn) })
@@ -12116,7 +12160,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       })
 
       console.log(
-        '[watch] watching ' + path.relative(process.cwd(), scanRoot) + ' for *.txt. strategy=' + strategy +
+        '[watch] watching ' + path.relative(cliRoot, scanRoot) + ' for *.txt. strategy=' + strategy +
         (usePolling ? ' (polling)' : '') + '. Press Ctrl-C to stop.'
       )
 

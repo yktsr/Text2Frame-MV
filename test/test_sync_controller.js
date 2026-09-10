@@ -1,10 +1,12 @@
 const chai = require('chai')
 const expect = chai.expect
+const cp = require('child_process')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
 
 const sync = require('../t2f-sync.js')
+const SYNC_CLI = path.resolve(__dirname, '..', 't2f-sync.js')
 
 function texts (list) {
   return list.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })
@@ -385,5 +387,21 @@ describe('t2f-sync controller', function () {
     const res = sync.pushFile(evText(), o)
     expect(res.ok).to.equal(true)
     expect(guard.isEcho(res.dataPath)).to.equal(true) // the data write is recognised as ours
+  })
+
+  /* モジュール API は元から root を受け取るが、CLI 入口だけ cwd を直書きしていて
+   * プロジェクトの外から流せなかった。Text2Frame.js の --root と同じ意味。 */
+  it('--root puts the ancestor under the project, not the current directory', function () {
+    const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 't2fsync-cwd-'))
+    try {
+      const r = cp.spawnSync('node', [SYNC_CLI, '--direction', 'pull', '--root', tmp],
+        { cwd: elsewhere, encoding: 'utf8' })
+
+      expect(r.status, r.stderr).to.equal(0)
+      expect(fs.existsSync(path.join(tmp, '.t2f-base'))).to.equal(true)
+      expect(fs.existsSync(path.join(elsewhere, '.t2f-base'))).to.equal(false)
+    } finally {
+      fs.rmSync(elsewhere, { recursive: true, force: true })
+    }
   })
 })

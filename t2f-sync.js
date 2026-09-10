@@ -240,6 +240,7 @@ if (require.main === module) {
     .option('--direction <both|push|pull>', 'sync direction', /^(both|push|pull)$/i, 'both')
     .option('-t, --text-dir <dir>', 'text base directory', 'text')
     .option('-d, --data-dir <dir>', 'game data directory', 'data')
+    .option('--root <dir>', 'project root for data/, text/ and .t2f-base (default: current directory)')
     .option('-s, --strategy <merge|overwrite>', 'sync strategy', /^(merge|overwrite)$/i, 'merge')
     .option('-w, --english_tag <true/false>', 'english tag on pull', 'true')
     .option('--watch', 'watch both sides and sync on change', false)
@@ -249,7 +250,9 @@ if (require.main === module) {
     .parse()
 
   const options = program.opts()
-  const root = process.cwd()
+  /* テキスト・データ・祖先(.t2f-base)はすべてここから決まる。既定は cwd なので、
+   * プロジェクト直下で流す通常の使い方は今までと同じ。Text2Frame.js の --root と同じ意味。 */
+  const root = options.root ? path.resolve(options.root) : process.cwd()
   const guard = createEchoGuard()
   const opts = {
     root,
@@ -260,6 +263,23 @@ if (require.main === module) {
     direction: String(options.direction).toLowerCase(),
     verbose: options.verbose,
     guard
+  }
+
+  /* 根の外にあるテキストやデータは、祖先だけが根の側に取り残される。さらに根の外の
+   * テキストは祖先の鍵が「フォルダ名/ファイル名」に丸められ、別プロジェクトと取り合う。
+   * どちらも黙って起きるため入口で知らせる(Text2Frame.js の CLI と同じ扱い)。 */
+  const outsideRoot = [];
+  [['text', options.textDir], ['data', options.dataDir]].forEach(function (pair) {
+    const abs = path.resolve(root, pair[1])
+    const r = path.relative(root, abs)
+    if (r && (path.isAbsolute(r) || r.split(path.sep)[0] === '..')) outsideRoot.push(pair[0] + ': ' + abs)
+  })
+  if (outsideRoot.length > 0) {
+    console.warn('[warn] 次のパスが --root の外にあります / outside the project root (root: ' + root + ')')
+    outsideRoot.forEach(function (line) { console.warn('       ' + line) })
+    console.warn('  祖先(.t2f-base)は root 側に作られます。次の反映が祖先なし(テキストが正)に落ち、' +
+      'テキストに書いていないゲーム側の変更が消えることがあります。--root でプロジェクトの場所を指定してください。' +
+      ' / pass --root <project dir>')
   }
 
   const stamp = function () {
