@@ -7785,7 +7785,7 @@ function requireText2Frame () {
 		 * @value overwrite
 		 *
 		 * @arg WriteBack
-		 * @text 結果をテキストに書き戻す
+		 * @text テキストへの書き戻し条件
 		 * @desc 引数Strategyが統合(merge)のときだけ働きます。ツクール側でイベントが修正されていた場合に、その部分をテキストにも反映できます。この引数ではその条件を設定します。
 		 * @type select
 		 * @option 毎回書き戻す / always
@@ -7829,7 +7829,7 @@ function requireText2Frame () {
 		 * @value overwrite
 		 *
 		 * @arg WriteBack
-		 * @text 結果をテキストに書き戻す
+		 * @text テキストへの書き戻し条件
 		 * @desc 引数Strategyが統合(merge)のときだけ働きます。ツクール側でイベントが修正されていた場合に、その部分をテキストにも反映できます。この引数ではその条件を設定します。
 		 * @type select
 		 * @option 毎回書き戻す / always
@@ -7863,7 +7863,7 @@ function requireText2Frame () {
 		 * @default add
 		 *
 		 * @arg WriteBack
-		 * @text 結果をテキストに書き戻す
+		 * @text テキストへの書き戻し条件
 		 * @desc 引数Strategyが統合(merge)のときだけ働きます。ツクール側でイベントが修正されていた場合に、その部分をテキストにも反映できます。この引数ではその条件を設定します。
 		 * @type select
 		 * @option 毎回書き戻す / always
@@ -7907,7 +7907,7 @@ function requireText2Frame () {
 		 * @default merge
 		 *
 		 * @arg WriteBack
-		 * @text 結果をテキストに書き戻す
+		 * @text テキストへの書き戻し条件
 		 * @desc 引数Strategyが統合(merge)のときだけ働きます。ツクール側でイベントが修正されていた場合に、その部分をテキストにも反映できます。この引数ではその条件を設定します。
 		 * @type select
 		 * @option 毎回書き戻す / always
@@ -7984,7 +7984,7 @@ function requireText2Frame () {
 		 *
 		 * @param IsOverwrite
 		 * @text 反映方法
-		 * @desc プラグインコマンドで反映方法を省略したときに使われます。既定はaddで、イベント末尾に追記します。merge(統合)にはFrame2Textプラグインが必要です。
+		 * @desc イベントへの反映方法。既定はaddで、merge(Frame2Textが必要)はイベント側の修正を壊しません。詳細はヘルプドキュメントへ
 		 * @default add
 		 * @type select
 		 * @option 末尾に追記 / add
@@ -8005,8 +8005,8 @@ function requireText2Frame () {
 		 * @type string
 		 *
 		 * @param WriteBackAfterMerge
-		 * @text 反映結果をテキストに書き戻す
-		 * @desc 統合(merge)で反映したあと、結果をテキストにも書きます。衝突はテキストだけに出て、ゲームには入りません。デフォルト値は「毎回」です。
+		 * @text テキストへの書き戻し条件
+		 * @desc mergeで反映したあと、結果をテキストにも書く条件。衝突はテキストだけに出て、ゲームには入りません。既定はalwaysです。
 		 * @default always
 		 * @type select
 		 * @option 毎回書き戻す / always
@@ -8321,8 +8321,13 @@ function requireText2Frame () {
 		 * ため、特に理由がなくともダウンロードし組み込んでおくことを推奨します。
 		 *
 		 * 最新版のダウンロードは以下のURLからお願いします。
-		 * https://x.gd/7Gqfe
-		 *   (ヘルプドキュメントの表示の都合上、短縮URLを使っています)
+		 * ※ 本来URLは改行せず1行ですが、ヘルプウィンドウの幅の都合で改行しています。
+		 *    しかし、大体のブラウザではペースト時に改行コードが削除されるため、
+		 *    そのままコピペすればアクセスできるはずです。
+		 *
+		 * https://github.com/yktsr/Text2Frame-MV/releases/download/
+		 * 2.3.0/Frame2Text.js
+		 *
 		 *
 		 * 詳細な使い方は以下のFrame2Textの紹介ページかプラグイン本体の
 		 * ヘルプドキュメントを参照してください。
@@ -8421,6 +8426,15 @@ function requireText2Frame () {
 		 * <Name: リード>
 		 * ところで・・・
 		 * ↑↑↑↑↑ここまで統合モードでの実行結果↑↑↑↑↑
+		 *
+		 * ◆ テキストへの書き戻し
+		 * 反映方法を統合モードで実行した場合、既定の設定では常にテキストにその結果
+		 * が反映されます。基本的にはその条件を推奨しますが、MVの場合はプラグイン
+		 * パラメータ、MZの場合はプラグインコマンドの引数から変更できます。
+		 * その際は以下の3つから選ぶことができます。
+		 *  - 毎回書き戻す / always
+		 *  - 衝突したときだけ / onConflict
+		 *  - 書き戻さない / off
 		 *
 		 * ◆ テキストとイベントの変更が衝突した場合
 		 *  統合モードではテキストとイベントの両方の変更を検知し、問題がないものにつ
@@ -8664,7 +8678,12 @@ function requireText2Frame () {
 		 * また、文字列の補完や文法の説明表示が自動で行われます。
 		 * 下記からVisual Studio Code 拡張「Text2Frame Language Support」を利用
 		 * することができます。
-		 * https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support
+		 * ※ 本来URLは改行せず1行ですが、ヘルプウィンドウの幅の都合で改行しています。
+		 *    しかし、大体のブラウザではペースト時に改行コードが削除されるため、
+		 *    そのままコピペすればアクセスできるはずです。
+		 *
+		 * https://marketplace.visualstudio.com/
+		 * items?itemName=yktsr.text2frame-language-support
 		 *
 		 *
 		 * --------------------------------------
