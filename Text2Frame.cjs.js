@@ -12685,7 +12685,6 @@ function requireText2Frame () {
 		      }
 		      if (text === scenario_text) return { written: false, unchanged: true, baseText }
 		      try {
-		        backupOnce(fsLib, textPath);
 		        fsLib.writeFileSync(textPath, text, 'utf8');
 		      } catch (e) {
 		        addWarning('書き戻しに失敗しました(反映は行っていません): ' + ((e && e.message) || e) + ' / write-back failed; the game was left untouched');
@@ -18571,26 +18570,12 @@ function requireText2Frame () {
 		      return { commands: result, commandsOurs: resultOurs, conflicts, warnings }
 		    };
 
-		    // 監視ツール用: 対象データJSONの初回バックアップ(.bak が無いときだけ pristine 状態を退避)。
-		    const backupOnce = function (fsLib, dataPath) {
-		      try {
-		        const bak = dataPath + '.bak';
-		        if (fsLib.existsSync(dataPath) && !fsLib.existsSync(bak)) {
-		          fsLib.copyFileSync(dataPath, bak);
-		        }
-		      } catch (e) {
-		        // バックアップ失敗はデプロイを止めない。
-		        addWarning('Backup failed / バックアップに失敗しました: ' + dataPath);
-		      }
-		    };
-
 		    // 単一テキストファイルを単一データJSONへデプロイする再利用関数(CLI監視/VSCode拡張から呼ぶ)。
 		    // フロントマター(kind/mapId/eventId/pageId/commonEventId)と opts をマージしてターゲットを解決。
 		    // 戻り値: { ok, textPath, kind, target, dataPath, warnings: string[], error? }
 		    const interpreter = this;
 		    const applyTextFile = function (opts) {
 		      opts = opts || {};
-		      const fsLib = require$$1$1;
 		      const pathLib = require$$0$1;
 		      const { BASE_PATH } = getDirParams();
 		      const textPath = resolveFromRoot(BASE_PATH, opts.textPath);
@@ -18634,9 +18619,6 @@ function requireText2Frame () {
 		            throw new Error('mapPath or mapId is required for event entry')
 		          }
 		          target = { kind, mapId: mapId ? String(mapId) : undefined, eventId: String(eventId), pageId: String(pageId) };
-		          if (opts.backup) {
-		            backupOnce(fsLib, dataPath);
-		          }
 		          interpreter.pluginCommandText2Frame('COMMAND_LINE', [{
 		            IsDebug: !!opts.isDebug,
 		            TextPath: textPath,
@@ -18661,9 +18643,6 @@ function requireText2Frame () {
 		            resolveFromRoot(BASE_PATH, opts.commonEventPath) ||
 		            resolveFromRoot(BASE_PATH, pathLib.join('data', 'CommonEvents.json'));
 		          target = { kind, commonEventId: String(commonEventId) };
-		          if (opts.backup) {
-		            backupOnce(fsLib, dataPath);
-		          }
 		          interpreter.pluginCommandText2Frame('COMMAND_LINE', [{
 		            IsDebug: !!opts.isDebug,
 		            TextPath: textPath,
@@ -18936,7 +18915,7 @@ function requireText2Frame () {
 		        if (guard.isEcho(abs)) return
 		        let res;
 		        try {
-		          res = applyTextFile({ textPath: abs, strategy: opts.strategy, backup: true, writeBack: opts.writeBack });
+		          res = applyTextFile({ textPath: abs, strategy: opts.strategy, writeBack: opts.writeBack });
 		        } catch (e) {
 		          console.error('[sync] 反映で例外: ' + rel(abs) + ': ' + ((e && e.message) || e));
 		          return
@@ -19145,7 +19124,6 @@ function requireText2Frame () {
 		        const res = applyTextFile({
 		          textPath: fileName,
 		          strategy,
-		          backup: true,
 		          writeBack
 		        });
 		        if (res && res.ok) {
