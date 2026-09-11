@@ -195,13 +195,7 @@ export async function deployDocument(
             }
             return undefined;
         } else if (choice === '全部上書きする') {
-            // Snapshot the about-to-be-overwritten data so it can be recovered.
-            try {
-                fs.copyFileSync(dataPath, dataPath + '.conflict.bak');
-                out.appendLine(`[${time}] saved conflict backup: ${path.basename(dataPath)}.conflict.bak`);
-            } catch (e) {
-                // best effort
-            }
+            // Proceed with the overwrite as asked.
         } else {
             out.appendLine(`[${time}] CANCELLED (external change) ${path.basename(dataPath)}`);
             return undefined;
@@ -215,8 +209,7 @@ export async function deployDocument(
     const applyOpts: { [key: string]: unknown } = {
         textPath: document.uri.fsPath,
         ...resolved.opts,
-        strategy,
-        backup: true
+        strategy
     };
     if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.key)) {
         applyOpts.basePath = baseSnapshotPath(workspaceRoot, snap.key);
@@ -306,8 +299,7 @@ export function deployFile(
     const applyOpts: { [key: string]: unknown } = {
         textPath: filePath,
         ...resolved.opts,
-        strategy,
-        backup: true
+        strategy
     };
     if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.key)) {
         applyOpts.basePath = baseSnapshotPath(workspaceRoot, snap.key);

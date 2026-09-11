@@ -139,7 +139,7 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
             const { meta } = parseFrontMatter(fileText);
             const { opts, label } = resolveTarget(meta, root);
             const key = snapshotKeyFor(root, file);
-            const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, backup: true };
+            const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy };
             if (mergeLike && hasBaseSnapshot(root, key)) {
                 applyOpts.basePath = baseSnapshotPath(root, key);
             }

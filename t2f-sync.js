@@ -78,7 +78,6 @@ function pushFile (textPath, opts) {
     textPath: path.resolve(textPath),
     strategy: o.strategy || 'merge',
     baseRoot: root,
-    backup: true,
     isDebug: !!o.verbose
   }
   if (kind === 'common') applyOpts.commonEventPath = path.join(dataDir, 'CommonEvents.json')

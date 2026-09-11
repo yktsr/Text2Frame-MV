@@ -105,17 +105,6 @@ describe('applyTextFile (deploy core) Test', function () {
     expect(res.ok).to.equal(false)
     expect(res.error).to.match(/strategy/i)
   })
-
-  it('backup:true creates .bak once (pristine) and does not clobber it', function () {
-    const textPath = writeTextWithMeta('map001_event001_page1.txt', ['---', 'kind: event', 'mapId: 1', 'eventId: 1', 'pageId: 1', '---'])
-    const pristine = fs.readFileSync(mapPath, 'utf8')
-    text2frame.applyTextFile({ textPath, mapPath, strategy: 'overwrite', overwrite: true, backup: true })
-    expect(fs.existsSync(mapPath + '.bak')).to.equal(true)
-    expect(fs.readFileSync(mapPath + '.bak', 'utf8')).to.equal(pristine)
-    // Second deploy must not overwrite the pristine .bak.
-    text2frame.applyTextFile({ textPath, mapPath, strategy: 'overwrite', overwrite: true, backup: true })
-    expect(fs.readFileSync(mapPath + '.bak', 'utf8')).to.equal(pristine)
-  })
 })
 
 describe('choice / branch compile invariants', function () {

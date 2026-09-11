@@ -318,14 +318,4 @@ describe('write-back after merge', function () {
     expect(res.error).to.contain('反映を中止')
     expect(fs.readFileSync(mapPath, 'utf8')).to.equal(beforeMap)
   })
-
-  it('backs the text up once before the first write-back', function () {
-    setUpConflict()
-    const original = readText()
-
-    push('always')
-    push('always')
-
-    expect(fs.readFileSync(textPath + '.bak', 'utf8')).to.equal(original)
-  })
 })
