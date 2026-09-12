@@ -12964,6 +12964,36 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			        .join('\n')
 			    };
 
+			    /* eraseCommentOutLines が残す行の、元の行番号(compile の lineMap 用)。判定は上と同じ。 */
+			    const keptLineOrigins = function (scenario_text, commentOutChar) {
+			      const re = new RegExp('^ *' + commentOutChar);
+			      const origins = [];
+			      scenario_text.split('\n').forEach((x, i) => { if (!x.match(re)) origins.push(i); });
+			      return origins
+			    };
+
+			    /* getBlockStatement は複数行のブロックを「\n#XXX_BLOCKn#\n」に畳む。つまり元の
+			     *   開始タグの行 … 終了タグの行(改行 k 個ぶん)
+			     * が、新しい3行
+			     *   開始タグより前の断片 / プレースホルダ / 終了タグより後ろの断片
+			     * になる。畳んだあとの各行が元の何行目かを、置き換えた範囲の改行数(replaced)から戻す。
+			     * 断片とプレースホルダは開始タグの行、後ろの断片は終了タグの行に対応させる。 */
+			    const followBlockReplacements = function (lines, origins, replaced) {
+			      const out = [];
+			      let o = 0;
+			      for (let n = 0; n < lines.length; n++) {
+			        out.push(origins[Math.min(o, origins.length - 1)]);
+			        const newlines = replaced[lines[n]];
+			        if (newlines !== undefined) {
+			          o += newlines; // 次の行(後ろの断片)は終了タグの行
+			          continue
+			        }
+			        // 次がプレースホルダなら、この行は開始タグより前の断片なので同じ行にとどまる。
+			        if (replaced[lines[n + 1]] === undefined) o++;
+			      }
+			      return out
+			    };
+
 			    /* ブロックの開始・終了タグを含む行。getBlockStatement の正規表現は行頭に縛られて
 			     * いないので、この手の行を字下げすると、その空白がブロックの中身として取り込まれる
 			     * (「  </comment>」の 2 文字が 408 の注釈行になる)。綴りを戻してはいけない行。 */
@@ -14004,7 +14034,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      }
 			    };
 			    /*************************************************************************************************************/
-			    const getBlockStatement = function (scenario_text, statement) {
+			    /* onReplace(match_block, placeholder) は置き換えるたびに呼ぶ(compile の lineMap 用)。
+			     * 置き換えそのものには関わらない。 */
+			    const getBlockStatement = function (scenario_text, statement, onReplace) {
 			      const block_map = {};
 			      let block_count = 0;
 			      let re = null;
@@ -14044,6 +14076,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			            block_map[`#${statement.toUpperCase()}_BLOCK${block_count}#`] = event_list;
 
 			            scenario_text = scenario_text.replace(match_block, `\n#${statement.toUpperCase()}_BLOCK${block_count}#\n`);
+			            if (onReplace) onReplace(match_block, `#${statement.toUpperCase()}_BLOCK${block_count}#`);
 			            block_count++;
 
 			            block =
@@ -14064,6 +14097,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			        const match_block = block[0];
 			        const match_text = block[1] || block[2] || block[3];
 			        scenario_text = scenario_text.replace(match_block, `\n#${statement.toUpperCase()}_BLOCK${block_count}#\n`);
+			        if (onReplace) onReplace(match_block, `#${statement.toUpperCase()}_BLOCK${block_count}#`);
 			        const match_text_list = match_text.replace(/^\n/, '').replace(/\n$/, '').split('\n');
 			        const event_list = [];
 			        for (let i = 0; i < match_text_list.length; i++) {
@@ -18247,18 +18281,30 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			      return out_events
 			    };
 
-			    const compile = function (text) {
+			    /* opts.lineMap を立てると { commands, lineMap } を返す。lineMap[k] は commands[k] が出てきた
+			     * テキストの行番号(0始まり)。エディタ拡張のプレビューが、コマンドとテキストの行を結ぶのに使う。
+			     * 立てなければ従来どおりコマンドの配列だけを返し、出力は変わらない。 */
+			    const compile = function (text, opts) {
+			      const wantLineMap = !!(opts && opts.lineMap);
 			      let scenario_text = uniformNewLineCode(text);
+			      // % 行の除去とブロックの畳み込みで行がずれるので、元の行番号を追いかける。
+			      let origins = wantLineMap ? keptLineOrigins(scenario_text, Laurus.Text2Frame.CommentOutChar) : null;
 			      scenario_text = eraseCommentOutLines(scenario_text, Laurus.Text2Frame.CommentOutChar);
 			      let block_map = {};
 
 			      ['script', 'comment', 'scrolling'].forEach(function (block_name) {
-			        const t = getBlockStatement(scenario_text, block_name);
+			        const replaced = {};
+			        const onReplace = wantLineMap
+			          ? function (match_block, placeholder) { replaced[placeholder] = match_block.split('\n').length - 1; }
+			          : undefined;
+			        const t = getBlockStatement(scenario_text, block_name, onReplace);
+			        if (wantLineMap) origins = followBlockReplacements(t.scenario_text.split('\n'), origins, replaced);
 			        scenario_text = t.scenario_text;
 			        block_map = Object.assign(block_map, t.block_map);
 			      });
 
 			      const text_lines = scenario_text.split('\n');
+			      const line_map = wantLineMap ? [] : null;
 			      let event_command_list = [];
 			      let previous_text = '';
 			      let window_frame = null;
@@ -18287,14 +18333,20 @@ Expecting one of '${allowedValues.join("', '")}'`);
 			          const new_event_command_list = return_obj.event_command_list;
 			          block_stack = return_obj.block_stack;
 			          event_command_list = event_command_list.concat(new_event_command_list);
+			          if (line_map) new_event_command_list.forEach(function () { line_map.push(origins[i]); });
 			        }
 			        logger.log(i, text);
 			        previous_text = text;
 			      }
 
 			      event_command_list = completeLackedBottomEvent(event_command_list);
+			      // 閉じ忘れを補った分は、テキストの最後の行に対応させる。
+			      if (line_map) {
+			        const last = origins.length ? origins[origins.length - 1] : 0;
+			        while (line_map.length < event_command_list.length) line_map.push(last);
+			      }
 			      event_command_list = autoIndent(event_command_list);
-			      return event_command_list
+			      return line_map ? { commands: event_command_list, lineMap: line_map } : event_command_list
 			    };
 
 			    /* 反映方法は add(末尾に追記) / merge(構造保持の賢い反映) / overwrite(上書き) の3つ。
