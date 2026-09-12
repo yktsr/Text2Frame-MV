@@ -30,7 +30,8 @@ interface ApplyResult {
 
 export interface T2FModule {
     applyTextFile: (opts: { [key: string]: unknown }) => ApplyResult;
-    compile?: (text: string) => unknown[];
+    /** opts.lineMap を渡すと { commands, lineMap } を返す(古いコンパイラは無視して配列を返す)。 */
+    compile?: (text: string, opts?: { lineMap?: boolean }) => unknown;
 }
 
 let outputChannel: vscode.OutputChannel | undefined;

@@ -26,16 +26,34 @@ export function previewHtml(): string {
   .comment .text { color: var(--vscode-descriptionForeground); }
   .face { width: ${FACE_SIZE}px; height: ${FACE_SIZE}px; margin: 2px 6px 2px 0; border: 1px solid var(--vscode-panel-border); flex: none; }
   .empty { color: var(--vscode-descriptionForeground); }
+  .row[data-line] { cursor: pointer; }
+  .row.current { background: var(--vscode-editor-lineHighlightBackground, rgba(128,128,128,0.2)); outline: 1px solid var(--vscode-editor-lineHighlightBorder, transparent); }
 </style></head>
 <body>
 <div id="banners"></div>
 <div id="rows"></div>
 <script nonce="${nonce}">
+  const vscode = acquireVsCodeApi();
   const rowsEl = document.getElementById('rows');
+  // 行をクリックしたら、その行を出したテキストの行へ戻る。
+  rowsEl.addEventListener('click', (e) => {
+    const row = e.target.closest('.row[data-line]');
+    if (row) vscode.postMessage({ type: 'reveal', line: Number(row.dataset.line) });
+  });
   const bannersEl = document.getElementById('banners');
   const banner = (cls, text) => { const d = document.createElement('div'); d.className = 'banner ' + cls; d.textContent = text; bannersEl.appendChild(d); };
   window.addEventListener('message', (event) => {
     const m = event.data;
+    if (m && m.type === 'highlight') {
+      rowsEl.querySelectorAll('.row.current').forEach((r) => r.classList.remove('current'));
+      let first = null;
+      for (const i of m.indices) {
+        const r = rowsEl.querySelector('.row[data-index="' + i + '"]');
+        if (r) { r.classList.add('current'); first = first || r; }
+      }
+      if (first) first.scrollIntoView({ block: 'nearest' });
+      return;
+    }
     if (!m || m.type !== 'render') return;
     bannersEl.textContent = '';
     if (m.error) banner('error', m.error);
@@ -46,6 +64,7 @@ export function previewHtml(): string {
       const row = document.createElement('div');
       row.className = 'row ' + (r.head ? 'head' : 'cont') + (r.code === 108 || r.code === 408 ? ' comment' : '');
       row.dataset.index = String(r.index);
+      if (m.lines && m.lines[r.index] !== undefined) row.dataset.line = String(m.lines[r.index]);
       row.style.paddingLeft = (r.indent * 1.5) + 'em';
       const mark = document.createElement('span');
       mark.className = 'mark';
