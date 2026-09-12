@@ -1,5 +1,6 @@
 .vscode/**
 src/**
+test/**
 scripts/**
 node_modules/**
 **/*.map

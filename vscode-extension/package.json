@@ -27,6 +27,7 @@
     "onLanguage:text2frame",
     "onView:text2frameCommands",
     "onView:text2frameExplorer",
+    "onView:text2frameDatabase",
     "workspaceContains:**/text/**/*.txt",
     "workspaceContains:**/data/Map*.json"
   ],
@@ -66,6 +67,11 @@
         "title": "Text2Frame: 会話のみ書き出し / Pull conversation only"
       },
       {
+        "command": "text2frame.showPreview",
+        "title": "Text2Frame: プレビューを横に開く / Open preview to the side",
+        "icon": "$(open-preview)"
+      },
+      {
         "command": "text2frame.showCompiledJson",
         "title": "Text2Frame: コンパイル結果を表示 / Show compiled JSON",
         "icon": "$(json)"
@@ -81,6 +87,20 @@
       {
         "command": "text2frame.repullOverwrite",
         "title": "Text2Frame: 全部取り直す(上書き) / Re-pull (overwrite)"
+      },
+      {
+        "command": "text2frame.db.insert",
+        "title": "Text2Frame: 番号を挿入 / Insert id"
+      },
+      {
+        "command": "text2frame.db.findUsages",
+        "title": "使っている箇所を探す / Find usages",
+        "icon": "$(search)"
+      },
+      {
+        "command": "text2frame.db.refresh",
+        "title": "Text2Frame: データベースを読み直す / Reload database",
+        "icon": "$(refresh)"
       },
       {
         "command": "text2frame.tree.refresh",
@@ -116,6 +136,10 @@
         {
           "id": "text2frameExplorer",
           "name": "Maps / Common Events"
+        },
+        {
+          "id": "text2frameDatabase",
+          "name": "データベース / Database"
         }
       ]
     },
@@ -130,12 +154,22 @@
           "command": "text2frame.exportCurrentFile",
           "when": "resourceLangId == text2frame || resourceExtname == .txt",
           "group": "navigation@2"
+        },
+        {
+          "command": "text2frame.showPreview",
+          "when": "resourceLangId == text2frame",
+          "group": "navigation@3"
         }
       ],
       "view/title": [
         {
           "command": "text2frame.tree.refresh",
           "when": "view == text2frameExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "text2frame.db.refresh",
+          "when": "view == text2frameDatabase",
           "group": "navigation"
         },
         {
@@ -157,9 +191,21 @@
       "commandPalette": [
         { "command": "text2frame.tree.deploy", "when": "false" },
         { "command": "text2frame.tree.export", "when": "false" },
-        { "command": "text2frame.tree.refresh", "when": "false" }
+        { "command": "text2frame.tree.refresh", "when": "false" },
+        { "command": "text2frame.db.insert", "when": "false" },
+        { "command": "text2frame.db.findUsages", "when": "false" }
       ],
       "view/item/context": [
+        {
+          "command": "text2frame.db.findUsages",
+          "when": "view == text2frameDatabase && viewItem == text2frame.dbEntry",
+          "group": "inline@1"
+        },
+        {
+          "command": "text2frame.db.findUsages",
+          "when": "view == text2frameDatabase && viewItem == text2frame.dbEntry",
+          "group": "1_find@1"
+        },
         {
           "command": "text2frame.tree.deploy",
           "when": "view == text2frameExplorer && (viewItem == text2frame.page || viewItem == text2frame.common)",
@@ -206,6 +252,11 @@
           "default": true,
           "description": "テキスト書き出し時、既定値と同じ顔・背景・位置のタグを書かない(3つとも既定ならタグ行ごと省く)。省いた所は反映時に既定値が補われるため、ゲームの見た目は変わりません。 / When exporting (data -> text), omit face/background/position tags that match the defaults (the whole tag line disappears when all three do). Apply fills the defaults back in, so the game is unchanged."
         },
+        "text2frame.showDatabaseNames": {
+          "type": "boolean",
+          "default": true,
+          "description": "スイッチ・変数・マップなどの番号の横に、ツクールのデータベースの名前を薄く表示する(ファイルには書き込みません)。 / Show RPG Maker database names next to switch / variable / map ids (display only; nothing is written to the file)."
+        },
         "text2frame.textBaseDir": {
           "type": "string",
           "default": "text",
@@ -230,7 +281,8 @@
     "bundle-compiler": "node ./scripts/bundle-compiler.js",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile",
-    "lint": "eslint src --ext ts"
+    "test": "node ../node_modules/mocha/bin/mocha.js test",
+    "lint": "eslint src test --ext ts,js"
   },
   "devDependencies": {
     "@types/node": "^20.x",

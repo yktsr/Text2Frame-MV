@@ -28,7 +28,7 @@ interface ApplyResult {
     errorLineText?: string;
 }
 
-interface T2FModule {
+export interface T2FModule {
     applyTextFile: (opts: { [key: string]: unknown }) => ApplyResult;
     compile?: (text: string) => unknown[];
 }
@@ -108,7 +108,7 @@ export function writeBackAndRefreshBase(
 }
 
 /** Locate and load the compiler module that exports applyTextFile(). */
-function loadCompiler(context: vscode.ExtensionContext, workspaceRoot: string | undefined): { mod?: T2FModule; tried: string[] } {
+export function loadCompiler(context: vscode.ExtensionContext, workspaceRoot: string | undefined): { mod?: T2FModule; tried: string[] } {
     return loadModule<T2FModule>(
         context,
         workspaceRoot,

@@ -5,6 +5,10 @@ import { deployAll, exportAll, repullAllOverwrite } from './batch';
 import { registerTreeView } from './tree';
 import { registerCommandsView } from './commandsView';
 import { parseFrontMatter } from './compiler';
+import { DatabaseService } from './dbService';
+import { registerDatabaseFeatures } from './dbFeatures';
+import { registerDatabaseView } from './dbView';
+import { registerPreview } from './preview';
 
 /**
  * Treat a .txt file that carries Text2Frame front matter as the `text2frame`
@@ -33,6 +37,14 @@ export function activate(context: vscode.ExtensionContext) {
     registerTreeView(context);
     // Activity Bar "Commands" panel (grouped, clickable actions).
     registerCommandsView(context);
+    // データベースの名前を見せる(名前の薄い表示・ホバー・警告・名前から入力)。
+    const database = new DatabaseService();
+    context.subscriptions.push(database);
+    registerDatabaseFeatures(context, database);
+    // サイドバーのデータベース一覧。
+    registerDatabaseView(context, database);
+    // 横のプレビュー(ツクールのイベント編集画面と同じ見た目)。
+    registerPreview(context, database);
 
     // Auto-assign the text2frame language to front-matter .txt files (open now + later).
     vscode.workspace.textDocuments.forEach(maybeAssignLanguage);

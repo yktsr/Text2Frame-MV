@@ -18,5 +18,12 @@
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/no-unused-vars": ["warn", { "args": "none", "varsIgnorePattern": "^_" }]
   },
+  "overrides": [
+    {
+      "files": ["test/**/*.js"],
+      "env": { "mocha": true },
+      "rules": { "@typescript-eslint/no-var-requires": "off" }
+    }
+  ],
   "ignorePatterns": ["out", "node_modules", "scripts"]
 }
