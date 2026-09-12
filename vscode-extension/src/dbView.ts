@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DatabaseService } from './dbService';
-import { workspaceRootFor } from './compiler';
 import { KINDS, DbKind, padId } from './db/database';
 import { scanLines } from './db/tagRefs';
 
@@ -75,9 +74,9 @@ async function insertId(node: Node): Promise<void> {
 
 async function findUsages(node: Node, service: DatabaseService): Promise<void> {
     if (node.type !== 'entry') return;
-    const root = workspaceRootFor(targetEditor()?.document);
-    const ctx = root ? service.forRoot(root) : undefined;
-    if (!root || !ctx) return;
+    const ctx = service.forDocument(targetEditor()?.document);
+    if (!ctx) return;
+    const root = ctx.root;
     const textBase = vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text') || 'text';
     const files = await vscode.workspace.findFiles(new vscode.RelativePattern(vscode.Uri.file(path.join(root, textBase)), '**/*.{txt,t2f,text2frame}'));
 

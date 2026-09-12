@@ -33,13 +33,40 @@ export interface RefInfo {
 /** 範囲指定(1-10)でホバーに並べる上限。多すぎる範囲は残りを件数だけ出す。 */
 const RANGE_LINES = 10;
 
-export interface FaceLookup {
+/** データベースの外にある手がかり。分からないものは渡さない(そのぶん確かめずに済ませる)。 */
+export interface Lookups {
     /** 顔画像がプロジェクトにあるか。 */
-    exists: (faceName: string) => boolean;
+    exists?: (faceName: string) => boolean;
+    /** テキストのマップにあるイベント。 */
+    events?: EventLookup;
+    /** アイコン画像(IconSet)にあるアイコンの数。 */
+    iconCount?: number;
 }
 
-export function describeRef(db: GameDatabase, ref: RefLike, faces?: FaceLookup): RefInfo {
-    if (ref.kind === 'face') return describeFace(db, ref, faces);
+/** マップ上のイベント1つ。 */
+export interface MapEvent {
+    /** 名前が無ければ空文字。 */
+    name: string;
+    x: number;
+    y: number;
+}
+
+/** テキストのマップにあるイベント。コモンイベントのテキストなど、マップが決まらなければ渡さない。 */
+export interface EventLookup {
+    mapId: number;
+    /** 添字がイベント ID。無いイベントは null か undefined。 */
+    events: Array<MapEvent | null | undefined>;
+}
+
+/** 「ヤドカリ (8,11)」。どのイベントか、名前と置いてある座標で分かるように。 */
+export function eventLabel(e: MapEvent): string {
+    return `${e.name || '(名前なし)'} (${e.x},${e.y})`;
+}
+
+export function describeRef(db: GameDatabase, ref: RefLike, lookups: Lookups = {}): RefInfo {
+    if (ref.kind === 'face') return describeFace(db, ref, lookups);
+    if (ref.kind === 'event') return describeEvent(db, ref, lookups.events);
+    if (ref.kind === 'icon') return describeIcon(db, ref, lookups.iconCount);
     const kind = ref.kind as DbKind;
     const label = db.label(kind);
     const last = ref.endId !== undefined && ref.endId > ref.id ? ref.endId : ref.id;
@@ -86,20 +113,56 @@ function describeOne(db: GameDatabase, kind: DbKind, id: number): RefInfo {
     return { hint: r.name, title, lines };
 }
 
-function describeFace(db: GameDatabase, ref: RefLike, faces?: FaceLookup): RefInfo {
+function describeFace(db: GameDatabase, ref: RefLike, faces: Lookups): RefInfo {
     const name = ref.faceName || '';
     const title = `顔 ${name} の ${ref.id}番`;
     if (ref.id < 0 || ref.id >= FACE_COLUMNS * FACE_ROWS) {
         const message = `顔の番号は 0〜${FACE_COLUMNS * FACE_ROWS - 1} です(${ref.id})`;
         return { title, lines: [message], problem: { severity: 'warning', message } };
     }
-    if (faces && !faces.exists(name)) {
+    if (faces.exists && !faces.exists(name)) {
         const message = `顔画像 ${name} が img/faces にありません`;
         return { title, lines: [message], problem: { severity: 'warning', message } };
     }
     const owner = db.faceOwner(name, ref.id);
     // 顔は文字で出しても意味が無いので hint は付けない(ホバーとプレビューで画像を出す)。
     return { title, lines: owner ? [`${owner} の既定の顔`] : [] };
+}
+
+/** アイコンを使っているデータベースの項目を、ホバーに並べる上限。 */
+const ICON_USER_LINES = 5;
+
+function describeIcon(db: GameDatabase, ref: RefLike, iconCount?: number): RefInfo {
+    const title = `アイコン ${ref.id}`;
+    if (iconCount !== undefined && (ref.id < 0 || ref.id >= iconCount)) {
+        const message = iconCount
+            ? `アイコン ${ref.id} はアイコン画像(IconSet)にありません(0〜${iconCount - 1})`
+            : 'アイコン画像(img/system/IconSet)がありません';
+        return { title, lines: [message], problem: { severity: 'warning', message } };
+    }
+    // 画像はホバーで出す。文字では、そのアイコンを使っている項目を添える。
+    const users = db.iconUsers(ref.id);
+    const lines = users.slice(0, ICON_USER_LINES).map((u) => `${db.label(u.kind)} ${padId(u.id)} ${u.name || '(名前なし)'}`);
+    if (users.length > ICON_USER_LINES) lines.push(`…ほか ${users.length - ICON_USER_LINES}件`);
+    return { title, lines };
+}
+
+/** イベントはツクールと同じく EV015 の形で出す。 */
+export function eventId(id: number): string {
+    return 'EV' + String(id).padStart(3, '0');
+}
+
+function describeEvent(db: GameDatabase, ref: RefLike, events?: EventLookup): RefInfo {
+    const title = `イベント ${eventId(ref.id)}`;
+    if (!events) return { title, lines: ['このテキストのマップが決まらないので、イベントの名前は出せません'] };
+    const map = db.lookup('map', events.mapId);
+    const mapText = `マップ ${padId(events.mapId)}${map.status === 'named' ? ' ' + map.name : ''}`;
+    const e = events.events[ref.id];
+    if (!e) {
+        const message = `イベント ${eventId(ref.id)} は${mapText}にありません`;
+        return { title, lines: [message], problem: { severity: 'warning', message } };
+    }
+    return { hint: eventLabel(e), title, lines: [e.name || '(名前なし)', `座標 (${e.x},${e.y})`, mapText] };
 }
 
 function nameOf(r: ReturnType<GameDatabase['lookup']>): string {

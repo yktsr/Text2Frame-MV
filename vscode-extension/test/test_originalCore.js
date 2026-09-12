@@ -3,6 +3,7 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 const { restoreAsset } = require('../out/db/originalCore')
+const { readAudio } = require('../out/db/audio')
 
 const KEY = '0123456789abcdef0123456789abcdef'
 const MZ_CORE = [
@@ -49,6 +50,17 @@ describe('originalCore', function () {
   it('gives nothing when the script does not have it', function () {
     fs.writeFileSync(path.join(game, 'js', 'rmmz_core.js'), 'function Other() {}\n')
     expect(restoreAsset(game, data, KEY)).to.equal(undefined)
+  })
+
+  it('reads audio the same way', function () {
+    fs.writeFileSync(path.join(game, 'js', 'rmmz_core.js'), MZ_CORE)
+    fs.mkdirSync(path.join(game, 'audio', 'se'), { recursive: true })
+    const ogg = Buffer.concat([Buffer.from('OggS'), Buffer.alloc(8)])
+    fs.writeFileSync(path.join(game, 'audio', 'se', 'Door4.ogg_'), Buffer.concat([Buffer.alloc(16), ogg]))
+    const audio = readAudio(path.join(game, 'audio'), 'se', 'Door4', KEY)
+    expect(audio.mime).to.equal('audio/ogg')
+    expect(audio.data.equals(ogg)).to.equal(true)
+    expect(readAudio(path.join(game, 'audio'), 'se', 'Door4')).to.equal(undefined)
   })
 
   it('works with a real game', function () {

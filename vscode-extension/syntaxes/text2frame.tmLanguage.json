@@ -21,7 +21,7 @@
       "patterns": [
         {
           "name": "comment.line.percent.text2frame",
-          "match": "^%.*$"
+          "match": "^ *%.*$"
         }
       ]
     },
@@ -29,14 +29,9 @@
       "patterns": [
         {
           "name": "comment.block.text2frame",
-          "begin": "<(?i:comment|注釈)>",
-          "end": "</(?i:comment|注釈)>",
-          "patterns": [
-            {
-              "name": "comment.block.content.text2frame",
-              "match": ".*"
-            }
-          ]
+          "begin": "<(?i:comment|co|注釈)>",
+          "end": "</(?i:comment|co|注釈)>",
+          "contentName": "comment.block.content.text2frame"
         }
       ]
     },
@@ -44,7 +39,7 @@
       "patterns": [
         {
           "name": "meta.tag.text2frame",
-          "match": "<(Face|顔|FC|WindowPosition|位置|WP|Background|背景|BG|Name):\\s*([^>]+)>",
+          "match": "<((?i:windowposition|background|face|name|BG|FC|NM|WP|位置|名前|背景|顔))\\s*:\\s*([^>]*)>",
           "captures": {
             "1": {
               "name": "keyword.control.text2frame"
@@ -56,7 +51,7 @@
         },
         {
           "name": "meta.tag.event.text2frame",
-          "match": "<(ShowChoices|When|WhenCancel|End|InputNumber|SelectItem|ShowScrollingText|Switch|Set|Add|Sub|Mul|Div|Mod|SelfSwitch|Timer|If|Else|Loop|RepeatAbove|BreakLoop|ExitEventProcessing|CommonEvent|Label|JumpToLabel|ChangeGold|ChangeItems|ChangeWeapons|ChangeArmors|ChangePartyMember|ChangeHp|ChangeMp|ChangeTp|ChangeState|RecoverAll|ChangeExp|ChangeLevel|ChangeParameter|ChangeSkill|ChangeEquipment|ChangeName|ChangeClass|ChangeNickname|ChangeProfile|TransferPlayer|SetVehicleLocation|SetEventLocation|ScrollMap|SetMovementRoute|GetOnOffVehicle|ChangeTransparency|ChangePlayerFollowers|GatherFollowers|ShowAnimation|ShowBalloonIcon|EraseEvent|ShowPicture|MovePicture|RotatePicture|TintPicture|ErasePicture|wait|fadeout|fadein|TintScreen|FlashScreen|ShakeScreen|SetWeatherEffect|PlayBGM|FadeoutBGM|SaveBGM|ReplayBGM|PlayBGS|FadeoutBGS|PlayME|PlaySE|StopSE|PlayMovie|BattleProcessing|IfWin|IfEscape|IfLose|ShopProcessing|Merchandise|NameInputProcessing|OpenMenuScreen|OpenSaveScreen|GameOver|ReturnToTitleScreen|ChangeBattleBGM|ChangeVictoryMe|ChangeDefeatMe|ChangeVehicleBgm|ChangeSaveAccess|ChangeMenuAccess|ChangeEncounter|ChangeFormationAccess|ChangeWindowColor|ChangeActorImages|ChangeVehicleImage|ChangeMapNameDisplay|ChangeTileset|ChangeBattleBackGround|ChangeParallax|GetLocationInfo|ChangeEnemyHp|ChangeEnemyMp|ChangeEnemyTp|ChangeEnemyState|EnemyRecoverAll|EnemyAppear|EnemyTransform|ShowBattleAnimation|ForceAction|AbortBattle|script|plugincommand|PluginCommandMZ|Jump|McWait|SwitchOn|ChangeSpeed|ChangeImage|ChangeOpacity|ChangeBlendMode|McPlaySe|McScript)(?::\\s*([^>]+))?>",
+          "match": "<((?i:ChangeBattleBackGround|ChangeFormationAccess|ChangePlayerFollowers|ChangeMapNameDisplay|SteppingAnimationOff|ExitEventProcessing|NameInputProcessing|ReturnToTitleScreen|ShowBattleAnimation|SteppingAnimationOn|WalkingAnimationOff|ChangeTransparency|ChangeVehicleImage|MoveAwayFromPlayer|SetVehicleLocation|TurnAwayFromPlayer|WalkingAnimationOn|ChangeActorImages|ChangePartyMember|ChangeWindowColor|ShowScrollingText|Turn90RightorLeft|BattleProcessing|ChangeEnemyState|ChangeMenuAccess|ChangeSaveAccess|ChangeVehicleBgm|MoveTowardPlayer|SetEventLocation|SetMovementRoute|SetWeatherEffect|TurnTowardPlayer|ChangeBlendMode|ChangeEncounter|ChangeEquipment|ChangeFrequency|ChangeParameter|ChangeVictoryMe|DirectionFixOff|EnemyRecoverAll|GatherFollowers|GetLocationInfo|GetOnOffVehicle|OneStepBackward|ShowBalloonIcon|changebattlebgm|plugincommandmz|ChangeDefeatMe|ChangeNickname|ChangeParallax|DirectionFixOn|EnemyTransform|MoveLowerRight|MoveUpperRight|OneStepForward|OpenMenuScreen|OpenSaveScreen|ShopProcessing|TransferPlayer|TransparentOff|ChangeEnemyHp|ChangeEnemyMp|ChangeEnemyTp|ChangeOpacity|ChangeProfile|ChangeTileset|ChangeWeapons|MoveLowerLeft|MoveUpperLeft|ShowAnimation|TransparentOn|plugincommand|rotatepicture|ChangeArmors|MoveAtRandom|TurnAtRandom|erasepicture|戦闘アニメーションの表示|AbortBattle|BGMのフェードアウト|BGSのフェードアウト|ChangeClass|ChangeImage|ChangeItems|ChangeLevel|ChangeSkill|ChangeSpeed|ChangeState|EnemyAppear|FlashScreen|ForceAction|InputNumber|Merchandise|ShakeScreen|ShowChoices|Turn90Right|commonevent|jumptolabel|movepicture|repeatabove|showpicture|tintpicture|ウィンドウカラーの変更|エンカウント禁止の変更|フキダシアイコンの表示|プラグインコマンドmz|プレイヤーから遠ざかる|敵キャラのステート変更|移動コマンドSEの演奏|移動コマンドスクリプト|ChangeGold|ChangeName|EraseEvent|RecoverAll|SelectItem|ThroughOff|TintScreen|Turn90Left|WhenCancel|fadeoutbgm|fadeoutbgs|selfswitch|アニメーションの表示|プレイヤーの方を向く|プレイヤーの逆を向く|文章のスクロール表示|移動コマンドウェイト|ChangeExp|MoveRight|PlayMovie|ScrollMap|SwitchOff|ThroughOn|TurnRight|breakloop|replaybgm|アイテム選択の処理|アクターの画像変更|イベントの一時消去|イベントの位置設定|イベント処理の中断|タイトル画面に戻す|タイルセットの変更|ピクチャの色調変更|プラグインコマンド|プレイヤーに近づく|プロフィールの変更|マップのスクロール|マップ名表示の変更|メニュー画面を開く|メニュー禁止の変更|メンバーの入れ替え|ランダムに方向転換|並び変え禁止の変更|乗り物BGMの変更|右か左に90度回転|指定位置の情報取得|敵キャラのHP増減|敵キャラのMP増減|敵キャラのTP増減|足踏みアニメOFF|隊列メンバーの集合|ChangeHp|ChangeMp|ChangeTp|GameOver|IfEscape|McPlaySe|McScript|MoveDown|MoveLeft|SwitchOn|TurnDown|TurnLeft|キャンセルのとき|セーブ画面を開く|セーブ禁止の変更|乗り物の位置設定|乗り物の画像変更|敵キャラの全回復|歩行アニメOFF|画面のフラッシュ|移動ルートの設定|足踏みアニメON|Turn180|fadeout|playbgm|playbgs|savebgm|skipend|stopbgm|stopbgs|すり抜けOFF|それ以外のとき|アイテムの増減|ゲームオーバー|コモンイベント|ショップの処理|スイッチOFF|ステートの変更|セルフスイッチ|ピクチャの回転|ピクチャの消去|ピクチャの移動|ピクチャの表示|フェードアウト|ムービーの再生|ラベルジャンプ|ランダムに移動|不透明度の変更|勝利MEの変更|右に90度回転|合成方法の変更|名前入力の処理|向き固定OFF|左に90度回転|戦闘背景の変更|戦闘行動の強制|敗北MEの変更|数値入力の処理|敵キャラの出現|敵キャラの変身|歩行アニメON|画面のシェイク|画面の色調変更|移動速度の変更|移動頻度の変更|透明状態の変更|隊列歩行の変更|180度回転|BGMの保存|BGMの停止|BGMの再開|BGMの演奏|BGSの停止|BGSの演奏|IfLose|McWait|MoveUp|TurnUp|fadein|playme|playse|script|stopme|stopse|switch|すり抜けON|スイッチON|スキップ終了|スキルの増減|バトルの中断|フェードイン|ループの中断|レベルの増減|乗り物の乗降|二つ名の変更|以上繰り返し|向き固定ON|戦闘曲の変更|所持金の増減|経験値の増減|能力値の増減|透明化OFF|選択肢の表示|HPの増減|IfWin|MEの停止|MEの演奏|MPの増減|SEの停止|SEの演奏|TPの増減|label|timer|スクリプト|勝ったとき|右上に移動|右下に移動|名前の変更|天候の設定|左上に移動|左下に移動|戦闘の処理|武器の増減|画像の変更|職業の変更|装備の変更|負けたとき|逃げたとき|透明化ON|遠景の変更|防具の増減|Jump|When|else|loop|skip|wait|ウェイト|ジャンプ|スイッチ|スキップ|タイマー|一歩前進|一歩後退|上に移動|上を向く|下に移動|下を向く|分岐終了|右に移動|右を向く|場所移動|左に移動|左を向く|条件分岐|EEP|INN|PCZ|SHC|add|div|end|jtl|mod|mul|set|sst|ssw|sub|ラベル|ループ|全回復|選択肢|BL|CE|FI|FO|MP|PC|RP|SI|SP|TP|br|ep|if|ra|sc|sw|乗算|代入|剰余|加算|商品|減算|除算|%|\\*|\\+|-|\\/|=))(?:\\s*:\\s*([^>]*))?>",
           "captures": {
             "1": {
               "name": "entity.name.function.text2frame"
@@ -88,7 +83,7 @@
         },
         {
           "name": "meta.tag.closing.text2frame",
-          "match": "</(comment|script|ShowScrollingText)>",
+          "match": "</(?i:ShowScrollingText|文章のスクロール表示|comment|script|スクリプト|sst|co|sc|注釈)>",
           "captures": {
             "0": {
               "name": "entity.name.tag.text2frame"
@@ -101,7 +96,7 @@
       "patterns": [
         {
           "name": "string.unquoted.text2frame",
-          "match": "^[^%<].*$"
+          "match": "^(?! *%|[ \\t]*<).*$"
         }
       ]
     }

@@ -2,10 +2,11 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { DatabaseService } from './dbService';
 import { loadCompiler } from './deploy';
-import { workspaceRootFor, frontMatterBody } from './compiler';
+import { workspaceRootFor, frontMatterBody, parseFrontMatter } from './compiler';
 import { renderCommands, PreviewRow } from './db/commandView';
 import { RpgCommand } from './db/commandRefs';
 import { previewHtml, FACE_SIZE } from './previewHtml';
+import { readAudio, AUDIO_FOLDERS, AudioFolder } from './db/audio';
 
 /**
  * 横のプレビュー。テキストをコンパイルし、ツクールのイベント編集画面と同じ見た目で並べる。
@@ -29,16 +30,22 @@ interface RenderMessage {
     notice?: string;
 }
 
+type AudioMessage =
+    | { type: 'audio'; id: number; mime: string; data: string }
+    | { type: 'audioError'; id: number; message: string };
+
 export function registerPreview(context: vscode.ExtensionContext, service: DatabaseService): void {
     let panel: vscode.WebviewPanel | undefined;
     let current: vscode.TextDocument | undefined;
     let timer: NodeJS.Timeout | undefined;
     let lastGood: RenderMessage | undefined;
+    /** 表示中の行の対応が、今のテキストと合っていない(編集した直後・コンパイルできない間)。 */
+    let stale = false;
 
     const render = (document: vscode.TextDocument): void => {
         if (!panel) return;
         const root = workspaceRootFor(document);
-        const ctx = root ? service.forRoot(root) : undefined;
+        const ctx = service.forDocument(document);
         const title = path.basename(document.fileName);
         panel.title = `プレビュー: ${title}`;
         const { mod } = loadCompiler(context, root);
@@ -61,12 +68,19 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
             }
         } catch (e) {
             const error = e instanceof Error ? e.message.split('\n').slice(0, 2).join(' ') : String(e);
-            // 最後に通った結果は残す(打っている途中で毎回真っ白にならないように)。
-            const base: RenderMessage = lastGood || { type: 'render', title, rows: [], faces: {} };
+            // 最後に通った結果は残す(打っている途中で毎回真っ白にならないように)。ただし行の対応は外す。
+            // 通ったあとに行を足したり消したりしていれば、古い対応では強調やクリックが別の行を指してしまう。
+            const base: RenderMessage = lastGood ? { ...lastGood, lines: undefined } : { type: 'render', title, rows: [], faces: {} };
+            stale = true;
             post({ ...base, error });
+            post({ type: 'highlight', indices: [] });
             return;
         }
-        const rows = renderCommands(commands, ctx?.db);
+        // マップのイベントのテキストなら、キャラクターの番号にイベントの名前と座標を添える。
+        const meta = parseFrontMatter(document.getText()).meta;
+        const mapId = meta.kind === 'common' ? NaN : parseInt(meta.mapId, 10);
+        const events = ctx && Number.isInteger(mapId) ? service.mapEvents(ctx, mapId) : undefined;
+        const rows = renderCommands(commands, ctx?.db, events ? { mapId, events } : undefined);
         const faces: { [key: string]: string } = {};
         if (ctx) {
             for (const r of rows) {
@@ -78,18 +92,35 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
         }
         const notice = ctx ? undefined : 'データベース(data/System.json)が見つからないため、名前と顔画像は出せません。';
         lastGood = { type: 'render', title, rows, lines, faces, notice };
+        stale = false;
         post(lastGood);
         highlight();
     };
 
-    const post = (message: RenderMessage | { type: 'highlight'; indices: number[] }): void => {
+    const post = (message: RenderMessage | { type: 'highlight'; indices: number[] } | AudioMessage): void => {
         panel?.webview.postMessage(message);
+    };
+
+    const play = (id: number, folder: string, name: string): void => {
+        const ctx = current ? service.forDocument(current) : undefined;
+        if (!ctx) {
+            post({ type: 'audioError', id, message: 'データベース(data/System.json)が見つからないので、音声の置き場が分かりません。' });
+            return;
+        }
+        const audio = AUDIO_FOLDERS.includes(folder as AudioFolder)
+            ? readAudio(path.join(path.dirname(ctx.dataDir), 'audio'), folder as AudioFolder, name, ctx.db.system.encryptionKey)
+            : undefined;
+        if (!audio) {
+            post({ type: 'audioError', id, message: `audio/${folder}/${name} が見つかりません(読めません)。` });
+            return;
+        }
+        post({ type: 'audio', id, mime: audio.mime, data: audio.data.toString('base64') });
     };
 
     /* エディタのカーソル行に対応するコマンドを強調する。その行からコマンドが出ていなければ
      * (見出しだけの行やブロックの途中など)、手前でいちばん近い行のコマンドにする。 */
     const highlight = (): void => {
-        const lines = lastGood?.lines;
+        const lines = stale ? undefined : lastGood?.lines;
         const editor = vscode.window.visibleTextEditors.find((e) => e.document === current);
         if (!panel || !lines || !editor) return;
         const cursor = editor.selection.active.line;
@@ -102,7 +133,7 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
 
     /* プレビューの行をクリックしたら、その行を出したテキストの行へ飛ぶ。 */
     const reveal = async (line: number): Promise<void> => {
-        if (!current) return;
+        if (!current || stale) return; // 行の対応が古い間は飛ばない(別の行へ飛んでしまう)
         const editor = vscode.window.visibleTextEditors.find((e) => e.document === current);
         const range = new vscode.Range(line, 0, line, 0);
         await vscode.window.showTextDocument(current, { viewColumn: editor?.viewColumn ?? vscode.ViewColumn.One, selection: range });
@@ -136,14 +167,22 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
             localResourceRoots: []
         });
         panel.webview.html = previewHtml();
-        panel.webview.onDidReceiveMessage((m) => { if (m && m.type === 'reveal' && typeof m.line === 'number') reveal(m.line); }, null, context.subscriptions);
+        panel.webview.onDidReceiveMessage((m) => {
+            if (m && m.type === 'reveal' && typeof m.line === 'number') reveal(m.line);
+            if (m && m.type === 'play' && typeof m.id === 'number' && typeof m.folder === 'string' && typeof m.name === 'string') play(m.id, m.folder, m.name);
+        }, null, context.subscriptions);
         panel.onDidDispose(() => { panel = undefined; current = undefined; lastGood = undefined; }, null, context.subscriptions);
         show(editor.document);
     };
 
     context.subscriptions.push(
         vscode.commands.registerCommand('text2frame.showPreview', open),
-        vscode.workspace.onDidChangeTextDocument((e) => { if (panel && current && e.document === current) renderSoon(e.document); }),
+        vscode.workspace.onDidChangeTextDocument((e) => {
+            if (!panel || !current || e.document !== current) return;
+            // 描き直すまでは行の対応が古い。その間にカーソルが動いても強調しない。
+            stale = true;
+            renderSoon(e.document);
+        }),
         vscode.window.onDidChangeActiveTextEditor((e) => {
             if (panel && e && e.document.languageId === 'text2frame' && e.document !== current) show(e.document);
         }),

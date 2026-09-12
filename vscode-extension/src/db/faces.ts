@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { Rgba, crop, shrink, encodePng } from './png';
 import { restoreAsset } from './originalCore';
 
 /**
@@ -10,6 +11,8 @@ import { restoreAsset } from './originalCore';
 
 export const FACE_COLUMNS = 4;
 export const FACE_ROWS = 2;
+/** アイコン画像(img/system/IconSet)は横16個。縦は画像の高さで決まる。 */
+export const ICON_COLUMNS = 16;
 const ENCRYPTED_EXTENSIONS = ['.png_', '.rpgmvp'];
 
 export interface Cell {
@@ -31,7 +34,16 @@ function isPng(buf: Buffer): boolean {
 
 /** 顔画像1枚を PNG として読む。見つからない・読めないときは undefined。 */
 export function readFaceSheet(imgDir: string, faceName: string, encryptionKey?: string): Buffer | undefined {
-    const base = path.join(imgDir, 'faces', faceName);
+    return readImage(imgDir, path.join('faces', faceName), encryptionKey);
+}
+
+/** アイコン画像(img/system/IconSet)を PNG として読む。 */
+export function readIconSheet(imgDir: string, encryptionKey?: string): Buffer | undefined {
+    return readImage(imgDir, path.join('system', 'IconSet'), encryptionKey);
+}
+
+function readImage(imgDir: string, name: string, encryptionKey?: string): Buffer | undefined {
+    const base = path.join(imgDir, name);
     const plain = base + '.png';
     if (fs.existsSync(plain)) return fs.readFileSync(plain);
     if (!encryptionKey) return undefined;
@@ -57,24 +69,30 @@ export function listFaceNames(imgDir: string): string[] {
     return Array.from(names).sort();
 }
 
-/** PNG の幅と高さ(IHDR)。 */
-export function pngSize(png: Buffer): { width: number; height: number } | undefined {
-    if (!isPng(png) || png.length < 24) return undefined;
-    return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
+/**
+ * 1コマだけを切り出し、displaySize 四方に縮めた PNG を返す。番号がはみ出していれば undefined。
+ * ホバー・補完・プレビューに data URI で貼る。顔画像1枚をまるごと貼ると data URI が
+ * 数十万文字を超え、VS Code のホバーが途中で切ってしまうため、ここで小さくしておく。
+ */
+export function cropFace(sheet: Rgba, index: number, faceSize: number, displaySize = 96): Buffer | undefined {
+    const cell = faceCell(index, faceSize);
+    if (!cell) return undefined;
+    return encodePng(shrink(crop(sheet, cell.x, cell.y, cell.size, cell.size), displaySize, displaySize));
 }
 
-/**
- * 1コマだけを見せる SVG を data URI で返す。画像を切り抜く処理を持たずに済むよう、
- * 顔画像全体を埋め込んで viewBox で1コマに絞る。ホバー(Markdown)にもそのまま貼れる。
- */
-export function faceSvgDataUri(png: Buffer, index: number, faceSize: number, displaySize = 96): string | undefined {
-    const cell = faceCell(index, faceSize);
-    const size = pngSize(png);
-    if (!cell || !size) return undefined;
-    const href = 'data:image/png;base64,' + png.toString('base64');
-    const svg =
-        `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ` +
-        `width="${displaySize}" height="${displaySize}" viewBox="${cell.x} ${cell.y} ${cell.size} ${cell.size}">` +
-        `<image width="${size.width}" height="${size.height}" href="${href}" xlink:href="${href}"/></svg>`;
-    return 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64');
+/** アイコンの数(画像の大きさから)。 */
+export function iconCount(sheet: Rgba, iconSize: number): number {
+    return Math.floor(sheet.width / iconSize) >= ICON_COLUMNS ? ICON_COLUMNS * Math.floor(sheet.height / iconSize) : 0;
+}
+
+/** アイコン1つを切り出して displaySize 四方にした PNG。番号が画像の外なら undefined。 */
+export function cropIcon(sheet: Rgba, index: number, iconSize: number, displaySize = iconSize): Buffer | undefined {
+    if (!Number.isInteger(index) || index < 0 || index >= iconCount(sheet, iconSize)) return undefined;
+    const x = (index % ICON_COLUMNS) * iconSize;
+    const y = Math.floor(index / ICON_COLUMNS) * iconSize;
+    return encodePng(shrink(crop(sheet, x, y, iconSize, iconSize), displaySize, displaySize));
+}
+
+export function pngDataUri(png: Buffer): string {
+    return 'data:image/png;base64,' + png.toString('base64');
 }

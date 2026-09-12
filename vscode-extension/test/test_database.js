@@ -66,10 +66,29 @@ describe('GameDatabase', function () {
     expect(db.max('variable')).to.equal(2)
   })
 
-  it('reads the face size and key from System.json, and 144 when absent (MV)', function () {
-    expect(GameDatabase.load(dir).system).to.eql({ faceSize: 120, encryptionKey: '00112233445566778899aabbccddeeff' })
-    write('System.json', { switches: [], variables: [] })
-    expect(GameDatabase.load(dir).system).to.eql({ faceSize: 144, encryptionKey: undefined })
+  it('reads the face and icon sizes and key from System.json, and 144 / 32 when absent (MV)', function () {
+    expect(GameDatabase.load(dir).system).to.eql({ faceSize: 120, iconSize: 32, encryptionKey: '00112233445566778899aabbccddeeff' })
+    write('System.json', { switches: [], variables: [], iconSize: 48 })
+    expect(GameDatabase.load(dir).system).to.eql({ faceSize: 144, iconSize: 48, encryptionKey: undefined })
+  })
+
+  it('reads classes, equipment types and tilesets', function () {
+    write('System.json', { switches: [], variables: [], equipTypes: ['', '武器', '盾'] })
+    write('Classes.json', [null, { id: 1, name: '勇者' }])
+    write('Tilesets.json', [null, { id: 1, name: 'フィールド' }])
+    const db = GameDatabase.load(dir)
+    expect(db.lookup('class', 1)).to.eql({ status: 'named', id: 1, name: '勇者' })
+    expect(db.lookup('equipType', 2)).to.eql({ status: 'named', id: 2, name: '盾' })
+    expect(db.lookup('tileset', 1)).to.eql({ status: 'named', id: 1, name: 'フィールド' })
+  })
+
+  it('knows which items, skills and states use an icon', function () {
+    write('Items.json', [null, { id: 1, name: '薬草', iconIndex: 176 }, { id: 2, name: '毒消し', iconIndex: 176 }])
+    write('Skills.json', [null, { id: 1, name: '攻撃', iconIndex: 76 }])
+    const db = GameDatabase.load(dir)
+    expect(db.iconUsers(176).map((u) => u.kind + ':' + u.name)).to.eql(['item:薬草', 'item:毒消し'])
+    expect(db.iconUsers(76)).to.eql([{ kind: 'skill', id: 1, name: '攻撃' }])
+    expect(db.iconUsers(5)).to.eql([])
   })
 
   it('names the actor whose default face it is', function () {

@@ -72,6 +72,21 @@
         "icon": "$(open-preview)"
       },
       {
+        "command": "text2frame.testPlay",
+        "title": "Text2Frame: テストプレイ(VS Code の中で) / Test play inside VS Code",
+        "icon": "$(play)"
+      },
+      {
+        "command": "text2frame.testPlayExternal",
+        "title": "Text2Frame: テストプレイ(外のブラウザで) / Test play in an external browser",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "text2frame.stopTestPlay",
+        "title": "Text2Frame: テストプレイのサーバーを止める / Stop the test play server",
+        "icon": "$(debug-stop)"
+      },
+      {
         "command": "text2frame.showCompiledJson",
         "title": "Text2Frame: コンパイル結果を表示 / Show compiled JSON",
         "icon": "$(json)"
@@ -252,6 +267,11 @@
           "default": true,
           "description": "テキスト書き出し時、既定値と同じ顔・背景・位置のタグを書かない(3つとも既定ならタグ行ごと省く)。省いた所は反映時に既定値が補われるため、ゲームの見た目は変わりません。 / When exporting (data -> text), omit face/background/position tags that match the defaults (the whole tag line disappears when all three do). Apply fills the defaults back in, so the game is unchanged."
         },
+        "text2frame.testPlayPage": {
+          "type": "string",
+          "default": "",
+          "description": "テストプレイで開くページ(ゲームのフォルダからの相対パス)。空なら index.html。FOSSIL プラグインが書き出した FOSSILindex.html があればそちらを開きます(ブラウザでは FOSSIL が index.html から書き出せないため)。 / The page to open for test play, relative to the game folder. Empty means index.html, or FOSSILindex.html when the FOSSIL plugin has written one (FOSSIL cannot write it from index.html inside a browser)."
+        },
         "text2frame.showDatabaseNames": {
           "type": "boolean",
           "default": true,
@@ -279,6 +299,7 @@
     "vscode:prepublish": "npm run compile && npm run bundle-compiler",
     "compile": "tsc -p ./",
     "bundle-compiler": "node ./scripts/bundle-compiler.js",
+    "update-grammar": "node ./scripts/update-grammar.js",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile",
     "test": "node ../node_modules/mocha/bin/mocha.js test",

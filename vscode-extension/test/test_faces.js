@@ -90,11 +90,51 @@ describe('faces', function () {
     })
   })
 
-  it('crops one face with an SVG viewBox', function () {
-    const uri = faces.faceSvgDataUri(fakePng(576, 288), 5, 144, 96)
-    const svg = Buffer.from(uri.replace('data:image/svg+xml;base64,', ''), 'base64').toString('utf8')
-    expect(svg).to.contain('viewBox="144 144 144 144"')
-    expect(svg).to.contain('width="576" height="288"')
-    expect(faces.faceSvgDataUri(fakePng(576, 288), 9, 144)).to.equal(undefined)
+  // 1コマだけの小さな PNG にする。顔画像1枚をまるごと貼るとホバーの長さの上限を超える。
+  it('crops one face into a small PNG', function () {
+    const { encodePng, decodePng } = require('../out/db/png')
+    // 8コマをそれぞれ別の色で塗った顔画像(1コマ 4px)。
+    const w = 16; const h = 8; const data = Buffer.alloc(w * h * 4)
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const cell = Math.floor(y / 4) * 4 + Math.floor(x / 4)
+        data.set([cell * 30, 0, 0, 255], (y * w + x) * 4)
+      }
+    }
+    const sheet = decodePng(encodePng({ width: w, height: h, data }))
+    const face = decodePng(faces.cropFace(sheet, 5, 4, 2))
+    expect([face.width, face.height]).to.eql([2, 2])
+    expect(Array.from(face.data.subarray(0, 4))).to.eql([150, 0, 0, 255])
+    expect(faces.cropFace(sheet, 8, 4)).to.equal(undefined)
+    expect(faces.pngDataUri(Buffer.from([1, 2]))).to.equal('data:image/png;base64,AQI=')
+  })
+
+  it('crops one icon, sixteen across', function () {
+    const { encodePng, decodePng } = require('../out/db/png')
+    // 1個 2px のアイコンが横16個・縦2段。番号 n を赤 n で塗る。
+    const size = 2; const w = 16 * size; const h = 2 * size; const data = Buffer.alloc(w * h * 4)
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) data.set([Math.floor(y / size) * 16 + Math.floor(x / size), 0, 0, 255], (y * w + x) * 4)
+    }
+    const sheet = decodePng(encodePng({ width: w, height: h, data }))
+    expect(faces.iconCount(sheet, size)).to.equal(32)
+    const icon = decodePng(faces.cropIcon(sheet, 19, size))
+    expect([icon.width, icon.height, icon.data[0]]).to.eql([2, 2, 19])
+    expect(faces.cropIcon(sheet, 32, size)).to.equal(undefined)
+  })
+
+  it('reads the icon sheet from img/system', function () {
+    const game = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-icon-'))
+    try {
+      const img = path.join(game, 'img')
+      fs.mkdirSync(path.join(img, 'system'), { recursive: true })
+      const png = fakePng(32, 32)
+      fs.writeFileSync(path.join(img, 'system', 'IconSet.png_'), packed(png))
+      withCore(img)
+      expect(faces.readIconSheet(img, KEY).equals(png)).to.equal(true)
+      expect(faces.readIconSheet(img)).to.equal(undefined)
+    } finally {
+      fs.rmSync(game, { recursive: true, force: true })
+    }
   })
 })

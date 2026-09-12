@@ -9,6 +9,8 @@ import { DatabaseService } from './dbService';
 import { registerDatabaseFeatures } from './dbFeatures';
 import { registerDatabaseView } from './dbView';
 import { registerPreview } from './preview';
+import { registerColorSwatches } from './colorSwatches';
+import { registerTestPlay } from './testPlay';
 
 /**
  * Treat a .txt file that carries Text2Frame front matter as the `text2frame`
@@ -45,6 +47,10 @@ export function activate(context: vscode.ExtensionContext) {
     registerDatabaseView(context, database);
     // 横のプレビュー(ツクールのイベント編集画面と同じ見た目)。
     registerPreview(context, database);
+    // 色調・フラッシュの値の前に色見本。
+    registerColorSwatches(context);
+    // テストプレイ(ゲームを VS Code の中のブラウザで)。
+    registerTestPlay(context, database);
 
     // Auto-assign the text2frame language to front-matter .txt files (open now + later).
     vscode.workspace.textDocuments.forEach(maybeAssignLanguage);
