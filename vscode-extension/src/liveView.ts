@@ -3,10 +3,11 @@ import * as path from 'path';
 import { DatabaseService, DbContext } from './dbService';
 import { LiveService, LiveSession } from './live';
 import { liveViewHtml } from './liveViewHtml';
-import { parseVariableInput, SELF_SWITCH_KEY } from './liveState';
-import { padId } from './db/database';
+import { ITEM_KEY, LiveChanges, LiveSnapshot, parseCountInput, parseVariableInput, SELF_SWITCH_KEY } from './liveState';
+import { DbKind, padId } from './db/database';
 import { eventId } from './db/describe';
-import { RunningFrame, RunTracker, openRunningText, setOpenRunningText } from './runHighlight';
+import { placeFromKey, placeLabel } from './placeLabel';
+import { RunningFrame, RunTracker, openRunningText, openText, setOpenRunningText } from './runHighlight';
 
 export const LIVE_VIEW_ID = 'text2frame.liveValues';
 
@@ -73,19 +74,24 @@ class LiveViewProvider implements vscode.WebviewViewProvider {
         const session = this.live.current();
         const ctx = session ? this.service.forRoot(session.projectRoot) : undefined;
         if (session && ctx && (!this.namesFor || this.namesFor.gameRoot !== session.gameRoot || this.namesFor.db !== ctx.db)) {
-            const names = (kind: 'switch' | 'variable'): string[] => {
+            const names = (kind: DbKind): string[] => {
                 const out = [''];
                 for (const e of ctx.db.entries(kind)) out[e.id] = e.name;
                 return out;
             };
-            view.webview.postMessage({ type: 'names', switches: names('switch'), variables: names('variable') });
+            view.webview.postMessage({
+                type: 'names',
+                switches: names('switch'),
+                variables: names('variable'),
+                items: { i: names('item'), w: names('weapon'), a: names('armor') }
+            });
             this.namesFor = { gameRoot: session.gameRoot, db: ctx.db };
         }
         const status = this.statusOf(session);
         const now = Date.now();
-        const snapshot = session ? session.state.snapshot() : { switches: [], variables: [], selfSwitches: [], mapId: 0 };
+        const snapshot: LiveSnapshot = session ? session.state.snapshot() : { switches: [], variables: [], selfSwitches: [], items: [], pages: [], mapId: 0 };
         if (session && ctx) this.postEvents(view, session, ctx, snapshot.mapId);
-        const changed = session && flash ? session.state.changedSince(this.lastPost) : { switches: [], variables: [], selfSwitches: [] };
+        const changed: LiveChanges = session && flash ? session.state.changedSince(this.lastPost) : { switches: [], variables: [], selfSwitches: [], items: [] };
         view.webview.postMessage({
             type: 'values',
             status,
@@ -94,6 +100,8 @@ class LiveViewProvider implements vscode.WebviewViewProvider {
             variables: snapshot.variables,
             selfSwitches: snapshot.selfSwitches,
             selfLabels: ctx ? this.selfLabels(ctx, snapshot.selfSwitches) : {},
+            items: snapshot.items,
+            pages: snapshot.pages,
             mapId: snapshot.mapId,
             changed
         });
@@ -128,6 +136,36 @@ class LiveViewProvider implements vscode.WebviewViewProvider {
         return out;
     }
 
+    private async openEvent(mapId: number, eventNo: number): Promise<void> {
+        const session = this.live.current();
+        const ctx = session ? this.service.forRoot(session.projectRoot) : undefined;
+        if (!session || !ctx) return;
+        const prefix = `e:${mapId}:${eventNo}:`;
+        const running = this.tracker.current().slice().reverse().find((f) => f.key.startsWith(prefix) && f.uri);
+        let page = running ? Number(running.key.slice(prefix.length)) : session.state.mapId === mapId ? session.state.eventPage(eventNo) : undefined;
+        if (!page) {
+            const count = this.service.mapEvents(ctx, mapId)?.[eventNo]?.pages ?? 1;
+            if (count <= 1) {
+                page = 1;
+            } else {
+                const pick = await vscode.window.showQuickPick(
+                    Array.from({ length: count }, (_v, i) => ({ label: `${i + 1}ページ`, page: i + 1 })),
+                    { placeHolder: `${placeLabel(this.service, ctx, { kind: 'event', mapId, eventId: eventNo })} のどのページを開きますか` }
+                );
+                if (!pick) return;
+                page = pick.page;
+            }
+        }
+        const key = prefix + page;
+        const here = running && running.key === key ? running : undefined;
+        const file = here?.uri?.fsPath ?? await this.tracker.textFor(ctx, key);
+        if (!file) {
+            this.notice(`${placeLabel(this.service, ctx, placeFromKey(key))} のテキストが見つかりません。`);
+            return;
+        }
+        await openText(vscode.Uri.file(file), here?.from ?? 0);
+    }
+
     private notice(text: string): void {
         this.view?.webview.postMessage({ type: 'notice', text });
     }
@@ -154,9 +192,14 @@ class LiveViewProvider implements vscode.WebviewViewProvider {
             vscode.commands.executeCommand('text2frame.testPlay');
             return;
         }
+        if (m.type === 'openEvent' && Number.isInteger(m.mapId) && Number.isInteger(m.eventId) && m.mapId > 0 && m.eventId > 0) {
+            this.openEvent(m.mapId, m.eventId);
+            return;
+        }
         if (m.type !== 'set') return;
         const selfSwitch = m.kind === 'selfSwitch' && typeof m.key === 'string' && SELF_SWITCH_KEY.test(m.key) && typeof m.value === 'boolean';
-        if (!selfSwitch && (!Number.isInteger(m.id) || m.id < 1)) return;
+        const item = m.kind === 'item' && typeof m.key === 'string' && ITEM_KEY.test(m.key) && typeof m.text === 'string';
+        if (!selfSwitch && !item && (!Number.isInteger(m.id) || m.id < 1)) return;
         const session = this.live.current();
         if (!session || this.statusOf(session) !== 'live') {
             this.notice('テストプレイ中だけ書き換えられます。');
@@ -165,6 +208,13 @@ class LiveViewProvider implements vscode.WebviewViewProvider {
         let delivered = 0;
         if (selfSwitch) {
             delivered = session.send({ selfSwitches: { [m.key]: m.value } });
+        } else if (item) {
+            const input = parseCountInput(m.text);
+            if ('error' in input) {
+                this.notice(input.error);
+                return;
+            }
+            delivered = session.send({ items: { [m.key]: input.value } });
         } else if (m.kind === 'switch' && typeof m.value === 'boolean') {
             delivered = session.send({ switches: { [m.id]: m.value } });
         } else if (m.kind === 'variable' && typeof m.text === 'string') {

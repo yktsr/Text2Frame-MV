@@ -13,7 +13,9 @@ export interface LiveMessage {
     switches?: Map<number, boolean>;
     variables?: Map<number, LiveValue>;
     selfSwitches?: Map<string, boolean>;
+    items?: Map<string, number>;
     map?: number;
+    pages?: Map<number, number>;
     run?: RunFrame[];
     lists?: Map<string, CommandMark[]>;
 }
@@ -22,15 +24,20 @@ const MAX_ID = 100000;
 const MAX_FRAMES = 32;
 const MAX_LISTS = 64;
 const MAX_COMMANDS = 100000;
+const MAX_COUNT = 1000000000;
+const MAX_PAGES = 9999;
 
 export const RUN_KEY = /^(?:e:\d{1,6}:\d{1,6}:\d{1,4}|c:\d{1,6})$/;
 
 export const SELF_SWITCH_KEY = /^(\d{1,6}),(\d{1,6}),([A-Za-z0-9_]{1,16})$/;
 
+export const ITEM_KEY = /^([iwa]):(\d{1,6})$/;
+
 export interface LiveCommand {
     switches?: Record<number, boolean>;
     variables?: Record<number, number | string>;
     selfSwitches?: Record<string, boolean>;
+    items?: Record<string, number>;
 }
 
 export function selfSwitchKey(mapId: number, eventId: number, letter: string): string {
@@ -51,6 +58,12 @@ export function parseVariableInput(text: string): { value: number | string } | {
     } catch (e) {
         return error;
     }
+}
+
+export function parseCountInput(text: string): { value: number } | { error: string } {
+    const t = text.trim();
+    const n = Number(t);
+    return /^\d+$/.test(t) && n <= MAX_COUNT ? { value: n } : { error: '0 以上の整数を入れてください。' };
 }
 
 export function parseLiveMessage(json: unknown): LiveMessage | undefined {
@@ -81,6 +94,27 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
         return out;
     };
     const isCount = (v: unknown, max: number): v is number => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= max;
+    const readItems = (value: unknown): Map<string, number> | undefined => {
+        if (value === undefined) return undefined;
+        if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('bad');
+        const out = new Map<string, number>();
+        for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+            if (!ITEM_KEY.test(key) || !isCount(v, MAX_COUNT)) throw new Error('bad');
+            out.set(key, v);
+        }
+        return out;
+    };
+    const readPages = (value: unknown): Map<number, number> | undefined => {
+        if (value === undefined) return undefined;
+        if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('bad');
+        const out = new Map<number, number>();
+        for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+            const id = Number(key);
+            if (!Number.isInteger(id) || id < 1 || id > MAX_ID || !isCount(v, MAX_PAGES)) throw new Error('bad');
+            out.set(id, v);
+        }
+        return out;
+    };
     const readRun = (value: unknown): RunFrame[] | undefined => {
         if (value === undefined) return undefined;
         if (!Array.isArray(value) || value.length > MAX_FRAMES) throw new Error('bad');
@@ -111,13 +145,31 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
             switches: read(o.switches, isBoolean),
             variables: read(o.variables, isValue),
             selfSwitches: readSelf(o.selfSwitches),
+            items: readItems(o.items),
             map: o.map as number | undefined,
+            pages: readPages(o.pages),
             run: readRun(o.run),
             lists: readLists(o.lists)
         };
     } catch (e) {
         return undefined;
     }
+}
+
+export interface LiveSnapshot {
+    switches: Array<[number, boolean]>;
+    variables: Array<[number, LiveValue]>;
+    selfSwitches: string[];
+    items: Array<[string, number]>;
+    pages: Array<[number, number]>;
+    mapId: number;
+}
+
+export interface LiveChanges {
+    switches: number[];
+    variables: number[];
+    selfSwitches: string[];
+    items: string[];
 }
 
 export const LIVE_TIMEOUT = 5000;
@@ -127,6 +179,8 @@ export class LiveState {
     private readonly switches = new Map<number, boolean>();
     private readonly variables = new Map<number, LiveValue>();
     private readonly selfSwitches = new Map<string, boolean>();
+    private readonly items = new Map<string, number>();
+    private pages = new Map<number, number>();
     private readonly changedAt = new Map<string, number>();
     private readonly lists = new Map<string, CommandMark[]>();
     private frames: RunFrame[] = [];
@@ -141,6 +195,8 @@ export class LiveState {
             this.switches.clear();
             this.variables.clear();
             this.selfSwitches.clear();
+            this.items.clear();
+            this.pages = new Map();
             this.changedAt.clear();
             this.lists.clear();
             run = this.frames.length > 0;
@@ -157,9 +213,14 @@ export class LiveState {
         }
         if (message.map !== undefined && message.map !== this.mapId) {
             this.mapId = message.map;
+            this.pages = new Map();
             changed = true;
         }
-        const merge = <K extends number | string, T extends LiveValue>(kind: 'switch' | 'variable' | 'self', into: Map<K, T>, values: Map<K, T> | undefined, blank: T): void => {
+        if (message.pages && JSON.stringify(Array.from(message.pages)) !== JSON.stringify(Array.from(this.pages))) {
+            this.pages = message.pages;
+            changed = true;
+        }
+        const merge = <K extends number | string, T extends LiveValue>(kind: 'switch' | 'variable' | 'self' | 'item', into: Map<K, T>, values: Map<K, T> | undefined, blank: T): void => {
             values?.forEach((v, id) => {
                 const before = into.has(id) ? into.get(id) : blank;
                 into.set(id, v);
@@ -171,6 +232,7 @@ export class LiveState {
         merge('switch', this.switches, message.switches, false);
         merge('variable', this.variables, message.variables, 0);
         merge('self', this.selfSwitches, message.selfSwitches, false);
+        merge('item', this.items, message.items, 0);
         return { values: changed, run };
     }
 
@@ -198,21 +260,31 @@ export class LiveState {
         return this.selfSwitches.get(selfSwitchKey(mapId, eventId, letter)) ?? false;
     }
 
+    itemCount(key: string): number {
+        return this.items.get(key) ?? 0;
+    }
+
+    eventPage(eventId: number): number | undefined {
+        return this.pages.get(eventId) || undefined;
+    }
+
     received(): boolean {
         return this.lastSeen > 0;
     }
 
-    snapshot(): { switches: Array<[number, boolean]>; variables: Array<[number, LiveValue]>; selfSwitches: string[]; mapId: number } {
+    snapshot(): LiveSnapshot {
         return {
             switches: Array.from(this.switches).filter(([, v]) => v),
             variables: Array.from(this.variables).filter(([, v]) => v !== 0),
             selfSwitches: Array.from(this.selfSwitches).filter(([, v]) => v).map(([k]) => k),
+            items: Array.from(this.items).filter(([, v]) => v > 0),
+            pages: Array.from(this.pages),
             mapId: this.mapId
         };
     }
 
-    changedSince(since: number): { switches: number[]; variables: number[]; selfSwitches: string[] } {
-        const out = { switches: [] as number[], variables: [] as number[], selfSwitches: [] as string[] };
+    changedSince(since: number): LiveChanges {
+        const out: LiveChanges = { switches: [], variables: [], selfSwitches: [], items: [] };
         this.changedAt.forEach((at, key) => {
             if (at <= since) return;
             const colon = key.indexOf(':');
@@ -220,6 +292,7 @@ export class LiveState {
             const id = key.slice(colon + 1);
             if (kind === 'switch') out.switches.push(Number(id));
             else if (kind === 'variable') out.variables.push(Number(id));
+            else if (kind === 'item') out.items.push(id);
             else out.selfSwitches.push(id);
         });
         return out;

@@ -1,7 +1,7 @@
 const { expect } = require('chai')
 const vm = require('vm')
 const { monitorScript, injectMonitor, LIVE_STATE_PATH, LIVE_TOKEN_HEADER } = require('../out/liveMonitor')
-const { parseLiveMessage, parseVariableInput, LiveState, liveLine, selfSwitchLine, formatLiveValue, LIVE_TIMEOUT } = require('../out/liveState')
+const { parseLiveMessage, parseVariableInput, parseCountInput, LiveState, liveLine, selfSwitchLine, formatLiveValue, LIVE_TIMEOUT } = require('../out/liveState')
 const { commandMark } = require('../out/db/runLines')
 
 const fakeGame = function () {
@@ -144,6 +144,64 @@ describe('liveMonitor', function () {
     expect(calls).to.have.length(3)
   })
 
+  it('reports the party\'s items, weapons and armors', function () {
+    const g = fakeGame()
+    g.window.$gameSwitches = { _data: [] }
+    g.window.$gameVariables = { _data: [] }
+    g.window.$gameParty = { _items: { 1: 3, 5: 0 }, _weapons: { 2: 1 }, _armors: {} }
+    g.step()
+    expect(g.sent[0].body).to.eql({ reset: true, items: { 'i:1': 3, 'w:2': 1 }, map: 0 })
+    delete g.window.$gameParty._items[1]
+    g.window.$gameParty._armors[4] = 2
+    g.step()
+    expect(g.sent[1].body).to.eql({ items: { 'a:4': 2, 'i:1': 0 } })
+    g.window.$gameParty = { _items: { 7: 1 }, _weapons: {}, _armors: {} }
+    g.step()
+    expect(g.sent[2].body).to.eql({ reset: true, items: { 'i:7': 1 }, map: 0 })
+  })
+
+  it('writes item counts from the extension into the game', function () {
+    const g = fakeGame()
+    const calls = []
+    const potion = { id: 1 }
+    const sword = { id: 2 }
+    g.window.$gameSwitches = { _data: [] }
+    g.window.$gameVariables = { _data: [] }
+    g.window.$dataItems = [null, potion]
+    g.window.$dataWeapons = [null, null, sword]
+    g.window.$dataArmors = [null]
+    g.window.$gameParty = {
+      _items: { 1: 3 },
+      _weapons: {},
+      _armors: {},
+      numItems: function (item) { return item === potion ? this._items[1] || 0 : 0 },
+      gainItem: function (item, n) { calls.push([item.id, n]); if (item === potion) this._items[1] = (this._items[1] || 0) + n; else this._weapons[2] = n }
+    }
+    g.step()
+    g.source().onmessage({ data: JSON.stringify({ items: { 'i:1': 10, 'w:2': 1, 'a:1': 5, 'i:9': 1, 'x:1': 1, 'i:1:2': 1, 'w:3': -1 } }) })
+    expect(calls).to.eql([[1, 7], [2, 1]])
+    expect(g.sent[g.sent.length - 1].body).to.eql({ items: { 'i:1': 10, 'w:2': 1 } })
+  })
+
+  it('reports the page each event on the map is on', function () {
+    const g = fakeGame()
+    let mapId = 5
+    const events = [{ eventId: function () { return 1 }, _pageIndex: 0 }, { eventId: function () { return 3 }, _pageIndex: -1 }]
+    g.window.$gameSwitches = { _data: [] }
+    g.window.$gameVariables = { _data: [] }
+    g.window.$gameMap = { mapId: function () { return mapId }, events: function () { return events } }
+    g.step()
+    expect(g.sent[0].body).to.eql({ reset: true, map: 5, pages: { 1: 1, 3: 0 } })
+    g.step()
+    expect(g.sent).to.have.length(1)
+    events[1]._pageIndex = 1
+    g.step()
+    expect(g.sent[1].body).to.eql({ pages: { 1: 1, 3: 2 } })
+    mapId = 6
+    g.step()
+    expect(g.sent[2].body).to.eql({ map: 6, pages: { 1: 1, 3: 2 } })
+  })
+
   describe('running events', function () {
     const page = function (codes) {
       return codes.map(function (code) { return { code, indent: 0, parameters: code === 101 ? ['', 0, 0, 2] : code === 401 ? ['やあ'] : [] } }).concat([{ code: 0, indent: 0, parameters: [] }])
@@ -254,7 +312,7 @@ describe('liveState', function () {
     expect(m.reset).to.equal(true)
     expect(Array.from(m.switches)).to.eql([[1, true]])
     expect(Array.from(m.variables)).to.eql([[2, 5], [3, 'a']])
-    expect(parseLiveMessage({})).to.eql({ reset: undefined, switches: undefined, variables: undefined, selfSwitches: undefined, map: undefined, run: undefined, lists: undefined })
+    expect(parseLiveMessage({})).to.eql({ reset: undefined, switches: undefined, variables: undefined, selfSwitches: undefined, items: undefined, map: undefined, pages: undefined, run: undefined, lists: undefined })
     const self = parseLiveMessage({ selfSwitches: { '12,5,A': true, '1,2,B': false }, map: 12 })
     expect(Array.from(self.selfSwitches)).to.eql([['12,5,A', true], ['1,2,B', false]])
     expect(self.map).to.equal(12)
@@ -290,11 +348,11 @@ describe('liveState', function () {
     expect(s.received()).to.equal(false)
     s.apply(parseLiveMessage({ reset: true, switches: { 1: true, 2: false }, variables: { 3: 4, 5: 0 } }), 1000)
     expect(s.received()).to.equal(true)
-    expect(s.snapshot()).to.eql({ switches: [[1, true]], variables: [[3, 4]], selfSwitches: [], mapId: 0 })
+    expect(s.snapshot()).to.eql({ switches: [[1, true]], variables: [[3, 4]], selfSwitches: [], items: [], pages: [], mapId: 0 })
     s.apply(parseLiveMessage({ switches: { 2: true }, variables: { 3: 5 } }), 2000)
     s.apply(parseLiveMessage({ switches: { 9: true } }), 3000)
-    expect(s.changedSince(1500)).to.eql({ switches: [2, 9], variables: [3], selfSwitches: [] })
-    expect(s.changedSince(2000)).to.eql({ switches: [9], variables: [], selfSwitches: [] })
+    expect(s.changedSince(1500)).to.eql({ switches: [2, 9], variables: [3], selfSwitches: [], items: [] })
+    expect(s.changedSince(2000)).to.eql({ switches: [9], variables: [], selfSwitches: [], items: [] })
   })
 
   it('keeps self switches and the current map', function () {
@@ -303,11 +361,11 @@ describe('liveState', function () {
     expect(s.selfSwitchValue(12, 5, 'A')).to.equal(true)
     expect(s.selfSwitchValue(12, 5, 'B')).to.equal(false)
     expect(s.selfSwitchValue(3, 1, 'A')).to.equal(false)
-    expect(s.snapshot()).to.eql({ switches: [], variables: [], selfSwitches: ['12,5,A'], mapId: 12 })
+    expect(s.snapshot()).to.eql({ switches: [], variables: [], selfSwitches: ['12,5,A'], items: [], pages: [], mapId: 12 })
     expect(s.apply(parseLiveMessage({ map: 3 }), 2000).values).to.equal(true)
     expect(s.apply(parseLiveMessage({ selfSwitches: { '12,5,A': false, '3,1,D': true } }), 3000).values).to.equal(true)
-    expect(s.changedSince(2500)).to.eql({ switches: [], variables: [], selfSwitches: ['12,5,A', '3,1,D'] })
-    expect(s.snapshot()).to.eql({ switches: [], variables: [], selfSwitches: ['3,1,D'], mapId: 3 })
+    expect(s.changedSince(2500)).to.eql({ switches: [], variables: [], selfSwitches: ['12,5,A', '3,1,D'], items: [] })
+    expect(s.snapshot()).to.eql({ switches: [], variables: [], selfSwitches: ['3,1,D'], items: [], pages: [], mapId: 3 })
     expect(selfSwitchLine(s, 3, 1, 'D', 3000)).to.equal('テストプレイ中: セルフスイッチ D = ON')
     expect(selfSwitchLine(s, 12, 5, 'A', 3000 + LIVE_TIMEOUT)).to.equal('テストプレイの最後の値: セルフスイッチ A = OFF')
     s.apply(parseLiveMessage({ reset: true, map: 3 }), 4000)
@@ -329,6 +387,36 @@ describe('liveState', function () {
     for (const bad of [{ run: {} }, { run: [{ key: 'x', index: 0 }] }, { run: [{ key: 'c:1', index: -1 }] }, { run: [{ key: 'c:1', index: 1.5 }] },
       { lists: [] }, { lists: { 'c:1': [[1, 0]] } }, { lists: { 'c:1': [[1, 0, -1]] } }, { lists: { bad: [] } }]) {
       expect(parseLiveMessage(bad), JSON.stringify(bad)).to.equal(undefined)
+    }
+  })
+
+  it('keeps item counts and the page each event is on', function () {
+    const s = new LiveState()
+    s.apply(parseLiveMessage({ reset: true, items: { 'i:1': 3, 'w:2': 0 }, map: 5, pages: { 1: 2, 3: 0 } }), 1000)
+    expect(s.itemCount('i:1')).to.equal(3)
+    expect(s.itemCount('a:9')).to.equal(0)
+    expect(s.eventPage(1)).to.equal(2)
+    expect(s.eventPage(3)).to.equal(undefined)
+    expect(s.snapshot()).to.eql({ switches: [], variables: [], selfSwitches: [], items: [['i:1', 3]], pages: [[1, 2], [3, 0]], mapId: 5 })
+    expect(s.apply(parseLiveMessage({ items: { 'i:1': 4 } }), 2000).values).to.equal(true)
+    expect(s.changedSince(1500)).to.eql({ switches: [], variables: [], selfSwitches: [], items: ['i:1'] })
+    expect(s.apply(parseLiveMessage({ pages: { 1: 2, 3: 0 } }), 2100).values).to.equal(false)
+    expect(s.apply(parseLiveMessage({ pages: { 1: 1, 3: 0 } }), 2200).values).to.equal(true)
+    expect(s.apply(parseLiveMessage({ map: 6 }), 2300).values).to.equal(true)
+    expect(s.eventPage(1)).to.equal(undefined)
+    s.apply(parseLiveMessage({ reset: true }), 3000)
+    expect(s.itemCount('i:1')).to.equal(0)
+    for (const bad of [{ items: [] }, { items: { 'i:1': -1 } }, { items: { 'i:1': 1.5 } }, { items: { 'q:1': 1 } }, { items: { 'i:0x1': 1 } },
+      { pages: [] }, { pages: { 0: 1 } }, { pages: { 1: -1 } }, { pages: { 1: '2' } }]) {
+      expect(parseLiveMessage(bad), JSON.stringify(bad)).to.equal(undefined)
+    }
+  })
+
+  it('reads what was typed for a count', function () {
+    expect(parseCountInput(' 12 ')).to.eql({ value: 12 })
+    expect(parseCountInput('0')).to.eql({ value: 0 })
+    for (const bad of ['', '-1', '1.5', 'abc', '1e3', '99999999999']) {
+      expect(parseCountInput(bad), bad).to.have.property('error')
     }
   })
 

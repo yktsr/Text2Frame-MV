@@ -9,6 +9,8 @@ export function monitorScript(token: string): string {
   var INTERVAL = 100;
   var HEARTBEAT = 2000;
   var SELF_KEY = /^(\\d+),(\\d+),([A-Za-z0-9_]{1,16})$/;
+  var ITEM_KEY = /^([iwa]):(\\d{1,6})$/;
+  var ITEM_DATA = { i: '$dataItems', w: '$dataWeapons', a: '$dataArmors' };
   var last = null;
   var lastSent = 0;
   function switchValue(v) { return !!v; }
@@ -50,6 +52,43 @@ export function monitorScript(token: string): string {
         prev[key] = false;
       }
     }
+    return out;
+  }
+  function diffItems(party, prev) {
+    var out = null;
+    var groups = { i: party._items, w: party._weapons, a: party._armors };
+    var seen = {};
+    var key;
+    for (var kind in groups) {
+      var data = groups[kind];
+      if (!data || typeof data !== 'object') continue;
+      for (var id in data) {
+        key = kind + ':' + id;
+        if (!ITEM_KEY.test(key)) continue;
+        var n = Math.max(0, Math.floor(Number(data[id]) || 0));
+        seen[key] = true;
+        if (n !== (prev[key] || 0)) {
+          (out = out || {})[key] = n;
+          prev[key] = n;
+        }
+      }
+    }
+    for (key in prev) {
+      if (prev[key] && !seen[key]) {
+        (out = out || {})[key] = 0;
+        prev[key] = 0;
+      }
+    }
+    return out;
+  }
+  function eventPages() {
+    var map = window.$gameMap;
+    if (!map || typeof map.events !== 'function') return null;
+    var out = {};
+    map.events().forEach(function (e) {
+      var id = e && typeof e.eventId === 'function' ? Number(e.eventId()) : 0;
+      if (id > 0) out[id] = Math.max(0, (Number(e._pageIndex) || 0) + 1);
+    });
     return out;
   }
   function currentMap() {
@@ -144,22 +183,29 @@ export function monitorScript(token: string): string {
     if (!switches || !variables || !switches._data || !variables._data) return;
     var selfSwitches = window.$gameSelfSwitches;
     var selfData = selfSwitches && selfSwitches._data && typeof selfSwitches._data === 'object' ? selfSwitches._data : null;
+    var party = window.$gameParty;
     var message = {};
-    if (!last || last.switches !== switches || last.variables !== variables || last.selfSwitches !== selfSwitches) {
-      last = { switches: switches, variables: variables, selfSwitches: selfSwitches, s: [], v: [], ss: {}, map: -1, run: null, sent: {} };
+    if (!last || last.switches !== switches || last.variables !== variables || last.selfSwitches !== selfSwitches || last.party !== party) {
+      last = { switches: switches, variables: variables, selfSwitches: selfSwitches, party: party, s: [], v: [], ss: {}, items: {}, map: -1, pages: '', run: null, sent: {} };
       message.reset = true;
     }
     var s = diff(switches._data, last.s, switchValue);
     var v = diff(variables._data, last.v, variableValue);
     var ss = selfData ? diffSelf(selfData, last.ss) : null;
+    var items = party && typeof party === 'object' ? diffItems(party, last.items) : null;
     var map = currentMap();
     if (s) message.switches = s;
     if (v) message.variables = v;
     if (ss) message.selfSwitches = ss;
+    if (items) message.items = items;
     if (map !== last.map) {
       message.map = map;
       last.map = map;
     }
+    var pages = eventPages();
+    var pagesText = pages ? JSON.stringify(pages) : '';
+    if (pages && (pagesText !== last.pages || message.map !== undefined)) message.pages = pages;
+    last.pages = pagesText;
     var run = running();
     if (run) {
       var runText = JSON.stringify(run.frames);
@@ -173,7 +219,7 @@ export function monitorScript(token: string): string {
         });
       }
     }
-    if (message.reset || s || v || ss || message.map !== undefined || message.run || Date.now() - lastSent >= HEARTBEAT) send(message);
+    if (message.reset || s || v || ss || items || message.map !== undefined || message.pages || message.run || Date.now() - lastSent >= HEARTBEAT) send(message);
   }
   function write(command) {
     var switches = window.$gameSwitches;
@@ -193,6 +239,15 @@ export function monitorScript(token: string): string {
       if (parts && selfSwitches && typeof command.selfSwitches[key] === 'boolean') {
         selfSwitches.setValue([Number(parts[1]), Number(parts[2]), parts[3]], command.selfSwitches[key]);
       }
+    }
+    var party = window.$gameParty;
+    for (key in command.items || {}) {
+      var item = ITEM_KEY.exec(key);
+      var count = command.items[key];
+      if (!item || !party || typeof party.gainItem !== 'function' || typeof count !== 'number' || !(count >= 0)) continue;
+      var data = window[ITEM_DATA[item[1]]];
+      var target = data && data[Number(item[2])];
+      if (target) party.gainItem(target, Math.floor(count) - party.numItems(target));
     }
     tick();
   }

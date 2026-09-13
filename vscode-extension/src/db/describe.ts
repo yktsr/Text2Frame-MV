@@ -50,6 +50,7 @@ export interface MapEvent {
     x: number;
     y: number;
     selfSwitches?: string[];
+    pages?: number;
 }
 
 /** テキストのマップにあるイベント。コモンイベントのテキストなど、マップが決まらなければ渡さない。 */

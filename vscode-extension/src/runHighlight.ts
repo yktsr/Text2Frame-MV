@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DatabaseService } from './dbService';
+import { DatabaseService, DbContext } from './dbService';
 import { LiveService } from './live';
 import { RunSources, RunSource } from './runSource';
 import { placeFromKey, placeLabel } from './placeLabel';
@@ -51,6 +51,10 @@ export class RunTracker implements vscode.Disposable {
     reindex(): void {
         this.sources.invalidate();
         this.refresh();
+    }
+
+    textFor(ctx: DbContext, key: string): Promise<string | undefined> {
+        return this.sources.find(ctx, key);
     }
 
     showsFile(fsPath: string): boolean {
@@ -139,9 +143,12 @@ export async function revealRunning(tracker: RunTracker, index?: number): Promis
         vscode.window.showInformationMessage('Text2Frame: テストプレイで実行中のイベントはありません。');
         return;
     }
-    const doc = await vscode.workspace.openTextDocument(frame.uri);
-    const line = frame.from ?? 0;
-    await vscode.window.showTextDocument(doc, { viewColumn: textColumn(), selection: new vscode.Range(line, 0, line, 0) });
+    await openText(frame.uri, frame.from ?? 0);
+}
+
+export async function openText(uri: vscode.Uri, line: number, options: { preserveFocus?: boolean; preview?: boolean } = {}): Promise<void> {
+    const doc = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(doc, { ...options, viewColumn: textColumn(), selection: new vscode.Range(line, 0, line, 0) });
     await vscode.commands.executeCommand('text2frame.showPreviewBelow', doc.uri);
 }
 
@@ -216,9 +223,7 @@ export function registerRunHighlight(context: vscode.ExtensionContext, service: 
         if (shown.length || !openRunningText() || lastOpened === uri.fsPath) return;
         lastOpened = uri.fsPath;
         try {
-            const doc = await vscode.workspace.openTextDocument(uri);
-            await vscode.window.showTextDocument(doc, { viewColumn: textColumn(), preserveFocus: true, preview: true, selection: new vscode.Range(inner.from, 0, inner.from, 0) });
-            await vscode.commands.executeCommand('text2frame.showPreviewBelow', doc.uri);
+            await openText(uri, inner.from, { preserveFocus: true, preview: true });
         } catch (e) {
             lastOpened = '';
         }
