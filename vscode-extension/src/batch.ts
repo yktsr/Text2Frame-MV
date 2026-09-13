@@ -139,7 +139,8 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
             const { meta } = parseFrontMatter(fileText);
             const { opts, label } = resolveTarget(meta, root);
             const key = snapshotKeyFor(root, file);
-            const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy };
+            // baseRoot は祖先(.t2f-base)の置き場所。渡さないと拡張ホストの cwd(/)に落ちる。
+            const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, baseRoot: root };
             if (mergeLike && hasBaseSnapshot(root, key)) {
                 applyOpts.basePath = baseSnapshotPath(root, key);
             }

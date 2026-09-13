@@ -50,11 +50,21 @@ export function frontMatterBody(text: string): string {
 
 /** A document is "deployable" when it carries Text2Frame front matter. */
 export function isDeployable(document: vscode.TextDocument): boolean {
-    if (document.uri.scheme !== 'file') {
+    if (document.uri.scheme !== 'file' || isAncestorCopy(document.uri.fsPath)) {
         return false;
     }
     return parseFrontMatter(document.getText()).hasFrontMatter;
 }
+
+/**
+ * 3-way マージの祖先のコピー(.t2f-base の中)か。祖先もテキストと同じ形(front matter 付きの .txt)なので、
+ * 開いて保存するとテキストとして反映され、祖先の祖先が .t2f-base/.t2f-base/… に作られてしまう。反映の対象にしない。
+ */
+export function isAncestorCopy(fsPath: string): boolean {
+    return path.resolve(fsPath).split(path.sep).includes('.t2f-base');
+}
+
+export const ANCESTOR_COPY_MESSAGE = 'Text2Frame: これは 3-way マージの祖先のコピー(.t2f-base の中)なので反映しません。text/ の方のテキストを編集してください。';
 
 /**
  * Locate and load a compiler module by filename (Text2Frame.js / Frame2Text.js).

@@ -101,6 +101,7 @@ const BLEND_MODES = ['通常', '加算', '乗算', 'スクリーン'];
 
 const BACKGROUNDS = ['ウィンドウ', '暗くする', '透明'];
 const DIRECTIONS: Record<number, string> = { 0: 'そのまま', 2: '下', 4: '左', 6: '右', 8: '上' };
+const FADES = ['黒', '白', 'なし'];
 const BALLOONS = ['', 'びっくり', 'はてな', '音符', 'ハート', '怒り', '汗', 'くしゃくしゃ', '沈黙', '電球', 'Zzz',
     'ユーザー定義1', 'ユーザー定義2', 'ユーザー定義3', 'ユーザー定義4', 'ユーザー定義5'];
 const WEATHERS: Record<string, string> = { none: 'なし', rain: '雨', storm: '嵐', snow: '雪' };
@@ -247,12 +248,13 @@ function describe(db: GameDatabase | undefined, c: RpgCommand, events?: EventLoo
         case 128: return head('防具の増減', `${refText(db, 'armor', p[0])} ${p[1] === 0 ? '+' : '-'} ${p[2] === 0 ? p[3] : refText(db, 'variable', p[3])}`);
         case 129: return head('メンバーの入れ替え', `${p[1] === 0 ? '加える' : '外す'} ${refText(db, 'actor', p[0])}`);
         case 201: {
+            const options = `, 向き ${DIRECTIONS[p[4]] ?? p[4]}, フェード ${FADES[p[5]] ?? p[5]}`;
             if (p[0] === 0) {
                 const map = db ? db.lookup('map', p[1]) : undefined;
                 const name = map && map.status === 'named' ? map.name : `マップ${padId(p[1])}`;
-                return head('場所移動', `${name} (${p[2]},${p[3]})`);
+                return head('場所移動', `${name} (${p[2]},${p[3]})${options}`);
             }
-            if (p[0] === 1) return head('場所移動', `{${refText(db, 'variable', p[1])}} ({${refText(db, 'variable', p[2])}},{${refText(db, 'variable', p[3])}})`);
+            if (p[0] === 1) return head('場所移動', `{${refText(db, 'variable', p[1])}} ({${refText(db, 'variable', p[2])}},{${refText(db, 'variable', p[3])}})${options}`);
             return head('場所移動', JSON.stringify(p));
         }
         case 124: return head('タイマーの操作', p[0] === 0 ? `スタート, ${Math.floor(p[1] / 60)}分${p[1] % 60}秒` : 'ストップ');

@@ -32,6 +32,11 @@
     "workspaceContains:**/data/Map*.json"
   ],
   "contributes": {
+    "configurationDefaults": {
+      "files.readonlyInclude": {
+        "**/.t2f-base/**": true
+      }
+    },
     "languages": [
       {
         "id": "text2frame",
@@ -300,6 +305,7 @@
     "compile": "tsc -p ./",
     "bundle-compiler": "node ./scripts/bundle-compiler.js",
     "update-grammar": "node ./scripts/update-grammar.js",
+    "update-tag-help": "node ./scripts/update-tag-help.js",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile",
     "test": "node ../node_modules/mocha/bin/mocha.js test",

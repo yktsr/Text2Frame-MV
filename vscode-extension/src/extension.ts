@@ -11,6 +11,7 @@ import { registerDatabaseView } from './dbView';
 import { registerPreview } from './preview';
 import { registerColorSwatches } from './colorSwatches';
 import { registerTestPlay } from './testPlay';
+import { tagHelpText } from './tagHelp';
 
 /**
  * Treat a .txt file that carries Text2Frame front matter as the `text2frame`
@@ -654,48 +655,8 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 function getTagHelp(tag: string): vscode.MarkdownString | undefined {
-    const tagMap: { [key: string]: string } = {
-        '<Face': '顔グラフィックを設定します\n\n**使用例:**\n```\n<Face: Actor1(0)>\n今日も一日がんばるぞい！\n```',
-        '<WindowPosition': 'ウィンドウ位置を設定します\n\n**使用例:**\n```\n<WindowPosition: Top>  (上)\n<WindowPosition: Middle>  (中)\n<WindowPosition: Bottom>  (下)\n```',
-        '<Background': '背景を設定します\n\n**使用例:**\n```\n<Background: Window>  (ウィンドウ)\n<Background: Dim>  (暗く)\n<Background: Transparent>  (透明)\n```',
-        '<Name': '名前を設定します\n\n**使用例:**\n```\n<Name: キャラクター名>\n台詞テキスト\n```',
-        '<ShowChoices': '選択肢を表示します\n\n**使用例:**\n```\n<ShowChoices>\n<When: はい>\n...\n<When: いいえ>\n...\n<End>\n```',
-        '<If': '条件分岐を設定します\n\n**使用例:**\n```\n<If: Switch[1], ON>\n...\n<Else>\n...\n<End>\n```',
-        '<Loop': 'ループ処理を開始します\n\n**使用例:**\n```\n<Loop>\n...\n<RepeatAbove>\n```',
-        '<BreakLoop': 'ループを中断します',
-        '<PlayBGM': 'BGMを演奏します\n\n**使用例:**\n```\n<PlayBGM: Castle1>\n<PlayBGM: Castle2, 50, 80, 30>  (音量, ピッチ, 位相)\n```',
-        '<FadeoutBGM': 'BGMをフェードアウトします\n\n**使用例:**\n```\n<FadeoutBGM: 10>  (秒数)\n```',
-        '<PlayBGS': 'BGSを演奏します\n\n**使用例:**\n```\n<PlayBGS: City>\n```',
-        '<PlaySE': 'SEを演奏します\n\n**使用例:**\n```\n<PlaySE: Attack1>\n<PlaySE: Attack2, 50, 80, 30>  (音量, ピッチ, 位相)\n```',
-        '<PlayME': 'MEを演奏します\n\n**使用例:**\n```\n<PlayME: Victory1>\n```',
-        '<Wait': 'ウェイトを設定します\n\n**使用例:**\n```\n<Wait: 60>  (60フレーム = 1秒)\n```',
-        '<Switch': 'スイッチを操作します\n\n**使用例:**\n```\n<Switch: 1, ON>\n<Switch: 1-10, OFF>\n```',
-        '<SelfSwitch': 'セルフスイッチを操作します\n\n**使用例:**\n```\n<SelfSwitch: A, ON>\n<SelfSwitch: B, OFF>\n```',
-        '<Set': '変数に値を代入します\n\n**使用例:**\n```\n<Set: 1, 100>\n<Set: 1, V[20]>\n```',
-        '<Add': '変数に値を加算します\n\n**使用例:**\n```\n<Add: 1, 10>\n```',
-        '<Sub': '変数から値を減算します\n\n**使用例:**\n```\n<Sub: 1, 5>\n```',
-        '<Mul': '変数に値を乗算します\n\n**使用例:**\n```\n<Mul: 1, 2>\n```',
-        '<Div': '変数を値で除算します\n\n**使用例:**\n```\n<Div: 1, 2>\n```',
-        '<ShowPicture': 'ピクチャを表示します\n\n**使用例:**\n```\n<ShowPicture: 1, Castle>\n<ShowPicture: 1, Castle, Scale[50][55]>\n```',
-        '<MovePicture': 'ピクチャを移動します\n\n**使用例:**\n```\n<MovePicture: 1, Position[Center][200][300]>\n```',
-        '<RotatePicture': 'ピクチャを回転します\n\n**使用例:**\n```\n<RotatePicture: 1, -30>\n```',
-        '<TintPicture': 'ピクチャの色調を変更します\n\n**使用例:**\n```\n<TintPicture: 1, ColorTone[0][100][255][50]>\n```',
-        '<ErasePicture': 'ピクチャを消去します\n\n**使用例:**\n```\n<ErasePicture: 1>\n```',
-        '<FadeOut': '画面をフェードアウトします',
-        '<FadeIn': '画面をフェードインします',
-        '<CommonEvent': 'コモンイベントを実行します\n\n**使用例:**\n```\n<CommonEvent: 1>\n```',
-        '<Label': 'ラベルを設定します\n\n**使用例:**\n```\n<Label: Start>\n```',
-        '<JumpToLabel': 'ラベルにジャンプします\n\n**使用例:**\n```\n<JumpToLabel: Start>\n```',
-        '<comment': 'コメントブロックを作成します\n\n**使用例:**\n```\n<comment>\nここにコメントを書きます\n</comment>\n```',
-        '<script': 'JavaScriptコードを実行します\n\n**使用例:**\n```\n<script>\nconsole.log("Hello!");\n</script>\n```'
-    };
-
-    // Check if tag starts with any key in tagMap
-    for (const key in tagMap) {
-        if (tag.startsWith(key)) {
-            return new vscode.MarkdownString(tagMap[key]);
-        }
-    }
+    const text = tagHelpText(tag);
+    return text ? new vscode.MarkdownString(text) : undefined;
 }
 
 function updateDiagnostics(document: vscode.TextDocument, collection: vscode.DiagnosticCollection): void {

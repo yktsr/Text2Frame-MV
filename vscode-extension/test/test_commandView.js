@@ -51,7 +51,9 @@ describe('renderCommands', function () {
   it('puts the database name on switches, variables, maps, common events and animations', function () {
     expect(heads('<Switch: 13, ON>')).to.eql(['スイッチの操作：#0013 シャチ出てくる = ON'])
     expect(heads('<Sub: 5, 1>')).to.eql(['変数の操作：#0005 体力 -= 1'])
-    expect(heads('<TransferPlayer: Direct[1][1][9], Retain, Black>')).to.eql(['場所移動：水族館4 (1,9)'])
+    expect(heads('<TransferPlayer: Direct[1][1][9], Retain, Black>')).to.eql(['場所移動：水族館4 (1,9), 向き そのまま, フェード 黒'])
+    expect(heads('<TransferPlayer: WithVariables[5][2][3], Up, None>')).to.eql(['場所移動：{#0005 体力} ({#0002},{#0003}), 向き 上, フェード なし'])
+    expect(heads('<場所移動: 直接指定[1][1][9], 下, 白>')).to.eql(['場所移動：水族館4 (1,9), 向き 下, フェード 白'])
     expect(heads('<CommonEvent: 1>')).to.eql(['コモンイベント：#0001 リュウグウ音'])
     expect(heads('<ShowAnimation: This Event, 1, OFF>')).to.eql(['アニメーションの表示：このイベント, #0001 キラキラ'])
   })

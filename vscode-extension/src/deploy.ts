@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, isDeployable, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot, snapshotKeyFor } from './compiler';
+import { parseFrontMatter, isDeployable, isAncestorCopy, ANCESTOR_COPY_MESSAGE, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot, snapshotKeyFor } from './compiler';
 import { exportToTextFile, mergePullToText, ExportTarget } from './exportText';
 
 export { isDeployable };
@@ -124,6 +124,10 @@ export async function deployDocument(
     context: vscode.ExtensionContext,
     deployDiagnostics: vscode.DiagnosticCollection
 ): Promise<ApplyResult | undefined> {
+    if (isAncestorCopy(document.uri.fsPath)) {
+        vscode.window.showWarningMessage(ANCESTOR_COPY_MESSAGE);
+        return undefined;
+    }
     const workspaceRoot = workspaceRootFor(document);
     if (!workspaceRoot) {
         vscode.window.showErrorMessage('Text2Frame: ワークスペースフォルダが見つかりません。');
@@ -210,7 +214,10 @@ export async function deployDocument(
     const applyOpts: { [key: string]: unknown } = {
         textPath: document.uri.fsPath,
         ...resolved.opts,
-        strategy
+        strategy,
+        // 祖先(.t2f-base)の置き場所。渡さないとコンパイラは process.cwd() を使い、拡張ホストでは
+        // それが / なので保存できない。拡張の祖先(baseSnapshotPath)と同じ場所・同じ鍵になる。
+        baseRoot: workspaceRoot
     };
     if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.key)) {
         applyOpts.basePath = baseSnapshotPath(workspaceRoot, snap.key);
@@ -273,6 +280,9 @@ export function deployFile(
     workspaceRoot: string,
     filePath: string
 ): ApplyResult | undefined {
+    if (isAncestorCopy(filePath)) {
+        return { ok: false, textPath: filePath, warnings: [], error: ANCESTOR_COPY_MESSAGE };
+    }
     let text: string;
     try {
         text = fs.readFileSync(filePath, 'utf8');
@@ -300,7 +310,8 @@ export function deployFile(
     const applyOpts: { [key: string]: unknown } = {
         textPath: filePath,
         ...resolved.opts,
-        strategy
+        strategy,
+        baseRoot: workspaceRoot // 祖先の置き場所(上の deployDocument と同じ)
     };
     if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.key)) {
         applyOpts.basePath = baseSnapshotPath(workspaceRoot, snap.key);

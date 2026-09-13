@@ -55,7 +55,7 @@ export function cssColor(s: Swatch): string {
 export function describeColor(kind: ColorKind, values: number[]): string {
     const [r, g, b, x] = values;
     return kind === 'tone'
-        ? `色調 赤${r} 緑${g} 青${b} グレー${x}(見本は中間の灰色にかけた色)`
+        ? `色調 赤${r} 緑${g} 青${b} グレー${x}(見本は変化量の目安)`
         : `フラッシュ 赤${r} 緑${g} 青${b} 強さ${x}`;
 }
 
