@@ -142,6 +142,7 @@ export async function revealRunning(tracker: RunTracker, index?: number): Promis
     const doc = await vscode.workspace.openTextDocument(frame.uri);
     const line = frame.from ?? 0;
     await vscode.window.showTextDocument(doc, { viewColumn: textColumn(), selection: new vscode.Range(line, 0, line, 0) });
+    await vscode.commands.executeCommand('text2frame.showPreviewBelow', doc.uri);
 }
 
 export function registerRunHighlight(context: vscode.ExtensionContext, service: DatabaseService, live: LiveService): RunTracker {
@@ -217,6 +218,7 @@ export function registerRunHighlight(context: vscode.ExtensionContext, service: 
         try {
             const doc = await vscode.workspace.openTextDocument(uri);
             await vscode.window.showTextDocument(doc, { viewColumn: textColumn(), preserveFocus: true, preview: true, selection: new vscode.Range(inner.from, 0, inner.from, 0) });
+            await vscode.commands.executeCommand('text2frame.showPreviewBelow', doc.uri);
         } catch (e) {
             lastOpened = '';
         }

@@ -19,6 +19,7 @@ import { RunTracker } from './runHighlight';
  */
 
 const DEBOUNCE_MS = 300;
+const FOCUS_GROUP = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth'].map((n) => `workbench.action.focus${n}EditorGroup`);
 
 interface RenderMessage {
     type: 'render';
@@ -172,7 +173,43 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
             show(editor.document);
             return;
         }
-        panel = vscode.window.createWebviewPanel('text2framePreview', 'プレビュー', { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, {
+        create(vscode.ViewColumn.Beside, editor.document);
+    };
+
+    /* 開いたテキストの下にプレビューを開く。開いてあれば、そのままの場所でそのテキストを出す。
+     * 入力の場所(ゲームの画面など)は、開く前のところへ戻す。 */
+    let opening: Promise<void> | undefined;
+    const openBelow = async (uri: vscode.Uri): Promise<void> => {
+        while (opening) await opening;
+        const editor = vscode.window.visibleTextEditors.find((e) => e.document.uri.fsPath === uri.fsPath);
+        if (!editor) return;
+        if (panel) {
+            if (panel.viewColumn !== editor.viewColumn) panel.reveal(undefined, true);
+            if (current !== editor.document) show(editor.document);
+            return;
+        }
+        const column = editor.viewColumn;
+        if (!column || column > FOCUS_GROUP.length) {
+            create(vscode.ViewColumn.Beside, editor.document);
+            return;
+        }
+        const back = vscode.window.tabGroups.activeTabGroup.viewColumn;
+        opening = (async () => {
+            await vscode.commands.executeCommand(FOCUS_GROUP[column - 1]);
+            await vscode.commands.executeCommand('workbench.action.newGroupBelow');
+            create(vscode.ViewColumn.Active, editor.document);
+            const target = back > column ? back + 1 : back;
+            if (target <= FOCUS_GROUP.length) await vscode.commands.executeCommand(FOCUS_GROUP[target - 1]);
+        })();
+        try {
+            await opening;
+        } finally {
+            opening = undefined;
+        }
+    };
+
+    const create = (column: vscode.ViewColumn, document: vscode.TextDocument): void => {
+        panel = vscode.window.createWebviewPanel('text2framePreview', 'プレビュー', { viewColumn: column, preserveFocus: true }, {
             enableScripts: true,
             retainContextWhenHidden: true,
             localResourceRoots: []
@@ -183,11 +220,12 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
             if (m && m.type === 'play' && typeof m.id === 'number' && typeof m.folder === 'string' && typeof m.name === 'string') play(m.id, m.folder, m.name);
         }, null, context.subscriptions);
         panel.onDidDispose(() => { panel = undefined; current = undefined; lastGood = undefined; }, null, context.subscriptions);
-        show(editor.document);
+        show(document);
     };
 
     context.subscriptions.push(
         vscode.commands.registerCommand('text2frame.showPreview', open),
+        vscode.commands.registerCommand('text2frame.showPreviewBelow', (uri: vscode.Uri) => openBelow(uri)),
         vscode.workspace.onDidChangeTextDocument((e) => {
             if (!panel || !current || e.document !== current) return;
             // 描き直すまでは行の対応が古い。その間にカーソルが動いても強調しない。
