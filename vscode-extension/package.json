@@ -75,7 +75,7 @@
       },
       {
         "command": "text2frame.showPreview",
-        "title": "Text2Frame: プレビューを横に開く / Open preview to the side",
+        "title": "Text2Frame: プレビューを開く / Open preview",
         "icon": "$(open-preview)"
       },
       {
