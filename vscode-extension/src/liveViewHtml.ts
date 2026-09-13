@@ -60,7 +60,7 @@ export function liveViewHtml(): string {
   <span id="status"></span>
   <span id="running" hidden></span>
   <input id="filter" type="search" placeholder="番号・名前で絞り込み">
-  <label><input id="hideDefault" type="checkbox"> OFF・0 を隠す</label>
+  <label title="「すべて」「すべてのイベント」にチェックがある列は、OFF・0 も並べます"><input id="hideDefault" type="checkbox"> OFF・0 を隠す</label>
   <label title="実行しているイベントのテキストを自動で開く(設定 text2frame.openRunningText)"><input id="openRunning" type="checkbox"> 実行中のテキストを開く</label>
   <span id="notice"></span>
 </div>
@@ -321,7 +321,7 @@ export function liveViewHtml(): string {
     itemRows.forEach((_r, key) => paintItem(key));
   }
 
-  function filterItems(q, number, hide) {
+  function filterItems(q, number) {
     const all = $('allItems').checked;
     const shownIn = new Map();
     let shown = 0;
@@ -332,7 +332,7 @@ export function liveViewHtml(): string {
       if (count > 0) owned++;
       if (r.name || count > 0) total++;
       const hit = !q || r.id === number || r.search.includes(q);
-      const visible = hit && (count > 0 || (all && !hide && !!r.name));
+      const visible = hit && (count > 0 || (all && !!r.name));
       r.row.hidden = !visible;
       if (!visible) return;
       shown++;
@@ -340,7 +340,7 @@ export function liveViewHtml(): string {
     });
     itemSubs.forEach((sub, kind) => { sub.hidden = !shownIn.get(kind); });
     $('itemNone').hidden = shown > 0;
-    $('itemNone').textContent = q ? '(当てはまるものはありません)' : all && !hide ? '(アイテムがありません)' : '(何も持っていません)';
+    $('itemNone').textContent = q ? '(当てはまるものはありません)' : all ? '(アイテムがありません)' : '(何も持っていません)';
     $('itemCount').textContent = owned + '種類' + (all ? ' / 全' + total : '');
   }
 
@@ -366,14 +366,14 @@ export function liveViewHtml(): string {
     const hide = $('hideDefault').checked;
     const all = $('allEvents').checked;
     vscode.setState({ filter: $('filter').value, hideDefault: hide, allEvents: all, allItems: $('allItems').checked });
-    filterItems(q, number, hide);
+    filterItems(q, number);
     let shownHere = 0;
     let relevantHere = 0;
     for (const rowsOfSelf of [hereRows, otherRows]) {
       rowsOfSelf.forEach((r) => {
         const relevant = all || rowsOfSelf === otherRows || r.used.length > 0 || r.on || r.row.classList.contains('running');
         const hit = !q || r.eventId === number || r.row.dataset.search.includes(q);
-        const visible = relevant && hit && (!hide || r.on);
+        const visible = hit && (all || (relevant && (!hide || r.on)));
         r.row.hidden = !visible;
         if (rowsOfSelf === hereRows && relevant) relevantHere++;
         if (visible && rowsOfSelf === hereRows) shownHere++;
