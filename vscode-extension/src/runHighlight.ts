@@ -117,6 +117,21 @@ export class RunTracker implements vscode.Disposable {
     }
 }
 
+export const openRunningText = (): boolean =>
+    vscode.workspace.getConfiguration('text2frame').get<boolean>('openRunningText', false);
+
+export async function setOpenRunningText(value: boolean): Promise<void> {
+    const target = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+    await vscode.workspace.getConfiguration('text2frame').update('openRunningText', value, target);
+}
+
+function textColumn(): vscode.ViewColumn {
+    const text = vscode.window.visibleTextEditors.find((e) => e.document.languageId === 'text2frame');
+    if (text?.viewColumn) return text.viewColumn;
+    const group = vscode.window.tabGroups.all.find((g) => g.activeTab?.input instanceof vscode.TabInputText);
+    return group ? group.viewColumn : vscode.ViewColumn.Beside;
+}
+
 export async function revealRunning(tracker: RunTracker, index?: number): Promise<void> {
     const frames = tracker.current();
     const frame = index !== undefined && frames[index]?.uri ? frames[index] : tracker.innermost();
@@ -125,9 +140,8 @@ export async function revealRunning(tracker: RunTracker, index?: number): Promis
         return;
     }
     const doc = await vscode.workspace.openTextDocument(frame.uri);
-    const column = vscode.window.visibleTextEditors.find((e) => e.document.languageId === 'text2frame')?.viewColumn ?? vscode.ViewColumn.One;
     const line = frame.from ?? 0;
-    await vscode.window.showTextDocument(doc, { viewColumn: column, selection: new vscode.Range(line, 0, line, 0) });
+    await vscode.window.showTextDocument(doc, { viewColumn: textColumn(), selection: new vscode.Range(line, 0, line, 0) });
 }
 
 export function registerRunHighlight(context: vscode.ExtensionContext, service: DatabaseService, live: LiveService): RunTracker {
@@ -181,9 +195,43 @@ export function registerRunHighlight(context: vscode.ExtensionContext, service: 
         status.show();
     };
 
+    let lastSpot = '';
+    let lastOpened = '';
+    const follow = async (): Promise<void> => {
+        const frames = tracker.current();
+        const inner = frames[frames.length - 1];
+        if (!frames.length) lastOpened = '';
+        if (!inner || !inner.uri || inner.from === undefined) {
+            lastSpot = '';
+            return;
+        }
+        const uri = inner.uri;
+        const spot = `${uri.fsPath}:${inner.from}:${inner.to}`;
+        if (spot === lastSpot) return;
+        lastSpot = spot;
+        const range = new vscode.Range(inner.from, 0, inner.to ?? inner.from, 0);
+        const shown = vscode.window.visibleTextEditors.filter((e) => e.document.uri.fsPath === uri.fsPath);
+        shown.forEach((e) => e.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport));
+        if (shown.length || !openRunningText() || lastOpened === uri.fsPath) return;
+        lastOpened = uri.fsPath;
+        try {
+            const doc = await vscode.workspace.openTextDocument(uri);
+            await vscode.window.showTextDocument(doc, { viewColumn: textColumn(), preserveFocus: true, preview: true, selection: new vscode.Range(inner.from, 0, inner.from, 0) });
+        } catch (e) {
+            lastOpened = '';
+        }
+    };
+
     const statusTimer = setInterval(() => tracker.refresh(), STATUS_CHECK);
     context.subscriptions.push(
         tracker,
+        tracker.onDidChange(() => { follow(); }),
+        vscode.workspace.onDidChangeConfiguration((e) => {
+            if (!e.affectsConfiguration('text2frame.openRunningText')) return;
+            lastSpot = '';
+            lastOpened = '';
+            follow();
+        }),
         current,
         caller,
         approximate,

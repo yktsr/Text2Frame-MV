@@ -49,6 +49,7 @@ export interface MapEvent {
     name: string;
     x: number;
     y: number;
+    selfSwitches?: string[];
 }
 
 /** テキストのマップにあるイベント。コモンイベントのテキストなど、マップが決まらなければ渡さない。 */

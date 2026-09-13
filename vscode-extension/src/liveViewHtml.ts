@@ -35,6 +35,8 @@ export function liveViewHtml(): string {
   .ss.on { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
   .sub { margin: 6px 0 2px; color: var(--vscode-descriptionForeground); font-size: 0.95em; }
   .none { padding: 4px 2px; color: var(--vscode-descriptionForeground); }
+  h3 label { font-weight: normal; color: var(--vscode-descriptionForeground); margin-left: 10px; font-size: 0.95em; }
+  .ss.used { border-style: solid; font-weight: 600; }
   button:disabled, input:disabled { opacity: 0.5; cursor: default; }
   .row.flash { animation: flash 3s ease-out; }
   @keyframes flash { from { background: var(--vscode-editor-findMatchHighlightBackground, rgba(255, 200, 0, 0.4)); } to { background: transparent; } }
@@ -52,13 +54,14 @@ export function liveViewHtml(): string {
   <span id="running" hidden></span>
   <input id="filter" type="search" placeholder="番号・名前で絞り込み">
   <label><input id="hideDefault" type="checkbox"> OFF・0 を隠す</label>
+  <label title="実行しているイベントのテキストを自動で開く(設定 text2frame.openRunningText)"><input id="openRunning" type="checkbox"> 実行中のテキストを開く</label>
   <span id="notice"></span>
 </div>
 <div id="empty">テストプレイ中だけ、ここにスイッチ・変数・セルフスイッチの値が出ます。<button id="play">▶ テストプレイ</button></div>
 <div id="cols" hidden>
   <section><h3>スイッチ<span class="count" id="switchCount"></span></h3><div class="list" id="switches"></div></section>
   <section><h3>変数<span class="count" id="variableCount"></span></h3><div class="list" id="variables"></div></section>
-  <section><h3>セルフスイッチ<span class="count" id="selfCount"></span></h3><div class="list"><div id="selfHere"></div><div id="selfOthers"></div></div></section>
+  <section><h3>セルフスイッチ<span class="count" id="selfCount"></span><label title="セルフスイッチを使っていないイベントも並べる"><input id="allEvents" type="checkbox"> すべてのイベント</label></h3><div class="list"><div id="selfHere"></div><div id="selfUnused" class="none" hidden>(このマップにセルフスイッチを使うイベントはありません)</div><div id="selfOthers"></div></div></section>
 </div>
 <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
@@ -71,6 +74,7 @@ export function liveViewHtml(): string {
   const saved = vscode.getState() || {};
   $('filter').value = saved.filter || '';
   $('hideDefault').checked = !!saved.hideDefault;
+  $('allEvents').checked = !!saved.allEvents;
 
   const pad = (n) => String(n).padStart(4, '0');
   const blank = (kind) => (kind === 'switch' ? false : 0);
@@ -86,7 +90,7 @@ export function liveViewHtml(): string {
   let othersSignature = '';
   let runningEvent = null;
 
-  function selfRow(mapId, eventId, label) {
+  function selfRow(mapId, eventId, label, used) {
     const row = document.createElement('div');
     row.className = 'row';
     const idEl = document.createElement('span');
@@ -100,14 +104,14 @@ export function liveViewHtml(): string {
     box.className = 'ssw';
     row.append(idEl, nameEl, box);
     row.dataset.search = label.toLowerCase();
-    const r = { row, box, mapId, eventId, buttons: new Map() };
+    const r = { row, box, mapId, eventId, buttons: new Map(), used: used || [] };
     LETTERS.forEach((letter) => addLetter(r, letter));
     return r;
   }
 
   function addLetter(r, letter) {
     const button = document.createElement('button');
-    button.className = 'ss';
+    button.className = 'ss' + (r.used.includes(letter) ? ' used' : '');
     button.textContent = letter;
     const key = r.mapId + ',' + r.eventId + ',' + letter;
     button.addEventListener('click', () => vscode.postMessage({ type: 'set', kind: 'selfSwitch', key, value: !selfOn.has(key) }));
@@ -127,7 +131,7 @@ export function liveViewHtml(): string {
       any = any || on;
       button.classList.toggle('on', on);
       button.disabled = disabled;
-      button.title = disabled ? 'テストプレイ中だけ書き換えられます' : 'セルフスイッチ ' + letter + ' を切り替え';
+      button.title = (disabled ? 'テストプレイ中だけ書き換えられます' : 'セルフスイッチ ' + letter + ' を切り替え') + (r.used.includes(letter) ? '(このイベントで使っている)' : '');
     });
     r.on = any;
   }
@@ -136,8 +140,8 @@ export function liveViewHtml(): string {
     mapInfo = m;
     hereRows = new Map();
     const frag = document.createDocumentFragment();
-    for (const [id, name, x, y] of m.events) {
-      const r = selfRow(m.mapId, id, (name && name !== pad3(id) ? name + ' ' : '') + '(' + x + ',' + y + ')');
+    for (const [id, name, x, y, used] of m.events) {
+      const r = selfRow(m.mapId, id, (name && name !== pad3(id) ? name + ' ' : '') + '(' + x + ',' + y + ')', used);
       hereRows.set(m.mapId + ',' + id, r);
       frag.appendChild(r.row);
     }
@@ -236,18 +240,24 @@ export function liveViewHtml(): string {
     const q = $('filter').value.trim().toLowerCase();
     const number = /^[0-9]+$/.test(q) ? Number(q) : NaN;
     const hide = $('hideDefault').checked;
-    vscode.setState({ filter: $('filter').value, hideDefault: hide });
+    const all = $('allEvents').checked;
+    vscode.setState({ filter: $('filter').value, hideDefault: hide, allEvents: all });
     let shownHere = 0;
+    let relevantHere = 0;
     for (const rowsOfSelf of [hereRows, otherRows]) {
       rowsOfSelf.forEach((r) => {
+        const relevant = all || rowsOfSelf === otherRows || r.used.length > 0 || r.on || r.row.classList.contains('running');
         const hit = !q || r.eventId === number || r.row.dataset.search.includes(q);
-        const visible = hit && (!hide || r.on);
+        const visible = relevant && hit && (!hide || r.on);
         r.row.hidden = !visible;
+        if (rowsOfSelf === hereRows && relevant) relevantHere++;
         if (visible && rowsOfSelf === hereRows) shownHere++;
       });
     }
+    $('selfUnused').hidden = !(hereRows.size > 0 && relevantHere === 0);
     const where = mapInfo.mapName ? mapInfo.mapName + ' ' : '';
-    $('selfCount').textContent = where + (shownHere === hereRows.size ? String(hereRows.size) : shownHere + ' / ' + hereRows.size);
+    const total = all ? hereRows.size : relevantHere;
+    $('selfCount').textContent = where + (shownHere === total ? String(total) : shownHere + ' / ' + total) + (all ? '' : ' / 全' + hereRows.size);
     for (const kind of ['switch', 'variable']) {
       let shown = 0;
       rows[kind].forEach((r, id) => {
@@ -317,11 +327,19 @@ export function liveViewHtml(): string {
       void r.row.offsetWidth;
       r.row.classList.add('flash');
     }
-    if ($('hideDefault').checked || rebuilt) filter();
+    const selfChanged = Array.from(hereRows.values()).some((r) => r.on !== r.wasOn);
+    hereRows.forEach((r) => { r.wasOn = r.on; });
+    if ($('hideDefault').checked || rebuilt || selfChanged) filter();
   }
 
   function markRunning() {
-    hereRows.forEach((r) => r.row.classList.toggle('running', !!runningEvent && r.mapId === runningEvent[0] && r.eventId === runningEvent[1]));
+    let changed = false;
+    hereRows.forEach((r) => {
+      const running = !!runningEvent && r.mapId === runningEvent[0] && r.eventId === runningEvent[1];
+      if (r.row.classList.contains('running') !== running) changed = true;
+      r.row.classList.toggle('running', running);
+    });
+    if (changed) filter();
   }
 
   function setRunning(m) {
@@ -343,6 +361,8 @@ export function liveViewHtml(): string {
   $('running').addEventListener('click', () => { if (!$('running').classList.contains('missing')) vscode.postMessage({ type: 'revealRunning' }); });
   $('filter').addEventListener('input', filter);
   $('hideDefault').addEventListener('change', filter);
+  $('allEvents').addEventListener('change', filter);
+  $('openRunning').addEventListener('change', () => vscode.postMessage({ type: 'openRunning', value: $('openRunning').checked }));
   $('play').addEventListener('click', () => vscode.postMessage({ type: 'testPlay' }));
   let noticeTimer;
   window.addEventListener('message', (event) => {
@@ -352,6 +372,7 @@ export function liveViewHtml(): string {
     else if (m.type === 'events') setEvents(m);
     else if (m.type === 'values') setValues(m);
     else if (m.type === 'running') setRunning(m);
+    else if (m.type === 'options') $('openRunning').checked = !!m.openRunning;
     else if (m.type === 'notice') {
       $('notice').textContent = m.text;
       clearTimeout(noticeTimer);

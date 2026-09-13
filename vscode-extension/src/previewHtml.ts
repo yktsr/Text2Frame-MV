@@ -101,6 +101,7 @@ export function previewHtml(): string {
   };
   const bannersEl = document.getElementById('banners');
   const banner = (cls, text) => { const d = document.createElement('div'); d.className = 'banner ' + cls; d.textContent = text; bannersEl.appendChild(d); };
+  let lastRunning = '';
   window.addEventListener('message', (event) => {
     const m = event.data;
     if (m && (m.type === 'audio' || m.type === 'audioError')) {
@@ -119,6 +120,9 @@ export function previewHtml(): string {
       return;
     }
     if (m && m.type === 'running') {
+      const spot = m.current.join(',');
+      const moved = spot !== lastRunning;
+      lastRunning = spot;
       rowsEl.querySelectorAll('.row.running, .row.caller').forEach((r) => r.classList.remove('running', 'caller', 'approximate'));
       for (const i of m.callers) rowsEl.querySelector('.row[data-index="' + i + '"]')?.classList.add('caller');
       for (const i of m.current) {
@@ -128,6 +132,8 @@ export function previewHtml(): string {
         r.classList.add('running');
         r.classList.toggle('approximate', !m.exact);
       }
+      const first = rowsEl.querySelector('.row.running');
+      if (moved && first) first.scrollIntoView({ block: 'nearest' });
       return;
     }
     if (m && m.type === 'highlight') {

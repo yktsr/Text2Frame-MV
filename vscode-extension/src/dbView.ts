@@ -37,9 +37,28 @@ class DatabaseTreeProvider implements vscode.TreeDataProvider<Node> {
 
     private context(): DbContext | undefined {
         const document = targetEditor()?.document;
-        const ctx = document ? this.service.forDocument(document) : undefined;
+        const ctx = (document ? this.service.forDocument(document) : undefined) ?? this.last ?? this.fallback();
         if (ctx) this.last = ctx;
-        return ctx ?? this.last;
+        return ctx;
+    }
+
+    /** テキストを開いていないとき。テストプレイ中のプロジェクト、ワークスペース、その1段下の順に探す。 */
+    private fallback(): DbContext | undefined {
+        const session = this.live.current();
+        const playing = session ? this.service.forRoot(session.projectRoot) : undefined;
+        if (playing) return playing;
+        const workspace = this.service.forDocument(undefined);
+        if (workspace) return workspace;
+        for (const folder of vscode.workspace.workspaceFolders || []) {
+            let children: fs.Dirent[];
+            try { children = fs.readdirSync(folder.uri.fsPath, { withFileTypes: true }); } catch (e) { continue; }
+            for (const child of children) {
+                if (!child.isDirectory() || child.name.startsWith('.') || child.name === 'node_modules') continue;
+                const ctx = this.service.forRoot(path.join(folder.uri.fsPath, child.name));
+                if (ctx) return ctx;
+            }
+        }
+        return undefined;
     }
 
     getChildren(node?: Node): Node[] {
@@ -164,6 +183,8 @@ export function registerDatabaseView(context: vscode.ExtensionContext, service: 
         live.onDidChange(refreshForLive),
         { dispose: () => { clearTimeout(soon); clearTimeout(fade); } },
         // 別のプロジェクトのテキストに切り替えたら、そのプロジェクトのデータベースを出す。
-        vscode.window.onDidChangeActiveTextEditor((e) => { if (e && e.document.languageId === 'text2frame') provider.refresh(); })
+        vscode.window.onDidChangeActiveTextEditor((e) => { if (e && e.document.languageId === 'text2frame') provider.refresh(); }),
+        vscode.workspace.onDidOpenTextDocument((d) => { if (d.languageId === 'text2frame') provider.refresh(); }),
+        vscode.workspace.onDidChangeWorkspaceFolders(() => provider.refresh())
     );
 }

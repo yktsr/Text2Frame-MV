@@ -6,7 +6,7 @@ import { liveViewHtml } from './liveViewHtml';
 import { parseVariableInput, SELF_SWITCH_KEY } from './liveState';
 import { padId } from './db/database';
 import { eventId } from './db/describe';
-import { RunningFrame, RunTracker } from './runHighlight';
+import { RunningFrame, RunTracker, openRunningText, setOpenRunningText } from './runHighlight';
 
 export const LIVE_VIEW_ID = 'text2frame.liveValues';
 
@@ -22,6 +22,10 @@ class LiveViewProvider implements vscode.WebviewViewProvider {
     private timer?: NodeJS.Timeout;
 
     constructor(private readonly service: DatabaseService, private readonly live: LiveService, private readonly tracker: RunTracker) {}
+
+    options(): void {
+        this.view?.webview.postMessage({ type: 'options', openRunning: openRunningText() });
+    }
 
     running(frames: RunningFrame[] = this.tracker.current()): void {
         const inner = frames[frames.length - 1];
@@ -106,8 +110,8 @@ class LiveViewProvider implements vscode.WebviewViewProvider {
         const events = mapId > 0 ? this.service.mapEvents(ctx, mapId) : undefined;
         const last = this.eventsFor;
         if (last && last.gameRoot === session.gameRoot && last.mapId === mapId && last.events === events && last.db === ctx.db) return;
-        const list: Array<[number, string, number, number]> = [];
-        (events || []).forEach((e, id) => { if (e && id > 0) list.push([id, e.name, e.x, e.y]); });
+        const list: Array<[number, string, number, number, string[]]> = [];
+        (events || []).forEach((e, id) => { if (e && id > 0) list.push([id, e.name, e.x, e.y, e.selfSwitches || []]); });
         view.webview.postMessage({ type: 'events', mapId, mapName: mapId > 0 ? this.mapName(ctx, mapId) : '', events: list });
         this.eventsFor = { gameRoot: session.gameRoot, mapId, events, db: ctx.db };
     }
@@ -135,6 +139,11 @@ class LiveViewProvider implements vscode.WebviewViewProvider {
             this.eventsFor = undefined;
             this.post(false);
             this.running();
+            this.options();
+            return;
+        }
+        if (m.type === 'openRunning' && typeof m.value === 'boolean') {
+            setOpenRunningText(m.value);
             return;
         }
         if (m.type === 'revealRunning') {
@@ -181,6 +190,7 @@ export function registerLiveView(context: vscode.ExtensionContext, service: Data
         live.onDidChange(() => provider.changed()),
         service.onDidChange(() => provider.changed()),
         tracker.onDidChange((frames) => provider.running(frames)),
+        vscode.workspace.onDidChangeConfiguration((e) => { if (e.affectsConfiguration('text2frame.openRunningText')) provider.options(); }),
         { dispose: () => { clearInterval(statusTimer); provider.dispose(); } }
     );
 }

@@ -187,6 +187,12 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "text2frameDatabase",
+        "contents": "ツクールのプロジェクト(data/System.json)が見つかりません。\nプロジェクトのテキストを開くと、そのデータベースがここに出ます。\nNo RPG Maker project (data/System.json) was found. Open a text of the project to list its database here."
+      }
+    ],
     "menus": {
       "editor/title": [
         {
@@ -311,6 +317,11 @@
           "type": "string",
           "default": "",
           "description": "テストプレイで開くページ(ゲームのフォルダからの相対パス)。空なら index.html。 / The page to open for test play, relative to the game folder. Empty means index.html."
+        },
+        "text2frame.openRunningText": {
+          "type": "boolean",
+          "default": false,
+          "description": "テストプレイ中、実行しているイベントのテキストを自動で開く(ゲームの画面から入力は移さない)。「スイッチと変数」のパネルでも切り替えられます。 / While test playing, open the text of the running event automatically (keeping the input on the game). Also switchable from the Switches & Variables panel."
         },
         "text2frame.showDatabaseNames": {
           "type": "boolean",

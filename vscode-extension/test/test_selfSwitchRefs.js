@@ -1,5 +1,5 @@
 const { expect } = require('chai')
-const { findSelfSwitchRefs, scanSelfSwitchLines } = require('../out/db/selfSwitchRefs')
+const { findSelfSwitchRefs, scanSelfSwitchLines, eventSelfSwitchLetters } = require('../out/db/selfSwitchRefs')
 
 const letters = function (text) {
   return findSelfSwitchRefs(text).map(function (r) { return [r.letter, text.slice(r.start, r.end)] })
@@ -26,5 +26,19 @@ describe('selfSwitchRefs', function () {
   it('skips % lines and blocks', function () {
     const lines = ['<SelfSwitch: A, ON>', '% <SelfSwitch: B, ON>', '<comment>', '<SelfSwitch: C, ON>', '</comment>', '  <If: SelfSwitches[D], ON>']
     expect(scanSelfSwitchLines(lines).map(function (r) { return [r.line, r.letter] })).to.eql([[0, 'A'], [5, 'D']])
+  })
+
+  it('tells which self switches an event uses in its pages', function () {
+    const page = function (conditions, list) { return { conditions: conditions, list: list } }
+    const event = {
+      pages: [
+        page({ selfSwitchValid: false, selfSwitchCh: 'A' }, [{ code: 123, parameters: ['B', 0] }, { code: 0, parameters: [] }]),
+        page({ selfSwitchValid: true, selfSwitchCh: 'C' }, [{ code: 111, parameters: [2, 'D', 0] }, { code: 111, parameters: [0, 5, 0] }])
+      ]
+    }
+    expect(eventSelfSwitchLetters(event)).to.eql(['B', 'C', 'D'])
+    expect(eventSelfSwitchLetters({ pages: [page({ selfSwitchValid: false, selfSwitchCh: 'A' }, [{ code: 101, parameters: [] }])] })).to.eql([])
+    expect(eventSelfSwitchLetters(null)).to.eql([])
+    expect(eventSelfSwitchLetters({ pages: [null, { list: [null] }] })).to.eql([])
   })
 })
