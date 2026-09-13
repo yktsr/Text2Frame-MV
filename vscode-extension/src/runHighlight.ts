@@ -1,0 +1,202 @@
+import * as vscode from 'vscode';
+import { DatabaseService } from './dbService';
+import { LiveService } from './live';
+import { RunSources, RunSource } from './runSource';
+import { placeFromKey, placeLabel } from './placeLabel';
+import { alignCommands, CommandMark, commandLines, locateCommand } from './db/runLines';
+
+export interface RunningFrame {
+    key: string;
+    label: string;
+    uri?: vscode.Uri;
+    from?: number;
+    to?: number;
+    textIndex?: number;
+    exact: boolean;
+    problem?: string;
+}
+
+const RESOLVE_DELAY = 80;
+const STATUS_CHECK = 1000;
+const APPROXIMATE = 'テキストがゲームのデータと違うため、近い行です(反映してブラウザを読み直すと合います)。';
+
+export class RunTracker implements vscode.Disposable {
+    private frames: RunningFrame[] = [];
+    private signature = '[]';
+    private timer?: NodeJS.Timeout;
+    private seq = 0;
+    private readonly emitter = new vscode.EventEmitter<RunningFrame[]>();
+    readonly onDidChange = this.emitter.event;
+    private readonly sources: RunSources;
+    private readonly alignments = new WeakMap<CommandMark[], WeakMap<RunSource, Array<number | undefined>>>();
+
+    constructor(context: vscode.ExtensionContext, private readonly service: DatabaseService, private readonly live: LiveService) {
+        this.sources = new RunSources(context);
+    }
+
+    current(): RunningFrame[] {
+        return this.frames;
+    }
+
+    innermost(): RunningFrame | undefined {
+        for (let i = this.frames.length - 1; i >= 0; i--) if (this.frames[i].uri) return this.frames[i];
+        return undefined;
+    }
+
+    refresh(): void {
+        clearTimeout(this.timer);
+        this.timer = setTimeout(() => { this.resolve(); }, RESOLVE_DELAY);
+    }
+
+    reindex(): void {
+        this.sources.invalidate();
+        this.refresh();
+    }
+
+    showsFile(fsPath: string): boolean {
+        return this.frames.some((f) => f.uri?.fsPath === fsPath);
+    }
+
+    dispose(): void {
+        clearTimeout(this.timer);
+        this.emitter.dispose();
+    }
+
+    private alignment(marks: CommandMark[], source: RunSource): Array<number | undefined> {
+        let bySource = this.alignments.get(marks);
+        if (!bySource) {
+            bySource = new WeakMap();
+            this.alignments.set(marks, bySource);
+        }
+        let hit = bySource.get(source);
+        if (!hit) {
+            hit = alignCommands(marks, source.marks);
+            bySource.set(source, hit);
+        }
+        return hit;
+    }
+
+    private async resolve(): Promise<void> {
+        const seq = ++this.seq;
+        const session = this.live.current();
+        const state = session?.state;
+        const ctx = session ? this.service.forRoot(session.projectRoot) : undefined;
+        const frames: RunningFrame[] = [];
+        if (session && state && ctx && state.received() && state.connected(Date.now())) {
+            for (const frame of state.running()) {
+                const out: RunningFrame = { key: frame.key, label: placeLabel(this.service, ctx, placeFromKey(frame.key)), exact: false };
+                frames.push(out);
+                const file = await this.sources.find(ctx, frame.key);
+                if (!file) {
+                    out.problem = 'このイベントのテキストが見つかりません。';
+                    continue;
+                }
+                out.uri = vscode.Uri.file(file);
+                const source = this.sources.source(ctx, file);
+                const marks = state.listMarks(frame.key);
+                if ('error' in source) {
+                    out.problem = source.error;
+                    continue;
+                }
+                if (!marks) continue;
+                const target = locateCommand(this.alignment(marks, source), frame.index);
+                const lines = target ? commandLines(source.commands, source.lines, target.index) : undefined;
+                if (!target || !lines) {
+                    out.problem = 'テキストの中の場所が分かりません。';
+                    continue;
+                }
+                Object.assign(out, { from: lines.from, to: lines.to, textIndex: target.index, exact: target.exact });
+            }
+        }
+        if (seq !== this.seq) return;
+        const signature = JSON.stringify(frames.map((f) => [f.key, f.label, f.uri?.fsPath, f.from, f.to, f.exact, f.problem]));
+        if (signature === this.signature) return;
+        this.signature = signature;
+        this.frames = frames;
+        this.emitter.fire(frames);
+    }
+}
+
+export async function revealRunning(tracker: RunTracker, index?: number): Promise<void> {
+    const frames = tracker.current();
+    const frame = index !== undefined && frames[index]?.uri ? frames[index] : tracker.innermost();
+    if (!frame || !frame.uri) {
+        vscode.window.showInformationMessage('Text2Frame: テストプレイで実行中のイベントはありません。');
+        return;
+    }
+    const doc = await vscode.workspace.openTextDocument(frame.uri);
+    const column = vscode.window.visibleTextEditors.find((e) => e.document.languageId === 'text2frame')?.viewColumn ?? vscode.ViewColumn.One;
+    const line = frame.from ?? 0;
+    await vscode.window.showTextDocument(doc, { viewColumn: column, selection: new vscode.Range(line, 0, line, 0) });
+}
+
+export function registerRunHighlight(context: vscode.ExtensionContext, service: DatabaseService, live: LiveService): RunTracker {
+    const tracker = new RunTracker(context, service, live);
+    const current = vscode.window.createTextEditorDecorationType({
+        isWholeLine: true,
+        backgroundColor: new vscode.ThemeColor('editor.stackFrameHighlightBackground'),
+        overviewRulerColor: new vscode.ThemeColor('editorOverviewRuler.rangeHighlightForeground'),
+        overviewRulerLane: vscode.OverviewRulerLane.Full
+    });
+    const caller = vscode.window.createTextEditorDecorationType({
+        isWholeLine: true,
+        backgroundColor: new vscode.ThemeColor('editor.focusedStackFrameHighlightBackground')
+    });
+    const approximate = vscode.window.createTextEditorDecorationType({
+        isWholeLine: true,
+        backgroundColor: new vscode.ThemeColor('editor.rangeHighlightBackground'),
+        after: { contentText: ' (近い行)', color: new vscode.ThemeColor('descriptionForeground') }
+    });
+    const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
+    status.command = 'text2frame.revealRunning';
+
+    const paint = (): void => {
+        const frames = tracker.current();
+        const inner = frames[frames.length - 1];
+        for (const editor of vscode.window.visibleTextEditors) {
+            const fsPath = editor.document.uri.fsPath;
+            const ranges = { current: [] as vscode.DecorationOptions[], caller: [] as vscode.DecorationOptions[], approximate: [] as vscode.DecorationOptions[] };
+            for (const f of frames) {
+                if (!f.uri || f.uri.fsPath !== fsPath || f.from === undefined || f.to === undefined) continue;
+                const to = Math.min(f.to, editor.document.lineCount - 1);
+                const from = Math.min(f.from, to);
+                const range = new vscode.Range(from, 0, to, editor.document.lineAt(to).text.length);
+                if (f !== inner) ranges.caller.push({ range });
+                else if (f.exact) ranges.current.push({ range });
+                else ranges.approximate.push({ range, hoverMessage: APPROXIMATE });
+            }
+            editor.setDecorations(current, ranges.current);
+            editor.setDecorations(caller, ranges.caller);
+            editor.setDecorations(approximate, ranges.approximate);
+        }
+        if (!frames.length) {
+            status.hide();
+            return;
+        }
+        const line = inner.from !== undefined ? ` ${inner.from + 1}行目` : '';
+        status.text = `$(debug-stackframe) ${inner.label}${line}${inner.from !== undefined && !inner.exact ? '(近い行)' : ''}`;
+        status.tooltip = ['テストプレイで実行中。押すとその行を開きます。', '']
+            .concat(frames.slice().reverse().map((f) => `${f.label}${f.from !== undefined ? ` ${f.from + 1}行目` : ''}${f.problem ? ` — ${f.problem}` : ''}`))
+            .join('\n');
+        status.show();
+    };
+
+    const statusTimer = setInterval(() => tracker.refresh(), STATUS_CHECK);
+    context.subscriptions.push(
+        tracker,
+        current,
+        caller,
+        approximate,
+        status,
+        tracker.onDidChange(paint),
+        live.onDidChangeRun(() => tracker.refresh()),
+        vscode.window.onDidChangeVisibleTextEditors(paint),
+        vscode.workspace.onDidChangeTextDocument((e) => { if (tracker.showsFile(e.document.uri.fsPath)) tracker.refresh(); }),
+        vscode.workspace.onDidCreateFiles(() => tracker.reindex()),
+        vscode.workspace.onDidDeleteFiles(() => tracker.reindex()),
+        vscode.workspace.onDidRenameFiles(() => tracker.reindex()),
+        vscode.commands.registerCommand('text2frame.revealRunning', (index?: number) => revealRunning(tracker, typeof index === 'number' ? index : undefined)),
+        { dispose: () => clearInterval(statusTimer) }
+    );
+    return tracker;
+}

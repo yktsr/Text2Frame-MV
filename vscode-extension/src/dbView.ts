@@ -1,14 +1,18 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { DatabaseService } from './dbService';
+import { DatabaseService, DbContext } from './dbService';
 import { KINDS, DbKind, padId } from './db/database';
 import { scanLines } from './db/tagRefs';
+import { LiveService } from './live';
+import { projectTextFiles, UsagesPanel } from './usagesView';
+import { formatLiveValue, RECENT_CHANGE } from './liveState';
 
 /**
  * サイドバーの「データベース」。スイッチ・変数・マップ…を番号と名前で並べる。読むだけ。
- * クリックで開いているテキストのカーソル位置に番号を入れ、右クリックで
- * 「その番号として使っている箇所」を探せる(文字列の 79 ではなく、スイッチ79として)。
+ * スイッチと変数はクリックで、使っている箇所を前後の行つきで横に一覧する。ほかはクリックで、
+ * 開いているテキストのカーソル位置に番号を入れる(スイッチと変数は右クリックから)。
+ * 虫眼鏡では「その番号として使っている箇所」をクイックピックで探せる(文字列の 79 ではなく、スイッチ79として)。
  */
 
 type Node =
@@ -19,14 +23,27 @@ class DatabaseTreeProvider implements vscode.TreeDataProvider<Node> {
     private readonly emitter = new vscode.EventEmitter<void>();
     readonly onDidChangeTreeData = this.emitter.event;
 
-    constructor(private readonly service: DatabaseService) {}
+    private last?: DbContext;
+
+    constructor(private readonly service: DatabaseService, private readonly live: LiveService) {}
 
     refresh(): void {
         this.emitter.fire();
     }
 
+    currentContext(): DbContext | undefined {
+        return this.context();
+    }
+
+    private context(): DbContext | undefined {
+        const document = targetEditor()?.document;
+        const ctx = document ? this.service.forDocument(document) : undefined;
+        if (ctx) this.last = ctx;
+        return ctx ?? this.last;
+    }
+
     getChildren(node?: Node): Node[] {
-        const ctx = this.service.forDocument(vscode.window.activeTextEditor?.document);
+        const ctx = this.context();
         if (!ctx) return [];
         if (!node) return KINDS.filter((kind) => ctx.db.max(kind) > 0).map((kind) => ({ type: 'kind', kind }));
         if (node.type !== 'kind') return [];
@@ -34,7 +51,7 @@ class DatabaseTreeProvider implements vscode.TreeDataProvider<Node> {
     }
 
     getTreeItem(node: Node): vscode.TreeItem {
-        const ctx = this.service.forDocument(vscode.window.activeTextEditor?.document);
+        const ctx = this.context();
         if (node.type === 'kind') {
             const item = new vscode.TreeItem(ctx ? ctx.db.label(node.kind) : node.kind, vscode.TreeItemCollapsibleState.Collapsed);
             item.description = ctx ? String(ctx.db.max(node.kind)) : undefined;
@@ -43,13 +60,26 @@ class DatabaseTreeProvider implements vscode.TreeDataProvider<Node> {
         }
         const item = new vscode.TreeItem(`${padId(node.id)} ${node.name || '(名前なし)'}`, vscode.TreeItemCollapsibleState.None);
         const same = ctx ? ctx.db.sameName(node.kind, node.id) : [];
+        const notes: string[] = [];
         if (same.length) {
             // 同じ名前が他の番号にも付いている。名前だけで選ぶと取り違えるので印をつける。
-            item.description = `同名 ×${same.length + 1}`;
+            notes.push(`同名 ×${same.length + 1}`);
             item.tooltip = `同じ名前: ${same.map(padId).join(', ')}`;
         }
+        const state = ctx ? this.live.forContext(ctx) : undefined;
+        if (state && (node.kind === 'switch' || node.kind === 'variable')) {
+            const value = node.kind === 'switch' ? state.switchValue(node.id) : state.variableValue(node.id);
+            notes.unshift(formatLiveValue(node.kind, value));
+            const since = state.sinceChange(node.kind, node.id, Date.now());
+            if (since !== undefined && since < RECENT_CHANGE) {
+                item.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('charts.yellow'));
+            }
+        }
+        if (notes.length) item.description = notes.join(' · ');
         item.contextValue = 'text2frame.dbEntry';
-        item.command = { command: 'text2frame.db.insert', title: '番号を挿入', arguments: [node] };
+        item.command = node.kind === 'switch' || node.kind === 'variable'
+            ? { command: 'text2frame.db.showUsages', title: '使っている箇所を一覧', arguments: [node] }
+            : { command: 'text2frame.db.insert', title: '番号を挿入', arguments: [node] };
         return item;
     }
 }
@@ -77,8 +107,7 @@ async function findUsages(node: Node, service: DatabaseService): Promise<void> {
     const ctx = service.forDocument(targetEditor()?.document);
     if (!ctx) return;
     const root = ctx.root;
-    const textBase = vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text') || 'text';
-    const files = await vscode.workspace.findFiles(new vscode.RelativePattern(vscode.Uri.file(path.join(root, textBase)), '**/*.{txt,t2f,text2frame}'));
+    const files = await projectTextFiles(ctx);
 
     const picks: Array<vscode.QuickPickItem & { uri: vscode.Uri; line: number; start: number; end: number }> = [];
     for (const uri of files) {
@@ -109,14 +138,31 @@ async function findUsages(node: Node, service: DatabaseService): Promise<void> {
     await vscode.window.showTextDocument(doc, { selection: range });
 }
 
-export function registerDatabaseView(context: vscode.ExtensionContext, service: DatabaseService): void {
-    const provider = new DatabaseTreeProvider(service);
+const LIVE_REFRESH = 300;
+
+export function registerDatabaseView(context: vscode.ExtensionContext, service: DatabaseService, live: LiveService): void {
+    const provider = new DatabaseTreeProvider(service, live);
+    const usages = new UsagesPanel(service);
+    let soon: NodeJS.Timeout | undefined;
+    let fade: NodeJS.Timeout | undefined;
+    const refreshForLive = (): void => {
+        if (!soon) soon = setTimeout(() => { soon = undefined; provider.refresh(); }, LIVE_REFRESH);
+        clearTimeout(fade);
+        fade = setTimeout(() => provider.refresh(), RECENT_CHANGE + LIVE_REFRESH);
+    };
     context.subscriptions.push(
         vscode.window.createTreeView('text2frameDatabase', { treeDataProvider: provider }),
         vscode.commands.registerCommand('text2frame.db.insert', (node: Node) => insertId(node)),
         vscode.commands.registerCommand('text2frame.db.findUsages', (node: Node) => findUsages(node, service)),
+        vscode.commands.registerCommand('text2frame.db.showUsages', (node: Node) => {
+            const ctx = provider.currentContext();
+            if (ctx && node && node.type === 'entry') return usages.show(ctx, node);
+        }),
+        usages,
         vscode.commands.registerCommand('text2frame.db.refresh', () => provider.refresh()),
         service.onDidChange(() => provider.refresh()),
+        live.onDidChange(refreshForLive),
+        { dispose: () => { clearTimeout(soon); clearTimeout(fade); } },
         // 別のプロジェクトのテキストに切り替えたら、そのプロジェクトのデータベースを出す。
         vscode.window.onDidChangeActiveTextEditor((e) => { if (e && e.document.languageId === 'text2frame') provider.refresh(); })
     );

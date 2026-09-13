@@ -2,6 +2,8 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { injectMonitor, LIVE_EVENTS_PATH, LIVE_STATE_PATH, LIVE_TOKEN_HEADER } from './liveMonitor';
+import { LiveCommand, LiveMessage, parseLiveMessage } from './liveState';
 
 /**
  * テストプレイ用に、ゲームのフォルダ(index.html のあるフォルダ)を HTTP で配る。VS Code に依存しない。
@@ -39,12 +41,27 @@ const MIME: Record<string, string> = {
     '.efkefc': 'application/octet-stream'
 };
 
+export interface GameServerOptions {
+    onState?: (message: LiveMessage) => void;
+}
+
+interface Live {
+    token: string;
+    onState: (message: LiveMessage) => void;
+    listeners: Set<http.ServerResponse>;
+}
+
+const EVENTS_KEEPALIVE = 15000;
+
+const MAX_STATE_BYTES = 4 * 1024 * 1024;
+
 export interface GameServer {
     /** 配っているフォルダ。 */
     root: string;
     port: number;
     /** 末尾に / の付いた URL(http://127.0.0.1:port/)。 */
     url: string;
+    send(command: LiveCommand): number;
     close(): Promise<void>;
 }
 
@@ -71,7 +88,68 @@ export function resolveRequestPath(root: string, urlPath: string): string | unde
     return file === base || file.startsWith(base + path.sep) ? file : undefined;
 }
 
-function handle(root: string, req: http.IncomingMessage, res: http.ServerResponse): void {
+const sameToken = (live: Live, token: unknown): boolean =>
+    typeof token === 'string' && token.length === live.token.length && crypto.timingSafeEqual(Buffer.from(token), Buffer.from(live.token));
+
+function receiveState(live: Live, req: http.IncomingMessage, res: http.ServerResponse): void {
+    if (req.method !== 'POST' || !sameToken(live, req.headers[LIVE_TOKEN_HEADER])) {
+        res.writeHead(403).end();
+        return;
+    }
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on('data', (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > MAX_STATE_BYTES) {
+            res.writeHead(413).end();
+            req.destroy();
+            return;
+        }
+        chunks.push(chunk);
+    });
+    req.on('end', () => {
+        if (res.writableEnded) return;
+        let message: LiveMessage | undefined;
+        try {
+            message = parseLiveMessage(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+        } catch (e) {
+            message = undefined;
+        }
+        if (!message) {
+            res.writeHead(400).end();
+            return;
+        }
+        res.writeHead(204).end();
+        live.onState(message);
+    });
+}
+
+function openEvents(live: Live, req: http.IncomingMessage, res: http.ServerResponse): void {
+    const token = new URL(req.url || '/', 'http://127.0.0.1').searchParams.get('token');
+    if (req.method !== 'GET' || !sameToken(live, token)) {
+        res.writeHead(403).end();
+        return;
+    }
+    res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
+    res.write(': connected\n\n');
+    live.listeners.add(res);
+    const keepalive = setInterval(() => res.write(': keepalive\n\n'), EVENTS_KEEPALIVE);
+    res.on('close', () => {
+        clearInterval(keepalive);
+        live.listeners.delete(res);
+    });
+}
+
+function handle(root: string, req: http.IncomingMessage, res: http.ServerResponse, live: Live | undefined): void {
+    const urlPath = (req.url || '').split('?')[0];
+    if (live && urlPath === LIVE_STATE_PATH) {
+        receiveState(live, req, res);
+        return;
+    }
+    if (live && urlPath === LIVE_EVENTS_PATH) {
+        openEvents(live, req, res);
+        return;
+    }
     if (req.method !== 'GET' && req.method !== 'HEAD') {
         res.writeHead(405, { Allow: 'GET, HEAD' }).end();
         return;
@@ -92,8 +170,21 @@ function handle(root: string, req: http.IncomingMessage, res: http.ServerRespons
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Not found');
         return;
     }
+    const ext = path.extname(file).toLowerCase();
+    if (live && ext === '.html') {
+        let html: Buffer;
+        try {
+            html = Buffer.from(injectMonitor(fs.readFileSync(file, 'utf8'), live.token), 'utf8');
+        } catch (e) {
+            res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Not found');
+            return;
+        }
+        res.writeHead(200, { 'Content-Type': MIME[ext], 'Cache-Control': 'no-store', 'Content-Length': html.length });
+        res.end(req.method === 'HEAD' ? undefined : html);
+        return;
+    }
     const headers: http.OutgoingHttpHeaders = {
-        'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
+        'Content-Type': MIME[ext] || 'application/octet-stream',
         'Cache-Control': 'no-store',
         'Accept-Ranges': 'bytes'
     };
@@ -140,9 +231,12 @@ function listen(server: http.Server, port: number): Promise<number> {
 }
 
 /** フォルダを配るサーバーを開く。preferredPort が埋まっていれば空いている番号で開く。 */
-export async function startGameServer(root: string, preferredPort = stablePort(root)): Promise<GameServer> {
+export async function startGameServer(root: string, preferredPort = stablePort(root), options: GameServerOptions = {}): Promise<GameServer> {
     const base = path.resolve(root);
-    const server = http.createServer((req, res) => handle(base, req, res));
+    const live: Live | undefined = options.onState
+        ? { token: crypto.randomBytes(16).toString('hex'), onState: options.onState, listeners: new Set() }
+        : undefined;
+    const server = http.createServer((req, res) => handle(base, req, res, live));
     let port: number;
     try {
         port = await listen(server, preferredPort);
@@ -153,6 +247,12 @@ export async function startGameServer(root: string, preferredPort = stablePort(r
         root: base,
         port,
         url: `http://127.0.0.1:${port}/`,
+        send: (command) => {
+            if (!live) return 0;
+            const data = `data: ${JSON.stringify(command)}\n\n`;
+            live.listeners.forEach((res) => res.write(data));
+            return live.listeners.size;
+        },
         close: () => new Promise<void>((resolve) => {
             server.close(() => resolve());
             server.closeAllConnections?.();

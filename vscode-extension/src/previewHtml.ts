@@ -34,6 +34,10 @@ export function previewHtml(): string {
   .empty { color: var(--vscode-descriptionForeground); }
   .row[data-line] { cursor: pointer; }
   .row.current { background: var(--vscode-editor-lineHighlightBackground, rgba(128,128,128,0.2)); outline: 1px solid var(--vscode-editor-lineHighlightBorder, transparent); }
+  .row.running { background: var(--vscode-editor-stackFrameHighlightBackground, rgba(255, 255, 0, 0.2)); }
+  .row.running.approximate { background: var(--vscode-editor-rangeHighlightBackground, rgba(255, 255, 255, 0.08)); }
+  .row.caller { background: var(--vscode-editor-focusedStackFrameHighlightBackground, rgba(122, 189, 122, 0.3)); }
+  .row.running.head > .mark::before { content: '▶'; color: var(--vscode-debugIcon-continueForeground, var(--vscode-textLink-foreground)); margin-right: 2px; }
 </style></head>
 <body>
 <div id="banners"></div>
@@ -112,6 +116,18 @@ export function previewHtml(): string {
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       startPlaying(w, bytes);
+      return;
+    }
+    if (m && m.type === 'running') {
+      rowsEl.querySelectorAll('.row.running, .row.caller').forEach((r) => r.classList.remove('running', 'caller', 'approximate'));
+      for (const i of m.callers) rowsEl.querySelector('.row[data-index="' + i + '"]')?.classList.add('caller');
+      for (const i of m.current) {
+        const r = rowsEl.querySelector('.row[data-index="' + i + '"]');
+        if (!r) continue;
+        r.classList.remove('caller');
+        r.classList.add('running');
+        r.classList.toggle('approximate', !m.exact);
+      }
       return;
     }
     if (m && m.type === 'highlight') {

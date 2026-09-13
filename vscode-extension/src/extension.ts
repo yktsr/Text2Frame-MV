@@ -11,7 +11,11 @@ import { registerDatabaseView } from './dbView';
 import { registerPreview } from './preview';
 import { registerColorSwatches } from './colorSwatches';
 import { registerTestPlay } from './testPlay';
+import { LiveService } from './live';
+import { registerLiveView } from './liveView';
+import { registerRunHighlight } from './runHighlight';
 import { tagHelpText } from './tagHelp';
+import { bracketProblems } from './tagBrackets';
 
 /**
  * Treat a .txt file that carries Text2Frame front matter as the `text2frame`
@@ -42,16 +46,19 @@ export function activate(context: vscode.ExtensionContext) {
     registerCommandsView(context);
     // データベースの名前を見せる(名前の薄い表示・ホバー・警告・名前から入力)。
     const database = new DatabaseService();
-    context.subscriptions.push(database);
-    registerDatabaseFeatures(context, database);
+    const live = new LiveService();
+    context.subscriptions.push(database, live);
+    registerDatabaseFeatures(context, database, live);
     // サイドバーのデータベース一覧。
-    registerDatabaseView(context, database);
+    registerDatabaseView(context, database, live);
     // 横のプレビュー(ツクールのイベント編集画面と同じ見た目)。
-    registerPreview(context, database);
+    const running = registerRunHighlight(context, database, live);
+    registerPreview(context, database, running);
     // 色調・フラッシュの値の前に色見本。
     registerColorSwatches(context);
     // テストプレイ(ゲームを VS Code の中のブラウザで)。
-    registerTestPlay(context, database);
+    registerTestPlay(context, database, live);
+    registerLiveView(context, database, live, running);
 
     // Auto-assign the text2frame language to front-matter .txt files (open now + later).
     vscode.workspace.textDocuments.forEach(maybeAssignLanguage);
@@ -665,32 +672,22 @@ function updateDiagnostics(document: vscode.TextDocument, collection: vscode.Dia
     }
 
     const diagnostics: vscode.Diagnostic[] = [];
-    
-    for (let i = 0; i < document.lineCount; i++) {
-        const line = document.lineAt(i);
-        const text = line.text;
+    const lines: string[] = [];
+    for (let i = 0; i < document.lineCount; i++) lines.push(document.lineAt(i).text);
 
-        // Check for unclosed angle brackets in tags
-        const openBrackets = (text.match(/</g) || []).length;
-        const closeBrackets = (text.match(/>/g) || []).length;
-        
-        if (openBrackets > closeBrackets) {
-            const range = new vscode.Range(i, 0, i, text.length);
-            const diagnostic = new vscode.Diagnostic(
-                range,
-                'タグが閉じられていません',
-                vscode.DiagnosticSeverity.Error
-            );
-            diagnostics.push(diagnostic);
-        } else if (closeBrackets > openBrackets) {
-            const range = new vscode.Range(i, 0, i, text.length);
-            const diagnostic = new vscode.Diagnostic(
-                range,
-                '閉じ括弧が多すぎます',
-                vscode.DiagnosticSeverity.Error
-            );
-            diagnostics.push(diagnostic);
-        }
+    // Check for unclosed angle brackets in tags
+    for (const { line, problem } of bracketProblems(lines)) {
+        const range = new vscode.Range(line, 0, line, lines[line].length);
+        const diagnostic = new vscode.Diagnostic(
+            range,
+            problem === 'unclosed' ? 'タグが閉じられていません' : '閉じ括弧が多すぎます',
+            vscode.DiagnosticSeverity.Error
+        );
+        diagnostics.push(diagnostic);
+    }
+
+    for (let i = 0; i < document.lineCount; i++) {
+        const text = lines[i];
 
         // Check for empty tags
         if (/<\s*>/.test(text)) {

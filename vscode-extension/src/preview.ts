@@ -2,11 +2,13 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { DatabaseService } from './dbService';
 import { loadCompiler } from './deploy';
-import { workspaceRootFor, frontMatterBody, parseFrontMatter } from './compiler';
+import { workspaceRootFor, parseFrontMatter } from './compiler';
+import { compileWithLines } from './compileLines';
 import { renderCommands, PreviewRow } from './db/commandView';
 import { RpgCommand } from './db/commandRefs';
 import { previewHtml, FACE_SIZE } from './previewHtml';
 import { readAudio, AUDIO_FOLDERS, AudioFolder } from './db/audio';
+import { RunTracker } from './runHighlight';
 
 /**
  * 横のプレビュー。テキストをコンパイルし、ツクールのイベント編集画面と同じ見た目で並べる。
@@ -34,7 +36,7 @@ type AudioMessage =
     | { type: 'audio'; id: number; mime: string; data: string }
     | { type: 'audioError'; id: number; message: string };
 
-export function registerPreview(context: vscode.ExtensionContext, service: DatabaseService): void {
+export function registerPreview(context: vscode.ExtensionContext, service: DatabaseService, tracker: RunTracker): void {
     let panel: vscode.WebviewPanel | undefined;
     let current: vscode.TextDocument | undefined;
     let timer: NodeJS.Timeout | undefined;
@@ -56,16 +58,8 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
         let commands: RpgCommand[];
         let lines: number[] | undefined;
         try {
-            const out = mod.compile(frontMatterBody(document.getText()), { lineMap: true });
-            if (Array.isArray(out)) {
-                // lineMap を知らない古いコンパイラ。表示はできるが、カーソルとは結べない。
-                commands = out as RpgCommand[];
-            } else {
-                const r = out as { commands: RpgCommand[]; lineMap: number[] };
-                commands = r.commands;
-                const offset = bodyLineOffset(document.getText());
-                lines = r.lineMap.map((l) => l + offset);
-            }
+            // lineMap を知らない古いコンパイラでは lines が無い。表示はできるが、カーソルとは結べない。
+            ({ commands, lines } = compileWithLines(mod, document.getText()));
         } catch (e) {
             const error = e instanceof Error ? e.message.split('\n').slice(0, 2).join(' ') : String(e);
             // 最後に通った結果は残す(打っている途中で毎回真っ白にならないように)。ただし行の対応は外す。
@@ -74,6 +68,7 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
             stale = true;
             post({ ...base, error });
             post({ type: 'highlight', indices: [] });
+            running();
             return;
         }
         // マップのイベントのテキストなら、キャラクターの番号にイベントの名前と座標を添える。
@@ -95,9 +90,25 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
         stale = false;
         post(lastGood);
         highlight();
+        running();
     };
 
-    const post = (message: RenderMessage | { type: 'highlight'; indices: number[] } | AudioMessage): void => {
+    const running = (): void => {
+        const lines = stale ? undefined : lastGood?.lines;
+        if (!panel) return;
+        const message = { type: 'running' as const, current: [] as number[], callers: [] as number[], exact: true };
+        const frames = tracker.current();
+        frames.forEach((f, n) => {
+            const { from, to } = f;
+            if (!lines || !current || f.uri?.fsPath !== current.uri.fsPath || from === undefined || to === undefined) return;
+            const inner = n === frames.length - 1;
+            lines.forEach((l, k) => { if (l >= from && l <= to) (inner ? message.current : message.callers).push(k); });
+            if (inner) message.exact = f.exact;
+        });
+        post(message);
+    };
+
+    const post = (message: RenderMessage | { type: 'highlight'; indices: number[] } | { type: 'running'; current: number[]; callers: number[]; exact: boolean } | AudioMessage): void => {
         panel?.webview.postMessage(message);
     };
 
@@ -187,14 +198,7 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
             if (panel && e && e.document.languageId === 'text2frame' && e.document !== current) show(e.document);
         }),
         service.onDidChange(() => { if (panel && current) render(current); }),
-        vscode.window.onDidChangeTextEditorSelection((e) => { if (panel && e.textEditor.document === current) highlight(); })
+        vscode.window.onDidChangeTextEditorSelection((e) => { if (panel && e.textEditor.document === current) highlight(); }),
+        tracker.onDidChange(() => running())
     );
-}
-
-/** front matter(--- から ---)の行数。コンパイラには本文だけを渡すので、その分だけ行番号をずらす。 */
-function bodyLineOffset(text: string): number {
-    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const body = frontMatterBody(text);
-    if (body === text || !normalized.endsWith(body)) return 0;
-    return normalized.slice(0, normalized.length - body.length).split('\n').length - 1;
 }

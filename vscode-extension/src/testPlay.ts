@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { DatabaseService } from './dbService';
+import { DatabaseService, DbContext } from './dbService';
 import { workspaceRootFor } from './compiler';
 import { GameServer, startGameServer } from './gameServer';
+import { LiveService } from './live';
 
 /**
  * テストプレイ。ゲームのフォルダをローカルの HTTP サーバーで配り、VS Code の中のブラウザ
@@ -17,18 +18,16 @@ import { GameServer, startGameServer } from './gameServer';
  *  ブラウザでは書き出せないので、書き出し済みならそちらから開く。 */
 const FOSSIL_PAGE = 'FOSSILindex.html';
 
-export function registerTestPlay(context: vscode.ExtensionContext, service: DatabaseService): void {
+export function registerTestPlay(context: vscode.ExtensionContext, service: DatabaseService, live: LiveService): void {
     const servers = new Map<string, GameServer>();
 
-    /** 開いているテキストのゲームのフォルダ(index.html のあるところ)。 */
-    const gameRootFor = (): string | undefined => {
+    /** 開いているテキストのプロジェクト。 */
+    const projectFor = (): DbContext | undefined => {
         const document = vscode.window.activeTextEditor?.document;
-        let ctx = service.forDocument(document);
-        if (!ctx) {
-            const root = workspaceRootFor(document);
-            ctx = root ? service.forRoot(root) : undefined;
-        }
-        return ctx ? path.dirname(ctx.dataDir) : undefined;
+        const ctx = service.forDocument(document);
+        if (ctx) return ctx;
+        const root = workspaceRootFor(document);
+        return root ? service.forRoot(root) : undefined;
     };
 
     const pageFor = (gameRoot: string): string => {
@@ -39,11 +38,13 @@ export function registerTestPlay(context: vscode.ExtensionContext, service: Data
 
     /** サーバーを開いて(開いていれば使い回して)、テストプレイの URL を返す。 */
     const prepare = async (): Promise<vscode.Uri | undefined> => {
-        const gameRoot = gameRootFor();
-        if (!gameRoot) {
+        const ctx = projectFor();
+        if (!ctx) {
             vscode.window.showErrorMessage('Text2Frame: ツクールのプロジェクト(data/System.json)が見つかりません。プロジェクトのテキストを開いてから実行してください。');
             return undefined;
         }
+        // ゲームのフォルダ(index.html のあるところ)。
+        const gameRoot = path.dirname(ctx.dataDir);
         const page = pageFor(gameRoot);
         if (!fs.existsSync(path.join(gameRoot, page))) {
             vscode.window.showErrorMessage(`Text2Frame: ${path.join(gameRoot, page)} がありません。`);
@@ -51,8 +52,10 @@ export function registerTestPlay(context: vscode.ExtensionContext, service: Data
         }
         let server = servers.get(gameRoot);
         if (!server) {
-            server = await startGameServer(gameRoot);
-            servers.set(gameRoot, server);
+            const started = await startGameServer(gameRoot, undefined, { onState: (message) => live.apply(gameRoot, message) });
+            servers.set(gameRoot, started);
+            live.start(gameRoot, ctx.root, (command) => started.send(command));
+            server = started;
         }
         // リモート(SSH・WSL など)でも手元のブラウザから届くように、VS Code に転送させる。
         return vscode.env.asExternalUri(vscode.Uri.parse(`${server.url}${encodeURI(page)}?test`));
@@ -61,6 +64,7 @@ export function registerTestPlay(context: vscode.ExtensionContext, service: Data
     const playInside = async (): Promise<void> => {
         const uri = await prepare();
         if (!uri) return;
+        await vscode.commands.executeCommand('text2frame.showLiveValues');
         try {
             await vscode.commands.executeCommand('simpleBrowser.api.open', uri, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false });
         } catch (e) {
@@ -71,12 +75,15 @@ export function registerTestPlay(context: vscode.ExtensionContext, service: Data
 
     const playOutside = async (): Promise<void> => {
         const uri = await prepare();
-        if (uri) await vscode.env.openExternal(uri);
+        if (!uri) return;
+        await vscode.commands.executeCommand('text2frame.showLiveValues');
+        await vscode.env.openExternal(uri);
     };
 
     const stop = async (): Promise<void> => {
         const count = servers.size;
         await Promise.all(Array.from(servers.values()).map((s) => s.close()));
+        servers.forEach((_s, root) => live.clear(root));
         servers.clear();
         vscode.window.showInformationMessage(count ? 'Text2Frame: テストプレイのサーバーを止めました。' : 'Text2Frame: 動いているテストプレイのサーバーはありません。');
     };

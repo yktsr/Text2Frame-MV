@@ -5,6 +5,9 @@ import { describeRef, EventLookup, Lookups, eventId, eventLabel } from './db/des
 import { parseFrontMatter } from './compiler';
 import { DbKind, padId } from './db/database';
 import { FACE_COLUMNS, FACE_ROWS } from './db/faces';
+import { LiveService } from './live';
+import { liveLine, selfSwitchLine } from './liveState';
+import { scanSelfSwitchLines, SelfSwitchRef } from './db/selfSwitchRefs';
 
 /**
  * エディタの中でデータベースの名前を見せる。テキストには番号しか書かないまま、
@@ -17,8 +20,16 @@ import { FACE_COLUMNS, FACE_ROWS } from './db/faces';
 const SELECTOR: vscode.DocumentSelector = { language: 'text2frame' };
 
 /** 文書を走査した結果。同じ版なら使い回す(ヒント・ホバー・診断が同じ走査を共有する)。 */
+interface Scan {
+    version: number;
+    refs: LineRef[];
+    selfSwitches: SelfSwitchRef[];
+    mapId?: number;
+    eventId?: number;
+}
+
 class ScanCache {
-    private readonly cache = new WeakMap<vscode.TextDocument, { version: number; refs: LineRef[]; mapId?: number }>();
+    private readonly cache = new WeakMap<vscode.TextDocument, Scan>();
 
     refs(document: vscode.TextDocument): LineRef[] {
         return this.scan(document).refs;
@@ -29,14 +40,29 @@ class ScanCache {
         return this.scan(document).mapId;
     }
 
-    private scan(document: vscode.TextDocument): { version: number; refs: LineRef[]; mapId?: number } {
+    selfSwitches(document: vscode.TextDocument): SelfSwitchRef[] {
+        return this.scan(document).selfSwitches;
+    }
+
+    eventId(document: vscode.TextDocument): number | undefined {
+        return this.scan(document).eventId;
+    }
+
+    private scan(document: vscode.TextDocument): Scan {
         const hit = this.cache.get(document);
         if (hit && hit.version === document.version) return hit;
         const lines: string[] = [];
         for (let i = 0; i < document.lineCount; i++) lines.push(document.lineAt(i).text);
         const meta = parseFrontMatter(document.getText()).meta;
         const mapId = meta.kind === 'common' ? undefined : parseInt(meta.mapId, 10);
-        const entry = { version: document.version, refs: scanLines(lines), mapId: Number.isInteger(mapId) ? mapId : undefined };
+        const eventId = meta.kind === 'common' ? undefined : parseInt(meta.eventId, 10);
+        const entry: Scan = {
+            version: document.version,
+            refs: scanLines(lines),
+            selfSwitches: scanSelfSwitchLines(lines),
+            mapId: Number.isInteger(mapId) ? mapId : undefined,
+            eventId: Number.isInteger(eventId) ? eventId : undefined
+        };
         this.cache.set(document, entry);
         return entry;
     }
@@ -59,7 +85,7 @@ const eventLookup = (service: DatabaseService, ctx: DbContext, mapId: number | u
 const showNames = (): boolean =>
     vscode.workspace.getConfiguration('text2frame').get<boolean>('showDatabaseNames', true);
 
-export function registerDatabaseFeatures(context: vscode.ExtensionContext, service: DatabaseService): void {
+export function registerDatabaseFeatures(context: vscode.ExtensionContext, service: DatabaseService, live: LiveService): void {
     const scans = new ScanCache();
     const hintsChanged = new vscode.EventEmitter<void>();
 
@@ -91,7 +117,7 @@ export function registerDatabaseFeatures(context: vscode.ExtensionContext, servi
             const ctx = service.forDocument(document);
             if (!ctx) return undefined;
             const ref = scans.refs(document).find((r) => r.line === position.line && r.start <= position.character && position.character <= r.end);
-            if (!ref) return undefined;
+            if (!ref) return selfSwitchHover(document, position, ctx);
             const info = describeRef(ctx.db, ref, lookupsFor(service, ctx, scans.mapId(document)));
             const md = new vscode.MarkdownString();
             md.appendMarkdown(`**${escape(info.title)}**\n\n`);
@@ -104,8 +130,25 @@ export function registerDatabaseFeatures(context: vscode.ExtensionContext, servi
                 if (uri) md.appendMarkdown(`![アイコン ${ref.id}](${uri})\n\n`);
             }
             info.lines.forEach((l) => md.appendMarkdown(escape(l) + '  \n'));
+            const state = live.forContext(ctx);
+            const now = state ? liveLine(state, ref.kind, ref.id, ref.endId, Date.now()) : undefined;
+            if (now) md.appendMarkdown(`\n**${escape(now)}**\n`);
             return new vscode.Hover(md, new vscode.Range(ref.line, ref.start, ref.line, ref.end));
         }
+    };
+
+    const selfSwitchHover = (document: vscode.TextDocument, position: vscode.Position, ctx: DbContext): vscode.Hover | undefined => {
+        const ref = scans.selfSwitches(document).find((r) => r.line === position.line && r.start <= position.character && position.character <= r.end);
+        const state = live.forContext(ctx);
+        const mapId = scans.mapId(document);
+        const evId = scans.eventId(document);
+        if (!ref || !state || mapId === undefined || evId === undefined) return undefined;
+        const ev = service.mapEvents(ctx, mapId)?.[evId];
+        const md = new vscode.MarkdownString();
+        md.appendMarkdown(`**セルフスイッチ ${ref.letter}**\n\n`);
+        md.appendMarkdown(escape(`${eventId(evId)}${ev ? ' ' + eventLabel(ev) : ''}`) + '  \n');
+        md.appendMarkdown(`\n**${escape(selfSwitchLine(state, mapId, evId, ref.letter, Date.now()))}**\n`);
+        return new vscode.Hover(md, new vscode.Range(ref.line, ref.start, ref.line, ref.end));
     };
 
     // --- 診断 ---

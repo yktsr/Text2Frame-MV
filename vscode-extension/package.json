@@ -28,6 +28,7 @@
     "onView:text2frameCommands",
     "onView:text2frameExplorer",
     "onView:text2frameDatabase",
+    "onView:text2frame.liveValues",
     "workspaceContains:**/text/**/*.txt",
     "workspaceContains:**/data/Map*.json"
   ],
@@ -92,6 +93,11 @@
         "icon": "$(debug-stop)"
       },
       {
+        "command": "text2frame.showLiveValues",
+        "title": "Text2Frame: スイッチと変数を見る(テストプレイ中) / Show switches & variables while test playing",
+        "icon": "$(symbol-variable)"
+      },
+      {
         "command": "text2frame.showCompiledJson",
         "title": "Text2Frame: コンパイル結果を表示 / Show compiled JSON",
         "icon": "$(json)"
@@ -110,12 +116,16 @@
       },
       {
         "command": "text2frame.db.insert",
-        "title": "Text2Frame: 番号を挿入 / Insert id"
+        "title": "番号を挿入 / Insert id"
       },
       {
         "command": "text2frame.db.findUsages",
         "title": "使っている箇所を探す / Find usages",
         "icon": "$(search)"
+      },
+      {
+        "command": "text2frame.db.showUsages",
+        "title": "使っている箇所を前後の行つきで一覧 / List usages with context"
       },
       {
         "command": "text2frame.db.refresh",
@@ -145,6 +155,13 @@
           "title": "Text2Frame",
           "icon": "$(book)"
         }
+      ],
+      "panel": [
+        {
+          "id": "text2frameLive",
+          "title": "Text2Frame デバッグプレイ",
+          "icon": "$(play)"
+        }
       ]
     },
     "views": {
@@ -160,6 +177,13 @@
         {
           "id": "text2frameDatabase",
           "name": "データベース / Database"
+        }
+      ],
+      "text2frameLive": [
+        {
+          "type": "webview",
+          "id": "text2frame.liveValues",
+          "name": "スイッチと変数 / Switches & Variables"
         }
       ]
     },
@@ -213,7 +237,8 @@
         { "command": "text2frame.tree.export", "when": "false" },
         { "command": "text2frame.tree.refresh", "when": "false" },
         { "command": "text2frame.db.insert", "when": "false" },
-        { "command": "text2frame.db.findUsages", "when": "false" }
+        { "command": "text2frame.db.findUsages", "when": "false" },
+        { "command": "text2frame.db.showUsages", "when": "false" }
       ],
       "view/item/context": [
         {
@@ -225,6 +250,16 @@
           "command": "text2frame.db.findUsages",
           "when": "view == text2frameDatabase && viewItem == text2frame.dbEntry",
           "group": "1_find@1"
+        },
+        {
+          "command": "text2frame.db.showUsages",
+          "when": "view == text2frameDatabase && viewItem == text2frame.dbEntry",
+          "group": "1_find@2"
+        },
+        {
+          "command": "text2frame.db.insert",
+          "when": "view == text2frameDatabase && viewItem == text2frame.dbEntry",
+          "group": "2_insert@1"
         },
         {
           "command": "text2frame.tree.deploy",
@@ -246,7 +281,7 @@
           "enum": ["merge", "overwrite"],
           "default": "merge",
           "enumDescriptions": [
-            "安全に反映(ゲーム側の編集を勝手に消さない・既定) / safe (keeps edits made in the game)",
+            "安全に統合(ゲーム側の編集を勝手に消さない・既定) / safe (keeps edits made in the game)",
             "テキストで全部上書き(ゲーム側の編集は消えます) / overwrite everything from text"
           ],
           "description": "ゲームへの反映のしかた。通常は既定のままで大丈夫です。 / How text is applied to the game. The default is fine for most users."
@@ -275,12 +310,19 @@
         "text2frame.testPlayPage": {
           "type": "string",
           "default": "",
-          "description": "テストプレイで開くページ(ゲームのフォルダからの相対パス)。空なら index.html。FOSSIL プラグインが書き出した FOSSILindex.html があればそちらを開きます(ブラウザでは FOSSIL が index.html から書き出せないため)。 / The page to open for test play, relative to the game folder. Empty means index.html, or FOSSILindex.html when the FOSSIL plugin has written one (FOSSIL cannot write it from index.html inside a browser)."
+          "description": "テストプレイで開くページ(ゲームのフォルダからの相対パス)。空なら index.html。 / The page to open for test play, relative to the game folder. Empty means index.html."
         },
         "text2frame.showDatabaseNames": {
           "type": "boolean",
           "default": true,
           "description": "スイッチ・変数・マップなどの番号の横に、ツクールのデータベースの名前を薄く表示する(ファイルには書き込みません)。 / Show RPG Maker database names next to switch / variable / map ids (display only; nothing is written to the file)."
+        },
+        "text2frame.usageContextLines": {
+          "type": "number",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 20,
+          "description": "データベースの一覧でスイッチ・変数を押したときの「使っている箇所」に、前後何行ずつ出すか。 / How many lines to show before and after each usage when a switch or variable is clicked in the database list."
         },
         "text2frame.textBaseDir": {
           "type": "string",

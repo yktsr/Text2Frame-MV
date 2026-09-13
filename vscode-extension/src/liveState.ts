@@ -1,0 +1,261 @@
+import { padId } from './db/database';
+import { CommandMark } from './db/runLines';
+
+export type LiveValue = number | string | boolean;
+
+export interface RunFrame {
+    key: string;
+    index: number;
+}
+
+export interface LiveMessage {
+    reset?: boolean;
+    switches?: Map<number, boolean>;
+    variables?: Map<number, LiveValue>;
+    selfSwitches?: Map<string, boolean>;
+    map?: number;
+    run?: RunFrame[];
+    lists?: Map<string, CommandMark[]>;
+}
+
+const MAX_ID = 100000;
+const MAX_FRAMES = 32;
+const MAX_LISTS = 64;
+const MAX_COMMANDS = 100000;
+
+export const RUN_KEY = /^(?:e:\d{1,6}:\d{1,6}:\d{1,4}|c:\d{1,6})$/;
+
+export const SELF_SWITCH_KEY = /^(\d{1,6}),(\d{1,6}),([A-Za-z0-9_]{1,16})$/;
+
+export interface LiveCommand {
+    switches?: Record<number, boolean>;
+    variables?: Record<number, number | string>;
+    selfSwitches?: Record<string, boolean>;
+}
+
+export function selfSwitchKey(mapId: number, eventId: number, letter: string): string {
+    return `${mapId},${eventId},${letter}`;
+}
+
+export function parseVariableInput(text: string): { value: number | string } | { error: string } {
+    const t = text.trim();
+    if (/^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(t)) {
+        const n = Number(t);
+        if (Number.isFinite(n)) return { value: n };
+    }
+    const error = { error: '数字か、"…" で囲んだ文字を入れてください。' };
+    if (!/^".*"$/.test(t)) return error;
+    try {
+        const s = JSON.parse(t);
+        return typeof s === 'string' ? { value: s } : error;
+    } catch (e) {
+        return error;
+    }
+}
+
+export function parseLiveMessage(json: unknown): LiveMessage | undefined {
+    if (!json || typeof json !== 'object' || Array.isArray(json)) return undefined;
+    const o = json as Record<string, unknown>;
+    const read = <T extends LiveValue>(value: unknown, ok: (v: unknown) => v is T): Map<number, T> | undefined => {
+        if (value === undefined) return undefined;
+        if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('bad');
+        const out = new Map<number, T>();
+        for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+            const id = Number(key);
+            if (!Number.isInteger(id) || id < 1 || id > MAX_ID || !ok(v)) throw new Error('bad');
+            out.set(id, v);
+        }
+        return out;
+    };
+    const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean';
+    const isValue = (v: unknown): v is LiveValue =>
+        typeof v === 'boolean' || typeof v === 'string' || (typeof v === 'number' && Number.isFinite(v));
+    const readSelf = (value: unknown): Map<string, boolean> | undefined => {
+        if (value === undefined) return undefined;
+        if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('bad');
+        const out = new Map<string, boolean>();
+        for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+            if (!SELF_SWITCH_KEY.test(key) || typeof v !== 'boolean') throw new Error('bad');
+            out.set(key, v);
+        }
+        return out;
+    };
+    const isCount = (v: unknown, max: number): v is number => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= max;
+    const readRun = (value: unknown): RunFrame[] | undefined => {
+        if (value === undefined) return undefined;
+        if (!Array.isArray(value) || value.length > MAX_FRAMES) throw new Error('bad');
+        return value.map((f) => {
+            if (!f || typeof f !== 'object' || !RUN_KEY.test(String(f.key)) || !isCount(f.index, MAX_COMMANDS)) throw new Error('bad');
+            return { key: String(f.key), index: f.index as number };
+        });
+    };
+    const readLists = (value: unknown): Map<string, CommandMark[]> | undefined => {
+        if (value === undefined) return undefined;
+        if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('bad');
+        const entries = Object.entries(value as Record<string, unknown>);
+        if (entries.length > MAX_LISTS) throw new Error('bad');
+        const out = new Map<string, CommandMark[]>();
+        for (const [key, list] of entries) {
+            if (!RUN_KEY.test(key) || !Array.isArray(list) || list.length > MAX_COMMANDS) throw new Error('bad');
+            out.set(key, list.map((m) => {
+                if (!Array.isArray(m) || m.length !== 3 || !isCount(m[0], 99999) || !isCount(m[1], 99999) || !isCount(m[2], 0xffffffff)) throw new Error('bad');
+                return [m[0], m[1], m[2]] as CommandMark;
+            }));
+        }
+        return out;
+    };
+    if (o.map !== undefined && !isCount(o.map, MAX_ID)) return undefined;
+    try {
+        return {
+            reset: o.reset === true || undefined,
+            switches: read(o.switches, isBoolean),
+            variables: read(o.variables, isValue),
+            selfSwitches: readSelf(o.selfSwitches),
+            map: o.map as number | undefined,
+            run: readRun(o.run),
+            lists: readLists(o.lists)
+        };
+    } catch (e) {
+        return undefined;
+    }
+}
+
+export const LIVE_TIMEOUT = 5000;
+export const RECENT_CHANGE = 3000;
+
+export class LiveState {
+    private readonly switches = new Map<number, boolean>();
+    private readonly variables = new Map<number, LiveValue>();
+    private readonly selfSwitches = new Map<string, boolean>();
+    private readonly changedAt = new Map<string, number>();
+    private readonly lists = new Map<string, CommandMark[]>();
+    private frames: RunFrame[] = [];
+    lastSeen = 0;
+    mapId = 0;
+
+    apply(message: LiveMessage, now: number): { values: boolean; run: boolean } {
+        this.lastSeen = now;
+        let changed = false;
+        let run = false;
+        if (message.reset) {
+            this.switches.clear();
+            this.variables.clear();
+            this.selfSwitches.clear();
+            this.changedAt.clear();
+            this.lists.clear();
+            run = this.frames.length > 0;
+            this.frames = [];
+            changed = true;
+        }
+        message.lists?.forEach((marks, key) => {
+            this.lists.set(key, marks);
+            run = true;
+        });
+        if (message.run && JSON.stringify(message.run) !== JSON.stringify(this.frames)) {
+            this.frames = message.run;
+            run = true;
+        }
+        if (message.map !== undefined && message.map !== this.mapId) {
+            this.mapId = message.map;
+            changed = true;
+        }
+        const merge = <K extends number | string, T extends LiveValue>(kind: 'switch' | 'variable' | 'self', into: Map<K, T>, values: Map<K, T> | undefined, blank: T): void => {
+            values?.forEach((v, id) => {
+                const before = into.has(id) ? into.get(id) : blank;
+                into.set(id, v);
+                if (v === before) return;
+                changed = true;
+                if (!message.reset) this.changedAt.set(`${kind}:${id}`, now);
+            });
+        };
+        merge('switch', this.switches, message.switches, false);
+        merge('variable', this.variables, message.variables, 0);
+        merge('self', this.selfSwitches, message.selfSwitches, false);
+        return { values: changed, run };
+    }
+
+    running(): RunFrame[] {
+        return this.frames;
+    }
+
+    listMarks(key: string): CommandMark[] | undefined {
+        return this.lists.get(key);
+    }
+
+    connected(now: number): boolean {
+        return now - this.lastSeen < LIVE_TIMEOUT;
+    }
+
+    switchValue(id: number): boolean {
+        return this.switches.get(id) ?? false;
+    }
+
+    variableValue(id: number): LiveValue {
+        return this.variables.get(id) ?? 0;
+    }
+
+    selfSwitchValue(mapId: number, eventId: number, letter: string): boolean {
+        return this.selfSwitches.get(selfSwitchKey(mapId, eventId, letter)) ?? false;
+    }
+
+    received(): boolean {
+        return this.lastSeen > 0;
+    }
+
+    snapshot(): { switches: Array<[number, boolean]>; variables: Array<[number, LiveValue]>; selfSwitches: string[]; mapId: number } {
+        return {
+            switches: Array.from(this.switches).filter(([, v]) => v),
+            variables: Array.from(this.variables).filter(([, v]) => v !== 0),
+            selfSwitches: Array.from(this.selfSwitches).filter(([, v]) => v).map(([k]) => k),
+            mapId: this.mapId
+        };
+    }
+
+    changedSince(since: number): { switches: number[]; variables: number[]; selfSwitches: string[] } {
+        const out = { switches: [] as number[], variables: [] as number[], selfSwitches: [] as string[] };
+        this.changedAt.forEach((at, key) => {
+            if (at <= since) return;
+            const colon = key.indexOf(':');
+            const kind = key.slice(0, colon);
+            const id = key.slice(colon + 1);
+            if (kind === 'switch') out.switches.push(Number(id));
+            else if (kind === 'variable') out.variables.push(Number(id));
+            else out.selfSwitches.push(id);
+        });
+        return out;
+    }
+
+    sinceChange(kind: 'switch' | 'variable', id: number, now: number): number | undefined {
+        const at = this.changedAt.get(`${kind}:${id}`);
+        return at === undefined ? undefined : now - at;
+    }
+}
+
+export function formatLiveValue(kind: 'switch' | 'variable', value: LiveValue): string {
+    if (kind === 'switch') return value ? 'ON' : 'OFF';
+    return typeof value === 'string' ? JSON.stringify(value) : String(value);
+}
+
+const RANGE_LIST_LIMIT = 10;
+
+export function selfSwitchLine(state: LiveState, mapId: number, eventId: number, letter: string, now: number): string {
+    const head = state.connected(now) ? 'テストプレイ中' : 'テストプレイの最後の値';
+    return `${head}: セルフスイッチ ${letter} = ${state.selfSwitchValue(mapId, eventId, letter) ? 'ON' : 'OFF'}`;
+}
+
+export function liveLine(state: LiveState, kind: string, id: number, endId: number | undefined, now: number): string | undefined {
+    if (kind !== 'switch' && kind !== 'variable') return undefined;
+    const head = state.connected(now) ? 'テストプレイ中' : 'テストプレイの最後の値';
+    const value = (n: number): LiveValue => (kind === 'switch' ? state.switchValue(n) : state.variableValue(n));
+    const last = Math.min(endId ?? id, MAX_ID);
+    if (last <= id) return `${head}: ${formatLiveValue(kind, value(id))}`;
+    const ids: number[] = [];
+    for (let n = id; n <= last; n++) ids.push(n);
+    if (kind === 'switch') {
+        const on = ids.filter((n) => state.switchValue(n));
+        const shown = on.slice(0, RANGE_LIST_LIMIT).map(padId).join(', ');
+        return `${head}: ON ${on.length}件 / ${ids.length}件${on.length ? ` (${shown}${on.length > RANGE_LIST_LIMIT ? ', …' : ''})` : ''}`;
+    }
+    const shown = ids.slice(0, RANGE_LIST_LIMIT).map((n) => `${padId(n)} = ${formatLiveValue(kind, value(n))}`).join(', ');
+    return `${head}: ${shown}${ids.length > RANGE_LIST_LIMIT ? ', …' : ''}`;
+}

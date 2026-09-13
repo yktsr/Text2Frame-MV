@@ -37,7 +37,8 @@ const GROUPS: CommandGroup[] = [
         label: '上級 / Advanced',
         items: [
             { command: 'text2frame.repullOverwrite', label: '全部取り直す(上書き) / Re-pull (overwrite)', icon: 'refresh', tooltip: 'テキストのフォルダ(設定 text2frame.textBaseDir)をゲームの内容で全部上書きします(編集は失われます)。' },
-            { command: 'text2frame.testPlay', label: 'テストプレイ / Test play', icon: 'play', tooltip: 'ゲームを VS Code の中のブラウザでテストプレイします(テストモード)。反映した内容は、ブラウザの再読み込みで効きます。' },
+            { command: 'text2frame.testPlay', label: 'テストプレイ / Test play', icon: 'play', tooltip: 'ゲームを VS Code の中のブラウザでテストプレイします(テストモード)。反映した内容は、ブラウザの再読み込みで効きます。プレイ中のスイッチと変数の値は、データベースの一覧とホバーに出ます。' },
+            { command: 'text2frame.showLiveValues', label: 'スイッチと変数 / Switches & variables', icon: 'symbol-variable', tooltip: 'テストプレイ中のスイッチと変数を下のパネルに並べて見せます。値を書き換えることもできます。' },
             { command: 'text2frame.stopTestPlay', label: 'テストプレイを止める / Stop test play', icon: 'debug-stop', tooltip: 'テストプレイ用のサーバーを止めます。' },
             { command: 'text2frame.showPreview', label: 'プレビューを横に開く / Open preview to the side', icon: 'open-preview', tooltip: '今のテキストをツクールのイベント画面の形で横に表示します。カーソルの行と連動します。' },
             { command: 'text2frame.toggleDeployOnSave', label: '保存時に自動反映 切替 / Toggle apply-on-save', icon: 'sync', tooltip: '保存したら自動でゲームに反映する設定を ON / OFF します。' },

@@ -82,6 +82,75 @@ describe('gameServer', function () {
     res.resume()
   })
 
+  it('serves pages as they are without a state handler', async function () {
+    expect((await request(server.port, '/index.html')).body.toString()).to.equal('<title>game</title>')
+    expect((await request(server.port, '/__t2f/state')).status).to.equal(404)
+  })
+
+  it('takes values from the game only with the token', async function () {
+    const received = []
+    const live = await startGameServer(root, 0, { onState: function (m) { received.push(m) } })
+    const post = function (body, headers) {
+      return new Promise(function (resolve, reject) {
+        const req = http.request({ host: '127.0.0.1', port: live.port, path: '/__t2f/state', method: 'POST', headers }, function (res) {
+          res.resume()
+          res.on('end', function () { resolve(res.statusCode) })
+        })
+        req.on('error', reject)
+        req.end(body)
+      })
+    }
+    try {
+      const page = (await request(live.port, '/index.html?test')).body.toString()
+      expect(page.startsWith('<title>game</title>')).to.equal(true)
+      const token = /var TOKEN = "([0-9a-f]{32})"/.exec(page)[1]
+      expect((await request(live.port, '/data/System.json')).body.toString()).to.equal('{"gameTitle":"x"}')
+      expect(fs.readFileSync(path.join(root, 'index.html'), 'utf8')).to.equal('<title>game</title>')
+
+      expect(await post('{"reset":true,"switches":{"3":true}}', { 'x-t2f-token': token })).to.equal(204)
+      expect(received).to.have.length(1)
+      expect(received[0].reset).to.equal(true)
+      expect(received[0].switches.get(3)).to.equal(true)
+
+      expect(await post('{"switches":{"3":false}}', {})).to.equal(403)
+      expect(await post('{"switches":{"3":false}}', { 'x-t2f-token': token.replace(/./, 'z') })).to.equal(403)
+      expect(await post('{"switches":{"3":"no"}}', { 'x-t2f-token': token })).to.equal(400)
+      expect(await post('not json', { 'x-t2f-token': token })).to.equal(400)
+      expect((await request(live.port, '/__t2f/state', { 'x-t2f-token': token })).status).to.equal(403)
+      expect(received).to.have.length(1)
+    } finally {
+      await live.close()
+    }
+  })
+
+  it('sends values to the pages that listen with the token', async function () {
+    const live = await startGameServer(root, 0, { onState: function () {} })
+    try {
+      const token = /var TOKEN = "([0-9a-f]{32})"/.exec((await request(live.port, '/index.html')).body.toString())[1]
+      expect((await request(live.port, '/__t2f/events?token=wrong')).status).to.equal(403)
+      expect(live.send({ switches: { 1: true } })).to.equal(0)
+      const received = await new Promise(function (resolve, reject) {
+        const req = http.get({ host: '127.0.0.1', port: live.port, path: '/__t2f/events?token=' + token }, function (res) {
+          expect(res.statusCode).to.equal(200)
+          expect(res.headers['content-type']).to.contain('text/event-stream')
+          let body = ''
+          res.on('data', function (c) {
+            body += c
+            if (body.includes(': connected')) {
+              if (!body.includes('data:')) expect(live.send({ switches: { 1: true }, variables: { 2: 'a' }, selfSwitches: { '3,4,A': true } })).to.equal(1)
+              const m = /data: (.*)\n\n/.exec(body)
+              if (m) { req.destroy(); resolve(JSON.parse(m[1])) }
+            }
+          })
+        })
+        req.on('error', reject)
+      })
+      expect(received).to.eql({ switches: { 1: true }, variables: { 2: 'a' }, selfSwitches: { '3,4,A': true } })
+    } finally {
+      await live.close()
+    }
+  })
+
   it('keeps the same port for the same folder, and moves when it is taken', async function () {
     expect(stablePort(root)).to.equal(stablePort(root + path.sep))
     expect(stablePort(root)).to.be.within(40000, 59999)
