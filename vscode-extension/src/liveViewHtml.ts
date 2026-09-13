@@ -37,6 +37,8 @@ export function liveViewHtml(): string {
   .link { cursor: pointer; }
   .row .link:hover { color: var(--vscode-textLink-foreground); text-decoration: underline; }
   .page { flex: none; font-size: 0.9em; color: var(--vscode-descriptionForeground); }
+  .par { flex: none; font-size: 0.85em; line-height: 1.3em; padding: 0 4px; border-radius: 3px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); }
+  #commons { padding-bottom: 2px; border-bottom: 1px solid var(--vscode-panel-border); margin-bottom: 2px; }
   .twisty { flex: none; width: 1em; text-align: center; color: var(--vscode-descriptionForeground); cursor: pointer; }
   .twisty:empty { cursor: default; }
   .pages { padding: 0 0 4px 1.4em; }
@@ -80,7 +82,7 @@ export function liveViewHtml(): string {
 <div id="cols" hidden>
   <section><h3>スイッチ<span class="count" id="switchCount"></span></h3><div class="list" id="switches"></div></section>
   <section><h3>変数<span class="count" id="variableCount"></span></h3><div class="list" id="variables"></div></section>
-  <section><h3>イベント<span class="count" id="selfCount"></span><label title="出現条件もセルフスイッチも使っていないイベントも並べる"><input id="allEvents" type="checkbox"> すべてのイベント</label></h3><div class="list"><div id="selfHere"></div><div id="selfUnused" class="none" hidden>(このマップに出現条件やセルフスイッチを使うイベントはありません)</div><div id="selfOthers"></div></div></section>
+  <section><h3>イベント<span class="count" id="selfCount"></span><label title="出現条件もセルフスイッチも使っていないイベントも並べる"><input id="allEvents" type="checkbox"> すべてのイベント</label></h3><div class="list"><div id="commons" hidden></div><div id="selfHere"></div><div id="selfUnused" class="none" hidden>(このマップに出現条件やセルフスイッチを使うイベントはありません)</div><div id="selfOthers"></div></div></section>
   <section><h3>アイテム<span class="count" id="itemCount"></span><label title="持っていないものも並べる(個数を入れると増やせます)"><input id="allItems" type="checkbox"> すべて</label></h3><div class="row" id="goldRow"><span class="name">所持金</span><input class="var" id="gold"><span class="id" id="currency"></span></div><div class="list"><div id="items"></div><div id="itemNone" class="none" hidden></div></div></section>
 </div>
 <script nonce="${nonce}">
@@ -105,6 +107,9 @@ export function liveViewHtml(): string {
   let gold = 0;
   let dbNames = { switches: [], variables: [], items: {}, actors: [] };
   let actorsNow = new Set();
+  let parallelNow = new Set();
+  let commonsSignature = '';
+  const PARALLEL_TITLE = '並列処理で動いています(このページが出ている間、毎フレーム繰り返します)';
   const expanded = new Set();
   const TRIGGERS = ['決定ボタン', 'プレイヤーから接触', 'イベントから接触', '自動実行', '並列処理'];
 
@@ -141,15 +146,20 @@ export function liveViewHtml(): string {
     nameEl.title = label + '\\nテキストとプレビューを開く';
     const pageEl = document.createElement('span');
     pageEl.className = 'page';
+    const parEl = document.createElement('span');
+    parEl.className = 'par';
+    parEl.textContent = '並列';
+    parEl.title = PARALLEL_TITLE;
+    parEl.hidden = true;
     const box = document.createElement('span');
     box.className = 'ssw';
     for (const el of [idEl, nameEl]) {
       el.classList.add('link');
       el.addEventListener('click', () => vscode.postMessage({ type: 'openEvent', mapId, eventId }));
     }
-    row.append(twisty, idEl, nameEl, pageEl, box);
+    row.append(twisty, idEl, nameEl, pageEl, parEl, box);
     row.dataset.search = label.toLowerCase();
-    const r = { wrap, row, box, pageEl, twisty, details, mapId, eventId, buttons: new Map(), used: used || [], pages: pages || [] };
+    const r = { wrap, row, box, pageEl, parEl, twisty, details, mapId, eventId, buttons: new Map(), used: used || [], pages: pages || [] };
     r.conditional = r.pages.some(hasConditions);
     if (r.pages.length) {
       twisty.title = 'ページごとの出現条件とトリガー';
@@ -238,6 +248,8 @@ export function liveViewHtml(): string {
     const page = r.mapId === mapInfo.mapId ? pagesHere.get(r.eventId) : undefined;
     r.pageEl.textContent = page ? 'P' + page : '';
     r.pageEl.title = page ? 'ゲームでは今 ' + page + 'ページ' : '';
+    r.parallel = r.mapId === mapInfo.mapId && parallelNow.has(r.eventId);
+    r.parEl.hidden = !r.parallel;
     let any = false;
     r.buttons.forEach((button, letter) => {
       const on = selfOn.has(prefix + letter);
@@ -271,6 +283,39 @@ export function liveViewHtml(): string {
     renderOthers();
     hereRows.forEach(paintSelf);
     filter();
+  }
+
+  function renderCommons(ids) {
+    const signature = ids.join(',');
+    if (signature === commonsSignature) return;
+    commonsSignature = signature;
+    const box = $('commons');
+    box.textContent = '';
+    box.hidden = !ids.length;
+    if (!ids.length) return;
+    const sub = document.createElement('div');
+    sub.className = 'sub';
+    sub.textContent = '並列処理のコモンイベント';
+    box.appendChild(sub);
+    for (const id of ids) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const idEl = document.createElement('span');
+      idEl.className = 'id link';
+      idEl.textContent = pad(id);
+      const name = (dbNames.commonEvents || [])[id] || '';
+      const nameEl = document.createElement('span');
+      nameEl.className = 'name link' + (name ? '' : ' blank');
+      nameEl.textContent = name || '(名前なし)';
+      nameEl.title = (name ? name + '\\n' : '') + 'テキストとプレビューを開く';
+      const par = document.createElement('span');
+      par.className = 'par';
+      par.textContent = '並列';
+      par.title = '並列処理で動いています(スイッチが ON の間、毎フレーム繰り返します)';
+      for (const el of [idEl, nameEl]) el.addEventListener('click', () => vscode.postMessage({ type: 'openCommon', id }));
+      row.append(idEl, nameEl, par);
+      box.appendChild(row);
+    }
   }
 
   function renderOthers() {
@@ -459,7 +504,7 @@ export function liveViewHtml(): string {
     let relevantHere = 0;
     for (const rowsOfSelf of [hereRows, otherRows]) {
       rowsOfSelf.forEach((r) => {
-        const relevant = all || rowsOfSelf === otherRows || r.used.length > 0 || r.conditional || r.on || r.row.classList.contains('running');
+        const relevant = all || rowsOfSelf === otherRows || r.used.length > 0 || r.conditional || r.on || r.parallel || r.row.classList.contains('running');
         const hit = !q || r.eventId === number || r.row.dataset.search.includes(q);
         const visible = hit && (all || (relevant && (!hide || r.on)));
         r.wrap.hidden = !visible;
@@ -502,7 +547,8 @@ export function liveViewHtml(): string {
       rows[kind].forEach((_r, id) => paint(kind, id));
     }
     setItems(m.items || {});
-    dbNames = { switches: m.switches || [], variables: m.variables || [], items: m.items || {}, actors: m.actors || [] };
+    dbNames = { switches: m.switches || [], variables: m.variables || [], items: m.items || {}, actors: m.actors || [], commonEvents: m.commonEvents || [] };
+    commonsSignature = '';
     hereRows.forEach(renderPages);
     $('currency').textContent = m.currencyUnit || '';
     filter();
@@ -555,6 +601,8 @@ export function liveViewHtml(): string {
     ownedSignature = owned;
     pagesHere = new Map(m.pages || []);
     actorsNow = new Set(m.actors || []);
+    parallelNow = new Set((m.parallel && m.parallel.events) || []);
+    renderCommons((m.parallel && m.parallel.commons) || []);
     selfOn = new Set(m.selfSwitches);
     selfLabels = m.selfLabels || {};
     const rebuilt = renderOthers();
@@ -569,8 +617,8 @@ export function liveViewHtml(): string {
       void r.row.offsetWidth;
       r.row.classList.add('flash');
     }
-    const selfChanged = Array.from(hereRows.values()).some((r) => r.on !== r.wasOn);
-    hereRows.forEach((r) => { r.wasOn = r.on; });
+    const selfChanged = Array.from(hereRows.values()).some((r) => r.on !== r.wasOn || r.parallel !== r.wasParallel);
+    hereRows.forEach((r) => { r.wasOn = r.on; r.wasParallel = r.parallel; });
     if ($('hideDefault').checked || rebuilt || selfChanged || itemsChanged) filter();
   }
 

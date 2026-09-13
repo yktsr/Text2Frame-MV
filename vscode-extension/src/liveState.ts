@@ -18,6 +18,7 @@ export interface LiveMessage {
     actors?: number[];
     map?: number;
     pages?: Map<number, number>;
+    parallel?: Parallels;
     run?: RunFrame[];
     lists?: Map<string, CommandMark[]>;
 }
@@ -29,12 +30,18 @@ const MAX_COMMANDS = 100000;
 const MAX_COUNT = 1000000000;
 const MAX_PAGES = 9999;
 const MAX_ACTORS = 1000;
+const MAX_PARALLEL = 10000;
 
 export const RUN_KEY = /^(?:e:\d{1,6}:\d{1,6}:\d{1,4}|c:\d{1,6})$/;
 
 export const SELF_SWITCH_KEY = /^(\d{1,6}),(\d{1,6}),([A-Za-z0-9_]{1,16})$/;
 
 export const ITEM_KEY = /^([iwa]):(\d{1,6})$/;
+
+export interface Parallels {
+    events: number[];
+    commons: number[];
+}
 
 export interface LiveCommand {
     switches?: Record<number, boolean>;
@@ -144,6 +151,9 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
     };
     if (o.map !== undefined && !isCount(o.map, MAX_ID)) return undefined;
     if (o.gold !== undefined && !isCount(o.gold, MAX_COUNT)) return undefined;
+    const ids = (v: unknown): v is number[] => Array.isArray(v) && v.length <= MAX_PARALLEL && v.every((a) => isCount(a, MAX_ID) && a > 0);
+    const parallel = o.parallel as { events?: unknown; commons?: unknown } | undefined;
+    if (parallel !== undefined && !(parallel && typeof parallel === 'object' && ids(parallel.events) && ids(parallel.commons))) return undefined;
     if (o.actors !== undefined && !(Array.isArray(o.actors) && o.actors.length <= MAX_ACTORS && o.actors.every((a) => isCount(a, MAX_ID) && a > 0))) return undefined;
     try {
         return {
@@ -156,6 +166,7 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
             actors: o.actors as number[] | undefined,
             map: o.map as number | undefined,
             pages: readPages(o.pages),
+            parallel: parallel ? { events: parallel.events as number[], commons: parallel.commons as number[] } : undefined,
             run: readRun(o.run),
             lists: readLists(o.lists)
         };
@@ -171,6 +182,7 @@ export interface LiveSnapshot {
     items: Array<[string, number]>;
     gold: number;
     actors: number[];
+    parallel: Parallels;
     pages: Array<[number, number]>;
     mapId: number;
 }
@@ -194,6 +206,7 @@ export class LiveState {
     private pages = new Map<number, number>();
     private gold = 0;
     private actors: number[] = [];
+    private parallel: Parallels = { events: [], commons: [] };
     private readonly changedAt = new Map<string, number>();
     private readonly lists = new Map<string, CommandMark[]>();
     private frames: RunFrame[] = [];
@@ -211,6 +224,7 @@ export class LiveState {
             this.items.clear();
             this.gold = 0;
             this.actors = [];
+            this.parallel = { events: [], commons: [] };
             this.pages = new Map();
             this.changedAt.clear();
             this.lists.clear();
@@ -248,6 +262,10 @@ export class LiveState {
         merge('variable', this.variables, message.variables, 0);
         merge('self', this.selfSwitches, message.selfSwitches, false);
         merge('item', this.items, message.items, 0);
+        if (message.parallel && JSON.stringify(message.parallel) !== JSON.stringify(this.parallel)) {
+            this.parallel = message.parallel;
+            changed = true;
+        }
         if (message.actors && message.actors.join(',') !== this.actors.join(',')) {
             this.actors = message.actors;
             changed = true;
@@ -308,6 +326,7 @@ export class LiveState {
             items: Array.from(this.items).filter(([, v]) => v > 0),
             gold: this.gold,
             actors: this.actors,
+            parallel: this.parallel,
             pages: Array.from(this.pages),
             mapId: this.mapId
         };

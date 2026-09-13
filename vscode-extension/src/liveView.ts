@@ -120,7 +120,7 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
         const ctx = session ? this.service.forRoot(session.projectRoot) : undefined;
         const status = this.statusOf(session);
         const now = Date.now();
-        const snapshot: LiveSnapshot = session ? session.state.snapshot() : { switches: [], variables: [], selfSwitches: [], items: [], gold: 0, actors: [], pages: [], mapId: 0 };
+        const snapshot: LiveSnapshot = session ? session.state.snapshot() : { switches: [], variables: [], selfSwitches: [], items: [], gold: 0, actors: [], parallel: { events: [], commons: [] }, pages: [], mapId: 0 };
         const changed: LiveChanges = session && flash ? session.state.changedSince(this.lastPost) : { switches: [], variables: [], selfSwitches: [], items: [], gold: false };
         const values = {
             type: 'values',
@@ -133,6 +133,7 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
             items: snapshot.items,
             gold: snapshot.gold,
             actors: snapshot.actors,
+            parallel: snapshot.parallel,
             pages: snapshot.pages,
             mapId: snapshot.mapId,
             changed
@@ -173,6 +174,7 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
             variables: names('variable'),
             items: { i: names('item'), w: names('weapon'), a: names('armor') },
             actors: names('actor'),
+            commonEvents: names('commonEvent'),
             currencyUnit: ctx.db.system.currencyUnit || ''
         };
     }
@@ -198,6 +200,20 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
             out[group] = `${this.mapName(ctx, m)}${ev && ev.name && ev.name !== eventId(e) ? ' / ' + ev.name : ''}`;
         }
         return out;
+    }
+
+    private async openCommon(id: number): Promise<void> {
+        const session = this.live.current();
+        const ctx = session ? this.service.forRoot(session.projectRoot) : undefined;
+        if (!session || !ctx) return;
+        const key = `c:${id}`;
+        const running = this.tracker.current().slice().reverse().find((f) => f.key === key && f.uri);
+        const file = running?.uri?.fsPath ?? await this.tracker.textFor(ctx, key);
+        if (!file) {
+            this.notice(`${placeLabel(this.service, ctx, placeFromKey(key))} のテキストが見つかりません。`);
+            return;
+        }
+        await openText(vscode.Uri.file(file), running?.from ?? 0);
     }
 
     private async openEvent(mapId: number, eventNo: number, chosen?: number): Promise<void> {
@@ -254,6 +270,10 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
         }
         if (m.type === 'testPlay') {
             vscode.commands.executeCommand('text2frame.testPlay');
+            return;
+        }
+        if (m.type === 'openCommon' && Number.isInteger(m.id) && m.id > 0) {
+            this.openCommon(m.id);
             return;
         }
         if (m.type === 'openEvent' && Number.isInteger(m.mapId) && Number.isInteger(m.eventId) && m.mapId > 0 && m.eventId > 0) {

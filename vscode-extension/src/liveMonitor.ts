@@ -91,6 +91,21 @@ export function monitorScript(token: string): string {
     });
     return out;
   }
+  function parallels() {
+    var map = window.$gameMap;
+    if (!map || typeof map.events !== 'function') return null;
+    var events = [];
+    map.events().forEach(function (e) {
+      var id = e && typeof e.eventId === 'function' ? Number(e.eventId()) : 0;
+      if (id > 0 && e._trigger === 4 && e._interpreter && !e._erased && Number(e._pageIndex) >= 0) events.push(id);
+    });
+    var commons = [];
+    (Array.isArray(map._commonEvents) ? map._commonEvents : []).forEach(function (c) {
+      var id = c ? Number(c._commonEventId) || 0 : 0;
+      if (id > 0 && typeof c.isActive === 'function' && c.isActive()) commons.push(id);
+    });
+    return { events: events, commons: commons };
+  }
   function currentMap() {
     var map = window.$gameMap;
     return map && typeof map.mapId === 'function' ? Number(map.mapId()) || 0 : 0;
@@ -186,7 +201,7 @@ export function monitorScript(token: string): string {
     var party = window.$gameParty;
     var message = {};
     if (!last || last.switches !== switches || last.variables !== variables || last.selfSwitches !== selfSwitches || last.party !== party) {
-      last = { switches: switches, variables: variables, selfSwitches: selfSwitches, party: party, s: [], v: [], ss: {}, items: {}, gold: null, actors: null, map: -1, pages: '', run: null, sent: {} };
+      last = { switches: switches, variables: variables, selfSwitches: selfSwitches, party: party, s: [], v: [], ss: {}, items: {}, gold: null, actors: null, map: -1, pages: '', parallel: '', run: null, sent: {} };
       message.reset = true;
     }
     var s = diff(switches._data, last.s, switchValue);
@@ -215,6 +230,10 @@ export function monitorScript(token: string): string {
     var pagesText = pages ? JSON.stringify(pages) : '';
     if (pages && (pagesText !== last.pages || message.map !== undefined)) message.pages = pages;
     last.pages = pagesText;
+    var parallel = parallels();
+    var parallelText = parallel ? JSON.stringify(parallel) : '';
+    if (parallel && parallelText !== last.parallel) message.parallel = parallel;
+    last.parallel = parallelText;
     var run = running();
     if (run) {
       var runText = JSON.stringify(run.frames);
@@ -228,7 +247,7 @@ export function monitorScript(token: string): string {
         });
       }
     }
-    if (message.reset || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.run || Date.now() - lastSent >= HEARTBEAT) send(message);
+    if (message.reset || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.parallel || message.run || Date.now() - lastSent >= HEARTBEAT) send(message);
   }
   function write(command) {
     var switches = window.$gameSwitches;

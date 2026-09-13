@@ -221,6 +221,28 @@ describe('liveMonitor', function () {
     expect(g.sent[1].body).to.eql({ actors: [1, 3, 4] })
   })
 
+  it('reports the parallel events and common events that run', function () {
+    const g = fakeGame()
+    const ev = function (id, trigger, page) { return { eventId: function () { return id }, _trigger: trigger, _pageIndex: page, _interpreter: trigger === 4 ? {} : null } }
+    const events = [ev(1, 0, 0), ev(2, 4, 0), ev(3, 4, -1)]
+    let on = true
+    g.window.$gameSwitches = { _data: [] }
+    g.window.$gameVariables = { _data: [] }
+    g.window.$gameMap = {
+      mapId: function () { return 41 },
+      events: function () { return events },
+      _commonEvents: [{ _commonEventId: 7, isActive: function () { return on } }, { _commonEventId: 8, isActive: function () { return false } }]
+    }
+    g.step()
+    expect(g.sent[0].body.parallel).to.eql({ events: [2], commons: [7] })
+    g.step()
+    expect(g.sent).to.have.length(1)
+    on = false
+    events[1]._erased = true
+    g.step()
+    expect(g.sent[1].body).to.eql({ parallel: { events: [], commons: [] } })
+  })
+
   it('reports the page each event on the map is on', function () {
     const g = fakeGame()
     let mapId = 5
@@ -229,7 +251,7 @@ describe('liveMonitor', function () {
     g.window.$gameVariables = { _data: [] }
     g.window.$gameMap = { mapId: function () { return mapId }, events: function () { return events } }
     g.step()
-    expect(g.sent[0].body).to.eql({ reset: true, map: 5, pages: { 1: 1, 3: 0 } })
+    expect(g.sent[0].body).to.eql({ reset: true, map: 5, pages: { 1: 1, 3: 0 }, parallel: { events: [], commons: [] } })
     g.step()
     expect(g.sent).to.have.length(1)
     events[1]._pageIndex = 1
@@ -350,7 +372,7 @@ describe('liveState', function () {
     expect(m.reset).to.equal(true)
     expect(Array.from(m.switches)).to.eql([[1, true]])
     expect(Array.from(m.variables)).to.eql([[2, 5], [3, 'a']])
-    expect(parseLiveMessage({})).to.eql({ reset: undefined, switches: undefined, variables: undefined, selfSwitches: undefined, items: undefined, gold: undefined, actors: undefined, map: undefined, pages: undefined, run: undefined, lists: undefined })
+    expect(parseLiveMessage({})).to.eql({ reset: undefined, switches: undefined, variables: undefined, selfSwitches: undefined, items: undefined, gold: undefined, actors: undefined, map: undefined, pages: undefined, parallel: undefined, run: undefined, lists: undefined })
     const self = parseLiveMessage({ selfSwitches: { '12,5,A': true, '1,2,B': false }, map: 12 })
     expect(Array.from(self.selfSwitches)).to.eql([['12,5,A', true], ['1,2,B', false]])
     expect(self.map).to.equal(12)
@@ -386,7 +408,7 @@ describe('liveState', function () {
     expect(s.received()).to.equal(false)
     s.apply(parseLiveMessage({ reset: true, switches: { 1: true, 2: false }, variables: { 3: 4, 5: 0 } }), 1000)
     expect(s.received()).to.equal(true)
-    expect(s.snapshot()).to.eql({ switches: [[1, true]], variables: [[3, 4]], selfSwitches: [], items: [], gold: 0, actors: [], pages: [], mapId: 0 })
+    expect(s.snapshot()).to.eql({ switches: [[1, true]], variables: [[3, 4]], selfSwitches: [], items: [], gold: 0, actors: [], parallel: { events: [], commons: [] }, pages: [], mapId: 0 })
     s.apply(parseLiveMessage({ switches: { 2: true }, variables: { 3: 5 } }), 2000)
     s.apply(parseLiveMessage({ switches: { 9: true } }), 3000)
     expect(s.changedSince(1500)).to.eql({ switches: [2, 9], variables: [3], selfSwitches: [], items: [], gold: false })
@@ -399,11 +421,11 @@ describe('liveState', function () {
     expect(s.selfSwitchValue(12, 5, 'A')).to.equal(true)
     expect(s.selfSwitchValue(12, 5, 'B')).to.equal(false)
     expect(s.selfSwitchValue(3, 1, 'A')).to.equal(false)
-    expect(s.snapshot()).to.eql({ switches: [], variables: [], selfSwitches: ['12,5,A'], items: [], gold: 0, actors: [], pages: [], mapId: 12 })
+    expect(s.snapshot()).to.eql({ switches: [], variables: [], selfSwitches: ['12,5,A'], items: [], gold: 0, actors: [], parallel: { events: [], commons: [] }, pages: [], mapId: 12 })
     expect(s.apply(parseLiveMessage({ map: 3 }), 2000).values).to.equal(true)
     expect(s.apply(parseLiveMessage({ selfSwitches: { '12,5,A': false, '3,1,D': true } }), 3000).values).to.equal(true)
     expect(s.changedSince(2500)).to.eql({ switches: [], variables: [], selfSwitches: ['12,5,A', '3,1,D'], items: [], gold: false })
-    expect(s.snapshot()).to.eql({ switches: [], variables: [], selfSwitches: ['3,1,D'], items: [], gold: 0, actors: [], pages: [], mapId: 3 })
+    expect(s.snapshot()).to.eql({ switches: [], variables: [], selfSwitches: ['3,1,D'], items: [], gold: 0, actors: [], parallel: { events: [], commons: [] }, pages: [], mapId: 3 })
     expect(selfSwitchLine(s, 3, 1, 'D', 3000)).to.equal('テストプレイ中: セルフスイッチ D = ON')
     expect(selfSwitchLine(s, 12, 5, 'A', 3000 + LIVE_TIMEOUT)).to.equal('テストプレイの最後の値: セルフスイッチ A = OFF')
     s.apply(parseLiveMessage({ reset: true, map: 3 }), 4000)
@@ -435,13 +457,16 @@ describe('liveState', function () {
     expect(s.itemCount('a:9')).to.equal(0)
     expect(s.eventPage(1)).to.equal(2)
     expect(s.eventPage(3)).to.equal(undefined)
-    expect(s.snapshot()).to.eql({ switches: [], variables: [], selfSwitches: [], items: [['i:1', 3]], gold: 0, actors: [], pages: [[1, 2], [3, 0]], mapId: 5 })
+    expect(s.snapshot()).to.eql({ switches: [], variables: [], selfSwitches: [], items: [['i:1', 3]], gold: 0, actors: [], parallel: { events: [], commons: [] }, pages: [[1, 2], [3, 0]], mapId: 5 })
     expect(s.apply(parseLiveMessage({ items: { 'i:1': 4 } }), 2000).values).to.equal(true)
     expect(s.changedSince(1500)).to.eql({ switches: [], variables: [], selfSwitches: [], items: ['i:1'], gold: false })
     expect(s.apply(parseLiveMessage({ pages: { 1: 2, 3: 0 } }), 2100).values).to.equal(false)
     expect(s.apply(parseLiveMessage({ pages: { 1: 1, 3: 0 } }), 2200).values).to.equal(true)
     expect(s.apply(parseLiveMessage({ map: 6 }), 2300).values).to.equal(true)
     expect(s.eventPage(1)).to.equal(undefined)
+    expect(s.apply(parseLiveMessage({ parallel: { events: [2], commons: [7] } }), 2340).values).to.equal(true)
+    expect(s.snapshot().parallel).to.eql({ events: [2], commons: [7] })
+    expect(s.apply(parseLiveMessage({ parallel: { events: [2], commons: [7] } }), 2345).values).to.equal(false)
     expect(s.apply(parseLiveMessage({ actors: [1, 2] }), 2350).values).to.equal(true)
     expect(s.snapshot().actors).to.eql([1, 2])
     expect(s.apply(parseLiveMessage({ actors: [1, 2] }), 2360).values).to.equal(false)
@@ -453,7 +478,7 @@ describe('liveState', function () {
     expect(s.itemCount('i:1')).to.equal(0)
     expect(s.goldValue()).to.equal(0)
     for (const bad of [{ items: [] }, { items: { 'i:1': -1 } }, { items: { 'i:1': 1.5 } }, { items: { 'q:1': 1 } }, { items: { 'i:0x1': 1 } },
-      { pages: [] }, { pages: { 0: 1 } }, { pages: { 1: -1 } }, { pages: { 1: '2' } }, { gold: -1 }, { gold: 1.5 }, { gold: '3' }, { actors: {} }, { actors: [0] }, { actors: ['1'] }]) {
+      { pages: [] }, { pages: { 0: 1 } }, { pages: { 1: -1 } }, { pages: { 1: '2' } }, { gold: -1 }, { gold: 1.5 }, { gold: '3' }, { actors: {} }, { actors: [0] }, { actors: ['1'] }, { parallel: [] }, { parallel: { events: [1] } }, { parallel: { events: [0], commons: [] } }]) {
       expect(parseLiveMessage(bad), JSON.stringify(bad)).to.equal(undefined)
     }
   })
