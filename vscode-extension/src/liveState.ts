@@ -15,6 +15,7 @@ export interface LiveMessage {
     selfSwitches?: Map<string, boolean>;
     items?: Map<string, number>;
     gold?: number;
+    actors?: number[];
     map?: number;
     pages?: Map<number, number>;
     run?: RunFrame[];
@@ -27,6 +28,7 @@ const MAX_LISTS = 64;
 const MAX_COMMANDS = 100000;
 const MAX_COUNT = 1000000000;
 const MAX_PAGES = 9999;
+const MAX_ACTORS = 1000;
 
 export const RUN_KEY = /^(?:e:\d{1,6}:\d{1,6}:\d{1,4}|c:\d{1,6})$/;
 
@@ -142,6 +144,7 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
     };
     if (o.map !== undefined && !isCount(o.map, MAX_ID)) return undefined;
     if (o.gold !== undefined && !isCount(o.gold, MAX_COUNT)) return undefined;
+    if (o.actors !== undefined && !(Array.isArray(o.actors) && o.actors.length <= MAX_ACTORS && o.actors.every((a) => isCount(a, MAX_ID) && a > 0))) return undefined;
     try {
         return {
             reset: o.reset === true || undefined,
@@ -150,6 +153,7 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
             selfSwitches: readSelf(o.selfSwitches),
             items: readItems(o.items),
             gold: o.gold as number | undefined,
+            actors: o.actors as number[] | undefined,
             map: o.map as number | undefined,
             pages: readPages(o.pages),
             run: readRun(o.run),
@@ -166,6 +170,7 @@ export interface LiveSnapshot {
     selfSwitches: string[];
     items: Array<[string, number]>;
     gold: number;
+    actors: number[];
     pages: Array<[number, number]>;
     mapId: number;
 }
@@ -188,6 +193,7 @@ export class LiveState {
     private readonly items = new Map<string, number>();
     private pages = new Map<number, number>();
     private gold = 0;
+    private actors: number[] = [];
     private readonly changedAt = new Map<string, number>();
     private readonly lists = new Map<string, CommandMark[]>();
     private frames: RunFrame[] = [];
@@ -204,6 +210,7 @@ export class LiveState {
             this.selfSwitches.clear();
             this.items.clear();
             this.gold = 0;
+            this.actors = [];
             this.pages = new Map();
             this.changedAt.clear();
             this.lists.clear();
@@ -241,6 +248,10 @@ export class LiveState {
         merge('variable', this.variables, message.variables, 0);
         merge('self', this.selfSwitches, message.selfSwitches, false);
         merge('item', this.items, message.items, 0);
+        if (message.actors && message.actors.join(',') !== this.actors.join(',')) {
+            this.actors = message.actors;
+            changed = true;
+        }
         if (message.gold !== undefined && message.gold !== this.gold) {
             this.gold = message.gold;
             changed = true;
@@ -296,6 +307,7 @@ export class LiveState {
             selfSwitches: Array.from(this.selfSwitches).filter(([, v]) => v).map(([k]) => k),
             items: Array.from(this.items).filter(([, v]) => v > 0),
             gold: this.gold,
+            actors: this.actors,
             pages: Array.from(this.pages),
             mapId: this.mapId
         };

@@ -37,6 +37,18 @@ export function liveViewHtml(): string {
   .link { cursor: pointer; }
   .row .link:hover { color: var(--vscode-textLink-foreground); text-decoration: underline; }
   .page { flex: none; font-size: 0.9em; color: var(--vscode-descriptionForeground); }
+  .twisty { flex: none; width: 1em; text-align: center; color: var(--vscode-descriptionForeground); cursor: pointer; }
+  .twisty:empty { cursor: default; }
+  .pages { padding: 0 0 4px 1.4em; }
+  .pline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; padding: 1px 2px; cursor: pointer; font-size: 0.95em; line-height: 1.5em; }
+  .pline:hover { background: var(--vscode-list-hoverBackground); }
+  .pline.active { background: var(--vscode-list-inactiveSelectionBackground); }
+  .pno { flex: none; font-family: var(--vscode-editor-font-family); }
+  .pline.active .pno::before { content: '▶ '; }
+  .trig { flex: none; color: var(--vscode-descriptionForeground); }
+  .cond.ok { color: var(--vscode-testing-iconPassed, #3a3); }
+  .cond.ng { color: var(--vscode-errorForeground); }
+  .cond.none { color: var(--vscode-descriptionForeground); }
   .ssw { flex: none; display: flex; gap: 2px; }
   .ss { width: 1.9em; padding: 0; font: inherit; line-height: 1.4em; cursor: pointer; border: 1px solid var(--vscode-button-border, var(--vscode-panel-border)); border-radius: 3px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
   .ss.on { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
@@ -64,11 +76,11 @@ export function liveViewHtml(): string {
   <label title="実行しているイベントのテキストを自動で開く(設定 text2frame.openRunningText)"><input id="openRunning" type="checkbox"> 実行中のテキストを開く</label>
   <span id="notice"></span>
 </div>
-<div id="empty">テストプレイ中だけ、ここにスイッチ・変数・セルフスイッチ・アイテム・所持金が出ます。<button id="play">▶ テストプレイ</button></div>
+<div id="empty">テストプレイ中だけ、ここにスイッチ・変数・イベント・アイテム・所持金が出ます。<button id="play">▶ テストプレイ</button></div>
 <div id="cols" hidden>
   <section><h3>スイッチ<span class="count" id="switchCount"></span></h3><div class="list" id="switches"></div></section>
   <section><h3>変数<span class="count" id="variableCount"></span></h3><div class="list" id="variables"></div></section>
-  <section><h3>セルフスイッチ<span class="count" id="selfCount"></span><label title="セルフスイッチを使っていないイベントも並べる"><input id="allEvents" type="checkbox"> すべてのイベント</label></h3><div class="list"><div id="selfHere"></div><div id="selfUnused" class="none" hidden>(このマップにセルフスイッチを使うイベントはありません)</div><div id="selfOthers"></div></div></section>
+  <section><h3>イベント<span class="count" id="selfCount"></span><label title="出現条件もセルフスイッチも使っていないイベントも並べる"><input id="allEvents" type="checkbox"> すべてのイベント</label></h3><div class="list"><div id="selfHere"></div><div id="selfUnused" class="none" hidden>(このマップに出現条件やセルフスイッチを使うイベントはありません)</div><div id="selfOthers"></div></div></section>
   <section><h3>アイテム<span class="count" id="itemCount"></span><label title="持っていないものも並べる(個数を入れると増やせます)"><input id="allItems" type="checkbox"> すべて</label></h3><div class="row" id="goldRow"><span class="name">所持金</span><input class="var" id="gold"><span class="id" id="currency"></span></div><div class="list"><div id="items"></div><div id="itemNone" class="none" hidden></div></div></section>
 </div>
 <script nonce="${nonce}">
@@ -91,6 +103,10 @@ export function liveViewHtml(): string {
   let ownedSignature = '';
   let pagesHere = new Map();
   let gold = 0;
+  let dbNames = { switches: [], variables: [], items: {}, actors: [] };
+  let actorsNow = new Set();
+  const expanded = new Set();
+  const TRIGGERS = ['決定ボタン', 'プレイヤーから接触', 'イベントから接触', '自動実行', '並列処理'];
 
   const pad = (n) => String(n).padStart(4, '0');
   const blank = (kind) => (kind === 'switch' ? false : 0);
@@ -106,9 +122,16 @@ export function liveViewHtml(): string {
   let othersSignature = '';
   let runningEvent = null;
 
-  function selfRow(mapId, eventId, label, used) {
+  function selfRow(mapId, eventId, label, used, pages) {
+    const wrap = document.createElement('div');
     const row = document.createElement('div');
     row.className = 'row';
+    const twisty = document.createElement('span');
+    twisty.className = 'twisty';
+    const details = document.createElement('div');
+    details.className = 'pages';
+    details.hidden = true;
+    wrap.append(row, details);
     const idEl = document.createElement('span');
     idEl.className = 'id';
     idEl.textContent = pad3(eventId);
@@ -124,11 +147,76 @@ export function liveViewHtml(): string {
       el.classList.add('link');
       el.addEventListener('click', () => vscode.postMessage({ type: 'openEvent', mapId, eventId }));
     }
-    row.append(idEl, nameEl, pageEl, box);
+    row.append(twisty, idEl, nameEl, pageEl, box);
     row.dataset.search = label.toLowerCase();
-    const r = { row, box, pageEl, mapId, eventId, buttons: new Map(), used: used || [] };
+    const r = { wrap, row, box, pageEl, twisty, details, mapId, eventId, buttons: new Map(), used: used || [], pages: pages || [] };
+    r.conditional = r.pages.some(hasConditions);
+    if (r.pages.length) {
+      twisty.title = 'ページごとの出現条件とトリガー';
+      twisty.addEventListener('click', () => {
+        const key = mapId + ',' + eventId;
+        if (expanded.has(key)) expanded.delete(key);
+        else expanded.add(key);
+        renderPages(r);
+      });
+    }
     LETTERS.forEach((letter) => addLetter(r, letter));
+    renderPages(r);
     return r;
+  }
+
+  const hasConditions = (p) => !!(p.switch1 || p.switch2 || p.variable || p.selfSwitch || p.item || p.actor);
+  const nameOf = (list, id) => (list && list[id] ? ' ' + list[id] : '');
+
+  function conditionChecks(r, p) {
+    const out = [];
+    const sw = (id) => ({ text: 'S' + pad(id) + nameOf(dbNames.switches, id) + ' が ON', ok: !!valueOf('switch', id) });
+    if (p.switch1) out.push(sw(p.switch1));
+    if (p.switch2) out.push(sw(p.switch2));
+    if (p.variable) {
+      const v = valueOf('variable', p.variable[0]);
+      out.push({ text: 'V' + pad(p.variable[0]) + nameOf(dbNames.variables, p.variable[0]) + ' ≥ ' + p.variable[1] + '(今 ' + text(v) + ')', ok: Number(v) >= p.variable[1] });
+    }
+    if (p.selfSwitch) out.push({ text: 'セルフ ' + p.selfSwitch + ' が ON', ok: selfOn.has(r.mapId + ',' + r.eventId + ',' + p.selfSwitch) });
+    if (p.item) out.push({ text: 'アイテム' + nameOf(dbNames.items.i, p.item) + '(' + pad(p.item) + ')を持つ', ok: (itemCounts.get('i:' + p.item) || 0) > 0 });
+    if (p.actor) out.push({ text: 'アクター' + nameOf(dbNames.actors, p.actor) + '(' + pad(p.actor) + ')が仲間', ok: actorsNow.has(p.actor) });
+    return out;
+  }
+
+  function renderPages(r) {
+    const open = expanded.has(r.mapId + ',' + r.eventId) && r.pages.length > 0;
+    r.twisty.textContent = r.pages.length ? (open ? '▾' : '▸') : '';
+    r.details.hidden = !open;
+    if (!open) return;
+    const active = r.mapId === mapInfo.mapId ? pagesHere.get(r.eventId) : undefined;
+    r.details.textContent = '';
+    r.pages.forEach((p, n) => {
+      const line = document.createElement('div');
+      line.className = 'pline' + (active === n + 1 ? ' active' : '');
+      line.title = (n + 1) + 'ページのテキストとプレビューを開く' + (active === n + 1 ? '(ゲームでは今このページ)' : '');
+      const no = document.createElement('span');
+      no.className = 'pno';
+      no.textContent = 'P' + (n + 1);
+      const trig = document.createElement('span');
+      trig.className = 'trig';
+      trig.textContent = TRIGGERS[p.trigger] || ('トリガー' + p.trigger);
+      line.append(no, trig);
+      const checks = conditionChecks(r, p);
+      if (!checks.length) {
+        const none = document.createElement('span');
+        none.className = 'cond none';
+        none.textContent = '条件なし';
+        line.appendChild(none);
+      }
+      for (const c of checks) {
+        const el = document.createElement('span');
+        el.className = 'cond ' + (c.ok ? 'ok' : 'ng');
+        el.textContent = (c.ok ? '✓ ' : '✗ ') + c.text;
+        line.appendChild(el);
+      }
+      line.addEventListener('click', () => vscode.postMessage({ type: 'openEvent', mapId: r.mapId, eventId: r.eventId, page: n + 1 }));
+      r.details.appendChild(line);
+    });
   }
 
   function addLetter(r, letter) {
@@ -165,10 +253,10 @@ export function liveViewHtml(): string {
     mapInfo = m;
     hereRows = new Map();
     const frag = document.createDocumentFragment();
-    for (const [id, name, x, y, used] of m.events) {
-      const r = selfRow(m.mapId, id, (name && name !== pad3(id) ? name + ' ' : '') + '(' + x + ',' + y + ')', used);
+    for (const [id, name, x, y, used, pages] of m.events) {
+      const r = selfRow(m.mapId, id, (name && name !== pad3(id) ? name + ' ' : '') + '(' + x + ',' + y + ')', used, pages);
       hereRows.set(m.mapId + ',' + id, r);
-      frag.appendChild(r.row);
+      frag.appendChild(r.wrap);
     }
     if (!m.events.length) {
       const none = document.createElement('div');
@@ -206,7 +294,7 @@ export function liveViewHtml(): string {
     Array.from(groups).sort((a, b) => a[1][0] - b[1][0] || a[1][1] - b[1][1]).forEach(([group, [m, e]]) => {
       const r = selfRow(m, e, selfLabels[group] || ('マップ' + m));
       otherRows.set(group, r);
-      box.appendChild(r.row);
+      box.appendChild(r.wrap);
     });
     return true;
   }
@@ -371,10 +459,10 @@ export function liveViewHtml(): string {
     let relevantHere = 0;
     for (const rowsOfSelf of [hereRows, otherRows]) {
       rowsOfSelf.forEach((r) => {
-        const relevant = all || rowsOfSelf === otherRows || r.used.length > 0 || r.on || r.row.classList.contains('running');
+        const relevant = all || rowsOfSelf === otherRows || r.used.length > 0 || r.conditional || r.on || r.row.classList.contains('running');
         const hit = !q || r.eventId === number || r.row.dataset.search.includes(q);
         const visible = hit && (all || (relevant && (!hide || r.on)));
-        r.row.hidden = !visible;
+        r.wrap.hidden = !visible;
         if (rowsOfSelf === hereRows && relevant) relevantHere++;
         if (visible && rowsOfSelf === hereRows) shownHere++;
       });
@@ -414,6 +502,8 @@ export function liveViewHtml(): string {
       rows[kind].forEach((_r, id) => paint(kind, id));
     }
     setItems(m.items || {});
+    dbNames = { switches: m.switches || [], variables: m.variables || [], items: m.items || {}, actors: m.actors || [] };
+    hereRows.forEach(renderPages);
     $('currency').textContent = m.currencyUnit || '';
     filter();
   }
@@ -464,10 +554,12 @@ export function liveViewHtml(): string {
     const itemsChanged = owned !== ownedSignature;
     ownedSignature = owned;
     pagesHere = new Map(m.pages || []);
+    actorsNow = new Set(m.actors || []);
     selfOn = new Set(m.selfSwitches);
     selfLabels = m.selfLabels || {};
     const rebuilt = renderOthers();
     hereRows.forEach(paintSelf);
+    hereRows.forEach(renderPages);
     otherRows.forEach(paintSelf);
     for (const key of m.changed.selfSwitches || []) {
       const group = key.split(',').slice(0, 2).join(',');

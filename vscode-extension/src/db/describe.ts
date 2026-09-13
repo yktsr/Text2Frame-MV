@@ -1,3 +1,4 @@
+import { PageSummary } from './eventPages';
 import { GameDatabase, DbKind, padId } from './database';
 import { RefKind } from './commandRefs';
 import { FACE_COLUMNS, FACE_ROWS } from './faces';
@@ -51,6 +52,7 @@ export interface MapEvent {
     y: number;
     selfSwitches?: string[];
     pages?: number;
+    pageSummaries?: PageSummary[];
 }
 
 /** テキストのマップにあるイベント。コモンイベントのテキストなど、マップが決まらなければ渡さない。 */

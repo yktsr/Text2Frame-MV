@@ -7,6 +7,7 @@ import { readFaceSheet, readIconSheet, cropFace, cropIcon, iconCount, pngDataUri
 import { decodePng, Rgba } from './db/png';
 import { MapEvent } from './db/describe';
 import { eventSelfSwitchLetters } from './db/selfSwitchRefs';
+import { summarizePages } from './db/eventPages';
 
 /**
  * データベースと顔画像の置き場。名前の表示・ホバー・警告・補完・一覧・プレビューが共有する。
@@ -87,7 +88,7 @@ export class DatabaseService implements vscode.Disposable {
         try {
             const json = JSON.parse(fs.readFileSync(file, 'utf8'));
             events = Array.isArray(json && json.events)
-                ? json.events.map((e: any) => (e ? { name: typeof e.name === 'string' ? e.name : '', x: Number(e.x) || 0, y: Number(e.y) || 0, selfSwitches: eventSelfSwitchLetters(e), pages: Array.isArray(e.pages) ? e.pages.length : 0 } : null))
+                ? json.events.map((e: any) => (e ? { name: typeof e.name === 'string' ? e.name : '', x: Number(e.x) || 0, y: Number(e.y) || 0, selfSwitches: eventSelfSwitchLetters(e), pages: Array.isArray(e.pages) ? e.pages.length : 0, pageSummaries: summarizePages(e) } : null))
                 : [];
         } catch (e) {
             return undefined;

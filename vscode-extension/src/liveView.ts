@@ -6,6 +6,7 @@ import { liveViewHtml } from './liveViewHtml';
 import { ITEM_KEY, LiveChanges, LiveSnapshot, parseCountInput, parseVariableInput, SELF_SWITCH_KEY } from './liveState';
 import { DbKind, padId } from './db/database';
 import { eventId, MapEvent } from './db/describe';
+import { PageSummary } from './db/eventPages';
 import { placeFromKey, placeLabel } from './placeLabel';
 import { RunningFrame, RunTracker, openRunningText, openText, setOpenRunningText } from './runHighlight';
 
@@ -119,7 +120,7 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
         const ctx = session ? this.service.forRoot(session.projectRoot) : undefined;
         const status = this.statusOf(session);
         const now = Date.now();
-        const snapshot: LiveSnapshot = session ? session.state.snapshot() : { switches: [], variables: [], selfSwitches: [], items: [], gold: 0, pages: [], mapId: 0 };
+        const snapshot: LiveSnapshot = session ? session.state.snapshot() : { switches: [], variables: [], selfSwitches: [], items: [], gold: 0, actors: [], pages: [], mapId: 0 };
         const changed: LiveChanges = session && flash ? session.state.changedSince(this.lastPost) : { switches: [], variables: [], selfSwitches: [], items: [], gold: false };
         const values = {
             type: 'values',
@@ -131,6 +132,7 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
             selfLabels: ctx ? this.selfLabels(ctx, snapshot.selfSwitches) : {},
             items: snapshot.items,
             gold: snapshot.gold,
+            actors: snapshot.actors,
             pages: snapshot.pages,
             mapId: snapshot.mapId,
             changed
@@ -170,6 +172,7 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
             switches: names('switch'),
             variables: names('variable'),
             items: { i: names('item'), w: names('weapon'), a: names('armor') },
+            actors: names('actor'),
             currencyUnit: ctx.db.system.currencyUnit || ''
         };
     }
@@ -180,8 +183,8 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
     }
 
     private eventsMessage(ctx: DbContext, mapId: number, events: Array<MapEvent | null> | undefined): unknown {
-        const list: Array<[number, string, number, number, string[]]> = [];
-        (events || []).forEach((e, id) => { if (e && id > 0) list.push([id, e.name, e.x, e.y, e.selfSwitches || []]); });
+        const list: Array<[number, string, number, number, string[], PageSummary[]]> = [];
+        (events || []).forEach((e, id) => { if (e && id > 0) list.push([id, e.name, e.x, e.y, e.selfSwitches || [], e.pageSummaries || []]); });
         return { type: 'events', mapId, mapName: mapId > 0 ? this.mapName(ctx, mapId) : '', events: list };
     }
 
@@ -197,13 +200,13 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
         return out;
     }
 
-    private async openEvent(mapId: number, eventNo: number): Promise<void> {
+    private async openEvent(mapId: number, eventNo: number, chosen?: number): Promise<void> {
         const session = this.live.current();
         const ctx = session ? this.service.forRoot(session.projectRoot) : undefined;
         if (!session || !ctx) return;
         const prefix = `e:${mapId}:${eventNo}:`;
         const running = this.tracker.current().slice().reverse().find((f) => f.key.startsWith(prefix) && f.uri);
-        let page = running ? Number(running.key.slice(prefix.length)) : session.state.mapId === mapId ? session.state.eventPage(eventNo) : undefined;
+        let page = chosen ?? (running ? Number(running.key.slice(prefix.length)) : session.state.mapId === mapId ? session.state.eventPage(eventNo) : undefined);
         if (!page) {
             const count = this.service.mapEvents(ctx, mapId)?.[eventNo]?.pages ?? 1;
             if (count <= 1) {
@@ -254,7 +257,7 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
             return;
         }
         if (m.type === 'openEvent' && Number.isInteger(m.mapId) && Number.isInteger(m.eventId) && m.mapId > 0 && m.eventId > 0) {
-            this.openEvent(m.mapId, m.eventId);
+            this.openEvent(m.mapId, m.eventId, Number.isInteger(m.page) && m.page > 0 ? m.page : undefined);
             return;
         }
         if (m.type !== 'set') return;

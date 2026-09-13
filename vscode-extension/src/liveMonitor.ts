@@ -186,7 +186,7 @@ export function monitorScript(token: string): string {
     var party = window.$gameParty;
     var message = {};
     if (!last || last.switches !== switches || last.variables !== variables || last.selfSwitches !== selfSwitches || last.party !== party) {
-      last = { switches: switches, variables: variables, selfSwitches: selfSwitches, party: party, s: [], v: [], ss: {}, items: {}, gold: null, map: -1, pages: '', run: null, sent: {} };
+      last = { switches: switches, variables: variables, selfSwitches: selfSwitches, party: party, s: [], v: [], ss: {}, items: {}, gold: null, actors: null, map: -1, pages: '', run: null, sent: {} };
       message.reset = true;
     }
     var s = diff(switches._data, last.s, switchValue);
@@ -198,6 +198,10 @@ export function monitorScript(token: string): string {
     if (v) message.variables = v;
     if (ss) message.selfSwitches = ss;
     if (items) message.items = items;
+    var actors = party && Array.isArray(party._actors) ? party._actors.map(function (a) { return Number(a) || 0; }).filter(function (a) { return a > 0; }) : null;
+    var actorsText = actors ? actors.join(',') : null;
+    if (actors && actorsText !== last.actors) message.actors = actors;
+    last.actors = actorsText;
     var gold = party && typeof party._gold === 'number' && isFinite(party._gold) ? Math.max(0, Math.floor(party._gold)) : null;
     if (gold !== null && gold !== last.gold) {
       message.gold = gold;
@@ -224,7 +228,7 @@ export function monitorScript(token: string): string {
         });
       }
     }
-    if (message.reset || s || v || ss || items || message.gold !== undefined || message.map !== undefined || message.pages || message.run || Date.now() - lastSent >= HEARTBEAT) send(message);
+    if (message.reset || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.run || Date.now() - lastSent >= HEARTBEAT) send(message);
   }
   function write(command) {
     var switches = window.$gameSwitches;
