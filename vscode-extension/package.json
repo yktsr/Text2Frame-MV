@@ -100,7 +100,7 @@
       },
       {
         "command": "text2frame.openLiveValuesTab",
-        "title": "Text2Frame: デバッグプレイをタブで開く / Open the debug play in an editor tab",
+        "title": "Text2Frame: デバッグメニューを表示 / Show the debug menu",
         "icon": "$(window)"
       },
       {

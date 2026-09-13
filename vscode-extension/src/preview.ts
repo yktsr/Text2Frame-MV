@@ -9,7 +9,8 @@ import { RpgCommand } from './db/commandRefs';
 import { previewHtml, FACE_SIZE } from './previewHtml';
 import { readAudio, AUDIO_FOLDERS, AudioFolder } from './db/audio';
 import { RunTracker } from './runHighlight';
-import { EditorLayout, isDirectlyBelow } from './editorLayout';
+import { EditorLayout, isNextTo, Side } from './editorLayout';
+import { LiveService } from './live';
 
 /**
  * 横のプレビュー。テキストをコンパイルし、ツクールのイベント編集画面と同じ見た目で並べる。
@@ -21,6 +22,8 @@ import { EditorLayout, isDirectlyBelow } from './editorLayout';
 
 const DEBOUNCE_MS = 300;
 const PREVIEW_VIEW = 'text2framePreview';
+const PLAYING_GRACE = 10000;
+const PLAYING_CHECK = 1000;
 const FOCUS_GROUP = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth'].map((n) => `workbench.action.focus${n}EditorGroup`);
 
 interface RenderMessage {
@@ -39,7 +42,7 @@ type AudioMessage =
     | { type: 'audio'; id: number; mime: string; data: string }
     | { type: 'audioError'; id: number; message: string };
 
-export function registerPreview(context: vscode.ExtensionContext, service: DatabaseService, tracker: RunTracker): void {
+export function registerPreview(context: vscode.ExtensionContext, service: DatabaseService, tracker: RunTracker, live: LiveService): void {
     let panel: vscode.WebviewPanel | undefined;
     let current: vscode.TextDocument | undefined;
     let timer: NodeJS.Timeout | undefined;
@@ -164,13 +167,20 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
         render(document);
     };
 
+    /* テストプレイ中はテキストの下、そうでなければテキストの右に置く。 */
+    const testPlaying = (): boolean => {
+        const state = live.current()?.state;
+        return !!state && state.received() && Date.now() - state.lastSeen < PLAYING_GRACE;
+    };
+    const sideNow = (): Side => (testPlaying() ? 'below' : 'right');
+
     const open = (): void => {
         const editor = vscode.window.activeTextEditor;
         if (!editor || editor.document.languageId !== 'text2frame') {
             vscode.window.showInformationMessage('Text2Frame: プレビューするテキストを開いてください。');
             return;
         }
-        openBelow(editor.document.uri);
+        place(editor.document.uri, sideNow(), testPlaying());
     };
 
     const shownEditor = (uri: vscode.Uri): vscode.TextEditor | undefined =>
@@ -179,21 +189,21 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
     const previewTabOpen = (): boolean => vscode.window.tabGroups.all.some((g) => g.tabs.some((t) =>
         t.input instanceof vscode.TabInputWebview && (t.input.viewType === PREVIEW_VIEW || t.input.viewType.endsWith('-' + PREVIEW_VIEW))));
 
-    const belowText = async (editor: vscode.TextEditor, preview: vscode.WebviewPanel): Promise<boolean> => {
-        if (!editor.viewColumn || !preview.viewColumn) return true;
+    const placedAt = async (editor: vscode.TextEditor, preview: vscode.WebviewPanel, side: Side): Promise<boolean | undefined> => {
+        if (!editor.viewColumn || !preview.viewColumn) return undefined;
         const layout = await vscode.commands.executeCommand<EditorLayout>('vscode.getEditorLayout');
-        return isDirectlyBelow(layout, editor.viewColumn, preview.viewColumn, vscode.window.tabGroups.all.length) ?? true;
+        return isNextTo(layout, editor.viewColumn, preview.viewColumn, vscode.window.tabGroups.all.length, side);
     };
 
-    /* 開いたテキストの下にプレビューを開く。ほかの場所に開いてあれば、テキストの下へ置き直す。
+    /* 開いたテキストの下(右)にプレビューを開く。move なら、ほかの場所にあるプレビューも置き直す。
      * 入力の場所(ゲームの画面など)は、開く前のところへ戻す。 */
     let opening: Promise<void> | undefined;
-    const openBelow = async (uri: vscode.Uri): Promise<void> => {
+    const place = async (uri: vscode.Uri, side: Side, move = true): Promise<void> => {
         while (opening) await opening;
         let editor = shownEditor(uri);
         if (!editor) return;
         if (panel) {
-            if (await belowText(editor, panel)) {
+            if (!move || ((await placedAt(editor, panel, side)) ?? true)) {
                 if (!panel.visible) panel.reveal(undefined, true);
                 if (current !== editor.document) show(editor.document);
                 return;
@@ -211,7 +221,7 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
         const back = vscode.window.tabGroups.activeTabGroup.viewColumn;
         opening = (async () => {
             await vscode.commands.executeCommand(FOCUS_GROUP[column - 1]);
-            await vscode.commands.executeCommand('workbench.action.newGroupBelow');
+            await vscode.commands.executeCommand(side === 'below' ? 'workbench.action.newGroupBelow' : 'workbench.action.newGroupRight');
             create(vscode.ViewColumn.Active, editor.document);
             const target = back > column ? back + 1 : back;
             if (target <= FOCUS_GROUP.length) await vscode.commands.executeCommand(FOCUS_GROUP[target - 1]);
@@ -222,6 +232,22 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
             opening = undefined;
         }
     };
+
+    /* テストプレイが始まったらテキストの下へ、終わったら(下に置いたままなら)右へ戻す。 */
+    let playing = false;
+    const followPlaying = async (): Promise<void> => {
+        const now = testPlaying();
+        if (now === playing) return;
+        playing = now;
+        if (!panel || !current) return;
+        if (now) {
+            await place(current.uri, 'below');
+            return;
+        }
+        const editor = shownEditor(current.uri);
+        if (editor && (await placedAt(editor, panel, 'below')) === true) await place(current.uri, 'right');
+    };
+    const playingTimer = setInterval(() => { followPlaying(); }, PLAYING_CHECK);
 
     const create = (column: vscode.ViewColumn, document: vscode.TextDocument): void => {
         panel = vscode.window.createWebviewPanel(PREVIEW_VIEW, 'プレビュー', { viewColumn: column, preserveFocus: true }, {
@@ -240,8 +266,9 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
 
     context.subscriptions.push(
         vscode.commands.registerCommand('text2frame.showPreview', open),
-        vscode.commands.registerCommand('text2frame.showPreviewBelow', (uri: vscode.Uri) => openBelow(uri)),
-        vscode.commands.registerCommand('text2frame.previewUnderText', () => (panel && current ? openBelow(current.uri) : undefined)),
+        vscode.commands.registerCommand('text2frame.showPreviewFor', (uri: vscode.Uri) => place(uri, sideNow(), testPlaying())),
+        vscode.commands.registerCommand('text2frame.previewUnderText', () => (panel && current ? place(current.uri, 'below') : undefined)),
+        { dispose: () => clearInterval(playingTimer) },
         vscode.workspace.onDidChangeTextDocument((e) => {
             if (!panel || !current || e.document !== current) return;
             // 描き直すまでは行の対応が古い。その間にカーソルが動いても強調しない。

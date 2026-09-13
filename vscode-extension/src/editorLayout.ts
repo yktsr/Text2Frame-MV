@@ -7,26 +7,28 @@ interface LayoutGroup {
     groups?: LayoutGroup[];
 }
 
+export type Side = 'below' | 'right';
+
 const VERTICAL = 1;
 
-/** 列番号 lower のグループが、列番号 upper のグループのすぐ下にあるか。並びが読めなければ undefined。 */
-export function isDirectlyBelow(layout: EditorLayout | undefined, upper: number, lower: number, groupCount: number): boolean | undefined {
+/** 列番号 next のグループが、列番号 from のグループのすぐ下(すぐ右)にあるか。並びが読めなければ undefined。 */
+export function isNextTo(layout: EditorLayout | undefined, from: number, next: number, groupCount: number, side: Side): boolean | undefined {
     if (!layout || !Array.isArray(layout.groups)) return undefined;
-    let next = 1;
-    let below = false;
+    let counter = 1;
+    let found = false;
     const walk = (groups: LayoutGroup[], vertical: boolean): void => {
         const leaves = groups.map((g) => {
             if (Array.isArray(g.groups) && g.groups.length) {
                 walk(g.groups, !vertical);
                 return 0;
             }
-            return next++;
+            return counter++;
         });
-        if (!vertical) return;
+        if (vertical !== (side === 'below')) return;
         for (let i = 0; i + 1 < leaves.length; i++) {
-            if (leaves[i] === upper && leaves[i + 1] === lower) below = true;
+            if (leaves[i] === from && leaves[i + 1] === next) found = true;
         }
     };
     walk(layout.groups, layout.orientation === VERTICAL);
-    return next - 1 === groupCount ? below : undefined;
+    return counter - 1 === groupCount ? found : undefined;
 }

@@ -149,7 +149,7 @@ export async function revealRunning(tracker: RunTracker, index?: number): Promis
 export async function openText(uri: vscode.Uri, line: number, options: { preserveFocus?: boolean; preview?: boolean } = {}): Promise<void> {
     const doc = await vscode.workspace.openTextDocument(uri);
     await vscode.window.showTextDocument(doc, { ...options, viewColumn: textColumn(), selection: new vscode.Range(line, 0, line, 0) });
-    await vscode.commands.executeCommand('text2frame.showPreviewBelow', doc.uri);
+    await vscode.commands.executeCommand('text2frame.showPreviewFor', doc.uri);
 }
 
 export function registerRunHighlight(context: vscode.ExtensionContext, service: DatabaseService, live: LiveService): RunTracker {

@@ -86,7 +86,7 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
             this.tab.reveal();
             return;
         }
-        this.adoptTab(vscode.window.createWebviewPanel(LIVE_TAB_TYPE, 'デバッグプレイ', vscode.ViewColumn.Beside, { retainContextWhenHidden: true }));
+        this.adoptTab(vscode.window.createWebviewPanel(LIVE_TAB_TYPE, 'デバッグメニュー', vscode.ViewColumn.Beside, { retainContextWhenHidden: true }));
     }
 
     async show(): Promise<void> {

@@ -53,7 +53,7 @@ export function activate(context: vscode.ExtensionContext) {
     registerDatabaseView(context, database, live);
     // 横のプレビュー(ツクールのイベント編集画面と同じ見た目)。
     const running = registerRunHighlight(context, database, live);
-    registerPreview(context, database, running);
+    registerPreview(context, database, running, live);
     // 色調・フラッシュの値の前に色見本。
     registerColorSwatches(context);
     // テストプレイ(ゲームを VS Code の中のブラウザで)。
