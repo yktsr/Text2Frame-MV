@@ -186,7 +186,7 @@ export function monitorScript(token: string): string {
     var party = window.$gameParty;
     var message = {};
     if (!last || last.switches !== switches || last.variables !== variables || last.selfSwitches !== selfSwitches || last.party !== party) {
-      last = { switches: switches, variables: variables, selfSwitches: selfSwitches, party: party, s: [], v: [], ss: {}, items: {}, map: -1, pages: '', run: null, sent: {} };
+      last = { switches: switches, variables: variables, selfSwitches: selfSwitches, party: party, s: [], v: [], ss: {}, items: {}, gold: null, map: -1, pages: '', run: null, sent: {} };
       message.reset = true;
     }
     var s = diff(switches._data, last.s, switchValue);
@@ -198,6 +198,11 @@ export function monitorScript(token: string): string {
     if (v) message.variables = v;
     if (ss) message.selfSwitches = ss;
     if (items) message.items = items;
+    var gold = party && typeof party._gold === 'number' && isFinite(party._gold) ? Math.max(0, Math.floor(party._gold)) : null;
+    if (gold !== null && gold !== last.gold) {
+      message.gold = gold;
+      last.gold = gold;
+    }
     if (map !== last.map) {
       message.map = map;
       last.map = map;
@@ -219,7 +224,7 @@ export function monitorScript(token: string): string {
         });
       }
     }
-    if (message.reset || s || v || ss || items || message.map !== undefined || message.pages || message.run || Date.now() - lastSent >= HEARTBEAT) send(message);
+    if (message.reset || s || v || ss || items || message.gold !== undefined || message.map !== undefined || message.pages || message.run || Date.now() - lastSent >= HEARTBEAT) send(message);
   }
   function write(command) {
     var switches = window.$gameSwitches;
@@ -241,6 +246,9 @@ export function monitorScript(token: string): string {
       }
     }
     var party = window.$gameParty;
+    if (party && typeof party.gainGold === 'function' && typeof command.gold === 'number' && command.gold >= 0) {
+      party.gainGold(Math.floor(command.gold) - party.gold());
+    }
     for (key in command.items || {}) {
       var item = ITEM_KEY.exec(key);
       var count = command.items[key];

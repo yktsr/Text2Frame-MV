@@ -8,7 +8,7 @@ import { LiveService } from './live';
 
 /**
  * テストプレイ。ゲームのフォルダをローカルの HTTP サーバーで配り、VS Code の中のブラウザ
- * (Simple Browser)で開く。URL に ?test を付けるので、ツクールのテストプレイと同じくテストモードになる
+ * (内蔵ブラウザ。古い VS Code では Simple Browser)で開く。URL に ?test を付けるので、ツクールのテストプレイと同じくテストモードになる
  * (F9 のデバッグ画面など)。サーバーは拡張の中で動き、フォルダごとに1つ。VS Code を閉じれば止まる。
  *
  * 反映したデータは、ブラウザの再読み込みで効く(サーバーはキャッシュさせない)。
@@ -17,6 +17,7 @@ import { LiveService } from './live';
 /** FOSSIL プラグインは初回に index.html から FOSSILindex.html を書き出して移る(nw.js の fs を使う)。
  *  ブラウザでは書き出せないので、書き出し済みならそちらから開く。 */
 const FOSSIL_PAGE = 'FOSSILindex.html';
+const BROWSER_OPEN = 'workbench.action.browser.open';
 
 export function registerTestPlay(context: vscode.ExtensionContext, service: DatabaseService, live: LiveService): void {
     const servers = new Map<string, GameServer>();
@@ -61,12 +62,28 @@ export function registerTestPlay(context: vscode.ExtensionContext, service: Data
         return vscode.env.asExternalUri(vscode.Uri.parse(`${server.url}${encodeURI(page)}?test`));
     };
 
+    /* 新しい内蔵ブラウザがあれば、テキストの隣の専用のグループに開く(開いてあればそのタブを使う)。
+     * 無ければ Simple Browser で隣に開く。 */
+    const openBrowser = async (uri: vscode.Uri): Promise<void> => {
+        if (!(await vscode.commands.getCommands(true)).includes(BROWSER_OPEN)) {
+            await vscode.commands.executeCommand('simpleBrowser.api.open', uri, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false });
+            return;
+        }
+        const text = vscode.window.activeTextEditor?.document.languageId === 'text2frame'
+            ? vscode.window.activeTextEditor
+            : vscode.window.visibleTextEditors.find((e) => e.document.languageId === 'text2frame');
+        if (text) await vscode.window.showTextDocument(text.document, { viewColumn: text.viewColumn });
+        const reuseUrlFilter = uri.with({ path: '/**', query: '', fragment: '' }).toString(true);
+        await vscode.commands.executeCommand(BROWSER_OPEN, { url: uri.toString(true), openToSide: true, reuseUrlFilter });
+        await vscode.commands.executeCommand('text2frame.previewUnderText');
+    };
+
     const playInside = async (): Promise<void> => {
         const uri = await prepare();
         if (!uri) return;
         await vscode.commands.executeCommand('text2frame.showLiveValues');
         try {
-            await vscode.commands.executeCommand('simpleBrowser.api.open', uri, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false });
+            await openBrowser(uri);
         } catch (e) {
             // 内蔵のブラウザが使えない環境では、外のブラウザで開く。
             await vscode.env.openExternal(uri);

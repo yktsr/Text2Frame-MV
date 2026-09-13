@@ -32,6 +32,8 @@ export function liveViewHtml(): string {
   .var { flex: none; width: 6em; text-align: right; font-family: var(--vscode-editor-font-family); background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, transparent); padding: 0 3px; }
   .var.set { color: var(--vscode-textLink-foreground); }
   .var.count { width: 4.5em; }
+  #gold { width: 8em; }
+  #goldRow { flex: none; }
   .link { cursor: pointer; }
   .row .link:hover { color: var(--vscode-textLink-foreground); text-decoration: underline; }
   .page { flex: none; font-size: 0.9em; color: var(--vscode-descriptionForeground); }
@@ -62,12 +64,12 @@ export function liveViewHtml(): string {
   <label title="実行しているイベントのテキストを自動で開く(設定 text2frame.openRunningText)"><input id="openRunning" type="checkbox"> 実行中のテキストを開く</label>
   <span id="notice"></span>
 </div>
-<div id="empty">テストプレイ中だけ、ここにスイッチ・変数・セルフスイッチ・アイテムの値が出ます。<button id="play">▶ テストプレイ</button></div>
+<div id="empty">テストプレイ中だけ、ここにスイッチ・変数・セルフスイッチ・アイテム・所持金が出ます。<button id="play">▶ テストプレイ</button></div>
 <div id="cols" hidden>
   <section><h3>スイッチ<span class="count" id="switchCount"></span></h3><div class="list" id="switches"></div></section>
   <section><h3>変数<span class="count" id="variableCount"></span></h3><div class="list" id="variables"></div></section>
   <section><h3>セルフスイッチ<span class="count" id="selfCount"></span><label title="セルフスイッチを使っていないイベントも並べる"><input id="allEvents" type="checkbox"> すべてのイベント</label></h3><div class="list"><div id="selfHere"></div><div id="selfUnused" class="none" hidden>(このマップにセルフスイッチを使うイベントはありません)</div><div id="selfOthers"></div></div></section>
-  <section><h3>アイテム<span class="count" id="itemCount"></span><label title="持っていないものも並べる(個数を入れると増やせます)"><input id="allItems" type="checkbox"> すべて</label></h3><div class="list"><div id="items"></div><div id="itemNone" class="none" hidden></div></div></section>
+  <section><h3>アイテム<span class="count" id="itemCount"></span><label title="持っていないものも並べる(個数を入れると増やせます)"><input id="allItems" type="checkbox"> すべて</label></h3><div class="row" id="goldRow"><span class="name">所持金</span><input class="var" id="gold"><span class="id" id="currency"></span></div><div class="list"><div id="items"></div><div id="itemNone" class="none" hidden></div></div></section>
 </div>
 <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
@@ -88,6 +90,7 @@ export function liveViewHtml(): string {
   let itemCounts = new Map();
   let ownedSignature = '';
   let pagesHere = new Map();
+  let gold = 0;
 
   const pad = (n) => String(n).padStart(4, '0');
   const blank = (kind) => (kind === 'switch' ? false : 0);
@@ -280,6 +283,17 @@ export function liveViewHtml(): string {
     }
   }
 
+  function paintGold() {
+    const el = $('gold');
+    const disabled = status !== 'live';
+    el.disabled = disabled;
+    el.title = disabled ? 'テストプレイ中だけ書き換えられます' : '金額を打って Enter で書き込み';
+    if (document.activeElement !== el) {
+      el.value = String(gold);
+      el.classList.toggle('set', gold > 0);
+    }
+  }
+
   function setItems(names) {
     const box = $('items');
     const scroll = box.parentNode.scrollTop;
@@ -400,6 +414,7 @@ export function liveViewHtml(): string {
       rows[kind].forEach((_r, id) => paint(kind, id));
     }
     setItems(m.items || {});
+    $('currency').textContent = m.currencyUnit || '';
     filter();
   }
 
@@ -437,6 +452,13 @@ export function liveViewHtml(): string {
       r.row.classList.remove('flash');
       void r.row.offsetWidth;
       r.row.classList.add('flash');
+    }
+    gold = m.gold || 0;
+    paintGold();
+    if (m.changed.gold) {
+      $('goldRow').classList.remove('flash');
+      void $('goldRow').offsetWidth;
+      $('goldRow').classList.add('flash');
     }
     const owned = Array.from(itemCounts.keys()).sort().join(' ');
     const itemsChanged = owned !== ownedSignature;
@@ -491,6 +513,15 @@ export function liveViewHtml(): string {
   $('hideDefault').addEventListener('change', filter);
   $('allEvents').addEventListener('change', filter);
   $('allItems').addEventListener('change', filter);
+  $('gold').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      vscode.postMessage({ type: 'set', kind: 'gold', text: $('gold').value });
+      $('gold').blur();
+    } else if (e.key === 'Escape') {
+      $('gold').blur();
+    }
+  });
+  $('gold').addEventListener('blur', paintGold);
   $('openRunning').addEventListener('change', () => vscode.postMessage({ type: 'openRunning', value: $('openRunning').checked }));
   $('play').addEventListener('click', () => vscode.postMessage({ type: 'testPlay' }));
   let noticeTimer;

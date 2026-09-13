@@ -9,6 +9,7 @@ import { RpgCommand } from './db/commandRefs';
 import { previewHtml, FACE_SIZE } from './previewHtml';
 import { readAudio, AUDIO_FOLDERS, AudioFolder } from './db/audio';
 import { RunTracker } from './runHighlight';
+import { EditorLayout, isDirectlyBelow } from './editorLayout';
 
 /**
  * 横のプレビュー。テキストをコンパイルし、ツクールのイベント編集画面と同じ見た目で並べる。
@@ -19,6 +20,7 @@ import { RunTracker } from './runHighlight';
  */
 
 const DEBOUNCE_MS = 300;
+const PREVIEW_VIEW = 'text2framePreview';
 const FOCUS_GROUP = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth'].map((n) => `workbench.action.focus${n}EditorGroup`);
 
 interface RenderMessage {
@@ -168,25 +170,38 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
             vscode.window.showInformationMessage('Text2Frame: プレビューするテキストを開いてください。');
             return;
         }
-        if (panel) {
-            panel.reveal(vscode.ViewColumn.Beside, true);
-            show(editor.document);
-            return;
-        }
-        create(vscode.ViewColumn.Beside, editor.document);
+        openBelow(editor.document.uri);
     };
 
-    /* 開いたテキストの下にプレビューを開く。開いてあれば、そのままの場所でそのテキストを出す。
+    const shownEditor = (uri: vscode.Uri): vscode.TextEditor | undefined =>
+        vscode.window.visibleTextEditors.find((e) => e.document.uri.fsPath === uri.fsPath);
+
+    const previewTabOpen = (): boolean => vscode.window.tabGroups.all.some((g) => g.tabs.some((t) =>
+        t.input instanceof vscode.TabInputWebview && (t.input.viewType === PREVIEW_VIEW || t.input.viewType.endsWith('-' + PREVIEW_VIEW))));
+
+    const belowText = async (editor: vscode.TextEditor, preview: vscode.WebviewPanel): Promise<boolean> => {
+        if (!editor.viewColumn || !preview.viewColumn) return true;
+        const layout = await vscode.commands.executeCommand<EditorLayout>('vscode.getEditorLayout');
+        return isDirectlyBelow(layout, editor.viewColumn, preview.viewColumn, vscode.window.tabGroups.all.length) ?? true;
+    };
+
+    /* 開いたテキストの下にプレビューを開く。ほかの場所に開いてあれば、テキストの下へ置き直す。
      * 入力の場所(ゲームの画面など)は、開く前のところへ戻す。 */
     let opening: Promise<void> | undefined;
     const openBelow = async (uri: vscode.Uri): Promise<void> => {
         while (opening) await opening;
-        const editor = vscode.window.visibleTextEditors.find((e) => e.document.uri.fsPath === uri.fsPath);
+        let editor = shownEditor(uri);
         if (!editor) return;
         if (panel) {
-            if (panel.viewColumn !== editor.viewColumn) panel.reveal(undefined, true);
-            if (current !== editor.document) show(editor.document);
-            return;
+            if (await belowText(editor, panel)) {
+                if (!panel.visible) panel.reveal(undefined, true);
+                if (current !== editor.document) show(editor.document);
+                return;
+            }
+            panel.dispose();
+            for (let i = 0; i < 20 && previewTabOpen(); i++) await new Promise((r) => setTimeout(r, 50));
+            editor = shownEditor(uri);
+            if (!editor) return;
         }
         const column = editor.viewColumn;
         if (!column || column > FOCUS_GROUP.length) {
@@ -209,7 +224,7 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
     };
 
     const create = (column: vscode.ViewColumn, document: vscode.TextDocument): void => {
-        panel = vscode.window.createWebviewPanel('text2framePreview', 'プレビュー', { viewColumn: column, preserveFocus: true }, {
+        panel = vscode.window.createWebviewPanel(PREVIEW_VIEW, 'プレビュー', { viewColumn: column, preserveFocus: true }, {
             enableScripts: true,
             retainContextWhenHidden: true,
             localResourceRoots: []
@@ -226,6 +241,7 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
     context.subscriptions.push(
         vscode.commands.registerCommand('text2frame.showPreview', open),
         vscode.commands.registerCommand('text2frame.showPreviewBelow', (uri: vscode.Uri) => openBelow(uri)),
+        vscode.commands.registerCommand('text2frame.previewUnderText', () => (panel && current ? openBelow(current.uri) : undefined)),
         vscode.workspace.onDidChangeTextDocument((e) => {
             if (!panel || !current || e.document !== current) return;
             // 描き直すまでは行の対応が古い。その間にカーソルが動いても強調しない。

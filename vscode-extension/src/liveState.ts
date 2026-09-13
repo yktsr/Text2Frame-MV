@@ -14,6 +14,7 @@ export interface LiveMessage {
     variables?: Map<number, LiveValue>;
     selfSwitches?: Map<string, boolean>;
     items?: Map<string, number>;
+    gold?: number;
     map?: number;
     pages?: Map<number, number>;
     run?: RunFrame[];
@@ -38,6 +39,7 @@ export interface LiveCommand {
     variables?: Record<number, number | string>;
     selfSwitches?: Record<string, boolean>;
     items?: Record<string, number>;
+    gold?: number;
 }
 
 export function selfSwitchKey(mapId: number, eventId: number, letter: string): string {
@@ -139,6 +141,7 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
         return out;
     };
     if (o.map !== undefined && !isCount(o.map, MAX_ID)) return undefined;
+    if (o.gold !== undefined && !isCount(o.gold, MAX_COUNT)) return undefined;
     try {
         return {
             reset: o.reset === true || undefined,
@@ -146,6 +149,7 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
             variables: read(o.variables, isValue),
             selfSwitches: readSelf(o.selfSwitches),
             items: readItems(o.items),
+            gold: o.gold as number | undefined,
             map: o.map as number | undefined,
             pages: readPages(o.pages),
             run: readRun(o.run),
@@ -161,6 +165,7 @@ export interface LiveSnapshot {
     variables: Array<[number, LiveValue]>;
     selfSwitches: string[];
     items: Array<[string, number]>;
+    gold: number;
     pages: Array<[number, number]>;
     mapId: number;
 }
@@ -170,6 +175,7 @@ export interface LiveChanges {
     variables: number[];
     selfSwitches: string[];
     items: string[];
+    gold: boolean;
 }
 
 export const LIVE_TIMEOUT = 5000;
@@ -181,6 +187,7 @@ export class LiveState {
     private readonly selfSwitches = new Map<string, boolean>();
     private readonly items = new Map<string, number>();
     private pages = new Map<number, number>();
+    private gold = 0;
     private readonly changedAt = new Map<string, number>();
     private readonly lists = new Map<string, CommandMark[]>();
     private frames: RunFrame[] = [];
@@ -196,6 +203,7 @@ export class LiveState {
             this.variables.clear();
             this.selfSwitches.clear();
             this.items.clear();
+            this.gold = 0;
             this.pages = new Map();
             this.changedAt.clear();
             this.lists.clear();
@@ -233,6 +241,11 @@ export class LiveState {
         merge('variable', this.variables, message.variables, 0);
         merge('self', this.selfSwitches, message.selfSwitches, false);
         merge('item', this.items, message.items, 0);
+        if (message.gold !== undefined && message.gold !== this.gold) {
+            this.gold = message.gold;
+            changed = true;
+            if (!message.reset) this.changedAt.set('gold:', now);
+        }
         return { values: changed, run };
     }
 
@@ -260,6 +273,10 @@ export class LiveState {
         return this.selfSwitches.get(selfSwitchKey(mapId, eventId, letter)) ?? false;
     }
 
+    goldValue(): number {
+        return this.gold;
+    }
+
     itemCount(key: string): number {
         return this.items.get(key) ?? 0;
     }
@@ -278,13 +295,14 @@ export class LiveState {
             variables: Array.from(this.variables).filter(([, v]) => v !== 0),
             selfSwitches: Array.from(this.selfSwitches).filter(([, v]) => v).map(([k]) => k),
             items: Array.from(this.items).filter(([, v]) => v > 0),
+            gold: this.gold,
             pages: Array.from(this.pages),
             mapId: this.mapId
         };
     }
 
     changedSince(since: number): LiveChanges {
-        const out: LiveChanges = { switches: [], variables: [], selfSwitches: [], items: [] };
+        const out: LiveChanges = { switches: [], variables: [], selfSwitches: [], items: [], gold: false };
         this.changedAt.forEach((at, key) => {
             if (at <= since) return;
             const colon = key.indexOf(':');
@@ -293,6 +311,7 @@ export class LiveState {
             if (kind === 'switch') out.switches.push(Number(id));
             else if (kind === 'variable') out.variables.push(Number(id));
             else if (kind === 'item') out.items.push(id);
+            else if (kind === 'gold') out.gold = true;
             else out.selfSwitches.push(id);
         });
         return out;

@@ -68,6 +68,7 @@ export interface SystemInfo {
     /** MZ だけが持つ。無ければ MV の既定 32。 */
     iconSize: number;
     encryptionKey?: string;
+    currencyUnit?: string;
 }
 
 /** そのアイコンを使っているデータベースの項目。 */
@@ -132,6 +133,7 @@ export class GameDatabase {
                 iconSize: typeof system.iconSize === 'number' && system.iconSize > 0 ? system.iconSize : 32,
                 encryptionKey: typeof system.encryptionKey === 'string' && system.encryptionKey ? system.encryptionKey : undefined
             };
+            if (typeof system.currencyUnit === 'string') db.system.currencyUnit = system.currencyUnit;
         }
 
         const actors = read('Actors.json');

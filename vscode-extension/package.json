@@ -29,6 +29,7 @@
     "onView:text2frameExplorer",
     "onView:text2frameDatabase",
     "onView:text2frame.liveValues",
+    "onWebviewPanel:text2frameLive",
     "workspaceContains:**/text/**/*.txt",
     "workspaceContains:**/data/Map*.json"
   ],
@@ -96,6 +97,11 @@
         "command": "text2frame.showLiveValues",
         "title": "Text2Frame: スイッチと変数を見る(テストプレイ中) / Show switches & variables while test playing",
         "icon": "$(symbol-variable)"
+      },
+      {
+        "command": "text2frame.openLiveValuesTab",
+        "title": "Text2Frame: デバッグプレイをタブで開く / Open the debug play in an editor tab",
+        "icon": "$(window)"
       },
       {
         "command": "text2frame.showCompiledJson",
@@ -212,6 +218,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "text2frame.openLiveValuesTab",
+          "when": "view == text2frame.liveValues",
+          "group": "navigation"
+        },
         {
           "command": "text2frame.tree.refresh",
           "when": "view == text2frameExplorer",
