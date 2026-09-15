@@ -69,6 +69,9 @@ export interface SystemInfo {
     iconSize: number;
     encryptionKey?: string;
     currencyUnit?: string;
+    /** MZ だけが持つ(System.json の advanced)。メッセージの幅の見積もりに使う。 */
+    uiAreaWidth?: number;
+    fontSize?: number;
 }
 
 /** そのアイコンを使っているデータベースの項目。 */
@@ -134,6 +137,9 @@ export class GameDatabase {
                 encryptionKey: typeof system.encryptionKey === 'string' && system.encryptionKey ? system.encryptionKey : undefined
             };
             if (typeof system.currencyUnit === 'string') db.system.currencyUnit = system.currencyUnit;
+            const advanced = system.advanced && typeof system.advanced === 'object' ? system.advanced : undefined;
+            if (advanced && advanced.uiAreaWidth > 0) db.system.uiAreaWidth = advanced.uiAreaWidth;
+            if (advanced && advanced.fontSize > 0) db.system.fontSize = advanced.fontSize;
         }
 
         const actors = read('Actors.json');

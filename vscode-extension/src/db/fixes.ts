@@ -155,3 +155,16 @@ export function slashAt(textBeforeCursor: string): { start: number; word: string
     const m = textBeforeCursor.match(/^(\s*)\/([^\s/]*)$/);
     return m ? { start: m[1].length, word: m[2] } : undefined;
 }
+
+/** その行だけをコンパイルすると、文章(401)としてしか読まれないか(タグとして読まれず、ゲームに文字で出る)。 */
+export function compilesAsText(compile: (text: string) => unknown, line: string): boolean {
+    const key = line.trim();
+    try {
+        const commands = compile(key) as Array<{ code: number; parameters: unknown[] }>;
+        return Array.isArray(commands) &&
+            commands.some((c) => c.code === 401 && c.parameters[0] === key) &&
+            commands.every((c) => c.code === 101 || (c.code === 401 && c.parameters[0] === key));
+    } catch (e) {
+        return false;
+    }
+}

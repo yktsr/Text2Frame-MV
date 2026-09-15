@@ -40,6 +40,7 @@ const GROUPS: CommandGroup[] = [
             { command: 'text2frame.showPreview', label: 'プレビューを開く / Open preview', icon: 'open-preview', tooltip: '今のテキストをツクールのイベント画面の形で表示します。カーソルの行と連動します。' },
             { command: 'text2frame.toggleDeployOnSave', label: '保存時に自動反映 切替 / Toggle apply-on-save', icon: 'sync', tooltip: '保存したら自動でゲームに反映する設定を ON / OFF します。' },
             { command: 'text2frame.exportConversationOnly', label: '会話のみ書き出し / Pull conversation only', icon: 'comment-discussion', tooltip: '会話部分だけを *.conversation.txt に書き出します。' },
+            { command: 'text2frame.checkProject', label: 'プロジェクト全体を検査 / Check the whole project', icon: 'checklist', tooltip: '全テキストを調べて、書き間違い・無い番号や素材・はみ出し・反映されていない変更などを「問題」パネルに出します。' },
             { command: 'text2frame.snippet.insert', label: 'スニペットを入れる / Insert snippet', icon: 'symbol-snippet', tooltip: '選択肢・条件分岐など、よく使う書き方の型をカーソルの位置に入れます。行の頭で / を打っても候補に出ます。' },
             { command: 'text2frame.snippet.fromSelection', label: '選んだ部分をスニペットにする / Make a snippet', icon: 'add', tooltip: 'エディタで選んだ部分を、あとで呼び出せる型として保存します(ゲームのフォルダの .vscode/text2frame-snippets.json)。' },
             { command: 'text2frame.snippet.edit', label: 'スニペットを編集する / Edit snippets', icon: 'edit', tooltip: '自分で作ったスニペットのファイルを開きます。' }

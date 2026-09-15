@@ -2,10 +2,10 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { parseFrontMatter, isDeployable, isAncestorCopy, ANCESTOR_COPY_MESSAGE, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot, snapshotKeyFor } from './compiler';
-import { exportToTextFile, mergePullToText, ExportTarget } from './exportText';
+import { exportToTextFile, mergePullToText, renderCommands, ExportTarget } from './exportText';
 import { reviewEnabled } from './review';
 import { reviewDeploy, Decision, DeployCandidate } from './reviewApply';
-import { PageRef } from './dryRun';
+import { PageRef, tryApply } from './dryRun';
 
 export { isDeployable };
 
@@ -374,6 +374,22 @@ export function deployFile(
         writeBackAndRefreshBase(context, workspaceRoot, meta, filePath, text, result, snap, mergeLike);
     }
     return result;
+}
+
+/** ゲームに反映されていない変更があるテキスト(反映すると、ゲームが変わるもの)。 */
+export function unappliedFiles(context: vscode.ExtensionContext, workspaceRoot: string, files: string[]): Set<string> {
+    const { mod } = loadCompiler(context, workspaceRoot);
+    const out = new Set<string>();
+    if (!mod) return out;
+    const candidates: DeployCandidate[] = [];
+    for (const file of files) {
+        const prepared = prepareFile(context, workspaceRoot, file);
+        if ('mod' in prepared) candidates.push(candidateFor(file, prepared.meta, prepared.applyOpts, prepared.dataPath));
+    }
+    tryApply(mod, candidates.map((c) => c.step)).forEach((trial, i) => {
+        if (trial.result.ok && renderCommands(context, workspaceRoot, trial.before) !== renderCommands(context, workspaceRoot, trial.after)) out.add(candidates[i].textPath);
+    });
+    return out;
 }
 
 /**

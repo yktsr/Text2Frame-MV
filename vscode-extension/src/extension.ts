@@ -4,6 +4,9 @@ import { registerReview } from './review';
 import { registerNavigation } from './navigation';
 import { registerQuickFixes, FIX } from './quickFixes';
 import { registerSnippets } from './snippets';
+import { basicProblems } from './db/checks';
+import { registerMessageCheck } from './messageCheck';
+import { registerProjectCheck } from './projectCheck';
 import { exportCurrentFile, exportConversationOnly } from './exportText';
 import { deployAll, exportAll, repullAllOverwrite } from './batch';
 import { registerTreeView } from './tree';
@@ -19,7 +22,6 @@ import { LiveService } from './live';
 import { registerLiveView } from './liveView';
 import { registerRunHighlight } from './runHighlight';
 import { tagHelpText } from './tagHelp';
-import { bracketProblems } from './tagBrackets';
 
 /**
  * Treat a .txt file that carries Text2Frame front matter as the `text2frame`
@@ -65,6 +67,9 @@ export function activate(context: vscode.ExtensionContext) {
     // クイックフィックス(電球)とスニペット。
     registerQuickFixes(context);
     registerSnippets(context);
+    // メッセージのはみ出しと、プロジェクト全体の検査。
+    registerMessageCheck(context, database);
+    registerProjectCheck(context, database);
     // 色調・フラッシュの値の前に色見本。
     registerColorSwatches(context);
     // テストプレイ(ゲームを VS Code の中のブラウザで)。
@@ -682,40 +687,17 @@ function updateDiagnostics(document: vscode.TextDocument, collection: vscode.Dia
         return;
     }
 
-    const diagnostics: vscode.Diagnostic[] = [];
     const lines: string[] = [];
     for (let i = 0; i < document.lineCount; i++) lines.push(document.lineAt(i).text);
-
-    // Check for unclosed angle brackets in tags
-    for (const { line, problem } of bracketProblems(lines)) {
-        const range = new vscode.Range(line, 0, line, lines[line].length);
-        const diagnostic = new vscode.Diagnostic(
-            range,
-            problem === 'unclosed' ? 'タグが閉じられていません' : '閉じ括弧が多すぎます',
-            vscode.DiagnosticSeverity.Error
+    const diagnostics = basicProblems(lines).map((p) => {
+        const d = new vscode.Diagnostic(
+            new vscode.Range(p.line, p.start, p.line, p.end),
+            p.message,
+            p.severity === 'error' ? vscode.DiagnosticSeverity.Error : vscode.DiagnosticSeverity.Warning
         );
-        if (problem === 'unclosed') diagnostic.code = FIX.unclosed;
-        diagnostics.push(diagnostic);
-    }
-
-    for (let i = 0; i < document.lineCount; i++) {
-        const text = lines[i];
-
-        // Check for empty tags
-        if (/<\s*>/.test(text)) {
-            const match = text.match(/<\s*>/);
-            if (match && match.index !== undefined) {
-                const range = new vscode.Range(i, match.index, i, match.index + match[0].length);
-                const diagnostic = new vscode.Diagnostic(
-                    range,
-                    '空のタグは使用できません',
-                    vscode.DiagnosticSeverity.Warning
-                );
-                diagnostic.code = FIX.emptyTag;
-                diagnostics.push(diagnostic);
-            }
-        }
-    }
+        if (p.code === FIX.unclosed || p.code === FIX.emptyTag) d.code = p.code;
+        return d;
+    });
 
     collection.set(document.uri, diagnostics);
 }

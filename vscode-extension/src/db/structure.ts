@@ -220,3 +220,19 @@ export function labelLine(lines: string[], name: string, commentOutChar = '%'): 
     }
     return -1;
 }
+
+/** その行を含むメッセージの前に書かれた、顔・名前・位置・背景の行。 */
+export function messageSettingsFor(lines: string[], line: number, commentOutChar = '%'): string[] {
+    let found: StructureNode | undefined;
+    const walk = (nodes: StructureNode[]): void => {
+        for (const n of nodes) {
+            if (n.kind === 'message' && n.startLine <= line && line <= n.endLine) found = n;
+            walk(n.children);
+        }
+    };
+    walk(readStructure(lines, commentOutChar));
+    const out: string[] = [];
+    if (!found) return out;
+    for (let i = found.startLine - 1; i >= 0 && MESSAGE_SETTING.test(lines[i]); i--) out.unshift(lines[i]);
+    return out;
+}

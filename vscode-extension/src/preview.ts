@@ -9,6 +9,7 @@ import { RpgCommand } from './db/commandRefs';
 import { previewHtml, FACE_SIZE } from './previewHtml';
 import { readAudio, AUDIO_FOLDERS, AudioFolder } from './db/audio';
 import { RunTracker } from './runHighlight';
+import { messageFitFor, overflowNote } from './messageCheck';
 import { EditorLayout, isNextTo, Side } from './editorLayout';
 import { LiveService } from './live';
 
@@ -82,6 +83,17 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
         const mapId = meta.kind === 'common' ? NaN : parseInt(meta.mapId, 10);
         const events = ctx && Number.isInteger(mapId) ? service.mapEvents(ctx, mapId) : undefined;
         const rows = renderCommands(commands, ctx?.db, events ? { mapId, events } : undefined);
+        const fit = ctx ? messageFitFor(ctx) : undefined;
+        if (fit) {
+            for (const r of rows) {
+                const cmd = commands[r.index];
+                if (!cmd || cmd.code !== 401) continue;
+                let head = r.index;
+                while (head > 0 && commands[head].code !== 101) head--;
+                const face = commands[head] && commands[head].code === 101 && !!commands[head].parameters[0];
+                r.warn = overflowNote(String(cmd.parameters[0] ?? ''), face, fit);
+            }
+        }
         const faces: { [key: string]: string } = {};
         if (ctx) {
             for (const r of rows) {

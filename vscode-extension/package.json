@@ -104,6 +104,11 @@
         "icon": "$(window)"
       },
       {
+        "command": "text2frame.checkProject",
+        "title": "Text2Frame: プロジェクト全体を検査 / Check the whole project",
+        "icon": "$(checklist)"
+      },
+      {
         "command": "text2frame.snippet.insert",
         "title": "Text2Frame: スニペットを入れる / Insert a snippet"
       },
@@ -353,6 +358,23 @@
             "テキストで全部上書き(ゲーム側の編集は消えます) / overwrite everything from text"
           ],
           "description": "ゲームへの反映のしかた。通常は既定のままで大丈夫です。 / How text is applied to the game. The default is fine for most users."
+        },
+        "text2frame.messageCheck": {
+          "type": "string",
+          "enum": ["auto", "on", "off"],
+          "default": "auto",
+          "enumDescriptions": [
+            "自動(自動で改行するプラグインが有効なら調べない・既定) / auto (off when a word-wrap plugin is enabled)",
+            "いつも調べる / always",
+            "調べない / never"
+          ],
+          "description": "メッセージがウィンドウの幅からはみ出す行と、1つのウィンドウに4行を超える所を知らせる。 / Warn about message lines wider than the window, and windows with more than four lines."
+        },
+        "text2frame.messageLineLength": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "顔の無いメッセージの1行に入る文字数(全角で数える)。0 なら System.json から自動で決める。 / Characters (full width) per line of a message without a face. 0 works it out from System.json."
         },
         "text2frame.reviewBeforeApply": {
           "type": "boolean",

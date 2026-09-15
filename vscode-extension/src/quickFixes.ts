@@ -2,7 +2,9 @@ import * as vscode from 'vscode';
 import { workspaceRootFor } from './compiler';
 import { loadCompiler } from './deploy';
 import { lineKinds } from './db/tagRefs';
-import { findConflicts, resolveConflict, tagLikeName, similarTagNames, replaceTagName } from './db/fixes';
+import { findConflicts, resolveConflict, tagLikeName, similarTagNames, replaceTagName, compilesAsText } from './db/fixes';
+import { messageSettingsFor } from './db/structure';
+import { MESSAGE_CODES } from './messageCheck';
 
 /**
  * クイックフィックス(電球)。
@@ -36,15 +38,7 @@ export function registerQuickFixes(context: vscode.ExtensionContext): void {
         const key = line.trim();
         const hit = readAsText.get(key);
         if (hit !== undefined) return hit;
-        let text = false;
-        try {
-            const commands = compile(key) as Array<{ code: number; parameters: unknown[] }>;
-            text = Array.isArray(commands) &&
-                commands.some((c) => c.code === 401 && c.parameters[0] === key) &&
-                commands.every((c) => c.code === 101 || (c.code === 401 && c.parameters[0] === key));
-        } catch (e) {
-            text = false;
-        }
+        const text = compilesAsText(compile, key);
         if (readAsText.size > 5000) readAsText.clear();
         readAsText.set(key, text);
         return text;
@@ -142,6 +136,19 @@ export function registerQuickFixes(context: vscode.ExtensionContext): void {
                         a.diagnostics = [d];
                         out.push(a);
                     }
+                } else if (d.code === MESSAGE_CODES.width) {
+                    const a = new vscode.CodeAction('ここで改行する', vscode.CodeActionKind.QuickFix);
+                    a.edit = new vscode.WorkspaceEdit();
+                    a.edit.insert(document.uri, d.range.start, '\n');
+                    a.diagnostics = [d];
+                    out.push(a);
+                } else if (d.code === MESSAGE_CODES.lines) {
+                    const settings = messageSettingsFor(lines, line);
+                    const a = new vscode.CodeAction(settings.length ? 'ここで次のウィンドウに分ける(顔や名前も引き継ぐ)' : 'ここで次のウィンドウに分ける', vscode.CodeActionKind.QuickFix);
+                    a.edit = new vscode.WorkspaceEdit();
+                    a.edit.insert(document.uri, new vscode.Position(line, 0), '\n' + settings.map((s) => s + '\n').join(''));
+                    a.diagnostics = [d];
+                    out.push(a);
                 } else if (d.code === FIX.dbProblem) {
                     const a = new vscode.CodeAction('候補から選び直す', vscode.CodeActionKind.QuickFix);
                     a.command = { command: 'text2frame.fix.pickAgain', title: a.title, arguments: [document.uri, d.range] };

@@ -27,6 +27,7 @@ export function previewHtml(): string {
   .cont { color: var(--vscode-foreground); }
   .cont .mark { color: var(--vscode-descriptionForeground); }
   .comment .text { color: var(--vscode-descriptionForeground); }
+  .warn { margin-left: 6px; color: var(--vscode-editorWarning-foreground, #cca700); cursor: help; }
   .play { flex: none; margin-right: 0.35em; padding: 0 0.3em; border: 1px solid var(--vscode-button-border, var(--vscode-panel-border)); border-radius: 3px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); font: inherit; line-height: 1.3em; cursor: pointer; }
   .play.on { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
   .swatch { display: inline-block; width: 0.9em; height: 0.9em; margin: 0.3em 0.35em 0 0; border: 1px solid var(--vscode-panel-border); flex: none; }
@@ -192,6 +193,13 @@ export function previewHtml(): string {
       text.className = 'text';
       text.textContent = r.text;
       row.appendChild(text);
+      if (r.warn) {
+        const warn = document.createElement('span');
+        warn.className = 'warn';
+        warn.textContent = '⚠';
+        warn.title = r.warn;
+        row.appendChild(warn);
+      }
       frag.appendChild(row);
     }
     rowsEl.textContent = '';

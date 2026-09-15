@@ -28,6 +28,8 @@ export interface PreviewRow {
     swatch?: { color: string; title: string };
     /** BGM・BGS・ME・SE を鳴らすコマンドなら、その音声。プレビューの ▶ で試しに鳴らす。 */
     audio?: PreviewAudio;
+    /** 文章がウィンドウからはみ出すときの知らせ。 */
+    warn?: string;
 }
 
 export interface PreviewAudio {

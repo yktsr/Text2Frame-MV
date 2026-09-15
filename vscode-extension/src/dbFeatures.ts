@@ -69,7 +69,7 @@ class ScanCache {
 }
 
 /** 顔画像・イベント・アイコン画像の手がかり。 */
-const lookupsFor = (service: DatabaseService, ctx: DbContext, mapId: number | undefined): Lookups => ({
+export const lookupsFor = (service: DatabaseService, ctx: DbContext, mapId: number | undefined): Lookups => ({
     exists: (name: string) => !!service.faceSheet(ctx, name),
     events: eventLookup(service, ctx, mapId),
     iconCount: service.iconCount(ctx)
