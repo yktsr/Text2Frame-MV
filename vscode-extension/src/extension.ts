@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { registerDeployFeature, showCompiledJson } from './deploy';
 import { registerReview } from './review';
 import { registerNavigation } from './navigation';
+import { registerQuickFixes, FIX } from './quickFixes';
+import { registerSnippets } from './snippets';
 import { exportCurrentFile, exportConversationOnly } from './exportText';
 import { deployAll, exportAll, repullAllOverwrite } from './batch';
 import { registerTreeView } from './tree';
@@ -60,6 +62,9 @@ export function activate(context: vscode.ExtensionContext) {
     registerPreview(context, database, running, live);
     // 定義へ移動・参照の一覧・シンボル・アウトライン・折りたたみ。
     registerNavigation(context, database, running);
+    // クイックフィックス(電球)とスニペット。
+    registerQuickFixes(context);
+    registerSnippets(context);
     // 色調・フラッシュの値の前に色見本。
     registerColorSwatches(context);
     // テストプレイ(ゲームを VS Code の中のブラウザで)。
@@ -689,6 +694,7 @@ function updateDiagnostics(document: vscode.TextDocument, collection: vscode.Dia
             problem === 'unclosed' ? 'タグが閉じられていません' : '閉じ括弧が多すぎます',
             vscode.DiagnosticSeverity.Error
         );
+        if (problem === 'unclosed') diagnostic.code = FIX.unclosed;
         diagnostics.push(diagnostic);
     }
 
@@ -705,6 +711,7 @@ function updateDiagnostics(document: vscode.TextDocument, collection: vscode.Dia
                     '空のタグは使用できません',
                     vscode.DiagnosticSeverity.Warning
                 );
+                diagnostic.code = FIX.emptyTag;
                 diagnostics.push(diagnostic);
             }
         }

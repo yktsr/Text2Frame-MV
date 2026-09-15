@@ -104,6 +104,22 @@
         "icon": "$(window)"
       },
       {
+        "command": "text2frame.snippet.insert",
+        "title": "Text2Frame: スニペットを入れる / Insert a snippet"
+      },
+      {
+        "command": "text2frame.snippet.fromSelection",
+        "title": "Text2Frame: 選んだ部分をスニペットにする / Make a snippet from the selection"
+      },
+      {
+        "command": "text2frame.snippet.edit",
+        "title": "Text2Frame: スニペットを編集する / Edit snippets"
+      },
+      {
+        "command": "text2frame.fix.pickAgain",
+        "title": "Text2Frame: 候補から選び直す / Pick again"
+      },
+      {
         "command": "text2frame.review.accept",
         "title": "Text2Frame: 反映する(差分の確認) / Apply (after review)",
         "icon": "$(check)"
@@ -210,6 +226,18 @@
       }
     ],
     "menus": {
+      "editor/context": [
+        {
+          "command": "text2frame.snippet.fromSelection",
+          "when": "editorLangId == text2frame && editorHasSelection",
+          "group": "9_text2frame@1"
+        },
+        {
+          "command": "text2frame.snippet.insert",
+          "when": "editorLangId == text2frame",
+          "group": "9_text2frame@2"
+        }
+      ],
       "editor/title": [
         {
           "command": "text2frame.review.accept",
@@ -270,6 +298,7 @@
         }
       ],
       "commandPalette": [
+        { "command": "text2frame.fix.pickAgain", "when": "false" },
         { "command": "text2frame.review.accept", "when": "text2frame.reviewPending" },
         { "command": "text2frame.review.cancel", "when": "text2frame.reviewPending" },
         { "command": "text2frame.tree.deploy", "when": "false" },

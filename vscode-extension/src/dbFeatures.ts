@@ -171,6 +171,7 @@ export function registerDatabaseFeatures(context: vscode.ExtensionContext, servi
                 problem.severity === 'warning' ? vscode.DiagnosticSeverity.Warning : vscode.DiagnosticSeverity.Hint
             );
             d.source = 'Text2Frame';
+            d.code = 'db-problem';
             list.push(d);
         }
         diagnostics.set(document.uri, list);
