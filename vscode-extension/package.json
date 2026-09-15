@@ -131,6 +131,10 @@
         "title": "Text2Frame: スニペットを編集する / Edit snippets"
       },
       {
+        "command": "text2frame.tryEvent",
+        "title": "Text2Frame: このイベントから試す / Try this event"
+      },
+      {
         "command": "text2frame.fix.pickAgain",
         "title": "Text2Frame: 候補から選び直す / Pick again"
       },
@@ -324,6 +328,7 @@
       ],
       "commandPalette": [
         { "command": "text2frame.fix.pickAgain", "when": "false" },
+        { "command": "text2frame.tryEvent", "when": "false" },
         { "command": "text2frame.review.accept", "when": "text2frame.reviewPending" },
         { "command": "text2frame.review.cancel", "when": "text2frame.reviewPending" },
         { "command": "text2frame.tree.deploy", "when": "false" },

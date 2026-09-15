@@ -19,6 +19,7 @@ export interface LiveMessage {
     map?: number;
     pages?: Map<number, number>;
     parallel?: Parallels;
+    visit?: string;
     run?: RunFrame[];
     lists?: Map<string, CommandMark[]>;
 }
@@ -49,6 +50,8 @@ export interface LiveCommand {
     selfSwitches?: Record<string, boolean>;
     items?: Record<string, number>;
     gold?: number;
+    visit?: { mapId?: number; eventId?: number; pageId?: number; x?: number; y?: number; run?: boolean; common?: number };
+    reload?: boolean;
 }
 
 export function selfSwitchKey(mapId: number, eventId: number, letter: string): string {
@@ -151,6 +154,7 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
     };
     if (o.map !== undefined && !isCount(o.map, MAX_ID)) return undefined;
     if (o.gold !== undefined && !isCount(o.gold, MAX_COUNT)) return undefined;
+    if (o.visit !== undefined && !(typeof o.visit === 'string' && /^[A-Za-z]{1,20}$/.test(o.visit))) return undefined;
     const ids = (v: unknown): v is number[] => Array.isArray(v) && v.length <= MAX_PARALLEL && v.every((a) => isCount(a, MAX_ID) && a > 0);
     const parallel = o.parallel as { events?: unknown; commons?: unknown } | undefined;
     if (parallel !== undefined && !(parallel && typeof parallel === 'object' && ids(parallel.events) && ids(parallel.commons))) return undefined;
@@ -167,6 +171,7 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
             map: o.map as number | undefined,
             pages: readPages(o.pages),
             parallel: parallel ? { events: parallel.events as number[], commons: parallel.commons as number[] } : undefined,
+            visit: o.visit as string | undefined,
             run: readRun(o.run),
             lists: readLists(o.lists)
         };
@@ -212,9 +217,12 @@ export class LiveState {
     private frames: RunFrame[] = [];
     lastSeen = 0;
     mapId = 0;
+    /** 「このイベントから試す」の、ゲームからの返事。 */
+    lastVisit?: { result: string; at: number };
 
     apply(message: LiveMessage, now: number): { values: boolean; run: boolean } {
         this.lastSeen = now;
+        if (message.visit) this.lastVisit = { result: message.visit, at: now };
         let changed = false;
         let run = false;
         if (message.reset) {

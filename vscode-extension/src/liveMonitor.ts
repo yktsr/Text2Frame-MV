@@ -192,7 +192,88 @@ export function monitorScript(token: string): string {
       }).catch(function () {});
     } catch (e) {}
   }
+  var visiting = null;
+  var visitResult = null;
+  var AROUND = [[0, 1, 8], [0, -1, 2], [-1, 0, 6], [1, 0, 4]];
+  function startVisit(v) {
+    var mapId = Number(v.mapId) || 0;
+    var common = Number(v.common) || 0;
+    if (!mapId && !common) return;
+    visiting = { mapId: mapId, eventId: Number(v.eventId) || 0, pageId: Number(v.pageId) || 1, x: Number(v.x) || 0, y: Number(v.y) || 0, run: !!v.run, common: common, stage: 'start', since: Date.now() };
+  }
+  function finishVisit(result) {
+    visitResult = result;
+    visiting = null;
+  }
+  function clearRunning(map) {
+    if (map._interpreter && typeof map._interpreter.clear === 'function') map._interpreter.clear();
+    if (window.$gameMessage && typeof window.$gameMessage.clear === 'function') window.$gameMessage.clear();
+  }
+  function standingSpot(map, ev) {
+    for (var i = 0; i < AROUND.length; i++) {
+      var x = ev.x + AROUND[i][0];
+      var y = ev.y + AROUND[i][1];
+      if (!map.isValid(x, y) || map.eventsXyNt(x, y).length) continue;
+      if (map.isPassable(x, y, 2) || map.isPassable(x, y, 4) || map.isPassable(x, y, 6) || map.isPassable(x, y, 8)) return [x, y, AROUND[i][2]];
+    }
+    return [ev.x, ev.y, 2];
+  }
+  function stepVisit() {
+    var v = visiting;
+    if (!v) return;
+    if (Date.now() - v.since > 30000) return finishVisit('timeout');
+    var scenes = window.SceneManager;
+    var scene = scenes && scenes._scene;
+    var map = window.$gameMap;
+    var player = window.$gamePlayer;
+    if (!scene || !map || !player) return;
+    var changing = typeof scenes.isSceneChanging === 'function' && scenes.isSceneChanging();
+    var onMap = typeof window.Scene_Map === 'function' && scene instanceof window.Scene_Map && !changing;
+    if (v.stage === 'start') {
+      if (!onMap) {
+        if (!changing && typeof window.Scene_Title === 'function' && scene instanceof window.Scene_Title) {
+          window.DataManager.setupNewGame();
+          scenes.goto(window.Scene_Map);
+        }
+        return;
+      }
+      if (player.isTransferring()) return;
+      clearRunning(map);
+      if (v.common) {
+        v.stage = 'run';
+        return;
+      }
+      player.reserveTransfer(v.mapId, v.x, v.y, 2, 0);
+      v.stage = 'arrive';
+      return;
+    }
+    if (v.stage === 'arrive') {
+      if (!onMap || player.isTransferring() || map.mapId() !== v.mapId) return;
+      clearRunning(map);
+      if (window.$gameScreen && typeof window.$gameScreen.clearFade === 'function') window.$gameScreen.clearFade();
+      var ev = map.event(v.eventId);
+      if (!ev) return finishVisit('noEvent');
+      var spot = standingSpot(map, ev);
+      player.locate(spot[0], spot[1]);
+      player.setDirection(spot[2]);
+      if (v.run) v.stage = 'run';
+      else finishVisit('stood');
+      return;
+    }
+    if (!onMap || player.isTransferring() || map.isEventRunning()) return;
+    if (v.common) {
+      if (!window.$gameTemp || typeof window.$gameTemp.reserveCommonEvent !== 'function') return finishVisit('failed');
+      window.$gameTemp.reserveCommonEvent(v.common);
+      return finishVisit('ran');
+    }
+    var data = window.$dataMap && window.$dataMap.events && window.$dataMap.events[v.eventId];
+    var page = data && data.pages && data.pages[v.pageId - 1];
+    if (!page || !map._interpreter) return finishVisit('noPage');
+    map._interpreter.setup(page.list, v.eventId);
+    finishVisit('ran');
+  }
   function tick() {
+    stepVisit();
     var switches = window.$gameSwitches;
     var variables = window.$gameVariables;
     if (!switches || !variables || !switches._data || !variables._data) return;
@@ -247,9 +328,18 @@ export function monitorScript(token: string): string {
         });
       }
     }
-    if (message.reset || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.parallel || message.run || Date.now() - lastSent >= HEARTBEAT) send(message);
+    if (visitResult) {
+      message.visit = visitResult;
+      visitResult = null;
+    }
+    if (message.reset || message.visit || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.parallel || message.run || Date.now() - lastSent >= HEARTBEAT) send(message);
   }
   function write(command) {
+    if (command.reload === true) {
+      try { window.location.reload(); } catch (e) {}
+      return;
+    }
+    if (command.visit && typeof command.visit === 'object') startVisit(command.visit);
     var switches = window.$gameSwitches;
     var variables = window.$gameVariables;
     if (!switches || !variables) return;

@@ -243,6 +243,88 @@ describe('liveMonitor', function () {
     expect(g.sent[1].body).to.eql({ parallel: { events: [], commons: [] } })
   })
 
+  describe('trying an event', function () {
+    const setup = function () {
+      const g = fakeGame()
+      const calls = []
+      const w = g.window
+      function SceneMap () {}
+      function SceneTitle () {}
+      let transferring = false
+      const state = { mapId: 1 }
+      w.Scene_Map = SceneMap
+      w.Scene_Title = SceneTitle
+      w.SceneManager = { _scene: new SceneTitle(), isSceneChanging: function () { return false }, goto: function (C) { calls.push('goto'); w.SceneManager._scene = new C() } }
+      w.DataManager = { setupNewGame: function () { calls.push('newGame') } }
+      w.$gameSwitches = { _data: [] }
+      w.$gameVariables = { _data: [] }
+      w.$gameMap = {
+        mapId: function () { return state.mapId },
+        event: function (id) { return state.mapId === 3 && id === 2 ? { x: 5, y: 5 } : null },
+        isValid: function () { return true },
+        eventsXyNt: function (x, y) { return x === 5 && y === 6 ? [{}] : [] },
+        isPassable: function () { return true },
+        isEventRunning: function () { return false },
+        _interpreter: { clear: function () { calls.push('clear') }, setup: function (list, id) { calls.push(['setup', list.length, id]) } }
+      }
+      w.$gamePlayer = {
+        reserveTransfer: function (m, x, y) { calls.push(['transfer', m, x, y]); transferring = true },
+        isTransferring: function () { return transferring },
+        locate: function (x, y) { calls.push(['locate', x, y]) },
+        setDirection: function (d) { calls.push(['face', d]) }
+      }
+      w.$dataMap = { events: [null, null, { pages: [{ list: [1, 2, 3] }] }] }
+      w.$gameTemp = { reserveCommonEvent: function (id) { calls.push(['common', id]) } }
+      w.location = { reload: function () { calls.push('reload') } }
+      return { g, calls, state, arrive: function () { state.mapId = 3; transferring = false } }
+    }
+
+    it('starts a new game from the title, moves next to the event and runs its page', function () {
+      const { g, calls, arrive } = setup()
+      g.step()
+      g.source().onmessage({ data: JSON.stringify({ visit: { mapId: 3, eventId: 2, pageId: 1, x: 5, y: 5, run: true } }) })
+      expect(calls).to.eql(['newGame', 'goto'])
+      g.step()
+      expect(calls.slice(2)).to.eql(['clear', ['transfer', 3, 5, 5]])
+      g.step()
+      expect(calls).to.have.length(4)
+      arrive()
+      g.step()
+      expect(calls.slice(4)).to.eql(['clear', ['locate', 5, 4], ['face', 2]])
+      g.step()
+      expect(calls.slice(7)).to.eql([['setup', 3, 2]])
+      expect(g.sent[g.sent.length - 1].body.visit).to.equal('ran')
+    })
+
+    it('only stands next to the event when not asked to run it', function () {
+      const { g, calls, arrive } = setup()
+      g.window.SceneManager._scene = new g.window.Scene_Map()
+      g.step()
+      g.source().onmessage({ data: JSON.stringify({ visit: { mapId: 3, eventId: 2, pageId: 1, x: 5, y: 5 } }) })
+      arrive()
+      g.step()
+      g.step()
+      expect(calls.filter((c) => Array.isArray(c) && c[0] === 'setup')).to.eql([])
+      expect(g.sent.map((m) => m.body.visit).filter(Boolean)).to.eql(['stood'])
+    })
+
+    it('says so when the event is not on the map, runs a common event, and reloads', function () {
+      const { g, calls, state } = setup()
+      g.window.SceneManager._scene = new g.window.Scene_Map()
+      g.step()
+      g.source().onmessage({ data: JSON.stringify({ visit: { mapId: 4, eventId: 9, x: 1, y: 1 } }) })
+      state.mapId = 4
+      g.window.$gamePlayer.isTransferring = function () { return false }
+      g.step()
+      expect(g.sent.map((m) => m.body.visit).filter(Boolean)).to.eql(['noEvent'])
+      g.source().onmessage({ data: JSON.stringify({ visit: { common: 7 } }) })
+      g.step()
+      expect(calls).to.deep.include(['common', 7])
+      g.source().onmessage({ data: JSON.stringify({ reload: true }) })
+      expect(calls[calls.length - 1]).to.equal('reload')
+    })
+  })
+
   it('reports the page each event on the map is on', function () {
     const g = fakeGame()
     let mapId = 5
@@ -372,7 +454,7 @@ describe('liveState', function () {
     expect(m.reset).to.equal(true)
     expect(Array.from(m.switches)).to.eql([[1, true]])
     expect(Array.from(m.variables)).to.eql([[2, 5], [3, 'a']])
-    expect(parseLiveMessage({})).to.eql({ reset: undefined, switches: undefined, variables: undefined, selfSwitches: undefined, items: undefined, gold: undefined, actors: undefined, map: undefined, pages: undefined, parallel: undefined, run: undefined, lists: undefined })
+    expect(parseLiveMessage({})).to.eql({ reset: undefined, switches: undefined, variables: undefined, selfSwitches: undefined, items: undefined, gold: undefined, actors: undefined, map: undefined, pages: undefined, parallel: undefined, visit: undefined, run: undefined, lists: undefined })
     const self = parseLiveMessage({ selfSwitches: { '12,5,A': true, '1,2,B': false }, map: 12 })
     expect(Array.from(self.selfSwitches)).to.eql([['12,5,A', true], ['1,2,B', false]])
     expect(self.map).to.equal(12)
