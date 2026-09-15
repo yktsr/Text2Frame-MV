@@ -5,6 +5,7 @@ import { lineKinds } from './db/tagRefs';
 import { findConflicts, resolveConflict, tagLikeName, similarTagNames, replaceTagName, compilesAsText } from './db/fixes';
 import { messageSettingsFor } from './db/structure';
 import { MESSAGE_CODES } from './messageCheck';
+import { hasFaceTag, audioFolderOf } from './db/assetEdit';
 
 /**
  * クイックフィックス(電球)。
@@ -86,9 +87,21 @@ export function registerQuickFixes(context: vscode.ExtensionContext): void {
     };
 
     const actions: vscode.CodeActionProvider = {
-        provideCodeActions(document, _range, ctx) {
+        provideCodeActions(document, range, ctx) {
             const out: vscode.CodeAction[] = [];
             const lines = document.getText().split(/\r?\n/);
+            const here = document.lineAt(range.start.line).text;
+            if (hasFaceTag(here)) {
+                const a = new vscode.CodeAction('顔画像を一覧から選ぶ', vscode.CodeActionKind.QuickFix);
+                a.command = { command: 'text2frame.pickFace', title: a.title };
+                out.push(a);
+            }
+            const folder = audioFolderOf(here);
+            if (folder) {
+                const a = new vscode.CodeAction(`${folder.toUpperCase()} を一覧から選ぶ`, vscode.CodeActionKind.QuickFix);
+                a.command = { command: 'text2frame.pickAudio', title: a.title, arguments: [folder] };
+                out.push(a);
+            }
             for (const d of ctx.diagnostics) {
                 const line = d.range.start.line;
                 const text = document.lineAt(line).text;

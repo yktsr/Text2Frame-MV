@@ -7,6 +7,7 @@ import { registerSnippets } from './snippets';
 import { basicProblems } from './db/checks';
 import { registerMessageCheck } from './messageCheck';
 import { registerProjectCheck } from './projectCheck';
+import { registerAssetPicker } from './assetPicker';
 import { exportCurrentFile, exportConversationOnly } from './exportText';
 import { deployAll, exportAll, repullAllOverwrite } from './batch';
 import { registerTreeView } from './tree';
@@ -70,6 +71,8 @@ export function activate(context: vscode.ExtensionContext) {
     // メッセージのはみ出しと、プロジェクト全体の検査。
     registerMessageCheck(context, database);
     registerProjectCheck(context, database);
+    // 顔画像・音声を見て選ぶ画面。
+    registerAssetPicker(context, database);
     // 色調・フラッシュの値の前に色見本。
     registerColorSwatches(context);
     // テストプレイ(ゲームを VS Code の中のブラウザで)。

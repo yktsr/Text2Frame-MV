@@ -109,6 +109,16 @@
         "icon": "$(checklist)"
       },
       {
+        "command": "text2frame.pickFace",
+        "title": "Text2Frame: 顔画像を選ぶ / Pick a face",
+        "icon": "$(account)"
+      },
+      {
+        "command": "text2frame.pickAudio",
+        "title": "Text2Frame: 音を選ぶ / Pick a sound",
+        "icon": "$(unmute)"
+      },
+      {
         "command": "text2frame.snippet.insert",
         "title": "Text2Frame: スニペットを入れる / Insert a snippet"
       },
@@ -241,6 +251,16 @@
           "command": "text2frame.snippet.insert",
           "when": "editorLangId == text2frame",
           "group": "9_text2frame@2"
+        },
+        {
+          "command": "text2frame.pickFace",
+          "when": "editorLangId == text2frame",
+          "group": "9_text2frame@3"
+        },
+        {
+          "command": "text2frame.pickAudio",
+          "when": "editorLangId == text2frame",
+          "group": "9_text2frame@4"
         }
       ],
       "editor/title": [

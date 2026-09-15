@@ -254,7 +254,14 @@ function eventItems(events: EventLookup, range: vscode.Range): vscode.Completion
 }
 
 function faceNameItems(service: DatabaseService, ctx: DbContext, range: vscode.Range): vscode.CompletionItem[] {
-    return service.faceNames(ctx).map((name) => {
+    const browse = new vscode.CompletionItem('一覧から見て選ぶ…', vscode.CompletionItemKind.Folder);
+    browse.range = range;
+    browse.insertText = '';
+    browse.filterText = ' ';
+    browse.sortText = '\u0000';
+    browse.detail = '顔画像を並べて見る';
+    browse.command = { command: 'text2frame.pickFace', title: '顔画像を選ぶ' };
+    return [browse].concat(service.faceNames(ctx).map((name) => {
         const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.File);
         item.range = range;
         item.insertText = name + '(';
@@ -262,7 +269,7 @@ function faceNameItems(service: DatabaseService, ctx: DbContext, range: vscode.R
         // 続けて何番の顔かを選べるように、すぐ次の補完を開く。
         item.command = { command: 'editor.action.triggerSuggest', title: '' };
         return item;
-    });
+    }));
 }
 
 function faceIndexItems(service: DatabaseService, ctx: DbContext, faceName: string, range: vscode.Range, closed: boolean): vscode.CompletionItem[] {
