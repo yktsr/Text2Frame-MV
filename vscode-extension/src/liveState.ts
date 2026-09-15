@@ -20,6 +20,8 @@ export interface LiveMessage {
     pages?: Map<number, number>;
     parallel?: Parallels;
     visit?: string;
+    paused?: { reason: string; frames: RunFrame[] };
+    resumed?: boolean;
     run?: RunFrame[];
     lists?: Map<string, CommandMark[]>;
 }
@@ -52,6 +54,8 @@ export interface LiveCommand {
     gold?: number;
     visit?: { mapId?: number; eventId?: number; pageId?: number; x?: number; y?: number; run?: boolean; common?: number };
     reload?: boolean;
+    breakpoints?: Record<string, number[]>;
+    debug?: 'continue' | 'next' | 'stepIn' | 'stepOut' | 'pause';
 }
 
 export function selfSwitchKey(mapId: number, eventId: number, letter: string): string {
@@ -152,6 +156,12 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
         }
         return out;
     };
+    const readPaused = (value: unknown): { reason: string; frames: RunFrame[] } | undefined => {
+        if (value === undefined) return undefined;
+        const v = value as { reason?: unknown; frames?: unknown };
+        if (!v || typeof v !== 'object' || !['breakpoint', 'step', 'pause'].includes(String(v.reason))) throw new Error('bad');
+        return { reason: String(v.reason), frames: readRun(v.frames) || [] };
+    };
     if (o.map !== undefined && !isCount(o.map, MAX_ID)) return undefined;
     if (o.gold !== undefined && !isCount(o.gold, MAX_COUNT)) return undefined;
     if (o.visit !== undefined && !(typeof o.visit === 'string' && /^[A-Za-z]{1,20}$/.test(o.visit))) return undefined;
@@ -172,6 +182,8 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
             pages: readPages(o.pages),
             parallel: parallel ? { events: parallel.events as number[], commons: parallel.commons as number[] } : undefined,
             visit: o.visit as string | undefined,
+            paused: readPaused(o.paused),
+            resumed: o.resumed === true || undefined,
             run: readRun(o.run),
             lists: readLists(o.lists)
         };
@@ -219,10 +231,22 @@ export class LiveState {
     mapId = 0;
     /** 「このイベントから試す」の、ゲームからの返事。 */
     lastVisit?: { result: string; at: number };
+    resets = 0;
+    paused?: { reason: string; frames: RunFrame[]; at: number };
 
-    apply(message: LiveMessage, now: number): { values: boolean; run: boolean } {
+    apply(message: LiveMessage, now: number): { values: boolean; run: boolean; debug: boolean } {
         this.lastSeen = now;
         if (message.visit) this.lastVisit = { result: message.visit, at: now };
+        let debug = false;
+        if (message.reset) this.resets++;
+        if ((message.reset || message.resumed) && this.paused) {
+            this.paused = undefined;
+            debug = true;
+        }
+        if (message.paused) {
+            this.paused = { reason: message.paused.reason, frames: message.paused.frames, at: now };
+            debug = true;
+        }
         let changed = false;
         let run = false;
         if (message.reset) {
@@ -283,7 +307,7 @@ export class LiveState {
             changed = true;
             if (!message.reset) this.changedAt.set('gold:', now);
         }
-        return { values: changed, run };
+        return { values: changed, run, debug };
     }
 
     running(): RunFrame[] {

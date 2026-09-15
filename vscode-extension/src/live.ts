@@ -17,6 +17,8 @@ export class LiveService implements vscode.Disposable {
     readonly onDidChange = this.emitter.event;
     private readonly runEmitter = new vscode.EventEmitter<string>();
     readonly onDidChangeRun = this.runEmitter.event;
+    private readonly debugEmitter = new vscode.EventEmitter<string>();
+    readonly onDidChangeDebug = this.debugEmitter.event;
 
     start(gameRoot: string, projectRoot: string, send: (command: LiveCommand) => number): void {
         const old = this.sessions.get(gameRoot);
@@ -32,12 +34,14 @@ export class LiveService implements vscode.Disposable {
         const changed = session.state.apply(message, session.touched);
         if (changed.values || !wasReceived) this.emitter.fire(gameRoot);
         if (changed.run) this.runEmitter.fire(gameRoot);
+        if (changed.debug) this.debugEmitter.fire(gameRoot);
     }
 
     clear(gameRoot: string): void {
         if (!this.sessions.delete(gameRoot)) return;
         this.emitter.fire(gameRoot);
         this.runEmitter.fire(gameRoot);
+        this.debugEmitter.fire(gameRoot);
     }
 
     forContext(ctx: DbContext): LiveState | undefined {
@@ -54,5 +58,6 @@ export class LiveService implements vscode.Disposable {
     dispose(): void {
         this.emitter.dispose();
         this.runEmitter.dispose();
+        this.debugEmitter.dispose();
     }
 }

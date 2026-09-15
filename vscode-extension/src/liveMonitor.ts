@@ -192,6 +192,116 @@ export function monitorScript(token: string): string {
       }).catch(function () {});
     } catch (e) {}
   }
+  var breakpoints = {};
+  var parents = typeof WeakMap === 'function' ? new WeakMap() : null;
+  var paused = null;
+  var pausedReport = null;
+  var resumedReport = false;
+  var stepping = null;
+  var pauseWanted = false;
+  var skipOnce = null;
+  var hooked = false;
+  var DEBUG_KEY = /^(?:e:\\d+:\\d+:\\d+|c:\\d+)$/;
+  function parentOf(i) { return parents ? parents.get(i) : null; }
+  function depthOf(i) {
+    var d = 0;
+    for (var p = parentOf(i); p && d < 64; p = parentOf(p)) d++;
+    return d;
+  }
+  function chainTo(i) {
+    var chain = [i];
+    for (var p = parentOf(i); p && chain.length < 64; p = parentOf(p)) chain.unshift(p);
+    return chain;
+  }
+  function pauseAt(interp, reason) {
+    var chain = chainTo(interp);
+    var frames = [];
+    var lists = [];
+    chain.forEach(function (it, n) {
+      var list = it._list;
+      if (!Array.isArray(list) || !list.length) return;
+      var key = listKey(it);
+      if (!key) return;
+      var index = n === chain.length - 1 ? Number(it._index) || 0 : (Number(it._index) || 0) - 1;
+      frames.push({ key: key, index: Math.max(0, Math.min(list.length - 1, index)) });
+      lists.push([key, list]);
+    });
+    paused = { interp: interp, index: interp._index };
+    pausedReport = { reason: reason, frames: frames, lists: lists };
+    stepping = null;
+    pauseWanted = false;
+  }
+  function shouldStop(interp) {
+    if (paused) return true;
+    if (visiting || !Array.isArray(interp._list)) return false;
+    if (skipOnce && skipOnce.interp === interp && skipOnce.index === interp._index) {
+      skipOnce = null;
+      return false;
+    }
+    if (pauseWanted) {
+      pauseAt(interp, 'pause');
+      return true;
+    }
+    if (stepping && chainTo(interp)[0] === stepping.root) {
+      var d = depthOf(interp);
+      if (stepping.mode === 'stepIn' || (stepping.mode === 'next' && d <= stepping.depth) || (stepping.mode === 'stepOut' && d < stepping.depth)) {
+        pauseAt(interp, 'step');
+        return true;
+      }
+    }
+    var any = false;
+    for (var k in breakpoints) { any = true; break; }
+    if (!any) return false;
+    var key = listKey(interp);
+    if (key && breakpoints[key] && breakpoints[key][interp._index]) {
+      pauseAt(interp, 'breakpoint');
+      return true;
+    }
+    return false;
+  }
+  function hook() {
+    if (hooked || typeof window.Game_Interpreter !== 'function' || !window.SceneManager || typeof window.SceneManager.updateScene !== 'function') return;
+    hooked = true;
+    var proto = window.Game_Interpreter.prototype;
+    var execute = proto.executeCommand;
+    proto.executeCommand = function () {
+      if (shouldStop(this)) return false;
+      return execute.apply(this, arguments);
+    };
+    var setupChild = proto.setupChild;
+    proto.setupChild = function () {
+      var out = setupChild.apply(this, arguments);
+      if (parents && this._childInterpreter) parents.set(this._childInterpreter, this);
+      return out;
+    };
+    var updateScene = window.SceneManager.updateScene;
+    window.SceneManager.updateScene = function () {
+      if (paused) return;
+      return updateScene.apply(this, arguments);
+    };
+  }
+  function debug(mode) {
+    if (mode === 'pause') {
+      if (!paused) pauseWanted = true;
+      return;
+    }
+    if (!paused) return;
+    var interp = paused.interp;
+    var chain = chainTo(interp);
+    skipOnce = { interp: interp, index: paused.index };
+    stepping = mode === 'next' || mode === 'stepIn' || mode === 'stepOut' ? { mode: mode, root: chain[0], depth: chain.length - 1 } : null;
+    paused = null;
+    resumedReport = true;
+  }
+  function setBreakpoints(table) {
+    breakpoints = {};
+    for (var key in table) {
+      if (!DEBUG_KEY.test(key) || !Array.isArray(table[key])) continue;
+      var at = {};
+      table[key].forEach(function (i) { if (typeof i === 'number' && i >= 0) at[i] = true; });
+      breakpoints[key] = at;
+    }
+  }
   var visiting = null;
   var visitResult = null;
   var AROUND = [[0, 1, 8], [0, -1, 2], [-1, 0, 6], [1, 0, 4]];
@@ -200,12 +310,21 @@ export function monitorScript(token: string): string {
     var common = Number(v.common) || 0;
     if (!mapId && !common) return;
     visiting = { mapId: mapId, eventId: Number(v.eventId) || 0, pageId: Number(v.pageId) || 1, x: Number(v.x) || 0, y: Number(v.y) || 0, run: !!v.run, common: common, stage: 'start', since: Date.now() };
+    if (paused) {
+      paused = null;
+      resumedReport = true;
+    }
+    stepping = null;
+    skipOnce = null;
+    pauseWanted = false;
   }
   function finishVisit(result) {
     visitResult = result;
     visiting = null;
   }
   function clearRunning(map) {
+    stepping = null;
+    skipOnce = null;
     if (map._interpreter && typeof map._interpreter.clear === 'function') map._interpreter.clear();
     if (window.$gameMessage && typeof window.$gameMessage.clear === 'function') window.$gameMessage.clear();
   }
@@ -220,7 +339,7 @@ export function monitorScript(token: string): string {
   }
   function stepVisit() {
     var v = visiting;
-    if (!v) return;
+    if (!v || paused) return;
     if (Date.now() - v.since > 30000) return finishVisit('timeout');
     var scenes = window.SceneManager;
     var scene = scenes && scenes._scene;
@@ -240,32 +359,23 @@ export function monitorScript(token: string): string {
       if (player.isTransferring()) return;
       clearRunning(map);
       if (v.common) {
-        v.stage = 'run';
-        return;
+        if (!window.$gameTemp || typeof window.$gameTemp.reserveCommonEvent !== 'function') return finishVisit('failed');
+        window.$gameTemp.reserveCommonEvent(v.common);
+        return finishVisit('ran');
       }
       player.reserveTransfer(v.mapId, v.x, v.y, 2, 0);
       v.stage = 'arrive';
       return;
     }
-    if (v.stage === 'arrive') {
-      if (!onMap || player.isTransferring() || map.mapId() !== v.mapId) return;
-      clearRunning(map);
-      if (window.$gameScreen && typeof window.$gameScreen.clearFade === 'function') window.$gameScreen.clearFade();
-      var ev = map.event(v.eventId);
-      if (!ev) return finishVisit('noEvent');
-      var spot = standingSpot(map, ev);
-      player.locate(spot[0], spot[1]);
-      player.setDirection(spot[2]);
-      if (v.run) v.stage = 'run';
-      else finishVisit('stood');
-      return;
-    }
-    if (!onMap || player.isTransferring() || map.isEventRunning()) return;
-    if (v.common) {
-      if (!window.$gameTemp || typeof window.$gameTemp.reserveCommonEvent !== 'function') return finishVisit('failed');
-      window.$gameTemp.reserveCommonEvent(v.common);
-      return finishVisit('ran');
-    }
+    if (!onMap || player.isTransferring() || map.mapId() !== v.mapId) return;
+    clearRunning(map);
+    if (window.$gameScreen && typeof window.$gameScreen.clearFade === 'function') window.$gameScreen.clearFade();
+    var ev = map.event(v.eventId);
+    if (!ev) return finishVisit('noEvent');
+    var spot = standingSpot(map, ev);
+    player.locate(spot[0], spot[1]);
+    player.setDirection(spot[2]);
+    if (!v.run) return finishVisit('stood');
     var data = window.$dataMap && window.$dataMap.events && window.$dataMap.events[v.eventId];
     var page = data && data.pages && data.pages[v.pageId - 1];
     if (!page || !map._interpreter) return finishVisit('noPage');
@@ -273,6 +383,7 @@ export function monitorScript(token: string): string {
     finishVisit('ran');
   }
   function tick() {
+    hook();
     stepVisit();
     var switches = window.$gameSwitches;
     var variables = window.$gameVariables;
@@ -332,7 +443,20 @@ export function monitorScript(token: string): string {
       message.visit = visitResult;
       visitResult = null;
     }
-    if (message.reset || message.visit || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.parallel || message.run || Date.now() - lastSent >= HEARTBEAT) send(message);
+    if (pausedReport) {
+      message.paused = { reason: pausedReport.reason, frames: pausedReport.frames };
+      pausedReport.lists.forEach(function (entry) {
+        if (last.sent[entry[0]] === entry[1]) return;
+        last.sent[entry[0]] = entry[1];
+        (message.lists = message.lists || {})[entry[0]] = listMarks(entry[1]);
+      });
+      pausedReport = null;
+    }
+    if (resumedReport) {
+      message.resumed = true;
+      resumedReport = false;
+    }
+    if (message.reset || message.visit || message.paused || message.resumed || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.parallel || message.run || Date.now() - lastSent >= HEARTBEAT) send(message);
   }
   function write(command) {
     if (command.reload === true) {
@@ -340,6 +464,8 @@ export function monitorScript(token: string): string {
       return;
     }
     if (command.visit && typeof command.visit === 'object') startVisit(command.visit);
+    if (command.breakpoints && typeof command.breakpoints === 'object') setBreakpoints(command.breakpoints);
+    if (typeof command.debug === 'string') debug(command.debug);
     var switches = window.$gameSwitches;
     var variables = window.$gameVariables;
     if (!switches || !variables) return;

@@ -61,6 +61,10 @@ export class RunTracker implements vscode.Disposable {
         return this.sources.entries(ctx);
     }
 
+    sourceFor(ctx: DbContext, fsPath: string): RunSource | { error: string } {
+        return this.sources.source(ctx, fsPath);
+    }
+
     showsFile(fsPath: string): boolean {
         return this.frames.some((f) => f.uri?.fsPath === fsPath);
     }

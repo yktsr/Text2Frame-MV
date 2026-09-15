@@ -9,6 +9,7 @@ import { registerMessageCheck } from './messageCheck';
 import { registerProjectCheck } from './projectCheck';
 import { registerAssetPicker } from './assetPicker';
 import { registerTryEvent } from './tryEvent';
+import { registerDebugger } from './debugSession';
 import { exportCurrentFile, exportConversationOnly } from './exportText';
 import { deployAll, exportAll, repullAllOverwrite } from './batch';
 import { registerTreeView } from './tree';
@@ -76,6 +77,8 @@ export function activate(context: vscode.ExtensionContext) {
     registerAssetPicker(context, database);
     // このイベントから試す(テキストの先頭のリンク)。
     registerTryEvent(context, database, live);
+    // ブレークポイント(VS Code の「実行とデバッグ」)。
+    registerDebugger(context, database, live, running);
     // 色調・フラッシュの値の前に色見本。
     registerColorSwatches(context);
     // テストプレイ(ゲームを VS Code の中のブラウザで)。

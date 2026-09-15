@@ -7,7 +7,7 @@ export interface RunTarget {
     exact: boolean;
 }
 
-const TEXT_CONTINUATIONS = new Set([401, 405, 408, 505, 605, 655, 657]);
+export const TEXT_CONTINUATIONS = new Set([401, 405, 408, 505, 605, 655, 657]);
 const MAX_TABLE = 4_000_000;
 
 export function stableJson(v: unknown): string {

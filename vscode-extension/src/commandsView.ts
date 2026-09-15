@@ -52,6 +52,7 @@ const GROUPS: CommandGroup[] = [
         label: 'デバッグ / Debug',
         items: [
             { command: 'text2frame.testPlay', label: 'テストプレイ / Test play', icon: 'play', tooltip: 'ゲームを VS Code の中のブラウザでテストプレイします(テストモード)。反映した内容は、ブラウザの再読み込みで効きます。プレイ中のスイッチと変数の値は、データベースの一覧とホバーに出ます。' },
+            { command: 'text2frame.debug', label: 'デバッグを始める(ブレークポイント) / Start debugging', icon: 'debug-alt', tooltip: 'テストプレイを、VS Code の「実行とデバッグ」で始めます。テキストの行番号の左をクリックして付けた赤丸(ブレークポイント)で止まり、1行ずつ進めたり、スイッチや変数を見たりできます(F5 でも始まります)。' },
             { command: 'text2frame.openLiveValuesTab', label: 'デバッグメニューを表示 / Show debug menu', icon: 'debug', tooltip: 'テストプレイ中のスイッチ・変数・セルフスイッチ・アイテム・所持金をエディタのタブに並べて見せます。値を書き換えることもできます。' },
             { command: 'text2frame.stopTestPlay', label: 'テストプレイを止める / Stop test play', icon: 'debug-stop', tooltip: 'テストプレイ用のサーバーを止めます。' }
         ]

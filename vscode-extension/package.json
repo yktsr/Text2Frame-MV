@@ -30,6 +30,8 @@
     "onView:text2frameDatabase",
     "onView:text2frame.liveValues",
     "onWebviewPanel:text2frameLive",
+    "onDebugResolve:text2frame",
+    "onDebugDynamicConfigurations:text2frame",
     "workspaceContains:**/text/**/*.txt",
     "workspaceContains:**/data/Map*.json"
   ],
@@ -46,6 +48,29 @@
         "extensions": [".t2f", ".text2frame"],
         "configuration": "./language-configuration.json"
       }
+    ],
+    "debuggers": [
+      {
+        "type": "text2frame",
+        "label": "Text2Frame テストプレイ",
+        "languages": ["text2frame"],
+        "configurationAttributes": {
+          "launch": { "properties": {} }
+        },
+        "initialConfigurations": [
+          { "type": "text2frame", "request": "launch", "name": "Text2Frame テストプレイ" }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Text2Frame: テストプレイ",
+            "description": "テストプレイを、ブレークポイントで止めて調べる",
+            "body": { "type": "text2frame", "request": "launch", "name": "Text2Frame テストプレイ" }
+          }
+        ]
+      }
+    ],
+    "breakpoints": [
+      { "language": "text2frame" }
     ],
     "grammars": [
       {
@@ -129,6 +154,11 @@
       {
         "command": "text2frame.snippet.edit",
         "title": "Text2Frame: スニペットを編集する / Edit snippets"
+      },
+      {
+        "command": "text2frame.debug",
+        "title": "Text2Frame: デバッグを始める(ブレークポイント) / Start debugging",
+        "icon": "$(debug-alt)"
       },
       {
         "command": "text2frame.tryEvent",

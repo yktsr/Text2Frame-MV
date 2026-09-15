@@ -290,9 +290,7 @@ describe('liveMonitor', function () {
       expect(calls).to.have.length(4)
       arrive()
       g.step()
-      expect(calls.slice(4)).to.eql(['clear', ['locate', 5, 4], ['face', 2]])
-      g.step()
-      expect(calls.slice(7)).to.eql([['setup', 3, 2]])
+      expect(calls.slice(4)).to.eql(['clear', ['locate', 5, 4], ['face', 2], ['setup', 3, 2]])
       expect(g.sent[g.sent.length - 1].body.visit).to.equal('ran')
     })
 
@@ -426,6 +424,92 @@ describe('liveMonitor', function () {
       expect(Object.keys(g.sent[1].body.lists)).to.eql(['e:4:2:2'])
     })
 
+    describe('stopping at breakpoints', function () {
+      const setup = function () {
+        const { g, map, common } = game()
+        const calls = []
+        function Interp (list, eventId) { this._list = list; this._index = 0; this._mapId = 4; this._eventId = eventId; this._childInterpreter = null }
+        Interp.prototype.executeCommand = function () { calls.push([this._list === common.list ? 'child' : 'parent', this._index]); this._index++; return true }
+        Interp.prototype.setupChild = function (list, eventId) { this._childInterpreter = new Interp(list, eventId) }
+        g.window.Game_Interpreter = Interp
+        g.window.SceneManager = { updateScene: function () { calls.push('scene') } }
+        g.step()
+        const parent = new Interp(map.pages[1].list, 2)
+        const last = function () { return g.sent[g.sent.length - 1].body }
+        const say = function (command) { g.source().onmessage({ data: JSON.stringify(command) }) }
+        return { g, calls, parent, common, last, say }
+      }
+
+      it('pauses before the command with a breakpoint, freezes the scene, and continues', function () {
+        const { g, calls, parent, last, say } = setup()
+        say({ breakpoints: { 'e:4:2:2': [2], bad: [1] } })
+        expect(parent.executeCommand()).to.equal(true)
+        expect(parent.executeCommand()).to.equal(true)
+        expect(parent.executeCommand()).to.equal(false)
+        expect(parent.executeCommand()).to.equal(false)
+        g.window.SceneManager.updateScene()
+        expect(calls).to.eql([['parent', 0], ['parent', 1]])
+        g.step()
+        expect(last().paused).to.eql({ reason: 'breakpoint', frames: [{ key: 'e:4:2:2', index: 2 }] })
+        expect(Object.keys(last().lists)).to.include('e:4:2:2')
+        say({ debug: 'continue' })
+        expect(last().resumed).to.equal(true)
+        expect(parent.executeCommand()).to.equal(true)
+        g.window.SceneManager.updateScene()
+        expect(calls.slice(2)).to.eql([['parent', 2], 'scene'])
+      })
+
+      it('steps over, into and out of a common event call', function () {
+        const { g, parent, common, last, say } = setup()
+        say({ breakpoints: { 'e:4:2:2': [1] } })
+        parent.executeCommand()
+        parent.executeCommand()
+        say({ debug: 'next' })
+        expect(parent.executeCommand()).to.equal(true)
+        expect(parent.executeCommand()).to.equal(false)
+        g.step()
+        expect(last().paused).to.eql({ reason: 'step', frames: [{ key: 'e:4:2:2', index: 2 }] })
+        say({ debug: 'stepIn' })
+        expect(parent.executeCommand()).to.equal(true)
+        parent.setupChild(common.list, 2)
+        const child = parent._childInterpreter
+        expect(child.executeCommand()).to.equal(false)
+        g.step()
+        expect(last().paused).to.eql({ reason: 'step', frames: [{ key: 'e:4:2:2', index: 2 }, { key: 'c:7', index: 0 }] })
+        say({ debug: 'stepOut' })
+        expect(child.executeCommand()).to.equal(true)
+        expect(child.executeCommand()).to.equal(true)
+        expect(parent.executeCommand()).to.equal(false)
+        g.step()
+        expect(last().paused.frames).to.eql([{ key: 'e:4:2:2', index: 3 }])
+      })
+
+      it('pauses at the next command when asked, and clears the breakpoints', function () {
+        const { g, parent, last, say } = setup()
+        say({ debug: 'pause' })
+        expect(parent.executeCommand()).to.equal(false)
+        g.step()
+        expect(last().paused.reason).to.equal('pause')
+        say({ breakpoints: {} })
+        say({ debug: 'continue' })
+        expect(parent.executeCommand()).to.equal(true)
+        expect(parent.executeCommand()).to.equal(true)
+      })
+
+      it('lets a paused game go, and does not stop, while trying an event', function () {
+        const { g, parent, last, say } = setup()
+        say({ breakpoints: { 'e:4:2:2': [0, 1] } })
+        expect(parent.executeCommand()).to.equal(false)
+        g.step()
+        expect(last().paused.reason).to.equal('breakpoint')
+        say({ visit: { mapId: 4, eventId: 2, x: 1, y: 1 } })
+        g.step()
+        expect(last().resumed).to.equal(true)
+        expect(parent.executeCommand()).to.equal(true)
+        expect(parent.executeCommand()).to.equal(true)
+      })
+    })
+
     it('marks commands the same way as the extension, whatever the key order', function () {
       const { g, map } = game()
       const route = map.route.list
@@ -454,7 +538,7 @@ describe('liveState', function () {
     expect(m.reset).to.equal(true)
     expect(Array.from(m.switches)).to.eql([[1, true]])
     expect(Array.from(m.variables)).to.eql([[2, 5], [3, 'a']])
-    expect(parseLiveMessage({})).to.eql({ reset: undefined, switches: undefined, variables: undefined, selfSwitches: undefined, items: undefined, gold: undefined, actors: undefined, map: undefined, pages: undefined, parallel: undefined, visit: undefined, run: undefined, lists: undefined })
+    expect(parseLiveMessage({})).to.eql({ reset: undefined, switches: undefined, variables: undefined, selfSwitches: undefined, items: undefined, gold: undefined, actors: undefined, map: undefined, pages: undefined, parallel: undefined, visit: undefined, paused: undefined, resumed: undefined, run: undefined, lists: undefined })
     const self = parseLiveMessage({ selfSwitches: { '12,5,A': true, '1,2,B': false }, map: 12 })
     expect(Array.from(self.selfSwitches)).to.eql([['12,5,A', true], ['1,2,B', false]])
     expect(self.map).to.equal(12)
@@ -517,13 +601,13 @@ describe('liveState', function () {
   it('keeps the running events apart from the values', function () {
     const s = new LiveState()
     const marks = [[230, 0, 1], [0, 0, 2]]
-    expect(s.apply(parseLiveMessage({ reset: true, run: [], map: 4 }), 1000)).to.eql({ values: true, run: false })
-    expect(s.apply(parseLiveMessage({ run: [{ key: 'e:4:2:1', index: 0 }], lists: { 'e:4:2:1': marks } }), 1100)).to.eql({ values: false, run: true })
+    expect(s.apply(parseLiveMessage({ reset: true, run: [], map: 4 }), 1000)).to.eql({ values: true, run: false, debug: false })
+    expect(s.apply(parseLiveMessage({ run: [{ key: 'e:4:2:1', index: 0 }], lists: { 'e:4:2:1': marks } }), 1100)).to.eql({ values: false, run: true, debug: false })
     expect(s.running()).to.eql([{ key: 'e:4:2:1', index: 0 }])
     expect(s.listMarks('e:4:2:1')).to.eql(marks)
-    expect(s.apply(parseLiveMessage({ run: [{ key: 'e:4:2:1', index: 0 }] }), 1200)).to.eql({ values: false, run: false })
-    expect(s.apply(parseLiveMessage({ switches: { 1: true } }), 1300)).to.eql({ values: true, run: false })
-    expect(s.apply(parseLiveMessage({ reset: true }), 1400)).to.eql({ values: true, run: true })
+    expect(s.apply(parseLiveMessage({ run: [{ key: 'e:4:2:1', index: 0 }] }), 1200)).to.eql({ values: false, run: false, debug: false })
+    expect(s.apply(parseLiveMessage({ switches: { 1: true } }), 1300)).to.eql({ values: true, run: false, debug: false })
+    expect(s.apply(parseLiveMessage({ reset: true }), 1400)).to.eql({ values: true, run: true, debug: false })
     expect(s.running()).to.eql([])
     expect(s.listMarks('e:4:2:1')).to.equal(undefined)
     for (const bad of [{ run: {} }, { run: [{ key: 'x', index: 0 }] }, { run: [{ key: 'c:1', index: -1 }] }, { run: [{ key: 'c:1', index: 1.5 }] },
