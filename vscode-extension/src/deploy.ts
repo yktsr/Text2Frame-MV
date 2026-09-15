@@ -3,6 +3,9 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { parseFrontMatter, isDeployable, isAncestorCopy, ANCESTOR_COPY_MESSAGE, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot, snapshotKeyFor } from './compiler';
 import { exportToTextFile, mergePullToText, ExportTarget } from './exportText';
+import { reviewEnabled } from './review';
+import { reviewDeploy, Decision, DeployCandidate } from './reviewApply';
+import { PageRef } from './dryRun';
 
 export { isDeployable };
 
@@ -26,6 +29,23 @@ interface ApplyResult {
     error?: string;
     errorLine?: number;
     errorLineText?: string;
+    /** 差分を確かめたとき、ゲームが何も変わらなかった。 */
+    unchanged?: boolean;
+}
+
+function pageRef(meta: { [key: string]: string }): PageRef {
+    return meta.kind === 'common'
+        ? { kind: 'common', commonEventId: meta.commonEventId }
+        : { kind: 'event', mapId: meta.mapId, eventId: meta.eventId, pageId: meta.pageId || '1' };
+}
+
+function candidateFor(textPath: string, meta: { [key: string]: string }, applyOpts: { [key: string]: unknown }, dataPath: string): DeployCandidate {
+    const basePath = typeof applyOpts.basePath === 'string' ? applyOpts.basePath : undefined;
+    return {
+        textPath,
+        step: { applyOpts, dataPath, ref: pageRef(meta) },
+        inputs: [textPath, dataPath, ...(basePath ? [basePath] : [])]
+    };
 }
 
 export interface T2FModule {
@@ -122,7 +142,8 @@ export function loadCompiler(context: vscode.ExtensionContext, workspaceRoot: st
 export async function deployDocument(
     document: vscode.TextDocument,
     context: vscode.ExtensionContext,
-    deployDiagnostics: vscode.DiagnosticCollection
+    deployDiagnostics: vscode.DiagnosticCollection,
+    options: { review?: boolean } = {}
 ): Promise<ApplyResult | undefined> {
     if (isAncestorCopy(document.uri.fsPath)) {
         vscode.window.showWarningMessage(ANCESTOR_COPY_MESSAGE);
@@ -222,7 +243,17 @@ export async function deployDocument(
     if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.key)) {
         applyOpts.basePath = baseSnapshotPath(workspaceRoot, snap.key);
     }
+    let decision: Decision | undefined;
+    if (options.review) {
+        decision = await reviewDeploy(context, workspaceRoot, mod, [candidateFor(document.uri.fsPath, meta, applyOpts, dataPath)], 'このファイルの反映');
+        if (decision === 'cancel') {
+            out.appendLine(`[${time}] CANCELLED (review) ${resolved.label}  <- ${path.basename(document.uri.fsPath)}`);
+            vscode.window.setStatusBarMessage('Text2Frame: 反映をやめました。', 4000);
+            return undefined;
+        }
+    }
     const result = mod.applyTextFile(applyOpts);
+    if (decision === 'unchanged') result.unchanged = true;
 
     if (result.ok) {
         recordDataState(context, dataPath);
@@ -275,11 +306,17 @@ function setDeployDiagnostic(
  * Deploy a text file on disk (no editor needed). Used by the tree view and
  * batch. Returns the structured result, or undefined if it cannot be attempted.
  */
-export function deployFile(
-    context: vscode.ExtensionContext,
-    workspaceRoot: string,
-    filePath: string
-): ApplyResult | undefined {
+interface PreparedFile {
+    mod: T2FModule;
+    meta: { [key: string]: string };
+    text: string;
+    applyOpts: { [key: string]: unknown };
+    dataPath: string;
+    snap: { key: string };
+    mergeLike: boolean;
+}
+
+function prepareFile(context: vscode.ExtensionContext, workspaceRoot: string, filePath: string): PreparedFile | ApplyResult {
     if (isAncestorCopy(filePath)) {
         return { ok: false, textPath: filePath, warnings: [], error: ANCESTOR_COPY_MESSAGE };
     }
@@ -316,9 +353,20 @@ export function deployFile(
     if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.key)) {
         applyOpts.basePath = baseSnapshotPath(workspaceRoot, snap.key);
     }
+    const dataPath = (resolved.opts.mapPath || resolved.opts.commonEventPath) as string;
+    return { mod, meta, text, applyOpts, dataPath, snap, mergeLike };
+}
+
+export function deployFile(
+    context: vscode.ExtensionContext,
+    workspaceRoot: string,
+    filePath: string
+): ApplyResult | undefined {
+    const prepared = prepareFile(context, workspaceRoot, filePath);
+    if (!('mod' in prepared)) return prepared;
+    const { mod, meta, text, applyOpts, dataPath, snap, mergeLike } = prepared;
     const result = mod.applyTextFile(applyOpts);
     if (result && result.ok) {
-        const dataPath = (resolved.opts.mapPath || resolved.opts.commonEventPath) as string;
         if (dataPath) {
             recordDataState(context, dataPath);
         }
@@ -326,6 +374,27 @@ export function deployFile(
         writeBackAndRefreshBase(context, workspaceRoot, meta, filePath, text, result, snap, mergeLike);
     }
     return result;
+}
+
+/**
+ * 反映する前に、変わる所を差分で確かめる(設定が OFF なら確かめない)。
+ * 用意できないファイル(宛先のメモが無いなど)は確かめに入れない。反映のときに今までどおり失敗を知らせる。
+ */
+export async function reviewFiles(
+    context: vscode.ExtensionContext,
+    workspaceRoot: string,
+    files: string[],
+    scope: string
+): Promise<Decision> {
+    if (!reviewEnabled()) return 'accept';
+    const { mod } = loadCompiler(context, workspaceRoot);
+    if (!mod) return 'accept';
+    const candidates: DeployCandidate[] = [];
+    for (const file of files) {
+        const prepared = prepareFile(context, workspaceRoot, file);
+        if ('mod' in prepared) candidates.push(candidateFor(file, prepared.meta, prepared.applyOpts, prepared.dataPath));
+    }
+    return candidates.length ? reviewDeploy(context, workspaceRoot, mod, candidates, scope) : 'unchanged';
 }
 
 /** Command: compile the active text file and show the resulting event JSON in a preview. */
@@ -397,6 +466,8 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
 
     // Per-uri debounce for save-triggered deploys.
     const timers = new Map<string, NodeJS.Timeout>();
+    // ボタンで反映するときの保存。差分を確かめている間に、保存時の自動反映が先に書き込まないようにする。
+    const manualSaves = new Set<string>();
     const scheduleDeploy = (document: vscode.TextDocument): void => {
         const key = document.uri.toString();
         const existing = timers.get(key);
@@ -418,16 +489,19 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
                 vscode.window.showWarningMessage('Text2Frame: アクティブなエディタがありません。');
                 return;
             }
+            const review = reviewEnabled();
+            const key = editor.document.uri.toString();
+            if (review) manualSaves.add(key);
             editor.document.save().then(() => {
-                deployDocument(editor.document, context, deployDiagnostics).then((result) => {
+                deployDocument(editor.document, context, deployDiagnostics, { review }).then((result) => {
                     flashResult(result);
                     // Explicit command: confirm a clean success with a toast (deployDocument
                     // already toasts on warnings/errors; deploy-on-save stays quiet).
                     if (result && result.ok && result.warnings.length === 0) {
-                        vscode.window.showInformationMessage('Text2Frame: ゲームに反映しました。');
+                        vscode.window.showInformationMessage(result.unchanged ? 'Text2Frame: ゲームは変わりませんでした。' : 'Text2Frame: ゲームに反映しました。');
                     }
-                });
-            });
+                }).finally(() => manualSaves.delete(key));
+            }, () => manualSaves.delete(key));
         }),
         vscode.commands.registerCommand('text2frame.toggleDeployOnSave', () => {
             const next = !isOn();
@@ -439,7 +513,7 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
             if (!isOn()) {
                 return;
             }
-            if (!isDeployable(document)) {
+            if (!isDeployable(document) || manualSaves.has(document.uri.toString())) {
                 return;
             }
             scheduleDeploy(document);

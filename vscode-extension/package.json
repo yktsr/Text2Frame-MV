@@ -104,6 +104,16 @@
         "icon": "$(window)"
       },
       {
+        "command": "text2frame.review.accept",
+        "title": "Text2Frame: 反映する(差分の確認) / Apply (after review)",
+        "icon": "$(check)"
+      },
+      {
+        "command": "text2frame.review.cancel",
+        "title": "Text2Frame: やめる(差分の確認) / Cancel (review)",
+        "icon": "$(close)"
+      },
+      {
         "command": "text2frame.showCompiledJson",
         "title": "Text2Frame: コンパイル結果を表示 / Show compiled JSON",
         "icon": "$(json)"
@@ -202,6 +212,16 @@
     "menus": {
       "editor/title": [
         {
+          "command": "text2frame.review.accept",
+          "when": "text2frame.reviewPending && (isInDiffEditor || activeEditor == multiDiffEditor)",
+          "group": "navigation@-2"
+        },
+        {
+          "command": "text2frame.review.cancel",
+          "when": "text2frame.reviewPending && (isInDiffEditor || activeEditor == multiDiffEditor)",
+          "group": "navigation@-1"
+        },
+        {
           "command": "text2frame.deployCurrentFile",
           "when": "resourceLangId == text2frame || resourceExtname == .txt",
           "group": "navigation@1"
@@ -250,6 +270,8 @@
         }
       ],
       "commandPalette": [
+        { "command": "text2frame.review.accept", "when": "text2frame.reviewPending" },
+        { "command": "text2frame.review.cancel", "when": "text2frame.reviewPending" },
         { "command": "text2frame.tree.deploy", "when": "false" },
         { "command": "text2frame.tree.export", "when": "false" },
         { "command": "text2frame.tree.refresh", "when": "false" },
@@ -302,6 +324,11 @@
             "テキストで全部上書き(ゲーム側の編集は消えます) / overwrite everything from text"
           ],
           "description": "ゲームへの反映のしかた。通常は既定のままで大丈夫です。 / How text is applied to the game. The default is fine for most users."
+        },
+        "text2frame.reviewBeforeApply": {
+          "type": "boolean",
+          "default": true,
+          "description": "ボタンで「ゲームに反映」「ゲームから取り出す」をするとき、変わる所を差分の画面で見せ、「反映する」「書き込む」を押してから書き込む。保存時の自動反映は確かめずに書き込みます。 / Show what will change in a diff and write only after you accept, when applying or pulling from a button. Apply-on-save writes without asking."
         },
         "text2frame.writeBackAfterMerge": {
           "type": "string",

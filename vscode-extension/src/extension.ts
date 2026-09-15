@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { registerDeployFeature, showCompiledJson } from './deploy';
+import { registerReview } from './review';
 import { exportCurrentFile, exportConversationOnly } from './exportText';
 import { deployAll, exportAll, repullAllOverwrite } from './batch';
 import { registerTreeView } from './tree';
@@ -40,6 +41,8 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Watch & Deploy: compile the current text file back into the RPG Maker data JSON.
     registerDeployFeature(context);
+    // 反映・取り出しの前の差分の確認。
+    registerReview(context);
     // Activity Bar tree (Maps / Events / Pages / Common Events).
     registerTreeView(context);
     // Activity Bar "Commands" panel (grouped, clickable actions).

@@ -2,8 +2,9 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { workspaceRootFor, dataDirFor } from './compiler';
-import { exportToTextFile, ExportTarget } from './exportText';
-import { deployFile } from './deploy';
+import { exportToTextFile, commitPull, planPull, ExportTarget, PullPlan } from './exportText';
+import { deployFile, reviewFiles } from './deploy';
+import { reviewPull } from './reviewApply';
 
 /**
  * Activity Bar tree: Maps -> Events -> Pages, plus Common Events. Each leaf can
@@ -221,18 +222,26 @@ export function registerTreeView(context: vscode.ExtensionContext): void {
         view,
         vscode.commands.registerCommand('text2frame.tree.refresh', () => provider.refresh()),
         vscode.commands.registerCommand('text2frame.tree.open', (node: T2FNode) => openLeaf(node)),
-        vscode.commands.registerCommand('text2frame.tree.export', (node: T2FNode) => {
+        vscode.commands.registerCommand('text2frame.tree.export', async (node: T2FNode) => {
             const root = ensureRoot();
             if (!root || (node.nodeType !== 'page' && node.nodeType !== 'common')) {
                 return;
             }
             const textPath = textPathForLeaf(root, node);
-            const target = targetForLeaf(node);
-            target.textPath = textPath;
-            if (fs.existsSync(textPath)) {
-                target.frontMatterSource = fs.readFileSync(textPath, 'utf8');
+            const makePlan = (): PullPlan[] => {
+                const target = targetForLeaf(node);
+                target.textPath = textPath;
+                if (fs.existsSync(textPath)) {
+                    target.frontMatterSource = fs.readFileSync(textPath, 'utf8');
+                }
+                return [planPull(context, root, target, 'overwrite')];
+            };
+            const reviewed = await reviewPull(root, makePlan, 'この行の書き出し');
+            if (!reviewed) {
+                vscode.window.setStatusBarMessage('Text2Frame: 書き出しをやめました。', 4000);
+                return;
             }
-            const res = exportToTextFile(context, root, target);
+            const res = commitPull(context, root, reviewed.plans[0]);
             if (res.ok) {
                 vscode.window.showInformationMessage('Text2Frame: 書き出しました — ' + path.relative(root, textPath));
                 vscode.workspace.openTextDocument(textPath).then((doc) => vscode.window.showTextDocument(doc, { preview: true }));
@@ -240,7 +249,7 @@ export function registerTreeView(context: vscode.ExtensionContext): void {
                 vscode.window.showErrorMessage('Text2Frame: 書き出し失敗 - ' + (res.error || ''));
             }
         }),
-        vscode.commands.registerCommand('text2frame.tree.deploy', (node: T2FNode) => {
+        vscode.commands.registerCommand('text2frame.tree.deploy', async (node: T2FNode) => {
             const root = ensureRoot();
             if (!root || (node.nodeType !== 'page' && node.nodeType !== 'common')) {
                 return;
@@ -248,6 +257,10 @@ export function registerTreeView(context: vscode.ExtensionContext): void {
             const textPath = textPathForLeaf(root, node);
             if (!fs.existsSync(textPath)) {
                 vscode.window.showWarningMessage('Text2Frame: テキストがありません。先に書き出してください。');
+                return;
+            }
+            if (await reviewFiles(context, root, [textPath], 'この行の反映') === 'cancel') {
+                vscode.window.setStatusBarMessage('Text2Frame: 反映をやめました。', 4000);
                 return;
             }
             const res = deployFile(context, root, textPath);

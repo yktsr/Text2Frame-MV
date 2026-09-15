@@ -12,6 +12,7 @@ import {
     baseSnapshotPath,
     snapshotKeyFor
 } from './compiler';
+import { reviewPull } from './reviewApply';
 
 /**
  * Export feature: read the RPG Maker data JSON and write it back out as a
@@ -155,62 +156,163 @@ function readEventList(workspaceRoot: string, target: ExportTarget): unknown[] {
     return page.list;
 }
 
-/** Core export: data JSON -> text file. */
-export function exportToTextFile(
-    context: vscode.ExtensionContext,
-    workspaceRoot: string,
-    target: ExportTarget
-): ExportResult {
+/**
+ * 取り出しで書くテキストを、書き込まずに作る。書くのは commitPull。
+ * mode 'overwrite' はゲームの内容でテキストを作り直す(書き出し・全部取り直す)。
+ * mode 'merge' はテキストの編集を残してゲームの変更を取り込む(3-way。仕組みは mergePullToText の説明)。
+ */
+export interface PullPlan {
+    target: ExportTarget;
+    ok: boolean;
+    error?: string;
+    /** 書き込むテキスト。 */
+    text?: string;
+    /** 祖先にするゲーム側のテキスト。 */
+    baseText?: string;
+    conflicts?: number;
+    markers?: boolean;
+    skipped?: 'game' | 'text';
+    /** 今のテキスト。ファイルが無ければ undefined。 */
+    previous?: string;
+    /** 材料(確かめたあとで変わっていないかを見る)。 */
+    inputs: string[];
+}
+
+function dataPathFor(workspaceRoot: string, target: ExportTarget): string | undefined {
+    return target.kind === 'common'
+        ? commonEventsPathFor(workspaceRoot)
+        : (target.mapId ? mapPathFor(workspaceRoot, target.mapId) : undefined);
+}
+
+const FRAME2TEXT_MISSING = 'Frame2Text.js を読み込めませんでした(詳細は出力 "Text2Frame Export")。設定 text2frame.modulePath で本体の場所を指定してください。';
+
+function frame2Text(context: vscode.ExtensionContext, workspaceRoot: string): Frame2TextModule | undefined {
     const { mod, tried } = loadFrame2Text(context, workspaceRoot);
     if (!mod) {
         const out = getOutput();
         out.appendLine('[export] Frame2Text could not be loaded. Candidates:');
         tried.forEach((t) => out.appendLine('  - ' + t));
         out.show(true);
-        const msg = 'Frame2Text.js を読み込めませんでした(詳細は出力 "Text2Frame Export")。設定 text2frame.modulePath で本体の場所を指定してください。';
-        return { ok: false, error: msg };
+    }
+    return mod;
+}
+
+export function planPull(
+    context: vscode.ExtensionContext,
+    workspaceRoot: string,
+    target: ExportTarget,
+    mode: 'merge' | 'overwrite'
+): PullPlan {
+    const baseP = baseSnapshotPath(workspaceRoot, snapshotIdFor(workspaceRoot, target).key);
+    const plan: PullPlan = { target, ok: false, inputs: [target.textPath, dataPathFor(workspaceRoot, target) || '', baseP].filter(Boolean) };
+    const mod = frame2Text(context, workspaceRoot);
+    if (!mod) {
+        plan.error = FRAME2TEXT_MISSING;
+        return plan;
+    }
+    // buildPullText resolves Text2Frame itself for the 3-way, but load it here too: it primes the
+    // shared global and lets us report the extension's modulePath candidates when it is missing.
+    if (mode === 'merge' && !loadText2Frame(context, workspaceRoot).mod) {
+        plan.error = 'Text2Frame.js を読み込めませんでした。設定 text2frame.modulePath を確認してください。';
+        return plan;
     }
     try {
-        const list = readEventList(workspaceRoot, target);
-
-        // The conversation-only sidecar is a lossy extract, not a deployable file: it never
-        // routes, never becomes an ancestor, and buildPullText has no translationOnly mode.
-        if (target.translationOnly) {
-            const body = mod.decompile(list, englishTagSetting(), {
-                pretty: true,
-                translationOnly: true,
-                omitDefaults: omitDefaultTagsSetting()
+        const list = readEventList(workspaceRoot, target); // ours
+        if (fs.existsSync(target.textPath)) plan.previous = fs.readFileSync(target.textPath, 'utf8');
+        // The whole 3-way/decompile/guard logic lives in the shared core (Frame2Text.buildPullText),
+        // so CLI, plugin, t2f-sync and this extension all behave identically.
+        const built = mode === 'merge'
+            ? mod.buildPullText({
+                list,
+                englishTag: englishTagSetting(),
+                omitDefaults: omitDefaultTagsSetting(),
+                strategy: 'merge',
+                existingText: plan.previous || '',
+                baseText: fs.existsSync(baseP) ? fs.readFileSync(baseP, 'utf8') : '',
+                fallbackHeader: renderFrontMatter(target, mod.VERSION)
+            })
+            : mod.buildPullText({
+                list,
+                englishTag: englishTagSetting(),
+                omitDefaults: omitDefaultTagsSetting(),
+                strategy: 'overwrite',
+                // The header comes from whatever the caller is replacing (the open document, or the
+                // file on disk for a batch overwrite); buildPullText falls back when there is none.
+                existingText: target.frontMatterSource || '',
+                fallbackHeader: renderFrontMatter(target, mod.VERSION)
             });
-            writeTextFile(target.textPath, renderFrontMatter(target, mod.VERSION) + '\n' + body + '\n');
-            return { ok: true, textPath: target.textPath };
-        }
-
-        const built = mod.buildPullText({
-            list,
-            englishTag: englishTagSetting(),
-            omitDefaults: omitDefaultTagsSetting(),
-            strategy: 'overwrite',
-            // The header comes from whatever the caller is replacing (the open document, or the
-            // file on disk for a batch overwrite); buildPullText falls back when there is none.
-            existingText: target.frontMatterSource || '',
-            fallbackHeader: renderFrontMatter(target, mod.VERSION)
+        Object.assign(plan, {
+            ok: true,
+            text: built.text,
+            baseText: built.baseText,
+            conflicts: mode === 'merge' ? built.conflicts : undefined,
+            markers: built.markers,
+            skipped: built.skipped
         });
-        const written = built.text as string;
-        writeTextFile(target.textPath, written);
+    } catch (e) {
+        plan.error = e instanceof Error ? e.message : String(e);
+    }
+    return plan;
+}
+
+/** planPull で作ったテキストを書き、データの状態と祖先を記録する。 */
+export function commitPull(context: vscode.ExtensionContext, workspaceRoot: string, plan: PullPlan): ExportResult {
+    const target = plan.target;
+    if (!plan.ok) return { ok: false, error: plan.error };
+    // Merging across unresolved markers would re-merge the markers themselves and double them.
+    if (plan.skipped) return { ok: true, textPath: target.textPath, skipped: plan.skipped };
+    try {
+        writeTextFile(target.textPath, plan.text as string);
         // Record the data baseline: after a pull, text matches data, so a later
         // deploy should not flag this data file as externally changed.
         recordDataStateFor(context, workspaceRoot, target);
-        // Establish the 3-way common ancestor (BASE) from this export, so the first
-        // subsequent merge deploy is already a true 3-way. Mirrors deploy's snapshot id derivation.
-        // Not when the text still carries unresolved markers — an ancestor with markers in it
-        // makes the next 3-way merge them again.
-        if (!built.markers) {
-            saveBaseFor(workspaceRoot, target, built.baseText as string);
+        // The game side becomes the new common ancestor — even when the merge conflicted.
+        // BASE means "the text has seen the game up to here", not "the two agreed": the game's
+        // changes are in the text, between the markers. Holding it back would make the same
+        // conflict come back on the game side after the user resolves the text.
+        // The one exception is an ancestor that itself carries markers (overwrite pull), which
+        // the next 3-way would merge again.
+        if (!plan.markers) {
+            saveBaseFor(workspaceRoot, target, plan.baseText as string);
         }
-        return { ok: true, textPath: target.textPath, markers: built.markers };
+        return { ok: true, textPath: target.textPath, conflicts: plan.conflicts, markers: plan.markers };
     } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
+}
+
+/** Core export: data JSON -> text file. */
+export function exportToTextFile(
+    context: vscode.ExtensionContext,
+    workspaceRoot: string,
+    target: ExportTarget
+): ExportResult {
+    if (!target.translationOnly) {
+        return commitPull(context, workspaceRoot, planPull(context, workspaceRoot, target, 'overwrite'));
+    }
+    const mod = frame2Text(context, workspaceRoot);
+    if (!mod) {
+        return { ok: false, error: FRAME2TEXT_MISSING };
+    }
+    // The conversation-only sidecar is a lossy extract, not a deployable file: it never
+    // routes, never becomes an ancestor, and buildPullText has no translationOnly mode.
+    try {
+        const body = mod.decompile(readEventList(workspaceRoot, target), englishTagSetting(), {
+            pretty: true,
+            translationOnly: true,
+            omitDefaults: omitDefaultTagsSetting()
+        });
+        writeTextFile(target.textPath, renderFrontMatter(target, mod.VERSION) + '\n' + body + '\n');
+        return { ok: true, textPath: target.textPath };
+    } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+}
+
+/** ゲームのコマンドを、取り出しと同じ設定でテキストにする(差分の確認で使う)。 */
+export function renderCommands(context: vscode.ExtensionContext, workspaceRoot: string, list: unknown[] | undefined): string {
+    const mod = list ? loadFrame2Text(context, workspaceRoot).mod : undefined;
+    return mod && list ? mod.decompile(list, englishTagSetting(), { pretty: true, omitDefaults: omitDefaultTagsSetting() }) : '';
 }
 
 function writeTextFile(textPath: string, contents: string): void {
@@ -236,9 +338,7 @@ function saveBaseFor(workspaceRoot: string, target: ExportTarget, gameSideText: 
 }
 
 function recordDataStateFor(context: vscode.ExtensionContext, workspaceRoot: string, target: ExportTarget): void {
-    const dataPath = target.kind === 'common'
-        ? commonEventsPathFor(workspaceRoot)
-        : (target.mapId ? mapPathFor(workspaceRoot, target.mapId) : undefined);
+    const dataPath = dataPathFor(workspaceRoot, target);
     if (dataPath) {
         recordDataState(context, dataPath);
     }
@@ -260,64 +360,7 @@ export function mergePullToText(
     workspaceRoot: string,
     target: ExportTarget
 ): ExportResult {
-    const { mod, tried } = loadFrame2Text(context, workspaceRoot);
-    if (!mod) {
-        const out = getOutput();
-        out.appendLine('[export] Frame2Text could not be loaded. Candidates:');
-        tried.forEach((t) => out.appendLine('  - ' + t));
-        out.show(true);
-        return { ok: false, error: 'Frame2Text.js を読み込めませんでした(詳細は出力 "Text2Frame Export")。設定 text2frame.modulePath で本体の場所を指定してください。' };
-    }
-    // buildPullText resolves Text2Frame itself for the 3-way, but load it here too: it primes the
-    // shared global and lets us report the extension's modulePath candidates when it is missing.
-    if (!loadText2Frame(context, workspaceRoot).mod) {
-        return { ok: false, error: 'Text2Frame.js を読み込めませんでした。設定 text2frame.modulePath を確認してください。' };
-    }
-    try {
-        const gameCommands = readEventList(workspaceRoot, target); // ours
-        const id = snapshotIdFor(workspaceRoot, target);
-
-        let existingText = '';
-        if (fs.existsSync(target.textPath)) {
-            existingText = fs.readFileSync(target.textPath, 'utf8');
-        }
-        let baseText = '';
-        const baseP = baseSnapshotPath(workspaceRoot, id.key);
-        if (fs.existsSync(baseP)) {
-            baseText = fs.readFileSync(baseP, 'utf8');
-        }
-
-        // The whole 3-way/decompile/guard logic lives in the shared core (Frame2Text.buildPullText),
-        // so CLI, plugin, t2f-sync and this extension all behave identically.
-        const built = mod.buildPullText({
-            list: gameCommands,
-            englishTag: englishTagSetting(),
-            omitDefaults: omitDefaultTagsSetting(),
-            strategy: 'merge',
-            existingText,
-            baseText,
-            fallbackHeader: renderFrontMatter(target, mod.VERSION)
-        });
-        // Merging across unresolved markers would re-merge the markers themselves and double them.
-        if (built.skipped) {
-            return { ok: true, textPath: target.textPath, skipped: built.skipped };
-        }
-        const written = built.text as string;
-        writeTextFile(target.textPath, written);
-        recordDataStateFor(context, workspaceRoot, target);
-        // The game side becomes the new common ancestor — even when the merge conflicted.
-        // BASE means "the text has seen the game up to here", not "the two agreed": the game's
-        // changes are in the text, between the markers. Holding it back would make the same
-        // conflict come back on the game side after the user resolves the text.
-        // The one exception is an ancestor that itself carries markers (overwrite pull), which
-        // the next 3-way would merge again.
-        if (!built.markers) {
-            saveBaseFor(workspaceRoot, target, built.baseText as string);
-        }
-        return { ok: true, textPath: target.textPath, conflicts: built.conflicts, markers: built.markers };
-    } catch (e) {
-        return { ok: false, error: e instanceof Error ? e.message : String(e) };
-    }
+    return commitPull(context, workspaceRoot, planPull(context, workspaceRoot, target, 'merge'));
 }
 
 /** Build an ExportTarget from a text document's front matter. */
@@ -342,7 +385,7 @@ function targetFromDocument(document: vscode.TextDocument): ExportTarget {
  * Command: pull this file's content from the game, merging (keeps your edits, brings in
  * game-side changes). Use "全部取り直す" (overwrite) when you want to discard and re-pull.
  */
-export function exportCurrentFile(context: vscode.ExtensionContext): void {
+export async function exportCurrentFile(context: vscode.ExtensionContext): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         vscode.window.showWarningMessage('Text2Frame: アクティブなエディタがありません。');
@@ -360,8 +403,15 @@ export function exportCurrentFile(context: vscode.ExtensionContext): void {
         vscode.window.showErrorMessage('Text2Frame: ' + (e instanceof Error ? e.message : String(e)));
         return;
     }
-    const result = mergePullToText(context, workspaceRoot, target);
-    if (result.ok && result.skipped === 'game') {
+    const reviewed = await reviewPull(workspaceRoot, () => [planPull(context, workspaceRoot, target, 'merge')], 'このファイルの取り出し');
+    if (!reviewed) {
+        vscode.window.setStatusBarMessage('Text2Frame: 取り出しをやめました。', 4000);
+        return;
+    }
+    const result = commitPull(context, workspaceRoot, reviewed.plans[0]);
+    if (result.ok && reviewed.unchanged && !result.skipped) {
+        vscode.window.showInformationMessage('Text2Frame: テキストは変わりませんでした。');
+    } else if (result.ok && result.skipped === 'game') {
         vscode.window.showWarningMessage('Text2Frame: ゲーム側に未解決の衝突の目印が残っているため統合できません。ツクールで目印3行を消すか、「全部取り直す」で目印ごと取り出してテキスト側で解決してください。');
     } else if (result.ok && result.skipped) {
         vscode.window.showWarningMessage('Text2Frame: テキストに未解決の衝突の目印が残っているため統合できません。目印3行を消して残す方を決めたあと、反映してください。');

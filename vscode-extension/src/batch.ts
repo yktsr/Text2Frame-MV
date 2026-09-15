@@ -2,8 +2,10 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor, baseSnapshotPath, hasBaseSnapshot, snapshotKeyFor } from './compiler';
-import { exportToTextFile, mergePullToText, ExportTarget } from './exportText';
-import { writeBackAndRefreshBase } from './deploy';
+import { commitPull, planPull, ExportTarget, PullPlan } from './exportText';
+import { writeBackAndRefreshBase, reviewFiles } from './deploy';
+import { reviewEnabled } from './review';
+import { reviewPull } from './reviewApply';
 
 /**
  * Batch operations over the text folder (text/ by default, `text2frame.textBaseDir`):
@@ -126,6 +128,10 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
         return;
     }
 
+    if (await reviewFiles(context, root, files, 'すべての反映') === 'cancel') {
+        vscode.window.setStatusBarMessage('Text2Frame: 反映をやめました。', 4000);
+        return;
+    }
     const out = getOutput();
     out.appendLine(`=== ゲームに反映(すべて) ${path.relative(root, textDir) || '.'}: ${files.length} files ===`);
     let ok = 0;
@@ -182,7 +188,7 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
     }
     const purpose = mode === 'merge' ? 'ゲームから取り出す' : '全部取り直す';
     const outDir = path.join(root, textBaseSetting());
-    if (mode === 'overwrite') {
+    if (mode === 'overwrite' && !reviewEnabled()) {
         const yes = await vscode.window.showWarningMessage(
             `Text2Frame: ${path.relative(root, outDir) || '.'} のテキストをゲームの内容で全部上書きします。編集内容は失われます。よろしいですか？`,
             { modal: true }, '全部取り直す'
@@ -191,16 +197,7 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
             return;
         }
     }
-    const out = getOutput();
-    out.appendLine(`=== ${purpose} -> ${path.relative(root, outDir) || '.'} ===`);
-
-    let written = 0;
-    let fail = 0;
-    let conflicts = 0;
-    // 目印が未解決で統合を見送ったもの / 目印ごと書き出したもの(どちらも祖先は進まない)。
-    let skipped = 0;
-    let markers = 0;
-    for (const it of enumerateDataTargets(dataDir)) {
+    const makePlans = (): PullPlan[] => enumerateDataTargets(dataDir).map((it) => {
         const target: ExportTarget = {
             kind: it.kind,
             mapId: it.mapId,
@@ -212,9 +209,25 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
         if (mode === 'overwrite' && fs.existsSync(target.textPath)) {
             target.frontMatterSource = fs.readFileSync(target.textPath, 'utf8');
         }
-        const res = mode === 'merge'
-            ? mergePullToText(context, root, target)
-            : exportToTextFile(context, root, target);
+        return planPull(context, root, target, mode);
+    });
+    const reviewed = await reviewPull(root, makePlans, mode === 'merge' ? 'すべての取り出し' : '全部取り直し');
+    if (!reviewed) {
+        vscode.window.setStatusBarMessage('Text2Frame: 取り出しをやめました。', 4000);
+        return;
+    }
+    const out = getOutput();
+    out.appendLine(`=== ${purpose} -> ${path.relative(root, outDir) || '.'} ===`);
+
+    let written = 0;
+    let fail = 0;
+    let conflicts = 0;
+    // 目印が未解決で統合を見送ったもの / 目印ごと書き出したもの(どちらも祖先は進まない)。
+    let skipped = 0;
+    let markers = 0;
+    for (const plan of reviewed.plans) {
+        const target = plan.target;
+        const res = commitPull(context, root, plan);
         if (res.ok && res.skipped) {
             // 目印をまたぐ統合はできない。書いていないので written には数えない。
             skipped++;
