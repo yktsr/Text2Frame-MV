@@ -276,3 +276,14 @@ describe('expectedAt', function () {
     expect(exp('こんにちは')).to.equal(undefined)
   })
 })
+
+describe('tagRefs writes', function () {
+  it('marks where a switch or a variable is changed, and not where it is read', function () {
+    const writes = (line) => findRefs(line).map((r) => [r.kind, r.id, !!r.write])
+    expect(writes('<Switch: 3-5, ON>')).to.eql([['switch', 3, true]])
+    expect(writes('<SwitchOn: 128>')).to.eql([['switch', 128, true]])
+    expect(writes('<Set: 5, V[20]>')).to.eql([['variable', 5, true], ['variable', 20, false]])
+    expect(writes('<If: Switches[3], ON>')).to.eql([['switch', 3, false]])
+    expect(writes('<If: V[2], >=, V[9]>')).to.eql([['variable', 2, false], ['variable', 9, false]])
+  })
+})

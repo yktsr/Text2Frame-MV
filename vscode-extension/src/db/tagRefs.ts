@@ -20,6 +20,8 @@ export interface TagRef {
     /** 行の中の位置(この範囲に番号が書かれている)。 */
     start: number;
     end: number;
+    /** 値を書き換える所(スイッチ・変数の操作の左辺)。無ければ読むだけ。 */
+    write?: boolean;
 }
 
 // 変数の操作の演算子(Text2Frame.js の set/add/sub/mul/div/mod_operation_list)。
@@ -335,20 +337,20 @@ export function findRefs(line: string): TagRef[] {
     each(new RegExp(`(<(?:${SWITCH_TAGS}) *: *)(\\d+)(?:-(\\d+))?`, 'gi'), line, (m) => {
         const start = m.index + m[1].length;
         const text = m[2] + (m[3] !== undefined ? '-' + m[3] : '');
-        out.push({ kind: 'switch', id: Number(m[2]), endId: m[3] !== undefined ? Number(m[3]) : undefined, start, end: start + text.length });
+        out.push({ kind: 'switch', id: Number(m[2]), endId: m[3] !== undefined ? Number(m[3]) : undefined, start, end: start + text.length, write: true });
     });
 
     // 移動ルートの中のスイッチ操作: <SwitchOn: 128> / <スイッチOFF: 5>。範囲は書けない。
     each(new RegExp(`(<(?:${MOVE_SWITCH_TAGS})\\s*:\\s*)(\\d+)`, 'gi'), line, (m) => {
         const start = m.index + m[1].length;
-        out.push({ kind: 'switch', id: Number(m[2]), start, end: start + m[2].length });
+        out.push({ kind: 'switch', id: Number(m[2]), start, end: start + m[2].length, write: true });
     });
 
     // 変数の操作: <Set: 5, V[20]>。左辺と、右辺の変数参照・ゲームデータ(GameData[Item][5] など)。
     each(new RegExp(`(<(?:${VARIABLE_OPS}) *: *)(\\d+)(?:-(\\d+))?([^<>]*)>`, 'gi'), line, (m) => {
         const start = m.index + m[1].length;
         const text = m[2] + (m[3] !== undefined ? '-' + m[3] : '');
-        out.push({ kind: 'variable', id: Number(m[2]), endId: m[3] !== undefined ? Number(m[3]) : undefined, start, end: start + text.length });
+        out.push({ kind: 'variable', id: Number(m[2]), endId: m[3] !== undefined ? Number(m[3]) : undefined, start, end: start + text.length, write: true });
         const rest = start + text.length;
         variableRefsIn(m[4], rest, out);
         each(new RegExp(GAME_DATA.source, 'gi'), m[4], (g) => {

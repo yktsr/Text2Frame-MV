@@ -57,6 +57,10 @@ export class RunTracker implements vscode.Disposable {
         return this.sources.find(ctx, key);
     }
 
+    textIndex(ctx: DbContext): Promise<Map<string, string>> {
+        return this.sources.entries(ctx);
+    }
+
     showsFile(fsPath: string): boolean {
         return this.frames.some((f) => f.uri?.fsPath === fsPath);
     }

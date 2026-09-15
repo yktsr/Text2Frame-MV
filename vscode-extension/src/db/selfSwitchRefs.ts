@@ -12,6 +12,8 @@ export interface SelfSwitchRef {
     letter: string;
     start: number;
     end: number;
+    /** セルフスイッチを書き換える所(<SelfSwitch: A, ON>)。条件分岐は読むだけ。 */
+    write?: boolean;
 }
 
 const CONTROL = /<(?:ssw|selfswitch|セルフスイッチ) *: *([abcd]) *,/gi;
@@ -22,7 +24,7 @@ export function findSelfSwitchRefs(text: string): Array<Omit<SelfSwitchRef, 'lin
     for (const re of [CONTROL, CONDITION]) {
         for (const m of text.matchAll(re)) {
             const start = (m.index ?? 0) + m[0].lastIndexOf(m[1]);
-            out.push({ letter: m[1].toUpperCase(), start, end: start + 1 });
+            out.push({ letter: m[1].toUpperCase(), start, end: start + 1, ...(re === CONTROL ? { write: true } : {}) });
         }
     }
     return out.sort((a, b) => a.start - b.start);

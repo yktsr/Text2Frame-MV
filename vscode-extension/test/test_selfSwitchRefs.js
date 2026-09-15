@@ -42,3 +42,10 @@ describe('selfSwitchRefs', function () {
     expect(eventSelfSwitchLetters({ pages: [null, { list: [null] }] })).to.eql([])
   })
 })
+
+describe('selfSwitchRefs writes', function () {
+  it('marks where a self switch is changed, and not where it is read', function () {
+    expect(findSelfSwitchRefs('<SelfSwitch: A, ON>').map((r) => [r.letter, !!r.write])).to.eql([['A', true]])
+    expect(findSelfSwitchRefs('<If: SelfSwitches[B], ON>').map((r) => [r.letter, !!r.write])).to.eql([['B', false]])
+  })
+})

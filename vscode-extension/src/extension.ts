@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { registerDeployFeature, showCompiledJson } from './deploy';
 import { registerReview } from './review';
+import { registerNavigation } from './navigation';
 import { exportCurrentFile, exportConversationOnly } from './exportText';
 import { deployAll, exportAll, repullAllOverwrite } from './batch';
 import { registerTreeView } from './tree';
@@ -57,6 +58,8 @@ export function activate(context: vscode.ExtensionContext) {
     // 横のプレビュー(ツクールのイベント編集画面と同じ見た目)。
     const running = registerRunHighlight(context, database, live);
     registerPreview(context, database, running, live);
+    // 定義へ移動・参照の一覧・シンボル・アウトライン・折りたたみ。
+    registerNavigation(context, database, running);
     // 色調・フラッシュの値の前に色見本。
     registerColorSwatches(context);
     // テストプレイ(ゲームを VS Code の中のブラウザで)。

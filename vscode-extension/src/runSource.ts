@@ -39,6 +39,12 @@ export class RunSources {
         return file;
     }
 
+    /** 場所の鍵(e:マップ:イベント:ページ / c:番号)→ テキストのファイル。 */
+    async entries(ctx: DbContext): Promise<Map<string, string>> {
+        if (!this.index || this.index.root !== ctx.root || Date.now() - this.index.at > REINDEX_AFTER) await this.build(ctx);
+        return this.index ? this.index.files : new Map();
+    }
+
     source(ctx: DbContext, fsPath: string): RunSource | { error: string } {
         const open = vscode.workspace.textDocuments.find((d) => d.uri.fsPath === fsPath);
         let version: string;
