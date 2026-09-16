@@ -1,5 +1,8 @@
 const { expect } = require('chai')
-const { readMapInfos, mapTree, mapLabel, pageConditionTexts, pageDescription, commonDescription } = require('../out/db/mapTree')
+const {
+  readMapInfos, mapTree, mapLabel, pageConditionTexts, pageDescription, commonDescription,
+  eventLiveMark, pageLiveMark, commonLiveMark
+} = require('../out/db/mapTree')
 
 const shape = (nodes) => nodes.map((n) => [n.info.id, shape(n.children)])
 
@@ -45,6 +48,25 @@ describe('mapTree', function () {
     expect(pageDescription({ trigger: 0 }, true)).to.equal('中身なし・決定ボタン')
     const names = (kind, id) => (kind === 'switch' && id === 12 ? 'シャチ出現' : undefined)
     expect(pageConditionTexts(page, names)[0]).to.equal('S0012 シャチ出現 が ON')
+  })
+
+  it('marks what the game is doing now', function () {
+    const marks = {
+      mapId: 3,
+      pages: new Map([[1, 2], [2, 0]]),
+      parallelEvents: new Set([2]),
+      parallelCommons: new Set([7]),
+      running: new Set(['e:3:1:2', 'c:9'])
+    }
+    expect(eventLiveMark(marks, 3, 1)).to.equal('今 2ページ・▶ 実行中')
+    expect(eventLiveMark(marks, 3, 2)).to.equal('出ていない・並列')
+    expect(eventLiveMark(marks, 4, 1)).to.equal('')
+    expect(eventLiveMark(undefined, 3, 1)).to.equal('')
+    expect(pageLiveMark(marks, 3, 1, 2)).to.equal('● 今のページ・▶ 実行中')
+    expect(pageLiveMark(marks, 3, 1, 1)).to.equal('')
+    expect(commonLiveMark(marks, 7)).to.equal('並列')
+    expect(commonLiveMark(marks, 9)).to.equal('▶ 実行中')
+    expect(commonLiveMark(marks, 1)).to.equal('')
   })
 
   it('describes a common event that runs by itself', function () {

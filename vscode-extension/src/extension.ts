@@ -64,7 +64,7 @@ export function activate(context: vscode.ExtensionContext) {
     const running = registerRunHighlight(context, database, live);
     registerPreview(context, database, running, live);
     // Activity Bar tree (Maps / Events / Pages / Common Events).
-    registerTreeView(context, database, running);
+    registerTreeView(context, database, running, live);
     // 定義へ移動・参照の一覧・シンボル・アウトライン・折りたたみ。
     registerNavigation(context, database, running);
     // クイックフィックス(電球)とスニペット。

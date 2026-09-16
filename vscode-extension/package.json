@@ -227,6 +227,21 @@
         "command": "text2frame.tree.export",
         "title": "書き出し / Export",
         "icon": "$(cloud-download)"
+      },
+      {
+        "command": "text2frame.tree.try",
+        "title": "イベントの前に立つ / Stand in front of the event",
+        "icon": "$(person)"
+      },
+      {
+        "command": "text2frame.tree.tryRun",
+        "title": "このページをすぐ実行 / Run this page now",
+        "icon": "$(play)"
+      },
+      {
+        "command": "text2frame.tree.tryCommon",
+        "title": "すぐ実行 / Run now",
+        "icon": "$(play)"
       }
     ],
     "viewsContainers": {
@@ -364,6 +379,9 @@
         { "command": "text2frame.tree.deploy", "when": "false" },
         { "command": "text2frame.tree.export", "when": "false" },
         { "command": "text2frame.tree.refresh", "when": "false" },
+        { "command": "text2frame.tree.try", "when": "false" },
+        { "command": "text2frame.tree.tryRun", "when": "false" },
+        { "command": "text2frame.tree.tryCommon", "when": "false" },
         { "command": "text2frame.db.insert", "when": "false" },
         { "command": "text2frame.db.findUsages", "when": "false" },
         { "command": "text2frame.db.showUsages", "when": "false" }
@@ -398,6 +416,21 @@
           "command": "text2frame.tree.export",
           "when": "view == text2frameExplorer && (viewItem == text2frame.page || viewItem == text2frame.common)",
           "group": "inline@1"
+        },
+        {
+          "command": "text2frame.tree.try",
+          "when": "view == text2frameExplorer && (viewItem == text2frame.event || viewItem == text2frame.page)",
+          "group": "3_try@1"
+        },
+        {
+          "command": "text2frame.tree.tryRun",
+          "when": "view == text2frameExplorer && viewItem == text2frame.page",
+          "group": "3_try@2"
+        },
+        {
+          "command": "text2frame.tree.tryCommon",
+          "when": "view == text2frameExplorer && viewItem == text2frame.common",
+          "group": "3_try@1"
         }
       ]
     },

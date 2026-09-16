@@ -112,6 +112,49 @@ export function pageDescription(page: PageSummary, empty: boolean): string {
     return parts.join('・');
 }
 
+/** テストプレイ中のゲームの様子。ツリーの行に印を付けるのに使う。 */
+export interface LiveMarks {
+    /** 今いるマップ。0 ならマップにいない。 */
+    mapId: number;
+    /** イベント番号 → 今出ているページ(1から)。0 はどのページも出ていない。 */
+    pages: Map<number, number>;
+    /** 並列処理で動いているイベント。 */
+    parallelEvents: Set<number>;
+    /** 並列処理で動いているコモンイベント。 */
+    parallelCommons: Set<number>;
+    /** 実行中の場所の鍵(e:マップ:イベント:ページ / c:番号)。 */
+    running: Set<string>;
+}
+
+/** イベントの行に付ける印。「今 2ページ・並列・▶ 実行中」 */
+export function eventLiveMark(marks: LiveMarks | undefined, mapId: number, eventId: number): string {
+    if (!marks || marks.mapId !== mapId) return '';
+    const parts: string[] = [];
+    const page = marks.pages.get(eventId) || 0;
+    parts.push(page ? `今 ${page}ページ` : '出ていない');
+    if (marks.parallelEvents.has(eventId)) parts.push('並列');
+    if (Array.from(marks.running).some((key) => key.startsWith(`e:${mapId}:${eventId}:`))) parts.push('▶ 実行中');
+    return parts.join('・');
+}
+
+/** ページの行に付ける印。「● 今のページ・▶ 実行中」 */
+export function pageLiveMark(marks: LiveMarks | undefined, mapId: number, eventId: number, pageId: number): string {
+    if (!marks || marks.mapId !== mapId) return '';
+    const parts: string[] = [];
+    if ((marks.pages.get(eventId) || 0) === pageId) parts.push('● 今のページ');
+    if (marks.running.has(`e:${mapId}:${eventId}:${pageId}`)) parts.push('▶ 実行中');
+    return parts.join('・');
+}
+
+/** コモンイベントの行に付ける印。 */
+export function commonLiveMark(marks: LiveMarks | undefined, commonEventId: number): string {
+    if (!marks) return '';
+    const parts: string[] = [];
+    if (marks.parallelCommons.has(commonEventId)) parts.push('並列');
+    if (marks.running.has(`c:${commonEventId}`)) parts.push('▶ 実行中');
+    return parts.join('・');
+}
+
 /** コモンイベントの行の右に出す短い説明。トリガーが「なし」なら空。 */
 export function commonDescription(trigger: number, switchId: number, empty: boolean, name?: NameLookup): string {
     const parts: string[] = [];

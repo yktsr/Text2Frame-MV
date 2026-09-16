@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { DatabaseService } from './dbService';
 import { LiveService, LiveSession } from './live';
 import { parseFrontMatter, workspaceRootFor } from './compiler';
+import { Place, placeFromMeta } from './placeLabel';
 import { deployFile, reviewFiles, unappliedFiles } from './deploy';
 
 /**
@@ -58,32 +59,38 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
         return session && session.state.received() && session.state.connected(Date.now()) ? session : undefined;
     };
 
-    const tryEvent = async (uri: vscode.Uri, mode: Mode): Promise<void> => {
-        const doc = await vscode.workspace.openTextDocument(uri);
-        if (doc.isDirty) await doc.save();
-        const ctx = service.forDocument(doc);
-        const root = workspaceRootFor(doc);
+    /** テキストのファイル、または場所(ツリーの行)から試す。 */
+    const tryEvent = async (target: vscode.Uri | Place, mode: Mode): Promise<void> => {
+        const uri = target instanceof vscode.Uri ? target : undefined;
+        const doc = uri ? await vscode.workspace.openTextDocument(uri) : undefined;
+        if (doc && doc.isDirty) await doc.save();
+        const ctx = doc ? service.forDocument(doc) : service.forRoot(workspaceRootFor() || '');
+        const root = doc ? workspaceRootFor(doc) : workspaceRootFor();
         if (!ctx || !root) {
             vscode.window.showErrorMessage('Text2Frame: ツクールのプロジェクト(data/System.json)が見つかりません。');
             return;
         }
-        const meta = parseFrontMatter(doc.getText()).meta;
+        const place = doc ? placeFromMeta(parseFrontMatter(doc.getText()).meta) : (target as Place);
+        if (!place) {
+            vscode.window.showErrorMessage('Text2Frame: このテキストの宛先のメモが読めません。');
+            return;
+        }
         let visit: { mapId?: number; eventId?: number; pageId?: number; x?: number; y?: number; run?: boolean; common?: number };
-        if (mode === 'common') {
-            visit = { common: Number(meta.commonEventId) };
+        if (mode === 'common' || place.kind === 'common') {
+            visit = { common: place.kind === 'common' ? place.commonEventId : 0 };
         } else {
-            const mapId = Number(meta.mapId);
-            const eventId = Number(meta.eventId);
+            const mapId = place.mapId;
+            const eventId = Number(place.eventId);
             const ev = service.mapEvents(ctx, mapId)?.[eventId];
             if (!ev) {
                 vscode.window.showErrorMessage('Text2Frame: このイベントは、ゲームのマップにありません。');
                 return;
             }
-            visit = { mapId, eventId, pageId: Number(meta.pageId || '1'), x: ev.x, y: ev.y, run: mode === 'run' };
+            visit = { mapId, eventId, pageId: place.pageId ?? 1, x: ev.x, y: ev.y, run: mode === 'run' };
         }
 
         let reload = false;
-        if (unappliedFiles(context, root, [uri.fsPath]).size) {
+        if (uri && unappliedFiles(context, root, [uri.fsPath]).size) {
             const choice = await vscode.window.showInformationMessage(
                 'Text2Frame: このテキストには、ゲームに反映されていない変更があります。反映してから試しますか？', '反映して試す', 'このまま試す');
             if (!choice) return;
@@ -100,7 +107,7 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
 
         let session = connected();
         if (!session) {
-            await vscode.window.showTextDocument(doc, { preserveFocus: false });
+            if (doc) await vscode.window.showTextDocument(doc, { preserveFocus: false });
             await vscode.commands.executeCommand('text2frame.testPlay');
             session = await until(connected, CONNECT_WAIT);
             if (!session) {
@@ -122,12 +129,12 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
         }
 
         const sentAt = Date.now();
-        const target = session;
-        if (!target.send({ visit })) {
+        const game = session;
+        if (!game.send({ visit })) {
             vscode.window.showErrorMessage('Text2Frame: ゲームに届きませんでした。テストプレイのページを読み直してください。');
             return;
         }
-        const answer = await until(() => (target.state.lastVisit && target.state.lastVisit.at >= sentAt ? target.state.lastVisit : undefined), VISIT_WAIT);
+        const answer = await until(() => (game.state.lastVisit && game.state.lastVisit.at >= sentAt ? game.state.lastVisit : undefined), VISIT_WAIT);
         const [ok, text] = answer ? (RESULTS[answer.result] || [false, answer.result]) : RESULTS.timeout;
         if (ok) vscode.window.setStatusBarMessage('Text2Frame: ' + text, 5000);
         else vscode.window.showWarningMessage('Text2Frame: ' + text);
