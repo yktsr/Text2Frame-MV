@@ -270,6 +270,16 @@
         "command": "text2frame.tree.mapLinks",
         "title": "マップのつながりを見る / Show map links",
         "icon": "$(arrow-both)"
+      },
+      {
+        "command": "text2frame.showMapGraph",
+        "title": "Text2Frame: マップのつながりを図で見る / Show the map graph",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "text2frame.tree.mapGraph",
+        "title": "マップのつながりを図で見る / Show the map graph",
+        "icon": "$(graph)"
       }
     ],
     "viewsContainers": {
@@ -422,6 +432,7 @@
         { "command": "text2frame.tree.tryCommon", "when": "false" },
         { "command": "text2frame.tree.links", "when": "false" },
         { "command": "text2frame.tree.mapLinks", "when": "false" },
+        { "command": "text2frame.tree.mapGraph", "when": "false" },
         { "command": "text2frame.mapLinks.show", "when": "false" },
         { "command": "text2frame.mapLinks.open", "when": "false" },
         { "command": "text2frame.db.insert", "when": "false" },
@@ -483,6 +494,11 @@
           "command": "text2frame.tree.mapLinks",
           "when": "view == text2frameExplorer && (viewItem == text2frame.map || viewItem == text2frame.here)",
           "group": "4_links@2"
+        },
+        {
+          "command": "text2frame.tree.mapGraph",
+          "when": "view == text2frameExplorer && (viewItem == text2frame.map || viewItem == text2frame.here)",
+          "group": "4_links@3"
         }
       ]
     },

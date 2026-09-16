@@ -4,6 +4,7 @@ import { registerReview } from './review';
 import { registerNavigation } from './navigation';
 import { registerEventLinks } from './eventLinks';
 import { registerMapLinksView } from './mapLinksView';
+import { registerMapGraph } from './mapGraph';
 import { registerQuickFixes, FIX } from './quickFixes';
 import { registerSnippets } from './snippets';
 import { basicProblems } from './db/checks';
@@ -72,6 +73,7 @@ export function activate(context: vscode.ExtensionContext) {
     // イベントのつながり(呼び出し階層)と、マップのつながりの欄。
     const eventLinks = registerEventLinks(context, database, running);
     registerMapLinksView(context, database, eventLinks);
+    registerMapGraph(context, database, eventLinks);
     // クイックフィックス(電球)とスニペット。
     registerQuickFixes(context);
     registerSnippets(context);
