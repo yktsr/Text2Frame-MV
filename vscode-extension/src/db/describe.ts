@@ -53,6 +53,8 @@ export interface MapEvent {
     selfSwitches?: string[];
     pages?: number;
     pageSummaries?: PageSummary[];
+    /** ページごとに、コマンドが1つも書かれていないか。 */
+    pageEmpty?: boolean[];
 }
 
 /** テキストのマップにあるイベント。コモンイベントのテキストなど、マップが決まらなければ渡さない。 */

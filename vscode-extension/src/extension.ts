@@ -51,8 +51,6 @@ export function activate(context: vscode.ExtensionContext) {
     registerDeployFeature(context);
     // 反映・取り出しの前の差分の確認。
     registerReview(context);
-    // Activity Bar tree (Maps / Events / Pages / Common Events).
-    registerTreeView(context);
     // Activity Bar "Commands" panel (grouped, clickable actions).
     registerCommandsView(context);
     // データベースの名前を見せる(名前の薄い表示・ホバー・警告・名前から入力)。
@@ -65,6 +63,8 @@ export function activate(context: vscode.ExtensionContext) {
     // 横のプレビュー(ツクールのイベント編集画面と同じ見た目)。
     const running = registerRunHighlight(context, database, live);
     registerPreview(context, database, running, live);
+    // Activity Bar tree (Maps / Events / Pages / Common Events).
+    registerTreeView(context, database, running);
     // 定義へ移動・参照の一覧・シンボル・アウトライン・折りたたみ。
     registerNavigation(context, database, running);
     // クイックフィックス(電球)とスニペット。

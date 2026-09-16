@@ -88,7 +88,15 @@ export class DatabaseService implements vscode.Disposable {
         try {
             const json = JSON.parse(fs.readFileSync(file, 'utf8'));
             events = Array.isArray(json && json.events)
-                ? json.events.map((e: any) => (e ? { name: typeof e.name === 'string' ? e.name : '', x: Number(e.x) || 0, y: Number(e.y) || 0, selfSwitches: eventSelfSwitchLetters(e), pages: Array.isArray(e.pages) ? e.pages.length : 0, pageSummaries: summarizePages(e) } : null))
+                ? json.events.map((e: any) => (e ? {
+                    name: typeof e.name === 'string' ? e.name : '',
+                    x: Number(e.x) || 0,
+                    y: Number(e.y) || 0,
+                    selfSwitches: eventSelfSwitchLetters(e),
+                    pages: Array.isArray(e.pages) ? e.pages.length : 0,
+                    pageSummaries: summarizePages(e),
+                    pageEmpty: (Array.isArray(e.pages) ? e.pages : []).map((p: any) => !(p && Array.isArray(p.list) && p.list.length > 1))
+                } : null))
                 : [];
         } catch (e) {
             return undefined;
