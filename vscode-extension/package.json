@@ -252,6 +252,24 @@
         "command": "text2frame.showLinks",
         "title": "Text2Frame: イベントのつながりを見る / Show event links",
         "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "text2frame.mapLinks.show",
+        "title": "マップのつながりを見る / Show map links"
+      },
+      {
+        "command": "text2frame.mapLinks.refresh",
+        "title": "Text2Frame: つながりを更新 / Refresh links",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "text2frame.mapLinks.open",
+        "title": "つながりの行を開く / Open the link"
+      },
+      {
+        "command": "text2frame.tree.mapLinks",
+        "title": "マップのつながりを見る / Show map links",
+        "icon": "$(arrow-both)"
       }
     ],
     "viewsContainers": {
@@ -279,6 +297,11 @@
         {
           "id": "text2frameExplorer",
           "name": "Maps / Common Events"
+        },
+        {
+          "id": "text2frameMapLinks",
+          "name": "マップのつながり / Map Links",
+          "visibility": "collapsed"
         },
         {
           "id": "text2frameDatabase",
@@ -361,6 +384,11 @@
           "group": "navigation"
         },
         {
+          "command": "text2frame.mapLinks.refresh",
+          "when": "view == text2frameMapLinks",
+          "group": "navigation"
+        },
+        {
           "command": "text2frame.db.refresh",
           "when": "view == text2frameDatabase",
           "group": "navigation"
@@ -393,6 +421,9 @@
         { "command": "text2frame.tree.tryRun", "when": "false" },
         { "command": "text2frame.tree.tryCommon", "when": "false" },
         { "command": "text2frame.tree.links", "when": "false" },
+        { "command": "text2frame.tree.mapLinks", "when": "false" },
+        { "command": "text2frame.mapLinks.show", "when": "false" },
+        { "command": "text2frame.mapLinks.open", "when": "false" },
         { "command": "text2frame.db.insert", "when": "false" },
         { "command": "text2frame.db.findUsages", "when": "false" },
         { "command": "text2frame.db.showUsages", "when": "false" }
@@ -447,6 +478,11 @@
           "command": "text2frame.tree.links",
           "when": "view == text2frameExplorer && (viewItem == text2frame.page || viewItem == text2frame.common || viewItem == text2frame.event || viewItem == text2frame.map)",
           "group": "4_links@1"
+        },
+        {
+          "command": "text2frame.tree.mapLinks",
+          "when": "view == text2frameExplorer && (viewItem == text2frame.map || viewItem == text2frame.here)",
+          "group": "4_links@2"
         }
       ]
     },

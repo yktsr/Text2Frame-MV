@@ -92,6 +92,26 @@ export class LinkService {
         return this.tracker.textFor(ctx, key);
     }
 
+    /** その場所を開く先。テキストがあればテキスト、無ければ読むだけの画面。 */
+    async uriFor(ctx: DbContext, key: string): Promise<{ uri: vscode.Uri; file?: string }> {
+        const node = nodeFromKey(key);
+        if (node && (node.kind === 'page' || node.kind === 'common')) {
+            const file = await this.textFor(ctx, key);
+            if (file) return { uri: vscode.Uri.file(file), file };
+        }
+        return { uri: readOnlyUri(key) };
+    }
+
+    /** ゲームのコマンドの番号 → テキストの行(0 から)。 */
+    lineOf(ctx: DbContext, key: string, file: string | undefined, index?: number): number {
+        if (file === undefined || index === undefined) return 0;
+        const source = this.tracker.sourceFor(ctx, file);
+        if ('error' in source) return 0;
+        const alignment = alignCommands(this.commandsOf(ctx, key).map(commandMark), source.marks);
+        const textIndex = alignment[index];
+        return textIndex === undefined ? 0 : source.lines[textIndex] || 0;
+    }
+
     /** ゲームのデータのコマンド。 */
     commandsOf(ctx: DbContext, key: string): RpgCommand[] {
         const node = nodeFromKey(key);
@@ -188,6 +208,11 @@ function readJson(file: string): any {
 
 const mapPath = (ctx: DbContext, mapId: number): string => path.join(ctx.dataDir, 'Map' + String(mapId).padStart(3, '0') + '.json');
 
+/** 読むだけの画面(テキストの無いページ・スイッチなど)。 */
+export function readOnlyUri(key: string): vscode.Uri {
+    return vscode.Uri.from({ scheme: LINKS_SCHEME, path: '/' + key.replace(/:/g, '_') + '.txt', query: key });
+}
+
 /** 呼び出し階層の行に出す名前。 */
 export function nodeLabel(service: DatabaseService, ctx: DbContext, node: LinkNode): { name: string; detail: string } {
     const named = (kind: 'switch' | 'variable' | 'commonEvent' | 'map', id: number): string => {
@@ -232,9 +257,6 @@ export function registerEventLinks(context: vscode.ExtensionContext, service: Da
         return root ? service.forRoot(root) : undefined;
     };
 
-    /** 読むだけの画面(テキストの無いページ・スイッチなど)。 */
-    const readOnlyUri = (key: string): vscode.Uri => vscode.Uri.from({ scheme: LINKS_SCHEME, path: '/' + key.replace(/:/g, '_') + '.txt', query: key });
-
     const contents = (ctx: DbContext, key: string): string => {
         const node = nodeFromKey(key);
         if (!node) return '';
@@ -260,25 +282,8 @@ export function registerEventLinks(context: vscode.ExtensionContext, service: Da
     };
 
     /** その場所を開く場所(テキストがあればテキスト、無ければ読むだけの画面)。 */
-    const uriFor = async (ctx: DbContext, key: string): Promise<{ uri: vscode.Uri; text?: string }> => {
-        const node = nodeFromKey(key);
-        if (node && (node.kind === 'page' || node.kind === 'common')) {
-            const file = await links.textFor(ctx, key);
-            if (file) return { uri: vscode.Uri.file(file), text: file };
-        }
-        return { uri: readOnlyUri(key) };
-    };
-
-    /** ゲームのコマンドの番号 → テキストの行。 */
-    const lineOf = (ctx: DbContext, key: string, file: string | undefined, index?: number): number => {
-        if (file === undefined || index === undefined) return 0;
-        const source = tracker.sourceFor(ctx, file);
-        if ('error' in source) return 0;
-        const game = links.commandsOf(ctx, key).map(commandMark);
-        const alignment = alignCommands(game, source.marks);
-        const textIndex = alignment[index];
-        return textIndex === undefined ? 0 : source.lines[textIndex] || 0;
-    };
+    const uriFor = (ctx: DbContext, key: string): Promise<{ uri: vscode.Uri; file?: string }> => links.uriFor(ctx, key);
+    const lineOf = (ctx: DbContext, key: string, file: string | undefined, index?: number): number => links.lineOf(ctx, key, file, index);
 
     const itemFor = async (ctx: DbContext, key: string): Promise<vscode.CallHierarchyItem | undefined> => {
         const node = nodeFromKey(key);

@@ -586,6 +586,10 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
         }),
         vscode.commands.registerCommand('text2frame.tree.tryRun', (node: T2FNode) => vscode.commands.executeCommand('text2frame.tree.try', node, 'run')),
         vscode.commands.registerCommand('text2frame.tree.tryCommon', (node: T2FNode) => vscode.commands.executeCommand('text2frame.tree.try', node)),
+        vscode.commands.registerCommand('text2frame.tree.mapLinks', async (node: T2FNode) => {
+            await vscode.commands.executeCommand('text2frame.mapLinks.show', Number(node.data.mapId));
+            await vscode.commands.executeCommand('text2frameMapLinks.focus');
+        }),
         vscode.commands.registerCommand('text2frame.tree.links', (node: T2FNode) => {
             const key = node.nodeType === 'common' ? `c:${Number(node.data.commonEventId)}`
                 : node.nodeType === 'map' || node.nodeType === 'here' ? `m:${Number(node.data.mapId)}`

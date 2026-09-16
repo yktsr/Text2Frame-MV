@@ -186,6 +186,13 @@ export class LinkIndex {
     in(key: string): Link[] {
         return this.toKey.get(key) || [];
     }
+
+    /** すべてのつながり。 */
+    all(): Link[] {
+        const out: Link[] = [];
+        this.fromKey.forEach((links) => out.push(...links));
+        return out;
+    }
 }
 
 /** 場所移動を「マップ → マップ」にまとめる。行き先が変数で決まるものは to が undefined。 */
