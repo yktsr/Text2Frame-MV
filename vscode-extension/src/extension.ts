@@ -72,7 +72,7 @@ export function activate(context: vscode.ExtensionContext) {
     registerNavigation(context, database, running);
     // イベントのつながり(呼び出し階層)と、マップのつながりの欄。
     const eventLinks = registerEventLinks(context, database, running);
-    registerMapLinksView(context, database, eventLinks);
+    registerMapLinksView(context, database, eventLinks, live);
     registerMapGraph(context, database, eventLinks);
     // クイックフィックス(電球)とスニペット。
     registerQuickFixes(context);

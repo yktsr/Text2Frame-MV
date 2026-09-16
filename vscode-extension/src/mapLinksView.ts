@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { DatabaseService, DbContext } from './dbService';
+import { LiveService } from './live';
 import { LinkService } from './eventLinks';
 import { parseFrontMatter, workspaceRootFor } from './compiler';
 import { placeFromMeta } from './placeLabel';
@@ -11,6 +12,7 @@ import { MapLink, mapLinks, nodeFromKey } from './db/eventLinks';
 /**
  * 「マップのつながり」の欄。場所移動(TransferPlayer)で、
  * このマップから行けるマップと、このマップへ来られるマップを並べ、何段でもたどれるようにする。
+ * 見るマップは、テストプレイ中はゲームが今いるマップ、そうでなければ開いているテキストのマップ。
  */
 
 type NodeType = 'group' | 'map' | 'place' | 'unknown';
@@ -38,6 +40,8 @@ export class MapLinksProvider implements vscode.TreeDataProvider<LinkNode> {
     private _onDidChange = new vscode.EventEmitter<LinkNode | undefined | void>();
     readonly onDidChangeTreeData = this._onDidChange.event;
     private mapId = 0;
+    /** テストプレイのゲームが今いるマップ。 */
+    private gameMapId = 0;
 
     constructor(private readonly service: DatabaseService, private readonly links: LinkService) {}
 
@@ -50,6 +54,23 @@ export class MapLinksProvider implements vscode.TreeDataProvider<LinkNode> {
         if (!Number.isInteger(mapId) || mapId <= 0 || mapId === this.mapId) return;
         this.mapId = mapId;
         this._onDidChange.fire();
+    }
+
+    /**
+     * テストプレイのゲームが今いるマップ。マップが変わったときだけ、そこに合わせる。
+     * (同じマップのままなら、利用者が自分で選んだマップはそのままにしておく。)
+     */
+    showFromGame(mapId: number): boolean {
+        const moved = mapId !== this.gameMapId;
+        this.gameMapId = mapId;
+        if (!moved || mapId <= 0) return false;
+        this.show(mapId);
+        return true;
+    }
+
+    /** 今見ているのが、ゲームが今いるマップか。 */
+    atGame(): boolean {
+        return this.mapId > 0 && this.mapId === this.gameMapId;
     }
 
     refresh(): void {
@@ -178,14 +199,22 @@ export class MapLinksProvider implements vscode.TreeDataProvider<LinkNode> {
     }
 }
 
-export function registerMapLinksView(context: vscode.ExtensionContext, service: DatabaseService, links: LinkService): void {
+export function registerMapLinksView(context: vscode.ExtensionContext, service: DatabaseService, links: LinkService, live: LiveService): void {
     const provider = new MapLinksProvider(service, links);
     const view = vscode.window.createTreeView('text2frameMapLinks', { treeDataProvider: provider });
+
+    /** テストプレイで今いるマップ。つながっていなければ 0。 */
+    const gameMap = (): number => {
+        const root = workspaceRootFor();
+        const ctx = root ? service.forRoot(root) : undefined;
+        const state = ctx ? live.forContext(ctx) : undefined;
+        return state && state.connected(Date.now()) ? state.mapId : 0;
+    };
 
     const setTitle = (): void => {
         const name = provider.title();
         view.message = name ? undefined : 'マップのテキストを開くか、一覧の行を右クリックして「つながりを見る」を選んでください。';
-        view.description = name || undefined;
+        view.description = name ? name + (provider.atGame() ? ' ● いまここ' : '') : undefined;
     };
 
     const showMap = (mapId: number): void => {
@@ -197,6 +226,15 @@ export function registerMapLinksView(context: vscode.ExtensionContext, service: 
         if (!editor || editor.document.languageId !== 'text2frame') return;
         const place = placeFromMeta(parseFrontMatter(editor.document.getText()).meta);
         if (place && place.kind === 'event') showMap(place.mapId);
+    };
+
+    /**
+     * テストプレイでマップが変わったら、そのマップに合わせる。
+     * 実行中のテキストは横で開くだけなので、開いているテキストだけを見ていると付いていけない。
+     */
+    const followGame = (): void => {
+        provider.showFromGame(gameMap());
+        setTitle();
     };
 
     context.subscriptions.push(
@@ -216,8 +254,10 @@ export function registerMapLinksView(context: vscode.ExtensionContext, service: 
             editor.revealRange(new vscode.Range(at, at), vscode.TextEditorRevealType.InCenter);
         }),
         vscode.window.onDidChangeActiveTextEditor(followEditor),
+        live.onDidChange(followGame),
         view.onDidChangeVisibility((e) => { if (e.visible) { followEditor(vscode.window.activeTextEditor); setTitle(); } })
     );
     followEditor(vscode.window.activeTextEditor);
+    followGame();
     setTitle();
 }
