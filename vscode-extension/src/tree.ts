@@ -586,6 +586,13 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
         }),
         vscode.commands.registerCommand('text2frame.tree.tryRun', (node: T2FNode) => vscode.commands.executeCommand('text2frame.tree.try', node, 'run')),
         vscode.commands.registerCommand('text2frame.tree.tryCommon', (node: T2FNode) => vscode.commands.executeCommand('text2frame.tree.try', node)),
+        vscode.commands.registerCommand('text2frame.tree.links', (node: T2FNode) => {
+            const key = node.nodeType === 'common' ? `c:${Number(node.data.commonEventId)}`
+                : node.nodeType === 'map' || node.nodeType === 'here' ? `m:${Number(node.data.mapId)}`
+                    : node.nodeType === 'event' ? `e:${Number(node.data.mapId)}:${Number(node.data.eventId)}:1`
+                        : keyForLeaf(node);
+            return vscode.commands.executeCommand('text2frame.showLinks', key);
+        }),
         vscode.workspace.onDidSaveTextDocument((doc) => {
             if (doc.languageId === 'text2frame') provider.refresh();
         }),

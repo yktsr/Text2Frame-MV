@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { registerDeployFeature, showCompiledJson } from './deploy';
 import { registerReview } from './review';
 import { registerNavigation } from './navigation';
+import { registerEventLinks } from './eventLinks';
 import { registerQuickFixes, FIX } from './quickFixes';
 import { registerSnippets } from './snippets';
 import { basicProblems } from './db/checks';
@@ -67,6 +68,8 @@ export function activate(context: vscode.ExtensionContext) {
     registerTreeView(context, database, running, live);
     // 定義へ移動・参照の一覧・シンボル・アウトライン・折りたたみ。
     registerNavigation(context, database, running);
+    // イベントのつながり(呼び出し階層)。
+    registerEventLinks(context, database, running);
     // クイックフィックス(電球)とスニペット。
     registerQuickFixes(context);
     registerSnippets(context);

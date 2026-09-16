@@ -41,6 +41,7 @@ const GROUPS: CommandGroup[] = [
             { command: 'text2frame.toggleDeployOnSave', label: '保存時に自動反映 切替 / Toggle apply-on-save', icon: 'sync', tooltip: '保存したら自動でゲームに反映する設定を ON / OFF します。' },
             { command: 'text2frame.exportConversationOnly', label: '会話のみ書き出し / Pull conversation only', icon: 'comment-discussion', tooltip: '会話部分だけを *.conversation.txt に書き出します。' },
             { command: 'text2frame.checkProject', label: 'プロジェクト全体を検査 / Check the whole project', icon: 'checklist', tooltip: '全テキストを調べて、書き間違い・無い番号や素材・はみ出し・反映されていない変更などを「問題」パネルに出します。' },
+            { command: 'text2frame.showLinks', label: 'イベントのつながりを見る / Show event links', icon: 'type-hierarchy', tooltip: '今のテキスト(またはカーソルの下のスイッチ・コモンイベント)から、呼ぶ先・移動先・変えるスイッチと、それで出てくるページを「呼び出し階層」でたどります。' },
             { command: 'text2frame.pickFace', label: '顔画像を選ぶ / Pick a face', icon: 'account', tooltip: '顔画像を一覧で見て選び、カーソルの行に入れます(行に顔のタグがあれば置き換えます)。' },
             { command: 'text2frame.pickAudio', label: '音を選ぶ / Pick a sound', icon: 'unmute', tooltip: 'BGM・BGS・ME・SE を試し聞きして選び、カーソルの行に入れます(行に同じ種類のタグがあれば置き換えます)。' },
             { command: 'text2frame.snippet.insert', label: 'スニペットを入れる / Insert snippet', icon: 'symbol-snippet', tooltip: '選択肢・条件分岐など、よく使う書き方の型をカーソルの位置に入れます。行の頭で / を打っても候補に出ます。' },

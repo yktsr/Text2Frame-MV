@@ -242,6 +242,16 @@
         "command": "text2frame.tree.tryCommon",
         "title": "すぐ実行 / Run now",
         "icon": "$(play)"
+      },
+      {
+        "command": "text2frame.tree.links",
+        "title": "つながりを見る / Show links",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "text2frame.showLinks",
+        "title": "Text2Frame: イベントのつながりを見る / Show event links",
+        "icon": "$(type-hierarchy)"
       }
     ],
     "viewsContainers": {
@@ -382,6 +392,7 @@
         { "command": "text2frame.tree.try", "when": "false" },
         { "command": "text2frame.tree.tryRun", "when": "false" },
         { "command": "text2frame.tree.tryCommon", "when": "false" },
+        { "command": "text2frame.tree.links", "when": "false" },
         { "command": "text2frame.db.insert", "when": "false" },
         { "command": "text2frame.db.findUsages", "when": "false" },
         { "command": "text2frame.db.showUsages", "when": "false" }
@@ -431,6 +442,11 @@
           "command": "text2frame.tree.tryCommon",
           "when": "view == text2frameExplorer && viewItem == text2frame.common",
           "group": "3_try@1"
+        },
+        {
+          "command": "text2frame.tree.links",
+          "when": "view == text2frameExplorer && (viewItem == text2frame.page || viewItem == text2frame.common || viewItem == text2frame.event || viewItem == text2frame.map)",
+          "group": "4_links@1"
         }
       ]
     },
