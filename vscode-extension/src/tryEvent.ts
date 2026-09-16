@@ -59,9 +59,20 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
         return session && session.state.received() && session.state.connected(Date.now()) ? session : undefined;
     };
 
-    /** テキストのファイル、または場所(ツリーの行)から試す。 */
-    const tryEvent = async (target: vscode.Uri | Place, mode: Mode): Promise<void> => {
-        const uri = target instanceof vscode.Uri ? target : undefined;
+    /** 今開いている Text2Frame のテキスト。 */
+    const current = (): vscode.Uri | undefined => {
+        const editor = vscode.window.activeTextEditor;
+        return editor && editor.document.languageId === 'text2frame' ? editor.document.uri : undefined;
+    };
+
+    /** テキストのファイル、場所(ツリーの行)、または今開いているテキストから試す。 */
+    const tryEvent = async (target: vscode.Uri | Place | undefined, mode: Mode): Promise<void> => {
+        const here = target === undefined ? current() : undefined;
+        if (target === undefined && !here) {
+            vscode.window.showInformationMessage('Text2Frame: 試したいイベントのテキストを開いてから押してください。');
+            return;
+        }
+        const uri = target instanceof vscode.Uri ? target : here;
         const doc = uri ? await vscode.workspace.openTextDocument(uri) : undefined;
         if (doc && doc.isDirty) await doc.save();
         const ctx = doc ? service.forDocument(doc) : service.forRoot(workspaceRootFor() || '');
@@ -142,6 +153,8 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
 
     context.subscriptions.push(
         vscode.languages.registerCodeLensProvider(SELECTOR, lenses),
-        vscode.commands.registerCommand('text2frame.tryEvent', tryEvent)
+        vscode.commands.registerCommand('text2frame.tryEvent', tryEvent),
+        vscode.commands.registerCommand('text2frame.standAtEvent', () => tryEvent(undefined, 'stand')),
+        vscode.commands.registerCommand('text2frame.runThisPage', () => tryEvent(undefined, 'run'))
     );
 }

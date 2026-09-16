@@ -156,6 +156,16 @@
         "title": "Text2Frame: スニペットを編集する / Edit snippets"
       },
       {
+        "command": "text2frame.standAtEvent",
+        "title": "Text2Frame: イベントの前に立つ / Stand in front of the event",
+        "icon": "$(person)"
+      },
+      {
+        "command": "text2frame.runThisPage",
+        "title": "Text2Frame: このページをすぐ実行 / Run this page now",
+        "icon": "$(play-circle)"
+      },
+      {
         "command": "text2frame.debug",
         "title": "Text2Frame: デバッグを始める(ブレークポイント) / Start debugging",
         "icon": "$(debug-alt)"
