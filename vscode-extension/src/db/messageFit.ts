@@ -112,13 +112,12 @@ export function overflowAt(line: string, cap: number, m: MessageMetrics, lookups
 
 export interface MessageProblem {
     line: number;
-    kind: 'width' | 'lines';
-    /** width: はみ出し始める位置。lines: 0。 */
+    kind: 'width';
+    /** はみ出し始める位置。 */
     start: number;
     width?: number;
     capacity?: number;
     approximate?: boolean;
-    lines?: number;
 }
 
 /** 有効な自動改行のプラグイン(js/plugins.js)があれば、その名前。 */
@@ -135,29 +134,23 @@ export function autoWrapPlugin(pluginsJs: string): string | undefined {
     return hit ? hit.name : undefined;
 }
 
-const MAX_LINES = 4;
-
 export function messageProblems(
     lines: string[],
     m: MessageMetrics,
-    options: { lookups?: WidthLookups; lineLength?: number; checkWidth?: boolean; commentOutChar?: string } = {}
+    options: { lookups?: WidthLookups; lineLength?: number; commentOutChar?: string } = {}
 ): MessageProblem[] {
     const out: MessageProblem[] = [];
     const visit = (nodes: StructureNode[]): void => {
         for (const n of nodes) {
             if (n.kind === 'message') {
                 const cap = capacity(m, !!n.faceName, options.lineLength);
-                const count = n.endLine - n.startLine + 1;
                 for (let line = n.startLine; line <= n.endLine; line++) {
                     const text = lines[line].trim() === '<br>' ? '' : lines[line];
-                    if (options.checkWidth !== false) {
-                        const at = overflowAt(text, cap, m, options.lookups);
-                        if (at >= 0) {
-                            const { width, approximate } = lineWidth(text, m, options.lookups);
-                            out.push({ line, kind: 'width', start: at, width, capacity: cap, approximate });
-                        }
+                    const at = overflowAt(text, cap, m, options.lookups);
+                    if (at >= 0) {
+                        const { width, approximate } = lineWidth(text, m, options.lookups);
+                        out.push({ line, kind: 'width', start: at, width, capacity: cap, approximate });
                     }
-                    if (line - n.startLine === MAX_LINES) out.push({ line, kind: 'lines', start: 0, lines: count });
                 }
             }
             visit(n.children);

@@ -3,7 +3,6 @@ import { workspaceRootFor } from './compiler';
 import { loadCompiler } from './deploy';
 import { lineKinds } from './db/tagRefs';
 import { findConflicts, resolveConflict, tagLikeName, similarTagNames, replaceTagName, compilesAsText } from './db/fixes';
-import { messageSettingsFor } from './db/structure';
 import { MESSAGE_CODES } from './messageCheck';
 import { hasFaceTag, audioFolderOf } from './db/assetEdit';
 
@@ -153,13 +152,6 @@ export function registerQuickFixes(context: vscode.ExtensionContext): void {
                     const a = new vscode.CodeAction('ここで改行する', vscode.CodeActionKind.QuickFix);
                     a.edit = new vscode.WorkspaceEdit();
                     a.edit.insert(document.uri, d.range.start, '\n');
-                    a.diagnostics = [d];
-                    out.push(a);
-                } else if (d.code === MESSAGE_CODES.lines) {
-                    const settings = messageSettingsFor(lines, line);
-                    const a = new vscode.CodeAction(settings.length ? 'ここで次のウィンドウに分ける(顔や名前も引き継ぐ)' : 'ここで次のウィンドウに分ける', vscode.CodeActionKind.QuickFix);
-                    a.edit = new vscode.WorkspaceEdit();
-                    a.edit.insert(document.uri, new vscode.Position(line, 0), '\n' + settings.map((s) => s + '\n').join(''));
                     a.diagnostics = [d];
                     out.push(a);
                 } else if (d.code === FIX.dbProblem) {

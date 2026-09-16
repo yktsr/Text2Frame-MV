@@ -10,7 +10,7 @@ import { messageMetrics, messageProblems, autoWrapPlugin, capacity, lineWidth, M
  */
 
 const SELECTOR = 'text2frame';
-export const MESSAGE_CODES = { width: 'message-width', lines: 'message-lines' };
+export const MESSAGE_CODES = { width: 'message-width' };
 
 export interface MessageFit {
     metrics: MessageMetrics;
@@ -63,23 +63,13 @@ const round = (n: number): string => (Math.round(n * 2) / 2).toString();
 
 export function messageDiagnostics(lines: string[], fit: MessageFit): vscode.Diagnostic[] {
     return messageProblems(lines, fit.metrics, { lookups: fit.lookups, lineLength: fit.lineLength }).map((p) => {
-        if (p.kind === 'width') {
-            const d = new vscode.Diagnostic(
-                new vscode.Range(p.line, p.start, p.line, lines[p.line].length),
-                `ウィンドウの幅を超えています(約 ${round(p.width as number)} 文字ぶん。入るのは約 ${Math.floor(p.capacity as number)} 文字)。はみ出した分は表示されません。`
-                    + (p.approximate ? '制御文字を含むので目安です。' : ''),
-                vscode.DiagnosticSeverity.Warning
-            );
-            d.code = MESSAGE_CODES.width;
-            d.source = 'Text2Frame';
-            return d;
-        }
         const d = new vscode.Diagnostic(
-            new vscode.Range(p.line, 0, p.line, lines[p.line].length),
-            `1つのウィンドウに ${p.lines} 行あります。4行を超えた分は、次のページに送られます。`,
-            vscode.DiagnosticSeverity.Information
+            new vscode.Range(p.line, p.start, p.line, lines[p.line].length),
+            `ウィンドウの幅を超えています(約 ${round(p.width as number)} 文字ぶん。入るのは約 ${Math.floor(p.capacity as number)} 文字)。はみ出した分は表示されません。`
+                + (p.approximate ? '制御文字を含むので目安です。' : ''),
+            vscode.DiagnosticSeverity.Warning
         );
-        d.code = MESSAGE_CODES.lines;
+        d.code = MESSAGE_CODES.width;
         d.source = 'Text2Frame';
         return d;
     });

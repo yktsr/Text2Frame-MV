@@ -33,7 +33,7 @@ describe('messageFit', function () {
     expect(overflowAt('あい\\C[2]うえ', 3, MZ)).to.equal(8)
   })
 
-  it('reports lines that overflow the window, and messages longer than four lines', function () {
+  it('reports lines that overflow the window, however many lines a message has', function () {
     const long = 'あ'.repeat(31)
     const faced = 'あ'.repeat(25)
     const lines = [
@@ -42,16 +42,14 @@ describe('messageFit', function () {
       '<Face: Actor1(0)>', // 2
       faced, // 3: 顔ありで25文字 → はみ出す
       '',
-      '一', '二', '三', '四', '五', // 5-9: 5行目がページ送り
+      '一', '二', '三', '四', '五', // 5-9: 4行を超えても知らせない
       '',
       '<comment>',
       long, // 注釈の中は数えない
       '</comment>'
     ]
     const problems = messageProblems(lines, MZ)
-    expect(problems.map((p) => [p.line, p.kind, p.start])).to.eql([[0, 'width', 30], [3, 'width', 24], [9, 'lines', 0]])
-    expect(problems[2].lines).to.equal(5)
-    expect(messageProblems(lines, MZ, { checkWidth: false }).map((p) => p.kind)).to.eql(['lines'])
+    expect(problems.map((p) => [p.line, p.kind, p.start])).to.eql([[0, 'width', 30], [3, 'width', 24]])
   })
 
   it('finds an enabled plugin that wraps lines by itself', function () {
