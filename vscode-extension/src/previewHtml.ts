@@ -46,6 +46,29 @@ export function previewHtml(): string {
 <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
   const rowsEl = document.getElementById('rows');
+
+  // 自動でスクロールするときは、その行だけでなく、同じメッセージの続きの行まで見えるようにする
+  // (顔グラフィックの行は高いので、下端にぴったり寄せると文章が画面の外に出てしまう)。
+  const MARGIN = 24;
+  const showRows = (first) => {
+    if (!first) return;
+    // 続きの行は、ツクールのウィンドウと同じ4行ぶんまで見えれば足りる。
+    const block = [first];
+    let next = first.nextElementSibling;
+    while (next && next.classList.contains('cont') && block.length <= 4) { block.push(next); next = next.nextElementSibling; }
+    const view = window.innerHeight;
+    const top = first.getBoundingClientRect().top - MARGIN;
+    const here = first.getBoundingClientRect().bottom + MARGIN;
+    const whole = block[block.length - 1].getBoundingClientRect().bottom + MARGIN;
+    let delta = 0;
+    if (whole - top <= view) {
+      if (whole > view) delta = whole - view;
+      if (top - delta < 0) delta = top;
+    } else if (top < 0 || here > view) {
+      delta = top;
+    }
+    if (delta) window.scrollBy(0, delta);
+  };
   // 行をクリックしたら、その行を出したテキストの行へ戻る。
   rowsEl.addEventListener('click', (e) => {
     if (e.target.closest('.play')) return;
@@ -134,7 +157,7 @@ export function previewHtml(): string {
         r.classList.toggle('approximate', !m.exact);
       }
       const first = rowsEl.querySelector('.row.running');
-      if (moved && first) first.scrollIntoView({ block: 'nearest' });
+      if (moved) showRows(first);
       return;
     }
     if (m && m.type === 'highlight') {
@@ -144,7 +167,7 @@ export function previewHtml(): string {
         const r = rowsEl.querySelector('.row[data-index="' + i + '"]');
         if (r) { r.classList.add('current'); first = first || r; }
       }
-      if (first) first.scrollIntoView({ block: 'nearest' });
+      showRows(first);
       return;
     }
     if (!m || m.type !== 'render') return;
