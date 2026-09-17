@@ -3,6 +3,7 @@ import { MapLink } from './eventLinks';
 /**
  * マップのつながりの図の、点と矢印の並べ方。VS Code に依存しないので、テストから直接使える。
  * 真ん中のマップから何回の移動で行けるかを段(column)にして、同じ段の中で順に並べる(row)。
+ * 全部のマップを出すときは、つながりのかたまりごとに、いちばんつながりの多いマップから数える。
  */
 
 export interface GraphPlace {
@@ -108,7 +109,7 @@ export function buildGraph(links: MapLink[], options: GraphOptions): Graph {
                 for (const other of Array.from(neighbours.get(id) || []).sort((a, b) => a - b)) {
                     if (hops.has(other)) continue;
                     if (hops.size >= maxNodes) { truncated = true; continue; }
-                    hops.set(other, options.center > 0 ? hop : 0);
+                    hops.set(other, hop);
                     next.push(other);
                 }
             }
@@ -116,16 +117,41 @@ export function buildGraph(links: MapLink[], options: GraphOptions): Graph {
         }
     }
 
-    const rows = new Map<number, number>();
-    const nodes: GraphNode[] = Array.from(hops.entries())
-        .sort((a, b) => a[1] - b[1] || a[0] - b[0])
-        .map(([id, hop]) => {
-            const column = hop;
-            const row = rows.get(column) || 0;
-            rows.set(column, row + 1);
-            return { id, hop, column, row };
-        });
-
-    const shown = new Set(nodes.map((n) => n.id));
+    const shown = new Set(hops.keys());
+    const nodes = placeRows(hops, neighbours, shown);
     return { nodes, edges: edges.filter((e) => shown.has(e.from) && shown.has(e.to)), truncated };
+}
+
+/**
+ * 段の中の並び順。つながっている相手(1つ手前の段)の高さの平均で並べると、線の交わりが減る。
+ * 同じ高さなら番号の順。
+ */
+function placeRows(hops: Map<number, number>, neighbours: Map<number, Set<number>>, shown: Set<number>): GraphNode[] {
+    const columns = new Map<number, number[]>();
+    for (const [id, hop] of hops) {
+        const list = columns.get(hop) || [];
+        list.push(id);
+        columns.set(hop, list);
+    }
+    const rowOf = new Map<number, number>();
+    const out: GraphNode[] = [];
+    for (const column of Array.from(columns.keys()).sort((a, b) => a - b)) {
+        const list = (columns.get(column) as number[]).slice();
+        const near = (id: number): number => {
+            const rows: number[] = [];
+            for (const other of neighbours.get(id) || []) {
+                if (!shown.has(other) || hops.get(other) !== column - 1) continue;
+                const row = rowOf.get(other);
+                if (row !== undefined) rows.push(row);
+            }
+            return rows.length ? rows.reduce((a, b) => a + b, 0) / rows.length : Number.MAX_SAFE_INTEGER;
+        };
+        const middle = new Map(list.map((id) => [id, near(id)]));
+        list.sort((a, b) => (middle.get(a) as number) - (middle.get(b) as number) || a - b);
+        list.forEach((id, row) => {
+            rowOf.set(id, row);
+            out.push({ id, hop: hops.get(id) as number, column, row });
+        });
+    }
+    return out;
 }

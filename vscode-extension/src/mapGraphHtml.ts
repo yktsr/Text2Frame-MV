@@ -23,9 +23,10 @@ export function mapGraphHtml(): string {
   .node:hover rect { stroke: var(--vscode-focusBorder); }
   .node text { fill: var(--vscode-foreground); font-size: 12px; }
   .node text.id { fill: var(--vscode-descriptionForeground); font-size: 10px; }
-  .edge { stroke: var(--vscode-editorLineNumber-foreground); fill: none; cursor: pointer; }
+  .edge { stroke: var(--vscode-editorLineNumber-foreground); fill: none; cursor: pointer; opacity: 0.75; }
+  .edge.back { stroke-dasharray: none; opacity: 0.5; }
   .edge.vehicle { stroke-dasharray: 5 3; }
-  .edge:hover { stroke: var(--vscode-focusBorder); stroke-width: 2; }
+  .edge:hover { stroke: var(--vscode-focusBorder); stroke-width: 2; opacity: 1; }
   .hint { fill: var(--vscode-descriptionForeground); font-size: 11px; }
 </style></head>
 <body>
@@ -40,8 +41,8 @@ export function mapGraphHtml(): string {
 <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
   const SVG = 'http://www.w3.org/2000/svg';
-  const COL = 220;
-  const ROW = 64;
+  const COL = 230;
+  const ROW = 72;
   const W = 150;
   const H = 34;
   let data = { nodes: [], edges: [], center: 0, names: {}, truncated: false };
@@ -74,21 +75,61 @@ export function mapGraphHtml(): string {
       el('path', { d: name === 'end' ? 'M 0 0 L 10 5 L 0 10 z' : 'M 10 0 L 0 5 L 10 10 z', fill: 'currentColor' }, marker);
     }
     const at = {};
+    const place = {};
     for (const n of data.nodes) {
       const middle = (height - rows[n.column] * ROW) / 2;
       at[n.id] = { x: n.column * COL + 20, y: middle + n.row * ROW + 10 };
+      place[n.id] = n;
     }
+
+    // 1つの丸から何本も出ると、線が同じ場所で重なる。出入り口を丸の高さに散らす。
+    const ports = {};
+    for (const n of data.nodes) ports[n.id] = { right: [], left: [] };
+    const sideOf = (from, to) => (place[to] && place[from] && place[to].column > place[from].column ? 'right' : 'left');
     for (const e of data.edges) {
-      const a = at[e.from];
-      const b = at[e.to];
+      if (!place[e.from] || !place[e.to]) continue;
+      ports[e.from][sideOf(e.from, e.to)].push(e);
+      ports[e.to][sideOf(e.to, e.from)].push(e);
+    }
+    const other = (e, id) => (e.from === id ? e.to : e.from);
+    const portY = {};
+    for (const n of data.nodes) {
+      for (const side of ['right', 'left']) {
+        const list = ports[n.id][side];
+        list.sort((p, q) => {
+          const a = place[other(p, n.id)];
+          const b = place[other(q, n.id)];
+          return (a ? a.row : 0) - (b ? b.row : 0) || (a ? a.column : 0) - (b ? b.column : 0);
+        });
+        list.forEach((e, i) => {
+          portY[e.from + '>' + e.to + ':' + n.id + ':' + side] = at[n.id].y + (H * (i + 1)) / (list.length + 1);
+        });
+      }
+    }
+    const portOf = (e, id) => {
+      const side = sideOf(id, other(e, id));
+      const y = portY[e.from + '>' + e.to + ':' + id + ':' + side];
+      return { x: at[id].x + (side === 'right' ? W : 0), y: y === undefined ? at[id].y + H / 2 : y, side };
+    };
+
+    for (const e of data.edges) {
+      const a = place[e.from];
+      const b = place[e.to];
       if (!a || !b) continue;
-      const x1 = a.x + W;
-      const y1 = a.y + H / 2;
-      const x2 = b.x;
-      const y2 = b.y + H / 2;
+      const from = portOf(e, e.from);
+      const to = portOf(e, e.to);
+      let d;
+      if (from.side === 'right') {
+        // 右へ進む線。ゆるい曲線で結ぶ。
+        d = 'M ' + from.x + ' ' + from.y + ' C ' + (from.x + 50) + ' ' + from.y + ' ' + (to.x - 50) + ' ' + to.y + ' ' + to.x + ' ' + to.y;
+      } else {
+        // 戻る線・同じ段の線。丸を横切らないように、左へ回り込ませる。
+        const out = Math.min(from.x, to.x) - 60;
+        d = 'M ' + from.x + ' ' + from.y + ' C ' + out + ' ' + from.y + ' ' + out + ' ' + to.y + ' ' + to.x + ' ' + to.y;
+      }
       const path = el('path', {
-        class: 'edge' + (e.vehicle ? ' vehicle' : ''),
-        d: 'M ' + x1 + ' ' + y1 + ' C ' + (x1 + 40) + ' ' + y1 + ' ' + (x2 - 40) + ' ' + y2 + ' ' + x2 + ' ' + y2,
+        class: 'edge' + (e.vehicle ? ' vehicle' : '') + (from.side === 'left' ? ' back' : ''),
+        d: d,
         'marker-end': 'url(#arrow-end)'
       }, svg);
       if (e.both) path.setAttribute('marker-start', 'url(#arrow-start)');
