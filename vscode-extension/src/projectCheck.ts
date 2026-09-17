@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DatabaseService, DbContext } from './dbService';
 import { parseFrontMatter, frontMatterBody, workspaceRootFor } from './compiler';
-import { loadCompiler, unappliedFiles } from './deploy';
+import { loadCompiler, unappliedFilesSlowly } from './deploy';
 import { projectTextFiles } from './usagesView';
 import { lookupsFor } from './dbFeatures';
 import { messageFitFor, messageDiagnostics } from './messageCheck';
@@ -104,7 +104,7 @@ export function registerProjectCheck(context: vscode.ExtensionContext, service: 
             const results = new Map<string, vscode.Diagnostic[]>();
             for (let i = 0; i < files.length; i++) {
                 if (token.isCancellationRequested) return;
-                if (i % 200 === 0) {
+                if (i % 100 === 0) {
                     progress.report({ message: `${i} / ${files.length}`, increment: 0 });
                     await new Promise((r) => setTimeout(r, 0));
                 }
@@ -159,7 +159,12 @@ export function registerProjectCheck(context: vscode.ExtensionContext, service: 
             }
             progress.report({ message: 'ゲームに反映されていない変更を調べています' });
             await new Promise((r) => setTimeout(r, 0));
-            for (const file of unappliedFiles(context, root, files.map((u) => u.fsPath))) {
+            const unapplied = await unappliedFilesSlowly(context, root, files.map((u) => u.fsPath), {
+                onProgress: (done, total) => progress.report({ message: `ゲームに反映されていない変更を調べています ${done} / ${total}` }),
+                cancelled: () => token.isCancellationRequested
+            });
+            if (token.isCancellationRequested) return;
+            for (const file of unapplied) {
                 const list = results.get(file) || [];
                 list.push(diagnostic(0, 0, 3, 'ゲームに反映されていない変更があります(反映すると、ゲームが変わります)。', 'info', 'unapplied'));
                 results.set(file, list);

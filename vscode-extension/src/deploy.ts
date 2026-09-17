@@ -378,18 +378,44 @@ export function deployFile(
 
 /** ゲームに反映されていない変更があるテキスト(反映すると、ゲームが変わるもの)。 */
 export function unappliedFiles(context: vscode.ExtensionContext, workspaceRoot: string, files: string[]): Set<string> {
-    const { mod } = loadCompiler(context, workspaceRoot);
     const out = new Set<string>();
-    if (!mod) return out;
+    findUnapplied(context, workspaceRoot, files, out);
+    return out;
+}
+
+/** 同じことを少しずつ行う。1回ごとに手を離すので、たくさんのテキストでも VS Code が固まらない。 */
+export async function unappliedFilesSlowly(
+    context: vscode.ExtensionContext,
+    workspaceRoot: string,
+    files: string[],
+    options: { chunk?: number; onProgress?: (done: number, total: number) => void; cancelled?: () => boolean } = {}
+): Promise<Set<string>> {
+    const chunk = options.chunk || 40;
+    const out = new Set<string>();
+    for (let at = 0; at < files.length; at += chunk) {
+        if (options.cancelled && options.cancelled()) return out;
+        findUnapplied(context, workspaceRoot, files.slice(at, at + chunk), out);
+        if (options.onProgress) options.onProgress(Math.min(at + chunk, files.length), files.length);
+        await new Promise((r) => setTimeout(r, 0));
+    }
+    return out;
+}
+
+function findUnapplied(context: vscode.ExtensionContext, workspaceRoot: string, files: string[], out: Set<string>): void {
+    const { mod } = loadCompiler(context, workspaceRoot);
+    if (!mod) return;
     const candidates: DeployCandidate[] = [];
     for (const file of files) {
         const prepared = prepareFile(context, workspaceRoot, file);
         if ('mod' in prepared) candidates.push(candidateFor(file, prepared.meta, prepared.applyOpts, prepared.dataPath));
     }
     tryApply(mod, candidates.map((c) => c.step)).forEach((trial, i) => {
-        if (trial.result.ok && renderCommands(context, workspaceRoot, trial.before) !== renderCommands(context, workspaceRoot, trial.after)) out.add(candidates[i].textPath);
+        if (!trial.result.ok) return;
+        // ほとんどのページは変わらない。まず中身をそのまま比べて、違うときだけテキストに直して比べる
+        // (同じ内容でも書き方が違うことがあるので、最後はテキストで比べる)。
+        if (JSON.stringify(trial.before) === JSON.stringify(trial.after)) return;
+        if (renderCommands(context, workspaceRoot, trial.before) !== renderCommands(context, workspaceRoot, trial.after)) out.add(candidates[i].textPath);
     });
-    return out;
 }
 
 /**
