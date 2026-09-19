@@ -154,8 +154,6 @@
  * @type select
  * @option 毎回書き戻す / always
  * @value always
- * @option 衝突したときだけ / onConflict
- * @value onConflict
  * @option 書き戻さない / off
  * @value off
  *
@@ -198,8 +196,6 @@
  * @type select
  * @option 毎回書き戻す / always
  * @value always
- * @option 衝突したときだけ / onConflict
- * @value onConflict
  * @option 書き戻さない / off
  * @value off
  *
@@ -232,8 +228,6 @@
  * @type select
  * @option 毎回書き戻す / always
  * @value always
- * @option 衝突したときだけ / onConflict
- * @value onConflict
  * @option 書き戻さない / off
  * @value off
  *
@@ -276,8 +270,6 @@
  * @type select
  * @option 毎回書き戻す / always
  * @value always
- * @option 衝突したときだけ / onConflict
- * @value onConflict
  * @option 書き戻さない / off
  * @value off
  * @default always
@@ -375,8 +367,6 @@
  * @type select
  * @option 毎回書き戻す / always
  * @value always
- * @option 衝突したときだけ / onConflict
- * @value onConflict
  * @option 書き戻さない / off
  * @value off
  *
@@ -4625,13 +4615,11 @@
   /* 「結果をテキストに書き戻す」の別名表。 */
   const WRITE_BACK_ALIASES = {
     always: 'always',
-    onconflict: 'onConflict',
     off: 'off',
     毎回書き戻す: 'always',
-    衝突したときだけ: 'onConflict',
     書き戻さない: 'off'
   }
-  const WRITE_BACK_HINT = '書き戻しは always(毎回書き戻す) か onConflict(衝突したときだけ) か off(書き戻さない) を指定してください。'
+  const WRITE_BACK_HINT = '書き戻しは always(毎回書き戻す) か off(書き戻さない) を指定してください。'
 
   /* 同期の向きの別名表。省略時は双方向。 */
   const DIRECTION_ALIASES = {
@@ -4659,7 +4647,7 @@
   }
 
   /* 書き戻しのしかた。解釈できない値は投げる。
-   * 素通しにすると planWriteBack が always/onConflict 以外をすべて off として扱うため、
+   * 素通しにすると planWriteBack が always 以外をすべて off として扱うため、
    * 綴り間違いが黙って「書き戻さない」になってしまう。 */
   const resolveWriteBack = function (value, fallback) {
     if (value === undefined || value === null || value === '') return fallback
@@ -5026,21 +5014,23 @@
      * ゲームには自分の版(目印なし)を書くので、直す場所がテキストに一本化される。
      * ツクールを開かずに、統合(merge)のまま決着できる。 */
 
-    // 書き戻せない条件を先に潰す。当てはまれば従来どおり、目印はゲーム側だけに入る。
-    // 先に判定しないと「ゲームには ours、テキストは書けなかった」でテキスト側の版が消える。
+    /* 書き戻しの段取り。mode は「衝突しなかったときも書き戻すか」(always / off)。
+     * 衝突したときは mode に関係なく書き戻す: 目印はテキストにだけ入れ、ゲームには入れない。
+     * 書き戻しには Frame2Text が要る。無いまま衝突したら、ゲームも触らずに止める
+     * (ゲームに ours だけ入れるとテキスト側の版が消え、目印入りを入れるとゲームが汚れる)。 */
     const planWriteBack = function () {
       /* WriteBack は今回の実行ぶん(コマンド引数で上書きできる)。無ければプラグインパラメータ。
        * 値の解釈はここ1箇所。プラグインコマンドは resolveWriteBack が先に弾くが、
        * applyTextFile(CLI / t2f-sync / VS Code)は素の値が来るので別名もここで吸収する。 */
       const mode = lookupAlias(WRITE_BACK_ALIASES, Laurus.Text2Frame.WriteBack) ||
         lookupAlias(WRITE_BACK_ALIASES, Laurus.Text2Frame.WriteBackAfterMerge) || 'off'
-      if (mode !== 'always' && mode !== 'onConflict') return { mode: 'off' }
-      const F2T = resolveFrame2Text()
-      if (!F2T || !F2T.buildPullText) {
-        return { mode: 'off', reason: '書き戻しには Frame2Text プラグインが必要です。同じプロジェクトに導入してください。 / write-back requires the Frame2Text plugin' }
-      }
+      const found = resolveFrame2Text()
       // コメントアウト行(既定は %)はコンパイル前に捨てられる(eraseCommentOutLines)が、
       // 書き戻しは元テキストを持っているので buildPullText が元の位置へ戻す。見送りは不要。
+      const F2T = found && found.buildPullText ? found : null
+      if (mode === 'always' && !F2T) {
+        return { mode: 'off', F2T, reason: '書き戻しには Frame2Text プラグインが必要です。同じプロジェクトに導入してください。 / write-back requires the Frame2Text plugin' }
+      }
       return { mode, F2T }
     }
 
@@ -5065,8 +5055,11 @@
      * 戻り値の baseText は、書けたときだけ「ゲームに書いたものの text 形」。
      * 内容が同じなら書かない: always でも、変わっていないファイルの mtime を動かさない。 */
     const writeBackMergedText = function (plan, merged, textPath, scenario_text) {
-      if (plan.mode === 'off') return { written: false }
-      if (plan.mode === 'onConflict' && !merged.conflicts) return { written: false }
+      if (plan.mode !== 'always' && !merged.conflicts) return { written: false }
+      if (!plan.F2T) {
+        addWarning('衝突した所をテキストに書くには Frame2Text プラグインが必要です。同じプロジェクトに導入してください。 / conflicts need the Frame2Text plugin to be written into the text')
+        return { written: false, failed: true }
+      }
       const fsLib = require('fs')
       let text
       let baseText
@@ -5102,7 +5095,7 @@
     const mergeWithWriteBack = function (existing_events, event_command_list, textPath, explicitBasePath, scenario_text) {
       const plan = planWriteBack()
       if (plan.reason) addWarning(plan.reason)
-      const merged = resolveMergeCommands(existing_events, event_command_list, textPath, explicitBasePath, plan.mode !== 'off')
+      const merged = resolveMergeCommands(existing_events, event_command_list, textPath, explicitBasePath, true)
       const wb = writeBackMergedText(plan, merged, textPath, scenario_text)
       if (wb.failed) {
         throw new Error('書き戻せなかったため反映を中止しました。テキストもゲームも変更していません。' +

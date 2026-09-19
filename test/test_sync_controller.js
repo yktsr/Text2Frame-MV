@@ -105,10 +105,9 @@ describe('t2f-sync controller', function () {
     expect(after).to.contain('NewDevLine') // game change pulled in
   })
 
-  // 取り出しの鏡写し: 反映が書き換えるのはゲームなので、祖先には書き換えなかった側=テキストが
-  // 入る。衝突していても進める(テキストの変更は目印の中でゲームに入っている)。据え置くと、
-  // ツクールで解決したあとの取り出しで同じ衝突がテキスト側に再発する。
-  it('push with a conflict still advances .t2f-base to the text side', function () {
+  // 反映で衝突したら、目印はテキストにだけ入れ、ゲームには目印の無いゲームの版を書く。
+  // 祖先はゲームに書いたほう(目印を祖先に入れると次の 3-way が目印を再マージする)。
+  it('push with a conflict puts the markers in the text, and the game and .t2f-base keep the game side', function () {
     sync.pullDataFile(path.join(tmp, 'data', 'Map001.json'), opts) // base := Hello
     const basePath = path.join(tmp, '.t2f-base', 'text', 'map001_event001_page1.txt')
     // Diverge both sides on the same line → genuine 3-way conflict.
@@ -122,9 +121,14 @@ describe('t2f-sync controller', function () {
 
     expect(res.ok).to.equal(true)
     expect(res.conflicts).to.be.greaterThan(0)
+    const text = fs.readFileSync(evText(), 'utf8')
+    expect(text).to.contain('=== どちらかを残し')
+    expect(text).to.contain('Bonjour')
+    expect(text).to.contain('ゲーム変更')
+    expect(mapList().some(function (c) { return c.code === 108 })).to.equal(false)
+    expect(texts(mapList())).to.eql(['ゲーム変更'])
     const base = fs.readFileSync(basePath, 'utf8')
-    expect(base).to.contain('Bonjour')
-    expect(base).to.not.contain('ゲーム変更')
+    expect(base).to.contain('ゲーム変更')
     expect(base).to.not.contain('=== どちらかを残し') // 祖先に目印は入れない
   })
 
@@ -222,18 +226,12 @@ describe('t2f-sync controller', function () {
   })
 
   // 衝突後の脱出手順(ヘルプ・案内文が指示している 2 手)を固定する。
-  // 「目印が入った方で決めて、反対側へ流す」。同じ向きのやり直しでは直らない。
-  describe('escaping a push conflict', function () {
+  // 反映で衝突したら、テキストで決めて統合のまま反映し直せば片が付く。
+  describe('settling a push conflict', function () {
     const mapPath = function () { return path.join(tmp, 'data', 'Map001.json') }
-    // ゲーム側で目印3行を消し、ゲームの版だけを残した状態にする。
-    const resolveInGame = function () {
-      const map = JSON.parse(fs.readFileSync(mapPath(), 'utf8'))
-      map.events[1].pages[0].list = [
-        { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-        { code: 401, indent: 0, parameters: ['ゲームの版'] },
-        { code: 0, indent: 0, parameters: [] }
-      ]
-      fs.writeFileSync(mapPath(), JSON.stringify(map))
+    const header = function () {
+      const text = fs.readFileSync(evText(), 'utf8')
+      return text.slice(0, text.indexOf('\n---\n') + 5)
     }
     beforeEach(function () {
       sync.pullDataFile(mapPath(), opts) // 祖先 := Hello
@@ -242,77 +240,37 @@ describe('t2f-sync controller', function () {
       const map = JSON.parse(fs.readFileSync(mapPath(), 'utf8'))
       map.events[1].pages[0].list[1].parameters[0] = 'ゲームの版'
       fs.writeFileSync(mapPath(), JSON.stringify(map))
-      sync.pushFile(evText(), opts) // 衝突 -> 目印がゲームに入る
-      expect(mapList().some(function (c) { return c.code === 108 })).to.equal(true)
+      sync.pushFile(evText(), opts) // 衝突 -> 目印はテキストに入る
+      expect(fs.readFileSync(evText(), 'utf8')).to.contain('=== どちらかを残し')
     })
 
-    // 同じ向きにもう一度流しても壊れはしない(目印は消える)が、決着はテキストに伝わらない。
-    // 反対側へ流す(取り出す)まではテキストが古いまま。
-    it('re-pushing after resolving in the game clears the markers but leaves the text stale', function () {
-      resolveInGame()
-
+    it('stops the next push until the markers are gone from the text', function () {
       const res = sync.pushFile(evText(), opts)
-
-      expect(res.ok).to.equal(true)
-      expect(res.conflicts || 0).to.equal(0)
-      expect(mapList().some(function (c) { return c.code === 108 })).to.equal(false)
-      expect(texts(mapList())).to.eql(['ゲームの版']) // ツクールでの決着が残る
-      expect(fs.readFileSync(evText(), 'utf8')).to.contain('テキストの版') // テキストは未追従
-    })
-
-    it('pulling with overwrite carries the markers into the text, so it can be resolved there', function () {
-      const res = sync.pullDataFile(mapPath(), Object.assign({}, opts, { strategy: 'overwrite' }))
-      expect(res[0].markers).to.equal(true)
-
-      const text = fs.readFileSync(evText(), 'utf8')
-      expect(text).to.contain('=== どちらかを残し') // 目印ごと出ている
-      expect(text).to.contain('テキストの版')
-      expect(text).to.contain('ゲームの版')
-      // 祖先に目印を取り込むと次回の 3-way が壊れるので進めない。
-      expect(fs.readFileSync(path.join(tmp, '.t2f-base', 'text', 'map001_event001_page1.txt'), 'utf8'))
-        .to.not.contain('=== どちらかを残し')
-
-      // テキストで目印3行と片方を消し、上書きで反映すれば三者が揃う。
-      const header = text.slice(0, text.indexOf('\n---\n') + 5)
-      fs.writeFileSync(evText(), header + '\n<Face: (0)><Background: Window><WindowPosition: Bottom>\nテキストの版\n')
-      const push = sync.pushFile(evText(), Object.assign({}, opts, { strategy: 'overwrite' }))
-      expect(push.ok).to.equal(true)
-      expect(mapList().some(function (c) { return c.code === 108 })).to.equal(false)
-      expect(texts(mapList())).to.eql(['テキストの版'])
-      // 揃ったので、次の統合反映は衝突しない。
-      expect(sync.pushFile(evText(), opts).conflicts || 0).to.equal(0)
-    })
-
-    // 反映で衝突 -> ツクールで解決 -> 統合のまま取り出す、で片が付く(上書きは要らない)。
-    it('resolving in the game then pulling with a plain merge clears it', function () {
-      resolveInGame()
-
-      const res = sync.pullDataFile(mapPath(), opts) // 統合のまま
-
-      expect(res[0].skipped).to.equal(undefined)
-      expect(res[0].conflicts || 0).to.equal(0)
-      const text = fs.readFileSync(evText(), 'utf8')
-      expect(text).to.contain('ゲームの版')
-      expect(text).to.not.contain('テキストの版')
-      expect(text).to.not.contain('=== どちらかを残し')
-      // 3つが揃ったので次の統合反映も衝突しない。
-      expect(sync.pushFile(evText(), opts).conflicts || 0).to.equal(0)
-      expect(mapList().some(function (c) { return c.code === 108 })).to.equal(false)
-    })
-
-    it('resolving in the game then pulling with overwrite clears it for good', function () {
-      resolveInGame()
-      sync.pullDataFile(mapPath(), Object.assign({}, opts, { strategy: 'overwrite' }))
-
-      const text = fs.readFileSync(evText(), 'utf8')
-      expect(text).to.contain('ゲームの版')
-      expect(text).to.not.contain('=== どちらかを残し')
-      // テキスト・ゲーム・祖先の3つが揃ったので、次の統合反映は衝突しない。
-      const res = sync.pushFile(evText(), opts)
-      expect(res.ok).to.equal(true)
-      expect(res.conflicts || 0).to.equal(0)
-      expect(mapList().some(function (c) { return c.code === 108 })).to.equal(false)
+      expect(res.ok).to.equal(false)
       expect(texts(mapList())).to.eql(['ゲームの版'])
+    })
+
+    it('keeping the text version in the text, then pushing with merge, settles it', function () {
+      fs.writeFileSync(evText(), header() + '\n<Face: (0)><Background: Window><WindowPosition: Bottom>\nテキストの版\n')
+
+      const res = sync.pushFile(evText(), opts)
+
+      expect(res.ok).to.equal(true)
+      expect(res.conflicts || 0).to.equal(0)
+      expect(texts(mapList())).to.eql(['テキストの版'])
+      expect(sync.pushFile(evText(), opts).conflicts || 0).to.equal(0)
+    })
+
+    it('keeping the game version in the text, then pushing with merge, settles it', function () {
+      fs.writeFileSync(evText(), header() + '\n<Face: (0)><Background: Window><WindowPosition: Bottom>\nゲームの版\n')
+
+      const res = sync.pushFile(evText(), opts)
+
+      expect(res.ok).to.equal(true)
+      expect(res.conflicts || 0).to.equal(0)
+      expect(texts(mapList())).to.eql(['ゲームの版'])
+      const pull = sync.pullDataFile(mapPath(), opts)
+      expect(pull[0].conflicts || 0).to.equal(0)
     })
   })
 

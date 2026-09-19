@@ -103,16 +103,19 @@ describe('write-back after merge', function () {
     })
   })
 
-  it('off (the default for applyTextFile): markers go into the game, as before', function () {
+  // 目印はテキストにだけ入れる。off(applyTextFile の既定)でも、衝突したら書き戻す。
+  it('off (the default for applyTextFile): a conflict still goes into the text, never into the game', function () {
     setUpConflict()
 
     const res = push()
 
     expect(res.ok).to.equal(true)
     expect(res.conflicts).to.equal(1)
-    expect(res.writtenBack).to.equal(false)
-    expect(markers(mapList())).to.have.lengthOf(3)
-    expect(readText()).to.not.contain(MARKER)
+    expect(res.writtenBack).to.equal(true)
+    expect(markers(mapList())).to.have.lengthOf(0)
+    expect(texts(mapList())).to.eql(['ゲームの版'])
+    expect(readText()).to.contain(MARKER)
+    expect(readText()).to.contain('テキストの版')
   })
 
   it('puts the conflict in the text and keeps the game playable', function () {
@@ -193,18 +196,36 @@ describe('write-back after merge', function () {
     expect(readText()).to.equal(header + '\nテキストの版\n')
   })
 
-  it('onConflict leaves the text alone when nothing conflicted', function () {
-    fs.writeFileSync(basePath(), header + '\nHello\n')
-    writeMap(msg('Hello'))
-    const before = header + '\nテキストの版\n'
+  /* 衝突しないように、テキストとゲームで別の文を変える。always ならゲームの変更が
+   * テキストへ戻り、off ならテキストはそのまま。 */
+  const setUpSeparateEdits = function () {
+    fs.writeFileSync(basePath(), header + '\nHello\n\nWorld\n')
+    writeMap(msg('Hello').concat(msg('ゲームのWorld')))
+    const before = header + '\nテキストのHello\n\nWorld\n'
     fs.writeFileSync(textPath, before)
+    return before
+  }
 
-    const res = push('onConflict')
+  it('off leaves the text alone when nothing conflicted', function () {
+    const before = setUpSeparateEdits()
+
+    const res = push('off')
 
     expect(res.conflicts).to.equal(0)
     expect(res.writtenBack).to.equal(false)
     expect(readText()).to.equal(before)
-    expect(texts(mapList())).to.eql(['テキストの版'])
+    expect(texts(mapList())).to.eql(['テキストのHello', 'ゲームのWorld'])
+  })
+
+  it('always brings the game side edit into the text when nothing conflicted', function () {
+    setUpSeparateEdits()
+
+    const res = push('always')
+
+    expect(res.conflicts).to.equal(0)
+    expect(res.writtenBack).to.equal(true)
+    expect(readText()).to.contain('テキストのHello')
+    expect(readText()).to.contain('ゲームのWorld')
   })
 
   /* コメント行(%)は compile が落とすのでコマンド列に残らないが、書き戻しは元テキストを
@@ -241,12 +262,12 @@ describe('write-back after merge', function () {
   })
 
   it('takes 書き戻さない as off', function () {
-    setUpConflict()
+    const before = setUpSeparateEdits()
 
     const res = push('書き戻さない')
 
     expect(res.writtenBack).to.equal(false)
-    expect(markers(mapList())).to.have.lengthOf(3)
+    expect(readText()).to.equal(before)
   })
 
   it('keeps comment lines when nothing conflicts, too', function () {
@@ -284,22 +305,40 @@ describe('write-back after merge', function () {
   /* ゲーム内(NW.js)では require が効かないので、Frame2Text が無ければ書き戻せない。
    * 古い版が入っていて buildPullText を持たない場合も同じ。resolveFrame2Text は
    * decompile を持つグローバルをそのまま返すので、それで古い版を模す。 */
-  it('falls back to the old behaviour when Frame2Text cannot write back', function () {
-    setUpConflict()
+  const withoutFrame2Text = function (fn) {
     const saved = globalThis.$LaurusFrame2Text
     globalThis.$LaurusFrame2Text = { decompile: function () { return '' } }
-    let res
     try {
-      res = push('always')
+      return fn()
     } finally {
       globalThis.$LaurusFrame2Text = saved
     }
+  }
 
+  it('applies without writing back when Frame2Text cannot write back and nothing conflicted', function () {
+    const before = setUpSeparateEdits()
+
+    const res = withoutFrame2Text(function () { return push('always') })
+
+    expect(res.ok).to.equal(true)
     expect(res.writtenBack).to.equal(false)
     expect(res.warnings.join('\n')).to.contain('Frame2Text')
-    // テキスト側の版が消えないこと(ここが落ちると衝突した内容が失われる)
-    expect(markers(mapList())).to.have.lengthOf(3)
-    expect(texts(mapList())).to.eql(['テキストの版', 'ゲームの版'])
+    expect(readText()).to.equal(before)
+    expect(texts(mapList())).to.eql(['テキストのHello', 'ゲームのWorld'])
+  })
+
+  // 目印をテキストに書けないなら、ゲームに逃がさず止める(テキスト側の版もゲームも失わない)。
+  it('stops and writes nothing when a conflict cannot be written into the text', function () {
+    setUpConflict()
+    const beforeMap = fs.readFileSync(mapPath, 'utf8')
+
+    const res = withoutFrame2Text(function () { return push('off') })
+
+    expect(res.ok).to.equal(false)
+    expect(res.error).to.contain('反映を中止')
+    expect(res.warnings.join('\n')).to.contain('Frame2Text')
+    expect(fs.readFileSync(mapPath, 'utf8')).to.equal(beforeMap)
+    expect(readText()).to.equal(header + '\nテキストの版\n')
   })
 
   it('leaves the game untouched when the text cannot be written', function () {
