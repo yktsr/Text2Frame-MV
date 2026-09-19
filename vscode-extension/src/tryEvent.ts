@@ -97,8 +97,8 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
                 vscode.window.showErrorMessage('Text2Frame: このイベントは、ゲームのマップにありません。');
                 return;
             }
-            const keepTransparent = vscode.workspace.getConfiguration('text2frame').get<boolean>('tryEvent.keepPlayerTransparent', false);
-            visit = { mapId, eventId, pageId: place.pageId ?? 1, x: ev.x, y: ev.y, run: mode === 'run', show: mode !== 'run' || !keepTransparent };
+            const reveal = vscode.workspace.getConfiguration('text2frame', uri).get<boolean>('tryEvent.clearPlayerTransparency', true);
+            visit = { mapId, eventId, pageId: place.pageId ?? 1, x: ev.x, y: ev.y, run: mode === 'run', show: mode !== 'run' || reveal };
         }
 
         let reload = false;

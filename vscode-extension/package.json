@@ -612,10 +612,11 @@
           "minimum": 0,
           "description": "反映・取り出しの前の中身を、何回ぶん控えておくか(ゲームのフォルダの .t2f-history)。0 にすると控えない。 / How many apply/pull operations to keep in the history (.t2f-history in the game folder). 0 turns it off."
         },
-        "text2frame.tryEvent.keepPlayerTransparent": {
+        "text2frame.tryEvent.clearPlayerTransparency": {
           "type": "boolean",
-          "default": false,
-          "description": "「このページをすぐ実行」で、プレイヤーが透明ならそのままにする。オフのときは、見えるようにしてから実行する(「イベントの前に立つ」はいつも見えるようにする)。 / Keep the player transparent when running a page from the editor. When off, the player is made visible first (standing in front of an event always does)."
+          "default": true,
+          "scope": "resource",
+          "description": "「このページをすぐ実行」で試すとき、プレイヤーの透明化を解除してから始める。オフにすると、透明かどうかはゲームのそのときのまま(「イベントの前に立つ」はいつも解除する)。 / Make the player visible before running a page from the editor. When off, the player stays as the game has it (standing in front of an event always makes it visible)."
         },
         "text2frame.messageLineLength": {
           "type": "number",
