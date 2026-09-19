@@ -98,7 +98,7 @@ describe('message wrapping for $gameMessage', function () {
   // Frame2Text 側(取り出し)。出力先のパスがそのまま入るので長くなりやすい。
   it('wraps a long path message and loses nothing (Frame2Text)', function () {
     Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-      ['merge', outDir, path.join(tmp, 'data')])
+      [outDir, 'merge'])
 
     expect(shown.length).to.be.greaterThan(0)
     expectFits()

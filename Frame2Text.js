@@ -20,7 +20,7 @@
 // ・衝突したときの直し方(目印を消して反対側へ「上書き」で押し出す)をヘルプと案内文に明記
 // ・目印が残っていても「上書き」なら取り出せるよう改善。ツクールを開かずテキストだけで衝突を解決できます
 //   (統合は従来どおり見送り。目印ごと取り出したときは祖先(.t2f-base)を進めません)
-// ・一括取り出しの「取り出し方法」を1番目の引数へ移動(一番よく変える引数を先頭に。一括反映と同じ位置)
+// ・一括取り出しの引数を「出力先・取り出し方法」の順に(単体の取り出し・一括反映と同じ並び)
 // ・テキストの置き場所から言語(locale)の概念を廃止。text/<言語>/ ではなく text/ 直下へ取り出します
 //   複数の版を持つときは出力先フォルダを分けてください(CLI の --locale と見出しの locale: 行も廃止)
 // ・一括取り出しの「取り出しのあとも見張る」を廃止。同期は Text2Frame の START_DATA_SYNC を使います
@@ -117,6 +117,12 @@
  * @text フォルダへ一括取り出し
  * @desc dataフォルダ内の全イベント/コモンイベントを、見出し情報付きのテキストとしてフォルダへ一括で取り出します(既定は統合)。
  *
+ * @arg TextFolder
+ * @text 出力先フォルダ名
+ * @desc 取り出したテキストを置くフォルダ名です。デフォルトはtextです。
+ * @type string
+ * @default text
+ *
  * @arg Strategy
  * @text 取り出し方法
  * @desc merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。overwriteはゲームの内容で全上書きです。既定はmergeです。
@@ -126,17 +132,6 @@
  * @option 【取り扱い注意】全上書き / overwrite
  * @value overwrite
  * @default merge
- *
- * @arg TextBase
- * @text 出力先フォルダ名
- * @desc 出力先のテキストベースディレクトリです。デフォルトはtextです。通常、設定する必要はありません。
- * @default text
- *
- * @arg DataFolder
- * @text ゲームデータのフォルダ名
- * @desc 走査対象のゲームデータのフォルダ名です。デフォルトはdataです。通常、設定する必要はありません。
- * @type string
- * @default data
  *
  * @param Default Scenario Folder
  * @text 出力フォルダ名
@@ -734,10 +729,10 @@ function resolveText2Frame () {
         [file_folder, file_name, common_event_id, args.Strategy])
     })
     PluginManager.registerCommand('Frame2Text', 'BATCH_EXPORT_MESSAGES_TO_FOLDER', function (args) {
-      // 引数順は @arg の並びと合わせる。よく変えるものから順に
-      // 取り出し方法 -> 出力先 -> データフォルダ。
+      // 引数順は @arg の並びと合わせる。単体の取り出し・一括反映と同じく
+      // 出力先 -> 取り出し方法。TextBase は改名前に保存されたコマンドのため。
       this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-        [args.Strategy, args.TextBase, args.DataFolder])
+        [args.TextFolder || args.TextBase, args.Strategy])
     })
   }
 
@@ -914,18 +909,18 @@ function resolveText2Frame () {
       case 'BATCH_EXPORT_MESSAGES_TO_FOLDER':
       case 'フォルダへ一括取り出し':
       case '一括取り出し': {
-        // よく変えるものから順に: 取り出し方法 -> 出力先 -> データフォルダ。
+        // 単体の取り出し・一括反映と同じ並び: 出力先 -> 取り出し方法。
         // @arg の並び・registerCommand の渡し順と揃えること。
+        // ゲームのデータは data 固定(他の取り出し・反映コマンドと同じ)。
         // 既定は merge。CLI・t2f-sync・VSCode と揃え、テキストに書いた内容を黙って
         // 消さないようにする。初回(既存テキスト無し)は merge も overwrite も同じ結果。
-        const batchStrategy = String(args[0] || 'merge').toLowerCase()
+        const batchStrategy = String(args[1] || 'merge').toLowerCase()
         if (batchStrategy !== 'merge' && batchStrategy !== 'overwrite') {
-          throw new Error('Unknown strategy: ' + args[0] + ' / 取り出し方法は merge か overwrite を指定してください。')
+          throw new Error('Unknown strategy: ' + args[1] + ' / 取り出し方法は merge か overwrite を指定してください。')
         }
         // 出力先を省いたときは、プラグインパラメータの出力フォルダ名。
         // FileFolder は単発の取り出しが引数で書き換えるので、パラメータを直接読む。
-        Laurus.Frame2Text.TextBase = args[1] || String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters['Default Scenario Folder']) || '') || 'text'
-        Laurus.Frame2Text.DataFolder = args[2] || 'data'
+        Laurus.Frame2Text.TextBase = args[0] || String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters['Default Scenario Folder']) || '') || 'text'
         Laurus.Frame2Text.BatchStrategy = batchStrategy
         Laurus.Frame2Text.ExecMode = 'BATCH_EXPORT_MESSAGES_TO_FOLDER'
         break
@@ -3390,7 +3385,7 @@ function resolveText2Frame () {
         return
       }
       const _path = require('path')
-      const dataDir = _path.isAbsolute(Laurus.Frame2Text.DataFolder) ? Laurus.Frame2Text.DataFolder : _path.resolve(BASE_PATH, Laurus.Frame2Text.DataFolder)
+      const dataDir = _path.resolve(BASE_PATH, 'data')
       const textBase = Laurus.Frame2Text.TextBase
       const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
       const batchStrategy = Laurus.Frame2Text.BatchStrategy || 'merge'

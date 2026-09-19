@@ -50,12 +50,10 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   let tmp
   let cwd
   let mainModule
-  // 実引数の並びはよく変える順に [Strategy, TextBase, DataFolder]。テストは
-  // 呼びやすさ優先で strategy を末尾に置き、ここで実際の並びへ組み替える
-  // (位置がずれれば全件落ちる)。
-  const run = function (dataDir, textBase, strategy) {
+  // 実引数の並びは [TextFolder, Strategy]。ゲームのデータは BASE_PATH(tmp)の data 固定。
+  const run = function (textBase, strategy) {
     shown.length = 0
-    Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [strategy, textBase, dataDir])
+    Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [textBase, strategy])
   }
   /* 画面幅(半角55)を超えるメッセージは addMessage が自動で折り返すため、
    * 1つの文章が複数の $gameMessage 行にまたがる。行ごとではなく通しの文字列から探し、
@@ -112,19 +110,18 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     fs.rmSync(tmp, { recursive: true, force: true })
   })
 
-  it('takes the strategy as its 1st argument, like the batch import does', function () {
+  it('takes the folder first and the strategy second, like the batch import does', function () {
     shown.length = 0
     Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-      ['merge', path.join(tmp, 'text'), path.join(tmp, 'data')])
+      [path.join(tmp, 'text'), 'overwrite'])
 
-    expect(line('取り出し完了(merge)')).to.be.a('string')
-    // 3〜5番目がそのまま言語・出力先・データ元として読まれている。
-    expect(line('取り出し完了(merge)')).to.contain('成功 3件')
+    expect(line('取り出し完了(overwrite)')).to.be.a('string')
+    expect(line('取り出し完了(overwrite)')).to.contain('成功 3件')
     expect(line('出力先')).to.contain(path.join(tmp, 'text'))
   })
 
   it('reports the count, the kind breakdown and the output directory', function () {
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'))
+    run(path.join(tmp, 'text'))
 
     const summary = line('取り出し完了')
     expect(summary).to.match(/成功 3件 \(イベント 2 \/ コモン 1\)、失敗 0件/)
@@ -135,7 +132,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   it('writes to the folder of the plugin parameter when the folder is left out', function () {
     params['Default Scenario Folder'] = 'scenario'
     try {
-      run(path.join(tmp, 'data'), '')
+      run('')
     } finally {
       params['Default Scenario Folder'] = 'text'
     }
@@ -144,19 +141,19 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   })
 
   it('says how many existing text files were overwritten, and only when it happened', function () {
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'overwrite')
+    run(path.join(tmp, 'text'), 'overwrite')
     expect(line('上書きしました')).to.equal(undefined)
 
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'overwrite')
+    run(path.join(tmp, 'text'), 'overwrite')
     expect(line('上書きしました')).to.contain('既存テキスト 3件')
   })
 
   // 既定は merge。CLI・t2f-sync・VSCode と揃え、テキストに書いた内容を黙って消さない。
   it('defaults to merge, keeping what was written in the text', function () {
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'))
+    run(path.join(tmp, 'text'))
     fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)) + '\n<comment>\nテキスト側のメモ\n</comment>\n', 'utf8')
 
-    run(path.join(tmp, 'data'), path.join(tmp, 'text')) // strategy 未指定
+    run(path.join(tmp, 'text')) // strategy 未指定
 
     expect(line('取り出し完了(merge)')).to.be.a('string')
     expect(readIf(textPathOf(ev1))).to.contain('テキスト側のメモ')
@@ -164,18 +161,19 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   })
 
   it('names the data folder when it cannot be read', function () {
-    run(path.join(tmp, 'missing'), path.join(tmp, 'text'))
+    fs.rmSync(path.join(tmp, 'data'), { recursive: true })
+    run(path.join(tmp, 'text'))
 
-    expect(line('データフォルダを読めませんでした')).to.contain(path.join(tmp, 'missing'))
+    expect(line('データフォルダを読めませんでした')).to.contain(path.join(tmp, 'data'))
     expect(line('取り出し完了')).to.equal(undefined)
   })
 
   it('says so when the data folder holds no targets', function () {
-    const empty = path.join(tmp, 'empty')
-    fs.mkdirSync(empty)
-    run(empty, path.join(tmp, 'text'))
+    const data = path.join(tmp, 'data')
+    fs.readdirSync(data).forEach(function (f) { fs.rmSync(path.join(data, f)) })
+    run(path.join(tmp, 'text'))
 
-    expect(line('取り出し対象が見つかりませんでした')).to.contain(empty)
+    expect(line('取り出し対象が見つかりませんでした')).to.contain(data)
   })
 
   describe('a game side that still has conflict markers', function () {
@@ -203,7 +201,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     })
 
     it('is skipped by merge, which cannot merge across the markers', function () {
-      run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'merge')
+      run(path.join(tmp, 'text'), 'merge')
 
       expect(line('取り出し完了')).to.contain('衝突未解決で除外 1件')
       expect(line('衝突未解決で取り出さなかったファイル')).to.contain(ev2)
@@ -213,7 +211,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     })
 
     it('is exported markers and all by overwrite, so it can be resolved in the text', function () {
-      run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'overwrite')
+      run(path.join(tmp, 'text'), 'overwrite')
 
       const text = fs.readFileSync(kept(), 'utf8')
       expect(text).to.contain('=== どちらかを残し') // 目印ごとテキストへ出ている
@@ -228,13 +226,13 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   })
 
   it('merge keeps the translation in the text and brings in the game change', function () {
-    run(path.join(tmp, 'data'), path.join(tmp, 'text')) // 既定 overwrite で祖先を作る
+    run(path.join(tmp, 'text')) // 既定 overwrite で祖先を作る
     // 翻訳者がテキストを訳す
     fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)).replace('こんにちは', 'Bonjour'), 'utf8')
     // 開発者がゲーム側に行を足す
     setEvent1(['こんにちは', 'ゲーム側の追記'])
 
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'merge')
+    run(path.join(tmp, 'text'), 'merge')
 
     const text = readIf(textPathOf(ev1))
     expect(line('取り出し完了(merge)')).to.contain('成功 3件')
@@ -246,12 +244,12 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   })
 
   it('merge keeps both on a conflict and advances the ancestor to the game side', function () {
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'))
+    run(path.join(tmp, 'text'))
     // テキストとゲームが同じ行を別々に変える
     fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)).replace('こんにちは', 'テキスト側の変更'), 'utf8')
     setEvent1(['ゲーム側の変更'])
 
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'merge')
+    run(path.join(tmp, 'text'), 'merge')
 
     const text = readIf(textPathOf(ev1))
     expect(text).to.contain('テキスト側の変更')
@@ -268,13 +266,13 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
 
   // 取り出しのしかたは引数だけで決まる。front matter の strategy: は読まない。
   it('ignores a front-matter strategy and follows the command argument', function () {
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'))
+    run(path.join(tmp, 'text'))
     // このファイルだけ overwrite 指定 + 翻訳あり
     fs.writeFileSync(textPathOf(ev1),
       readIf(textPathOf(ev1)).replace('kind: event', 'kind: event\nstrategy: overwrite').replace('こんにちは', 'Bonjour'), 'utf8')
     setEvent1(['ゲームが正'])
 
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'merge')
+    run(path.join(tmp, 'text'), 'merge')
 
     // 引数どおり統合されるので、テキストに書いた翻訳は残る。
     const text = readIf(textPathOf(ev1))
@@ -283,12 +281,12 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   })
 
   it('skips a merge whose text still has conflict markers', function () {
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'))
+    run(path.join(tmp, 'text'))
     const marked = readIf(textPathOf(ev1)) + '\n<comment>\n=== ゲームの変更 / from game ===\n</comment>\n'
     fs.writeFileSync(textPathOf(ev1), marked, 'utf8')
     setEvent1(['ゲーム側の追記'])
 
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'merge')
+    run(path.join(tmp, 'text'), 'merge')
 
     expect(line('取り出し完了(merge)')).to.contain('衝突未解決で除外 1件')
     expect(line('衝突未解決で取り出さなかったファイル')).to.contain(ev1)
@@ -297,7 +295,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
 
   it('rejects an unknown strategy instead of silently picking one', function () {
     expect(function () {
-      run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'rebase')
+      run(path.join(tmp, 'text'), 'rebase')
     }).to.throw(/Unknown strategy/)
   })
 
@@ -310,7 +308,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     const saved = globalThis.$LaurusText2Frame
     globalThis.$LaurusText2Frame = { saveBaseText: function () {} }
     try {
-      run(path.join(tmp, 'data'), path.join(tmp, 'text'), 'merge')
+      run(path.join(tmp, 'text'), 'merge')
     } finally {
       globalThis.$LaurusText2Frame = saved
     }
@@ -327,7 +325,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     // 出力先をディレクトリで塞いで、その 1 件だけ書き出しに失敗させる。
     fs.mkdirSync(path.join(tmp, 'text', 'map002_event001_page1.txt'), { recursive: true })
 
-    run(path.join(tmp, 'data'), path.join(tmp, 'text'))
+    run(path.join(tmp, 'text'))
 
     expect(line('取り出し完了')).to.contain('失敗 1件')
     expect(line('失敗: map002_event001_page1')).to.contain('EISDIR')

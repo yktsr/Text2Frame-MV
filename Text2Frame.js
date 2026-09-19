@@ -11712,7 +11712,7 @@
       }
       // 初回の一括は取り出し -> 反映の順。逆にすると、いま書いたテキストを反映が読み直す。
       if (wantPull) {
-        interpreter.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [syncStrategy, textFolder, dataFolder])
+        interpreter.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [textFolder, syncStrategy])
       }
       if (wantPush) {
         runBatchImport({ importFolder: textFolder, strategy: syncStrategy, writeBack })

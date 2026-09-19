@@ -43,19 +43,22 @@ describe('Frame2Text DisplayWarning', function () {
   let dataDir
   let outDir
   let cwd
+  let mainModule
 
   const runExport = function () {
     shown.length = 0
     Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-      ['overwrite', outDir, dataDir])
+      [outDir, 'overwrite'])
     return shown.join('')
   }
 
   beforeEach(function () {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-warn-'))
-    // 祖先(.t2f-base)の置き場所は cwd 基準。リポジトリを汚さないよう移しておく。
+    // 祖先(.t2f-base)の置き場所は cwd 基準、データは BASE_PATH 基準。リポジトリを汚さないよう両方移しておく。
     cwd = process.cwd()
     process.chdir(tmp)
+    mainModule = process.mainModule
+    process.mainModule = { filename: path.join(tmp, 'game.js') }
     dataDir = path.join(tmp, 'data')
     outDir = path.join(tmp, 'text')
     fs.mkdirSync(dataDir)
@@ -64,6 +67,7 @@ describe('Frame2Text DisplayWarning', function () {
   })
 
   afterEach(function () {
+    process.mainModule = mainModule
     process.chdir(cwd)
     fs.rmSync(tmp, { recursive: true, force: true })
   })
