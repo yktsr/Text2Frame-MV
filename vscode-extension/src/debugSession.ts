@@ -68,6 +68,9 @@ function dataMarks(ctx: DbContext, key: string): CommandMark[] | undefined {
     return list ? (list as Parameters<typeof commandMark>[0][]).map(commandMark) : undefined;
 }
 
+/** 動いているデバッグ。無いときは、ゲームに印を残さない。 */
+const adapters = new Set<Text2FrameDebugAdapter>();
+
 class Text2FrameDebugAdapter implements vscode.DebugAdapter {
     private readonly emitter = new vscode.EventEmitter<vscode.DebugProtocolMessage>();
     readonly onDidSendMessage = this.emitter.event;
@@ -82,6 +85,7 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
     private readonly disposables: vscode.Disposable[] = [];
 
     constructor(private readonly service: DatabaseService, private readonly live: LiveService, private readonly tracker: RunTracker) {
+        adapters.add(this);
         this.disposables.push(
             live.onDidChangeDebug(() => this.debugChanged()),
             live.onDidChange(() => this.sessionChanged())
@@ -116,6 +120,7 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
     }
 
     dispose(): void {
+        adapters.delete(this);
         this.disposables.forEach((d) => d.dispose());
         this.emitter.dispose();
     }
@@ -259,6 +264,7 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
         if (this.ended) return;
         if (!this.live.current()) {
             this.ended = true;
+            adapters.delete(this);
             this.event('terminated');
             return;
         }
@@ -403,12 +409,24 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
             s.send({ debug: 'continue' });
         }
         this.ended = true;
+        adapters.delete(this);
         if (stopGame) await vscode.commands.executeCommand('text2frame.stopTestPlay');
     }
 }
 
 export function registerDebugger(context: vscode.ExtensionContext, service: DatabaseService, live: LiveService, tracker: RunTracker): void {
+    // デバッグしていないときは、ゲームを止めない。
+    let cleared: { session: LiveSession; resets: number } | undefined;
+    const forgetMarks = (): void => {
+        const s = live.current();
+        if (!s || !s.state.received() || !s.state.connected(Date.now()) || adapters.size) return;
+        if (cleared && cleared.session === s && cleared.resets === s.state.resets) return;
+        s.send({ breakpoints: {} });
+        if (s.state.paused) s.send({ debug: 'continue' });
+        cleared = { session: s, resets: s.state.resets };
+    };
     context.subscriptions.push(
+        live.onDidChange(forgetMarks),
         vscode.debug.registerDebugAdapterDescriptorFactory(DEBUG_TYPE, {
             createDebugAdapterDescriptor: () => new vscode.DebugAdapterInlineImplementation(new Text2FrameDebugAdapter(service, live, tracker))
         }),

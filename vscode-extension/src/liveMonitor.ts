@@ -499,11 +499,27 @@ export function monitorScript(token: string): string {
     }
     tick();
   }
+  function letGo() {
+    breakpoints = {};
+    pauseWanted = false;
+    stepping = null;
+    debug('continue');
+  }
   function listen() {
     if (typeof EventSource === 'undefined') return;
     var source = new EventSource(${JSON.stringify(LIVE_EVENTS_PATH)} + '?token=' + encodeURIComponent(TOKEN));
+    var lost = false;
     source.onmessage = function (event) {
       try { write(JSON.parse(event.data)); } catch (e) {}
+    };
+    source.onerror = function () {
+      lost = true;
+      try { letGo(); } catch (e) {}
+    };
+    source.onopen = function () {
+      if (!lost) return;
+      lost = false;
+      last = null;
     };
   }
   setInterval(function () { try { tick(); } catch (e) {} }, INTERVAL);

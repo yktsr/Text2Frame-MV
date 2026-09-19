@@ -510,6 +510,29 @@ describe('liveMonitor', function () {
         expect(parent.executeCommand()).to.equal(true)
       })
 
+      it('lets a paused game go and forgets the breakpoints when VS Code is gone', function () {
+        const { g, parent, last, say } = setup()
+        say({ breakpoints: { 'e:4:2:2': [0, 2] } })
+        expect(parent.executeCommand()).to.equal(false)
+        g.step()
+        expect(last().paused.reason).to.equal('breakpoint')
+        g.source().onerror()
+        g.step()
+        expect(last().resumed).to.equal(true)
+        expect(parent.executeCommand()).to.equal(true)
+        expect(parent.executeCommand()).to.equal(true)
+        expect(parent.executeCommand()).to.equal(true)
+      })
+
+      it('sends everything again when VS Code comes back, so the breakpoints can be set again', function () {
+        const { g, last } = setup()
+        g.step()
+        g.source().onerror()
+        g.source().onopen()
+        g.step()
+        expect(last().reset).to.equal(true)
+      })
+
       it('lets a paused game go, and does not stop, while trying an event', function () {
         const { g, parent, last, say } = setup()
         say({ breakpoints: { 'e:4:2:2': [0, 1] } })
