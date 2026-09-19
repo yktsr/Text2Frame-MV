@@ -77,12 +77,12 @@ function snapshotIdFor(workspaceRoot: string, textPath: string): { key: string }
 
 /**
  * 統合で反映するときの書き戻しの指定(`text2frame.writeBackAfterMerge`)。コンパイラに渡す。
- *   - off   : 衝突しなかったときは、テキストを書き直さない(既定)
- *   - always: 衝突しなかったときも、ゲーム側の変更をテキストへ持ってくる
+ *   - always: 衝突しなかったときも、ゲーム側の変更をテキストへ持ってくる(既定。本体のプラグインパラメータと同じ)
+ *   - off   : 衝突しなかったときは、テキストを書き直さない
  * 衝突したときは、どちらでもコンパイラがテキストに両方の版と目印を書き、ゲームにはゲームの版を書く。
  */
 export function writeBackSetting(): 'always' | 'off' {
-    return vscode.workspace.getConfiguration('text2frame').get<string>('writeBackAfterMerge', 'off') === 'always' ? 'always' : 'off';
+    return vscode.workspace.getConfiguration('text2frame').get<string>('writeBackAfterMerge', 'always') === 'off' ? 'off' : 'always';
 }
 
 /**

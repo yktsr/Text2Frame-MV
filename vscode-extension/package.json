@@ -632,10 +632,10 @@
         "text2frame.writeBackAfterMerge": {
           "type": "string",
           "enum": ["off", "always"],
-          "default": "off",
+          "default": "always",
           "enumDescriptions": [
-            "競合しなかったときは書き戻さない(既定) / only when there is a conflict to resolve",
-            "反映のたびに書き戻す / after every apply"
+            "競合しなかったときは書き戻さない / only when there is a conflict to resolve",
+            "反映のたびに書き戻す(既定。Text2Frame 本体と同じ) / after every apply (default, as in Text2Frame)"
           ],
           "description": "統合で反映したあと、ゲーム側の変更をテキストにも書き戻すか。競合したときは、この設定に関係なく、テキストに両方の版と目印を書き戻します(ゲームには目印を入れず、ゲームの版のままにします)。 / After a merge apply, whether to bring the game-side edits back into the text. A conflict is always written into the text with both versions and the markers, whatever this is; the game keeps its own version without markers."
         },

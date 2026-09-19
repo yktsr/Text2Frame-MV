@@ -549,7 +549,7 @@ VS Code の設定画面（`Ctrl+,` / `Cmd+,`）で `text2frame` と検索する�
 | --- | --- | --- |
 | `text2frame.strategy` | 安全に統合 | ゲームへの入れ方。「安全に統合」はツクール側の編集を消しません。「テキストで全部上書き」も選べます |
 | `text2frame.reviewBeforeApply` | ON | ボタンで反映・取り出すとき、変わる所を差分で見せてから書き込むか |
-| `text2frame.writeBackAfterMerge` | 書き戻さない | 統合で反映したあと、ゲーム側の変更もテキストに書き戻すか（書き戻さない / 反映のたび）。競合したときは、どちらでもテキストに書き戻します |
+| `text2frame.writeBackAfterMerge` | 反映のたび | 統合で反映したあと、ゲーム側の変更もテキストに書き戻すか（反映のたび / 書き戻さない）。競合したときは、どちらでもテキストに書き戻します |
 | `text2frame.englishTag` | ON | 取り出すときのタグを英語（`<Face: >`）にするか、日本語（`<顔: >`）にするか |
 | `text2frame.omitDefaultTags` | ON | 取り出すとき、既定のままの顔・背景・位置のタグを省くか |
 | `text2frame.showDatabaseNames` | ON | 番号の横に、データベースの名前を薄く出すか |
