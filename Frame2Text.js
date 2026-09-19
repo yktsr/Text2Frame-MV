@@ -922,7 +922,9 @@ function resolveText2Frame () {
         if (batchStrategy !== 'merge' && batchStrategy !== 'overwrite') {
           throw new Error('Unknown strategy: ' + args[0] + ' / 取り出し方法は merge か overwrite を指定してください。')
         }
-        Laurus.Frame2Text.TextBase = args[1] || 'text'
+        // 出力先を省いたときは、プラグインパラメータの出力フォルダ名。
+        // FileFolder は単発の取り出しが引数で書き換えるので、パラメータを直接読む。
+        Laurus.Frame2Text.TextBase = args[1] || String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters['Default Scenario Folder']) || '') || 'text'
         Laurus.Frame2Text.DataFolder = args[2] || 'data'
         Laurus.Frame2Text.BatchStrategy = batchStrategy
         Laurus.Frame2Text.ExecMode = 'BATCH_EXPORT_MESSAGES_TO_FOLDER'

@@ -8,27 +8,27 @@ globalThis.Game_Interpreter = {}
 Game_Interpreter.prototype = {}
 const shown = []
 globalThis.$gameMessage = { add: function (t) { shown.push(String(t)) } }
+// merge 取り出しでは Text2Frame が遅延ロードされ、これらのパラメータでタグを解釈する。
+// 欠けていると "undefined" が既定値になり <Background: ...> 等が文法エラーになる。
+// テストから書き換えられるよう、同じオブジェクトを返す。
+const params = {
+  'Default Window Position': 'Bottom',
+  'Default Background': 'Window',
+  'Comment Out Char': '%',
+  IsOverwrite: 'false',
+  'Default Scenario Folder': 'text',
+  'Default Scenario File': 'message.txt',
+  'Default Common Event ID': '1',
+  'Default MapID': '1',
+  'Default EventID': '1',
+  'Default PageID': '1',
+  IsDebug: 'false',
+  DisplayMsg: 'true',
+  DisplayWarning: 'true',
+  EnglishTag: 'true'
+}
 globalThis.PluginManager = {
-  parameters: function () {
-    // merge 取り出しでは Text2Frame が遅延ロードされ、これらのパラメータでタグを解釈する。
-    // 欠けていると "undefined" が既定値になり <Background: ...> 等が文法エラーになる。
-    return {
-      'Default Window Position': 'Bottom',
-      'Default Background': 'Window',
-      'Comment Out Char': '%',
-      IsOverwrite: 'false',
-      'Default Scenario Folder': 'text',
-      'Default Scenario File': 'message.txt',
-      'Default Common Event ID': '1',
-      'Default MapID': '1',
-      'Default EventID': '1',
-      'Default PageID': '1',
-      IsDebug: 'false',
-      DisplayMsg: 'true',
-      DisplayWarning: 'true',
-      EnglishTag: 'true'
-    }
-  },
+  parameters: function () { return params },
   registerCommand: function () {}
 }
 require('../Frame2Text.js')
@@ -49,6 +49,7 @@ function msgEvent (line) {
 describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   let tmp
   let cwd
+  let mainModule
   // 実引数の並びはよく変える順に [Strategy, TextBase, DataFolder]。テストは
   // 呼びやすさ優先で strategy を末尾に置き、ここで実際の並びへ組み替える
   // (位置がずれれば全件落ちる)。
@@ -97,12 +98,16 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
       JSON.stringify({ events: [null, msgEvent('こんにちは'), msgEvent('やあ')] }), 'utf8')
     fs.writeFileSync(path.join(tmp, 'data', 'CommonEvents.json'),
       JSON.stringify([null, { id: 1, list: [{ code: 0, indent: 0, parameters: [] }] }]), 'utf8')
-    // .t2f-base は cwd 基準で作られるので、リポジトリを汚さないよう tmp に移る。
+    // .t2f-base は cwd 基準、相対のフォルダ名はゲームの置き場所(BASE_PATH)基準で作られる。
+    // リポジトリを汚さないよう、両方 tmp に向ける。
     cwd = process.cwd()
     process.chdir(tmp)
+    mainModule = process.mainModule
+    process.mainModule = { filename: path.join(tmp, 'game.js') }
   })
 
   afterEach(function () {
+    process.mainModule = mainModule
     process.chdir(cwd)
     fs.rmSync(tmp, { recursive: true, force: true })
   })
@@ -125,6 +130,17 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     expect(summary).to.match(/成功 3件 \(イベント 2 \/ コモン 1\)、失敗 0件/)
     expect(line('出力先')).to.contain(path.join(tmp, 'text'))
     expect(fs.existsSync(path.join(tmp, 'text', 'map001_event001_page1.txt'))).to.equal(true)
+  })
+
+  it('writes to the folder of the plugin parameter when the folder is left out', function () {
+    params['Default Scenario Folder'] = 'scenario'
+    try {
+      run(path.join(tmp, 'data'), '')
+    } finally {
+      params['Default Scenario Folder'] = 'text'
+    }
+    expect(fs.existsSync(path.join(tmp, 'scenario', 'map001_event001_page1.txt'))).to.equal(true)
+    expect(fs.existsSync(path.join(tmp, 'text'))).to.equal(false)
   })
 
   it('says how many existing text files were overwritten, and only when it happened', function () {
