@@ -148,16 +148,38 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     expect(line('上書きしました')).to.contain('既存テキスト 3件')
   })
 
-  // 既定は merge。CLI・t2f-sync・VSCode と揃え、テキストに書いた内容を黙って消さない。
-  it('defaults to merge, keeping what was written in the text', function () {
+  // 以前の取り出しは上書きしかなかったので、既定は上書きのまま。
+  it('defaults to overwrite', function () {
     run(path.join(tmp, 'text'))
     fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)) + '\n<comment>\nテキスト側のメモ\n</comment>\n', 'utf8')
 
     run(path.join(tmp, 'text')) // strategy 未指定
 
+    expect(line('取り出し完了(overwrite)')).to.be.a('string')
+    expect(readIf(textPathOf(ev1))).to.not.contain('テキスト側のメモ')
+  })
+
+  it('takes the strategy of the plugin parameter when it is left out, keeping what was written in the text', function () {
+    run(path.join(tmp, 'text'))
+    fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)) + '\n<comment>\nテキスト側のメモ\n</comment>\n', 'utf8')
+
+    params.Strategy = 'merge'
+    try {
+      run(path.join(tmp, 'text'))
+    } finally {
+      delete params.Strategy
+    }
+
     expect(line('取り出し完了(merge)')).to.be.a('string')
     expect(readIf(textPathOf(ev1))).to.contain('テキスト側のメモ')
     expect(line('上書きしました')).to.equal(undefined)
+  })
+
+  it('takes the strategy in Japanese too', function () {
+    run(path.join(tmp, 'text'), '統合')
+    expect(line('取り出し完了(merge)')).to.be.a('string')
+    run(path.join(tmp, 'text'), '上書き')
+    expect(line('取り出し完了(overwrite)')).to.be.a('string')
   })
 
   it('names the data folder when it cannot be read', function () {

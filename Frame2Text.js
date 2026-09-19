@@ -7,8 +7,9 @@
 // ----------------------------------------------------------------------------
 // Version
 // 2.3.0 2026/08/02:
-// ・一括取り出しに取り出しのしかた(統合/上書き)を追加。統合はテキストに書いた内容を残したまま
-//   ゲーム側の変更だけを取り込みます(既定は統合。CLI・t2f-sync・VSCodeと同じ)
+// ・取り出しに反映方法(統合/上書き)を追加。統合はテキストに書いた内容を残したまま
+//   ゲーム側の変更だけを取り込みます。プラグインコマンドの既定は従来どおり上書きで、
+//   プラグインパラメータ「反映方法」から変えられます(CLI・t2f-sync・VSCodeの既定は統合)
 // ・衝突しても共通の祖先を進めるよう修正。目印3行を消して決着をつければ、統合のまま
 //   反対側へ流せます(従来は上書きでしか抜けられませんでした)
 // ・未解決の衝突が残っているイベント/テキストは反映・取り出しの対象から外すよう改善
@@ -79,7 +80,7 @@
  * @value merge
  * @option 【取り扱い注意】全上書き / overwrite
  * @value overwrite
- * @default merge
+ * @default overwrite
  *
  * @command EXPORT_CE_TO_MESSAGE
  * @text コモンイベントをエクスポート
@@ -111,7 +112,7 @@
  * @value merge
  * @option 【取り扱い注意】全上書き / overwrite
  * @value overwrite
- * @default merge
+ * @default overwrite
  *
  * @command BATCH_EXPORT_MESSAGES_TO_FOLDER
  * @text フォルダへ一括取り出し
@@ -131,7 +132,7 @@
  * @value merge
  * @option 【取り扱い注意】全上書き / overwrite
  * @value overwrite
- * @default merge
+ * @default overwrite
  *
  * @param Default Scenario Folder
  * @text 出力フォルダ名
@@ -172,6 +173,16 @@
  * @desc 出力するページのIDを設定します。デフォルト値は1です。(MZでは無視されます)
  * @default 1
  * @type number
+ *
+ * @param Strategy
+ * @text 反映方法
+ * @desc 取り出しの反映方法。merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます(Text2Frameが必要)。既定はoverwriteです。(MZでは無視されます)
+ * @type select
+ * @option 統合 / merge
+ * @value merge
+ * @option 【取り扱い注意】全上書き / overwrite
+ * @value overwrite
+ * @default overwrite
  *
  * @param IsDebug
  * @text デバッグモードを利用する
@@ -690,7 +701,7 @@ function resolveText2Frame () {
     // 未設定(古いプラグイン設定のまま)なら省略する。既定を true にしているため。
     Laurus.Frame2Text.OmitDefaultTags = String(Laurus.Frame2Text.Parameters.OmitDefaultTags) !== 'false'
     // 単発取り出しのしかた。コマンドの引数解決で毎回決め直す。
-    Laurus.Frame2Text.Strategy = 'merge'
+    Laurus.Frame2Text.Strategy = 'overwrite'
     let PATH_SEP = '/'
     let BASE_PATH = '.'
     if (typeof require !== 'undefined') {
@@ -853,17 +864,20 @@ function resolveText2Frame () {
 
     Laurus.Frame2Text.ExecMode = command.toUpperCase()
     // 入力ファイル(MAPXXX.json)、出力ファイル(message.txt)の情報
-    /* 単発の取り出しコマンドの「取り出しのしかた」。反映側の add に当たるものは無い。
-     * 省略時は統合: 一括取り出し・CLI・t2f-sync・VS Code と揃え、テキストに書いた内容を
-     * 黙って消さない。 */
+    /* 取り出しコマンド(単体・一括)の反映方法。反映側の add に当たるものは無い。
+     * 省略時はプラグインパラメータ「反映方法」、それも無ければ上書き。
+     * 以前の取り出しは上書きしかなかったので、既存のユーザーの動きを変えない。
+     * MVの引数は手書きなので、日本語でも書けるようにする。 */
+    const EXPORT_STRATEGY_ALIASES = { merge: 'merge', overwrite: 'overwrite', 統合: 'merge', 上書き: 'overwrite' }
     const resolveExportStrategy = function (explicit) {
-      const s = String(explicit == null ? '' : explicit).toLowerCase()
-      if (s === 'merge' || s === 'overwrite') return s
-      if (s !== '' && s !== 'undefined') {
-        throw new Error('Unknown strategy: ' + explicit +
-          ' / 取り出しのしかたは merge か overwrite を指定してください。')
-      }
-      return 'merge'
+      const given = String(explicit == null ? '' : explicit).trim()
+      const fallback = String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters.Strategy) || '').trim()
+      const value = (given !== '' && given !== 'undefined') ? given : fallback
+      if (value === '' || value === 'undefined') return 'overwrite'
+      const s = EXPORT_STRATEGY_ALIASES[value.toLowerCase()] || EXPORT_STRATEGY_ALIASES[value]
+      if (s) return s
+      throw new Error('Unknown strategy: ' + value +
+        ' / 反映方法は merge(統合) か overwrite(上書き) を指定してください。')
     }
 
     switch (Laurus.Frame2Text.ExecMode) {
@@ -912,12 +926,8 @@ function resolveText2Frame () {
         // 単体の取り出し・一括反映と同じ並び: 出力先 -> 取り出し方法。
         // @arg の並び・registerCommand の渡し順と揃えること。
         // ゲームのデータは data 固定(他の取り出し・反映コマンドと同じ)。
-        // 既定は merge。CLI・t2f-sync・VSCode と揃え、テキストに書いた内容を黙って
-        // 消さないようにする。初回(既存テキスト無し)は merge も overwrite も同じ結果。
-        const batchStrategy = String(args[1] || 'merge').toLowerCase()
-        if (batchStrategy !== 'merge' && batchStrategy !== 'overwrite') {
-          throw new Error('Unknown strategy: ' + args[1] + ' / 取り出し方法は merge か overwrite を指定してください。')
-        }
+        // 反映方法は単体の取り出しと同じ決め方(省略時はプラグインパラメータ、無ければ上書き)。
+        const batchStrategy = resolveExportStrategy(args[1])
         // 出力先を省いたときは、プラグインパラメータの出力フォルダ名。
         // FileFolder は単発の取り出しが引数で書き換えるので、パラメータを直接読む。
         Laurus.Frame2Text.TextBase = args[0] || String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters['Default Scenario Folder']) || '') || 'text'
@@ -3388,7 +3398,7 @@ function resolveText2Frame () {
       const dataDir = _path.resolve(BASE_PATH, 'data')
       const textBase = Laurus.Frame2Text.TextBase
       const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
-      const batchStrategy = Laurus.Frame2Text.BatchStrategy || 'merge'
+      const batchStrategy = Laurus.Frame2Text.BatchStrategy || 'overwrite'
       let okCount = 0
       let errCount = 0
       let eventCount = 0
