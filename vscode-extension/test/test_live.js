@@ -4,7 +4,7 @@ const { monitorScript, injectMonitor, LIVE_STATE_PATH, LIVE_TOKEN_HEADER } = req
 const { parseLiveMessage, parseVariableInput, parseCountInput, LiveState, liveLine, selfSwitchLine, formatLiveValue, LIVE_TIMEOUT } = require('../out/liveState')
 const { commandMark } = require('../out/db/runLines')
 
-const fakeGame = function () {
+const fakeGame = function (extra) {
   const sent = []
   let tick
   let clock = 1000
@@ -25,6 +25,7 @@ const fakeGame = function () {
     Math,
     String
   }
+  Object.assign(sandbox, extra)
   vm.runInNewContext(monitorScript('abc123'), sandbox)
   return {
     window,
@@ -360,8 +361,8 @@ describe('liveMonitor', function () {
     const page = function (codes) {
       return codes.map(function (code) { return { code, indent: 0, parameters: code === 101 ? ['', 0, 0, 2] : code === 401 ? ['やあ'] : [] } }).concat([{ code: 0, indent: 0, parameters: [] }])
     }
-    const game = function () {
-      const g = fakeGame()
+    const game = function (extra) {
+      const g = fakeGame(extra)
       const map = {
         pages: [{ list: page([230]) }, { list: page([101, 401, 117, 121]) }],
         route: { list: [{ code: 205, indent: 0, parameters: [-1, { list: [{ code: 1, indent: null }], repeat: false, skippable: false, wait: true }] }, { code: 0, indent: 0, parameters: [] }] }
@@ -439,8 +440,8 @@ describe('liveMonitor', function () {
     })
 
     describe('stopping at breakpoints', function () {
-      const setup = function () {
-        const { g, map, common } = game()
+      const setup = function (extra) {
+        const { g, map, common } = game(extra)
         const calls = []
         function Interp (list, eventId) { this._list = list; this._index = 0; this._mapId = 4; this._eventId = eventId; this._childInterpreter = null }
         Interp.prototype.executeCommand = function () { calls.push([this._list === common.list ? 'child' : 'parent', this._index]); this._index++; return true }
@@ -508,6 +509,25 @@ describe('liveMonitor', function () {
         say({ debug: 'continue' })
         expect(parent.executeCommand()).to.equal(true)
         expect(parent.executeCommand()).to.equal(true)
+      })
+
+      it('says on the game screen that it is paused, and why, until it goes on', function () {
+        const body = {
+          children: [],
+          appendChild: function (el) { this.children.push(el); el.parentNode = this },
+          removeChild: function (el) { this.children.splice(this.children.indexOf(el), 1); el.parentNode = null }
+        }
+        const document = { body, createElement: function () { return { style: {}, textContent: '', parentNode: null } } }
+        const { g, parent, say } = setup({ document })
+        say({ breakpoints: { 'e:4:2:2': [1] } })
+        parent.executeCommand()
+        expect(parent.executeCommand()).to.equal(false)
+        g.step()
+        expect(body.children).to.have.lengthOf(1)
+        expect(body.children[0].textContent).to.contain('印をつけた行で止まりました')
+        say({ debug: 'continue' })
+        g.step()
+        expect(body.children).to.have.lengthOf(0)
       })
 
       it('lets a paused game go and forgets the breakpoints when VS Code is gone', function () {

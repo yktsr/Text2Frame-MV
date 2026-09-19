@@ -194,11 +194,8 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
             case 'next':
             case 'stepIn':
             case 'stepOut': {
-                const s = this.session();
-                if (s) s.send({ debug: request.command as 'continue' | 'next' | 'stepIn' | 'stepOut' });
                 this.respond(request, { allThreadsContinued: true });
-                this.stopped = false;
-                this.event('continued', { threadId: 1, allThreadsContinued: true });
+                this.resume(request.command as 'continue' | 'next' | 'stepIn' | 'stepOut');
                 return;
             }
             case 'pause': {
@@ -286,6 +283,28 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
         this.push(false);
     }
 
+    private resume(mode: 'continue' | 'next' | 'stepIn' | 'stepOut'): void {
+        const s = this.session();
+        if (s) s.send({ debug: mode });
+        this.stopped = false;
+        this.event('continued', { threadId: 1, allThreadsContinued: true });
+    }
+
+    /** 印で止まったことを、どこで止まったかと進め方と一緒に知らせる。 */
+    private async tellStopped(at: number): Promise<void> {
+        const [top] = (await this.stack()) as Array<{ name?: string; line?: number; source?: { name?: string } }>;
+        const where = top && top.source && top.line ? `${top.source.name} の ${top.line} 行目` : (top && top.name) || '印をつけた行';
+        const pick = await vscode.window.showInformationMessage(`Text2Frame: 一時停止しました: ${where}`, '続ける', '印をすべて消して続ける');
+        if (!pick || this.ended || !this.stopped || this.stoppedAt !== at) return;
+        if (pick === '印をすべて消して続ける') {
+            const ours = vscode.debug.breakpoints.filter((b) => b instanceof vscode.SourceBreakpoint && this.files.has(b.location.uri.fsPath));
+            vscode.debug.removeBreakpoints(ours);
+            this.files.clear();
+            this.push();
+        }
+        this.resume('continue');
+    }
+
     private debugChanged(): void {
         const s = this.live.current();
         const paused = s && s.state.paused;
@@ -293,6 +312,7 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
             this.stoppedAt = paused.at;
             this.stopped = true;
             this.event('stopped', { reason: paused.reason === 'breakpoint' ? 'breakpoint' : paused.reason === 'pause' ? 'pause' : 'step', threadId: 1, allThreadsStopped: true });
+            if (paused.reason === 'breakpoint') void this.tellStopped(paused.at);
         } else if (!paused && this.stopped) {
             this.stopped = false;
             this.event('continued', { threadId: 1, allThreadsContinued: true });
@@ -485,6 +505,18 @@ export function registerDebugger(context: vscode.ExtensionContext, service: Data
         if (s.state.paused) s.send({ debug: 'continue' });
         cleared = { session: s, resets: s.state.resets };
     };
+    // オフのまま印を付けたら、止めるにはどうするかを一度だけ知らせる。
+    let hinted = false;
+    const hint = (e: vscode.BreakpointsChangeEvent): void => {
+        if (hinted || pauseAtMarks() || adapters.size) return;
+        const inText = e.added.some((b) => b instanceof vscode.SourceBreakpoint &&
+            vscode.workspace.textDocuments.some((d) => d.languageId === 'text2frame' && d.uri.toString() === b.location.uri.toString()));
+        if (!inText) return;
+        hinted = true;
+        void vscode.window.showInformationMessage(
+            'Text2Frame: この印で止めるには、「操作」→「上級」の「印をつけた行で一時停止する」をオンにします。', 'オンにする'
+        ).then((pick) => { if (pick && !pauseAtMarks()) void vscode.commands.executeCommand('text2frame.togglePauseAtMarks'); });
+    };
     const toggle = async (): Promise<void> => {
         const on = !pauseAtMarks();
         await context.workspaceState.update(PAUSE_KEY, on);
@@ -505,6 +537,7 @@ export function registerDebugger(context: vscode.ExtensionContext, service: Data
             else forgetMarks();
         }),
         vscode.commands.registerCommand('text2frame.togglePauseAtMarks', toggle),
+        vscode.debug.onDidChangeBreakpoints(hint),
         vscode.debug.registerDebugAdapterDescriptorFactory(DEBUG_TYPE, {
             createDebugAdapterDescriptor: () => new vscode.DebugAdapterInlineImplementation(new Text2FrameDebugAdapter(service, live, tracker))
         }),

@@ -226,7 +226,7 @@ export function monitorScript(token: string): string {
       frames.push({ key: key, index: Math.max(0, Math.min(list.length - 1, index)) });
       lists.push([key, list]);
     });
-    paused = { interp: interp, index: interp._index };
+    paused = { interp: interp, index: interp._index, reason: reason };
     pausedReport = { reason: reason, frames: frames, lists: lists };
     stepping = null;
     pauseWanted = false;
@@ -383,9 +383,29 @@ export function monitorScript(token: string): string {
     map._interpreter.setup(page.list, v.eventId);
     finishVisit('ran');
   }
+  var banner = null;
+  var BANNER_TEXT = {
+    breakpoint: '一時停止中: 印をつけた行で止まりました。VS Code の「続ける」を押すと進みます。',
+    other: '一時停止中です。VS Code の「続ける」を押すと進みます。'
+  };
+  function showBanner() {
+    if (typeof document === 'undefined' || !document.body) return;
+    var text = paused ? BANNER_TEXT[paused.reason] || BANNER_TEXT.other : '';
+    if (!paused) {
+      if (banner && banner.parentNode) banner.parentNode.removeChild(banner);
+      return;
+    }
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;padding:8px 12px;background:rgba(190,30,30,0.92);color:#fff;font:bold 15px sans-serif;text-align:center;pointer-events:none;';
+    }
+    if (banner.textContent !== text) banner.textContent = text;
+    if (!banner.parentNode) document.body.appendChild(banner);
+  }
   function tick() {
     hook();
     stepVisit();
+    showBanner();
     var switches = window.$gameSwitches;
     var variables = window.$gameVariables;
     if (!switches || !variables || !switches._data || !variables._data) return;
