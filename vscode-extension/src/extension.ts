@@ -5,6 +5,7 @@ import { registerNavigation } from './navigation';
 import { registerEventLinks } from './eventLinks';
 import { registerMapLinksView } from './mapLinksView';
 import { registerMapGraph } from './mapGraph';
+import { registerHistoryView } from './historyView';
 import { registerQuickFixes, FIX } from './quickFixes';
 import { registerSnippets } from './snippets';
 import { basicProblems } from './db/checks';
@@ -74,6 +75,8 @@ export function activate(context: vscode.ExtensionContext) {
     const eventLinks = registerEventLinks(context, database, running);
     registerMapLinksView(context, database, eventLinks, live);
     registerMapGraph(context, database, eventLinks);
+    // 反映・取り出しの履歴(前の状態に戻す)。
+    registerHistoryView(context);
     // クイックフィックス(電球)とスニペット。
     registerQuickFixes(context);
     registerSnippets(context);

@@ -291,6 +291,36 @@
         "command": "text2frame.tree.mapGraph",
         "title": "マップのつながりを図で見る / Show the map graph",
         "icon": "$(graph)"
+      },
+      {
+        "command": "text2frame.history.show",
+        "title": "Text2Frame: 履歴(前の状態に戻す) / Show history",
+        "icon": "$(history)"
+      },
+      {
+        "command": "text2frame.history.refresh",
+        "title": "更新 / Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "text2frame.history.openFolder",
+        "title": "控えのフォルダを開く / Open the history folder",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "text2frame.history.diff",
+        "title": "差分を見る / Show changes",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "text2frame.history.restore",
+        "title": "この操作の前に戻す / Go back to before this",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "text2frame.history.restoreFile",
+        "title": "このファイルだけ戻す / Go back for this file only",
+        "icon": "$(discard)"
       }
     ],
     "viewsContainers": {
@@ -322,6 +352,11 @@
         {
           "id": "text2frameMapLinks",
           "name": "マップのつながり / Map Links",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "text2frameHistory",
+          "name": "履歴 / History",
           "visibility": "collapsed"
         },
         {
@@ -410,6 +445,16 @@
           "group": "navigation"
         },
         {
+          "command": "text2frame.history.refresh",
+          "when": "view == text2frameHistory",
+          "group": "navigation@1"
+        },
+        {
+          "command": "text2frame.history.openFolder",
+          "when": "view == text2frameHistory",
+          "group": "navigation@2"
+        },
+        {
           "command": "text2frame.db.refresh",
           "when": "view == text2frameDatabase",
           "group": "navigation"
@@ -444,6 +489,10 @@
         { "command": "text2frame.tree.links", "when": "false" },
         { "command": "text2frame.tree.mapLinks", "when": "false" },
         { "command": "text2frame.tree.mapGraph", "when": "false" },
+        { "command": "text2frame.history.refresh", "when": "false" },
+        { "command": "text2frame.history.diff", "when": "false" },
+        { "command": "text2frame.history.restore", "when": "false" },
+        { "command": "text2frame.history.restoreFile", "when": "false" },
         { "command": "text2frame.mapLinks.show", "when": "false" },
         { "command": "text2frame.mapLinks.open", "when": "false" },
         { "command": "text2frame.db.insert", "when": "false" },
@@ -510,6 +559,26 @@
           "command": "text2frame.tree.mapGraph",
           "when": "view == text2frameExplorer && (viewItem == text2frame.map || viewItem == text2frame.here)",
           "group": "4_links@3"
+        },
+        {
+          "command": "text2frame.history.restore",
+          "when": "view == text2frameHistory && viewItem == text2frame.history.entry",
+          "group": "1_restore@1"
+        },
+        {
+          "command": "text2frame.history.diff",
+          "when": "view == text2frameHistory && viewItem == text2frame.history.entry",
+          "group": "2_diff@1"
+        },
+        {
+          "command": "text2frame.history.restoreFile",
+          "when": "view == text2frameHistory && viewItem == text2frame.history.file",
+          "group": "1_restore@1"
+        },
+        {
+          "command": "text2frame.history.diff",
+          "when": "view == text2frameHistory && viewItem == text2frame.history.file",
+          "group": "2_diff@1"
         }
       ]
     },

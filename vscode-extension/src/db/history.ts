@@ -37,15 +37,36 @@ export interface HistoryEntry {
     files: HistoryFile[];
     /** 保存時の反映のように、続けて起きたものを1つにまとめるための目印。 */
     mergeKey?: string;
+    /** 控えの大きさ(バイト)。 */
+    bytes?: number;
 }
+
+/** 控えの合計の上限。超えたら、古い操作から消す(いちばん新しい操作は残す)。 */
+export const MAX_HISTORY_BYTES = 300 * 1024 * 1024;
 
 export interface HistoryOptions {
     /** 残す操作の数。0 なら記録しない。 */
     keep?: number;
+    /** 控えの合計の上限(バイト)。 */
+    maxBytes?: number;
     /** 同じ目印の操作が、この時間の中で続いたら1つにまとめる。 */
     mergeKey?: string;
     mergeWindowMs?: number;
     now?: () => number;
+}
+
+/** 履歴が増えた・減ったときに知らせる先(履歴の欄が描き直すため)。 */
+const listeners = new Set<(root: string) => void>();
+
+export function onHistoryChange(listener: (root: string) => void): { dispose: () => void } {
+    listeners.add(listener);
+    return { dispose: () => { listeners.delete(listener); } };
+}
+
+function changed(root: string): void {
+    listeners.forEach((listener) => {
+        try { listener(root); } catch (e) { /* 知らせる先の失敗は、記録には関係ない */ }
+    });
 }
 
 const toRel = (root: string, abs: string): string => path.relative(root, abs).split(path.sep).join('/');
@@ -112,14 +133,17 @@ export function readEntry(root: string, id: string): HistoryEntry | undefined {
     return readEntryFile(root, id);
 }
 
-/** 残す数を超えた古い操作を消す(消すのは、ここで作った控えだけ)。 */
-export function prune(root: string, keep: number): string[] {
+/** 残す数・合計の大きさを超えた古い操作を消す(消すのは、ここで作った控えだけ)。 */
+export function prune(root: string, keep: number, maxBytes = MAX_HISTORY_BYTES): string[] {
     const removed: string[] = [];
     const entries = listEntries(root);
-    for (const entry of entries.slice(Math.max(0, keep))) {
+    let total = 0;
+    entries.forEach((entry, i) => {
+        total += entry.bytes || 0;
+        if (i < Math.max(1, keep) && (i === 0 || total <= maxBytes)) return;
         fs.rmSync(entryDir(root, entry.id), { recursive: true, force: true });
         removed.push(entry.id);
-    }
+    });
     return removed;
 }
 
@@ -216,8 +240,13 @@ export class HistoryRecorder {
             return undefined;
         }
         this.entry.time = this.now();
+        this.entry.bytes = kept.reduce((sum, file) => {
+            if (!file.existed) return sum;
+            try { return sum + fs.statSync(snapshotFile(this.root, this.entry.id, file.path)).size; } catch (e) { return sum; }
+        }, 0);
         writeEntryFile(this.root, this.entry);
-        if (this.options.keep !== undefined) prune(this.root, this.options.keep);
+        if (this.options.keep !== undefined) prune(this.root, this.options.keep, this.options.maxBytes);
+        changed(this.root);
         return this.entry;
     }
 }

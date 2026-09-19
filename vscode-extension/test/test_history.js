@@ -119,6 +119,18 @@ describe('history', function () {
     expect(listEntries(root).map((e) => e.label)).to.eql(['反映 5', '反映 4', '反映 3'])
   })
 
+  it('removes old operations when the copies get too big, but always keeps the newest', function () {
+    for (let n = 2; n <= 4; n++) {
+      withHistory(root, 'apply', '反映 ' + n, { keep: 10, maxBytes: 20 }, () => {
+        noteWrite(file('data/Map001.json'), 'data')
+        write('data/Map001.json', '{"v":' + n + ',"pad":"' + 'x'.repeat(10) + '"}')
+      })
+    }
+    // 控えは1つ目が7バイト、2つ目からは約26バイト。20バイトを超えるので、いちばん新しいものだけが残る。
+    expect(listEntries(root).map((e) => e.label)).to.eql(['反映 4'])
+    expect(listEntries(root)[0].bytes).to.be.greaterThan(20)
+  })
+
   it('does not record when the number to keep is 0', function () {
     withHistory(root, 'apply', 'a', { keep: 0 }, () => {
       noteWrite(file('data/Map001.json'), 'data')

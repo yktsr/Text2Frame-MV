@@ -80,6 +80,7 @@ const GROUPS: CommandGroup[] = [
         id: 'advanced',
         label: '上級 / Advanced',
         items: [
+            { command: 'text2frame.history.show', label: '履歴(前の状態に戻す) / History', icon: 'history', tooltip: '反映・取り出しの前の中身の控えを並べます。右クリックで、その操作の前に戻せます。' },
             { command: 'text2frame.repullOverwrite', label: '全部取り直す(上書き) / Re-pull (overwrite)', icon: 'refresh', tooltip: 'テキストのフォルダ(設定 text2frame.textBaseDir)をゲームの内容で全部上書きします(編集は失われます)。' }
         ]
     }
