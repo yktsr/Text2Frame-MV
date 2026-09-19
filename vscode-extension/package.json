@@ -38,7 +38,8 @@
   "contributes": {
     "configurationDefaults": {
       "files.readonlyInclude": {
-        "**/.t2f-base/**": true
+        "**/.t2f-base/**": true,
+        "**/.t2f-history/**": true
       }
     },
     "languages": [
@@ -534,7 +535,13 @@
             "いつも調べる / always",
             "調べない / never"
           ],
-          "description": "メッセージがウィンドウの幅からはみ出す行と、1つのウィンドウに4行を超える所を知らせる。 / Warn about message lines wider than the window, and windows with more than four lines."
+          "description": "メッセージがウィンドウの幅からはみ出す行を知らせる。 / Warn about message lines wider than the window."
+        },
+        "text2frame.history.keep": {
+          "type": "number",
+          "default": 100,
+          "minimum": 0,
+          "description": "反映・取り出しの前の中身を、何回ぶん控えておくか(ゲームのフォルダの .t2f-history)。0 にすると控えない。 / How many apply/pull operations to keep in the history (.t2f-history in the game folder). 0 turns it off."
         },
         "text2frame.messageLineLength": {
           "type": "number",

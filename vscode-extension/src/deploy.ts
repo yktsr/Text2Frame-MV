@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, isDeployable, isAncestorCopy, ANCESTOR_COPY_MESSAGE, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot, snapshotKeyFor } from './compiler';
+import { parseFrontMatter, isDeployable, isAncestorCopy, ANCESTOR_COPY_MESSAGE, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot, snapshotKeyFor, historyKeep } from './compiler';
+import { noteWrite, withHistory } from './db/history';
+import { placeFromMeta, placeKey } from './placeLabel';
 import { exportToTextFile, mergePullToText, renderCommands, ExportTarget } from './exportText';
 import { reviewEnabled } from './review';
 import { reviewDeploy, Decision, DeployCandidate } from './reviewApply';
@@ -139,11 +141,40 @@ export function loadCompiler(context: vscode.ExtensionContext, workspaceRoot: st
 }
 
 /** Deploy a single document. Returns the structured result (or undefined when skipped). */
-export async function deployDocument(
+/**
+ * 反映の直前に、書き換わるもの(データ・テキスト・祖先)を履歴に控える。
+ * テキストは反映の中で書き戻されることがあり、祖先はコンパイラが書き直す。
+ */
+export function noteApply(workspaceRoot: string, textPath: string, dataPath: string | undefined, meta: { [key: string]: string }): void {
+    const place = placeFromMeta(meta);
+    const key = place ? placeKey(place) : undefined;
+    if (dataPath) noteWrite(dataPath, 'data', key ? [key] : undefined);
+    noteWrite(textPath, 'text');
+    noteWrite(baseSnapshotPath(workspaceRoot, snapshotKeyFor(workspaceRoot, textPath)), 'base');
+}
+
+const relativeLabel = (workspaceRoot: string, file: string): string => path.relative(workspaceRoot, file).split(path.sep).join('/');
+
+export function deployDocument(
     document: vscode.TextDocument,
     context: vscode.ExtensionContext,
     deployDiagnostics: vscode.DiagnosticCollection,
-    options: { review?: boolean } = {}
+    options: { review?: boolean; onSave?: boolean } = {}
+): Promise<ApplyResult | undefined> {
+    const root = workspaceRootFor(document);
+    const file = document.uri.fsPath;
+    const label = (options.onSave ? '保存時の反映 ' : 'ゲームに反映 ') + (root ? relativeLabel(root, file) : path.basename(file));
+    // 保存時の反映は、同じテキストで5分以内に続いたら1つにまとめる(保存のたびに履歴が並ばないように)。
+    const history = { keep: historyKeep(), mergeKey: options.onSave ? 'save:' + file : undefined };
+    return withHistory(root, options.onSave ? 'applyOnSave' : 'apply', label, history,
+        () => deployDocumentNow(document, context, deployDiagnostics, options));
+}
+
+async function deployDocumentNow(
+    document: vscode.TextDocument,
+    context: vscode.ExtensionContext,
+    deployDiagnostics: vscode.DiagnosticCollection,
+    options: { review?: boolean; onSave?: boolean }
 ): Promise<ApplyResult | undefined> {
     if (isAncestorCopy(document.uri.fsPath)) {
         vscode.window.showWarningMessage(ANCESTOR_COPY_MESSAGE);
@@ -252,6 +283,7 @@ export async function deployDocument(
             return undefined;
         }
     }
+    noteApply(workspaceRoot, document.uri.fsPath, dataPath, meta);
     const result = mod.applyTextFile(applyOpts);
     if (decision === 'unchanged') result.unchanged = true;
 
@@ -362,9 +394,19 @@ export function deployFile(
     workspaceRoot: string,
     filePath: string
 ): ApplyResult | undefined {
+    return withHistory(workspaceRoot, 'apply', 'ゲームに反映 ' + relativeLabel(workspaceRoot, filePath), { keep: historyKeep() },
+        () => deployFileNow(context, workspaceRoot, filePath));
+}
+
+function deployFileNow(
+    context: vscode.ExtensionContext,
+    workspaceRoot: string,
+    filePath: string
+): ApplyResult | undefined {
     const prepared = prepareFile(context, workspaceRoot, filePath);
     if (!('mod' in prepared)) return prepared;
     const { mod, meta, text, applyOpts, dataPath, snap, mergeLike } = prepared;
+    noteApply(workspaceRoot, filePath, dataPath, meta);
     const result = mod.applyTextFile(applyOpts);
     if (result && result.ok) {
         if (dataPath) {
@@ -518,7 +560,7 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
         }
         timers.set(key, setTimeout(() => {
             timers.delete(key);
-            deployDocument(document, context, deployDiagnostics).then(flashResult);
+            deployDocument(document, context, deployDiagnostics, { onSave: true }).then(flashResult);
         }, 250));
     };
 

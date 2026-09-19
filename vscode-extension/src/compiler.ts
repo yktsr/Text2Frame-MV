@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { isHistoryCopy, noteWrite } from './db/history';
 
 /**
  * Shared helpers for loading the Text2Frame / Frame2Text compilers in-process
@@ -59,12 +60,19 @@ export function isDeployable(document: vscode.TextDocument): boolean {
 /**
  * 3-way マージの祖先のコピー(.t2f-base の中)か。祖先もテキストと同じ形(front matter 付きの .txt)なので、
  * 開いて保存するとテキストとして反映され、祖先の祖先が .t2f-base/.t2f-base/… に作られてしまう。反映の対象にしない。
+ * 履歴の控え(.t2f-history の中)も同じ形なので、同じく反映の対象にしない。
  */
 export function isAncestorCopy(fsPath: string): boolean {
-    return path.resolve(fsPath).split(path.sep).includes('.t2f-base');
+    return path.resolve(fsPath).split(path.sep).includes('.t2f-base') || isHistoryCopy(fsPath);
 }
 
-export const ANCESTOR_COPY_MESSAGE = 'Text2Frame: これは 3-way マージの祖先のコピー(.t2f-base の中)なので反映しません。text/ の方のテキストを編集してください。';
+export const ANCESTOR_COPY_MESSAGE = 'Text2Frame: これは控えのコピー(.t2f-base または .t2f-history の中)なので反映しません。text/ の方のテキストを編集してください。';
+
+/** 履歴に残す操作の数(設定 text2frame.history.keep)。0 なら残さない。 */
+export function historyKeep(): number {
+    const keep = vscode.workspace.getConfiguration('text2frame').get<number>('history.keep', 100);
+    return Number.isInteger(keep) && keep > 0 ? keep : 0;
+}
 
 /**
  * Locate and load a compiler module by filename (Text2Frame.js / Frame2Text.js).
@@ -194,6 +202,7 @@ export function hasBaseSnapshot(workspaceRoot: string, key: string): boolean {
 }
 export function saveBaseSnapshot(workspaceRoot: string, key: string, content: string): void {
     const target = baseSnapshotPath(workspaceRoot, key);
+    noteWrite(target, 'base');
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, content, 'utf8');
 }

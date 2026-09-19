@@ -10,8 +10,10 @@ import {
     recordDataState,
     saveBaseSnapshot,
     baseSnapshotPath,
-    snapshotKeyFor
+    snapshotKeyFor,
+    historyKeep
 } from './compiler';
+import { noteWrite, withHistory } from './db/history';
 import { reviewPull } from './reviewApply';
 
 /**
@@ -257,6 +259,11 @@ export function planPull(
 
 /** planPull で作ったテキストを書き、データの状態と祖先を記録する。 */
 export function commitPull(context: vscode.ExtensionContext, workspaceRoot: string, plan: PullPlan): ExportResult {
+    const label = 'ゲームから取り出す ' + path.relative(workspaceRoot, plan.target.textPath).split(path.sep).join('/');
+    return withHistory(workspaceRoot, 'pull', label, { keep: historyKeep() }, () => commitPullNow(context, workspaceRoot, plan));
+}
+
+function commitPullNow(context: vscode.ExtensionContext, workspaceRoot: string, plan: PullPlan): ExportResult {
     const target = plan.target;
     if (!plan.ok) return { ok: false, error: plan.error };
     // Merging across unresolved markers would re-merge the markers themselves and double them.
@@ -316,6 +323,7 @@ export function renderCommands(context: vscode.ExtensionContext, workspaceRoot: 
 }
 
 function writeTextFile(textPath: string, contents: string): void {
+    noteWrite(textPath, 'text');
     const dir = path.dirname(textPath);
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
@@ -447,7 +455,8 @@ export function exportConversationOnly(context: vscode.ExtensionContext): void {
     const ext = path.extname(srcPath);
     target.textPath = srcPath.slice(0, srcPath.length - ext.length) + '.conversation' + (ext || '.txt');
     target.translationOnly = true;
-    const result = exportToTextFile(context, workspaceRoot, target);
+    const label = '会話のみ書き出し ' + path.relative(workspaceRoot, target.textPath).split(path.sep).join('/');
+    const result = withHistory(workspaceRoot, 'conversation', label, { keep: historyKeep() }, () => exportToTextFile(context, workspaceRoot, target));
     if (result.ok) {
         vscode.window.showInformationMessage('Text2Frame: 会話のみテキストを書き出しました: ' + path.basename(result.textPath || ''));
         vscode.workspace.openTextDocument(result.textPath as string).then((doc) => vscode.window.showTextDocument(doc, { preview: true }));

@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor, baseSnapshotPath, hasBaseSnapshot, snapshotKeyFor } from './compiler';
+import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor, baseSnapshotPath, hasBaseSnapshot, snapshotKeyFor, historyKeep } from './compiler';
+import { withHistory } from './db/history';
 import { commitPull, planPull, ExportTarget, PullPlan } from './exportText';
-import { writeBackAndRefreshBase, reviewFiles } from './deploy';
+import { writeBackAndRefreshBase, reviewFiles, noteApply } from './deploy';
 import { reviewEnabled } from './review';
 import { reviewPull } from './reviewApply';
 
@@ -139,32 +140,36 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
     let warn = 0;
     const strategy = strategySetting();
     const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
-    for (const file of files) {
-        try {
-            const fileText = fs.readFileSync(file, 'utf8');
-            const { meta } = parseFrontMatter(fileText);
-            const { opts, label } = resolveTarget(meta, root);
-            const key = snapshotKeyFor(root, file);
-            // baseRoot は祖先(.t2f-base)の置き場所。渡さないと拡張ホストの cwd(/)に落ちる。
-            const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, baseRoot: root };
-            if (mergeLike && hasBaseSnapshot(root, key)) {
-                applyOpts.basePath = baseSnapshotPath(root, key);
-            }
-            const res = mod.applyTextFile(applyOpts);
-            if (res.ok) {
-                ok++;
-                warn += res.warnings.length;
-                writeBackAndRefreshBase(context, root, meta, file, fileText, res, { key }, mergeLike);
-                out.appendLine(`OK   ${label}  <- ${path.relative(root, file)}` + (res.warnings.length ? `  (${res.warnings.length} warn)` : ''));
-            } else {
+    withHistory(root, 'applyAll', 'ゲームに反映(すべて)', { keep: historyKeep() }, (recorder) => {
+        for (const file of files) {
+            try {
+                const fileText = fs.readFileSync(file, 'utf8');
+                const { meta } = parseFrontMatter(fileText);
+                const { opts, label } = resolveTarget(meta, root);
+                const key = snapshotKeyFor(root, file);
+                // baseRoot は祖先(.t2f-base)の置き場所。渡さないと拡張ホストの cwd(/)に落ちる。
+                const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, baseRoot: root };
+                if (mergeLike && hasBaseSnapshot(root, key)) {
+                    applyOpts.basePath = baseSnapshotPath(root, key);
+                }
+                noteApply(root, file, (opts.mapPath || opts.commonEventPath) as string | undefined, meta);
+                const res = mod.applyTextFile(applyOpts);
+                if (res.ok) {
+                    ok++;
+                    warn += res.warnings.length;
+                    writeBackAndRefreshBase(context, root, meta, file, fileText, res, { key }, mergeLike);
+                    out.appendLine(`OK   ${label}  <- ${path.relative(root, file)}` + (res.warnings.length ? `  (${res.warnings.length} warn)` : ''));
+                } else {
+                    fail++;
+                    out.appendLine(`FAIL ${label}  <- ${path.relative(root, file)}  ${res.error}`);
+                }
+            } catch (e) {
                 fail++;
-                out.appendLine(`FAIL ${label}  <- ${path.relative(root, file)}  ${res.error}`);
+                out.appendLine(`FAIL ${path.relative(root, file)}  ${e instanceof Error ? e.message : String(e)}`);
             }
-        } catch (e) {
-            fail++;
-            out.appendLine(`FAIL ${path.relative(root, file)}  ${e instanceof Error ? e.message : String(e)}`);
         }
-    }
+        recorder?.setLabel(`ゲームに反映(すべて) ${ok}件`);
+    });
     out.appendLine(`=== done: ${ok} ok, ${fail} fail, ${warn} warnings ===`);
     const msg = `Text2Frame: ゲームに反映 完了 — ${ok} 成功 / ${fail} 失敗`;
     if (fail > 0) {
@@ -225,27 +230,30 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
     // 目印が未解決で統合を見送ったもの / 目印ごと書き出したもの(どちらも祖先は進まない)。
     let skipped = 0;
     let markers = 0;
-    for (const plan of reviewed.plans) {
-        const target = plan.target;
-        const res = commitPull(context, root, plan);
-        if (res.ok && res.skipped) {
-            // 目印をまたぐ統合はできない。書いていないので written には数えない。
-            skipped++;
-            out.appendLine(`SKIP ${path.relative(root, target.textPath)}  未解決の衝突の目印が${res.skipped === 'game' ? 'ゲーム側' : 'テキスト'}に残っています`);
-        } else if (res.ok) {
-            written++;
-            conflicts += res.conflicts || 0;
-            if (res.markers) {
-                markers++;
+    withHistory(root, mode === 'merge' ? 'pullAll' : 'repullAll', purpose + (mode === 'merge' ? '(すべて)' : ''), { keep: historyKeep() }, (recorder) => {
+        for (const plan of reviewed.plans) {
+            const target = plan.target;
+            const res = commitPull(context, root, plan);
+            if (res.ok && res.skipped) {
+                // 目印をまたぐ統合はできない。書いていないので written には数えない。
+                skipped++;
+                out.appendLine(`SKIP ${path.relative(root, target.textPath)}  未解決の衝突の目印が${res.skipped === 'game' ? 'ゲーム側' : 'テキスト'}に残っています`);
+            } else if (res.ok) {
+                written++;
+                conflicts += res.conflicts || 0;
+                if (res.markers) {
+                    markers++;
+                }
+                out.appendLine(`OK   ${path.relative(root, target.textPath)}`
+                    + (res.conflicts ? `  (${res.conflicts} 競合)` : '')
+                    + (res.markers ? '  (目印ごと取り出し。祖先は据え置き)' : ''));
+            } else {
+                fail++;
+                out.appendLine(`FAIL ${path.relative(root, target.textPath)}  ${res.error}`);
             }
-            out.appendLine(`OK   ${path.relative(root, target.textPath)}`
-                + (res.conflicts ? `  (${res.conflicts} 競合)` : '')
-                + (res.markers ? '  (目印ごと取り出し。祖先は据え置き)' : ''));
-        } else {
-            fail++;
-            out.appendLine(`FAIL ${path.relative(root, target.textPath)}  ${res.error}`);
         }
-    }
+        recorder?.setLabel(purpose + (mode === 'merge' ? '(すべて)' : '') + ` ${written}件`);
+    });
     out.appendLine(`=== done: ${written} written, ${fail} fail, ${conflicts} conflicts, ${skipped} skipped, ${markers} with markers ===`);
     if (skipped > 0) {
         out.appendLine('SKIP したファイルは、目印3行を消すか「全部取り直す」で目印ごと取り出してテキスト側で解決してください。');
