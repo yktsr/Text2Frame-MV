@@ -173,4 +173,33 @@ describe('MV plugin command: omitted arguments fall back to the plugin parameter
     expect(eventTexts(2, 3, 1)).to.eql(['FM'])
     expect(eventTexts(3, 2, 2)).to.eql([])
   })
+
+  // 見出しが引数に勝つので、どこから取ったかを書く前に知らせる。
+  it('says where each number of the destination came from', function () {
+    write('text/fm.txt', '---\nkind: event\nmapId: 2\neventId: 3\n---\n\nFM\n')
+
+    run('IMPORT_MESSAGE_TO_EVENT', ['text', 'fm.txt', '3', undefined, undefined, 'overwrite'])
+
+    const all = shown.join('')
+    expect(all).to.contain('マップ 2(テキストの見出し)')
+    expect(all).to.contain('イベント 3(テキストの見出し)')
+    expect(all).to.contain('ページ 1(プラグインパラメータ)')
+
+    run('IMPORT_MESSAGE_TO_EVENT', ['text', 'a.txt', '3', '2', undefined, 'overwrite'])
+
+    const next = shown.join('')
+    expect(next).to.contain('マップ 3(引数)')
+    expect(next).to.contain('イベント 2(引数)')
+    expect(next).to.contain('ページ 1(プラグインパラメータ)')
+  })
+
+  it('says where the common event number came from', function () {
+    write('text/fm.txt', '---\nkind: common\ncommonEventId: 2\n---\n\nFM\n')
+
+    run('IMPORT_MESSAGE_TO_CE', ['text', 'fm.txt', '3', 'overwrite'])
+    expect(shown.join('')).to.contain('コモンイベント 2(テキストの見出し)')
+
+    run('IMPORT_MESSAGE_TO_CE', ['text', 'a.txt', undefined, 'overwrite'])
+    expect(shown.join('')).to.contain('コモンイベント 1(プラグインパラメータ)')
+  })
 })

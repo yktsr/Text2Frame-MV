@@ -5182,6 +5182,12 @@
           Laurus.Text2Frame.PageID = args[4]
         }
         if (args[5]) strategyArg = args[5]
+        // 反映先の番号をどこから取ったか。見出しがあれば実行部で上書きする。
+        Laurus.Text2Frame.RouteFrom = {
+          MapID: args[2] ? 'arg' : 'param',
+          EventID: args[3] ? 'arg' : 'param',
+          PageID: (args[4] && !strategyArg) ? 'arg' : 'param'
+        }
         Laurus.Text2Frame.Strategy = resolveImportStrategy(strategyArg)
         Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite'
         Laurus.Text2Frame.WriteBack = resolveWriteBack(args[6], Laurus.Text2Frame.WriteBackAfterMerge || 'off')
@@ -5206,6 +5212,7 @@
         Laurus.Text2Frame.FileFolder = args[0] || Laurus.Text2Frame.Defaults.FileFolder
         Laurus.Text2Frame.FileName = args[1] || Laurus.Text2Frame.Defaults.FileName
         Laurus.Text2Frame.CommonEventID = args[2] || Laurus.Text2Frame.Defaults.CommonEventID
+        Laurus.Text2Frame.RouteFrom = { CommonEventID: args[2] ? 'arg' : 'param' }
         // 4番目は旧来の上書き真偽値と同じ枠。merge/overwrite/add も受ける。
         Laurus.Text2Frame.Strategy = resolveImportStrategy(args[3])
         Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite'
@@ -11728,6 +11735,8 @@
      * 毎回消費して漏らさない。 */
     const routeByFrontMatter = Laurus.Text2Frame.RouteByFrontMatter === true
     Laurus.Text2Frame.RouteByFrontMatter = false
+    const routeFrom = Laurus.Text2Frame.RouteFrom || {}
+    Laurus.Text2Frame.RouteFrom = null
     if (routeByFrontMatter) {
       const fmeta = parsed.meta || {}
       if (Laurus.Text2Frame.ExecMode === 'IMPORT_MESSAGE_TO_EVENT') {
@@ -11735,11 +11744,31 @@
           Laurus.Text2Frame.MapID = fmeta.mapId
           const { PATH_SEP, BASE_PATH } = getDirParams()
           Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + fmeta.mapId).slice(-3)}.json`
+          routeFrom.MapID = 'frontMatter'
         }
-        if (fmeta.eventId != null) Laurus.Text2Frame.EventID = fmeta.eventId
-        if (fmeta.pageId != null) Laurus.Text2Frame.PageID = fmeta.pageId
+        if (fmeta.eventId != null) {
+          Laurus.Text2Frame.EventID = fmeta.eventId
+          routeFrom.EventID = 'frontMatter'
+        }
+        if (fmeta.pageId != null) {
+          Laurus.Text2Frame.PageID = fmeta.pageId
+          routeFrom.PageID = 'frontMatter'
+        }
       } else if (Laurus.Text2Frame.ExecMode === 'IMPORT_MESSAGE_TO_CE') {
-        if (fmeta.commonEventId != null) Laurus.Text2Frame.CommonEventID = fmeta.commonEventId
+        if (fmeta.commonEventId != null) {
+          Laurus.Text2Frame.CommonEventID = fmeta.commonEventId
+          routeFrom.CommonEventID = 'frontMatter'
+        }
+      }
+      /* 反映先の番号をどこから取ったかを出す。見出しが引数より優先されるので、
+       * 引数で指したつもりの所と違う所へ書くことがある。書く前に分かるようにする。 */
+      const FROM = { frontMatter: 'テキストの見出し', arg: '引数', param: 'プラグインパラメータ' }
+      const from = function (key) { return FROM[routeFrom[key]] || FROM.param }
+      if (Laurus.Text2Frame.ExecMode === 'IMPORT_MESSAGE_TO_EVENT') {
+        addMessage('反映先 / target: マップ ' + Laurus.Text2Frame.MapID + '(' + from('MapID') + ')・イベント ' +
+          Laurus.Text2Frame.EventID + '(' + from('EventID') + ')・ページ ' + Laurus.Text2Frame.PageID + '(' + from('PageID') + ')')
+      } else if (Laurus.Text2Frame.ExecMode === 'IMPORT_MESSAGE_TO_CE') {
+        addMessage('反映先 / target: コモンイベント ' + Laurus.Text2Frame.CommonEventID + '(' + from('CommonEventID') + ')')
       }
     }
 
