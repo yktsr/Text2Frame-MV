@@ -150,7 +150,7 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
                 return;
             case 'launch':
             case 'attach':
-                await this.connect(request.command === 'launch');
+                await this.connect(request.command === 'launch' && !args.attachOnly);
                 this.push();
                 this.respond(request);
                 return;
@@ -470,7 +470,7 @@ function attach(): Promise<unknown> {
     if (!pauseAtMarks() || adapters.size || !s || !s.state.received() || !s.state.connected(Date.now())) return Promise.resolve();
     if (starting) return starting;
     const folder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(s.projectRoot)) || vscode.workspace.workspaceFolders?.[0];
-    starting = Promise.resolve(vscode.debug.startDebugging(folder, { ...DEFAULT_CONFIG, request: 'attach' }))
+    starting = Promise.resolve(vscode.debug.startDebugging(folder, { ...DEFAULT_CONFIG, attachOnly: true }))
         .catch(() => false)
         .finally(() => { starting = undefined; });
     return starting;
@@ -486,7 +486,7 @@ export async function whenPausable(): Promise<boolean> {
     while (Date.now() < end) {
         const s = liveRef && liveRef.current();
         if (s && Array.from(adapters).some((a) => a.readyFor(s))) return true;
-        await attach();
+        void attach();
         await wait(200);
     }
     return false;
