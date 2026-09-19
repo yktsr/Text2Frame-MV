@@ -6,7 +6,8 @@ import { noteWrite, withHistory } from './db/history';
 import { placeFromMeta, placeKey } from './placeLabel';
 import { exportToTextFile, mergePullToText, renderCommands, ExportTarget } from './exportText';
 import { reviewEnabled } from './review';
-import { reviewDeploy, Decision, DeployCandidate } from './reviewApply';
+import { reviewDeploy, busy, Decision, DeployCandidate } from './reviewApply';
+import { eachSlowly } from './db/slowly';
 import { PageRef, tryApply } from './dryRun';
 
 export { isDeployable };
@@ -474,11 +475,20 @@ export async function reviewFiles(
     const { mod } = loadCompiler(context, workspaceRoot);
     if (!mod) return 'accept';
     const candidates: DeployCandidate[] = [];
-    for (const file of files) {
-        const prepared = prepareFile(context, workspaceRoot, file);
-        if ('mod' in prepared) candidates.push(candidateFor(file, prepared.meta, prepared.applyOpts, prepared.dataPath));
+    if (files.length <= 1) {
+        for (const file of files) addCandidate(context, workspaceRoot, file, candidates);
+    } else {
+        // たくさんのテキストは、少しずつ読む(進み具合を出し、途中でやめられる)。
+        const read = await busy('Text2Frame: 反映するテキストを読んでいます…', (slowly) =>
+            eachSlowly(files, (file) => addCandidate(context, workspaceRoot, file, candidates), slowly));
+        if (!read) return 'cancel';
     }
     return candidates.length ? reviewDeploy(context, workspaceRoot, mod, candidates, scope) : 'unchanged';
+}
+
+function addCandidate(context: vscode.ExtensionContext, workspaceRoot: string, file: string, out: DeployCandidate[]): void {
+    const prepared = prepareFile(context, workspaceRoot, file);
+    if ('mod' in prepared) out.push(candidateFor(file, prepared.meta, prepared.applyOpts, prepared.dataPath));
 }
 
 /** Command: compile the active text file and show the resulting event JSON in a preview. */

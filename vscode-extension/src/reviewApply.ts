@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { review, reviewEnabled, ReviewItem } from './review';
-import { tryApply, fingerprint, ApplyModule, TrialStep } from './dryRun';
+import { tryApplySlowly, fingerprint, ApplyModule, TrialStep } from './dryRun';
+import { eachSlowly, SlowlyOptions } from './db/slowly';
 import { renderCommands, PullPlan } from './exportText';
 
 /**
@@ -22,10 +23,20 @@ const CHANGED_AGAIN = 'Text2Frame: 確かめているあいだに、テキスト
 
 const relative = (root: string, file: string): string => path.relative(root, file) || path.basename(file);
 
-async function busy<T>(title: string, work: () => T): Promise<T> {
-    return vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title }, async () => {
+/** 時間のかかる準備。進み具合を出し、途中でやめられる(やめたら undefined を返す作りにする)。 */
+export async function busy<T>(title: string, work: (slowly: SlowlyOptions) => Promise<T>): Promise<T> {
+    return vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title, cancellable: true }, async (progress, token) => {
+        let shown = 0;
+        const slowly: SlowlyOptions = {
+            onProgress: (done, total) => {
+                const percent = total ? (100 * done) / total : 100;
+                progress.report({ message: `${done} / ${total}`, increment: Math.max(0, percent - shown) });
+                shown = Math.max(shown, percent);
+            },
+            cancelled: () => token.isCancellationRequested
+        };
         await new Promise((r) => setTimeout(r, 0));
-        return work();
+        return work(slowly);
     });
 }
 
@@ -40,20 +51,26 @@ export async function reviewDeploy(
     const inputs = candidates.flatMap((c) => c.inputs);
     for (;;) {
         const before = fingerprint(inputs);
-        const trials = await busy('Text2Frame: 反映したあとの形を調べています…', () => tryApply(mod, candidates.map((c) => c.step)));
         const items: ReviewItem[] = [];
         let failed = 0;
         let conflicts = 0;
-        trials.forEach((trial, i) => {
-            if (!trial.result.ok) {
-                failed++;
-                return;
-            }
-            conflicts += trial.result.conflicts || 0;
-            const was = renderCommands(context, root, trial.before);
-            const will = renderCommands(context, root, trial.after);
-            if (was !== will) items.push({ label: relative(root, candidates[i].textPath), before: was, after: will });
+        const finished = await busy('Text2Frame: 反映したあとの形を調べています…', async (slowly) => {
+            const trials = await tryApplySlowly(mod, candidates.map((c) => c.step), slowly);
+            if (!trials) return false;
+            return eachSlowly(trials, (trial, i) => {
+                if (!trial.result.ok) {
+                    failed++;
+                    return;
+                }
+                conflicts += trial.result.conflicts || 0;
+                // ほとんどのページは変わらない。中身が同じなら、テキストに直さずに済ませる。
+                if (JSON.stringify(trial.before) === JSON.stringify(trial.after)) return;
+                const was = renderCommands(context, root, trial.before);
+                const will = renderCommands(context, root, trial.after);
+                if (was !== will) items.push({ label: relative(root, candidates[i].textPath), before: was, after: will });
+            }, { cancelled: slowly.cancelled });
         });
+        if (!finished) return 'cancel';
         if (!items.length) return 'unchanged';
         const notes = [
             conflicts ? `競合 ${conflicts} 件は両方を残します` : '',
@@ -79,12 +96,17 @@ export async function reviewDeploy(
  */
 export async function reviewPull(
     root: string,
-    makePlans: () => PullPlan[],
+    makePlans: (slowly: SlowlyOptions) => PullPlan[] | Promise<PullPlan[] | undefined>,
     scope: string
 ): Promise<{ plans: PullPlan[]; unchanged: boolean } | undefined> {
-    if (!reviewEnabled()) return { plans: makePlans(), unchanged: false };
+    const title = 'Text2Frame: 取り出したあとのテキストを作っています…';
+    if (!reviewEnabled()) {
+        const plans = await busy(title, async (slowly) => makePlans(slowly));
+        return plans ? { plans, unchanged: false } : undefined;
+    }
     for (;;) {
-        const plans = await busy('Text2Frame: 取り出したあとのテキストを作っています…', makePlans);
+        const plans = await busy(title, async (slowly) => makePlans(slowly));
+        if (!plans) return undefined;
         const inputs = plans.flatMap((p) => p.inputs);
         const before = fingerprint(inputs);
         const usable = plans.filter((p) => p.ok && !p.skipped);

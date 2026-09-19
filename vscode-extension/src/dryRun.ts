@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { eachSlowly, SlowlyOptions } from './db/slowly';
 
 /**
  * 反映を、ゲームのデータの写しで試す。VS Code に依存しない。
@@ -102,6 +103,26 @@ export function tryApply(mod: ApplyModule, steps: TrialStep[]): TrialPage[] {
     } finally {
         fs.rmSync(dir, { recursive: true, force: true });
     }
+}
+
+/**
+ * tryApply を少しずつ行う。同じデータのファイルのページはまとめて1回で試す(重ね方は tryApply と同じ)。
+ * データのファイルごとに手を離す。途中でやめたら undefined。
+ */
+export async function tryApplySlowly(mod: ApplyModule, steps: TrialStep[], options: SlowlyOptions = {}): Promise<TrialPage[] | undefined> {
+    const groups = new Map<string, number[]>();
+    steps.forEach((step, i) => {
+        const list = groups.get(step.dataPath) || [];
+        list.push(i);
+        groups.set(step.dataPath, list);
+    });
+    const out: TrialPage[] = new Array(steps.length);
+    let done = 0;
+    const finished = await eachSlowly(Array.from(groups.values()), (indices) => {
+        tryApply(mod, indices.map((i) => steps[i])).forEach((trial, k) => { out[indices[k]] = trial; });
+        done += indices.length;
+    }, { ...options, onProgress: options.onProgress ? () => options.onProgress?.(done, steps.length) : undefined });
+    return finished ? out : undefined;
 }
 
 /** ファイルの中身の指紋。確かめたあとで材料が変わっていないかを見る。 */
