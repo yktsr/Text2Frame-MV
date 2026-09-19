@@ -40,13 +40,23 @@ export async function busy<T>(title: string, work: (slowly: SlowlyOptions) => Pr
     });
 }
 
-/** 反映したあとのゲームを写しで作り、今のゲームと並べて見せる。 */
+/** 反映したらゲームが変わるテキストと、書き方の誤りで反映できないテキスト(呼ぶ側が受け取る)。 */
+export interface DeploySort {
+    changed: Set<string>;
+    failed: Set<string>;
+}
+
+/**
+ * 反映したあとのゲームを写しで作り、今のゲームと並べて見せる。
+ * sort を渡すと、変わるテキスト・反映できないテキストをそこに集める。show が false なら画面は出さない。
+ */
 export async function reviewDeploy(
     context: vscode.ExtensionContext,
     root: string,
     mod: ApplyModule,
     candidates: DeployCandidate[],
-    scope: string
+    scope: string,
+    options: { sort?: DeploySort; show?: boolean } = {}
 ): Promise<Decision> {
     const inputs = candidates.flatMap((c) => c.inputs);
     for (;;) {
@@ -57,9 +67,14 @@ export async function reviewDeploy(
         const finished = await busy('Text2Frame: 反映したあとの形を調べています…', async (slowly) => {
             const trials = await tryApplySlowly(mod, candidates.map((c) => c.step), slowly);
             if (!trials) return false;
+            if (options.sort) {
+                options.sort.changed.clear();
+                options.sort.failed.clear();
+            }
             return eachSlowly(trials, (trial, i) => {
                 if (!trial.result.ok) {
                     failed++;
+                    options.sort?.failed.add(candidates[i].textPath);
                     return;
                 }
                 conflicts += trial.result.conflicts || 0;
@@ -67,11 +82,15 @@ export async function reviewDeploy(
                 if (JSON.stringify(trial.before) === JSON.stringify(trial.after)) return;
                 const was = renderCommands(context, root, trial.before);
                 const will = renderCommands(context, root, trial.after);
-                if (was !== will) items.push({ label: relative(root, candidates[i].textPath), before: was, after: will });
+                if (was !== will) {
+                    items.push({ label: relative(root, candidates[i].textPath), before: was, after: will });
+                    options.sort?.changed.add(candidates[i].textPath);
+                }
             }, { cancelled: slowly.cancelled });
         });
         if (!finished) return 'cancel';
         if (!items.length) return 'unchanged';
+        if (options.show === false) return 'accept';
         const notes = [
             conflicts ? `競合 ${conflicts} 件は両方を残します` : '',
             failed ? `書き方の誤りで反映できないものが ${failed} 件あります` : ''

@@ -202,6 +202,12 @@ export function hasBaseSnapshot(workspaceRoot: string, key: string): boolean {
 }
 export function saveBaseSnapshot(workspaceRoot: string, key: string, content: string): void {
     const target = baseSnapshotPath(workspaceRoot, key);
+    // 中身が同じなら書かない(すべて取り出すときに、何千もの祖先を書き直さないように)。
+    try {
+        if (fs.readFileSync(target, 'utf8') === content) return;
+    } catch (e) {
+        // まだ無い
+    }
     noteWrite(target, 'base');
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, content, 'utf8');

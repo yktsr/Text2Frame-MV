@@ -6,7 +6,7 @@ import { noteWrite, withHistory } from './db/history';
 import { placeFromMeta, placeKey } from './placeLabel';
 import { exportToTextFile, mergePullToText, renderCommands, ExportTarget } from './exportText';
 import { reviewEnabled } from './review';
-import { reviewDeploy, busy, Decision, DeployCandidate } from './reviewApply';
+import { reviewDeploy, busy, Decision, DeployCandidate, DeploySort } from './reviewApply';
 import { eachSlowly } from './db/slowly';
 import { PageRef, tryApply } from './dryRun';
 
@@ -465,30 +465,45 @@ function findUnapplied(context: vscode.ExtensionContext, workspaceRoot: string, 
  * 反映する前に、変わる所を差分で確かめる(設定が OFF なら確かめない)。
  * 用意できないファイル(宛先のメモが無いなど)は確かめに入れない。反映のときに今までどおり失敗を知らせる。
  */
+/**
+ * sort を渡すと、確かめない設定でも写しで試して、ゲームが変わるテキストと反映できないテキストを集める
+ * (まとめて反映するときに、変わらないテキストまで書き直さないため)。
+ */
 export async function reviewFiles(
     context: vscode.ExtensionContext,
     workspaceRoot: string,
     files: string[],
-    scope: string
+    scope: string,
+    sort?: DeploySort
 ): Promise<Decision> {
-    if (!reviewEnabled()) return 'accept';
+    const show = reviewEnabled();
+    if (!show && !sort) return 'accept';
     const { mod } = loadCompiler(context, workspaceRoot);
     if (!mod) return 'accept';
     const candidates: DeployCandidate[] = [];
+    const add = (file: string): void => {
+        if (!addCandidate(context, workspaceRoot, file, candidates)) sort?.failed.add(file);
+    };
     if (files.length <= 1) {
-        for (const file of files) addCandidate(context, workspaceRoot, file, candidates);
+        for (const file of files) add(file);
     } else {
         // たくさんのテキストは、少しずつ読む(進み具合を出し、途中でやめられる)。
-        const read = await busy('Text2Frame: 反映するテキストを読んでいます…', (slowly) =>
-            eachSlowly(files, (file) => addCandidate(context, workspaceRoot, file, candidates), slowly));
+        const read = await busy('Text2Frame: 反映するテキストを読んでいます…', (slowly) => eachSlowly(files, add, slowly));
         if (!read) return 'cancel';
     }
-    return candidates.length ? reviewDeploy(context, workspaceRoot, mod, candidates, scope) : 'unchanged';
+    if (!candidates.length) return 'unchanged';
+    const unreadable = sort ? Array.from(sort.failed) : [];
+    const decision = await reviewDeploy(context, workspaceRoot, mod, candidates, scope, { sort, show });
+    // 読めなかったテキストは、反映のときに理由を知らせるので、失敗の組に戻しておく。
+    unreadable.forEach((file) => sort?.failed.add(file));
+    return decision;
 }
 
-function addCandidate(context: vscode.ExtensionContext, workspaceRoot: string, file: string, out: DeployCandidate[]): void {
+function addCandidate(context: vscode.ExtensionContext, workspaceRoot: string, file: string, out: DeployCandidate[]): boolean {
     const prepared = prepareFile(context, workspaceRoot, file);
-    if ('mod' in prepared) out.push(candidateFor(file, prepared.meta, prepared.applyOpts, prepared.dataPath));
+    if (!('mod' in prepared)) return false;
+    out.push(candidateFor(file, prepared.meta, prepared.applyOpts, prepared.dataPath));
+    return true;
 }
 
 /** Command: compile the active text file and show the resulting event JSON in a preview. */

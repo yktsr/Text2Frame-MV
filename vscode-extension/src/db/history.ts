@@ -156,11 +156,11 @@ function newId(now: number): string {
     return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${pad(d.getMilliseconds(), 3)}-${pad(sequence, 3)}`;
 }
 
-const sameContent = (a: string, b: string): boolean => {
+const readOrUndefined = (file: string): Buffer | undefined => {
     try {
-        return fs.readFileSync(a).equals(fs.readFileSync(b));
+        return fs.readFileSync(file);
     } catch (e) {
-        return false;
+        return undefined;
     }
 };
 
@@ -168,6 +168,12 @@ const sameContent = (a: string, b: string): boolean => {
 export class HistoryRecorder {
     private entry: HistoryEntry;
     private readonly known = new Map<string, HistoryFile>();
+    /**
+     * 書く前の中身(この操作で初めて触ったもの)。写しは、終わって変わっていたものだけ書く。
+     * 変わらない何千ものファイルの写しを作っては消すと、ファイルの変化を見張るほかの拡張
+     * (git など)がいっせいに動いてしまうため、ディスクには書かずに持っておく。
+     */
+    private readonly before = new Map<string, Buffer>();
     private readonly now: () => number;
     private started = false;
 
@@ -204,15 +210,13 @@ export class HistoryRecorder {
             if (pages) known.pages = Array.from(new Set((known.pages || []).concat(pages)));
             return;
         }
-        if (!this.started) {
-            ensureRoot(this.root);
-            this.started = true;
-        }
-        const existed = fs.existsSync(absPath);
-        if (existed) {
-            const copy = snapshotFile(this.root, this.entry.id, rel);
-            fs.mkdirSync(path.dirname(copy), { recursive: true });
-            fs.copyFileSync(absPath, copy);
+        this.started = true;
+        let existed = false;
+        try {
+            this.before.set(rel, fs.readFileSync(absPath));
+            existed = true;
+        } catch (e) {
+            existed = false;
         }
         const file: HistoryFile = { path: rel, existed, kind };
         if (pages && pages.length) file.pages = Array.from(new Set(pages));
@@ -227,18 +231,28 @@ export class HistoryRecorder {
         for (const file of this.entry.files) {
             const abs = fromRel(this.root, file.path);
             const copy = snapshotFile(this.root, this.entry.id, file.path);
-            const changed = file.existed ? !(fs.existsSync(abs) && sameContent(abs, copy)) : fs.existsSync(abs);
-            if (changed) {
-                kept.push(file);
-            } else if (file.existed) {
-                fs.rmSync(copy, { force: true });
+            const held = this.before.get(file.path);
+            const now = readOrUndefined(abs);
+            // 前の中身: この操作で読んだもの。まとめた操作の、前からある分は写しにある。
+            const was = held !== undefined ? held : file.existed ? readOrUndefined(copy) : undefined;
+            const changed = file.existed ? !(now && was && now.equals(was)) : now !== undefined;
+            if (!changed) {
+                if (held === undefined && file.existed) fs.rmSync(copy, { force: true });
+                continue;
             }
+            if (held !== undefined) {
+                fs.mkdirSync(path.dirname(copy), { recursive: true });
+                fs.writeFileSync(copy, held);
+            }
+            kept.push(file);
         }
+        this.before.clear();
         this.entry.files = kept;
         if (!kept.length) {
-            fs.rmSync(entryDir(this.root, this.entry.id), { recursive: true, force: true });
+            if (fs.existsSync(entryDir(this.root, this.entry.id))) fs.rmSync(entryDir(this.root, this.entry.id), { recursive: true, force: true });
             return undefined;
         }
+        ensureRoot(this.root);
         this.entry.time = this.now();
         this.entry.bytes = kept.reduce((sum, file) => {
             if (!file.existed) return sum;

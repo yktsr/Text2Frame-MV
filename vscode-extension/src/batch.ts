@@ -6,7 +6,7 @@ import { withHistory } from './db/history';
 import { commitPull, planPull, ExportTarget, PullPlan } from './exportText';
 import { writeBackAndRefreshBase, reviewFiles, noteApply } from './deploy';
 import { reviewEnabled } from './review';
-import { reviewPull, busy } from './reviewApply';
+import { reviewPull, busy, DeploySort } from './reviewApply';
 import { eachSlowly, mapSlowly, SlowlyOptions } from './db/slowly';
 
 /**
@@ -138,12 +138,21 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
         return;
     }
 
-    if (await reviewFiles(context, root, files, 'すべての反映') === 'cancel') {
+    // 写しで試して、ゲームが変わるテキストだけを反映する。変わらないテキストまで反映すると、
+    // 何千ものデータと祖先が書き直され、ファイルの変化を見張るほかの拡張がいっせいに動いてしまう。
+    const sort: DeploySort = { changed: new Set(), failed: new Set() };
+    const decision = await reviewFiles(context, root, files, 'すべての反映', sort);
+    if (decision === 'cancel') {
         vscode.window.setStatusBarMessage('Text2Frame: 反映をやめました。', 4000);
         return;
     }
+    const targets = files.filter((f) => sort.changed.has(f) || sort.failed.has(f));
+    if (!targets.length) {
+        vscode.window.showInformationMessage(`Text2Frame: ゲームは変わりませんでした(${files.length} 件のテキストは、もう反映されています)。`);
+        return;
+    }
     const out = getOutput();
-    out.appendLine(`=== ゲームに反映(すべて) ${path.relative(root, textDir) || '.'}: ${files.length} files ===`);
+    out.appendLine(`=== ゲームに反映(すべて) ${path.relative(root, textDir) || '.'}: ${targets.length} / ${files.length} files (変わらないものは飛ばす) ===`);
     let ok = 0;
     let fail = 0;
     let warn = 0;
@@ -152,7 +161,7 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
     // 少しずつ反映して、そのたびに手を離す。やめても、済んだ分はそのまま(履歴から戻せる)。
     const finished = await busy('Text2Frame: ゲームに反映しています…', (slowly: SlowlyOptions) =>
         withHistory(root, 'applyAll', 'ゲームに反映(すべて)', { keep: historyKeep() }, async (recorder) => {
-            const done = await eachSlowly(files, (file) => {
+            const done = await eachSlowly(targets, (file) => {
                 try {
                     const fileText = fs.readFileSync(file, 'utf8');
                     const { meta } = parseFrontMatter(fileText);
@@ -185,7 +194,7 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
     out.appendLine(`=== ${finished ? 'done' : 'cancelled'}: ${ok} ok, ${fail} fail, ${warn} warnings ===`);
     const msg = finished
         ? `Text2Frame: ゲームに反映 完了 — ${ok} 成功 / ${fail} 失敗`
-        : `Text2Frame: ゲームに反映を途中でやめました — ${ok + fail} / ${files.length} 件まで済んでいます(${ok} 成功 / ${fail} 失敗)。済んだ分は「履歴」から戻せます。`;
+        : `Text2Frame: ゲームに反映を途中でやめました — ${ok + fail} / ${targets.length} 件まで済んでいます(${ok} 成功 / ${fail} 失敗)。済んだ分は「履歴」から戻せます。`;
     if (fail > 0 || !finished) {
         vscode.window.showWarningMessage(msg, '詳細').then((p) => { if (p) { out.show(true); } });
     } else {

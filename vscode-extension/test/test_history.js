@@ -44,6 +44,14 @@ describe('history', function () {
     expect(listEntries(root).length).to.equal(1)
   })
 
+  it('writes nothing on disk at all when nothing changed', function () {
+    withHistory(root, 'pullAll', 'すべて', { keep: 10 }, () => {
+      for (let i = 0; i < 50; i++) noteWrite(file('text/map001_event001_page1.txt'), 'text')
+      noteWrite(file('data/Map001.json'), 'data')
+    })
+    expect(fs.existsSync(path.join(root, HISTORY_DIR))).to.equal(false)
+  })
+
   it('keeps only the first contents when a file is written twice in one operation', function () {
     withHistory(root, 'apply', 'a', { keep: 10 }, () => {
       noteWrite(file('data/Map001.json'), 'data')

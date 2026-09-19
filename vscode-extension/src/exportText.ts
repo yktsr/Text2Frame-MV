@@ -322,13 +322,27 @@ export function renderCommands(context: vscode.ExtensionContext, workspaceRoot: 
     return mod && list ? mod.decompile(list, englishTagSetting(), { pretty: true, omitDefaults: omitDefaultTagsSetting() }) : '';
 }
 
+/**
+ * テキストを書く。中身が今と同じなら書かない(控えも取らない)。
+ * すべて取り出すときに、変わらない何千ものファイルを書き直すと、ファイルの変化を見張る
+ * ほかの拡張(git など)がいっせいに動き、VS Code が落ちることがあるため。
+ */
 function writeTextFile(textPath: string, contents: string): void {
+    if (sameAsFile(textPath, contents)) return;
     noteWrite(textPath, 'text');
     const dir = path.dirname(textPath);
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(textPath, contents, 'utf8');
+}
+
+function sameAsFile(file: string, contents: string): boolean {
+    try {
+        return fs.readFileSync(file, 'utf8') === contents;
+    } catch (e) {
+        return false;
+    }
 }
 
 function snapshotIdFor(workspaceRoot: string, target: ExportTarget): { key: string } {
