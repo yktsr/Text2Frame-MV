@@ -84,6 +84,14 @@ export function tryApply(mod: ApplyModule, steps: TrialStep[]): TrialPage[] {
             const opts: { [key: string]: unknown } = { ...step.applyOpts, baseRoot: path.join(dir, 'base') };
             if (step.ref.kind === 'common') opts.commonEventPath = copy;
             else opts.mapPath = copy;
+            // テキストも写しで試す。衝突すると、コンパイラはテキストに目印を書き込むため。
+            const textPath = step.applyOpts.textPath;
+            if (typeof textPath === 'string' && fs.existsSync(textPath)) {
+                const textCopy = path.join(dir, 'text', String(results.length), path.basename(textPath));
+                fs.mkdirSync(path.dirname(textCopy), { recursive: true });
+                fs.copyFileSync(textPath, textCopy);
+                opts.textPath = textCopy;
+            }
             let result: TrialResult;
             try {
                 result = mod.applyTextFile(opts);

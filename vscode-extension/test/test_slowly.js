@@ -41,6 +41,27 @@ describe('slowly', function () {
     expect(await mapSlowly([1, 2, 3], (n) => { t += 100; return n }, { now: () => t, cancelled: () => true })).to.equal(undefined)
   })
 
+  it('never writes to the real text while trying', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-trial-text-'))
+    try {
+      const data = path.join(dir, 'Map001.json')
+      const text = path.join(dir, 'page.txt')
+      fs.writeFileSync(data, JSON.stringify({ events: [null, { pages: [{ list: [] }] }] }))
+      fs.writeFileSync(text, 'もとのテキスト')
+      // 衝突したときのように、テキストへ書き戻す偽の反映。
+      const mod = {
+        applyTextFile: (opts) => {
+          fs.writeFileSync(opts.textPath, '目印つき')
+          return { ok: true, warnings: [] }
+        }
+      }
+      tryApply(mod, [{ applyOpts: { textPath: text }, dataPath: data, ref: { kind: 'event', mapId: '1', eventId: '1', pageId: '1' } }])
+      expect(fs.readFileSync(text, 'utf8')).to.equal('もとのテキスト')
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('tries the pages of one data file together, the same as all at once', async function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-slowly-'))
     try {
