@@ -71,6 +71,15 @@ function dataMarks(ctx: DbContext, key: string): CommandMark[] | undefined {
 /** 動いているデバッグ。無いときは、ゲームに印を残さない。 */
 const adapters = new Set<Text2FrameDebugAdapter>();
 
+/** 「印をつけた行で一時停止する」。ゲームのフォルダごとに覚える。既定はオフ。 */
+const PAUSE_KEY = 'text2frame.pauseAtMarks';
+let store: vscode.Memento | undefined;
+const pauseEmitter = new vscode.EventEmitter<boolean>();
+export const onDidChangePauseAtMarks = pauseEmitter.event;
+export function pauseAtMarks(): boolean {
+    return !!store && store.get<boolean>(PAUSE_KEY, false) === true;
+}
+
 class Text2FrameDebugAdapter implements vscode.DebugAdapter {
     private readonly emitter = new vscode.EventEmitter<vscode.DebugProtocolMessage>();
     readonly onDidSendMessage = this.emitter.event;
@@ -81,6 +90,7 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
     private stoppedAt = 0;
     private stopped = false;
     private ended = false;
+    private configured = false;
     private readonly partyKeys = new Map<string, string>();
     private readonly disposables: vscode.Disposable[] = [];
 
@@ -140,7 +150,8 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
                 return;
             case 'launch':
             case 'attach':
-                await this.connect();
+                await this.connect(request.command === 'launch');
+                this.push();
                 this.respond(request);
                 return;
             case 'setBreakpoints':
@@ -148,6 +159,8 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
                 this.push();
                 return;
             case 'configurationDone':
+                this.configured = true;
+                this.push();
                 this.respond(request);
                 return;
             case 'threads':
@@ -196,7 +209,8 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
             }
             case 'disconnect':
             case 'terminate':
-                await this.finish(request.command === 'terminate' || args.terminateDebuggee !== false);
+                // 切り替えをオフにして切ったときや、ゲームがもう無いときは、テストプレイを止めない。
+                await this.finish(!this.ended && (request.command === 'terminate' || args.terminateDebuggee !== false));
                 this.respond(request);
                 if (request.command === 'terminate') this.event('terminated');
                 return;
@@ -205,8 +219,9 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
         }
     }
 
-    private async connect(): Promise<void> {
+    private async connect(launch: boolean): Promise<void> {
         if (this.session()) return;
+        if (!launch) throw new Error('テストプレイが動いていません。');
         await vscode.commands.executeCommand('text2frame.testPlay');
         const end = Date.now() + CONNECT_WAIT;
         while (Date.now() < end && !this.session()) await wait(200);
@@ -402,6 +417,18 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
         return [{ result: value + (r && r.status === 'named' ? `  (${r.name})` : ''), variablesReference: 0 }];
     }
 
+    /** このゲームに、印を送り終えているか。 */
+    readyFor(s: LiveSession): boolean {
+        return this.configured && !this.ended && this.pushedResets === s.state.resets;
+    }
+
+    /** テストプレイは止めずに、デバッグをやめる。 */
+    detach(): void {
+        if (this.ended) return;
+        void this.finish(false);
+        this.event('terminated');
+    }
+
     private async finish(stopGame: boolean): Promise<void> {
         const s = this.session();
         if (s) {
@@ -414,19 +441,70 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
     }
 }
 
+let liveRef: LiveService | undefined;
+let starting: Promise<unknown> | undefined;
+
+/** オンで、テストプレイがつながっていて、デバッグが無ければ、つなぐ。 */
+function attach(): Promise<unknown> {
+    const s = liveRef && liveRef.current();
+    if (!pauseAtMarks() || adapters.size || !s || !s.state.received() || !s.state.connected(Date.now())) return Promise.resolve();
+    if (starting) return starting;
+    const folder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(s.projectRoot)) || vscode.workspace.workspaceFolders?.[0];
+    starting = Promise.resolve(vscode.debug.startDebugging(folder, { ...DEFAULT_CONFIG, request: 'attach' }))
+        .catch(() => false)
+        .finally(() => { starting = undefined; });
+    return starting;
+}
+
+/**
+ * 「印をつけた行で一時停止する」がオンなら、印をゲームに送り終えるまで待つ(最大10秒)。
+ * オフなら、すぐ返す。間に合わなかったら false。
+ */
+export async function whenPausable(): Promise<boolean> {
+    if (!pauseAtMarks()) return true;
+    const end = Date.now() + 10000;
+    while (Date.now() < end) {
+        const s = liveRef && liveRef.current();
+        if (s && Array.from(adapters).some((a) => a.readyFor(s))) return true;
+        await attach();
+        await wait(200);
+    }
+    return false;
+}
+
 export function registerDebugger(context: vscode.ExtensionContext, service: DatabaseService, live: LiveService, tracker: RunTracker): void {
+    store = context.workspaceState;
+    liveRef = live;
     // デバッグしていないときは、ゲームを止めない。
     let cleared: { session: LiveSession; resets: number } | undefined;
-    const forgetMarks = (): void => {
+    const forgetMarks = (force = false): void => {
         const s = live.current();
         if (!s || !s.state.received() || !s.state.connected(Date.now()) || adapters.size) return;
-        if (cleared && cleared.session === s && cleared.resets === s.state.resets) return;
+        if (!force && cleared && cleared.session === s && cleared.resets === s.state.resets) return;
         s.send({ breakpoints: {} });
         if (s.state.paused) s.send({ debug: 'continue' });
         cleared = { session: s, resets: s.state.resets };
     };
+    const toggle = async (): Promise<void> => {
+        const on = !pauseAtMarks();
+        await context.workspaceState.update(PAUSE_KEY, on);
+        pauseEmitter.fire(on);
+        if (on) {
+            void attach();
+            vscode.window.setStatusBarMessage('Text2Frame: 印をつけた行で一時停止します。', 5000);
+        } else {
+            adapters.forEach((a) => a.detach());
+            forgetMarks(true);
+            vscode.window.setStatusBarMessage('Text2Frame: 印をつけた行で一時停止しません。', 5000);
+        }
+    };
     context.subscriptions.push(
-        live.onDidChange(forgetMarks),
+        pauseEmitter,
+        live.onDidChange(() => {
+            if (pauseAtMarks()) void attach();
+            else forgetMarks();
+        }),
+        vscode.commands.registerCommand('text2frame.togglePauseAtMarks', toggle),
         vscode.debug.registerDebugAdapterDescriptorFactory(DEBUG_TYPE, {
             createDebugAdapterDescriptor: () => new vscode.DebugAdapterInlineImplementation(new Text2FrameDebugAdapter(service, live, tracker))
         }),

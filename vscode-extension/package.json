@@ -168,8 +168,13 @@
       },
       {
         "command": "text2frame.debug",
-        "title": "Text2Frame: デバッグを始める(ブレークポイント) / Start debugging",
+        "title": "Text2Frame: 一時停止の印で調べる(今すぐデバッグを始める) / Start debugging now",
         "icon": "$(debug-alt)"
+      },
+      {
+        "command": "text2frame.togglePauseAtMarks",
+        "title": "Text2Frame: 印をつけた行で一時停止する(オン/オフ) / Toggle pause at marked lines",
+        "icon": "$(debug-breakpoint)"
       },
       {
         "command": "text2frame.tryEvent",

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { onDidChangePauseAtMarks, pauseAtMarks } from './debugSession';
 
 /**
  * Activity Bar "Commands" panel — a static, grouped, clickable list of the extension's
@@ -11,6 +12,8 @@ interface CommandSpec {
     label: string;
     icon: string;
     tooltip: string;
+    /** 名前の横に出す今の状態(オン・オフなど)。 */
+    describe?: () => string;
 }
 
 interface CommandGroup {
@@ -41,7 +44,6 @@ const GROUPS: CommandGroup[] = [
             { command: 'text2frame.standAtEvent', label: '▶ イベントの前に立つ / Stand in front of the event', icon: 'person', tooltip: '今開いているテキストのイベントの隣まで、テストプレイのプレイヤーを動かします。話しかける・触れるのは自分で行うので、出現条件やトリガーもゲームのとおりに試せます。' },
             { command: 'text2frame.runThisPage', label: '▶ このページをすぐ実行 / Run this page now', icon: 'play-circle', tooltip: '今開いているテキストのページを、テストプレイでそのまま動かします(出現条件は見ません)。コモンイベントのテキストなら、そのコモンイベントを動かします。' },
             { command: 'text2frame.testPlay', label: 'テストプレイ / Test play', icon: 'play', tooltip: 'ゲームを VS Code の中のブラウザでテストプレイします(テストモード)。反映した内容は、ブラウザの再読み込みで効きます。プレイ中のスイッチと変数の値は、データベースの一覧とホバーに出ます。' },
-            { command: 'text2frame.debug', label: 'デバッグを始める(ブレークポイント) / Start debugging', icon: 'debug-alt', tooltip: 'テストプレイを、VS Code の「実行とデバッグ」で始めます。テキストの行番号の左をクリックして付けた赤丸(ブレークポイント)で止まり、1行ずつ進めたり、スイッチや変数を見たりできます(F5 でも始まります)。' },
             { command: 'text2frame.openLiveValuesTab', label: 'デバッグメニューを表示 / Show debug menu', icon: 'debug', tooltip: 'テストプレイ中のスイッチ・変数・セルフスイッチ・アイテム・所持金をエディタのタブに並べて見せます。値を書き換えることもできます。' },
             { command: 'text2frame.stopTestPlay', label: 'テストプレイを止める / Stop test play', icon: 'debug-stop', tooltip: 'テストプレイ用のサーバーを止めます。' }
         ]
@@ -80,6 +82,7 @@ const GROUPS: CommandGroup[] = [
         id: 'advanced',
         label: '上級 / Advanced',
         items: [
+            { command: 'text2frame.togglePauseAtMarks', label: '印をつけた行で一時停止する / Pause at marked lines', icon: 'debug-breakpoint', tooltip: 'オンにすると、テキストの行番号の左を押して付けた印(赤い丸)の行で、テストプレイが一時停止します。止まったら、スイッチや変数を見たり、1行ずつ進めたりできます。VS Code の知らせの「続ける」で先へ進みます。オフのときは、印があっても止まりません。', describe: () => (pauseAtMarks() ? 'オン' : 'オフ') },
             { command: 'text2frame.history.show', label: '履歴(前の状態に戻す) / History', icon: 'history', tooltip: '反映・取り出しの前の中身の控えを並べます。右クリックで、その操作の前に戻せます。' },
             { command: 'text2frame.repullOverwrite', label: '全部取り直す(上書き) / Re-pull (overwrite)', icon: 'refresh', tooltip: 'テキストのフォルダ(設定 text2frame.textBaseDir)をゲームの内容で全部上書きします(編集は失われます)。' }
         ]
@@ -102,6 +105,13 @@ const state = (group: CommandGroup): vscode.TreeItemCollapsibleState =>
     (group.open ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed);
 
 class CommandsTreeProvider implements vscode.TreeDataProvider<CmdNode> {
+    private readonly changed = new vscode.EventEmitter<CmdNode | undefined>();
+    readonly onDidChangeTreeData = this.changed.event;
+
+    refresh(): void {
+        this.changed.fire(undefined);
+    }
+
     getTreeItem(element: CmdNode): vscode.TreeItem {
         return element;
     }
@@ -121,6 +131,7 @@ class CommandsTreeProvider implements vscode.TreeDataProvider<CmdNode> {
                 node.id = 'command:' + spec.command;
                 node.iconPath = new vscode.ThemeIcon(spec.icon);
                 node.tooltip = spec.tooltip;
+                if (spec.describe) node.description = spec.describe();
                 node.command = { command: spec.command, title: spec.label };
                 return node;
             });
@@ -133,6 +144,7 @@ class CommandsTreeProvider implements vscode.TreeDataProvider<CmdNode> {
 export function registerCommandsView(context: vscode.ExtensionContext): void {
     const provider = new CommandsTreeProvider();
     context.subscriptions.push(
-        vscode.window.createTreeView('text2frameCommands', { treeDataProvider: provider })
+        vscode.window.createTreeView('text2frameCommands', { treeDataProvider: provider }),
+        onDidChangePauseAtMarks(() => provider.refresh())
     );
 }

@@ -4,6 +4,7 @@ import { LiveService, LiveSession } from './live';
 import { parseFrontMatter, workspaceRootFor } from './compiler';
 import { Place, placeFromMeta } from './placeLabel';
 import { deployFile, reviewFiles, unappliedFiles } from './deploy';
+import { whenPausable } from './debugSession';
 
 /**
  * 「このイベントから試す」。テキストの先頭にリンクを出す。
@@ -140,6 +141,9 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
             }
         }
 
+        if (!(await whenPausable())) {
+            vscode.window.showWarningMessage('Text2Frame: 一時停止の準備が間に合いませんでした。印をつけた行で止まらないかもしれません。');
+        }
         const sentAt = Date.now();
         const game = session;
         if (!game.send({ visit })) {
