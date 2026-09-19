@@ -200,8 +200,9 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     runBatch()
 
     expect(line('衝突 1件')).to.contain('e1')
-    // 書き戻していない(Frame2Text が無い)ので、直す場所はゲーム側のまま。
-    expect(line('ツクールで目印3行を消して')).to.be.a('string')
+    // 目印はいつもテキストに入る。直す場所はテキスト。
+    expect(line('目印はテキストに入っています')).to.be.a('string')
+    expect(line('ツクールで目印3行を消して')).to.equal(undefined)
   })
 
   /* 折り返しは、語の途中で切ったときだけ末尾2行を割り直す。読点や空白で切れているなら

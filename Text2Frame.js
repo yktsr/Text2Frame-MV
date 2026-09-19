@@ -4970,7 +4970,7 @@
       if (base_cmds && hasContent) {
         merge_result = applyThreeWayMerge(base_cmds, existing_events, event_command_list, { keepOurs })
         if (merge_result.conflicts) {
-          addWarning('3-way merge: ' + merge_result.conflicts + ' conflict(s) kept both / 衝突を両方残しました')
+          // 衝突の知らせは warnConflictsRemain が出す(目印はテキストにだけ入る)。
           // 一括反映が「どのファイルが衝突したか」を名指しできるよう、_warnings と同じ要領で外へ渡す。
           Laurus.Text2Frame._conflicts = (Laurus.Text2Frame._conflicts || 0) + merge_result.conflicts
         }
@@ -5120,14 +5120,12 @@
       saveMergeBase(merged.baseRoot, merged.baseId, textPath)
     }
 
-    // 衝突が残っているときの案内。直す場所は「目印が入った側」。
+    // 衝突したときの案内。目印はいつもテキストにだけ入る(ゲームはゲームの版のまま)。
     const warnConflictsRemain = function (merged) {
       if (!merged.conflicts) return
-      if (merged.writeBack && merged.writeBack.written) {
-        addWarning('テキストに目印3行が入りました。残す方を決めて目印を消し、もう一度反映してください。 / conflicts were written into the text; resolve them there and import again')
-      } else {
-        addWarning('ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を実行してください。 / conflicts remain; resolve in the editor, then pull')
-      }
+      addWarning('衝突 ' + merged.conflicts + '件。テキストに両方の版と目印3行が入りました(ゲームはゲームの版のままです)。' +
+        '残す方を決めて目印を消し、もう一度反映してください。 / ' +
+        merged.conflicts + ' conflict(s) were written into the text (the game keeps its own version); resolve them there and import again')
     }
 
     // overwrite 反映の直後も text==game なので、同じく祖先を更新する。
@@ -11612,13 +11610,8 @@
       }
       if (conflicted.length > 0) {
         addMessage('[batch-import] 衝突 ' + conflicted.length + '件: ' + nameList(conflicted))
-        if (writtenBack > 0) {
-          addMessage('[batch-import] 目印はテキストに入っています。残す方を決めて目印3行を消し、')
-          addMessage('[batch-import] もう一度この一括反映を実行してください。')
-        } else {
-          addMessage('[batch-import] ツクールで目印3行を消して残す方を決めたあと、')
-          addMessage('[batch-import] Frame2Textの一括取り出しを実行してください(反映のやり直しでは直りません)。')
-        }
+        addMessage('[batch-import] 目印はテキストに入っています(ゲームはゲームの版のままです)。')
+        addMessage('[batch-import] 残す方を決めて目印3行を消し、もう一度この一括反映を実行してください。')
       }
       if (unresolved.length > 0) {
         addMessage('[batch-import] 目印が残っていて反映できないファイル ' + unresolved.length + '件: ' + nameList(unresolved))
