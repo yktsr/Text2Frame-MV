@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor, baseSnapshotPath, hasBaseSnapshot, snapshotKeyFor, historyKeep } from './compiler';
 import { withHistory } from './db/history';
 import { commitPull, planPull, ExportTarget, PullPlan } from './exportText';
-import { writeBackAndRefreshBase, reviewFiles, noteApply } from './deploy';
+import { writeBackAndRefreshBase, writeBackSetting, reviewFiles, noteApply } from './deploy';
 import { reviewEnabled } from './review';
 import { reviewPull, busy, DeploySort } from './reviewApply';
 import { eachSlowly, mapSlowly, SlowlyOptions } from './db/slowly';
@@ -158,6 +158,7 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
     let warn = 0;
     const strategy = strategySetting();
     const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
+    const writeBack = writeBackSetting();
     // 少しずつ反映して、そのたびに手を離す。やめても、済んだ分はそのまま(履歴から戻せる)。
     const finished = await busy('Text2Frame: ゲームに反映しています…', (slowly: SlowlyOptions) =>
         withHistory(root, 'applyAll', 'ゲームに反映(すべて)', { keep: historyKeep() }, async (recorder) => {
@@ -168,7 +169,7 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
                     const { opts, label } = resolveTarget(meta, root);
                     const key = snapshotKeyFor(root, file);
                     // baseRoot は祖先(.t2f-base)の置き場所。渡さないと拡張ホストの cwd(/)に落ちる。
-                    const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, baseRoot: root };
+                    const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, writeBack, baseRoot: root };
                     if (mergeLike && hasBaseSnapshot(root, key)) {
                         applyOpts.basePath = baseSnapshotPath(root, key);
                     }

@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { parseFrontMatter, isDeployable, isAncestorCopy, ANCESTOR_COPY_MESSAGE, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot, snapshotKeyFor, historyKeep } from './compiler';
 import { noteWrite, withHistory } from './db/history';
 import { placeFromMeta, placeKey } from './placeLabel';
-import { exportToTextFile, mergePullToText, renderCommands, ExportTarget } from './exportText';
+import { mergePullToText, renderCommands, ExportTarget } from './exportText';
 import { reviewEnabled } from './review';
 import { reviewDeploy, busy, Decision, DeployCandidate, DeploySort } from './reviewApply';
 import { eachSlowly } from './db/slowly';
@@ -76,15 +76,20 @@ function snapshotIdFor(workspaceRoot: string, textPath: string): { key: string }
 }
 
 /**
- * After a successful merge deploy, optionally write the merged JSON back into the text file
- * (so 3-way kept-both conflicts surface for the writer), then refresh the BASE snapshot so the
- * next deploy is a clean 3-way. Controlled by `text2frame.writeBackAfterMerge`:
- *   - off       : never write back
- *   - onConflict: write back only when the merge kept conflicts (default)
- *   - always    : write back after every successful deploy (text mirrors JSON)
- * The BASE is set to the final text (written-back if any, else the just-deployed text),
- * except on a conflict: there it is the deployed text, since the written-back one carries
- * the markers and an ancestor with markers in it makes the next 3-way merge them again.
+ * 統合で反映するときの書き戻しの指定(`text2frame.writeBackAfterMerge`)。コンパイラに渡す。
+ *   - off   : 衝突しなかったときは、テキストを書き直さない(既定)
+ *   - always: 衝突しなかったときも、ゲーム側の変更をテキストへ持ってくる
+ * 衝突したときは、どちらでもコンパイラがテキストに両方の版と目印を書き、ゲームにはゲームの版を書く。
+ */
+export function writeBackSetting(): 'always' | 'off' {
+    return vscode.workspace.getConfiguration('text2frame').get<string>('writeBackAfterMerge', 'off') === 'always' ? 'always' : 'off';
+}
+
+/**
+ * 反映のあと、祖先(.t2f-base)を進める。
+ * 統合の反映では、書き戻しも祖先の保存もコンパイラが済ませている(祖先はゲームに書いたほう)。
+ * ここでは、何が起きたかを出力に書くだけ。
+ * 上書き・追記の反映では、反映したテキストを祖先にする。
  */
 export function writeBackAndRefreshBase(
     context: vscode.ExtensionContext,
@@ -92,43 +97,19 @@ export function writeBackAndRefreshBase(
     meta: { [key: string]: string },
     textPath: string,
     originalText: string,
-    result: { warnings: string[]; conflicts?: number },
+    result: { warnings: string[]; conflicts?: number; writtenBack?: boolean },
     snap: { key: string },
     mergeLike: boolean
 ): void {
-    const mode = vscode.workspace.getConfiguration('text2frame').get<string>('writeBackAfterMerge', 'onConflict');
-    // The compiler reports the count directly; the warning-text match stays as a
-    // fallback for an older bundled Text2Frame.js that predates the field.
-    const hadConflict = (result.conflicts || 0) > 0 || result.warnings.some((w) => /conflict|衝突/i.test(w));
-    const shouldWriteBack = mergeLike && (mode === 'always' || (mode === 'onConflict' && hadConflict));
-    let finalText = originalText;
-    if (shouldWriteBack) {
-        const target: ExportTarget = {
-            kind: meta.kind === 'common' ? 'common' : 'event',
-            mapId: meta.mapId,
-            eventId: meta.eventId,
-            pageId: meta.pageId || '1',
-            commonEventId: meta.commonEventId,
-            textPath,
-            frontMatterSource: originalText
-        };
-        const ex = exportToTextFile(context, workspaceRoot, target);
-        if (ex.ok) {
-            try { finalText = fs.readFileSync(textPath, 'utf8'); } catch (e) { /* keep original */ }
-            getOutput().appendLine(`    write-back -> ${path.basename(textPath)}${hadConflict ? ' (conflicts to resolve)' : ''}`);
-        } else {
-            getOutput().appendLine(`    write-back failed: ${ex.error}`);
+    if (mergeLike) {
+        if ((result.conflicts || 0) > 0) {
+            getOutput().appendLine(`    conflicts -> ${path.basename(textPath)} (resolve them in the text; the game keeps its own version)`);
+        } else if (result.writtenBack) {
+            getOutput().appendLine(`    write-back -> ${path.basename(textPath)}`);
         }
+        return;
     }
-    // overwrite の直後も text==game なので、merge と同じく祖先を更新する。衝突していても
-    // 更新する: 祖先は「ここまでのテキストの変更はゲームが見た」の意味で、テキストの変更は
-    // 目印の中に入っている。据え置くと、ツクールで解決したあとの取り出しで同じ衝突が再発する。
-    // ただし衝突時の祖先は書き戻し後(finalText)ではなく反映したテキスト(originalText)。
-    // 書き戻しは目印ごとテキストへ持ち込むため、祖先に目印が入ってしまう。
-    if (hadConflict) {
-        getOutput().appendLine('    conflicts to resolve (BASE = deployed text)');
-    }
-    saveBaseSnapshot(workspaceRoot, snap.key, hadConflict ? originalText : finalText);
+    saveBaseSnapshot(workspaceRoot, snap.key, originalText);
 }
 
 /** Locate and load the compiler module that exports applyTextFile(). */
@@ -268,6 +249,7 @@ async function deployDocumentNow(
         textPath: document.uri.fsPath,
         ...resolved.opts,
         strategy,
+        writeBack: writeBackSetting(),
         // 祖先(.t2f-base)の置き場所。渡さないとコンパイラは process.cwd() を使い、拡張ホストでは
         // それが / なので保存できない。拡張の祖先(baseSnapshotPath)と同じ場所・同じ鍵になる。
         baseRoot: workspaceRoot
@@ -381,6 +363,7 @@ function prepareFile(context: vscode.ExtensionContext, workspaceRoot: string, fi
         textPath: filePath,
         ...resolved.opts,
         strategy,
+        writeBack: writeBackSetting(),
         baseRoot: workspaceRoot // 祖先の置き場所(上の deployDocument と同じ)
     };
     if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.key)) {

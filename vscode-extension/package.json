@@ -631,14 +631,13 @@
         },
         "text2frame.writeBackAfterMerge": {
           "type": "string",
-          "enum": ["off", "onConflict", "always"],
-          "default": "onConflict",
+          "enum": ["off", "always"],
+          "default": "off",
           "enumDescriptions": [
-            "書き戻さない / never",
-            "競合したときだけ書き戻す(既定) / only when there is a conflict to resolve",
+            "競合しなかったときは書き戻さない(既定) / only when there is a conflict to resolve",
             "反映のたびに書き戻す / after every apply"
           ],
-          "description": "テキストとゲームで同じ所を別々に変更して競合したとき、結果をテキストに書き戻して確認・解決できるようにするか。 / When the same spot was changed both in text and in the game, whether to write the result back into the text so you can review and resolve it."
+          "description": "統合で反映したあと、ゲーム側の変更をテキストにも書き戻すか。競合したときは、この設定に関係なく、テキストに両方の版と目印を書き戻します(ゲームには目印を入れず、ゲームの版のままにします)。 / After a merge apply, whether to bring the game-side edits back into the text. A conflict is always written into the text with both versions and the markers, whatever this is; the game keeps its own version without markers."
         },
         "text2frame.englishTag": {
           "type": "boolean",
