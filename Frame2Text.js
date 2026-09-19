@@ -73,7 +73,7 @@
  * @default 1
  *
  * @arg Strategy
- * @text 取り出しのしかた
+ * @text 反映方法
  * @desc merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます。overwriteは全上書きです。既定はmergeです。
  * @type select
  * @option 統合 / merge
@@ -105,7 +105,7 @@
  * @default 1
  *
  * @arg Strategy
- * @text 取り出しのしかた
+ * @text 反映方法
  * @desc merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます。overwriteは全上書きです。既定はmergeです。
  * @type select
  * @option 統合 / merge
@@ -125,7 +125,7 @@
  * @default text
  *
  * @arg Strategy
- * @text 取り出し方法
+ * @text 反映方法
  * @desc merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。overwriteはゲームの内容で全上書きです。既定はmergeです。
  * @type select
  * @option 統合 / merge
