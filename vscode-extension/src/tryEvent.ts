@@ -86,7 +86,7 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
             vscode.window.showErrorMessage('Text2Frame: このテキストの宛先のメモが読めません。');
             return;
         }
-        let visit: { mapId?: number; eventId?: number; pageId?: number; x?: number; y?: number; run?: boolean; common?: number };
+        let visit: { mapId?: number; eventId?: number; pageId?: number; x?: number; y?: number; run?: boolean; show?: boolean; common?: number };
         if (mode === 'common' || place.kind === 'common') {
             visit = { common: place.kind === 'common' ? place.commonEventId : 0 };
         } else {
@@ -97,7 +97,8 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
                 vscode.window.showErrorMessage('Text2Frame: このイベントは、ゲームのマップにありません。');
                 return;
             }
-            visit = { mapId, eventId, pageId: place.pageId ?? 1, x: ev.x, y: ev.y, run: mode === 'run' };
+            const keepTransparent = vscode.workspace.getConfiguration('text2frame').get<boolean>('tryEvent.keepPlayerTransparent', false);
+            visit = { mapId, eventId, pageId: place.pageId ?? 1, x: ev.x, y: ev.y, run: mode === 'run', show: mode !== 'run' || !keepTransparent };
         }
 
         let reload = false;

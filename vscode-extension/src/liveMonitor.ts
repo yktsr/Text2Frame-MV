@@ -309,7 +309,7 @@ export function monitorScript(token: string): string {
     var mapId = Number(v.mapId) || 0;
     var common = Number(v.common) || 0;
     if (!mapId && !common) return;
-    visiting = { mapId: mapId, eventId: Number(v.eventId) || 0, pageId: Number(v.pageId) || 1, x: Number(v.x) || 0, y: Number(v.y) || 0, run: !!v.run, common: common, stage: 'start', since: Date.now() };
+    visiting = { mapId: mapId, eventId: Number(v.eventId) || 0, pageId: Number(v.pageId) || 1, x: Number(v.x) || 0, y: Number(v.y) || 0, run: !!v.run, show: v.show !== false, common: common, stage: 'start', since: Date.now() };
     if (paused) {
       paused = null;
       resumedReport = true;
@@ -375,6 +375,7 @@ export function monitorScript(token: string): string {
     var spot = standingSpot(map, ev);
     player.locate(spot[0], spot[1]);
     player.setDirection(spot[2]);
+    if ((!v.run || v.show) && typeof player.setTransparent === 'function') player.setTransparent(false);
     if (!v.run) return finishVisit('stood');
     var data = window.$dataMap && window.$dataMap.events && window.$dataMap.events[v.eventId];
     var page = data && data.pages && data.pages[v.pageId - 1];

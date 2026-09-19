@@ -271,7 +271,8 @@ describe('liveMonitor', function () {
         reserveTransfer: function (m, x, y) { calls.push(['transfer', m, x, y]); transferring = true },
         isTransferring: function () { return transferring },
         locate: function (x, y) { calls.push(['locate', x, y]) },
-        setDirection: function (d) { calls.push(['face', d]) }
+        setDirection: function (d) { calls.push(['face', d]) },
+        setTransparent: function (t) { calls.push(['transparent', t]) }
       }
       w.$dataMap = { events: [null, null, { pages: [{ list: [1, 2, 3] }] }] }
       w.$gameTemp = { reserveCommonEvent: function (id) { calls.push(['common', id]) } }
@@ -290,7 +291,7 @@ describe('liveMonitor', function () {
       expect(calls).to.have.length(4)
       arrive()
       g.step()
-      expect(calls.slice(4)).to.eql(['clear', ['locate', 5, 4], ['face', 2], ['setup', 3, 2]])
+      expect(calls.slice(4)).to.eql(['clear', ['locate', 5, 4], ['face', 2], ['transparent', false], ['setup', 3, 2]])
       expect(g.sent[g.sent.length - 1].body.visit).to.equal('ran')
     })
 
@@ -303,7 +304,20 @@ describe('liveMonitor', function () {
       g.step()
       g.step()
       expect(calls.filter((c) => Array.isArray(c) && c[0] === 'setup')).to.eql([])
+      expect(calls).to.deep.include(['transparent', false])
       expect(g.sent.map((m) => m.body.visit).filter(Boolean)).to.eql(['stood'])
+    })
+
+    it('leaves a transparent player as it is when asked to, only when running the page', function () {
+      const { g, calls, arrive } = setup()
+      g.window.SceneManager._scene = new g.window.Scene_Map()
+      g.step()
+      g.source().onmessage({ data: JSON.stringify({ visit: { mapId: 3, eventId: 2, pageId: 1, x: 5, y: 5, run: true, show: false } }) })
+      g.step()
+      arrive()
+      g.step()
+      expect(calls).to.deep.include(['setup', 3, 2])
+      expect(calls).to.not.deep.include(['transparent', false])
     })
 
     it('says so when the event is not on the map, runs a common event, and reloads', function () {
