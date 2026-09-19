@@ -57,7 +57,7 @@ describe('tag help', function () {
     const { tags } = buildTagHelp(source)
     const missing = []
     for (const names of aliasGroups(source).values()) for (const n of names) if (!(n in tags)) missing.push(n)
-    // Skip / SkipEnd / br はヘルプに記載が無い。隊列歩行の変更は見出しの本文が別のコマンドの説明になっている。
-    expect(missing.sort()).to.eql(['br', 'changeplayerfollowers', 'skip', 'skipend', 'スキップ', 'スキップ終了', '隊列歩行の変更'].sort())
+    // Skip / SkipEnd / br はヘルプに記載が無い。
+    expect(missing.sort()).to.eql(['br', 'skip', 'skipend', 'スキップ', 'スキップ終了'].sort())
   })
 })

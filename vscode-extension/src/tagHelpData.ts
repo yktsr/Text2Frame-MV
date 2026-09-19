@@ -193,7 +193,7 @@ export const TAG_HELP_SECTIONS: TagHelpSection[] = [
  },
  {
   "title": "(43) 隊列歩行の変更",
-  "body": "「隊列メンバーの集合」は以下のいずれかの記法で組み込むことができます。\n  <GatherFollowers>\n  <隊列メンバーの集合>"
+  "body": "「隊列歩行の変更」は以下のいずれかの記法で組み込むことができます。\n <ChangePlayerFollowers: 隊列歩行>\n <隊列歩行の変更: 隊列歩行>\n\n隊列歩行リスト\n- ラジオボタンオン: \"ON\", \"true\", \"オン\", \"0\"\n- ラジオボタンオフ: \"OFF\", \"false\", \"オフ\", \"1\"\n\n例: 隊列歩行をオンに変更\n <ChangePlayerFollowers: ON>\n <隊列歩行の変更: ON>"
  },
  {
   "title": "(44) 隊列メンバーの集合",
@@ -676,6 +676,7 @@ export const TAG_HELP_INDEX: { [name: string]: number } = {
  "changeparallax": 94,
  "changeparameter": 32,
  "changepartymember": 24,
+ "changeplayerfollowers": 46,
  "changeprofile": 38,
  "changesaveaccess": 84,
  "changeskill": 33,
@@ -994,5 +995,6 @@ export const TAG_HELP_INDEX: { [name: string]: number } = {
  "防具の増減": 23,
  "除算": 9,
  "隊列メンバーの集合": 47,
+ "隊列歩行の変更": 46,
  "顔": 0
 };
