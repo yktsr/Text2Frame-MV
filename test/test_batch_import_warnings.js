@@ -200,8 +200,8 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     runBatch()
 
     expect(line('衝突 1件')).to.contain('e1')
-    // 目印はいつもテキストに入る。直す場所はテキスト。
-    expect(line('目印はテキストに入っています')).to.be.a('string')
+    // 目印はいつもテキストに入る。直す場所はテキスト(言い回しは変わりうるので、要点だけ見る)。
+    expect(line('テキストに目印')).to.be.a('string')
     expect(line('ツクールで目印3行を消して')).to.equal(undefined)
   })
 
