@@ -11617,12 +11617,12 @@
       }
       if (conflicted.length > 0) {
         addMessage('[batch-import] 衝突 ' + conflicted.length + '件: ' + nameList(conflicted))
-        addMessage('[batch-import] 目印はテキストに入っています(ゲームはゲームの版のままです)。')
-        addMessage('[batch-import] 残す方を決めて目印3行を消し、もう一度この一括反映を実行してください。')
+        addMessage('[batch-import] 衝突した箇所はテキストに目印が入っています。')
+        addMessage('[batch-import] 意図通りに編集し目印を消して、もう一度この一括反映を実行してください。')
       }
       if (unresolved.length > 0) {
         addMessage('[batch-import] 目印が残っていて反映できないファイル ' + unresolved.length + '件: ' + nameList(unresolved))
-        addMessage('[batch-import] 目印3行を消して残す方を決めてから、もう一度実行してください。')
+        addMessage('[batch-import] 目印を消して、編集してから、もう一度実行してください。')
         unresolved.forEach(function (k) { console.warn('[batch-import] unresolved markers: ' + k) })
       }
       failures.slice(0, DETAIL_LINES).forEach(function (f) { addMessage('[batch-import] 失敗: ' + f) })
