@@ -1,5 +1,6 @@
 import { padId } from './database';
-import { PageSummary, TRIGGER_LABELS } from './eventPages';
+import { PageSummary, triggerLabel } from './eventPages';
+import { tr } from './lang';
 
 /**
  * マップの一覧(data/MapInfos.json)を、ツクールのエディタと同じ親子・順番に並べる。
@@ -82,7 +83,7 @@ function reachableParent(info: MapInfo, byId: Map<number, MapInfo>): boolean {
 
 /** 「水族館1」。名前が無ければ「マップ0003」。 */
 export function mapLabel(info: { id: number; name: string }): string {
-    return info.name || `マップ${padId(info.id)}`;
+    return info.name || tr(`マップ${padId(info.id)}`, `Map ${padId(info.id)}`);
 }
 
 export type NameLookup = (kind: 'switch' | 'variable' | 'item' | 'actor', id: number) => string | undefined;
@@ -98,22 +99,22 @@ export function pageConditionTexts(page: PageSummary, name?: NameLookup, limit?:
         return ' ' + (limit && found.length > limit ? found.slice(0, limit) + '…' : found);
     };
     const out: string[] = [];
-    if (page.switch1) out.push(`S${padId(page.switch1)}${named('switch', page.switch1)} が ON`);
-    if (page.switch2) out.push(`S${padId(page.switch2)}${named('switch', page.switch2)} が ON`);
+    if (page.switch1) out.push(tr(`S${padId(page.switch1)}${named('switch', page.switch1)} が ON`, `S${padId(page.switch1)}${named('switch', page.switch1)} is ON`));
+    if (page.switch2) out.push(tr(`S${padId(page.switch2)}${named('switch', page.switch2)} が ON`, `S${padId(page.switch2)}${named('switch', page.switch2)} is ON`));
     if (page.variable) out.push(`V${padId(page.variable[0])}${named('variable', page.variable[0])} ≥ ${page.variable[1]}`);
-    if (page.selfSwitch) out.push(`セルフ ${page.selfSwitch} が ON`);
-    if (page.item) out.push(`アイテム${named('item', page.item)}(${padId(page.item)})を持つ`);
-    if (page.actor) out.push(`アクター${named('actor', page.actor)}(${padId(page.actor)})が仲間`);
+    if (page.selfSwitch) out.push(tr(`セルフ ${page.selfSwitch} が ON`, `Self switch ${page.selfSwitch} is ON`));
+    if (page.item) out.push(tr(`アイテム${named('item', page.item)}(${padId(page.item)})を持つ`, `Has item${named('item', page.item)} (${padId(page.item)})`));
+    if (page.actor) out.push(tr(`アクター${named('actor', page.actor)}(${padId(page.actor)})が仲間`, `Actor${named('actor', page.actor)} (${padId(page.actor)}) is in the party`));
     return out;
 }
 
 /** ツリーの行の右に出す短い説明。「自動実行・S0012 雨が降る が ON」 */
 export function pageDescription(page: PageSummary, empty: boolean, name?: NameLookup): string {
     const parts: string[] = [];
-    if (empty) parts.push('中身なし');
-    parts.push(TRIGGER_LABELS[page.trigger] || TRIGGER_LABELS[0]);
+    if (empty) parts.push(tr('中身なし', 'empty'));
+    parts.push(triggerLabel(page.trigger));
     parts.push(...pageConditionTexts(page, name, SHORT_NAME));
-    return parts.join('・');
+    return parts.join(tr('・', ' · '));
 }
 
 /** テストプレイ中のゲームの様子。ツリーの行に印を付けるのに使う。 */
@@ -135,37 +136,37 @@ export function eventLiveMark(marks: LiveMarks | undefined, mapId: number, event
     if (!marks || marks.mapId !== mapId) return '';
     const parts: string[] = [];
     const page = marks.pages.get(eventId) || 0;
-    parts.push(page ? `今 ${page}ページ` : '出ていない');
-    if (marks.parallelEvents.has(eventId)) parts.push('並列');
-    if (Array.from(marks.running).some((key) => key.startsWith(`e:${mapId}:${eventId}:`))) parts.push('▶ 実行中');
-    return parts.join('・');
+    parts.push(page ? tr(`今 ${page}ページ`, `now page ${page}`) : tr('出ていない', 'not shown'));
+    if (marks.parallelEvents.has(eventId)) parts.push(tr('並列', 'parallel'));
+    if (Array.from(marks.running).some((key) => key.startsWith(`e:${mapId}:${eventId}:`))) parts.push(tr('▶ 実行中', '▶ running'));
+    return parts.join(tr('・', ' · '));
 }
 
 /** ページの行に付ける印。「● 今のページ・▶ 実行中」 */
 export function pageLiveMark(marks: LiveMarks | undefined, mapId: number, eventId: number, pageId: number): string {
     if (!marks || marks.mapId !== mapId) return '';
     const parts: string[] = [];
-    if ((marks.pages.get(eventId) || 0) === pageId) parts.push('● 今のページ');
-    if (marks.running.has(`e:${mapId}:${eventId}:${pageId}`)) parts.push('▶ 実行中');
-    return parts.join('・');
+    if ((marks.pages.get(eventId) || 0) === pageId) parts.push(tr('● 今のページ', '● current page'));
+    if (marks.running.has(`e:${mapId}:${eventId}:${pageId}`)) parts.push(tr('▶ 実行中', '▶ running'));
+    return parts.join(tr('・', ' · '));
 }
 
 /** コモンイベントの行に付ける印。 */
 export function commonLiveMark(marks: LiveMarks | undefined, commonEventId: number): string {
     if (!marks) return '';
     const parts: string[] = [];
-    if (marks.parallelCommons.has(commonEventId)) parts.push('並列');
-    if (marks.running.has(`c:${commonEventId}`)) parts.push('▶ 実行中');
-    return parts.join('・');
+    if (marks.parallelCommons.has(commonEventId)) parts.push(tr('並列', 'parallel'));
+    if (marks.running.has(`c:${commonEventId}`)) parts.push(tr('▶ 実行中', '▶ running'));
+    return parts.join(tr('・', ' · '));
 }
 
 /** コモンイベントの行の右に出す短い説明。トリガーが「なし」なら空。 */
 export function commonDescription(trigger: number, switchId: number, empty: boolean, name?: NameLookup): string {
     const parts: string[] = [];
-    if (empty) parts.push('中身なし');
+    if (empty) parts.push(tr('中身なし', 'empty'));
     if (trigger === 1 || trigger === 2) {
         const found = name && name('switch', switchId);
-        parts.push(`${trigger === 1 ? '自動実行' : '並列処理'}・S${padId(switchId)}${found ? ' ' + found : ''} が ON`);
+        parts.push(tr(`${trigger === 1 ? '自動実行' : '並列処理'}・S${padId(switchId)}${found ? ' ' + found : ''} が ON`, `${trigger === 1 ? 'Autorun' : 'Parallel'} · S${padId(switchId)}${found ? ' ' + found : ''} is ON`));
     }
-    return parts.join('・');
+    return parts.join(tr('・', ' · '));
 }

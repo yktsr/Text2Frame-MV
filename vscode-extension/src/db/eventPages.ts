@@ -1,3 +1,4 @@
+import { trList } from './lang';
 /**
  * イベントの各ページの出現条件とトリガー。VS Code に依存しない。
  * ツクールは、条件がそろったページのうち番号がいちばん大きいものを動かす。
@@ -15,7 +16,12 @@ export interface PageSummary {
     actor?: number;
 }
 
-export const TRIGGER_LABELS = ['決定ボタン', 'プレイヤーから接触', 'イベントから接触', '自動実行', '並列処理'];
+/** トリガーの名前。分からない番号は決定ボタン。 */
+export function triggerLabel(trigger: number): string {
+    const labels = trList(['決定ボタン', 'プレイヤーから接触', 'イベントから接触', '自動実行', '並列処理'],
+        ['Action Button', 'Player Touch', 'Event Touch', 'Autorun', 'Parallel']);
+    return labels[trigger] || labels[0];
+}
 
 const id = (v: unknown): number => (Number.isInteger(v) && (v as number) > 0 ? (v as number) : 0);
 

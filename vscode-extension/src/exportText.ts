@@ -17,6 +17,7 @@ import { noteWrite, withHistory } from './db/history';
 import { loadCompiler, writeBackSetting } from './deploy';
 import { placeFromMeta, placeKey } from './placeLabel';
 import { reviewPull } from './reviewApply';
+import { tr } from './db/lang';
 
 /**
  * Export feature: read the RPG Maker data JSON and write it back out as a
@@ -212,7 +213,7 @@ function dataPathFor(workspaceRoot: string, target: ExportTarget): string | unde
         : (target.mapId ? mapPathFor(workspaceRoot, target.mapId) : undefined);
 }
 
-const FRAME2TEXT_MISSING = 'Frame2Text.js を読み込めませんでした(詳細は出力 "Text2Frame Export")。設定 text2frame.modulePath で本体の場所を指定してください。';
+const frame2TextMissing = (): string => tr('Frame2Text.js を読み込めませんでした(詳細は出力 "Text2Frame Export")。設定 text2frame.modulePath で本体の場所を指定してください。', 'Could not load Frame2Text.js (see the "Text2Frame Export" output). Set its location in text2frame.modulePath.');
 
 function frame2Text(context: vscode.ExtensionContext, workspaceRoot: string): Frame2TextModule | undefined {
     const { mod, tried } = loadFrame2Text(context, workspaceRoot);
@@ -235,13 +236,13 @@ export function planPull(
     const plan: PullPlan = { target, ok: false, inputs: [target.textPath, dataPathFor(workspaceRoot, target) || '', baseP].filter(Boolean) };
     const mod = frame2Text(context, workspaceRoot);
     if (!mod) {
-        plan.error = FRAME2TEXT_MISSING;
+        plan.error = frame2TextMissing();
         return plan;
     }
     // buildPullText resolves Text2Frame itself for the 3-way, but load it here too: it primes the
     // shared global and lets us report the extension's modulePath candidates when it is missing.
     if (mode === 'merge' && !loadText2Frame(context, workspaceRoot).mod) {
-        plan.error = 'Text2Frame.js を読み込めませんでした。設定 text2frame.modulePath を確認してください。';
+        plan.error = tr('Text2Frame.js を読み込めませんでした。設定 text2frame.modulePath を確認してください。', 'Could not load Text2Frame.js. Check the setting text2frame.modulePath.');
         return plan;
     }
     try {
@@ -287,7 +288,7 @@ export function planPull(
 
 /** planPull で作ったテキストを書き、データの状態と祖先を記録する。 */
 export function commitPull(context: vscode.ExtensionContext, workspaceRoot: string, plan: PullPlan): ExportResult {
-    const label = 'ゲームから取り出す ' + path.relative(workspaceRoot, plan.target.textPath).split(path.sep).join('/');
+    const label = tr('ゲームから取り出す ', 'Pull from game ') + path.relative(workspaceRoot, plan.target.textPath).split(path.sep).join('/');
     return withHistory(workspaceRoot, 'pull', label, { keep: historyKeep() }, () => commitPullNow(context, workspaceRoot, plan));
 }
 
@@ -303,7 +304,7 @@ function commitPullNow(context: vscode.ExtensionContext, workspaceRoot: string, 
             const dataPath = dataPathFor(workspaceRoot, target);
             const { mod } = loadCompiler(context, workspaceRoot);
             if (!mod || !mod.applyCommandsToData) {
-                return { ok: false, error: 'ゲームへ書き戻せませんでした。Text2Frame.js を読み込めません(設定 text2frame.modulePath)。' };
+                return { ok: false, error: tr('ゲームへ書き戻せませんでした。Text2Frame.js を読み込めません(設定 text2frame.modulePath)。', 'Could not write back to the game. Text2Frame.js cannot be loaded (setting text2frame.modulePath).') };
             }
             if (dataPath) noteWrite(dataPath, 'data', pageKeyOf(target));
             const wrote = mod.applyCommandsToData({
@@ -317,7 +318,7 @@ function commitPullNow(context: vscode.ExtensionContext, workspaceRoot: string, 
                 commands: plan.writeBack.commands
             });
             if (!wrote.ok) {
-                return { ok: false, error: 'ゲームへ書き戻せませんでした: ' + (wrote.error || '') };
+                return { ok: false, error: tr('ゲームへ書き戻せませんでした: ', 'Could not write back to the game: ') + (wrote.error || '') };
             }
         }
         writeTextFile(target.textPath, plan.text as string);
@@ -350,7 +351,7 @@ export function exportToTextFile(
     }
     const mod = frame2Text(context, workspaceRoot);
     if (!mod) {
-        return { ok: false, error: FRAME2TEXT_MISSING };
+        return { ok: false, error: frame2TextMissing() };
     }
     // The conversation-only sidecar is a lossy extract, not a deployable file: it never
     // routes, never becomes an ancestor, and buildPullText has no translationOnly mode.
@@ -440,7 +441,7 @@ export function mergePullToText(
 function targetFromDocument(document: vscode.TextDocument): ExportTarget {
     const { meta, hasFrontMatter } = parseFrontMatter(document.getText());
     if (!hasFrontMatter) {
-        throw new Error('フロントマターが無いため書き出し元を特定できません。');
+        throw new Error(tr('フロントマターが無いため書き出し元を特定できません。', 'This text has no front matter, so where it comes from in the game is unknown.'));
     }
     const kind = (String(meta.kind || 'event').toLowerCase() === 'common') ? 'common' : 'event';
     return {
@@ -461,12 +462,12 @@ function targetFromDocument(document: vscode.TextDocument): ExportTarget {
 export async function exportCurrentFile(context: vscode.ExtensionContext): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-        vscode.window.showWarningMessage('Text2Frame: アクティブなエディタがありません。');
+        vscode.window.showWarningMessage(tr('Text2Frame: アクティブなエディタがありません。', 'Text2Frame: No active editor.'));
         return;
     }
     const workspaceRoot = workspaceRootFor(editor.document);
     if (!workspaceRoot) {
-        vscode.window.showErrorMessage('Text2Frame: ワークスペースフォルダが見つかりません。');
+        vscode.window.showErrorMessage(tr('Text2Frame: ワークスペースフォルダが見つかりません。', 'Text2Frame: No workspace folder was found.'));
         return;
     }
     let target: ExportTarget;
@@ -476,23 +477,23 @@ export async function exportCurrentFile(context: vscode.ExtensionContext): Promi
         vscode.window.showErrorMessage('Text2Frame: ' + (e instanceof Error ? e.message : String(e)));
         return;
     }
-    const reviewed = await reviewPull(workspaceRoot, () => [planPull(context, workspaceRoot, target, 'merge')], 'このファイルの取り出し');
+    const reviewed = await reviewPull(workspaceRoot, () => [planPull(context, workspaceRoot, target, 'merge')], tr('このファイルの取り出し', 'Pull this file'));
     if (!reviewed) {
-        vscode.window.setStatusBarMessage('Text2Frame: 取り出しをやめました。', 4000);
+        vscode.window.setStatusBarMessage(tr('Text2Frame: 取り出しをやめました。', 'Text2Frame: Stopped pulling.'), 4000);
         return;
     }
     const result = commitPull(context, workspaceRoot, reviewed.plans[0]);
     if (result.ok && reviewed.unchanged && !result.skipped) {
-        vscode.window.showInformationMessage('Text2Frame: テキストは変わりませんでした。');
+        vscode.window.showInformationMessage(tr('Text2Frame: テキストは変わりませんでした。', 'Text2Frame: The text did not change.'));
     } else if (result.ok && result.skipped === 'game') {
-        vscode.window.showWarningMessage('Text2Frame: ゲーム側に未解決の衝突の目印が残っているため統合できません。ツクールで衝突の目印を消すか、「全部取り直す」で目印ごと取り出してテキスト側で解決してください。');
+        vscode.window.showWarningMessage(tr('Text2Frame: ゲーム側に未解決の衝突の目印が残っているため統合できません。ツクールで衝突の目印を消すか、「全部取り直す」で目印ごと取り出してテキスト側で解決してください。', 'Text2Frame: Cannot merge: unresolved conflict markers remain in the game. Remove them in RPG Maker, or Re-pull (overwrite) to bring them into the text and resolve them there.'));
     } else if (result.ok && result.skipped) {
-        vscode.window.showWarningMessage('Text2Frame: テキストに未解決の衝突の目印が残っているため統合できません。衝突の目印を消して残す方を決めたあと、反映してください。');
+        vscode.window.showWarningMessage(tr('Text2Frame: テキストに未解決の衝突の目印が残っているため統合できません。衝突の目印を消して残す方を決めたあと、反映してください。', 'Text2Frame: Cannot merge: unresolved conflict markers remain in the text. Choose what to keep, remove the markers, then apply.'));
     } else if (result.ok) {
         const c = result.conflicts || 0;
-        vscode.window.showInformationMessage(`Text2Frame: ゲームから取り出しました${c ? `（${c} 件の競合は両方残しました。確認してください）` : ''}`);
+        vscode.window.showInformationMessage(tr(`Text2Frame: ゲームから取り出しました${c ? `（${c} 件の競合は両方残しました。確認してください）` : ''}`, `Text2Frame: Pulled from the game${c ? ` (both versions of ${c} conflicts were kept; check them)` : ''}`));
     } else {
-        vscode.window.showErrorMessage('Text2Frame: 取り出し失敗 - ' + (result.error || ''));
+        vscode.window.showErrorMessage(tr('Text2Frame: 取り出し失敗 - ', 'Text2Frame: Could not pull - ') + (result.error || ''));
     }
 }
 
@@ -500,12 +501,12 @@ export async function exportCurrentFile(context: vscode.ExtensionContext): Promi
 export function exportConversationOnly(context: vscode.ExtensionContext): void {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-        vscode.window.showWarningMessage('Text2Frame: アクティブなエディタがありません。');
+        vscode.window.showWarningMessage(tr('Text2Frame: アクティブなエディタがありません。', 'Text2Frame: No active editor.'));
         return;
     }
     const workspaceRoot = workspaceRootFor(editor.document);
     if (!workspaceRoot) {
-        vscode.window.showErrorMessage('Text2Frame: ワークスペースフォルダが見つかりません。');
+        vscode.window.showErrorMessage(tr('Text2Frame: ワークスペースフォルダが見つかりません。', 'Text2Frame: No workspace folder was found.'));
         return;
     }
     let target: ExportTarget;
@@ -520,12 +521,12 @@ export function exportConversationOnly(context: vscode.ExtensionContext): void {
     const ext = path.extname(srcPath);
     target.textPath = srcPath.slice(0, srcPath.length - ext.length) + '.conversation' + (ext || '.txt');
     target.translationOnly = true;
-    const label = '会話のみ書き出し ' + path.relative(workspaceRoot, target.textPath).split(path.sep).join('/');
+    const label = tr('会話のみ書き出し ', 'Pull conversation only ') + path.relative(workspaceRoot, target.textPath).split(path.sep).join('/');
     const result = withHistory(workspaceRoot, 'conversation', label, { keep: historyKeep() }, () => exportToTextFile(context, workspaceRoot, target));
     if (result.ok) {
-        vscode.window.showInformationMessage('Text2Frame: 会話のみテキストを書き出しました: ' + path.basename(result.textPath || ''));
+        vscode.window.showInformationMessage(tr('Text2Frame: 会話のみテキストを書き出しました: ', 'Text2Frame: Wrote the conversation-only text: ') + path.basename(result.textPath || ''));
         vscode.workspace.openTextDocument(result.textPath as string).then((doc) => vscode.window.showTextDocument(doc, { preview: true }));
     } else {
-        vscode.window.showErrorMessage('Text2Frame: 書き出し失敗 - ' + (result.error || ''));
+        vscode.window.showErrorMessage(tr('Text2Frame: 書き出し失敗 - ', 'Text2Frame: Could not export - ') + (result.error || ''));
     }
 }

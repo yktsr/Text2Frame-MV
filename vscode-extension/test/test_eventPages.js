@@ -1,5 +1,5 @@
 const { expect } = require('chai')
-const { summarizePages, hasConditions, TRIGGER_LABELS } = require('../out/db/eventPages')
+const { summarizePages, hasConditions, triggerLabel } = require('../out/db/eventPages')
 
 const conditions = (o) => Object.assign({
   actorId: 1, actorValid: false, itemId: 1, itemValid: false, selfSwitchCh: 'A', selfSwitchValid: false,
@@ -21,7 +21,8 @@ describe('eventPages', function () {
       { trigger: 4, switch2: 7, selfSwitch: 'B', item: 4, actor: 2 }
     ])
     expect(summarizePages(event).map(hasConditions)).to.eql([false, true, true])
-    expect(TRIGGER_LABELS[3]).to.equal('自動実行')
+    expect(triggerLabel(3)).to.equal('自動実行')
+    expect(triggerLabel(9)).to.equal('決定ボタン')
   })
 
   it('does not break on odd data', function () {

@@ -8,6 +8,7 @@ import { FACE_COLUMNS, FACE_ROWS } from './db/faces';
 import { LiveService } from './live';
 import { liveLine, selfSwitchLine } from './liveState';
 import { scanSelfSwitchLines, SelfSwitchRef } from './db/selfSwitchRefs';
+import { tr } from './db/lang';
 
 /**
  * エディタの中でデータベースの名前を見せる。テキストには番号しか書かないまま、
@@ -127,7 +128,7 @@ export function registerDatabaseFeatures(context: vscode.ExtensionContext, servi
             }
             if (ref.kind === 'icon') {
                 const uri = service.iconUri(ctx, ref.id, 32);
-                if (uri) md.appendMarkdown(`![アイコン ${ref.id}](${uri})\n\n`);
+                if (uri) md.appendMarkdown(tr(`![アイコン ${ref.id}](${uri})\n\n`, `![Icon ${ref.id}](${uri})\n\n`));
             }
             info.lines.forEach((l) => md.appendMarkdown(escape(l) + '  \n'));
             const state = live.forContext(ctx);
@@ -145,7 +146,7 @@ export function registerDatabaseFeatures(context: vscode.ExtensionContext, servi
         if (!ref || !state || mapId === undefined || evId === undefined) return undefined;
         const ev = service.mapEvents(ctx, mapId)?.[evId];
         const md = new vscode.MarkdownString();
-        md.appendMarkdown(`**セルフスイッチ ${ref.letter}**\n\n`);
+        md.appendMarkdown(tr(`**セルフスイッチ ${ref.letter}**\n\n`, `**Self switch ${ref.letter}**\n\n`));
         md.appendMarkdown(escape(`${eventId(evId)}${ev ? ' ' + eventLabel(ev) : ''}`) + '  \n');
         md.appendMarkdown(`\n**${escape(selfSwitchLine(state, mapId, evId, ref.letter, Date.now()))}**\n`);
         return new vscode.Hover(md, new vscode.Range(ref.line, ref.start, ref.line, ref.end));
@@ -207,7 +208,7 @@ export function registerDatabaseFeatures(context: vscode.ExtensionContext, servi
             }
             const kind = expected.kind as DbKind;
             return ctx.db.entries(kind).map((e) => {
-                const label = `${padId(e.id)} ${e.name || '(名前なし)'}`;
+                const label = tr(`${padId(e.id)} ${e.name || '(名前なし)'}`, `${padId(e.id)} ${e.name || '(no name)'}`);
                 const item = new vscode.CompletionItem(label, vscode.CompletionItemKind.Value);
                 item.range = range;
                 item.insertText = String(e.id);
@@ -216,7 +217,7 @@ export function registerDatabaseFeatures(context: vscode.ExtensionContext, servi
                 item.sortText = padId(e.id);
                 item.detail = ctx.db.label(kind);
                 const same = ctx.db.sameName(kind, e.id);
-                if (same.length) item.documentation = `同じ名前の${ctx.db.label(kind)}: ${same.map(padId).join(', ')}`;
+                if (same.length) item.documentation = tr(`同じ名前の${ctx.db.label(kind)}: ${same.map(padId).join(', ')}`, `${ctx.db.label(kind)} with the same name: ${same.map(padId).join(', ')}`);
                 return item;
             });
         }
@@ -249,7 +250,7 @@ function eventItems(events: EventLookup, range: vscode.Range): vscode.Completion
         item.insertText = String(id);
         item.filterText = `${id} ${e.name}`;
         item.sortText = padId(id);
-        item.detail = 'このマップのイベント';
+        item.detail = tr('このマップのイベント', 'Event on this map');
         items.push(item);
     });
     return items;
@@ -275,7 +276,7 @@ function imageItems(service: DatabaseService, ctx: DbContext, line: string, posi
             item.range = range;
             item.insertText = String(i);
             item.sortText = String(i);
-            item.detail = 'キャラ画像の番号';
+            item.detail = tr('キャラ画像の番号', 'Character number');
             const uri = service.characterUri(ctx, index[1].trim(), i, 96);
             if (uri) item.documentation = new vscode.MarkdownString(`![](${uri})`);
             out.push(item);
@@ -288,20 +289,20 @@ function imageItems(service: DatabaseService, ctx: DbContext, line: string, posi
     const typed = (character ? character[1] : (picture as RegExpMatchArray)[1]);
     const range = new vscode.Range(position.line, position.character - typed.length, position.line, position.character);
     const names = character ? service.characterNames(ctx) : service.pictureNames(ctx);
-    const browse = new vscode.CompletionItem('一覧から見て選ぶ…', vscode.CompletionItemKind.Folder);
+    const browse = new vscode.CompletionItem(tr('一覧から見て選ぶ…', 'Browse and pick…'), vscode.CompletionItemKind.Folder);
     browse.range = range;
     browse.insertText = '';
     browse.filterText = ' ';
     browse.sortText = '\u0000';
-    browse.detail = character ? 'キャラ画像を並べて見る' : 'ピクチャを並べて見る';
+    browse.detail = character ? tr('キャラ画像を並べて見る', 'Browse the character images') : tr('ピクチャを並べて見る', 'Browse the pictures');
     browse.command = character
-        ? { command: 'text2frame.pickCharacter', title: 'キャラ画像を選ぶ' }
-        : { command: 'text2frame.pickPicture', title: 'ピクチャを選ぶ' };
+        ? { command: 'text2frame.pickCharacter', title: tr('キャラ画像を選ぶ', 'Pick a character image') }
+        : { command: 'text2frame.pickPicture', title: tr('ピクチャを選ぶ', 'Pick a picture') };
     return [browse].concat(names.map((name) => {
         const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.File);
         item.range = range;
         item.insertText = name;
-        item.detail = character ? 'キャラ画像' : 'ピクチャ';
+        item.detail = character ? tr('キャラ画像', 'Character image') : tr('ピクチャ', 'Picture');
         const uri = character ? service.characterUri(ctx, name, 0, 96) : service.pictureUri(ctx, name, 120);
         if (uri) item.documentation = new vscode.MarkdownString(`![](${uri})`);
         if (character) item.command = { command: 'editor.action.triggerSuggest', title: '' };
@@ -310,18 +311,18 @@ function imageItems(service: DatabaseService, ctx: DbContext, line: string, posi
 }
 
 function faceNameItems(service: DatabaseService, ctx: DbContext, range: vscode.Range): vscode.CompletionItem[] {
-    const browse = new vscode.CompletionItem('一覧から見て選ぶ…', vscode.CompletionItemKind.Folder);
+    const browse = new vscode.CompletionItem(tr('一覧から見て選ぶ…', 'Browse and pick…'), vscode.CompletionItemKind.Folder);
     browse.range = range;
     browse.insertText = '';
     browse.filterText = ' ';
     browse.sortText = '\u0000';
-    browse.detail = '顔画像を並べて見る';
-    browse.command = { command: 'text2frame.pickFace', title: '顔画像を選ぶ' };
+    browse.detail = tr('顔画像を並べて見る', 'Browse the face images');
+    browse.command = { command: 'text2frame.pickFace', title: tr('顔画像を選ぶ', 'Pick a face image') };
     return [browse].concat(service.faceNames(ctx).map((name) => {
         const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.File);
         item.range = range;
         item.insertText = name + '(';
-        item.detail = '顔画像';
+        item.detail = tr('顔画像', 'Face image');
         // 続けて何番の顔かを選べるように、すぐ次の補完を開く。
         item.command = { command: 'editor.action.triggerSuggest', title: '' };
         return item;
@@ -337,7 +338,7 @@ function faceIndexItems(service: DatabaseService, ctx: DbContext, faceName: stri
         item.insertText = closed ? String(i) : `${i})`;
         item.filterText = String(i);
         item.sortText = String(i);
-        item.detail = `${faceName} の ${i}番`;
+        item.detail = tr(`${faceName} の ${i}番`, `${faceName}, number ${i}`);
         const uri = service.faceUri(ctx, faceName, i, 96);
         if (uri) item.documentation = new vscode.MarkdownString(`![${faceName} ${i}](${uri})`);
         items.push(item);

@@ -1,4 +1,5 @@
 import { lineKinds } from './tagRefs';
+import { pick, tr } from './lang';
 
 /**
  * テキストの組み立て(選択肢・条件分岐・ループ・注釈・ラベル・メッセージのまとまり)を読む。VS Code に依存しない。
@@ -35,10 +36,10 @@ const CHOICES = /<(?:showchoices|shc|選択肢の表示)(?:\s*:*\s*([^>]*))?>/i;
 const WHEN = /<(?:when|選択肢)\s*:\s*(.+)>/i;
 const WHEN_CANCEL = /<(?:whencancel|キャンセルのとき)>/i;
 const BATTLE = /<(?:battleprocessing|戦闘の処理)\s*:\s*(.*)>/i;
-const BATTLE_BRANCHES: Array<[RegExp, string]> = [
-    [/<(?:ifwin|勝ったとき)>/i, '勝ったとき'],
-    [/<(?:ifescape|逃げたとき)>/i, '逃げたとき'],
-    [/<(?:iflose|負けたとき)>/i, '負けたとき']
+const BATTLE_BRANCHES: Array<[RegExp, readonly [string, string]]> = [
+    [/<(?:ifwin|勝ったとき)>/i, ['勝ったとき', 'If Win']],
+    [/<(?:ifescape|逃げたとき)>/i, ['逃げたとき', 'If Escape']],
+    [/<(?:iflose|負けたとき)>/i, ['負けたとき', 'If Lose']]
 ];
 export const LABEL = /<(?:label|ラベル)\s*:\s*(\S+)\s*>/i;
 export const JUMP_TO_LABEL = /<(?:jumptolabel|ラベルジャンプ|jtl)\s*:\s*(\S+)\s*>/i;
@@ -113,8 +114,8 @@ export function readStructure(lines: string[], commentOutChar = '%'): StructureN
                     }
                 }
                 const first = blockKind === 'comment' ? lines.slice(i + 1, end).find((l) => l.trim() && !/<\//.test(l)) : undefined;
-                const title = blockKind === 'comment' ? (first ? '注釈: ' + shorten(first.replace(/^\s*\*?\s*/, '')) : '注釈')
-                    : blockKind === 'script' ? 'スクリプト' : 'スクロール文章';
+                const title = blockKind === 'comment' ? (first ? tr('注釈: ', 'Comment: ') + shorten(first.replace(/^\s*\*?\s*/, '')) : tr('注釈', 'Comment'))
+                    : blockKind === 'script' ? tr('スクリプト', 'Script') : tr('スクロール文章', 'Scrolling text');
                 const n = add(node(blockKind, title, i));
                 n.endLine = end;
                 i = end;
@@ -129,7 +130,7 @@ export function readStructure(lines: string[], commentOutChar = '%'): StructureN
         let m: RegExpMatchArray | null;
         if ((m = text.match(CHOICES))) {
             endMessage();
-            stack.push(add(node('choices', '選択肢' + (m[1] && m[1].trim() ? `: ${shorten(m[1])}` : ''), i)));
+            stack.push(add(node('choices', tr('選択肢', 'Choices') + (m[1] && m[1].trim() ? `: ${shorten(m[1])}` : ''), i)));
         } else if ((m = text.match(WHEN))) {
             endMessage();
             closeBranch(i);
@@ -137,28 +138,28 @@ export function readStructure(lines: string[], commentOutChar = '%'): StructureN
         } else if (WHEN_CANCEL.test(text)) {
             endMessage();
             closeBranch(i);
-            stack.push(add(node('when', 'キャンセルのとき', i)));
+            stack.push(add(node('when', tr('キャンセルのとき', 'When Cancel'), i)));
         } else if ((m = text.match(IF))) {
             endMessage();
-            stack.push(add(node('if', '条件分岐: ' + shorten(m[1]), i)));
+            stack.push(add(node('if', tr('条件分岐: ', 'If: ') + shorten(m[1]), i)));
         } else if (ELSE.test(text)) {
             endMessage();
             closeBranch(i);
-            stack.push(add(node('else', 'それ以外のとき', i)));
+            stack.push(add(node('else', tr('それ以外のとき', 'Else'), i)));
         } else if ((m = text.match(BATTLE))) {
             endMessage();
-            stack.push(add(node('battle', '戦闘の処理: ' + shorten(m[1]), i)));
+            stack.push(add(node('battle', tr('戦闘の処理: ', 'Battle: ') + shorten(m[1]), i)));
         } else if (BATTLE_BRANCHES.some(([re]) => re.test(text))) {
             endMessage();
             closeBranch(i);
-            const branch = BATTLE_BRANCHES.find(([re]) => re.test(text)) as [RegExp, string];
-            stack.push(add(node('battleBranch', branch[1], i)));
+            const branch = BATTLE_BRANCHES.find(([re]) => re.test(text)) as [RegExp, readonly [string, string]];
+            stack.push(add(node('battleBranch', pick(branch[1]), i)));
         } else if (END.test(text)) {
             endMessage();
             closeBlock(['if', 'choices', 'battle'], i);
         } else if (LOOP.test(text)) {
             endMessage();
-            stack.push(add(node('loop', 'ループ', i)));
+            stack.push(add(node('loop', tr('ループ', 'Loop'), i)));
         } else if (REPEAT.test(text)) {
             endMessage();
             closeBlock(['loop'], i);
@@ -167,10 +168,10 @@ export function readStructure(lines: string[], commentOutChar = '%'): StructureN
             closeBlock(['skip'], i);
         } else if (SKIP.test(text)) {
             endMessage();
-            stack.push(add(node('skip', 'スキップ', i)));
+            stack.push(add(node('skip', tr('スキップ', 'Skip'), i)));
         } else if ((m = text.match(LABEL))) {
             endMessage();
-            add(node('label', 'ラベル: ' + m[1], i));
+            add(node('label', tr('ラベル: ', 'Label: ') + m[1], i));
         } else if (MESSAGE_SETTING.test(text)) {
             if (message) endMessage();
             const face = text.match(FACE);
@@ -182,7 +183,7 @@ export function readStructure(lines: string[], commentOutChar = '%'): StructureN
         } else if (message) {
             message.endLine = i;
         } else {
-            message = add(node('message', shorten(trimmed === '<br>' ? '' : trimmed) || '(空行)', i));
+            message = add(node('message', shorten(trimmed === '<br>' ? '' : trimmed) || tr('(空行)', '(blank line)'), i));
             if (pendingName) message.name = pendingName;
             if (pendingFace) {
                 message.faceName = pendingFace.name;

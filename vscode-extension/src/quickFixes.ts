@@ -5,6 +5,7 @@ import { lineKinds } from './db/tagRefs';
 import { findConflicts, resolveConflict, tagLikeName, similarTagNames, replaceTagName, compilesAsText } from './db/fixes';
 import { MESSAGE_CODES } from './messageCheck';
 import { hasFaceTag, audioFolderOf, hasCharacterTag, hasPictureTag } from './db/assetEdit';
+import { tr } from './db/lang';
 
 /**
  * クイックフィックス(電球)。
@@ -57,7 +58,7 @@ export function registerQuickFixes(context: vscode.ExtensionContext): void {
                 const start = lines[line].indexOf('<');
                 const d = new vscode.Diagnostic(
                     new vscode.Range(line, start, line, start + name.length + 1),
-                    `「<${name}」はタグとして読まれず、ゲームにそのまま文字で出ます。タグの名前を確かめてください。`,
+                    tr(`「<${name}」はタグとして読まれず、ゲームにそのまま文字で出ます。タグの名前を確かめてください。`, `"<${name}" is not read as a tag; it shows in the game as plain text. Check the tag name.`),
                     vscode.DiagnosticSeverity.Information
                 );
                 d.code = FIX.unknownTag;
@@ -69,7 +70,7 @@ export function registerQuickFixes(context: vscode.ExtensionContext): void {
             const first = conflict.units[0];
             const d = new vscode.Diagnostic(
                 new vscode.Range(first.start, 0, conflict.units[2].end, lines[conflict.units[2].end].length),
-                '未解決の競合です。電球(または Ctrl+.)から、残す方を選べます。',
+                tr('未解決の競合です。電球(または Ctrl+.)から、残す方を選べます。', 'Unresolved conflict. Pick what to keep from the light bulb (or Ctrl+.).'),
                 vscode.DiagnosticSeverity.Warning
             );
             d.code = FIX.conflict;
@@ -91,23 +92,23 @@ export function registerQuickFixes(context: vscode.ExtensionContext): void {
             const lines = document.getText().split(/\r?\n/);
             const here = document.lineAt(range.start.line).text;
             if (hasFaceTag(here)) {
-                const a = new vscode.CodeAction('顔画像を一覧から選ぶ', vscode.CodeActionKind.QuickFix);
+                const a = new vscode.CodeAction(tr('顔画像を一覧から選ぶ', 'Pick a face image from the list'), vscode.CodeActionKind.QuickFix);
                 a.command = { command: 'text2frame.pickFace', title: a.title };
                 out.push(a);
             }
             if (hasCharacterTag(here)) {
-                const a = new vscode.CodeAction('キャラ画像を一覧から選ぶ', vscode.CodeActionKind.QuickFix);
+                const a = new vscode.CodeAction(tr('キャラ画像を一覧から選ぶ', 'Pick a character image from the list'), vscode.CodeActionKind.QuickFix);
                 a.command = { command: 'text2frame.pickCharacter', title: a.title };
                 out.push(a);
             }
             if (hasPictureTag(here)) {
-                const a = new vscode.CodeAction('ピクチャを一覧から選ぶ', vscode.CodeActionKind.QuickFix);
+                const a = new vscode.CodeAction(tr('ピクチャを一覧から選ぶ', 'Pick a picture from the list'), vscode.CodeActionKind.QuickFix);
                 a.command = { command: 'text2frame.pickPicture', title: a.title };
                 out.push(a);
             }
             const folder = audioFolderOf(here);
             if (folder) {
-                const a = new vscode.CodeAction(`${folder.toUpperCase()} を一覧から選ぶ`, vscode.CodeActionKind.QuickFix);
+                const a = new vscode.CodeAction(tr(`${folder.toUpperCase()} を一覧から選ぶ`, `Pick ${folder.toUpperCase()} from the list`), vscode.CodeActionKind.QuickFix);
                 a.command = { command: 'text2frame.pickAudio', title: a.title, arguments: [folder] };
                 out.push(a);
             }
@@ -115,14 +116,14 @@ export function registerQuickFixes(context: vscode.ExtensionContext): void {
                 const line = d.range.start.line;
                 const text = document.lineAt(line).text;
                 if (d.code === FIX.unclosed) {
-                    const a = new vscode.CodeAction('行の終わりに「>」を足す', vscode.CodeActionKind.QuickFix);
+                    const a = new vscode.CodeAction(tr('行の終わりに「>」を足す', 'Add ">" at the end of the line'), vscode.CodeActionKind.QuickFix);
                     a.edit = new vscode.WorkspaceEdit();
                     a.edit.insert(document.uri, new vscode.Position(line, text.trimEnd().length), '>');
                     a.diagnostics = [d];
                     a.isPreferred = true;
                     out.push(a);
                 } else if (d.code === FIX.emptyTag) {
-                    const a = new vscode.CodeAction('空のタグ「<>」を消す', vscode.CodeActionKind.QuickFix);
+                    const a = new vscode.CodeAction(tr('空のタグ「<>」を消す', 'Remove the empty tag "<>"'), vscode.CodeActionKind.QuickFix);
                     a.edit = new vscode.WorkspaceEdit();
                     a.edit.delete(document.uri, d.range);
                     a.diagnostics = [d];
@@ -134,7 +135,7 @@ export function registerQuickFixes(context: vscode.ExtensionContext): void {
                     for (const candidate of similarTagNames(name)) {
                         const fixed = replaceTagName(text, candidate);
                         if (compile && becomesText(compile, fixed)) continue;
-                        const a = new vscode.CodeAction(`「<${candidate}」に直す`, vscode.CodeActionKind.QuickFix);
+                        const a = new vscode.CodeAction(tr(`「<${candidate}」に直す`, `Change to "<${candidate}"`), vscode.CodeActionKind.QuickFix);
                         a.edit = new vscode.WorkspaceEdit();
                         a.edit.replace(document.uri, document.lineAt(line).range, fixed);
                         a.diagnostics = [d];
@@ -144,9 +145,9 @@ export function registerQuickFixes(context: vscode.ExtensionContext): void {
                     const conflict = findConflicts(lines).find((c) => c.units[0].start === line);
                     if (!conflict) continue;
                     const choices: Array<['text' | 'game' | 'both', string]> = [
-                        ['text', 'テキストの方を残す'],
-                        ['game', 'ゲームの方を残す'],
-                        ['both', '両方残して、目印だけ消す']
+                        ['text', tr('テキストの方を残す', 'Keep the text version')],
+                        ['game', tr('ゲームの方を残す', 'Keep the game version')],
+                        ['both', tr('両方残して、目印だけ消す', 'Keep both, remove only the markers')]
                     ];
                     for (const [keep, title] of choices) {
                         const solved = resolveConflict(lines, conflict, keep);
@@ -159,13 +160,13 @@ export function registerQuickFixes(context: vscode.ExtensionContext): void {
                         out.push(a);
                     }
                 } else if (d.code === MESSAGE_CODES.width) {
-                    const a = new vscode.CodeAction('ここで改行する', vscode.CodeActionKind.QuickFix);
+                    const a = new vscode.CodeAction(tr('ここで改行する', 'Break the line here'), vscode.CodeActionKind.QuickFix);
                     a.edit = new vscode.WorkspaceEdit();
                     a.edit.insert(document.uri, d.range.start, '\n');
                     a.diagnostics = [d];
                     out.push(a);
                 } else if (d.code === FIX.dbProblem) {
-                    const a = new vscode.CodeAction('候補から選び直す', vscode.CodeActionKind.QuickFix);
+                    const a = new vscode.CodeAction(tr('候補から選び直す', 'Pick again'), vscode.CodeActionKind.QuickFix);
                     a.command = { command: 'text2frame.fix.pickAgain', title: a.title, arguments: [document.uri, d.range] };
                     a.diagnostics = [d];
                     out.push(a);

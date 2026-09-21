@@ -8,6 +8,7 @@ import { padId } from './db/database';
 import { mapLabel } from './db/mapTree';
 import { eventId as eventLabelId } from './db/describe';
 import { MapLink, mapLinks, nodeFromKey } from './db/eventLinks';
+import { tr } from './db/lang';
 
 /**
  * 「マップのつながり」の欄。場所移動(TransferPlayer)で、
@@ -116,7 +117,7 @@ export class MapLinksProvider implements vscode.TreeDataProvider<LinkNode> {
     }
 
     private group(dir: 'out' | 'in', path: number[]): LinkNode {
-        const node = new LinkNode('group', dir === 'out' ? '行き先のマップ' : 'ここへ来るマップ', vscode.TreeItemCollapsibleState.Expanded, { dir, path });
+        const node = new LinkNode('group', dir === 'out' ? tr('行き先のマップ', 'Maps it goes to') : tr('ここへ来るマップ', 'Maps that come here'), vscode.TreeItemCollapsibleState.Expanded, { dir, path });
         node.iconPath = new vscode.ThemeIcon(dir === 'out' ? 'arrow-right' : 'arrow-left');
         return node;
     }
@@ -152,20 +153,20 @@ export class MapLinksProvider implements vscode.TreeDataProvider<LinkNode> {
                     seen ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed,
                     { dir, path: path.concat([other]), mapId: other }
                 );
-                node.description = ['#' + padId(other), links.length > 1 ? `${links.length}か所` : '', seen ? '(上と同じ)' : ''].filter((s) => s).join('・');
+                node.description = ['#' + padId(other), links.length > 1 ? tr(`${links.length}か所`, `${links.length} places`) : '', seen ? tr('(上と同じ)', '(same as above)') : ''].filter((s) => s).join(tr('・', ' · '));
                 node.iconPath = new vscode.ThemeIcon('map');
-                node.tooltip = seen ? 'このマップは、上でもう出ています。' : undefined;
+                node.tooltip = seen ? tr('このマップは、上でもう出ています。', 'This map is already listed above.') : undefined;
                 out.push(node);
                 for (const link of links) out.push(this.placeNode(ctx, dir, link, path));
             });
         for (const link of unknown) {
-            const node = new LinkNode('unknown', '変数で決まる行き先', vscode.TreeItemCollapsibleState.None, {
+            const node = new LinkNode('unknown', tr('変数で決まる行き先', 'Destination set by variables'), vscode.TreeItemCollapsibleState.None, {
                 dir, path, at: link.at, index: link.index, variableId: link.variableId
             });
             const named = link.variableId ? ctx.db.lookup('variable', link.variableId) : undefined;
             node.description = link.variableId ? `V${padId(link.variableId)}${named && named.status === 'named' ? ' ' + named.name : ''}` : '';
             node.iconPath = new vscode.ThemeIcon('question');
-            node.tooltip = '行き先を変数で決めているので、どのマップへ行くかはここでは分かりません。';
+            node.tooltip = tr('行き先を変数で決めているので、どのマップへ行くかはここでは分かりません。', 'The destination is set by variables, so which map it goes to is not known here.');
             out.push(this.withOpen(ctx, node, link));
         }
         return out;
@@ -178,23 +179,23 @@ export class MapLinksProvider implements vscode.TreeDataProvider<LinkNode> {
         let detail = '';
         if (node && node.kind === 'page') {
             const event = this.service.mapEvents(ctx, node.mapId)?.[node.eventId];
-            label = `${eventLabelId(node.eventId)}${event && event.name ? ' ' + event.name : ''} / ${node.pageId}ページ`;
+            label = tr(`${eventLabelId(node.eventId)}${event && event.name ? ' ' + event.name : ''} / ${node.pageId}ページ`, `${eventLabelId(node.eventId)}${event && event.name ? ' ' + event.name : ''} / page ${node.pageId}`);
             detail = this.name(ctx, node.mapId);
         } else if (node && node.kind === 'common') {
             const hit = ctx.db.lookup('commonEvent', node.id);
-            label = `コモンイベント ${padId(node.id)}${hit.status === 'named' ? ' ' + hit.name : ''}`;
-            detail = 'どのマップからかは決まりません';
+            label = tr(`コモンイベント ${padId(node.id)}${hit.status === 'named' ? ' ' + hit.name : ''}`, `Common event ${padId(node.id)}${hit.status === 'named' ? ' ' + hit.name : ''}`);
+            detail = tr('どのマップからかは決まりません', 'Which map it runs on is not fixed');
         }
         const item = new LinkNode('place', label, vscode.TreeItemCollapsibleState.None, {
             dir, path, at: link.at, index: link.index, mapId: dir === 'out' ? link.toMap : link.fromMap
         });
-        item.description = [detail, link.how === 'vehicle' ? '乗り物' : ''].filter((s) => s).join('・');
+        item.description = [detail, link.how === 'vehicle' ? tr('乗り物', 'vehicle') : ''].filter((s) => s).join(tr('・', ' · '));
         item.iconPath = new vscode.ThemeIcon('arrow-small-right');
         return this.withOpen(ctx, item, link);
     }
 
     private withOpen(ctx: DbContext, node: LinkNode, link: MapLink): LinkNode {
-        node.command = { command: 'text2frame.mapLinks.open', title: '開く', arguments: [link.at, link.index] };
+        node.command = { command: 'text2frame.mapLinks.open', title: tr('開く', 'Open'), arguments: [link.at, link.index] };
         return node;
     }
 }
@@ -213,8 +214,8 @@ export function registerMapLinksView(context: vscode.ExtensionContext, service: 
 
     const setTitle = (): void => {
         const name = provider.title();
-        view.message = name ? undefined : 'マップのテキストを開くか、一覧の行を右クリックして「つながりを見る」を選んでください。';
-        view.description = name ? name + (provider.atGame() ? ' ● いまここ' : '') : undefined;
+        view.message = name ? undefined : tr('マップのテキストを開くか、一覧の行を右クリックして「つながりを見る」を選んでください。', 'Open a map text, or right-click a row in the list and choose Show links.');
+        view.description = name ? name + (provider.atGame() ? tr(' ● いまここ', ' ● here now') : '') : undefined;
     };
 
     const showMap = (mapId: number): void => {

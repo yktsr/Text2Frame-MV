@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { tr } from './db/lang';
 
 /**
  * 反映・取り出しの前に、変わる所を VS Code の差分画面で見せ、「反映する」を押したときだけ進める。
@@ -119,7 +120,7 @@ export async function review(request: ReviewRequest): Promise<boolean> {
         }
     } catch (e) {
         finish(false);
-        vscode.window.showErrorMessage('Text2Frame: 差分を開けませんでした - ' + (e instanceof Error ? e.message : String(e)));
+        vscode.window.showErrorMessage(tr('Text2Frame: 差分を開けませんでした - ', 'Text2Frame: Could not open the changes - ') + (e instanceof Error ? e.message : String(e)));
         return decided;
     }
     if (pending && pending.uris === uris) {
@@ -127,14 +128,16 @@ export async function review(request: ReviewRequest): Promise<boolean> {
         pending.shown = reviewTabs(uris).length > 0;
     }
 
-    const buttons = listed ? [request.acceptLabel, 'やめる', '一覧から見る'] : [request.acceptLabel, 'やめる'];
+    const cancel = tr('やめる', 'Cancel');
+    const list = tr('一覧から見る', 'Pick from a list');
+    const buttons = listed ? [request.acceptLabel, cancel, list] : [request.acceptLabel, cancel];
     const ask = (): void => {
         vscode.window.showInformationMessage(request.message, ...buttons).then((choice) => {
             if (!pending || pending.uris !== uris) return;
             if (choice === request.acceptLabel) finish(true);
-            else if (choice === 'やめる') finish(false);
-            else if (choice === '一覧から見る') {
-                vscode.window.showQuickPick(pairs.map((p) => ({ label: p.item.label, pair: p })), { placeHolder: '差分を見るファイル' })
+            else if (choice === cancel) finish(false);
+            else if (choice === list) {
+                vscode.window.showQuickPick(pairs.map((p) => ({ label: p.item.label, pair: p })), { placeHolder: tr('差分を見るファイル', 'File to compare') })
                     .then((pick) => { if (pick) openOne(pick.pair); ask(); });
             }
         });

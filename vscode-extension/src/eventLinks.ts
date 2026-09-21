@@ -9,12 +9,13 @@ import { placeFromMeta, placeKey } from './placeLabel';
 import { padId } from './db/database';
 import { mapLabel } from './db/mapTree';
 import { eventId as eventLabelId } from './db/describe';
-import { summarizePages, TRIGGER_LABELS } from './db/eventPages';
+import { summarizePages, triggerLabel } from './db/eventPages';
 import { scanLines } from './db/tagRefs';
 import { scanSelfSwitchLines } from './db/selfSwitchRefs';
 import { RpgCommand } from './db/commandRefs';
 import { commandMark } from './db/runLines';
 import { alignCommands } from './db/runLines';
+import { tr } from './db/lang';
 import {
     Link, LinkIndex, LinkNode, commandLinks, commonTriggerLinks, conditionLinks, nodeFromKey, nodeKey
 } from './db/eventLinks';
@@ -30,18 +31,19 @@ import {
 const SELECTOR: vscode.DocumentSelector = { language: 'text2frame' };
 export const LINKS_SCHEME = 'text2frame-links';
 
-const HOW_LABELS: Record<string, string> = {
-    call: '呼ぶ',
-    transfer: '移動する',
-    vehicle: '乗り物を置く',
-    switchOn: 'ON にする',
-    switchOff: 'OFF にする',
-    variable: '変える',
-    selfSwitchOn: 'ON にする',
-    selfSwitchOff: 'OFF にする',
-    condition: '出現条件',
-    trigger: '動き出す'
-};
+/** つながり方の言葉。使うときに今の言語で作る。 */
+const howLabels = (): Record<string, string> => ({
+    call: tr('呼ぶ', 'calls'),
+    transfer: tr('移動する', 'transfers'),
+    vehicle: tr('乗り物を置く', 'places a vehicle'),
+    switchOn: tr('ON にする', 'turns ON'),
+    switchOff: tr('OFF にする', 'turns OFF'),
+    variable: tr('変える', 'changes'),
+    selfSwitchOn: tr('ON にする', 'turns ON'),
+    selfSwitchOff: tr('OFF にする', 'turns OFF'),
+    condition: tr('出現条件', 'page condition'),
+    trigger: tr('動き出す', 'starts')
+});
 
 interface FileLinks {
     mtime: number;
@@ -219,22 +221,22 @@ export function nodeLabel(service: DatabaseService, ctx: DbContext, node: LinkNo
         const hit = ctx.db.lookup(kind, id);
         return hit.status === 'named' ? hit.name : '';
     };
-    if (node.kind === 'switch') return { name: `スイッチ ${padId(node.id)} ${named('switch', node.id)}`.trim(), detail: 'スイッチ' };
-    if (node.kind === 'variable') return { name: `変数 ${padId(node.id)} ${named('variable', node.id)}`.trim(), detail: '変数' };
-    if (node.kind === 'common') return { name: `コモンイベント ${padId(node.id)} ${named('commonEvent', node.id)}`.trim(), detail: 'コモンイベント' };
-    if (node.kind === 'map') return { name: mapLabel({ id: node.id, name: named('map', node.id) }), detail: `マップ${padId(node.id)}` };
+    if (node.kind === 'switch') return { name: tr(`スイッチ ${padId(node.id)} ${named('switch', node.id)}`, `Switch ${padId(node.id)} ${named('switch', node.id)}`).trim(), detail: tr('スイッチ', 'Switch') };
+    if (node.kind === 'variable') return { name: tr(`変数 ${padId(node.id)} ${named('variable', node.id)}`, `Variable ${padId(node.id)} ${named('variable', node.id)}`).trim(), detail: tr('変数', 'Variable') };
+    if (node.kind === 'common') return { name: tr(`コモンイベント ${padId(node.id)} ${named('commonEvent', node.id)}`, `Common event ${padId(node.id)} ${named('commonEvent', node.id)}`).trim(), detail: tr('コモンイベント', 'Common event') };
+    if (node.kind === 'map') return { name: mapLabel({ id: node.id, name: named('map', node.id) }), detail: tr(`マップ${padId(node.id)}`, `Map ${padId(node.id)}`) };
     if (node.kind === 'selfSwitch') {
         const event = service.mapEvents(ctx, node.mapId)?.[node.eventId];
         return {
-            name: `セルフスイッチ ${node.letter}`,
+            name: tr(`セルフスイッチ ${node.letter}`, `Self switch ${node.letter}`),
             detail: `${mapLabel({ id: node.mapId, name: named('map', node.mapId) })} / ${eventLabelId(node.eventId)}${event && event.name ? ' ' + event.name : ''}`
         };
     }
     const event = service.mapEvents(ctx, node.mapId)?.[node.eventId];
     const summary = event && (event.pageSummaries || [])[node.pageId - 1];
     return {
-        name: `${eventLabelId(node.eventId)}${event && event.name ? ' ' + event.name : ''} / ${node.pageId}ページ`,
-        detail: [mapLabel({ id: node.mapId, name: named('map', node.mapId) }), summary ? TRIGGER_LABELS[summary.trigger] : ''].filter((s) => s).join(' / ')
+        name: tr(`${eventLabelId(node.eventId)}${event && event.name ? ' ' + event.name : ''} / ${node.pageId}ページ`, `${eventLabelId(node.eventId)}${event && event.name ? ' ' + event.name : ''} / page ${node.pageId}`),
+        detail: [mapLabel({ id: node.mapId, name: named('map', node.mapId) }), summary ? triggerLabel(summary.trigger) : ''].filter((s) => s).join(' / ')
     };
 }
 
@@ -270,13 +272,13 @@ export function registerEventLinks(context: vscode.ExtensionContext, service: Da
         const line = (link: Link, other: string): string => {
             const target = nodeFromKey(other);
             const label = target ? nodeLabel(service, ctx, target) : { name: other, detail: '' };
-            return `  ${HOW_LABELS[link.how] || link.how}: ${label.name}${label.detail ? '(' + label.detail + ')' : ''}${link.note ? ' — ' + link.note : ''}`;
+            return `  ${howLabels()[link.how] || link.how}: ${label.name}${label.detail ? '(' + label.detail + ')' : ''}${link.note ? ' — ' + link.note : ''}`;
         };
         return head.concat([
-            'ここから:',
+            tr('ここから:', 'From here:'),
             ...index.out(key).map((link) => line(link, link.to)),
             '',
-            'ここへ:',
+            tr('ここへ:', 'To here:'),
             ...index.in(key).map((link) => line(link, link.from))
         ]).join('\n');
     };
@@ -352,7 +354,7 @@ export function registerEventLinks(context: vscode.ExtensionContext, service: Da
             for (const link of links.index(ctx).out(key)) {
                 const to = await itemFor(ctx, link.to);
                 if (!to) continue;
-                to.detail = [to.detail, HOW_LABELS[link.how], link.note].filter((s) => s).join(' / ');
+                to.detail = [to.detail, howLabels()[link.how], link.note].filter((s) => s).join(' / ');
                 const line = lineOf(ctx, key, file, link.index);
                 out.push(new vscode.CallHierarchyOutgoingCall(to, [new vscode.Range(line, 0, line, 0)]));
             }
@@ -372,7 +374,7 @@ export function registerEventLinks(context: vscode.ExtensionContext, service: Da
             for (const link of links.index(ctx).in(key)) {
                 const from = await itemFor(ctx, link.from);
                 if (!from) continue;
-                from.detail = [from.detail, HOW_LABELS[link.how], link.note].filter((s) => s).join(' / ');
+                from.detail = [from.detail, howLabels()[link.how], link.note].filter((s) => s).join(' / ');
                 const file = await links.textFor(ctx, link.from);
                 const line = lineOf(ctx, link.from, file, link.index);
                 out.push(new vscode.CallHierarchyIncomingCall(from, [new vscode.Range(line, 0, line, 0)]));
@@ -401,7 +403,7 @@ export function registerEventLinks(context: vscode.ExtensionContext, service: Da
                 target = keyAt(editor.document, editor.selection.active);
             }
             if (!target) {
-                vscode.window.showInformationMessage('Text2Frame: つながりを見る場所が分かりません。テキストを開いてから押してください。');
+                vscode.window.showInformationMessage(tr('Text2Frame: つながりを見る場所が分かりません。テキストを開いてから押してください。', 'Text2Frame: It is not clear where to look for links. Open a text first.'));
                 return;
             }
             const { uri } = await uriFor(ctx, target);

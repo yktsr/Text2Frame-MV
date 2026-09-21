@@ -11,6 +11,7 @@ import { basicProblems, audioRefs, audioBaseName, AudioFolderName } from './db/c
 import { scanLines, lineKinds } from './db/tagRefs';
 import { describeRef } from './db/describe';
 import { findConflicts, tagLikeName, knownTagNames, compilesAsText } from './db/fixes';
+import { tr } from './db/lang';
 
 /**
  * プロジェクト全体の検査。全テキストを調べて、VS Code の「問題」パネルに出す。
@@ -32,7 +33,7 @@ const SEVERITY = {
 function diagnostic(line: number, start: number, end: number, message: string, severity: keyof typeof SEVERITY, code: string): vscode.Diagnostic {
     const d = new vscode.Diagnostic(new vscode.Range(line, start, line, end), message, SEVERITY[severity]);
     d.code = code;
-    d.source = 'Text2Frame 検査';
+    d.source = tr('Text2Frame 検査', 'Text2Frame check');
     return d;
 }
 
@@ -61,19 +62,19 @@ function targetProblem(service: DatabaseService, ctx: DbContext, lines: string[]
         const id = Number(meta.commonEventId);
         if (ctx.db.lookup('commonEvent', id).status !== 'missing') return undefined;
         const line = metaLine(lines, 'commonEventId');
-        return diagnostic(line, 0, lines[line].length, `コモンイベント ${meta.commonEventId} はゲームにありません。`, 'warning', 'target-missing');
+        return diagnostic(line, 0, lines[line].length, tr(`コモンイベント ${meta.commonEventId} はゲームにありません。`, `Common event ${meta.commonEventId} is not in the game.`), 'warning', 'target-missing');
     }
     if (!meta.mapId || !meta.eventId) return undefined;
     const events = service.mapEvents(ctx, Number(meta.mapId));
     let message: string | undefined;
     let key = 'mapId';
     if (!events) {
-        message = `マップ ${meta.mapId} はゲームにありません。`;
+        message = tr(`マップ ${meta.mapId} はゲームにありません。`, `Map ${meta.mapId} is not in the game.`);
     } else if (!events[Number(meta.eventId)]) {
-        message = `マップ ${meta.mapId} に、イベント ${meta.eventId} はありません。`;
+        message = tr(`マップ ${meta.mapId} に、イベント ${meta.eventId} はありません。`, `Map ${meta.mapId} has no event ${meta.eventId}.`);
         key = 'eventId';
     } else if (Number(meta.pageId || '1') > (events[Number(meta.eventId)]?.pages ?? 1)) {
-        message = `イベント ${meta.eventId} に、${meta.pageId} ページはありません。`;
+        message = tr(`イベント ${meta.eventId} に、${meta.pageId} ページはありません。`, `Event ${meta.eventId} has no page ${meta.pageId}.`);
         key = 'pageId';
     }
     if (!message) return undefined;
@@ -89,12 +90,12 @@ export function registerProjectCheck(context: vscode.ExtensionContext, service: 
         const root = workspaceRootFor(active);
         const ctx = service.forDocument(active) || (root ? service.forRoot(root) : undefined);
         if (!ctx || !root) {
-            vscode.window.showErrorMessage('Text2Frame: ツクールのプロジェクト(data/System.json)が見つかりません。ゲームのフォルダを開いてから実行してください。');
+            vscode.window.showErrorMessage(tr('Text2Frame: ツクールのプロジェクト(data/System.json)が見つかりません。ゲームのフォルダを開いてから実行してください。', 'Text2Frame: No RPG Maker project (data/System.json) was found. Open the game folder first.'));
             return;
         }
         collection.clear();
         const counts = { error: 0, warning: 0, info: 0, files: 0 };
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Text2Frame: プロジェクト全体を検査しています', cancellable: true }, async (progress, token) => {
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: tr('Text2Frame: プロジェクト全体を検査しています', 'Text2Frame: Checking the whole project'), cancellable: true }, async (progress, token) => {
             const files = (await projectTextFiles(ctx)).filter((u) => !SIDECAR.test(u.fsPath));
             const { mod } = loadCompiler(context, root);
             const compile = mod && typeof mod.compile === 'function' ? (mod.compile as (t: string) => unknown) : undefined;
@@ -134,11 +135,11 @@ export function registerProjectCheck(context: vscode.ExtensionContext, service: 
                     const name = tagLikeName(lines[line]);
                     if (name && compile && !known.has(name.toLowerCase()) && compilesAsText(compile, lines[line])) {
                         const start = lines[line].indexOf('<');
-                        list.push(diagnostic(line, start, start + name.length + 1, `「<${name}」はタグとして読まれず、ゲームにそのまま文字で出ます。`, 'info', 'unknown-tag'));
+                        list.push(diagnostic(line, start, start + name.length + 1, tr(`「<${name}」はタグとして読まれず、ゲームにそのまま文字で出ます。`, `"<${name}" is not read as a tag; it shows in the game as plain text.`), 'info', 'unknown-tag'));
                     }
                 });
                 for (const c of findConflicts(lines)) {
-                    list.push(diagnostic(c.units[0].start, 0, lines[c.units[0].start].length, '未解決の競合です。', 'warning', 'conflict'));
+                    list.push(diagnostic(c.units[0].start, 0, lines[c.units[0].start].length, tr('未解決の競合です。', 'Unresolved conflict.'), 'warning', 'conflict'));
                 }
                 if (compile) {
                     try {
@@ -147,7 +148,7 @@ export function registerProjectCheck(context: vscode.ExtensionContext, service: 
                         const err = e as { message?: string; t2fLineText?: string };
                         const at = err.t2fLineText ? lines.indexOf(err.t2fLineText) : -1;
                         const line = at >= 0 ? at : 0;
-                        list.push(diagnostic(line, 0, lines[line].length, 'コンパイルできません: ' + String(err.message || e).split('\n')[0], 'error', 'compile-error'));
+                        list.push(diagnostic(line, 0, lines[line].length, tr('コンパイルできません: ', 'Cannot compile: ') + String(err.message || e).split('\n')[0], 'error', 'compile-error'));
                     }
                 }
                 if (fit) list.push(...messageDiagnostics(lines, fit));
@@ -157,16 +158,16 @@ export function registerProjectCheck(context: vscode.ExtensionContext, service: 
                 }
                 results.set(uri.fsPath, list);
             }
-            progress.report({ message: 'ゲームに反映されていない変更を調べています' });
+            progress.report({ message: tr('ゲームに反映されていない変更を調べています', 'Looking for changes not yet applied to the game') });
             await new Promise((r) => setTimeout(r, 0));
             const unapplied = await unappliedFilesSlowly(context, root, files.map((u) => u.fsPath), {
-                onProgress: (done, total) => progress.report({ message: `ゲームに反映されていない変更を調べています ${done} / ${total}` }),
+                onProgress: (done, total) => progress.report({ message: tr(`ゲームに反映されていない変更を調べています ${done} / ${total}`, `Looking for changes not yet applied to the game ${done} / ${total}`) }),
                 cancelled: () => token.isCancellationRequested
             });
             if (token.isCancellationRequested) return;
             for (const file of unapplied) {
                 const list = results.get(file) || [];
-                list.push(diagnostic(0, 0, 3, 'ゲームに反映されていない変更があります(反映すると、ゲームが変わります)。', 'info', 'unapplied'));
+                list.push(diagnostic(0, 0, 3, tr('ゲームに反映されていない変更があります(反映すると、ゲームが変わります)。', 'There are changes not yet applied to the game (applying will change the game).'), 'info', 'unapplied'));
                 results.set(file, list);
             }
             for (const [file, found] of results) {
@@ -183,9 +184,9 @@ export function registerProjectCheck(context: vscode.ExtensionContext, service: 
             }
         });
         const summary = counts.files
-            ? `Text2Frame: 検査しました。エラー ${counts.error}・警告 ${counts.warning}・情報 ${counts.info}(${counts.files} ファイル)`
-            : 'Text2Frame: 検査しました。問題は見つかりませんでした。';
-        const pick = await vscode.window.showInformationMessage(summary, ...(counts.files ? ['問題パネルを開く'] : []));
+            ? tr(`Text2Frame: 検査しました。エラー ${counts.error}・警告 ${counts.warning}・情報 ${counts.info}(${counts.files} ファイル)`, `Text2Frame: Checked. ${counts.error} errors · ${counts.warning} warnings · ${counts.info} info (${counts.files} files)`)
+            : tr('Text2Frame: 検査しました。問題は見つかりませんでした。', 'Text2Frame: Checked. No problems found.');
+        const pick = await vscode.window.showInformationMessage(summary, ...(counts.files ? [tr('問題パネルを開く', 'Open the Problems panel')] : []));
         if (pick) vscode.commands.executeCommand('workbench.actions.view.problems');
     };
 

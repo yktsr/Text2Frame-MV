@@ -4,6 +4,7 @@ import { review, reviewEnabled, ReviewItem } from './review';
 import { tryApplySlowly, fingerprint, ApplyModule, TrialStep } from './dryRun';
 import { eachSlowly, SlowlyOptions } from './db/slowly';
 import { renderCommands, PullPlan } from './exportText';
+import { tr } from './db/lang';
 
 /**
  * 反映・取り出しを、差分で確かめてから進める流れ。書き込みはしない(書くのは呼ぶ側)。
@@ -19,7 +20,7 @@ export interface DeployCandidate {
 
 export type Decision = 'accept' | 'cancel' | 'unchanged';
 
-const CHANGED_AGAIN = 'Text2Frame: 確かめているあいだに、テキストかゲームの内容が変わりました。もう一度確かめてください。';
+const changedAgain = (): string => tr('Text2Frame: 確かめているあいだに、テキストかゲームの内容が変わりました。もう一度確かめてください。', 'Text2Frame: The text or the game changed while you were reviewing. Review again.');
 
 const relative = (root: string, file: string): string => path.relative(root, file) || path.basename(file);
 
@@ -64,7 +65,7 @@ export async function reviewDeploy(
         const items: ReviewItem[] = [];
         let failed = 0;
         let conflicts = 0;
-        const finished = await busy('Text2Frame: 反映したあとの形を調べています…', async (slowly) => {
+        const finished = await busy(tr('Text2Frame: 反映したあとの形を調べています…', 'Text2Frame: Working out what applying will give…'), async (slowly) => {
             const trials = await tryApplySlowly(mod, candidates.map((c) => c.step), slowly);
             if (!trials) return false;
             if (options.sort) {
@@ -92,20 +93,20 @@ export async function reviewDeploy(
         if (!items.length) return 'unchanged';
         if (options.show === false) return 'accept';
         const notes = [
-            conflicts ? `競合 ${conflicts} 件は両方を残します` : '',
-            failed ? `書き方の誤りで反映できないものが ${failed} 件あります` : ''
+            conflicts ? tr(`競合 ${conflicts} 件は両方を残します`, `${conflicts} conflicts keep both versions`) : '',
+            failed ? tr(`書き方の誤りで反映できないものが ${failed} 件あります`, `${failed} cannot be applied because of writing errors`) : ''
         ].filter(Boolean);
         const accepted = await review({
-            title: `反映の確認（${items.length} ページ）`,
-            sides: ['ゲームの今', '反映後'],
+            title: tr(`反映の確認（${items.length} ページ）`, `Review the apply (${items.length} pages)`),
+            sides: [tr('ゲームの今', 'Game now'), tr('反映後', 'After applying')],
             items,
-            message: `Text2Frame: ${scope}で、ゲームの ${items.length} ページが変わります。差分を見て、反映するか決めてください。`
+            message: tr(`Text2Frame: ${scope}で、ゲームの ${items.length} ページが変わります。差分を見て、反映するか決めてください。`, `Text2Frame: ${scope} changes ${items.length} pages of the game. Look at the changes and decide whether to apply.`)
                 + (notes.length ? `（${notes.join('。')}）` : ''),
-            acceptLabel: '反映する'
+            acceptLabel: tr('反映する', 'Apply')
         });
         if (!accepted) return 'cancel';
         if (fingerprint(inputs) === before) return 'accept';
-        vscode.window.showWarningMessage(CHANGED_AGAIN);
+        vscode.window.showWarningMessage(changedAgain());
     }
 }
 
@@ -118,7 +119,7 @@ export async function reviewPull(
     makePlans: (slowly: SlowlyOptions) => PullPlan[] | Promise<PullPlan[] | undefined>,
     scope: string
 ): Promise<{ plans: PullPlan[]; unchanged: boolean } | undefined> {
-    const title = 'Text2Frame: 取り出したあとのテキストを作っています…';
+    const title = tr('Text2Frame: 取り出したあとのテキストを作っています…', 'Text2Frame: Making the pulled texts…');
     if (!reviewEnabled()) {
         const plans = await busy(title, async (slowly) => makePlans(slowly));
         return plans ? { plans, unchanged: false } : undefined;
@@ -136,19 +137,19 @@ export async function reviewPull(
         const created = usable.filter((p) => p.previous === undefined).length;
         const conflicts = usable.reduce((n, p) => n + (p.conflicts || 0), 0);
         const notes = [
-            created ? `新しく作るテキストが ${created} 件あります` : '',
-            conflicts ? `競合 ${conflicts} 件は両方を残します` : ''
+            created ? tr(`新しく作るテキストが ${created} 件あります`, `${created} new texts will be made`) : '',
+            conflicts ? tr(`競合 ${conflicts} 件は両方を残します`, `${conflicts} conflicts keep both versions`) : ''
         ].filter(Boolean);
         const accepted = await review({
-            title: `取り出しの確認（${items.length} ファイル）`,
-            sides: ['今のテキスト', '取り出し後'],
+            title: tr(`取り出しの確認（${items.length} ファイル）`, `Review the pull (${items.length} files)`),
+            sides: [tr('今のテキスト', 'Text now'), tr('取り出し後', 'After pulling')],
             items,
-            message: `Text2Frame: ${scope}で、テキスト ${items.length} ファイルが変わります。差分を見て、書き込むか決めてください。`
+            message: tr(`Text2Frame: ${scope}で、テキスト ${items.length} ファイルが変わります。差分を見て、書き込むか決めてください。`, `Text2Frame: ${scope} changes ${items.length} text files. Look at the changes and decide whether to write them.`)
                 + (notes.length ? `（${notes.join('。')}）` : ''),
-            acceptLabel: '書き込む'
+            acceptLabel: tr('書き込む', 'Write')
         });
         if (!accepted) return undefined;
         if (fingerprint(inputs) === before) return { plans, unchanged: false };
-        vscode.window.showWarningMessage(CHANGED_AGAIN);
+        vscode.window.showWarningMessage(changedAgain());
     }
 }
