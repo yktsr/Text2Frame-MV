@@ -368,7 +368,7 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
         const conditions = pageConditionTexts(summary, this.names(ctx));
         const map = this.maps(ctx).nodes.get(mapId);
         const mark = pageLiveMark(this.marks(ctx), mapId, eventId, index + 1);
-        this.decorateLeaf(item, [pageDescription(summary, empty), mark].filter((s) => s).join('・'), [
+        this.decorateLeaf(item, [pageDescription(summary, empty, this.names(ctx)), mark].filter((s) => s).join('・'), [
             `${mapLabel(map ? map.info : { id: mapId, name: '' })} / ${eventLabelId(eventId)}${event.name ? ' ' + event.name : ''} / ${index + 1}ページ`,
             conditions.length ? '出現条件: ' + conditions.join(' / ') : '出現条件: なし'
         ]);

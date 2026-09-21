@@ -87,11 +87,15 @@ export function mapLabel(info: { id: number; name: string }): string {
 
 export type NameLookup = (kind: 'switch' | 'variable' | 'item' | 'actor', id: number) => string | undefined;
 
-/** 出現条件を1つずつ言葉にする。名前が引ければ添える。 */
-export function pageConditionTexts(page: PageSummary, name?: NameLookup): string[] {
+/** 行の右に出す名前の長さ。これを超えたら切って「…」を付ける(吹き出しには全部出る)。 */
+export const SHORT_NAME = 12;
+
+/** 出現条件を1つずつ言葉にする。名前が引ければ添える。limit を渡すと、長い名前を切る。 */
+export function pageConditionTexts(page: PageSummary, name?: NameLookup, limit?: number): string[] {
     const named = (kind: 'switch' | 'variable' | 'item' | 'actor', id: number): string => {
         const found = name && name(kind, id);
-        return found ? ' ' + found : '';
+        if (!found) return '';
+        return ' ' + (limit && found.length > limit ? found.slice(0, limit) + '…' : found);
     };
     const out: string[] = [];
     if (page.switch1) out.push(`S${padId(page.switch1)}${named('switch', page.switch1)} が ON`);
@@ -103,12 +107,12 @@ export function pageConditionTexts(page: PageSummary, name?: NameLookup): string
     return out;
 }
 
-/** ツリーの行の右に出す短い説明。「自動実行・S0012 が ON」 */
-export function pageDescription(page: PageSummary, empty: boolean): string {
+/** ツリーの行の右に出す短い説明。「自動実行・S0012 雨が降る が ON」 */
+export function pageDescription(page: PageSummary, empty: boolean, name?: NameLookup): string {
     const parts: string[] = [];
     if (empty) parts.push('中身なし');
     parts.push(TRIGGER_LABELS[page.trigger] || TRIGGER_LABELS[0]);
-    parts.push(...pageConditionTexts(page));
+    parts.push(...pageConditionTexts(page, name, SHORT_NAME));
     return parts.join('・');
 }
 

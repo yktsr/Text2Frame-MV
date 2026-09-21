@@ -3,9 +3,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DatabaseService, DbContext } from './dbService';
 import { DbKind, padId } from './db/database';
-import { bodyStart, usageBlocks, usageHits } from './db/usages';
+import { bodyStart, usageBlocks, usageHits, conditionHits, ConditionEvent, ConditionHit } from './db/usages';
 import { parseFrontMatter } from './compiler';
-import { placeFromMeta, placeLabel } from './placeLabel';
+import { placeFromMeta, placeKey, placeLabel } from './placeLabel';
+import { readMapInfos } from './db/mapTree';
+import { readOnlyUri } from './eventLinks';
 import { usagesHtml } from './usagesHtml';
 
 /**
@@ -24,6 +26,13 @@ interface FileResult {
     label: string;
     detail: string;
     blocks: Array<{ lines: Array<{ n: number; text: string; hits: Array<[number, number]> }> }>;
+}
+
+/** 出現条件で使っているページ(データから拾う)。押したときに開く先も持つ。 */
+interface ConditionResult {
+    label: string;
+    note: string;
+    uri: vscode.Uri;
 }
 
 const contextLines = (): number =>
@@ -47,12 +56,49 @@ function whereLabel(service: DatabaseService, ctx: DbContext, text: string): str
     return placeLabel(service, ctx, placeFromMeta(parseFrontMatter(text).meta));
 }
 
-async function collect(service: DatabaseService, ctx: DbContext, target: UsageTarget): Promise<FileResult[]> {
+/** ゲームのデータから、出現条件で使っているページを拾う。テキストには出ないため。 */
+function collectConditions(service: DatabaseService, ctx: DbContext, target: UsageTarget, textOf: Map<string, vscode.Uri>): ConditionResult[] {
+    let infos: ReturnType<typeof readMapInfos> = [];
+    try {
+        infos = readMapInfos(JSON.parse(fs.readFileSync(path.join(ctx.dataDir, 'MapInfos.json'), 'utf8')));
+    } catch (e) {
+        return [];
+    }
+    const out: ConditionResult[] = [];
+    for (const info of infos) {
+        const events = service.mapEvents(ctx, info.id);
+        if (!events) continue;
+        const forMap: ConditionEvent[] = [];
+        events.forEach((event, eventId) => {
+            if (event) forMap.push({ mapId: info.id, eventId, pages: event.pageSummaries || [] });
+        });
+        for (const hit of conditionHits(forMap, target.kind, target.id)) out.push(conditionResult(service, ctx, hit, textOf));
+    }
+    return out;
+}
+
+function conditionResult(service: DatabaseService, ctx: DbContext, hit: ConditionHit, textOf: Map<string, vscode.Uri>): ConditionResult {
+    const place = { kind: 'event' as const, mapId: hit.mapId, eventId: hit.eventId, pageId: hit.pageId };
+    const key = placeKey(place) as string;
+    return {
+        label: placeLabel(service, ctx, place),
+        note: hit.note,
+        // テキストがあればそれを、無ければ読むだけの画面を開く。
+        uri: textOf.get(key) || readOnlyUri(key)
+    };
+}
+
+async function collect(service: DatabaseService, ctx: DbContext, target: UsageTarget): Promise<{ files: FileResult[]; textOf: Map<string, vscode.Uri> }> {
     const context = contextLines();
     const results: FileResult[] = [];
+    /* どのページのテキストがどのファイルか。出現条件の行を押したときに開く先に使う。 */
+    const textOf = new Map<string, vscode.Uri>();
     for (const uri of await projectTextFiles(ctx)) {
         const text = readText(uri);
         if (text === undefined) continue;
+        const place = placeFromMeta(parseFrontMatter(text).meta);
+        const key = place && placeKey(place);
+        if (key) textOf.set(key, uri);
         const lines = text.replace(/\r\n/g, '\n').split('\n');
         const hits = usageHits(lines, target.kind, target.id);
         if (!hits.length) continue;
@@ -69,7 +115,7 @@ async function collect(service: DatabaseService, ctx: DbContext, target: UsageTa
             })
         });
     }
-    return results.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+    return { files: results.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })), textOf };
 }
 
 export class UsagesPanel {
@@ -77,22 +123,30 @@ export class UsagesPanel {
     private ready = false;
     private pending?: object;
     private files: FileResult[] = [];
+    private conditions: ConditionResult[] = [];
 
     constructor(private readonly service: DatabaseService) {}
 
     async show(ctx: DbContext, target: UsageTarget): Promise<void> {
         const title = `${ctx.db.label(target.kind)} ${padId(target.id)} ${target.name || '(名前なし)'}`;
-        const files = await vscode.window.withProgress(
+        const { files, textOf } = await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Window, title: `${title} を探しています` },
             () => collect(this.service, ctx, target)
         );
+        const conditions = collectConditions(this.service, ctx, target, textOf);
         const count = files.reduce((n, f) => n + f.blocks.reduce((m, b) => m + b.lines.filter((l) => l.hits.length).length, 0), 0);
         this.files = files;
+        this.conditions = conditions;
+        const summary = [
+            files.length ? `使っている行 ${count}件(${files.length}ファイル)` : '',
+            conditions.length ? `出現条件 ${conditions.length}ページ` : ''
+        ].filter((s) => s).join(' / ');
         const message = {
             type: 'render',
             title,
-            summary: files.length ? `使っている行 ${count}件(${files.length}ファイル)` : '',
-            files: files.map((f) => ({ label: f.label, detail: f.detail, blocks: f.blocks }))
+            summary,
+            files: files.map((f) => ({ label: f.label, detail: f.detail, blocks: f.blocks })),
+            conditions: conditions.map((c) => ({ label: c.label, note: c.note }))
         };
         if (!this.panel) {
             this.panel = vscode.window.createWebviewPanel('text2frame.usages', title, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, { enableScripts: true, retainContextWhenHidden: true });
@@ -114,6 +168,13 @@ export class UsagesPanel {
             this.ready = true;
             if (this.pending) this.panel?.webview.postMessage(this.pending);
             this.pending = undefined;
+            return;
+        }
+        if (m.type === 'openCondition' && Number.isInteger(m.index)) {
+            const hit = this.conditions[m.index];
+            if (!hit) return;
+            const doc = await vscode.workspace.openTextDocument(hit.uri);
+            await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preview: true });
             return;
         }
         if (m.type !== 'open' || !Number.isInteger(m.file) || !Number.isInteger(m.line)) return;

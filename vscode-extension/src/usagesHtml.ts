@@ -5,10 +5,12 @@ import * as crypto from 'crypto';
  * 使用箇所とその前後の行を並べる。行をクリックすると、拡張がその行を開く。
  *
  * 拡張から届く知らせ:
- *   { type: 'render', title, summary, files: [{ label, detail, blocks: [{ lines: [{ n, text, hits: [[start, end]] }] }] }] }
+ *   { type: 'render', title, summary, files: [...], conditions: [{ label, note }] }
+ *     conditions は「その番号が出現条件になっているページ」。押すと open で開く。
  *   n は 1 始まりの行番号。hits はその行で番号が書かれている範囲(使用箇所の行だけ)。
  * 拡張へ送る知らせ:
  *   { type: 'open', file: files の番号, line: 0 始まり, start?, end? }
+ *   { type: 'openCondition', index: conditions の番号 }
  */
 
 export function usagesHtml(): string {
@@ -39,10 +41,12 @@ export function usagesHtml(): string {
 </style></head>
 <body>
 <header><h1 id="title"></h1><div id="summary"></div></header>
+<main id="conditions"></main>
 <main id="files"></main>
 <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
   const filesEl = document.getElementById('files');
+  const conditionsEl = document.getElementById('conditions');
 
   function lineEl(fileIndex, l) {
     const row = document.createElement('div');
@@ -74,6 +78,31 @@ export function usagesHtml(): string {
     document.getElementById('title').textContent = m.title;
     document.getElementById('summary').textContent = m.summary;
     document.title = m.title;
+    conditionsEl.textContent = '';
+    if (m.conditions && m.conditions.length) {
+      const details = document.createElement('details');
+      details.open = true;
+      const summary = document.createElement('summary');
+      const label = document.createElement('span');
+      label.className = 'label';
+      label.textContent = '出現条件になっているページ';
+      summary.append(label);
+      details.append(summary);
+      m.conditions.forEach((c, index) => {
+        const row = document.createElement('div');
+        row.className = 'line hit';
+        const text = document.createElement('span');
+        text.className = 'text';
+        text.textContent = c.label;
+        const note = document.createElement('span');
+        note.className = 'detail';
+        note.textContent = c.note;
+        row.append(text, note);
+        row.addEventListener('click', () => vscode.postMessage({ type: 'openCondition', index }));
+        details.append(row);
+      });
+      conditionsEl.append(details);
+    }
     const frag = document.createDocumentFragment();
     m.files.forEach((f, fileIndex) => {
       const details = document.createElement('details');

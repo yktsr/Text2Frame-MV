@@ -50,6 +50,21 @@ describe('mapTree', function () {
     expect(pageConditionTexts(page, names)[0]).to.equal('S0012 シャチ出現 が ON')
   })
 
+  // 行の右にも名前を出す。番号だけだと、どのスイッチか分からない。
+  it('puts the names in the row too, and shortens a long one', function () {
+    const page = { trigger: 3, switch1: 12, item: 3 }
+    const names = (kind, id) => {
+      if (kind === 'switch' && id === 12) return 'シャチ出現'
+      if (kind === 'item' && id === 3) return 'とてもながい名前のアイテムです'
+      return undefined
+    }
+    const text = pageDescription(page, false, names)
+    expect(text).to.contain('S0012 シャチ出現 が ON')
+    expect(text).to.contain('とてもながい名前のアイテ…') // 12文字で切る
+    // 名前を渡さなければ今までどおり
+    expect(pageDescription(page, false)).to.equal('自動実行・S0012 が ON・アイテム(0003)を持つ')
+  })
+
   it('marks what the game is doing now', function () {
     const marks = {
       mapId: 3,
