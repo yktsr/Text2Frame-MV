@@ -14,7 +14,7 @@ import {
     historyKeep
 } from './compiler';
 import { noteWrite, withHistory } from './db/history';
-import { loadCompiler, writeBackSetting } from './deploy';
+import { loadCompiler, WRITE_BACK } from './deploy';
 import { placeFromMeta, placeKey } from './placeLabel';
 import { reviewPull } from './reviewApply';
 import { tr } from './db/lang';
@@ -256,7 +256,7 @@ export function planPull(
                 englishTag: englishTagSetting(),
                 omitDefaults: omitDefaultTagsSetting(),
                 strategy: 'merge',
-                writeBack: writeBackSetting(),
+                writeBack: WRITE_BACK,
                 existingText: plan.previous || '',
                 baseText: fs.existsSync(baseP) ? fs.readFileSync(baseP, 'utf8') : '',
                 fallbackHeader: renderFrontMatter(target, mod.VERSION)

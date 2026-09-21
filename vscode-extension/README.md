@@ -192,7 +192,6 @@ pageId: 1
 ### 反映・取り出しのあと、もう一方も合わせる
 
 反映すると、ツクール側で変わっていたところがテキストにも入ります。取り出すと、テキストで書いたところがゲームにも入ります。どちらも、終わったときにテキストとゲームの中身がそろいます。
-そろえたくないときは、設定 `text2frame.writeBackAfterMerge` を `off`（競合しなかったときは相手側に書かない）にします。
 
 ### 両方で変えていたとき（競合）
 
@@ -367,7 +366,6 @@ VS Code の設定（`Ctrl+,` / `Cmd+,`）で `text2frame` と検索すると出�
 | --- | --- | --- |
 | `text2frame.strategy` | `merge` | ゲームへの反映のしかた。`merge` は安全に統合（ゲーム側の編集を勝手に消さない）、`overwrite` はテキストで全部上書き（ゲーム側の編集は消えます） |
 | `text2frame.reviewBeforeApply` | オン | ボタンで反映・取り出すとき、変わる所を差分で見せてから書き込む |
-| `text2frame.writeBackAfterMerge` | `always` | 反映・取り出しのあと、もう一方にも結果を書く。`off` は競合しなかったときは相手側に書かない |
 | `text2frame.englishTag` | オン | 取り出すとき、タグを英語（`<Face: >`）で書く。オフなら日本語（`<顔: >`） |
 | `text2frame.omitDefaultTags` | オン | 取り出すとき、既定と同じ顔・背景・位置のタグを書かない |
 | `text2frame.showDatabaseNames` | オン | 番号の横に、データベースの名前を薄く出す |

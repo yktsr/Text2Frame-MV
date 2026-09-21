@@ -644,16 +644,6 @@
           "default": true,
           "description": "%config.text2frame.reviewBeforeApply.description%"
         },
-        "text2frame.writeBackAfterMerge": {
-          "type": "string",
-          "enum": ["off", "always"],
-          "default": "always",
-          "enumDescriptions": [
-            "%config.text2frame.writeBackAfterMerge.enumDescriptions.0%",
-            "%config.text2frame.writeBackAfterMerge.enumDescriptions.1%"
-          ],
-          "description": "%config.text2frame.writeBackAfterMerge.description%"
-        },
         "text2frame.englishTag": {
           "type": "boolean",
           "default": true,

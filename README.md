@@ -121,7 +121,7 @@ MZ ではプラグインのコマンドを選び、引数「反映のあとも�
 
 MV の引数はよく変える順です。すべて省略できます。
 
-- 一括反映: 方式（`merge`/`overwrite`）・見張りかた（`off`/`both`/`push`）・書き戻し・テキストフォルダ・データフォルダ
+- 一括反映: 方式（`merge`/`overwrite`）・見張りかた（`off`/`both`/`push`）・テキストフォルダ・データフォルダ
 - 一括取り出し: 方式（`merge`/`overwrite`）・見張りかた（`off`/`both`/`pull`）・テキストフォルダ・データフォルダ
 
 見張りかたの既定は `off` なので、これまでどおり一括処理だけを実行することもできます。
@@ -430,7 +430,7 @@ node t2f-sync.js --watch --direction both --text-dir text --strategy merge
 | ゲームから取り出し(merge/overwrite) | パネル「ゲームから取り出す」 | `Frame2Text.js --mode map/common/batch [--strategy merge\|overwrite]` | `EXPORT_EVENT_TO_MESSAGE`/`_CE`(取り出しのしかたで merge/overwrite)・`BATCH_EXPORT_MESSAGES_TO_FOLDER` |
 | 3-way 祖先 | 自動 `.t2f-base` | 自動 `.t2f-base`（`--base` 任意） | 自動 `.t2f-base`（`BaseFolder`/`BaseFileName` 任意） |
 | 競合(両方残す) | あり | あり | あり |
-| 反映時のテキスト書き戻し | 保存時に自動書き戻し | — | — |
+| 統合のあと、もう一方にも結果を書く | 常に | 衝突したときだけ | 常に |
 
 ### 英語化の固定フロー（推奨）
 

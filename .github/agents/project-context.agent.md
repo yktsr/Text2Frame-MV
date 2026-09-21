@@ -109,7 +109,7 @@ node t2f-sync.js [--direction both|push|pull] [-t text] [-d data] [-l ja] [-s me
 - 構成: `src/extension.ts`(activate), `src/deploy.ts`(デプロイ/プレビュー/データ変更ガード), `src/exportText.ts`(書き出し), `src/batch.ts`(一括), `src/tree.ts`(TreeView), `src/compiler.ts`(共有: モジュール解決・フロントマター・ターゲット解決・mtimeガード)。
 - **コンパイラの読込**: 生 `Text2Frame.js`/`Frame2Text.js` を `require`(ブラウザ向け `*.cjs.js` は Node builtin を解決できないため使わない)。解決順: 設定 `text2frame.modulePath` → 同梱 `lib/` → モノレポ兄弟 `../` → ワークスペース。フロントマターから解決した**絶対パス**を `applyTextFile` に渡す(拡張ホストでは `process.mainModule` が無いため、本体側も cwd フォールバック済み)。
 - 主なコマンド(方向×範囲。UI は日本語ラベル): `deployCurrentFile`「ゲームに反映(このファイル)」/ `deployAll`「ゲームに反映(すべて)」/ `exportCurrentFile`「ゲームから取り出す(このファイル)」/ `exportAll`「ゲームから取り出す(すべて)」/ `repullOverwrite`「全部取り直す(上書き)」/ `exportConversationOnly`「会話のみ書き出し」/ `showCompiledJson` / `toggleDeployOnSave` / `tree.*`。反映・取り出しとも既定は merge(3-way 自動)。`seedLocale`(言語を追加)は**廃止**(初回取り出し=空テキストへの全取り込みが seed を兼ねる)。「すべて」系は実行時に言語を QuickPick(既定 `ja`)。
-- 設定: `strategy`(merge/overwrite) / `writeBackAfterMerge` / `modulePath` / `englishTag` / `locale` / `textBaseDir` / `dataDir`。`sourceLocale`/`targetLocale` は**撤廃**(言語は `locale` 1本)。
+- 設定: `strategy`(merge/overwrite) / `modulePath` / `englishTag` / `locale` / `textBaseDir` / `dataDir`。`sourceLocale`/`targetLocale` は**撤廃**(言語は `locale` 1本)。
 - コンパイラは動的 `require`(拡張は TS、コアは JS。この境界のため `compiler.ts` の祖先ヘルパはコア `deriveBaseId` 等と同規約の別実装=意図的重複)。
 - フロントマター付き `.txt` は開くと自動で `text2frame` 言語に切替(ハイライト/補完/診断が有効化)。
 
