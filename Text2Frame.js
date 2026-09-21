@@ -4934,11 +4934,11 @@
       // 未解決の衝突が残ったままマージすると、目印ごと再マージされて目印が二重・三重に増え、
       // どちらが自分の変更か分からなくなる。解決を促して止める(上書き反映は逃げ道として通す)。
       if (hasConflictMarker(existing_events)) {
-        throw new Error('未解決の衝突がゲーム側に残っています。ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を実行してください。' +
+        throw new Error('未解決の衝突がゲーム側に残っています。ツクールで衝突の目印を消して残す方を決めたあと、Frame2Textの「取り出し」を実行してください。' +
           ' / unresolved conflict markers in the game data; resolve in the editor, then pull')
       }
       if (hasConflictMarker(event_command_list)) {
-        throw new Error('未解決の衝突がテキストに残っています。目印3行を消して残す方を決めたあと、もう一度反映してください。' +
+        throw new Error('未解決の衝突がテキストに残っています。衝突の目印を消して残す方を決めたあと、もう一度反映してください。' +
           ' / unresolved conflict markers in the text; resolve them and import again')
       }
       // 祖先(BASE): 明示 BasePath 優先。無ければ .t2f-base/<key> を自動参照。
@@ -5123,7 +5123,7 @@
     // 衝突したときの案内。目印はいつもテキストにだけ入る(ゲームはゲームの版のまま)。
     const warnConflictsRemain = function (merged) {
       if (!merged.conflicts) return
-      addWarning('衝突 ' + merged.conflicts + '件。テキストに両方の版と目印3行が入りました(ゲームはゲームの版のままです)。' +
+      addWarning('衝突 ' + merged.conflicts + '件。テキストに両方の版と衝突の目印が入りました(ゲームはゲームの版のままです)。' +
         '残す方を決めて目印を消し、もう一度反映してください。 / ' +
         merged.conflicts + ' conflict(s) were written into the text (the game keeps its own version); resolve them there and import again')
     }

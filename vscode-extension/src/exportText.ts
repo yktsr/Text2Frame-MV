@@ -434,9 +434,9 @@ export async function exportCurrentFile(context: vscode.ExtensionContext): Promi
     if (result.ok && reviewed.unchanged && !result.skipped) {
         vscode.window.showInformationMessage('Text2Frame: テキストは変わりませんでした。');
     } else if (result.ok && result.skipped === 'game') {
-        vscode.window.showWarningMessage('Text2Frame: ゲーム側に未解決の衝突の目印が残っているため統合できません。ツクールで目印3行を消すか、「全部取り直す」で目印ごと取り出してテキスト側で解決してください。');
+        vscode.window.showWarningMessage('Text2Frame: ゲーム側に未解決の衝突の目印が残っているため統合できません。ツクールで衝突の目印を消すか、「全部取り直す」で目印ごと取り出してテキスト側で解決してください。');
     } else if (result.ok && result.skipped) {
-        vscode.window.showWarningMessage('Text2Frame: テキストに未解決の衝突の目印が残っているため統合できません。目印3行を消して残す方を決めたあと、反映してください。');
+        vscode.window.showWarningMessage('Text2Frame: テキストに未解決の衝突の目印が残っているため統合できません。衝突の目印を消して残す方を決めたあと、反映してください。');
     } else if (result.ok) {
         const c = result.conflicts || 0;
         vscode.window.showInformationMessage(`Text2Frame: ゲームから取り出しました${c ? `（${c} 件の競合は両方残しました。確認してください）` : ''}`);

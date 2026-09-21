@@ -282,7 +282,7 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
         }));
     out.appendLine(`=== ${finished ? 'done' : 'cancelled'}: ${written} written, ${fail} fail, ${conflicts} conflicts, ${skipped} skipped, ${markers} with markers ===`);
     if (skipped > 0) {
-        out.appendLine('SKIP したファイルは、目印3行を消すか「全部取り直す」で目印ごと取り出してテキスト側で解決してください。');
+        out.appendLine('SKIP したファイルは、衝突の目印を消すか「全部取り直す」で目印ごと取り出してテキスト側で解決してください。');
     }
     const msg = (finished ? `Text2Frame: ${purpose} 完了 — ${written} 件` : `Text2Frame: ${purpose}を途中でやめました — ${written} 件まで書きました。済んだ分は「履歴」から戻せます`)
         + (fail ? ` / ${fail} 失敗` : '')

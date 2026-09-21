@@ -202,7 +202,7 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     expect(line('衝突 1件')).to.contain('e1')
     // 目印はいつもテキストに入る。直す場所はテキスト(言い回しは変わりうるので、要点だけ見る)。
     expect(line('テキストに目印')).to.be.a('string')
-    expect(line('ツクールで目印3行を消して')).to.equal(undefined)
+    expect(line('ツクールで衝突の目印を消して')).to.equal(undefined)
   })
 
   /* 折り返しは、語の途中で切ったときだけ末尾2行を割り直す。読点や空白で切れているなら
