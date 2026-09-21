@@ -159,6 +159,20 @@ describe('t2f-sync controller', function () {
     expect(base).to.not.contain('=== どちらかを残し') // 祖先に目印は入れない
   })
 
+  /* 取り出しがゲームを書き換えるようになったので、その書き込みを自分のものとして
+   * 記録しないと、見張りが拾って 取り出し -> 反映 -> 取り出し と回り続ける。 */
+  it('marks the data it wrote as its own, so the watcher does not bounce it back', function () {
+    const mapPath = path.join(tmp, 'data', 'Map001.json')
+    const guard = sync.createEchoGuard()
+    sync.pullDataFile(mapPath, Object.assign({}, opts, { guard }))
+    fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8').replace('Hello', 'テキストの版'))
+
+    sync.pullDataFile(mapPath, Object.assign({}, opts, { guard, writeBack: 'always' }))
+
+    expect(texts(mapList())).to.eql(['テキストの版']) // ゲームにも入った
+    expect(guard.isEcho(mapPath)).to.equal(true) // 自分の書き込みとして記録されている
+  })
+
   // 取り出しで衝突 -> ツクールで解決 -> もう一度取り出すと片が付く(鏡写しの流れ)。
   it('resolving a pull conflict in the game settles on the next pull', function () {
     const mapPath = path.join(tmp, 'data', 'Map001.json')

@@ -77,6 +77,7 @@ function pushFile (textPath, opts) {
   const applyOpts = {
     textPath: path.resolve(textPath),
     strategy: o.strategy || 'merge',
+    writeBack: o.writeBack,
     baseRoot: root,
     isDebug: !!o.verbose
   }
@@ -252,6 +253,7 @@ if (require.main === module) {
     .option('-d, --data-dir <dir>', 'game data directory', 'data')
     .option('--root <dir>', 'project root for data/, text/ and .t2f-base (default: current directory)')
     .option('-s, --strategy <merge|overwrite>', 'sync strategy', /^(merge|overwrite)$/i, 'merge')
+    .option('--write-back <always|off>', 'write the merge back to the other side too (default off; conflicts always are)', /^(always|off)$/i, 'off')
     .option('-w, --english_tag <true/false>', 'english tag on pull', 'true')
     .option('--watch', 'watch both sides and sync on change', false)
     .option('--debounce <ms>', 'debounce window for --watch', '250')
@@ -269,6 +271,7 @@ if (require.main === module) {
     dataDir: options.dataDir,
     textDir: options.textDir,
     strategy: String(options.strategy).toLowerCase(),
+    writeBack: String(options.writeBack).toLowerCase(),
     englishTag: String(options.english_tag) !== 'false',
     direction: String(options.direction).toLowerCase(),
     verbose: options.verbose,
