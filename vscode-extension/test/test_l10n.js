@@ -107,3 +107,24 @@ describe('Japanese without English', function () {
     expect(report().map(function (f) { return f.file + ':' + f.line + ' ' + f.text })).to.eql([])
   })
 })
+
+describe('words put together in English', function () {
+  const { pageDescription, commonDescription } = require('../out/db/mapTree')
+  const { triggerLabel } = require('../out/db/eventPages')
+  const { LiveState, liveLine } = require('../out/liveState')
+  before(function () { setJapanese(false) })
+  after(function () { setJapanese(true) })
+
+  it('describes a page and a common event in the map list', function () {
+    expect(pageDescription({ trigger: 3, switch1: 12, variable: [5, 3], selfSwitch: 'A' }, false))
+      .to.equal('Autorun · S0012 is ON · V0005 ≥ 3 · Self switch A is ON')
+    expect(pageDescription({ trigger: 0 }, true)).to.equal('empty · Action Button')
+    expect(commonDescription(2, 7, false)).to.equal('Parallel · S0007 is ON')
+    expect(triggerLabel(1)).to.equal('Player Touch')
+  })
+
+  it('writes test-play values in the hover', function () {
+    const s = new LiveState()
+    expect(liveLine(s, 'switch', 3, undefined, 0)).to.equal('Test playing: OFF')
+  })
+})
