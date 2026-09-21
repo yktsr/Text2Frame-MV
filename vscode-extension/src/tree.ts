@@ -23,6 +23,9 @@ import { placeFromMeta } from './placeLabel';
  * (text -> data) or exported (data -> text) and opens its text file.
  */
 
+/** 続けて来た更新の合図を、この間だけまとめる(ミリ秒)。 */
+const REFRESH_WAIT = 200;
+
 type NodeType = 'category' | 'map' | 'event' | 'page' | 'common' | 'here';
 
 interface NodeData {
@@ -106,6 +109,7 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
     /** 反映していない変更があるテキスト。ファイル → [調べたときの目印, 未反映か]。 */
     private readonly unapplied = new Map<string, [string, boolean]>();
     private checking = false;
+    private soon: NodeJS.Timeout | undefined;
 
     constructor(
         private readonly context: vscode.ExtensionContext,
@@ -120,6 +124,18 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
             this.unapplied.clear();
         }
         this._onDidChange.fire(node);
+    }
+
+    /* 少し待ってから作り直す。テキストを保存して反映すると、保存の合図とデータの書き換えの
+     * 合図が続けて来る。そのたびに全部作り直すと、マップの多いプロジェクトでは重い。 */
+    refreshSoon(): void {
+        if (this.soon) return;
+        this.soon = setTimeout(() => { this.soon = undefined; this.refresh(); }, REFRESH_WAIT);
+    }
+
+    dispose(): void {
+        clearTimeout(this.soon);
+        this.soon = undefined;
     }
 
     /** テストプレイの様子だけが変わったとき(ためたものは捨てない)。 */
@@ -598,7 +614,7 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
             return vscode.commands.executeCommand('text2frame.showLinks', key);
         }),
         vscode.workspace.onDidSaveTextDocument((doc) => {
-            if (doc.languageId === 'text2frame') provider.refresh();
+            if (doc.languageId === 'text2frame') provider.refreshSoon();
         }),
         vscode.window.onDidChangeActiveTextEditor(revealForEditor),
         view.onDidChangeVisibility(() => revealForEditor(vscode.window.activeTextEditor)),
@@ -609,8 +625,8 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
 
     // Refresh the tree when data files change.
     const watcher = vscode.workspace.createFileSystemWatcher('**/data/{Map*.json,CommonEvents.json}');
-    watcher.onDidChange(() => provider.refresh());
-    watcher.onDidCreate(() => provider.refresh());
-    watcher.onDidDelete(() => provider.refresh());
-    context.subscriptions.push(watcher);
+    watcher.onDidChange(() => provider.refreshSoon());
+    watcher.onDidCreate(() => provider.refreshSoon());
+    watcher.onDidDelete(() => provider.refreshSoon());
+    context.subscriptions.push(watcher, provider);
 }
