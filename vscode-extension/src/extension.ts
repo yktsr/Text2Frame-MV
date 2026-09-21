@@ -29,6 +29,7 @@ import { LiveService } from './live';
 import { registerLiveView } from './liveView';
 import { registerRunHighlight } from './runHighlight';
 import { tagHelpText } from './tagHelp';
+import { setJapanese } from './db/lang';
 
 /**
  * Treat a .txt file that carries Text2Frame front matter as the `text2frame`
@@ -50,6 +51,8 @@ function maybeAssignLanguage(document: vscode.TextDocument): void {
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Text2Frame Language Support is now active!');
+    // 画面の言葉は VS Code の表示言語に合わせる(package.json の文字と同じ決め方)。
+    setJapanese(vscode.env.language.toLowerCase().startsWith('ja'));
 
     // Watch & Deploy: compile the current text file back into the RPG Maker data JSON.
     registerDeployFeature(context);

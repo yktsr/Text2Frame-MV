@@ -53,19 +53,19 @@
     "debuggers": [
       {
         "type": "text2frame",
-        "label": "Text2Frame テストプレイ",
+        "label": "%debugger.label%",
         "languages": ["text2frame"],
         "configurationAttributes": {
           "launch": { "properties": {} }
         },
         "initialConfigurations": [
-          { "type": "text2frame", "request": "launch", "name": "Text2Frame テストプレイ" }
+          { "type": "text2frame", "request": "launch", "name": "%debugger.configName%" }
         ],
         "configurationSnippets": [
           {
-            "label": "Text2Frame: テストプレイ",
-            "description": "テストプレイを、ブレークポイントで止めて調べる",
-            "body": { "type": "text2frame", "request": "launch", "name": "Text2Frame テストプレイ" }
+            "label": "%debugger.snippet.label%",
+            "description": "%debugger.snippet.description%",
+            "body": { "type": "text2frame", "request": "launch", "name": "%debugger.configName%" }
           }
         ]
       }
@@ -83,258 +83,258 @@
     "commands": [
       {
         "command": "text2frame.deployCurrentFile",
-        "title": "Text2Frame: ゲームに反映(このファイル) / Apply to game (this file)",
+        "title": "%command.text2frame.deployCurrentFile.title%",
         "icon": "$(rocket)"
       },
       {
         "command": "text2frame.toggleDeployOnSave",
-        "title": "Text2Frame: 保存時に自動でゲームに反映する / Toggle apply-on-save"
+        "title": "%command.text2frame.toggleDeployOnSave.title%"
       },
       {
         "command": "text2frame.exportCurrentFile",
-        "title": "Text2Frame: ゲームから取り出す(このファイル) / Pull from game (this file)",
+        "title": "%command.text2frame.exportCurrentFile.title%",
         "icon": "$(cloud-download)"
       },
       {
         "command": "text2frame.exportConversationOnly",
-        "title": "Text2Frame: 会話のみ書き出し / Pull conversation only"
+        "title": "%command.text2frame.exportConversationOnly.title%"
       },
       {
         "command": "text2frame.showPreview",
-        "title": "Text2Frame: プレビューを開く / Open preview",
+        "title": "%command.text2frame.showPreview.title%",
         "icon": "$(open-preview)"
       },
       {
         "command": "text2frame.testPlay",
-        "title": "Text2Frame: テストプレイ(VS Code の中で) / Test play inside VS Code",
+        "title": "%command.text2frame.testPlay.title%",
         "icon": "$(play)"
       },
       {
         "command": "text2frame.testPlayExternal",
-        "title": "Text2Frame: テストプレイ(外のブラウザで) / Test play in an external browser",
+        "title": "%command.text2frame.testPlayExternal.title%",
         "icon": "$(link-external)"
       },
       {
         "command": "text2frame.stopTestPlay",
-        "title": "Text2Frame: テストプレイのサーバーを止める / Stop the test play server",
+        "title": "%command.text2frame.stopTestPlay.title%",
         "icon": "$(debug-stop)"
       },
       {
         "command": "text2frame.showLiveValues",
-        "title": "Text2Frame: スイッチと変数を見る(テストプレイ中) / Show switches & variables while test playing",
+        "title": "%command.text2frame.showLiveValues.title%",
         "icon": "$(symbol-variable)"
       },
       {
         "command": "text2frame.openLiveValuesTab",
-        "title": "Text2Frame: デバッグメニューを表示 / Show the debug menu",
+        "title": "%command.text2frame.openLiveValuesTab.title%",
         "icon": "$(window)"
       },
       {
         "command": "text2frame.checkProject",
-        "title": "Text2Frame: プロジェクト全体を検査 / Check the whole project",
+        "title": "%command.text2frame.checkProject.title%",
         "icon": "$(checklist)"
       },
       {
         "command": "text2frame.pickFace",
-        "title": "Text2Frame: 画像を選ぶ(顔・キャラ・ピクチャ) / Pick an image",
+        "title": "%command.text2frame.pickFace.title%",
         "icon": "$(account)"
       },
       {
         "command": "text2frame.pickCharacter",
-        "title": "Text2Frame: キャラ画像を選ぶ / Pick a character image",
+        "title": "%command.text2frame.pickCharacter.title%",
         "icon": "$(account)"
       },
       {
         "command": "text2frame.pickPicture",
-        "title": "Text2Frame: ピクチャを選ぶ / Pick a picture",
+        "title": "%command.text2frame.pickPicture.title%",
         "icon": "$(file-media)"
       },
       {
         "command": "text2frame.pickAudio",
-        "title": "Text2Frame: 音を選ぶ / Pick a sound",
+        "title": "%command.text2frame.pickAudio.title%",
         "icon": "$(unmute)"
       },
       {
         "command": "text2frame.snippet.insert",
-        "title": "Text2Frame: スニペットを入れる / Insert a snippet"
+        "title": "%command.text2frame.snippet.insert.title%"
       },
       {
         "command": "text2frame.snippet.fromSelection",
-        "title": "Text2Frame: 選んだ部分をスニペットにする / Make a snippet from the selection"
+        "title": "%command.text2frame.snippet.fromSelection.title%"
       },
       {
         "command": "text2frame.snippet.edit",
-        "title": "Text2Frame: スニペットを編集する / Edit snippets"
+        "title": "%command.text2frame.snippet.edit.title%"
       },
       {
         "command": "text2frame.standAtEvent",
-        "title": "Text2Frame: イベントの前に立つ / Stand in front of the event",
+        "title": "%command.text2frame.standAtEvent.title%",
         "icon": "$(person)"
       },
       {
         "command": "text2frame.runThisPage",
-        "title": "Text2Frame: このページをすぐ実行 / Run this page now",
+        "title": "%command.text2frame.runThisPage.title%",
         "icon": "$(play-circle)"
       },
       {
         "command": "text2frame.debug",
-        "title": "Text2Frame: 一時停止の印で調べる(今すぐデバッグを始める) / Start debugging now",
+        "title": "%command.text2frame.debug.title%",
         "icon": "$(debug-alt)"
       },
       {
         "command": "text2frame.togglePauseAtMarks",
-        "title": "Text2Frame: 印をつけた行で一時停止する(オン/オフ) / Toggle pause at marked lines",
+        "title": "%command.text2frame.togglePauseAtMarks.title%",
         "icon": "$(debug-breakpoint)"
       },
       {
         "command": "text2frame.tryEvent",
-        "title": "Text2Frame: このイベントから試す / Try this event"
+        "title": "%command.text2frame.tryEvent.title%"
       },
       {
         "command": "text2frame.fix.pickAgain",
-        "title": "Text2Frame: 候補から選び直す / Pick again"
+        "title": "%command.text2frame.fix.pickAgain.title%"
       },
       {
         "command": "text2frame.review.accept",
-        "title": "Text2Frame: 反映する(差分の確認) / Apply (after review)",
+        "title": "%command.text2frame.review.accept.title%",
         "icon": "$(check)"
       },
       {
         "command": "text2frame.review.cancel",
-        "title": "Text2Frame: やめる(差分の確認) / Cancel (review)",
+        "title": "%command.text2frame.review.cancel.title%",
         "icon": "$(close)"
       },
       {
         "command": "text2frame.showCompiledJson",
-        "title": "Text2Frame: コンパイル結果を表示 / Show compiled JSON",
+        "title": "%command.text2frame.showCompiledJson.title%",
         "icon": "$(json)"
       },
       {
         "command": "text2frame.deployAll",
-        "title": "Text2Frame: ゲームに反映(すべて) / Apply to game (all)"
+        "title": "%command.text2frame.deployAll.title%"
       },
       {
         "command": "text2frame.exportAll",
-        "title": "Text2Frame: ゲームから取り出す(すべて) / Pull from game (all)"
+        "title": "%command.text2frame.exportAll.title%"
       },
       {
         "command": "text2frame.repullOverwrite",
-        "title": "Text2Frame: 全部取り直す(上書き) / Re-pull (overwrite)"
+        "title": "%command.text2frame.repullOverwrite.title%"
       },
       {
         "command": "text2frame.db.insert",
-        "title": "番号を挿入 / Insert id"
+        "title": "%command.text2frame.db.insert.title%"
       },
       {
         "command": "text2frame.db.findUsages",
-        "title": "使っている箇所を探す / Find usages",
+        "title": "%command.text2frame.db.findUsages.title%",
         "icon": "$(search)"
       },
       {
         "command": "text2frame.db.showUsages",
-        "title": "使っている箇所を前後の行つきで一覧 / List usages with context"
+        "title": "%command.text2frame.db.showUsages.title%"
       },
       {
         "command": "text2frame.db.refresh",
-        "title": "Text2Frame: データベースを読み直す / Reload database",
+        "title": "%command.text2frame.db.refresh.title%",
         "icon": "$(refresh)"
       },
       {
         "command": "text2frame.tree.refresh",
-        "title": "Text2Frame: 更新 / Refresh",
+        "title": "%command.text2frame.tree.refresh.title%",
         "icon": "$(refresh)"
       },
       {
         "command": "text2frame.tree.deploy",
-        "title": "デプロイ / Deploy",
+        "title": "%command.text2frame.tree.deploy.title%",
         "icon": "$(rocket)"
       },
       {
         "command": "text2frame.tree.export",
-        "title": "書き出し / Export",
+        "title": "%command.text2frame.tree.export.title%",
         "icon": "$(cloud-download)"
       },
       {
         "command": "text2frame.tree.try",
-        "title": "イベントの前に立つ / Stand in front of the event",
+        "title": "%command.text2frame.tree.try.title%",
         "icon": "$(person)"
       },
       {
         "command": "text2frame.tree.tryRun",
-        "title": "このページをすぐ実行 / Run this page now",
+        "title": "%command.text2frame.tree.tryRun.title%",
         "icon": "$(play)"
       },
       {
         "command": "text2frame.tree.tryCommon",
-        "title": "すぐ実行 / Run now",
+        "title": "%command.text2frame.tree.tryCommon.title%",
         "icon": "$(play)"
       },
       {
         "command": "text2frame.tree.links",
-        "title": "つながりを見る / Show links",
+        "title": "%command.text2frame.tree.links.title%",
         "icon": "$(type-hierarchy)"
       },
       {
         "command": "text2frame.showLinks",
-        "title": "Text2Frame: イベントのつながりを見る / Show event links",
+        "title": "%command.text2frame.showLinks.title%",
         "icon": "$(type-hierarchy)"
       },
       {
         "command": "text2frame.mapLinks.show",
-        "title": "マップのつながりを見る / Show map links"
+        "title": "%command.text2frame.mapLinks.show.title%"
       },
       {
         "command": "text2frame.mapLinks.refresh",
-        "title": "Text2Frame: つながりを更新 / Refresh links",
+        "title": "%command.text2frame.mapLinks.refresh.title%",
         "icon": "$(refresh)"
       },
       {
         "command": "text2frame.mapLinks.open",
-        "title": "つながりの行を開く / Open the link"
+        "title": "%command.text2frame.mapLinks.open.title%"
       },
       {
         "command": "text2frame.tree.mapLinks",
-        "title": "マップのつながりを見る / Show map links",
+        "title": "%command.text2frame.tree.mapLinks.title%",
         "icon": "$(arrow-both)"
       },
       {
         "command": "text2frame.showMapGraph",
-        "title": "Text2Frame: マップのつながりを図で見る / Show the map graph",
+        "title": "%command.text2frame.showMapGraph.title%",
         "icon": "$(graph)"
       },
       {
         "command": "text2frame.tree.mapGraph",
-        "title": "マップのつながりを図で見る / Show the map graph",
+        "title": "%command.text2frame.tree.mapGraph.title%",
         "icon": "$(graph)"
       },
       {
         "command": "text2frame.history.show",
-        "title": "Text2Frame: 履歴(前の状態に戻す) / Show history",
+        "title": "%command.text2frame.history.show.title%",
         "icon": "$(history)"
       },
       {
         "command": "text2frame.history.refresh",
-        "title": "更新 / Refresh",
+        "title": "%command.text2frame.history.refresh.title%",
         "icon": "$(refresh)"
       },
       {
         "command": "text2frame.history.openFolder",
-        "title": "控えのフォルダを開く / Open the history folder",
+        "title": "%command.text2frame.history.openFolder.title%",
         "icon": "$(folder-opened)"
       },
       {
         "command": "text2frame.history.diff",
-        "title": "差分を見る / Show changes",
+        "title": "%command.text2frame.history.diff.title%",
         "icon": "$(diff)"
       },
       {
         "command": "text2frame.history.restore",
-        "title": "この操作の前に戻す / Go back to before this",
+        "title": "%command.text2frame.history.restore.title%",
         "icon": "$(discard)"
       },
       {
         "command": "text2frame.history.restoreFile",
-        "title": "このファイルだけ戻す / Go back for this file only",
+        "title": "%command.text2frame.history.restoreFile.title%",
         "icon": "$(discard)"
       }
     ],
@@ -349,7 +349,7 @@
       "panel": [
         {
           "id": "text2frameLive",
-          "title": "Text2Frame デバッグプレイ",
+          "title": "%viewContainer.text2frameLive.title%",
           "icon": "$(play)"
         }
       ]
@@ -358,7 +358,7 @@
       "text2frame": [
         {
           "id": "text2frameCommands",
-          "name": "操作 / Commands"
+          "name": "%view.text2frameCommands.name%"
         },
         {
           "id": "text2frameExplorer",
@@ -366,31 +366,31 @@
         },
         {
           "id": "text2frameMapLinks",
-          "name": "マップのつながり / Map Links",
+          "name": "%view.text2frameMapLinks.name%",
           "visibility": "collapsed"
         },
         {
           "id": "text2frameHistory",
-          "name": "履歴 / History",
+          "name": "%view.text2frameHistory.name%",
           "visibility": "collapsed"
         },
         {
           "id": "text2frameDatabase",
-          "name": "データベース / Database"
+          "name": "%view.text2frameDatabase.name%"
         }
       ],
       "text2frameLive": [
         {
           "type": "webview",
           "id": "text2frame.liveValues",
-          "name": "スイッチと変数 / Switches & Variables"
+          "name": "%view.text2frame.liveValues.name%"
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "text2frameDatabase",
-        "contents": "ツクールのプロジェクト(data/System.json)が見つかりません。\nプロジェクトのテキストを開くと、そのデータベースがここに出ます。\nNo RPG Maker project (data/System.json) was found. Open a text of the project to list its database here."
+        "contents": "%viewsWelcome.text2frameDatabase.contents%"
       }
     ],
     "menus": {
@@ -605,101 +605,101 @@
           "enum": ["merge", "overwrite"],
           "default": "merge",
           "enumDescriptions": [
-            "安全に統合(ゲーム側の編集を勝手に消さない・既定) / safe (keeps edits made in the game)",
-            "テキストで全部上書き(ゲーム側の編集は消えます) / overwrite everything from text"
+            "%config.text2frame.strategy.enumDescriptions.0%",
+            "%config.text2frame.strategy.enumDescriptions.1%"
           ],
-          "description": "ゲームへの反映のしかた。通常は既定のままで大丈夫です。 / How text is applied to the game. The default is fine for most users."
+          "description": "%config.text2frame.strategy.description%"
         },
         "text2frame.messageCheck": {
           "type": "string",
           "enum": ["auto", "on", "off"],
           "default": "auto",
           "enumDescriptions": [
-            "自動(自動で改行するプラグインが有効なら調べない・既定) / auto (off when a word-wrap plugin is enabled)",
-            "いつも調べる / always",
-            "調べない / never"
+            "%config.text2frame.messageCheck.enumDescriptions.0%",
+            "%config.text2frame.messageCheck.enumDescriptions.1%",
+            "%config.text2frame.messageCheck.enumDescriptions.2%"
           ],
-          "description": "メッセージがウィンドウの幅からはみ出す行を知らせる。 / Warn about message lines wider than the window."
+          "description": "%config.text2frame.messageCheck.description%"
         },
         "text2frame.history.keep": {
           "type": "number",
           "default": 100,
           "minimum": 0,
-          "description": "反映・取り出しの前の中身を、何回ぶん控えておくか(ゲームのフォルダの .t2f-history)。0 にすると控えない。 / How many apply/pull operations to keep in the history (.t2f-history in the game folder). 0 turns it off."
+          "description": "%config.text2frame.history.keep.description%"
         },
         "text2frame.tryEvent.clearPlayerTransparency": {
           "type": "boolean",
           "default": true,
           "scope": "resource",
-          "description": "「このページをすぐ実行」で試すとき、プレイヤーの透明化を解除してから始める。オフにすると、透明かどうかはゲームのそのときのまま(「イベントの前に立つ」はいつも解除する)。 / Make the player visible before running a page from the editor. When off, the player stays as the game has it (standing in front of an event always makes it visible)."
+          "description": "%config.text2frame.tryEvent.clearPlayerTransparency.description%"
         },
         "text2frame.messageLineLength": {
           "type": "number",
           "default": 0,
           "minimum": 0,
-          "description": "顔の無いメッセージの1行に入る文字数(全角で数える)。0 なら System.json から自動で決める。 / Characters (full width) per line of a message without a face. 0 works it out from System.json."
+          "description": "%config.text2frame.messageLineLength.description%"
         },
         "text2frame.reviewBeforeApply": {
           "type": "boolean",
           "default": true,
-          "description": "ボタンで「ゲームに反映」「ゲームから取り出す」をするとき、変わる所を差分の画面で見せ、「反映する」「書き込む」を押してから書き込む。保存時の自動反映は確かめずに書き込みます。 / Show what will change in a diff and write only after you accept, when applying or pulling from a button. Apply-on-save writes without asking."
+          "description": "%config.text2frame.reviewBeforeApply.description%"
         },
         "text2frame.writeBackAfterMerge": {
           "type": "string",
           "enum": ["off", "always"],
           "default": "always",
           "enumDescriptions": [
-            "競合しなかったときは相手側に書かない / only when there is a conflict to resolve",
-            "反映・取り出しのたびに相手側にも書く(既定。Text2Frame 本体と同じ) / after every apply and pull (default, as in Text2Frame)"
+            "%config.text2frame.writeBackAfterMerge.enumDescriptions.0%",
+            "%config.text2frame.writeBackAfterMerge.enumDescriptions.1%"
           ],
-          "description": "統合で反映・取り出しをしたあと、相手側にも結果を書くか。反映ならテキストに、取り出しならゲームに書きます。競合したときは、この設定に関係なく、操作の元になった側(反映ならテキスト、取り出しならゲーム)に両方の版と衝突の目印が入り、もう一方はその側の版のままになります。 / Whether a merge apply or pull also writes the result to the other side. A conflict always goes into the side the operation started from (the text when applying, the game when pulling); the other side keeps its own version without markers."
+          "description": "%config.text2frame.writeBackAfterMerge.description%"
         },
         "text2frame.englishTag": {
           "type": "boolean",
           "default": true,
-          "description": "テキスト書き出し時に英語タグを使う。 / Use English tags when exporting (data -> text)."
+          "description": "%config.text2frame.englishTag.description%"
         },
         "text2frame.omitDefaultTags": {
           "type": "boolean",
           "default": true,
-          "description": "テキスト書き出し時、既定値と同じ顔・背景・位置のタグを書かない(3つとも既定ならタグ行ごと省く)。省いた所は反映時に既定値が補われるため、ゲームの見た目は変わりません。 / When exporting (data -> text), omit face/background/position tags that match the defaults (the whole tag line disappears when all three do). Apply fills the defaults back in, so the game is unchanged."
+          "description": "%config.text2frame.omitDefaultTags.description%"
         },
         "text2frame.testPlayPage": {
           "type": "string",
           "default": "",
-          "description": "テストプレイで開くページ(ゲームのフォルダからの相対パス)。空なら index.html。 / The page to open for test play, relative to the game folder. Empty means index.html."
+          "description": "%config.text2frame.testPlayPage.description%"
         },
         "text2frame.openRunningText": {
           "type": "boolean",
           "default": false,
-          "description": "テストプレイ中、実行しているイベントのテキストを自動で開く(ゲームの画面から入力は移さない)。「スイッチと変数」のパネルでも切り替えられます。 / While test playing, open the text of the running event automatically (keeping the input on the game). Also switchable from the Switches & Variables panel."
+          "description": "%config.text2frame.openRunningText.description%"
         },
         "text2frame.showDatabaseNames": {
           "type": "boolean",
           "default": true,
-          "description": "スイッチ・変数・マップなどの番号の横に、ツクールのデータベースの名前を薄く表示する(ファイルには書き込みません)。 / Show RPG Maker database names next to switch / variable / map ids (display only; nothing is written to the file)."
+          "description": "%config.text2frame.showDatabaseNames.description%"
         },
         "text2frame.usageContextLines": {
           "type": "number",
           "default": 2,
           "minimum": 0,
           "maximum": 20,
-          "description": "データベースの一覧でスイッチ・変数を押したときの「使っている箇所」に、前後何行ずつ出すか。 / How many lines to show before and after each usage when a switch or variable is clicked in the database list."
+          "description": "%config.text2frame.usageContextLines.description%"
         },
         "text2frame.textBaseDir": {
           "type": "string",
           "default": "text",
-          "description": "テキストファイルの保存されているディレクトリを指定する。「ゲームに反映」「ゲームから取り出す」はこのディレクトリを対象にします。 / Base directory (relative to workspace) for text files. Apply / Pull operate on this directory."
+          "description": "%config.text2frame.textBaseDir.description%"
         },
         "text2frame.dataDir": {
           "type": "string",
           "default": "data",
-          "description": "Map###.json / CommonEvents.json が保存されているディレクトリを指定する。 / RPG Maker data directory (relative to workspace) holding Map###.json / CommonEvents.json."
+          "description": "%config.text2frame.dataDir.description%"
         },
         "text2frame.modulePath": {
           "type": "string",
           "default": "",
-          "description": "Text2Frame 本体(Text2Frame.js)のパスを明示指定。通常指定する必要はありません。空なら自動解決されます。 / Explicit path to Text2Frame.js. Empty = auto-resolve."
+          "description": "%config.text2frame.modulePath.description%"
         }
       }
     }
