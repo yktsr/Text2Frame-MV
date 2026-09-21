@@ -77,6 +77,8 @@ describe('mapTree', function () {
     expect(eventLiveMark(marks, 3, 2)).to.equal('出ていない・並列')
     expect(eventLiveMark(marks, 4, 1)).to.equal('')
     expect(eventLiveMark(undefined, 3, 1)).to.equal('')
+    expect(eventLiveMark(marks, 3, 1, 3)).to.equal('今 2/3ページ・▶ 実行中') // 全ページ数も出す
+    expect(eventLiveMark(marks, 3, 2, 3)).to.equal('出ていない・並列')
     expect(pageLiveMark(marks, 3, 1, 2)).to.equal('● 今のページ・▶ 実行中')
     expect(pageLiveMark(marks, 3, 1, 1)).to.equal('')
     expect(commonLiveMark(marks, 7)).to.equal('並列')

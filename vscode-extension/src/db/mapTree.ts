@@ -131,12 +131,13 @@ export interface LiveMarks {
     running: Set<string>;
 }
 
-/** イベントの行に付ける印。「今 2ページ・並列・▶ 実行中」 */
-export function eventLiveMark(marks: LiveMarks | undefined, mapId: number, eventId: number): string {
+/** イベントの行に付ける印。「今 2/3ページ・並列・▶ 実行中」(全ページ数が分かれば添える) */
+export function eventLiveMark(marks: LiveMarks | undefined, mapId: number, eventId: number, total?: number): string {
     if (!marks || marks.mapId !== mapId) return '';
     const parts: string[] = [];
     const page = marks.pages.get(eventId) || 0;
-    parts.push(page ? tr(`今 ${page}ページ`, `now page ${page}`) : tr('出ていない', 'not shown'));
+    const of = total ? `/${total}` : '';
+    parts.push(page ? tr(`今 ${page}${of}ページ`, `now page ${page}${of}`) : tr('出ていない', 'not shown'));
     if (marks.parallelEvents.has(eventId)) parts.push(tr('並列', 'parallel'));
     if (Array.from(marks.running).some((key) => key.startsWith(`e:${mapId}:${eventId}:`))) parts.push(tr('▶ 実行中', '▶ running'));
     return parts.join(tr('・', ' · '));

@@ -345,7 +345,7 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
             event && event.pages ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
             { mapId: String(mapId), eventId: String(eventId), here }
         );
-        const mark = eventLiveMark(this.marks(ctx), mapId, eventId);
+        const mark = eventLiveMark(this.marks(ctx), mapId, eventId, event ? event.pages : undefined);
         item.description = [`${eventLabelId(eventId)}${event ? ` (${event.x},${event.y})` : ''}`, mark].filter((s) => s).join(tr('・', ' · '));
         item.iconPath = new vscode.ThemeIcon('symbol-event');
         item.tooltip = tr(`${eventLabelId(eventId)}${event && event.name ? ' ' + event.name : ''} / ${event ? event.pages : 0}ページ`, `${eventLabelId(eventId)}${event && event.name ? ' ' + event.name : ''} / ${event ? event.pages : 0} pages`);
@@ -369,7 +369,7 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
         const conditions = pageConditionTexts(summary, this.names(ctx));
         const map = this.maps(ctx).nodes.get(mapId);
         const mark = pageLiveMark(this.marks(ctx), mapId, eventId, index + 1);
-        this.decorateLeaf(item, [pageDescription(summary, empty, this.names(ctx)), mark].filter((s) => s).join('・'), [
+        this.decorateLeaf(item, [pageDescription(summary, empty, this.names(ctx)), mark].filter((s) => s).join(tr('・', ' · ')), [
             tr(`${mapLabel(map ? map.info : { id: mapId, name: '' })} / ${eventLabelId(eventId)}${event.name ? ' ' + event.name : ''} / ${index + 1}ページ`, `${mapLabel(map ? map.info : { id: mapId, name: '' })} / ${eventLabelId(eventId)}${event.name ? ' ' + event.name : ''} / page ${index + 1}`),
             conditions.length ? tr('出現条件: ', 'Conditions: ') + conditions.join(' / ') : tr('出現条件: なし', 'Conditions: none')
         ]);
@@ -410,7 +410,7 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
         });
         const description = commonDescription(entry.trigger, entry.switchId, entry.empty, this.names(ctx));
         const mark = commonLiveMark(this.marks(ctx), entry.id);
-        this.decorateLeaf(item, [padId(entry.id), description, mark].filter((s) => s).join('・'), []);
+        this.decorateLeaf(item, [padId(entry.id), description, mark].filter((s) => s).join(tr('・', ' · ')), []);
         item.command = { command: 'text2frame.tree.open', title: 'Open', arguments: [item] };
         return item;
     }

@@ -8,7 +8,7 @@
 const fs = require('fs')
 const path = require('path')
 
-const JAPANESE = /[ぁ-んァ-ヶ一-龠々ー]/
+const JAPANESE = /[ぁ-んァ-ヶ一-龠々ー・]/
 const ROOT = path.join(__dirname, '..', 'src')
 const KEEP_FILES = {
   'tagHelpData.ts': 'Text2Frame.js のヘルプから作るタグの説明(ヘルプは日本語だけ)',
