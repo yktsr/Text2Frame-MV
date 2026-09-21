@@ -34,7 +34,7 @@ Simple compiler to convert text to event.
 ## 機能概要
 ![./introduce_Text2Frame_MV_MZ.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Text2Frame_MV_MZ.png)
 
-このプラグインは、「会話イベント」など、RPGツクール上で編集できる様々なイベントを、RPGツクールMV・MZ**以外**の、テキストエディタで編集し、作成したテキストファイルから一括でイベントコマンドとして取り込むことができます。
+この RPGツクールMV/MZ のプラグインは、「会話イベント」などを、ツクール**以外**の、テキストエディタで編集し、作成したテキストファイルから一括でイベントコマンドとして取り込むことができます。
 
 これにより、イベントの作成はRPGツクール上で、シナリオの取り込みはテキストファイルで、といった、自分の作成スタイルに最も合ったエディタで制作を進めることができます。
 
