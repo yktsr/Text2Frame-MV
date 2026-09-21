@@ -75,6 +75,44 @@ describe('write-back after merge', function () {
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }
   })
 
+  describe('applyCommandsToData', function () {
+    it('writes a command list into the page of a map event, adding pages when short', function () {
+      writeMap(msg('もとの版'))
+
+      const r = text2frame.applyCommandsToData({
+        kind: 'event', mapPath, eventId: '1', pageId: '2', commands: msg('書き戻した版')
+      })
+
+      expect(r.ok).to.equal(true)
+      expect(r.dataPath).to.equal(mapPath)
+      const pages = JSON.parse(fs.readFileSync(mapPath, 'utf8')).events[1].pages
+      expect(pages).to.have.lengthOf(2)
+      expect(texts(pages[1].list)).to.eql(['書き戻した版'])
+      // 終端のコマンドは足される(ツクールのデータはこれで終わる)
+      expect(pages[1].list[pages[1].list.length - 1].code).to.equal(0)
+      // 元のページは触らない
+      expect(texts(pages[0].list)).to.eql(['もとの版'])
+    })
+
+    it('writes a common event, and says what was wrong instead of throwing', function () {
+      writeMap(msg('もとの版'))
+      const cePath = path.join(dataDir, 'CommonEvents.json')
+      fs.writeFileSync(cePath, JSON.stringify([null, { id: 1, list: [bottom] }]))
+
+      expect(text2frame.applyCommandsToData({
+        kind: 'common', commonEventPath: cePath, commonEventId: '1', commands: msg('コモンの版')
+      }).ok).to.equal(true)
+      expect(texts(JSON.parse(fs.readFileSync(cePath, 'utf8'))[1].list)).to.eql(['コモンの版'])
+
+      expect(text2frame.applyCommandsToData({ kind: 'common', commonEventPath: cePath, commonEventId: '9', commands: [] }).error)
+        .to.contain('コモンイベントが見つかりません')
+      expect(text2frame.applyCommandsToData({ kind: 'event', mapPath, eventId: '9', commands: [] }).error)
+        .to.contain('EventIDが見つかりません')
+      expect(text2frame.applyCommandsToData({ kind: 'event', mapPath, eventId: '1' }).error)
+        .to.contain('commands is required')
+    })
+  })
+
   // 三者が「Hello」で揃った状態を作り、テキストとゲームで同じ場所を別々に変える。
   const setUpConflict = function () {
     fs.writeFileSync(basePath(), header + '\nHello\n')
@@ -82,7 +120,7 @@ describe('write-back after merge', function () {
     fs.writeFileSync(textPath, header + '\nテキストの版\n')
   }
 
-  describe('applyThreeWayMerge with keepOurs', function () {
+  describe('applyThreeWayMerge with keepOurs / keepTheirs', function () {
     const base = msg('Hello').concat([bottom])
     const ours = msg('ゲームの版').concat([bottom])
     const theirs = msg('テキストの版').concat([bottom])
@@ -98,8 +136,28 @@ describe('write-back after merge', function () {
       expect(markers(r.commandsOurs)).to.have.lengthOf(0)
     })
 
-    it('leaves commandsOurs empty when not asked, so the default path is untouched', function () {
-      expect(text2frame.applyThreeWayMerge(base, ours, theirs).commandsOurs).to.equal(null)
+    it('returns a theirs-only list the same way, for the other direction', function () {
+      const r = text2frame.applyThreeWayMerge(base, ours, theirs, { keepTheirs: true })
+
+      expect(r.conflicts).to.equal(1)
+      // テキストへ書くほう: 目印なし・テキストの版だけ
+      expect(texts(r.commandsTheirs)).to.eql(['テキストの版'])
+      expect(markers(r.commandsTheirs)).to.have.lengthOf(0)
+      // 衝突していない所は、どちらの列にも入る
+      const both = text2frame.applyThreeWayMerge(
+        msg('Hello').concat(msg('World')).concat([bottom]),
+        msg('Hello').concat(msg('ゲームのWorld')).concat([bottom]),
+        msg('テキストのHello').concat(msg('World')).concat([bottom]),
+        { keepOurs: true, keepTheirs: true })
+      expect(both.conflicts).to.equal(0)
+      expect(texts(both.commandsOurs)).to.eql(['テキストのHello', 'ゲームのWorld'])
+      expect(texts(both.commandsTheirs)).to.eql(['テキストのHello', 'ゲームのWorld'])
+    })
+
+    it('leaves the extra lists empty when not asked, so the default path is untouched', function () {
+      const r = text2frame.applyThreeWayMerge(base, ours, theirs)
+      expect(r.commandsOurs).to.equal(null)
+      expect(r.commandsTheirs).to.equal(null)
     })
   })
 

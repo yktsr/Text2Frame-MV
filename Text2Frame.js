@@ -10866,8 +10866,8 @@
     /* 3-way マージ(diff3 方式・両方残す)。base=共通祖先, ours=現JSON, theirs=テキスト。
      * 釣り合った単位で base↔ours / base↔theirs を LCS 対応し、両方が同じ箇所を別々に変えた領域は
      * 「衝突」として両方を残し 108 コメントで囲む(非破壊・常に valid)。
-     * 戻り値: { commands: 適用後(終端コードなし), commandsOurs, conflicts: 件数, warnings }。
-     * commandsOurs は keepOurs を渡したときだけ埋まる(後述)。 */
+     * 戻り値: { commands: 適用後(終端コードなし), commandsOurs, commandsTheirs, conflicts: 件数, warnings }。
+     * commandsOurs / commandsTheirs は keepOurs / keepTheirs を渡したときだけ埋まる(後述)。 */
     const applyThreeWayMerge = function (base_commands, ours_commands, theirs_commands, options) {
       const stripBottom = function (cmds) {
         const copy = cmds.slice()
@@ -10930,16 +10930,19 @@
       const result = []
       const warnings = []
       let conflicts = 0
-      /* keepOurs: 衝突したハンクを「ゲーム側の版だけ・目印なし」にした列も並行して作る。
-       * 書き戻し(マージバック)で、目印はテキストに、ゲームには遊べる形を書くために使う。
-       * 要らないときは配列自体を作らない(一括反映は数千ページ回るため)。 */
+      /* keepOurs / keepTheirs: 衝突したハンクを「片方の版だけ・目印なし」にした列も並行して作る。
+       * 目印は処理元の側だけに入れ、もう一方には目印なしの形を書くために使う。
+       * 要らないときは配列自体を作らない(一括の処理は数千ページ回るため)。 */
       const keepOurs = !!(options && options.keepOurs)
+      const keepTheirs = !!(options && options.keepTheirs)
       const resultOurs = keepOurs ? [] : null
+      const resultTheirs = keepTheirs ? [] : null
       const pushAll = function (units) {
         for (const u of units) {
           for (const c of u) {
             result.push(c)
             if (keepOurs) resultOurs.push(c)
+            if (keepTheirs) resultTheirs.push(c)
           }
         }
       }
@@ -11013,15 +11016,16 @@
           pushComment(CONFLICT_MARKERS[1], ind)
           pushOnly(result, oReg)
           pushComment(CONFLICT_MARKERS[2], ind)
-          // ゲームへ書くほうは自分の版だけ。目印を入れないので、そのまま遊べる。
+          // 目印を入れない側は、その側の版だけ。そのまま使える形になる。
           if (keepOurs) pushOnly(resultOurs, oReg)
+          if (keepTheirs) pushOnly(resultTheirs, tReg)
           // 衝突の件数は戻り値の conflicts で返す。ここで警告文を積むと、呼び出し側が出す
           // 「N件の衝突を両方残しました」と同じ内容が衝突の数だけ重なるため積まない。
         }
         pos = baseHi
       }
 
-      return { commands: result, commandsOurs: resultOurs, conflicts, warnings }
+      return { commands: result, commandsOurs: resultOurs, commandsTheirs: resultTheirs, conflicts, warnings }
     }
 
     // 単一テキストファイルを単一データJSONへデプロイする再利用関数(CLI監視/VSCode拡張から呼ぶ)。
@@ -11239,6 +11243,53 @@
       // プラグインパラメータへ落とすので、指定しない呼び出しの挙動は変わらない。
       const text = F2T.decompile(merged, englishTag, { pretty: true, omitDefaults: opts.omitDefaults })
       return { text, conflicts, warnings }
+    }
+
+    /* コマンド列を、そのままゲームのデータへ書く。取り出し(Frame2Text)の書き戻しが使う。
+     * 反映の入口(applyTextFile)はテキストから始まるので、こちらは列を直接受ける。
+     * 戻り値: { ok, dataPath, error }。投げずに返す(呼び出し側が件数をまとめるため)。 */
+    const applyCommandsToData = function (opts) {
+      opts = opts || {}
+      const pathLib = require('path')
+      const { BASE_PATH } = getDirParams()
+      const kind = String(opts.kind || 'event').toLowerCase()
+      if (!Array.isArray(opts.commands)) return { ok: false, error: 'commands is required' }
+      const commands = opts.commands.slice()
+      if (!commands.length || commands[commands.length - 1].code !== 0) commands.push(getCommandBottomEvent())
+      try {
+        if (kind === 'event') {
+          const eventId = Number(opts.eventId)
+          const pageId = Number(opts.pageId || 1)
+          const defaultMapPath = opts.mapId
+            ? pathLib.join('data', 'Map' + ('000' + String(opts.mapId)).slice(-3) + '.json')
+            : null
+          const dataPath = resolveFromRoot(BASE_PATH, opts.mapPath) || resolveFromRoot(BASE_PATH, defaultMapPath)
+          if (!dataPath) return { ok: false, error: 'mapPath or mapId is required for event entry' }
+          if (!eventId) return { ok: false, error: 'eventId is required for event entry' }
+          const mapData = readJsonData(dataPath)
+          const event = mapData.events && mapData.events[eventId]
+          if (!event) return { ok: false, error: 'EventID not found. / EventIDが見つかりません。: ' + eventId }
+          while (!event.pages[pageId - 1]) event.pages.push(getDefaultPage())
+          event.pages[pageId - 1].list = commands
+          writeData(dataPath, mapData)
+          return { ok: true, dataPath }
+        }
+        if (kind === 'common') {
+          const commonEventId = Number(opts.commonEventId)
+          const dataPath = resolveFromRoot(BASE_PATH, opts.commonEventPath) ||
+            resolveFromRoot(BASE_PATH, pathLib.join('data', 'CommonEvents.json'))
+          const ceData = readJsonData(dataPath)
+          if (!commonEventId || !ceData[commonEventId]) {
+            return { ok: false, error: 'Common Event not found. / コモンイベントが見つかりません。: ' + opts.commonEventId }
+          }
+          ceData[commonEventId].list = commands
+          writeData(dataPath, ceData)
+          return { ok: true, dataPath }
+        }
+        return { ok: false, error: 'unknown kind: ' + kind }
+      } catch (e) {
+        return { ok: false, error: (e && e.message) || String(e) }
+      }
     }
 
     const resolveFromRoot = function (rootDir, maybeRelativePath) {
@@ -11642,7 +11693,7 @@
       return { ok, fail, root }
     }
 
-    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, readBaseText, saveBaseText, deriveBaseId, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter }
+    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, applyCommandsToData, resolveStrategy, readBaseText, saveBaseText, deriveBaseId, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter }
     // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
     // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
     // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。
