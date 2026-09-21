@@ -162,7 +162,7 @@ export function liveViewHtml(): string {
     const r = { wrap, row, box, pageEl, parEl, twisty, details, mapId, eventId, buttons: new Map(), used: used || [], pages: pages || [] };
     r.conditional = r.pages.some(hasConditions);
     if (r.pages.length) {
-      twisty.title = 'ページごとの出現条件とトリガー';
+      twisty.title = 'ページごとの出現条件とトリガー(全 ' + r.pages.length + ' ページ)';
       twisty.addEventListener('click', () => {
         const key = mapId + ',' + eventId;
         if (expanded.has(key)) expanded.delete(key);
@@ -246,8 +246,9 @@ export function liveViewHtml(): string {
     }
     const disabled = status !== 'live';
     const page = r.mapId === mapInfo.mapId ? pagesHere.get(r.eventId) : undefined;
-    r.pageEl.textContent = page ? 'P' + page : '';
-    r.pageEl.title = page ? 'ゲームでは今 ' + page + 'ページ' : '';
+    const total = r.pages.length;
+    r.pageEl.textContent = page ? 'P' + page + (total ? '/' + total : '') : '';
+    r.pageEl.title = page ? 'ゲームでは今 ' + page + 'ページ' + (total ? '(全 ' + total + ' ページ)' : '') : '';
     r.parallel = r.mapId === mapInfo.mapId && parallelNow.has(r.eventId);
     r.parEl.hidden = !r.parallel;
     let any = false;
