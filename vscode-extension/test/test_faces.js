@@ -109,6 +109,57 @@ describe('faces', function () {
     expect(faces.pngDataUri(Buffer.from([1, 2]))).to.equal('data:image/png;base64,AQI=')
   })
 
+  /* キャラ画像は1枚に 4列×2行の8体。1体は 3列×4行のコマで、下向きの止まった姿は
+   * 真ん中の列・いちばん上の行。$ 付きの名前は1体だけ。 */
+  it('crops the standing, down-facing frame of one character', function () {
+    const { encodePng, decodePng } = require('../out/db/png')
+    // 1コマ 4px。体ごとに色を変える(体の番号 = 赤の値 / 10)。
+    const frame = 4; const w = 4 * 3 * frame; const h = 2 * 4 * frame; const data = Buffer.alloc(w * h * 4)
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const block = Math.floor(y / (4 * frame)) * 4 + Math.floor(x / (3 * frame))
+        // 下向き・止まった姿(真ん中の列・上の行)だけ緑を足して見分ける。
+        const middle = Math.floor((x % (3 * frame)) / frame) === 1 && Math.floor((y % (4 * frame)) / frame) === 0
+        data.set([block * 10, middle ? 200 : 0, 0, 255], (y * w + x) * 4)
+      }
+    }
+    const sheet = decodePng(encodePng({ width: w, height: h, data }))
+
+    const five = decodePng(faces.cropCharacter(sheet, 'People1', 5, frame))
+    expect([five.width, five.height]).to.eql([frame, frame])
+    expect(Array.from(five.data.subarray(0, 4))).to.eql([50, 200, 0, 255])
+    expect(faces.characterCount('People1')).to.equal(8)
+    expect(faces.cropCharacter(sheet, 'People1', 8, frame)).to.equal(undefined)
+  })
+
+  it('treats a $ name as a single character', function () {
+    const { encodePng, decodePng } = require('../out/db/png')
+    const frame = 4; const w = 3 * frame; const h = 4 * frame
+    const data = Buffer.alloc(w * h * 4)
+    for (let i = 0; i < w * h; i++) data.set([7, 0, 0, 255], i * 4)
+    const sheet = decodePng(encodePng({ width: w, height: h, data }))
+
+    expect(faces.singleCharacter('$Hero')).to.equal(true)
+    expect(faces.characterCount('$Hero')).to.equal(1)
+    const one = decodePng(faces.cropCharacter(sheet, '$Hero', 0, frame))
+    expect([one.width, one.height, one.data[0]]).to.eql([frame, frame, 7])
+    expect(faces.cropCharacter(sheet, '$Hero', 1, frame)).to.equal(undefined)
+  })
+
+  it('fits a picture into the box without stretching it', function () {
+    const { encodePng, decodePng } = require('../out/db/png')
+    const w = 200; const h = 100; const data = Buffer.alloc(w * h * 4)
+    for (let i = 0; i < w * h; i++) data.set([10, 20, 30, 255], i * 4)
+    const wide = decodePng(encodePng({ width: w, height: h, data }))
+    const small = decodePng(faces.cropPicture(wide, 50))
+    expect([small.width, small.height]).to.eql([50, 25])
+
+    // 箱より小さい画像はそのまま。
+    const tiny = decodePng(encodePng({ width: 8, height: 4, data: Buffer.alloc(8 * 4 * 4) }))
+    const kept = decodePng(faces.cropPicture(tiny, 50))
+    expect([kept.width, kept.height]).to.eql([8, 4])
+  })
+
   it('crops one icon, sixteen across', function () {
     const { encodePng, decodePng } = require('../out/db/png')
     // 1個 2px のアイコンが横16個・縦2段。番号 n を赤 n で塗る。

@@ -52,7 +52,7 @@ const GROUPS: CommandGroup[] = [
         id: 'writing',
         label: '書くのを助ける / Writing help',
         items: [
-            { command: 'text2frame.pickFace', label: '顔画像を選ぶ / Pick a face', icon: 'account', tooltip: '顔画像を一覧で見て選び、カーソルの行に入れます(行に顔のタグがあれば置き換えます)。' },
+            { command: 'text2frame.pickFace', label: '画像を選ぶ(顔・キャラ・ピクチャ) / Pick an image', icon: 'account', tooltip: '顔画像・キャラ画像・ピクチャを一覧で見て選び、カーソルの行に入れます(行に同じ種類のタグがあれば置き換えます)。タブで切り替えます。' },
             { command: 'text2frame.pickAudio', label: '音を選ぶ / Pick a sound', icon: 'unmute', tooltip: 'BGM・BGS・ME・SE を試し聞きして選び、カーソルの行に入れます(行に同じ種類のタグがあれば置き換えます)。' },
             { command: 'text2frame.snippet.insert', label: 'スニペットを入れる / Insert snippet', icon: 'symbol-snippet', tooltip: '選択肢・条件分岐など、よく使う書き方の型をカーソルの位置に入れます。行の頭で / を打っても候補に出ます。' },
             { command: 'text2frame.snippet.fromSelection', label: '選んだ部分をスニペットにする / Make a snippet', icon: 'add', tooltip: 'エディタで選んだ部分を、あとで呼び出せる型として保存します(ゲームのフォルダの .vscode/text2frame-snippets.json)。' },

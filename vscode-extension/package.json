@@ -136,8 +136,18 @@
       },
       {
         "command": "text2frame.pickFace",
-        "title": "Text2Frame: 顔画像を選ぶ / Pick a face",
+        "title": "Text2Frame: 画像を選ぶ(顔・キャラ・ピクチャ) / Pick an image",
         "icon": "$(account)"
+      },
+      {
+        "command": "text2frame.pickCharacter",
+        "title": "Text2Frame: キャラ画像を選ぶ / Pick a character image",
+        "icon": "$(account)"
+      },
+      {
+        "command": "text2frame.pickPicture",
+        "title": "Text2Frame: ピクチャを選ぶ / Pick a picture",
+        "icon": "$(file-media)"
       },
       {
         "command": "text2frame.pickAudio",

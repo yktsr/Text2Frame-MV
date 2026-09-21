@@ -1,5 +1,5 @@
 const { expect } = require('chai')
-const { faceEdit, audioEdit, audioFolderOf, hasFaceTag } = require('../out/db/assetEdit')
+const { faceEdit, audioEdit, audioFolderOf, hasFaceTag, characterEdit, pictureEdit, hasCharacterTag, hasPictureTag } = require('../out/db/assetEdit')
 
 describe('assetEdit', function () {
   it('replaces the face on the line, or adds a face line', function () {
@@ -16,5 +16,34 @@ describe('assetEdit', function () {
     expect(audioEdit('', 'me', 'Victory1')).to.eql({ kind: 'insert', text: '<PlayME: Victory1, 90, 100, 0>' })
     expect(audioFolderOf('<PlayBGS: River>')).to.equal('bgs')
     expect(audioFolderOf('セリフ')).to.equal(undefined)
+  })
+})
+
+describe('assetEdit: キャラ画像とピクチャ', function () {
+  it('replaces the image and the number of a move-route image change', function () {
+    expect(characterEdit('<ChangeImage: Actor1, 2>', 'People1', 5))
+      .to.eql({ kind: 'replace', text: '<ChangeImage: People1, 5>' })
+    expect(characterEdit('<画像の変更: Actor1, 2>', 'People1', 0))
+      .to.eql({ kind: 'replace', text: '<画像の変更: People1, 0>' })
+  })
+
+  it('adds the tag when the line has none', function () {
+    expect(characterEdit('こんにちは', 'People1', 3)).to.eql({ kind: 'insert', text: '<ChangeImage: People1, 3>' })
+    expect(hasCharacterTag('<ChangeImage: Actor1, 2>')).to.equal(true)
+    expect(hasCharacterTag('こんにちは')).to.equal(false)
+  })
+
+  it('replaces only the name of a picture, keeping the number and the options', function () {
+    expect(pictureEdit('<ShowPicture: 3, Castle, Scale[50][55]>', 'Sea'))
+      .to.eql({ kind: 'replace', text: '<ShowPicture: 3, Sea, Scale[50][55]>' })
+    expect(pictureEdit('<SP: 2, Castle>', 'Sea')).to.eql({ kind: 'replace', text: '<SP: 2, Sea>' })
+    expect(pictureEdit('<ピクチャの表示: 1, Castle, 位置[中央][10][20]>', '海'))
+      .to.eql({ kind: 'replace', text: '<ピクチャの表示: 1, 海, 位置[中央][10][20]>' })
+  })
+
+  it('adds a picture tag with number 1 when the line has none', function () {
+    expect(pictureEdit('こんにちは', 'Sea')).to.eql({ kind: 'insert', text: '<ShowPicture: 1, Sea>' })
+    expect(hasPictureTag('<ShowPicture: 3, Castle>')).to.equal(true)
+    expect(hasPictureTag('<PlayBGM: Theme1>')).to.equal(false)
   })
 })

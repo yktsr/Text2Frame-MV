@@ -37,6 +37,11 @@ export function readFaceSheet(imgDir: string, faceName: string, encryptionKey?: 
     return readImage(imgDir, path.join('faces', faceName), encryptionKey);
 }
 
+/** キャラ画像・ピクチャなど、img の下の1枚を PNG として読む(暗号化されていれば戻す)。 */
+export function readImageSheet(imgDir: string, folder: string, name: string, encryptionKey?: string): Buffer | undefined {
+    return readImage(imgDir, path.join(folder, name), encryptionKey);
+}
+
 /** アイコン画像(img/system/IconSet)を PNG として読む。 */
 export function readIconSheet(imgDir: string, encryptionKey?: string): Buffer | undefined {
     return readImage(imgDir, path.join('system', 'IconSet'), encryptionKey);
@@ -58,7 +63,12 @@ function readImage(imgDir: string, name: string, encryptionKey?: string): Buffer
 
 /** 顔画像のファイル名(拡張子なし)の一覧。補完に使う。 */
 export function listFaceNames(imgDir: string): string[] {
-    const dir = path.join(imgDir, 'faces');
+    return listImageNames(imgDir, 'faces');
+}
+
+/** img の下のフォルダにある画像のファイル名(拡張子なし)の一覧。 */
+export function listImageNames(imgDir: string, folder: string): string[] {
+    const dir = path.join(imgDir, folder);
     if (!fs.existsSync(dir)) return [];
     const names = new Set<string>();
     for (const f of fs.readdirSync(dir)) {
@@ -95,4 +105,53 @@ export function cropIcon(sheet: Rgba, index: number, iconSize: number, displaySi
 
 export function pngDataUri(png: Buffer): string {
     return 'data:image/png;base64,' + png.toString('base64');
+}
+
+/* キャラ画像(img/characters)。1枚に 4列×2行の8体。名前が $ で始まる画像は1体だけ。
+ * 1体はさらに 3列×4行のコマ(横が足踏み、縦が向き)。 */
+export const CHARACTER_COLUMNS = 4;
+export const CHARACTER_ROWS = 2;
+const FRAME_COLUMNS = 3;
+const FRAME_ROWS = 4;
+
+/** その画像が1体だけか(ファイル名が $ で始まる)。 */
+export function singleCharacter(name: string): boolean {
+    return /^[$]/.test(name.replace(/^.*[\\/]/, ''));
+}
+
+/** 画像に入っている体の数(1 か 8)。 */
+export function characterCount(name: string): number {
+    return singleCharacter(name) ? 1 : CHARACTER_COLUMNS * CHARACTER_ROWS;
+}
+
+/**
+ * 番号 index の体の「下を向いて止まった姿」を切り出し、displaySize に収まるよう縮めた PNG。
+ * 番号がはみ出していれば undefined。番号の並びは <ChangeImage> と同じ(左上から右へ 0〜7)。
+ */
+export function cropCharacter(sheet: Rgba, name: string, index: number, displaySize = 72): Buffer | undefined {
+    const count = characterCount(name);
+    if (!Number.isInteger(index) || index < 0 || index >= count) return undefined;
+    const single = count === 1;
+    const blockW = Math.floor(sheet.width / (single ? 1 : CHARACTER_COLUMNS));
+    const blockH = Math.floor(sheet.height / (single ? 1 : CHARACTER_ROWS));
+    const frameW = Math.floor(blockW / FRAME_COLUMNS);
+    const frameH = Math.floor(blockH / FRAME_ROWS);
+    if (frameW <= 0 || frameH <= 0) return undefined;
+    const bx = single ? 0 : (index % CHARACTER_COLUMNS) * blockW;
+    const by = single ? 0 : Math.floor(index / CHARACTER_COLUMNS) * blockH;
+    // 真ん中の列(止まった姿)・いちばん上の行(下向き)。
+    const frame = crop(sheet, bx + frameW, by, frameW, frameH);
+    return encodePng(fitInto(frame, displaySize));
+}
+
+/** 画像をまるごと、縦横の比を保ったまま box に収める PNG。 */
+export function cropPicture(sheet: Rgba, box = 72): Buffer | undefined {
+    return encodePng(fitInto(sheet, box));
+}
+
+/** 縦横の比を保ったまま box に収める。box より小さい画像はそのまま。 */
+function fitInto(img: Rgba, box: number): Rgba {
+    const scale = Math.min(1, box / Math.max(img.width, img.height));
+    if (scale >= 1) return img;
+    return shrink(img, Math.max(1, Math.round(img.width * scale)), Math.max(1, Math.round(img.height * scale)));
 }

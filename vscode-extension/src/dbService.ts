@@ -3,7 +3,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { workspaceRootFor, dataDirFor } from './compiler';
 import { GameDatabase, DATABASE_FILES } from './db/database';
-import { readFaceSheet, readIconSheet, cropFace, cropIcon, iconCount, pngDataUri, listFaceNames } from './db/faces';
+import {
+    readFaceSheet, readIconSheet, readImageSheet, cropFace, cropIcon, cropCharacter, cropPicture,
+    iconCount, pngDataUri, listFaceNames, listImageNames, characterCount
+} from './db/faces';
 import { decodePng, Rgba } from './db/png';
 import { MapEvent } from './db/describe';
 import { eventSelfSwitchLetters } from './db/selfSwitchRefs';
@@ -126,6 +129,59 @@ export class DatabaseService implements vscode.Disposable {
         if (!this.faceUris.has(key)) {
             const sheet = this.faceSheet(ctx, faceName);
             const png = sheet ? cropFace(sheet, index, ctx.db.system.faceSize, displaySize) : undefined;
+            this.faceUris.set(key, png ? pngDataUri(png) : null);
+        }
+        return this.faceUris.get(key) || undefined;
+    }
+
+    /** img の下の1枚(キャラ画像・ピクチャなど)。無い・読めなければ undefined。 */
+    imageSheet(ctx: DbContext, folder: string, name: string): Rgba | undefined {
+        const key = ctx.imgDir + '\u0000' + folder + '/' + name;
+        if (!this.sheets.has(key)) {
+            let sheet: Rgba | undefined;
+            try {
+                const png = readImageSheet(ctx.imgDir, folder, name, ctx.db.system.encryptionKey);
+                sheet = png ? decodePng(png) : undefined;
+            } catch (e) {
+                sheet = undefined;
+            }
+            this.sheets.set(key, sheet || null);
+        }
+        return this.sheets.get(key) || undefined;
+    }
+
+    /** キャラ画像の名前の一覧(img/characters)。 */
+    characterNames(ctx: DbContext): string[] {
+        return listImageNames(ctx.imgDir, 'characters');
+    }
+
+    /** ピクチャの名前の一覧(img/pictures)。 */
+    pictureNames(ctx: DbContext): string[] {
+        return listImageNames(ctx.imgDir, 'pictures');
+    }
+
+    /** キャラ画像の1体(下向き・止まった姿)の data URI。 */
+    characterUri(ctx: DbContext, name: string, index: number, displaySize = 72): string | undefined {
+        const key = ctx.imgDir + '\u0000c\u0000' + name + '\u0000' + index + '\u0000' + displaySize;
+        if (!this.faceUris.has(key)) {
+            const sheet = this.imageSheet(ctx, 'characters', name);
+            const png = sheet ? cropCharacter(sheet, name, index, displaySize) : undefined;
+            this.faceUris.set(key, png ? pngDataUri(png) : null);
+        }
+        return this.faceUris.get(key) || undefined;
+    }
+
+    /** キャラ画像に入っている体の数(1 か 8)。 */
+    characterCount(name: string): number {
+        return characterCount(name);
+    }
+
+    /** ピクチャ1枚を小さくした data URI。 */
+    pictureUri(ctx: DbContext, name: string, box = 72): string | undefined {
+        const key = ctx.imgDir + '\u0000p\u0000' + name + '\u0000' + box;
+        if (!this.faceUris.has(key)) {
+            const sheet = this.imageSheet(ctx, 'pictures', name);
+            const png = sheet ? cropPicture(sheet, box) : undefined;
             this.faceUris.set(key, png ? pngDataUri(png) : null);
         }
         return this.faceUris.get(key) || undefined;

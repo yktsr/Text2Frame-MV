@@ -35,6 +35,40 @@ export function audioEdit(line: string, folder: AudioFolderName, name: string): 
     return { kind: 'insert', text: `<${tag}: ${name}, 90, 100, 0>` };
 }
 
+/* キャラ画像(移動ルートの「画像の変更」)。<ChangeImage: 名前, 番号> */
+const CHARACTER_TAG = /(<(?:changeimage|画像の変更)\s*:\s*)([^<>]*?)(\s*>)/i;
+
+export function characterEdit(line: string, name: string, index: number): AssetEdit {
+    const value = `${name}, ${index}`;
+    const m = line.match(CHARACTER_TAG);
+    if (m && m.index !== undefined) {
+        return { kind: 'replace', text: line.slice(0, m.index) + m[1] + value + m[3] + line.slice(m.index + m[0].length) };
+    }
+    return { kind: 'insert', text: `<ChangeImage: ${value}>` };
+}
+
+/* ピクチャ(ピクチャの表示)。<ShowPicture: 番号, 名前, …> の名前だけ差し替える。 */
+const PICTURE_TAG = /(<(?:showpicture|sp|ピクチャの表示)\s*:\s*[^,<>]*,\s*)([^,<>]*)/i;
+
+export function pictureEdit(line: string, name: string): AssetEdit {
+    const m = line.match(PICTURE_TAG);
+    if (m && m.index !== undefined) {
+        const trailing = m[2].length - m[2].trimEnd().length;
+        return { kind: 'replace', text: line.slice(0, m.index) + m[1] + name + ' '.repeat(trailing) + line.slice(m.index + m[0].length) };
+    }
+    return { kind: 'insert', text: `<ShowPicture: 1, ${name}>` };
+}
+
+/** 行にキャラ画像のタグがあるか。 */
+export function hasCharacterTag(line: string): boolean {
+    return CHARACTER_TAG.test(line);
+}
+
+/** 行にピクチャのタグがあるか。 */
+export function hasPictureTag(line: string): boolean {
+    return PICTURE_TAG.test(line);
+}
+
 /** 行にある音声のタグの種類(BGM・BGS・ME・SE)。無ければ undefined。 */
 export function audioFolderOf(line: string): AudioFolderName | undefined {
     return (Object.keys(PLAY_TAGS) as AudioFolderName[]).find((f) => PLAY_TAGS[f].re.test(line));

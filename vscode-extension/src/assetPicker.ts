@@ -5,7 +5,7 @@ import { DatabaseService, DbContext } from './dbService';
 import { assetPickerHtml } from './assetPickerHtml';
 import { readAudio } from './db/audio';
 import { audioBaseName, AudioFolderName } from './db/checks';
-import { faceEdit, audioEdit, AssetEdit } from './db/assetEdit';
+import { faceEdit, audioEdit, characterEdit, pictureEdit, AssetEdit } from './db/assetEdit';
 import { FACE_COLUMNS, FACE_ROWS } from './db/faces';
 
 /**
@@ -15,7 +15,7 @@ import { FACE_COLUMNS, FACE_ROWS } from './db/faces';
 
 const FOLDERS: AudioFolderName[] = ['bgm', 'bgs', 'me', 'se'];
 const THUMB = 72;
-type Tab = 'face' | AudioFolderName;
+type Tab = 'face' | 'character' | 'picture' | AudioFolderName;
 
 interface Target {
     uri: vscode.Uri;
@@ -56,7 +56,9 @@ export function registerAssetPicker(context: vscode.ExtensionContext, service: D
         }
         const audio: Record<string, string[]> = {};
         for (const folder of FOLDERS) audio[folder] = audioNames(ctx, folder);
-        post({ type: 'init', tab, faces, owners, audio, target: `${path.basename(target.uri.fsPath)} の ${target.line + 1} 行目` });
+        const characters = service.characterNames(ctx);
+        const pictures = service.pictureNames(ctx);
+        post({ type: 'init', tab, faces, owners, characters, pictures, audio, target: `${path.basename(target.uri.fsPath)} の ${target.line + 1} 行目` });
     };
 
     const apply = async (edit: AssetEdit, label: string): Promise<void> => {
@@ -85,6 +87,20 @@ export function registerAssetPicker(context: vscode.ExtensionContext, service: D
             const doc = await vscode.workspace.openTextDocument(target.uri);
             const text = doc.lineAt(Math.min(target.line, doc.lineCount - 1)).text;
             await apply(faceEdit(text, m.name, m.index), `<Face: ${m.name}(${m.index})>`);
+        } else if (m.type === 'characters' && typeof m.name === 'string') {
+            const uris: string[] = [];
+            for (let i = 0; i < service.characterCount(m.name); i++) uris.push(service.characterUri(ctx, m.name, i, THUMB) || '');
+            post({ type: 'characters', name: m.name, uris });
+        } else if (m.type === 'picture' && typeof m.name === 'string') {
+            post({ type: 'picture', name: m.name, uri: service.pictureUri(ctx, m.name, THUMB) || '' });
+        } else if (m.type === 'pickCharacter' && typeof m.name === 'string' && Number.isInteger(m.index)) {
+            const doc = await vscode.workspace.openTextDocument(target.uri);
+            const text = doc.lineAt(Math.min(target.line, doc.lineCount - 1)).text;
+            await apply(characterEdit(text, m.name, m.index), `<ChangeImage: ${m.name}, ${m.index}>`);
+        } else if (m.type === 'pickPicture' && typeof m.name === 'string') {
+            const doc = await vscode.workspace.openTextDocument(target.uri);
+            const text = doc.lineAt(Math.min(target.line, doc.lineCount - 1)).text;
+            await apply(pictureEdit(text, m.name), `ピクチャ ${m.name}`);
         } else if (m.type === 'pickAudio' && FOLDERS.includes(m.folder) && typeof m.name === 'string') {
             const doc = await vscode.workspace.openTextDocument(target.uri);
             const text = doc.lineAt(Math.min(target.line, doc.lineCount - 1)).text;
@@ -126,6 +142,8 @@ export function registerAssetPicker(context: vscode.ExtensionContext, service: D
 
     context.subscriptions.push(
         vscode.commands.registerCommand('text2frame.pickFace', () => open('face')),
-        vscode.commands.registerCommand('text2frame.pickAudio', (folder?: AudioFolderName) => open(folder && FOLDERS.includes(folder) ? folder : 'bgm'))
+        vscode.commands.registerCommand('text2frame.pickAudio', (folder?: AudioFolderName) => open(folder && FOLDERS.includes(folder) ? folder : 'bgm')),
+        vscode.commands.registerCommand('text2frame.pickCharacter', () => open('character')),
+        vscode.commands.registerCommand('text2frame.pickPicture', () => open('picture'))
     );
 }

@@ -37,6 +37,8 @@ export function assetPickerHtml(): string {
   <button class="tab" data-tab="face">顔画像</button>
   <button class="tab" data-tab="bgm">BGM</button>
   <button class="tab" data-tab="bgs">BGS</button>
+  <button class="tab" data-tab="character">キャラ</button>
+  <button class="tab" data-tab="picture">ピクチャ</button>
   <button class="tab" data-tab="me">ME</button>
   <button class="tab" data-tab="se">SE</button>
   <input id="filter" type="search" placeholder="名前で絞り込み">
@@ -47,16 +49,19 @@ export function assetPickerHtml(): string {
 <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
   const $ = (id) => document.getElementById(id);
-  let data = { faces: [], owners: {}, audio: { bgm: [], bgs: [], me: [], se: [] } };
+  let data = { faces: [], owners: {}, characters: [], pictures: [], audio: { bgm: [], bgs: [], me: [], se: [] } };
   let tab = 'face';
   const loaded = new Map();
 
+  // 見えてきたものから絵を頼む(全部いっぺんに読むと重い)。
   const observer = new IntersectionObserver((entries) => {
     for (const e of entries) {
       if (!e.isIntersecting) continue;
       const name = e.target.dataset.name;
+      const kind = e.target.dataset.kind;
       observer.unobserve(e.target);
-      if (!loaded.has(name)) vscode.postMessage({ type: 'faces', name });
+      const key = kind + '\u0000' + name;
+      if (!loaded.has(key)) vscode.postMessage({ type: kind === 'picture' ? 'picture' : kind === 'character' ? 'characters' : 'faces', name });
     }
   }, { rootMargin: '400px' });
 
@@ -64,6 +69,7 @@ export function assetPickerHtml(): string {
     const sheet = document.createElement('div');
     sheet.className = 'sheet';
     sheet.dataset.name = name;
+    sheet.dataset.kind = 'face';
     const h = document.createElement('h4');
     h.textContent = name;
     const grid = document.createElement('div');
@@ -81,9 +87,60 @@ export function assetPickerHtml(): string {
       cell.addEventListener('click', () => vscode.postMessage({ type: 'pickFace', name, index: i }));
       grid.appendChild(cell);
     }
-    if (loaded.has(name)) fillSheet(sheet, loaded.get(name));
+    if (loaded.has('face\u0000' + name)) fillSheet(sheet, loaded.get('face\u0000' + name));
     else observer.observe(sheet);
     return sheet;
+  }
+
+  /* キャラ画像。1枚に8体(名前が $ で始まるものは1体)。下を向いて止まった姿を出す。 */
+  function characterSheet(name) {
+    const sheet = document.createElement('div');
+    sheet.className = 'sheet';
+    sheet.dataset.name = name;
+    sheet.dataset.kind = 'character';
+    const h = document.createElement('h4');
+    h.textContent = name;
+    const grid = document.createElement('div');
+    grid.className = 'faces';
+    sheet.append(h, grid);
+    const count = /^[$]/.test(name) ? 1 : 8;
+    for (let i = 0; i < count; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'face';
+      cell.title = name + ' の ' + i + ' 番\n押すと入れます';
+      const no = document.createElement('span');
+      no.className = 'no';
+      no.textContent = i;
+      cell.appendChild(no);
+      cell.addEventListener('click', () => vscode.postMessage({ type: 'pickCharacter', name, index: i }));
+      grid.appendChild(cell);
+    }
+    const key = 'character\u0000' + name;
+    if (loaded.has(key)) fillSheet(sheet, loaded.get(key));
+    else observer.observe(sheet);
+    return sheet;
+  }
+
+  /* ピクチャ。1枚まるごとを小さくして出す。 */
+  function pictureCard(name) {
+    const card = document.createElement('div');
+    card.className = 'sheet';
+    card.dataset.name = name;
+    card.dataset.kind = 'picture';
+    const h = document.createElement('h4');
+    h.textContent = name;
+    const cell = document.createElement('div');
+    cell.className = 'face';
+    cell.title = name + '\n押すと入れます';
+    cell.addEventListener('click', () => vscode.postMessage({ type: 'pickPicture', name }));
+    const grid = document.createElement('div');
+    grid.className = 'faces';
+    grid.appendChild(cell);
+    card.append(h, grid);
+    const key = 'picture\u0000' + name;
+    if (loaded.has(key)) fillSheet(card, loaded.get(key));
+    else observer.observe(card);
+    return card;
   }
 
   function fillSheet(sheet, uris) {
@@ -165,13 +222,23 @@ export function assetPickerHtml(): string {
     const list = $('list');
     list.textContent = '';
     observer.disconnect();
-    const names = (tab === 'face' ? data.faces : data.audio[tab]).filter((n) => !q || n.toLowerCase().includes(q));
+    const all = tab === 'face' ? data.faces : tab === 'character' ? data.characters : tab === 'picture' ? data.pictures : data.audio[tab];
+    const names = (all || []).filter((n) => !q || n.toLowerCase().includes(q));
     const frag = document.createDocumentFragment();
-    for (const name of names) frag.appendChild(tab === 'face' ? faceSheet(name) : audioRow(tab, name));
+    for (const name of names) {
+      frag.appendChild(tab === 'face' ? faceSheet(name)
+        : tab === 'character' ? characterSheet(name)
+          : tab === 'picture' ? pictureCard(name)
+            : audioRow(tab, name));
+    }
     if (!names.length) {
       const none = document.createElement('div');
       none.className = 'none';
-      none.textContent = q ? '(当てはまるものはありません)' : tab === 'face' ? '(img/faces に顔画像がありません)' : '(audio/' + tab + ' に音声がありません)';
+      const empty = tab === 'face' ? '(img/faces に顔画像がありません)'
+        : tab === 'character' ? '(img/characters に画像がありません)'
+          : tab === 'picture' ? '(img/pictures に画像がありません)'
+            : '(audio/' + tab + ' に音声がありません)';
+      none.textContent = q ? '(当てはまるものはありません)' : empty;
       frag.appendChild(none);
     }
     list.appendChild(frag);
@@ -192,10 +259,12 @@ export function assetPickerHtml(): string {
       $('target').textContent = m.target ? '入れる所: ' + m.target : '';
       $('done').textContent = '';
       render();
-    } else if (m.type === 'faces') {
-      loaded.set(m.name, m.uris);
-      const sheet = Array.from(document.querySelectorAll('.sheet')).find((s) => s.dataset.name === m.name);
-      if (sheet) fillSheet(sheet, m.uris);
+    } else if (m.type === 'faces' || m.type === 'characters' || m.type === 'picture') {
+      const kind = m.type === 'faces' ? 'face' : m.type === 'characters' ? 'character' : 'picture';
+      const uris = m.type === 'picture' ? [m.uri] : m.uris;
+      loaded.set(kind + '\u0000' + m.name, uris);
+      const sheet = Array.from(document.querySelectorAll('.sheet')).find((s) => s.dataset.name === m.name && s.dataset.kind === kind);
+      if (sheet) fillSheet(sheet, uris);
     } else if (m.type === 'done') {
       $('done').textContent = m.text;
     } else if (m.type === 'audio' || m.type === 'audioError') {
