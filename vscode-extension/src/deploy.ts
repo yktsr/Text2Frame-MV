@@ -175,7 +175,7 @@ async function deployDocumentNow(
 
     const { meta, hasFrontMatter } = parseFrontMatter(document.getText());
     if (!hasFrontMatter) {
-        vscode.window.showWarningMessage(tr('Text2Frame: フロントマターが無いためデプロイ先を特定できません。', 'Text2Frame: This text has no front matter, so where it goes in the game is unknown.'));
+        vscode.window.showWarningMessage(tr('Text2Frame: ファイルの先頭に宛先のメモ(--- で囲んだ部分)が無いため、ゲームのどこに反映するか分かりません。', 'Text2Frame: This text has no destination note (the part between --- at the top), so where it goes in the game is unknown.'));
         return undefined;
     }
 
@@ -285,7 +285,7 @@ async function deployDocumentNow(
             (result.warnings.length ? `  (${result.warnings.length} warnings)` : ''));
         result.warnings.forEach((w) => out.appendLine('    warn: ' + w));
         if (result.warnings.length) {
-            vscode.window.showWarningMessage(tr(`Text2Frame: デプロイ完了 (${result.warnings.length} 件の警告)`, `Text2Frame: Applied (${result.warnings.length} warnings)`), tr('詳細', 'Details'))
+            vscode.window.showWarningMessage(tr(`Text2Frame: ゲームに反映しました(警告 ${result.warnings.length} 件)`, `Text2Frame: Applied to the game (${result.warnings.length} warnings)`), tr('詳細', 'Details'))
                 .then((pick) => { if (pick) { out.show(true); } });
         }
         // Optionally write the merged result back to the text, then refresh the 3-way BASE.
@@ -294,7 +294,7 @@ async function deployDocumentNow(
         out.appendLine(`[${time}] FAIL  ${resolved.label}  <- ${path.basename(document.uri.fsPath)}  ${result.error}`);
         setDeployDiagnostic(deployDiagnostics, document, result.error || 'deploy failed', result.errorLineText);
         const firstLine = (result.error || 'deploy failed').split('\n')[0];
-        vscode.window.showErrorMessage(tr('Text2Frame: デプロイ失敗 - ', 'Text2Frame: Could not apply - ') + firstLine);
+        vscode.window.showErrorMessage(tr('Text2Frame: ゲームに反映できませんでした - ', 'Text2Frame: Could not apply to the game - ') + firstLine);
     }
     return result;
 }
@@ -535,10 +535,10 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
     const renderBase = (): void => {
         if (isOn()) {
             statusBar.text = '$(eye) T2F: watching';
-            statusBar.tooltip = tr('保存時に自動デプロイ: ON (クリックで切替)', 'Apply on save: ON (click to switch)');
+            statusBar.tooltip = tr('保存時に自動反映: ON (クリックで切り替え)', 'Apply on save: ON (click to switch)');
         } else {
             statusBar.text = '$(circle-outline) T2F: off';
-            statusBar.tooltip = tr('保存時に自動デプロイ: OFF (クリックで切替)', 'Apply on save: OFF (click to switch)');
+            statusBar.tooltip = tr('保存時に自動反映: OFF (クリックで切り替え)', 'Apply on save: OFF (click to switch)');
         }
         statusBar.show();
     };
@@ -607,7 +607,7 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
             const next = !isOn();
             context.workspaceState.update(stateKey, next);
             renderBase();
-            vscode.window.showInformationMessage(tr('Text2Frame: 保存時の自動デプロイを ', 'Text2Frame: Turned apply on save ') + (next ? 'ON' : 'OFF') + tr(' にしました。', '.'));
+            vscode.window.showInformationMessage(tr('Text2Frame: 保存時の自動反映を ', 'Text2Frame: Turned apply on save ') + (next ? 'ON' : 'OFF') + tr(' にしました。', '.'));
         }),
         vscode.workspace.onDidSaveTextDocument((document) => {
             if (!isOn()) {

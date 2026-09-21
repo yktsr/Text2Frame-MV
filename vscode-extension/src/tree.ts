@@ -422,7 +422,7 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
         item.description = [description, unapplied ? '未反映' : ''].filter((s) => s).join(tr('・', ' · '));
         item.iconPath = new vscode.ThemeIcon(textPath ? 'file-text' : 'new-file');
         const lines = tooltipLines.concat([
-            textPath ? tr('テキスト: ', 'Text: ') + vscode.workspace.asRelativePath(textPath) : tr('テキストはまだありません(押すと書き出せます)', 'No text yet (click to export one)'),
+            textPath ? tr('テキスト: ', 'Text: ') + vscode.workspace.asRelativePath(textPath) : tr('テキストはまだありません(押すとゲームから取り出せます)', 'No text yet (click to pull it from the game)'),
             unapplied ? tr('このテキストには、ゲームに反映していない変更があります。', 'This text has changes not yet applied to the game.') : ''
         ]);
         item.tooltip = lines.filter((line) => line).join('\n');
@@ -509,9 +509,9 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
         }
         const textPath = (await textPathOf(root, node)) || textPathForLeaf(root, node);
         if (!fs.existsSync(textPath)) {
-            const exportLabel = tr('書き出す', 'Export');
+            const exportLabel = tr('取り出す', 'Pull');
             const pick = await vscode.window.showInformationMessage(
-                tr('Text2Frame: テキストがまだありません。データから書き出しますか?', 'Text2Frame: There is no text yet. Export one from the data?'), exportLabel
+                tr('Text2Frame: テキストがまだありません。ゲームから取り出しますか?', 'Text2Frame: There is no text yet. Pull it from the game?'), exportLabel
             );
             if (pick !== exportLabel) {
                 return;
@@ -520,7 +520,7 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
             target.textPath = textPath;
             const res = exportToTextFile(context, root, target);
             if (!res.ok) {
-                vscode.window.showErrorMessage(tr('Text2Frame: 書き出し失敗 - ', 'Text2Frame: Could not export - ') + (res.error || ''));
+                vscode.window.showErrorMessage(tr('Text2Frame: ゲームから取り出せませんでした - ', 'Text2Frame: Could not pull from the game - ') + (res.error || ''));
                 return;
             }
             running.reindex();
@@ -554,19 +554,19 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
                 }
                 return [planPull(context, root, target, 'overwrite')];
             };
-            const reviewed = await reviewPull(root, makePlan, tr('この行の書き出し', 'Export this row'));
+            const reviewed = await reviewPull(root, makePlan, tr('この行の取り出し', 'Pull this row'));
             if (!reviewed) {
-                vscode.window.setStatusBarMessage(tr('Text2Frame: 書き出しをやめました。', 'Text2Frame: Stopped exporting.'), 4000);
+                vscode.window.setStatusBarMessage(tr('Text2Frame: 取り出しをやめました。', 'Text2Frame: Stopped pulling.'), 4000);
                 return;
             }
             const res = commitPull(context, root, reviewed.plans[0]);
             if (res.ok) {
-                vscode.window.showInformationMessage(tr('Text2Frame: 書き出しました — ', 'Text2Frame: Exported — ') + path.relative(root, textPath));
+                vscode.window.showInformationMessage(tr('Text2Frame: ゲームから取り出しました — ', 'Text2Frame: Pulled from the game — ') + path.relative(root, textPath));
                 running.reindex();
                 provider.refresh();
                 vscode.workspace.openTextDocument(textPath).then((doc) => vscode.window.showTextDocument(doc, { preview: true }));
             } else {
-                vscode.window.showErrorMessage(tr('Text2Frame: 書き出し失敗 - ', 'Text2Frame: Could not export - ') + (res.error || ''));
+                vscode.window.showErrorMessage(tr('Text2Frame: ゲームから取り出せませんでした - ', 'Text2Frame: Could not pull from the game - ') + (res.error || ''));
             }
         }),
         vscode.commands.registerCommand('text2frame.tree.deploy', async (node: T2FNode) => {
@@ -576,7 +576,7 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
             }
             const textPath = (await textPathOf(root, node)) || textPathForLeaf(root, node);
             if (!fs.existsSync(textPath)) {
-                vscode.window.showWarningMessage(tr('Text2Frame: テキストがありません。先に書き出してください。', 'Text2Frame: There is no text. Export one first.'));
+                vscode.window.showWarningMessage(tr('Text2Frame: テキストがありません。先にゲームから取り出してください。', 'Text2Frame: There is no text. Pull it from the game first.'));
                 return;
             }
             if (await reviewFiles(context, root, [textPath], tr('この行の反映', 'Apply this row')) === 'cancel') {
@@ -585,10 +585,10 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
             }
             const res = deployFile(context, root, textPath);
             if (res && res.ok) {
-                vscode.window.showInformationMessage(tr('Text2Frame: デプロイしました — ', 'Text2Frame: Applied — ') + path.relative(root, textPath));
+                vscode.window.showInformationMessage(tr('Text2Frame: ゲームに反映しました — ', 'Text2Frame: Applied to the game — ') + path.relative(root, textPath));
                 provider.refresh();
             } else if (res) {
-                vscode.window.showErrorMessage(tr('Text2Frame: デプロイ失敗 - ', 'Text2Frame: Could not apply - ') + (res.error || ''));
+                vscode.window.showErrorMessage(tr('Text2Frame: ゲームに反映できませんでした - ', 'Text2Frame: Could not apply to the game - ') + (res.error || ''));
             }
         }),
         vscode.commands.registerCommand('text2frame.tree.try', async (node: T2FNode, mode?: 'stand' | 'run') => {

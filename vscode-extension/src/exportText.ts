@@ -441,7 +441,7 @@ export function mergePullToText(
 function targetFromDocument(document: vscode.TextDocument): ExportTarget {
     const { meta, hasFrontMatter } = parseFrontMatter(document.getText());
     if (!hasFrontMatter) {
-        throw new Error(tr('フロントマターが無いため書き出し元を特定できません。', 'This text has no front matter, so where it comes from in the game is unknown.'));
+        throw new Error(tr('ファイルの先頭に宛先のメモ(--- で囲んだ部分)が無いため、ゲームのどこから取り出すか分かりません。', 'This text has no destination note (the part between --- at the top), so where it comes from in the game is unknown.'));
     }
     const kind = (String(meta.kind || 'event').toLowerCase() === 'common') ? 'common' : 'event';
     return {
@@ -527,6 +527,6 @@ export function exportConversationOnly(context: vscode.ExtensionContext): void {
         vscode.window.showInformationMessage(tr('Text2Frame: 会話のみテキストを書き出しました: ', 'Text2Frame: Wrote the conversation-only text: ') + path.basename(result.textPath || ''));
         vscode.workspace.openTextDocument(result.textPath as string).then((doc) => vscode.window.showTextDocument(doc, { preview: true }));
     } else {
-        vscode.window.showErrorMessage(tr('Text2Frame: 書き出し失敗 - ', 'Text2Frame: Could not export - ') + (result.error || ''));
+        vscode.window.showErrorMessage(tr('Text2Frame: 会話のみ書き出しに失敗しました - ', 'Text2Frame: Could not write the conversation-only text - ') + (result.error || ''));
     }
 }
