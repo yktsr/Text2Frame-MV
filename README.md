@@ -430,7 +430,7 @@ node t2f-sync.js --watch --direction both --text-dir text --strategy merge
 | ゲームから取り出し(merge/overwrite) | パネル「ゲームから取り出す」 | `Frame2Text.js --mode map/common/batch [--strategy merge\|overwrite]` | `EXPORT_EVENT_TO_MESSAGE`/`_CE`(取り出しのしかたで merge/overwrite)・`BATCH_EXPORT_MESSAGES_TO_FOLDER` |
 | 3-way 祖先 | 自動 `.t2f-base` | 自動 `.t2f-base`（`--base` 任意） | 自動 `.t2f-base`（`BaseFolder`/`BaseFileName` 任意） |
 | 競合(両方残す) | あり | あり | あり |
-| 統合のあと、もう一方にも結果を書く | 常に | 衝突したときだけ | 常に |
+| 統合のあと、もう一方にも結果を書く | 常に | 常に | 常に |
 
 ### 英語化の固定フロー（推奨）
 

@@ -85,6 +85,8 @@ function pushFile (textPath, opts) {
 
   const res = T2F.applyTextFile(applyOpts)
   if (res.ok && res.dataPath && o.guard) o.guard.recordFile(res.dataPath)
+  // 統合の結果はテキストにも書き戻る。記録しないと 反映 -> 書き戻し -> 反映 と回る。
+  if (res.ok && res.writtenBack && res.writeBackPath && o.guard) o.guard.record(res.writeBackPath, res.writeBackText)
   return res
 }
 
@@ -131,7 +133,6 @@ function pullTarget (target, opts) {
     list,
     englishTag,
     strategy: entryStrategy,
-    writeBack: o.writeBack,
     existingText: existing || '',
     baseText: (entryStrategy === 'merge' && T2F.readBaseText(root, id.key)) || '',
     fallbackHeader: F2T.renderFrontMatter(target, target.kind)

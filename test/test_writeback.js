@@ -5,8 +5,7 @@ const os = require('os')
 const path = require('path')
 
 // PluginManager は定義しない(非プラグイン分岐で自己初期化させる)。
-// この分岐(CLI / t2f-sync / ライブラリ)では、applyTextFile に writeBack: 'always' を
-// 渡したときだけ毎回書き戻る。渡さなければ衝突したときだけ書く。
+// この分岐(CLI / t2f-sync / ライブラリ)でも、統合のあとは毎回テキストへ書き戻す。
 const text2frame = require('../Text2Frame.js')
 require('../Frame2Text.js')
 
@@ -54,8 +53,8 @@ describe('write-back after merge', function () {
   }
   const readText = function () { return fs.readFileSync(textPath, 'utf8') }
   const basePath = function () { return path.join(tmp, '.t2f-base', 'text', 'map001_event001_page1.txt') }
-  const push = function (writeBack) {
-    return text2frame.applyTextFile({ textPath, mapPath, baseRoot: tmp, strategy: 'merge', writeBack })
+  const push = function () {
+    return text2frame.applyTextFile({ textPath, mapPath, baseRoot: tmp, strategy: 'merge' })
   }
 
   beforeEach(function () {
@@ -179,7 +178,7 @@ describe('write-back after merge', function () {
   it('puts the conflict in the text and keeps the game playable', function () {
     setUpConflict()
 
-    const res = push('always')
+    const res = push()
 
     expect(res.ok).to.equal(true)
     expect(res.conflicts).to.equal(1)
@@ -202,11 +201,11 @@ describe('write-back after merge', function () {
    * 従来はここで overwrite に逃げるしかなかった。 */
   it('resolving in the text and re-importing with plain merge settles it', function () {
     setUpConflict()
-    push('always')
+    push()
 
     // 衝突の目印とゲームの版を消し、テキストの版を残す
     fs.writeFileSync(textPath, header + '\nテキストの版\n')
-    const res = push('always')
+    const res = push()
 
     expect(res.ok).to.equal(true)
     expect(res.conflicts).to.equal(0)
@@ -217,10 +216,10 @@ describe('write-back after merge', function () {
 
   it('settles the same way when the game version is the one kept', function () {
     setUpConflict()
-    push('always')
+    push()
 
     fs.writeFileSync(textPath, header + '\nゲームの版\n')
-    const res = push('always')
+    const res = push()
 
     expect(res.conflicts).to.equal(0)
     expect(texts(mapList())).to.eql(['ゲームの版'])
@@ -232,30 +231,29 @@ describe('write-back after merge', function () {
     writeMap(msg('ゲームの版').concat([{ code: 121, indent: 0, parameters: [7, 7, 0] }]))
     fs.writeFileSync(textPath, header + '\nテキストの版\n')
 
-    push('always')
+    push()
     fs.writeFileSync(textPath, readText().replace(/^=== .*$\n/gm, '').replace('ゲームの版\n', ''))
-    push('always')
+    push()
 
     expect(texts(mapList())).to.eql(['テキストの版'])
     expect(mapList().some(function (c) { return c.code === 121 })).to.equal(true)
   })
 
-  it('does not touch the text when the result is the same (always, no conflict)', function () {
+  it('does not touch the text when the result is the same (no conflict)', function () {
     setUpConflict()
-    push('always')
+    push()
     fs.writeFileSync(textPath, header + '\nテキストの版\n')
-    push('always')
+    push()
 
     const before = fs.statSync(textPath)
-    const res = push('always')
+    const res = push()
 
     expect(res.writtenBack).to.equal(false)
     expect(fs.statSync(textPath).mtimeMs).to.equal(before.mtimeMs)
     expect(readText()).to.equal(header + '\nテキストの版\n')
   })
 
-  /* 衝突しないように、テキストとゲームで別の文を変える。always ならゲームの変更が
-   * テキストへ戻り、off ならテキストはそのまま。 */
+  /* 衝突しないように、テキストとゲームで別の文を変える。ゲームの変更もテキストへ戻る。 */
   const setUpSeparateEdits = function () {
     fs.writeFileSync(basePath(), header + '\nHello\n\nWorld\n')
     writeMap(msg('Hello').concat(msg('ゲームのWorld')))
@@ -264,21 +262,10 @@ describe('write-back after merge', function () {
     return before
   }
 
-  it('off leaves the text alone when nothing conflicted', function () {
-    const before = setUpSeparateEdits()
-
-    const res = push('off')
-
-    expect(res.conflicts).to.equal(0)
-    expect(res.writtenBack).to.equal(false)
-    expect(readText()).to.equal(before)
-    expect(texts(mapList())).to.eql(['テキストのHello', 'ゲームのWorld'])
-  })
-
-  it('always brings the game side edit into the text when nothing conflicted', function () {
+  it('brings the game side edit into the text when nothing conflicted', function () {
     setUpSeparateEdits()
 
-    const res = push('always')
+    const res = push()
 
     expect(res.conflicts).to.equal(0)
     expect(res.writtenBack).to.equal(true)
@@ -293,7 +280,7 @@ describe('write-back after merge', function () {
     writeMap(msg('ゲームの版'))
     fs.writeFileSync(textPath, header + '\n% 一幕の書き出し\nテキストの版\n')
 
-    const res = push('always')
+    const res = push()
 
     expect(res.writtenBack).to.equal(true)
     const text = readText()
@@ -313,7 +300,7 @@ describe('write-back after merge', function () {
     writeMap(msg('Hello'))
     fs.writeFileSync(textPath, header + '\n% 一幕: 酒場\nテキストの版\n% おわり\n')
 
-    const res = push('always')
+    const res = push()
 
     expect(res.ok).to.equal(true)
     expect(res.conflicts).to.equal(0)
@@ -329,11 +316,11 @@ describe('write-back after merge', function () {
     fs.writeFileSync(basePath(), header + '\nHello\n')
     writeMap(msg('Hello'))
     fs.writeFileSync(textPath, header + '\n% 一幕: 酒場\nテキストの版\n')
-    push('always')
+    push()
     const settled = readText()
     const before = fs.statSync(textPath)
 
-    const res = push('always')
+    const res = push()
 
     expect(res.writtenBack).to.equal(false)
     expect(fs.statSync(textPath).mtimeMs).to.equal(before.mtimeMs)
@@ -356,7 +343,7 @@ describe('write-back after merge', function () {
   it('applies without writing back when Frame2Text cannot write back and nothing conflicted', function () {
     const before = setUpSeparateEdits()
 
-    const res = withoutFrame2Text(function () { return push('always') })
+    const res = withoutFrame2Text(function () { return push() })
 
     expect(res.ok).to.equal(true)
     expect(res.writtenBack).to.equal(false)
@@ -370,7 +357,7 @@ describe('write-back after merge', function () {
     setUpConflict()
     const beforeMap = fs.readFileSync(mapPath, 'utf8')
 
-    const res = withoutFrame2Text(function () { return push('off') })
+    const res = withoutFrame2Text(function () { return push() })
 
     expect(res.ok).to.equal(false)
     expect(res.error).to.contain('反映を中止')
@@ -386,7 +373,7 @@ describe('write-back after merge', function () {
 
     let res
     try {
-      res = push('always')
+      res = push()
     } finally {
       fs.chmodSync(textPath, 0o644)
     }

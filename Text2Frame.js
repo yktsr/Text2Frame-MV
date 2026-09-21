@@ -4616,9 +4616,6 @@
     Laurus.Text2Frame.Strategy = 'merge'
     // 引数を省略したときの既定。プラグインコマンドと同じく末尾に追記。
     Laurus.Text2Frame.DefaultStrategy = 'add'
-    // PluginManager が無い経路(CLI / t2f-sync / ライブラリ)は、衝突したときだけ書き戻す。
-    // 呼び出し側が applyTextFile の writeBack に always を渡したときは毎回書き戻す。
-    Laurus.Text2Frame.WriteBack = 'off'
     Laurus.Text2Frame.TextPath = 'dummy'
     Laurus.Text2Frame.MapPath = 'dummy'
     Laurus.Text2Frame.CommonEventPath = 'dummy'
@@ -4946,21 +4943,19 @@
      * ゲームには自分の版(目印なし)を書くので、直す場所がテキストに一本化される。
      * ツクールを開かずに、統合(merge)のまま決着できる。 */
 
-    /* 書き戻しの段取り。mode は「衝突しなかったときも書き戻すか」(always / off)。
-     * ツクールの中(プラグインコマンド)は always。ライブラリ(applyTextFile)は呼び出し側の writeBack。
-     * 衝突したときは mode に関係なく書き戻す: 目印はテキストにだけ入れ、ゲームには入れない。
-     * 書き戻しには Frame2Text が要る。無いまま衝突したら、ゲームも触らずに止める
-     * (ゲームに ours だけ入れるとテキスト側の版が消え、目印入りを入れるとゲームが汚れる)。 */
+    /* 書き戻しの段取り。統合のあとは、衝突の有無に関係なくテキストにも書く。
+     * 衝突したときは目印をテキストにだけ入れ、ゲームには入れない。
+     * 書き戻しには Frame2Text が要る。無ければ衝突しなかった反映だけ続け、衝突したら
+     * ゲームも触らずに止める(ゲームに ours だけ入れるとテキスト側の版が消え、目印入りを入れるとゲームが汚れる)。 */
     const planWriteBack = function () {
-      const mode = String(Laurus.Text2Frame.WriteBack || '').toLowerCase() === 'always' ? 'always' : 'off'
       const found = resolveFrame2Text()
       // コメントアウト行(既定は %)はコンパイル前に捨てられる(eraseCommentOutLines)が、
       // 書き戻しは元テキストを持っているので buildPullText が元の位置へ戻す。見送りは不要。
       const F2T = found && found.buildPullText ? found : null
-      if (mode === 'always' && !F2T) {
-        return { mode: 'off', F2T, reason: '書き戻しには Frame2Text プラグインが必要です。同じプロジェクトに導入してください。 / write-back requires the Frame2Text plugin' }
+      if (!F2T) {
+        return { F2T, reason: '書き戻しには Frame2Text プラグインが必要です。同じプロジェクトに導入してください。 / write-back requires the Frame2Text plugin' }
       }
-      return { mode, F2T }
+      return { F2T }
     }
 
     // コマンド列を、いま反映したテキストの front matter を引き継いだテキストにする。
@@ -4982,10 +4977,10 @@
 
     /* 反映結果をテキストへ書き戻す。ゲームを書く前に呼ぶこと(書けなければゲームを触らない)。
      * 戻り値の baseText は、書けたときだけ「ゲームに書いたものの text 形」。
-     * 内容が同じなら書かない: always でも、変わっていないファイルの mtime を動かさない。 */
+     * 内容が同じなら書かない: 変わっていないファイルの mtime を動かさない。 */
     const writeBackMergedText = function (plan, merged, textPath, scenario_text) {
-      if (plan.mode !== 'always' && !merged.conflicts) return { written: false }
       if (!plan.F2T) {
+        if (!merged.conflicts) return { written: false }
         addWarning('衝突した所をテキストに書くには Frame2Text プラグインが必要です。同じプロジェクトに導入してください。 / conflicts need the Frame2Text plugin to be written into the text')
         return { written: false, failed: true }
       }
@@ -5119,9 +5114,6 @@
         }
         Laurus.Text2Frame.Strategy = resolveImportStrategy(strategyArg)
         Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite'
-        // ツクールの中では、統合のあと結果をテキストにも書く(書き戻しの条件は選ばせない)。
-        // 以前の版で書き戻しの引数を書いたコマンドが残っていても、その引数は読まない。
-        Laurus.Text2Frame.WriteBack = 'always'
         // テキストに見出し情報があれば、反映先はそちらに従う(実行部で上書きする)。
         Laurus.Text2Frame.RouteByFrontMatter = true
         // 祖先は自動の .t2f-base だけを使う(位置引数は廃止した)。COMMAND_LINE 経由の
@@ -5147,9 +5139,6 @@
         // 4番目は旧来の上書き真偽値と同じ枠。merge/overwrite/add も受ける。
         Laurus.Text2Frame.Strategy = resolveImportStrategy(args[3])
         Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite'
-        // ツクールの中では、統合のあと結果をテキストにも書く(書き戻しの条件は選ばせない)。
-        // 以前の版で書き戻しの引数を書いたコマンドが残っていても、その引数は読まない。
-        Laurus.Text2Frame.WriteBack = 'always'
         // テキストに見出し情報があれば、反映先はそちらに従う(実行部で上書きする)。
         Laurus.Text2Frame.RouteByFrontMatter = true
         Laurus.Text2Frame.BasePath = undefined
@@ -5172,20 +5161,15 @@
          * IMPORT_* が実行のたびに書き換えるので、読み込み時に控えたほうを見る。 */
         Laurus.Text2Frame.ImportFolder = args[0] || Laurus.Text2Frame.DefaultFileFolder || 'text'
         Laurus.Text2Frame.BatchStrategy = resolveImportStrategy(args[1])
-        // ツクールの中では、統合のあと結果をテキストにも書く(書き戻しの条件は選ばせない)。
-        // 以前の版で書き戻しの引数を書いたコマンドが残っていても、その引数は読まない。
-        Laurus.Text2Frame.WriteBack = 'always'
         Laurus.Text2Frame.ExecMode = 'BATCH_IMPORT_MESSAGES_FROM_FOLDER'
         break
       }
       case 'START_DATA_SYNC' :
       case 'テキストとゲームの同期を開始' : {
         addMessage('start data sync. \n/ テキストとゲームの同期を開始します。')
-        /* 引数の並び: 向き -> テキストのフォルダ -> 反映方法 -> 書き戻し。
-         * 向きを先頭に置くのは、末尾にすると上書きを選ぶために書き戻しまで
-         * 書かされるため。
+        /* 引数の並び: 向き -> テキストのフォルダ -> 反映方法。
          * 同期はプラグインパラメータを一切見ない。省略時の既定は MZ の @arg と同じ
-         * both / text / merge / always。 */
+         * both / text / merge。 */
         const syncStrategy = resolveImportStrategy(args[2] || 'merge')
         if (syncStrategy !== 'merge' && syncStrategy !== 'overwrite') {
           // add は冪等でないので、見張りながら繰り返すと内容が増え続ける。
@@ -5197,9 +5181,6 @@
         Laurus.Text2Frame.SyncDirection = normalizeDirection(args[0])
         Laurus.Text2Frame.ImportFolder = args[1] || 'text'
         Laurus.Text2Frame.SyncStrategy = syncStrategy
-        // ツクールの中では、統合のあと結果をテキストにも書く(書き戻しの条件は選ばせない)。
-        // 以前の版で書き戻しの引数を書いたコマンドが残っていても、その引数は読まない。
-        Laurus.Text2Frame.WriteBack = 'always'
         Laurus.Text2Frame.ExecMode = 'START_DATA_SYNC'
         break
       }
@@ -11023,8 +11004,6 @@
             IsOverwrite: overwrite,
             BasePath: opts.basePath,
             BaseRoot: opts.baseRoot,
-            // 呼び出し側が明示したときだけ書き戻す。CLI / t2f-sync は渡さないので off。
-            WriteBack: String(opts.writeBack || 'off'),
             // add はイベント末尾への追記。IsOverwrite が false のまま追記側に落ちる。
             Strategy: strategy,
             ExecMode: 'IMPORT_MESSAGE_TO_EVENT'
@@ -11046,8 +11025,6 @@
             IsOverwrite: overwrite,
             BasePath: opts.basePath,
             BaseRoot: opts.baseRoot,
-            // 呼び出し側が明示したときだけ書き戻す。CLI / t2f-sync は渡さないので off。
-            WriteBack: String(opts.writeBack || 'off'),
             Strategy: strategy,
             ExecMode: 'IMPORT_MESSAGE_TO_CE'
           }])
@@ -11282,10 +11259,7 @@
         strategy: (o && o.strategy) || 'merge',
         direction: (o && o.direction) || 'both',
         textBase: (o && o.textBase) || 'text',
-        dataFolder: (o && o.dataFolder) || 'data',
-        // 同期はプラグインパラメータを見ない(ヘルプでそう約束している)。既定はヘルプが
-        // 宣言する always。呼び出し元は必ず渡すので、ここに落ちるのは直接呼んだときだけ。
-        writeBack: String((o && o.writeBack) || 'always')
+        dataFolder: (o && o.dataFolder) || 'data'
       }
       // 二重起動すると監視が重なって同じ変更を何度も処理する。状態を出して何もしない。
       if (Laurus.Text2Frame._syncWatch) {
@@ -11380,7 +11354,7 @@
         if (guard.isEcho(abs)) return
         let res
         try {
-          res = applyTextFile({ textPath: abs, strategy: opts.strategy, writeBack: opts.writeBack })
+          res = applyTextFile({ textPath: abs, strategy: opts.strategy })
         } catch (e) {
           console.error('[sync] 反映で例外: ' + rel(abs) + ': ' + ((e && e.message) || e))
           return
@@ -11409,7 +11383,7 @@
         targets.forEach(function (t) {
           const outPath = _path.join(textRoot, t.key + '.txt')
           const r = F2T.pullTargetToText({
-            dataDir, target: t, outPath, baseDir, englishTag, strategy: opts.strategy, writeBack: opts.writeBack
+            dataDir, target: t, outPath, baseDir, englishTag, strategy: opts.strategy
           })
           if (!r.ok) {
             console.error('[sync] 取り出しに失敗: ' + t.key + ': ' + r.error)
@@ -11530,7 +11504,7 @@
     }
 
     /* 一括反映の本体。BATCH_IMPORT_MESSAGES_FROM_FOLDER と、START_DATA_SYNC の初回同期の
-     * 両方から呼ぶ。o: { importFolder, strategy, writeBack }
+     * 両方から呼ぶ。o: { importFolder, strategy }
      * 戻り値: { ok, fail, root } */
     const runBatchImport = function (o) {
       if (typeof require === 'undefined') {
@@ -11543,7 +11517,6 @@
       const importFolder = o.importFolder || 'text'
       const root = _path.isAbsolute(importFolder) ? importFolder : _path.resolve(BASE_PATH, importFolder)
       const strategy = o.strategy || 'add'
-      const writeBack = o.writeBack
       const walk = function (dir) {
         let out = []
         let entries = []
@@ -11590,8 +11563,7 @@
         if (!meta || !meta.kind) { skipped++; return }
         const res = applyTextFile({
           textPath: fileName,
-          strategy,
-          writeBack
+          strategy
         })
         if (res && res.ok) {
           ok++
@@ -11698,7 +11670,6 @@
       const textFolder = Laurus.Text2Frame.ImportFolder || 'text'
       // data を別名にする使い道が無いので引数から外した。他の反映コマンドも data 固定。
       const dataFolder = 'data'
-      const writeBack = Laurus.Text2Frame.WriteBack
       /* 二重起動の判定は startSyncWatch も持っているが、ここでも先に見ておく。
        * 後ろで断ると、断ったのに初回の一括だけ済んでいる状態になる。 */
       if (Laurus.Text2Frame._syncWatch) {
@@ -11721,17 +11692,16 @@
         interpreter.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [textFolder, syncStrategy])
       }
       if (wantPush) {
-        runBatchImport({ importFolder: textFolder, strategy: syncStrategy, writeBack })
+        runBatchImport({ importFolder: textFolder, strategy: syncStrategy })
       }
-      startSyncWatch({ strategy: syncStrategy, direction, textBase: textFolder, dataFolder, writeBack })
+      startSyncWatch({ strategy: syncStrategy, direction, textBase: textFolder, dataFolder })
       return
     }
 
     if (Laurus.Text2Frame.ExecMode === 'BATCH_IMPORT_MESSAGES_FROM_FOLDER') {
       runBatchImport({
         importFolder: Laurus.Text2Frame.ImportFolder,
-        strategy: Laurus.Text2Frame.BatchStrategy || 'add',
-        writeBack: Laurus.Text2Frame.WriteBack
+        strategy: Laurus.Text2Frame.BatchStrategy || 'add'
       })
       return
     }

@@ -167,10 +167,30 @@ describe('t2f-sync controller', function () {
     sync.pullDataFile(mapPath, Object.assign({}, opts, { guard }))
     fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8').replace('Hello', 'テキストの版'))
 
-    sync.pullDataFile(mapPath, Object.assign({}, opts, { guard, writeBack: 'always' }))
+    sync.pullDataFile(mapPath, Object.assign({}, opts, { guard }))
 
     expect(texts(mapList())).to.eql(['テキストの版']) // ゲームにも入った
     expect(guard.isEcho(mapPath)).to.equal(true) // 自分の書き込みとして記録されている
+  })
+
+  // 反映もテキストへ書き戻すので、その書き込みを記録しないと 反映 -> 書き戻し -> 反映 と回る。
+  it('marks the text it wrote back on push as its own', function () {
+    const mapPath = path.join(tmp, 'data', 'Map001.json')
+    const guard = sync.createEchoGuard()
+    sync.pullDataFile(mapPath, Object.assign({}, opts, { guard }))
+    guard.isEcho(mapPath)
+    // テキストに文を足し、ゲームには別の所に構造を足す(衝突しない)。
+    fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8') + '\nテキストの追記\n')
+    const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'))
+    map.events[1].pages[0].list.splice(0, 0, { code: 121, indent: 0, parameters: [3, 3, 0] })
+    fs.writeFileSync(mapPath, JSON.stringify(map))
+
+    const res = sync.pushFile(evText(), Object.assign({}, opts, { guard }))
+
+    expect(res.ok).to.equal(true)
+    expect(res.writtenBack).to.equal(true)
+    expect(fs.readFileSync(evText(), 'utf8')).to.contain('<Switch: 3, ON>')
+    expect(guard.isEcho(evText())).to.equal(true)
   })
 
   // 取り出しで衝突 -> ツクールで解決 -> もう一度取り出すと片が付く(鏡写しの流れ)。
@@ -210,21 +230,22 @@ describe('t2f-sync controller', function () {
   // 取り出しが書き換えるのはテキストなので、祖先にはゲーム側が入る。ここを間違えて
   // マージ結果を祖先にすると、次の反映で 3-way が「ゲームが消した」と誤読して、
   // 取り出し前にテキストへ書いた分が衝突 0 件のまま黙って消える。
-  it('pull records the game side as the ancestor, not the merged text', function () {
+  it('pull writes a text-only edit into the game and records it as the ancestor', function () {
     const mapPath = path.join(tmp, 'data', 'Map001.json')
     sync.pullDataFile(mapPath, opts)
 
     const basePath = path.join(tmp, '.t2f-base', 'text', 'map001_event001_page1.txt')
-    const gameOnly = fs.readFileSync(basePath, 'utf8')
     // テキストにだけ注釈を足してから取り出す(ゲームには入っていない内容)。
     fs.writeFileSync(evText(), fs.readFileSync(evText(), 'utf8') + '\n<comment>\nテキスト側のメモ\n</comment>\n')
 
     sync.pullDataFile(mapPath, opts)
 
-    // 祖先はゲームのまま。マージ結果(メモ入り)になっていない。
-    expect(fs.readFileSync(basePath, 'utf8')).to.equal(gameOnly)
-    expect(fs.readFileSync(basePath, 'utf8')).to.not.contain('テキスト側のメモ')
-    expect(fs.readFileSync(evText(), 'utf8')).to.contain('テキスト側のメモ') // テキストには残る
+    // 統合の結果はゲームにも書く。祖先はテキストとゲームがそろった内容(メモ入り)。
+    expect(mapList().some(function (c) {
+      return (c.code === 108 || c.code === 408) && String(c.parameters[0]).indexOf('テキスト側のメモ') !== -1
+    })).to.equal(true)
+    expect(fs.readFileSync(basePath, 'utf8')).to.contain('テキスト側のメモ')
+    expect(fs.readFileSync(evText(), 'utf8')).to.contain('テキスト側のメモ')
   })
 
   it('a text-only edit made before a pull still reaches the game on the next push', function () {

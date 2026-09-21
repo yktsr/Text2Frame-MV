@@ -702,9 +702,6 @@ function resolveText2Frame () {
     Laurus.Frame2Text.OmitDefaultTags = String(Laurus.Frame2Text.Parameters.OmitDefaultTags) !== 'false'
     // 単発取り出しのしかた。コマンドの引数解決で毎回決め直す。
     Laurus.Frame2Text.Strategy = 'overwrite'
-    // ライブラリ・CLI から呼ぶときは、衝突したときだけ書き戻す(Text2Frame の applyTextFile と同じ)。
-    // プラグインコマンドは実行のたびに always にする。
-    Laurus.Frame2Text.WriteBack = 'off'
     let PATH_SEP = '/'
     let BASE_PATH = '.'
     if (typeof require !== 'undefined') {
@@ -894,9 +891,6 @@ function resolveText2Frame () {
         if (args[3]) Laurus.Frame2Text.EventID = args[3]
         if (args[4]) Laurus.Frame2Text.PageID = args[4]
         Laurus.Frame2Text.Strategy = resolveExportStrategy(args[5])
-        // ツクールの中では、統合のあと結果をイベントにも書く(書き戻しの条件は選ばせない)。
-        // 以前の版で書き戻しの引数を書いたコマンドが残っていても、その引数は読まない。
-        Laurus.Frame2Text.WriteBack = 'always'
         if (args[0] || args[1]) {
           Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
           Laurus.Frame2Text.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${(
@@ -919,9 +913,6 @@ function resolveText2Frame () {
         if (args[1]) Laurus.Frame2Text.FileName = args[1]
         if (args[2]) Laurus.Frame2Text.CommonEventID = args[2]
         Laurus.Frame2Text.Strategy = resolveExportStrategy(args[3])
-        // ツクールの中では、統合のあと結果をイベントにも書く(書き戻しの条件は選ばせない)。
-        // 以前の版で書き戻しの引数を書いたコマンドが残っていても、その引数は読まない。
-        Laurus.Frame2Text.WriteBack = 'always'
         if (args[0] || args[1]) {
           Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
           Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
@@ -937,9 +928,6 @@ function resolveText2Frame () {
         // ゲームのデータは data 固定(他の取り出し・反映コマンドと同じ)。
         // 反映方法は単体の取り出しと同じ決め方(省略時はプラグインパラメータ、無ければ上書き)。
         const batchStrategy = resolveExportStrategy(args[1])
-        // ツクールの中では、統合のあと結果をイベントにも書く(書き戻しの条件は選ばせない)。
-        // 以前の版で書き戻しの引数を書いたコマンドが残っていても、その引数は読まない。
-        Laurus.Frame2Text.WriteBack = 'always'
         // 出力先を省いたときは、プラグインパラメータの出力フォルダ名。
         // FileFolder は単発の取り出しが引数で書き換えるので、パラメータを直接読む。
         Laurus.Frame2Text.TextBase = args[0] || String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters['Default Scenario Folder']) || '') || 'text'
@@ -3215,7 +3203,7 @@ function resolveText2Frame () {
     // 実際に一致していた地点」でなければならない。
     //  ・ゲームへ書き戻したとき: 目印の無い側(テキストに書いた内容)を祖先にする。
     //    ツクールで目印を消して決着したあとの取り出しが、同じ衝突を繰り返さない。
-    //  ・書き戻さないとき: 書き換えなかった側=ゲームを入れる。ここに merge 結果を入れると、
+    //  ・ゲームへ書くものが無いとき: 書き換えなかった側=ゲームを入れる。ここに merge 結果を入れると、
     //    ゲームが一度も到達していない状態が祖先になり、次の反映で 3-way が「ゲームが消した」と
     //    誤読して、取り出し前にテキストへ書いた分が黙って消える。
     const buildPullText = function (opts) {
@@ -3283,13 +3271,11 @@ function resolveText2Frame () {
       })
       const mergedText = header + r.text + '\n'
       const restored = restoreComments(mergedText)
-      /* ゲームへ書き戻すか。衝突したときは設定に関係なく書く(目印は処理元=ゲームに置く)。
-       * 衝突していないときは「毎回書き戻す」のときだけ。意味が変わらないなら書かない
-       * (ツクールが省いた引数との違いだけでデータを書き直さないため)。 */
-      const always = String(opts.writeBack || 'off').toLowerCase() === 'always'
+      /* 統合の結果はゲームにも書く。衝突したときは目印を処理元=ゲームに置く。
+       * 意味が変わらないなら書かない(ツクールが省いた引数との違いだけでデータを書き直さないため)。 */
       const gameList = r.gameCommands || []
       const differs = !T2F.commandsEqual || !T2F.commandsEqual(list, gameList)
-      const writeBack = (r.conflicts || (always && differs)) ? { commands: gameList } : null
+      const writeBack = (r.conflicts || differs) ? { commands: gameList } : null
       return {
         text: restored.text,
         writeBack,
@@ -3363,7 +3349,7 @@ function resolveText2Frame () {
      * 一括取り出しはこれを全ターゲットに回すだけ、同期は変わったファイルの分だけ回す。
      * (全件を回す一括コマンドを変更のたびに呼ぶと、実プロジェクト規模ではゲームが数秒止まる)
      *
-     * opts: { dataDir, target, outPath, baseDir, englishTag, strategy, writeBack }
+     * opts: { dataDir, target, outPath, baseDir, englishTag, strategy }
      * 戻り値: { ok, skipped, conflicts, markers, overwritten, approximate, warnings, baseSaveError, error, wroteGame, dataPath }
      * 投げずに戻り値で返す。呼び出し側が件数をまとめて報告するため。 */
     const pullTargetToText = function (opts) {
@@ -3391,7 +3377,6 @@ function resolveText2Frame () {
           englishTag: opts.englishTag,
           omitDefaults: opts.omitDefaults,
           strategy: entryStrategy,
-          writeBack: opts.writeBack,
           existingText,
           baseText,
           fallbackHeader: renderFrontMatter(t, t.kind)
@@ -3529,8 +3514,7 @@ function resolveText2Frame () {
           outPath: _path.resolve(BASE_PATH, textBase, t.key + '.txt'),
           baseDir: _baseDir,
           englishTag,
-          strategy: batchStrategy,
-          writeBack: Laurus.Frame2Text.WriteBack
+          strategy: batchStrategy
         })
         if (!r.ok) {
           errCount++
@@ -3651,7 +3635,6 @@ function resolveText2Frame () {
       list: map_events,
       englishTag: EnglishTag,
       strategy: exportStrategy,
-      writeBack: Laurus.Frame2Text.WriteBack,
       existingText,
       previousText,
       baseText,
