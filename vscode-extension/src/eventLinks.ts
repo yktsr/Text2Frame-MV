@@ -5,7 +5,7 @@ import { DatabaseService, DbContext } from './dbService';
 import { RunTracker } from './runHighlight';
 import { parseFrontMatter, workspaceRootFor } from './compiler';
 import { renderCommands } from './exportText';
-import { placeFromMeta, placeKey } from './placeLabel';
+import { placeFromKey, placeFromMeta, placeKey, placeLabel } from './placeLabel';
 import { padId } from './db/database';
 import { mapLabel } from './db/mapTree';
 import { eventId as eventLabelId } from './db/describe';
@@ -211,6 +211,30 @@ function readJson(file: string): any {
 const mapPath = (ctx: DbContext, mapId: number): string => path.join(ctx.dataDir, 'Map' + String(mapId).padStart(3, '0') + '.json');
 
 /** 読むだけの画面(テキストの無いページ・スイッチなど)。 */
+/**
+ * テキストの無いページ・コモンイベントを読むだけの画面で開く前に、そう知らせる。
+ * 開いてよければ true。テキストがある所や、スイッチなどの画面はそのまま true。
+ */
+export async function confirmNoText(service: DatabaseService, ctx: DbContext, uri: vscode.Uri): Promise<boolean> {
+    if (uri.scheme !== LINKS_SCHEME) return true;
+    const node = nodeFromKey(uri.query);
+    if (!node || (node.kind !== 'page' && node.kind !== 'common')) return true;
+    const where = placeLabel(service, ctx, placeFromKey(uri.query));
+    const open = tr('開く', 'Open');
+    const pick = await vscode.window.showInformationMessage(
+        node.kind === 'page'
+            ? tr(`このイベントにはテキストがありません(${where})`, `This event has no text (${where})`)
+            : tr(`このコモンイベントにはテキストがありません(${where})`, `This common event has no text (${where})`),
+        {
+            modal: true,
+            detail: tr('ゲームのデータから読んだ中身を、読むだけの画面で開きます。書き換えるときは、先に「ゲームから取り出す」でテキストを作ってください。',
+                'The contents read from the game data open in a read-only view. To edit them, make a text first with Pull from game.')
+        },
+        open
+    );
+    return pick === open;
+}
+
 export function readOnlyUri(key: string): vscode.Uri {
     return vscode.Uri.from({ scheme: LINKS_SCHEME, path: '/' + key.replace(/:/g, '_') + '.txt', query: key });
 }
@@ -292,7 +316,9 @@ export function registerEventLinks(context: vscode.ExtensionContext, service: Da
         if (!node) return undefined;
         const { name, detail } = nodeLabel(service, ctx, node);
         const { uri } = await uriFor(ctx, key);
-        const item = new vscode.CallHierarchyItem(ICONS[node.kind], name, detail, uri, new vscode.Range(0, 0, 0, 0), new vscode.Range(0, 0, 0, 0));
+        // テキストの無いページは、押す前に分かるようにする(押すと読むだけの画面が開く)。
+        const noText = uri.scheme === LINKS_SCHEME && (node.kind === 'page' || node.kind === 'common');
+        const item = new vscode.CallHierarchyItem(ICONS[node.kind], name, noText ? [detail, tr('テキストなし', 'no text')].filter((s) => s).join(' / ') : detail, uri, new vscode.Range(0, 0, 0, 0), new vscode.Range(0, 0, 0, 0));
         (item as vscode.CallHierarchyItem & { t2fKey?: string }).t2fKey = key;
         return item;
     };
@@ -407,6 +433,7 @@ export function registerEventLinks(context: vscode.ExtensionContext, service: Da
                 return;
             }
             const { uri } = await uriFor(ctx, target);
+            if (!(await confirmNoText(service, ctx, uri))) return;
             const doc = await vscode.workspace.openTextDocument(uri);
             await vscode.window.showTextDocument(doc, { preview: true });
             await vscode.commands.executeCommand('references-view.showCallHierarchy');

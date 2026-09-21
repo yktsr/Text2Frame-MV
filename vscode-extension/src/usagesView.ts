@@ -7,7 +7,7 @@ import { bodyStart, usageBlocks, usageHits, conditionHits, ConditionEvent, Condi
 import { parseFrontMatter } from './compiler';
 import { placeFromMeta, placeKey, placeLabel } from './placeLabel';
 import { readMapInfos } from './db/mapTree';
-import { readOnlyUri } from './eventLinks';
+import { confirmNoText, readOnlyUri } from './eventLinks';
 import { usagesHtml } from './usagesHtml';
 import { tr } from './db/lang';
 
@@ -125,6 +125,7 @@ export class UsagesPanel {
     private pending?: object;
     private files: FileResult[] = [];
     private conditions: ConditionResult[] = [];
+    private ctx?: DbContext;
 
     constructor(private readonly service: DatabaseService) {}
 
@@ -138,6 +139,7 @@ export class UsagesPanel {
         const count = files.reduce((n, f) => n + f.blocks.reduce((m, b) => m + b.lines.filter((l) => l.hits.length).length, 0), 0);
         this.files = files;
         this.conditions = conditions;
+        this.ctx = ctx;
         const summary = [
             files.length ? tr(`使っている行 ${count}件(${files.length}ファイル)`, `${count} lines use it (${files.length} files)`) : '',
             conditions.length ? tr(`出現条件 ${conditions.length}ページ`, `${conditions.length} pages it makes appear`) : ''
@@ -174,6 +176,7 @@ export class UsagesPanel {
         if (m.type === 'openCondition' && Number.isInteger(m.index)) {
             const hit = this.conditions[m.index];
             if (!hit) return;
+            if (this.ctx && !(await confirmNoText(this.service, this.ctx, hit.uri))) return;
             const doc = await vscode.workspace.openTextDocument(hit.uri);
             await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preview: true });
             return;

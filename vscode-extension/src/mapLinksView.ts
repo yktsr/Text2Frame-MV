@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { DatabaseService, DbContext } from './dbService';
 import { LiveService } from './live';
-import { LinkService } from './eventLinks';
+import { LinkService, confirmNoText } from './eventLinks';
 import { parseFrontMatter, workspaceRootFor } from './compiler';
 import { placeFromMeta } from './placeLabel';
 import { padId } from './db/database';
@@ -247,6 +247,7 @@ export function registerMapLinksView(context: vscode.ExtensionContext, service: 
             const ctx = root ? service.forRoot(root) : undefined;
             if (!ctx) return;
             const { uri, file } = await links.uriFor(ctx, key);
+            if (!(await confirmNoText(service, ctx, uri))) return;
             const line = links.lineOf(ctx, key, file, index);
             const doc = await vscode.workspace.openTextDocument(uri);
             const editor = await vscode.window.showTextDocument(doc, { preview: true });
