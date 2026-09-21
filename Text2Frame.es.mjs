@@ -7559,7 +7559,6 @@ function requireFrame2Text () {
 		    .option('-w, --english_tag <true/false>', 'english tag', 'true')
 		    .option('--omit-default-tags <true/false>', 'omit face/background/position tags that match the defaults', 'true')
 		    .option('-s, --strategy <merge|overwrite>', 'pull strategy (default merge: keep translations; overwrite: replace)', /^(merge|overwrite)$/i, 'merge')
-		    .option('--write-back <always|off>', 'write the merged result back into the game data (default off; conflicts always are)', /^(always|off)$/i, 'off')
 		    .option('-b, --base <path>', 'ancestor text path for merge (optional; auto .t2f-base when omitted)')
 		    .parse();
 
@@ -7585,7 +7584,9 @@ function requireFrame2Text () {
 
           -s / --strategy で取り出しのしかたを選べます。（既定は merge ）
             merge     … 「統合」。テキストに書いた内容を残したまま、ゲーム側の変更だけを
-                        取り込みます。同じ場所を両方で変えたときは目印付きで両方残します。
+                        取り込みます。同じ場所を両方で変えたときは、ゲームのイベントに
+                        両方の版を衝突の目印付きで書きます(テキストはテキストの版のまま)。
+                        ツクールで決めて目印を消したあと、もう一度取り出してください。
             overwrite … 「上書き」。ゲームの内容でテキストを全て置き換えます。
                         テキスト側に書いてまだ反映していない編集は失われます。
           例3-2: $ node Frame2Text.js --mode batch -s overwrite
@@ -7736,7 +7737,6 @@ function requireFrame2Text () {
 		          englishTag,
 		          omitDefaults,
 		          strategy: entryStrategy,
-		          writeBack: options.writeBack,
 		          existingText,
 		          baseText,
 		          fallbackHeader: module.exports.renderFrontMatter(t, t.kind)
@@ -7788,10 +7788,10 @@ function requireFrame2Text () {
 		        carried.map(function (r) { return r.textPath }).join(', '));
 		    }
 		    if (conflicted.length > 0) {
-		      // 衝突は失敗ではない(両方残して書き出してある)。祖先はゲーム側へ進めてあるので、
-		      // テキストで決めたあとは merge のまま反映すれば、その決着がそのままゲームに入る。
-		      console.warn('[batch] ' + conflicted.length + ' file(s) kept both sides ' +
-		        '(resolve the markers in the text, then import): ' +
+		      // 衝突は失敗ではない(両方の版をゲームへ書いてある)。ツクールで決めたあと、
+		      // もう一度取り出せば、その決着がテキストに入る。
+		      console.warn('[batch] ' + conflicted.length + ' file(s) had conflicts written into the game ' +
+		        '(resolve the markers in the editor, then pull again): ' +
 		        conflicted.map(function (r) { return r.textPath }).join(', '));
 		    }
 		    if (baseSaveError) {
