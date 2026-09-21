@@ -4,7 +4,7 @@ import { loadCompiler } from './deploy';
 import { lineKinds } from './db/tagRefs';
 import { findConflicts, resolveConflict, tagLikeName, similarTagNames, replaceTagName, compilesAsText } from './db/fixes';
 import { MESSAGE_CODES } from './messageCheck';
-import { hasFaceTag, audioFolderOf } from './db/assetEdit';
+import { hasFaceTag, audioFolderOf, hasCharacterTag, hasPictureTag } from './db/assetEdit';
 
 /**
  * クイックフィックス(電球)。
@@ -93,6 +93,16 @@ export function registerQuickFixes(context: vscode.ExtensionContext): void {
             if (hasFaceTag(here)) {
                 const a = new vscode.CodeAction('顔画像を一覧から選ぶ', vscode.CodeActionKind.QuickFix);
                 a.command = { command: 'text2frame.pickFace', title: a.title };
+                out.push(a);
+            }
+            if (hasCharacterTag(here)) {
+                const a = new vscode.CodeAction('キャラ画像を一覧から選ぶ', vscode.CodeActionKind.QuickFix);
+                a.command = { command: 'text2frame.pickCharacter', title: a.title };
+                out.push(a);
+            }
+            if (hasPictureTag(here)) {
+                const a = new vscode.CodeAction('ピクチャを一覧から選ぶ', vscode.CodeActionKind.QuickFix);
+                a.command = { command: 'text2frame.pickPicture', title: a.title };
                 out.push(a);
             }
             const folder = audioFolderOf(here);

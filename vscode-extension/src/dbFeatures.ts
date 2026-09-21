@@ -190,6 +190,8 @@ export function registerDatabaseFeatures(context: vscode.ExtensionContext, servi
             const ctx = service.forDocument(document);
             if (!ctx) return undefined;
             const line = document.lineAt(position.line).text;
+            const images = imageItems(service, ctx, line, position);
+            if (images) return images;
             const expected = expectedAt(line, position.character);
             if (!expected) return undefined;
             const range = new vscode.Range(position.line, expected.start, position.line, position.character);
@@ -251,6 +253,60 @@ function eventItems(events: EventLookup, range: vscode.Range): vscode.Completion
         items.push(item);
     });
     return items;
+}
+
+/* キャラ画像(移動ルートの「画像の変更」)とピクチャの名前。顔画像と同じく、
+ * いちばん上に「一覧から見て選ぶ…」を出す。 */
+const CHARACTER_NAME = /<(?:changeimage|画像の変更)\s*:\s*([^,<>]*)$/i;
+const CHARACTER_INDEX = /<(?:changeimage|画像の変更)\s*:\s*([^,<>]+),\s*(\d*)$/i;
+const PICTURE_NAME = /<(?:showpicture|sp|ピクチャの表示)\s*:\s*[^,<>]*,\s*([^,<>]*)$/i;
+
+function imageItems(service: DatabaseService, ctx: DbContext, line: string, position: vscode.Position): vscode.CompletionItem[] | undefined {
+    const before = line.slice(0, position.character);
+    if (before.lastIndexOf('<') <= before.lastIndexOf('>')) return undefined;
+    const index = before.match(CHARACTER_INDEX);
+    if (index) {
+        const typed = index[2];
+        const range = new vscode.Range(position.line, position.character - typed.length, position.line, position.character);
+        const count = service.characterCount(index[1].trim());
+        const out: vscode.CompletionItem[] = [];
+        for (let i = 0; i < count; i++) {
+            const item = new vscode.CompletionItem(String(i), vscode.CompletionItemKind.Value);
+            item.range = range;
+            item.insertText = String(i);
+            item.sortText = String(i);
+            item.detail = 'キャラ画像の番号';
+            const uri = service.characterUri(ctx, index[1].trim(), i, 96);
+            if (uri) item.documentation = new vscode.MarkdownString(`![](${uri})`);
+            out.push(item);
+        }
+        return out;
+    }
+    const character = before.match(CHARACTER_NAME);
+    const picture = character ? null : before.match(PICTURE_NAME);
+    if (!character && !picture) return undefined;
+    const typed = (character ? character[1] : (picture as RegExpMatchArray)[1]);
+    const range = new vscode.Range(position.line, position.character - typed.length, position.line, position.character);
+    const names = character ? service.characterNames(ctx) : service.pictureNames(ctx);
+    const browse = new vscode.CompletionItem('一覧から見て選ぶ…', vscode.CompletionItemKind.Folder);
+    browse.range = range;
+    browse.insertText = '';
+    browse.filterText = ' ';
+    browse.sortText = '\u0000';
+    browse.detail = character ? 'キャラ画像を並べて見る' : 'ピクチャを並べて見る';
+    browse.command = character
+        ? { command: 'text2frame.pickCharacter', title: 'キャラ画像を選ぶ' }
+        : { command: 'text2frame.pickPicture', title: 'ピクチャを選ぶ' };
+    return [browse].concat(names.map((name) => {
+        const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.File);
+        item.range = range;
+        item.insertText = name;
+        item.detail = character ? 'キャラ画像' : 'ピクチャ';
+        const uri = character ? service.characterUri(ctx, name, 0, 96) : service.pictureUri(ctx, name, 120);
+        if (uri) item.documentation = new vscode.MarkdownString(`![](${uri})`);
+        if (character) item.command = { command: 'editor.action.triggerSuggest', title: '' };
+        return item;
+    }));
 }
 
 function faceNameItems(service: DatabaseService, ctx: DbContext, range: vscode.Range): vscode.CompletionItem[] {
