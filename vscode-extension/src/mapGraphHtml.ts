@@ -1,4 +1,6 @@
 import * as crypto from 'crypto';
+import { tr } from './db/lang';
+import { html, scriptText } from './webviewText';
 
 /**
  * マップのつながりの図(Webview)。丸がマップ、矢印が場所移動。
@@ -6,8 +8,20 @@ import * as crypto from 'crypto';
  */
 export function mapGraphHtml(): string {
     const nonce = crypto.randomBytes(16).toString('base64');
+    const L = {
+        noTransfers: tr('このマップに出入りする場所移動は見つかりませんでした。', 'No Transfer Player into or out of this map was found.'),
+        places: tr('({0}か所)', ' ({0} places)'),
+        clickEdge: tr('押すと、移動している行へ飛びます', 'Click to jump to the transfer line'),
+        map: tr('マップ{0}', 'Map {0}'),
+        hops: tr(' / {0}回', ' / {0} hops'),
+        clickNode: tr('押すと、このマップを真ん中にします', 'Click to put this map in the middle'),
+        center: tr('真ん中: {0}', 'Middle: {0}'),
+        allMaps: tr('全部のマップ', 'All maps'),
+        truncated: tr('多いので途中までにしています。', 'There are many, so only part is shown. '),
+        count: tr('マップ {0}個 / 矢印 {1}本', '{0} maps / {1} arrows')
+    };
     return `<!DOCTYPE html>
-<html lang="ja"><head><meta charset="utf-8">
+<html lang="${tr('ja', 'en')}"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
 <style nonce="${nonce}">
   [hidden] { display: none !important; }
@@ -32,13 +46,14 @@ export function mapGraphHtml(): string {
 <body>
 <div id="top">
   <span id="center"></span>
-  <label>何段先まで <select id="hops"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
-  <label><input type="checkbox" id="vehicle"> 乗り物も出す</label>
-  <button id="all">全部のマップを出す</button>
+  <label>${html(tr('何段先まで', 'Hops'))} <select id="hops"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
+  <label><input type="checkbox" id="vehicle"> ${html(tr('乗り物も出す', 'Show vehicles too'))}</label>
+  <button id="all">${html(tr('全部のマップを出す', 'Show all maps'))}</button>
   <span id="note"></span>
 </div>
 <div id="graph"></div>
 <script nonce="${nonce}">
+  ${scriptText(L)}
   const vscode = acquireVsCodeApi();
   const SVG = 'http://www.w3.org/2000/svg';
   const COL = 230;
@@ -59,7 +74,7 @@ export function mapGraphHtml(): string {
     box.textContent = '';
     if (!data.nodes.length) {
       const none = document.createElement('div');
-      none.textContent = 'このマップに出入りする場所移動は見つかりませんでした。';
+      none.textContent = L.noTransfers;
       none.style.padding = '12px 0';
       box.appendChild(none);
       return;
@@ -133,18 +148,18 @@ export function mapGraphHtml(): string {
         'marker-end': 'url(#arrow-end)'
       }, svg);
       if (e.both) path.setAttribute('marker-start', 'url(#arrow-start)');
-      const label = (data.names[e.from] || e.from) + (e.both ? ' ⇄ ' : ' → ') + (data.names[e.to] || e.to) + '(' + e.places.length + 'か所)';
-      el('title', {}, path).textContent = label + ' — 押すと、移動している行へ飛びます';
+      const label = (data.names[e.from] || e.from) + (e.both ? ' ⇄ ' : ' → ') + (data.names[e.to] || e.to) + fmt(L.places, e.places.length);
+      el('title', {}, path).textContent = label + ' — ' + L.clickEdge;
       path.addEventListener('click', () => vscode.postMessage({ type: 'open', at: e.places[0].at, index: e.places[0].index }));
     }
     for (const n of data.nodes) {
       const g = el('g', { class: 'node' + (n.id === data.center ? ' center' : ''), transform: 'translate(' + at[n.id].x + ',' + at[n.id].y + ')' }, svg);
       el('rect', { width: W, height: H }, g);
       const name = el('text', { x: 8, y: 15 }, g);
-      name.textContent = (data.names[n.id] || ('マップ' + n.id)).slice(0, 14);
+      name.textContent = (data.names[n.id] || fmt(L.map, n.id)).slice(0, 14);
       const id = el('text', { x: 8, y: 28, class: 'id' }, g);
-      id.textContent = '#' + String(n.id).padStart(4, '0') + (n.hop ? ' / ' + n.hop + '回' : '');
-      el('title', {}, g).textContent = '押すと、このマップを真ん中にします';
+      id.textContent = '#' + String(n.id).padStart(4, '0') + (n.hop ? fmt(L.hops, n.hop) : '');
+      el('title', {}, g).textContent = L.clickNode;
       g.addEventListener('click', () => vscode.postMessage({ type: 'center', mapId: n.id }));
     }
   }
@@ -157,12 +172,12 @@ export function mapGraphHtml(): string {
     const m = event.data;
     if (m.type !== 'graph') return;
     data = m;
-    document.getElementById('center').textContent = m.center ? '真ん中: ' + (m.names[m.center] || m.center) : '全部のマップ';
+    document.getElementById('center').textContent = m.center ? fmt(L.center, m.names[m.center] || m.center) : L.allMaps;
     document.getElementById('hops').value = String(m.hops);
     document.getElementById('hops').disabled = !m.center;
     document.getElementById('vehicle').checked = !!m.vehicle;
-    document.getElementById('note').textContent = (m.truncated ? '多いので途中までにしています。' : '')
-      + 'マップ ' + m.nodes.length + '個 / 矢印 ' + m.edges.length + '本';
+    document.getElementById('note').textContent = (m.truncated ? L.truncated : '')
+      + fmt(L.count, m.nodes.length, m.edges.length);
     draw();
   });
   vscode.postMessage({ type: 'ready' });

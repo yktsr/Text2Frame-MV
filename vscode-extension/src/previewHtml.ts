@@ -1,4 +1,6 @@
 import * as crypto from 'crypto';
+import { tr } from './db/lang';
+import { scriptText } from './webviewText';
 
 /**
  * プレビューの HTML。VS Code に依存しない(描画は Webview の中のスクリプトが、
@@ -13,8 +15,15 @@ export const FACE_SIZE = 48;
 
 export function previewHtml(): string {
     const nonce = crypto.randomBytes(16).toString('base64');
+    const L = {
+        cannotPlay: tr('この形式の音声は再生できません(VS Code は .m4a を鳴らせないことがあります)', 'This audio format cannot be played (VS Code may not play .m4a)'),
+        noCommands: tr('(コマンドはありません)', '(No commands)'),
+        sep: tr('：', ': '),
+        cont: tr('：\u3000\u3000\u3000：', ':      :'),
+        play: tr('{0} を鳴らす', 'Play {0}')
+    };
     return `<!DOCTYPE html>
-<html lang="ja"><head><meta charset="utf-8">
+<html lang="${tr('ja', 'en')}"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
 <style nonce="${nonce}">
   body { font-family: var(--vscode-editor-font-family); font-size: var(--vscode-editor-font-size); color: var(--vscode-foreground); background: var(--vscode-editor-background); padding: 8px 12px; }
@@ -44,6 +53,7 @@ export function previewHtml(): string {
 <div id="banners"></div>
 <div id="rows"></div>
 <script nonce="${nonce}">
+  ${scriptText(L)}
   const vscode = acquireVsCodeApi();
   const rowsEl = document.getElementById('rows');
 
@@ -120,7 +130,7 @@ export function previewHtml(): string {
     }).catch(() => {
       if (waiting === w) waiting = null;
       w.button.textContent = '▶';
-      w.button.title = 'この形式の音声は再生できません(VS Code は .m4a を鳴らせないことがあります)';
+      w.button.title = L.cannotPlay;
     });
   };
   const bannersEl = document.getElementById('banners');
@@ -175,7 +185,7 @@ export function previewHtml(): string {
     if (m.error) banner('error', m.error);
     if (m.notice) banner('notice', m.notice);
     const frag = document.createDocumentFragment();
-    if (!m.rows.length) { const d = document.createElement('div'); d.className = 'empty'; d.textContent = '(コマンドはありません)'; frag.appendChild(d); }
+    if (!m.rows.length) { const d = document.createElement('div'); d.className = 'empty'; d.textContent = L.noCommands; frag.appendChild(d); }
     for (const r of m.rows) {
       const row = document.createElement('div');
       row.className = 'row ' + (r.head ? 'head' : 'cont') + (r.code === 108 || r.code === 408 ? ' comment' : '');
@@ -185,12 +195,12 @@ export function previewHtml(): string {
       const mark = document.createElement('span');
       mark.className = 'mark';
       // 続きの行はツクールと同じく「：」を字下げして揃える。
-      mark.textContent = r.head ? '◆' : '：\\u3000\\u3000\\u3000：';
+      mark.textContent = r.head ? '◆' : L.cont;
       row.appendChild(mark);
       if (r.head && r.label) {
         const label = document.createElement('span');
         label.className = 'label';
-        label.textContent = r.label + (r.text ? '：' : '');
+        label.textContent = r.label + (r.text ? L.sep : '');
         row.appendChild(label);
       }
       if (r.face) {
@@ -208,7 +218,7 @@ export function previewHtml(): string {
         const button = document.createElement('button');
         button.className = 'play';
         button.textContent = '▶';
-        button.title = 'audio/' + r.audio.folder + '/' + r.audio.name + ' を鳴らす';
+        button.title = fmt(L.play, 'audio/' + r.audio.folder + '/' + r.audio.name);
         button.addEventListener('click', () => requestPlay(button, r.audio));
         row.appendChild(button);
       }

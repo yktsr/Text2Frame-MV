@@ -22,3 +22,8 @@ export function tr(ja: string, en: string): string {
 export function pick(pair: readonly [string, string]): string {
     return japanese ? pair[0] : pair[1];
 }
+
+/** 日本語と英語の並びのうち、今の言語の方。 */
+export function trList(ja: string[], en: string[]): string[] {
+    return japanese ? ja : en;
+}

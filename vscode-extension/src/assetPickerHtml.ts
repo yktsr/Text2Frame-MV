@@ -1,4 +1,6 @@
 import * as crypto from 'crypto';
+import { tr } from './db/lang';
+import { html, scriptText } from './webviewText';
 
 /**
  * 素材を選ぶ画面(Webview)。顔画像は、見えた行から順に拡張へ頼んで読み込む。
@@ -6,8 +8,21 @@ import * as crypto from 'crypto';
  */
 export function assetPickerHtml(): string {
     const nonce = crypto.randomBytes(16).toString('base64');
+    const L = {
+        clickToPut: tr('押すと入れます', 'Click to put it in'),
+        characterNo: tr('{0} の {1} 番', '{0}, number {1}'),
+        cannotPlay: tr('この形式の音声は再生できません(VS Code は .m4a を鳴らせないことがあります)', 'This audio format cannot be played (VS Code may not play .m4a)'),
+        tryPlay: tr('試しに鳴らす(もう一度押すと止まる)', 'Listen (click again to stop)'),
+        put: tr('入れる', 'Put in'),
+        noFaces: tr('(img/faces に顔画像がありません)', '(No face images in img/faces)'),
+        noCharacters: tr('(img/characters に画像がありません)', '(No images in img/characters)'),
+        noPictures: tr('(img/pictures に画像がありません)', '(No images in img/pictures)'),
+        noAudio: tr('(audio/{0} に音声がありません)', '(No audio in audio/{0})'),
+        noMatch: tr('(当てはまるものはありません)', '(Nothing matches)'),
+        target: tr('入れる所: {0}', 'Goes to: {0}')
+    };
     return `<!DOCTYPE html>
-<html lang="ja"><head><meta charset="utf-8">
+<html lang="${tr('ja', 'en')}"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
 <style nonce="${nonce}">
   [hidden] { display: none !important; }
@@ -34,19 +49,20 @@ export function assetPickerHtml(): string {
 </style></head>
 <body>
 <div id="top">
-  <button class="tab" data-tab="face">顔画像</button>
+  <button class="tab" data-tab="face">${html(tr('顔画像', 'Faces'))}</button>
   <button class="tab" data-tab="bgm">BGM</button>
   <button class="tab" data-tab="bgs">BGS</button>
-  <button class="tab" data-tab="character">キャラ</button>
-  <button class="tab" data-tab="picture">ピクチャ</button>
+  <button class="tab" data-tab="character">${html(tr('キャラ', 'Characters'))}</button>
+  <button class="tab" data-tab="picture">${html(tr('ピクチャ', 'Pictures'))}</button>
   <button class="tab" data-tab="me">ME</button>
   <button class="tab" data-tab="se">SE</button>
-  <input id="filter" type="search" placeholder="名前で絞り込み">
+  <input id="filter" type="search" placeholder="${html(tr('名前で絞り込み', 'Filter by name'))}">
   <span id="target"></span>
   <span id="done"></span>
 </div>
 <div id="list"></div>
 <script nonce="${nonce}">
+  ${scriptText(L)}
   const vscode = acquireVsCodeApi();
   const $ = (id) => document.getElementById(id);
   let data = { faces: [], owners: {}, characters: [], pictures: [], audio: { bgm: [], bgs: [], me: [], se: [] } };
@@ -79,7 +95,7 @@ export function assetPickerHtml(): string {
       const cell = document.createElement('div');
       cell.className = 'face';
       const owner = data.owners[name + '(' + i + ')'];
-      cell.title = name + '(' + i + ')' + (owner ? ' — ' + owner : '') + '\\n押すと入れます';
+      cell.title = name + '(' + i + ')' + (owner ? ' — ' + owner : '') + '\\n' + L.clickToPut;
       const no = document.createElement('span');
       no.className = 'no';
       no.textContent = i;
@@ -107,7 +123,7 @@ export function assetPickerHtml(): string {
     for (let i = 0; i < count; i++) {
       const cell = document.createElement('div');
       cell.className = 'face';
-      cell.title = name + ' の ' + i + ' 番\\n押すと入れます';
+      cell.title = fmt(L.characterNo, name, i) + '\\n' + L.clickToPut;
       const no = document.createElement('span');
       no.className = 'no';
       no.textContent = i;
@@ -131,7 +147,7 @@ export function assetPickerHtml(): string {
     h.textContent = name;
     const cell = document.createElement('div');
     cell.className = 'face';
-    cell.title = name + '\\n押すと入れます';
+    cell.title = name + '\\n' + L.clickToPut;
     cell.addEventListener('click', () => vscode.postMessage({ type: 'pickPicture', name }));
     const grid = document.createElement('div');
     grid.className = 'faces';
@@ -193,7 +209,7 @@ export function assetPickerHtml(): string {
     }).catch(() => {
       if (waiting === w) waiting = null;
       w.button.textContent = '▶';
-      w.button.title = 'この形式の音声は再生できません(VS Code は .m4a を鳴らせないことがあります)';
+      w.button.title = L.cannotPlay;
     });
   };
 
@@ -203,14 +219,14 @@ export function assetPickerHtml(): string {
     const play = document.createElement('button');
     play.className = 'play';
     play.textContent = '▶';
-    play.title = '試しに鳴らす(もう一度押すと止まる)';
+    play.title = L.tryPlay;
     play.addEventListener('click', () => requestPlay(play, folder, name));
     const label = document.createElement('span');
     label.className = 'name';
     label.textContent = name;
     const put = document.createElement('button');
     put.className = 'put';
-    put.textContent = '入れる';
+    put.textContent = L.put;
     put.addEventListener('click', () => vscode.postMessage({ type: 'pickAudio', folder, name }));
     row.append(play, label, put);
     return row;
@@ -234,11 +250,11 @@ export function assetPickerHtml(): string {
     if (!names.length) {
       const none = document.createElement('div');
       none.className = 'none';
-      const empty = tab === 'face' ? '(img/faces に顔画像がありません)'
-        : tab === 'character' ? '(img/characters に画像がありません)'
-          : tab === 'picture' ? '(img/pictures に画像がありません)'
-            : '(audio/' + tab + ' に音声がありません)';
-      none.textContent = q ? '(当てはまるものはありません)' : empty;
+      const empty = tab === 'face' ? L.noFaces
+        : tab === 'character' ? L.noCharacters
+          : tab === 'picture' ? L.noPictures
+            : fmt(L.noAudio, tab);
+      none.textContent = q ? L.noMatch : empty;
       frag.appendChild(none);
     }
     list.appendChild(frag);
@@ -256,7 +272,7 @@ export function assetPickerHtml(): string {
     if (m.type === 'init') {
       data = m;
       if (m.tab) tab = m.tab;
-      $('target').textContent = m.target ? '入れる所: ' + m.target : '';
+      $('target').textContent = m.target ? fmt(L.target, m.target) : '';
       $('done').textContent = '';
       render();
     } else if (m.type === 'faces' || m.type === 'characters' || m.type === 'picture') {

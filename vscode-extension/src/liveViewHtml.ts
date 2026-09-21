@@ -1,9 +1,57 @@
 import * as crypto from 'crypto';
+import { tr, trList } from './db/lang';
+import { html, scriptText } from './webviewText';
 
 export function liveViewHtml(): string {
     const nonce = crypto.randomBytes(16).toString('base64');
+    const L = {
+        item: tr('アイテム', 'Items'), weapon: tr('武器', 'Weapons'), armor: tr('防具', 'Armors'),
+        parallelPage: tr('並列処理で動いています(このページが出ている間、毎フレーム繰り返します)', 'Running as a parallel process (repeats every frame while this page is active)'),
+        parallelCommon: tr('並列処理で動いています(スイッチが ON の間、毎フレーム繰り返します)', 'Running as a parallel process (repeats every frame while the switch is ON)'),
+        triggers: trList(
+            ['決定ボタン', 'プレイヤーから接触', 'イベントから接触', '自動実行', '並列処理'],
+            ['Action Button', 'Player Touch', 'Event Touch', 'Autorun', 'Parallel']),
+        openTextPreview: tr('テキストとプレビューを開く', 'Open the text and preview'),
+        parallel: tr('並列', 'Parallel'),
+        pagesTwisty: tr('ページごとの出現条件とトリガー(全 {0} ページ)', 'Conditions and trigger of each page ({0} pages)'),
+        isOn: tr(' が ON', ' is ON'),
+        now: tr('(今 {0})', ' (now {0})'),
+        self: tr('セルフ', 'Self switch'),
+        hasItem: tr('アイテム{0}({1})を持つ', 'Has item{0} ({1})'),
+        inParty: tr('アクター{0}({1})が仲間', 'Actor{0} ({1}) is in the party'),
+        openPage: tr('{0}ページのテキストとプレビューを開く', 'Open the text and preview of page {0}'),
+        activeNow: tr('(ゲームでは今このページ)', ' (the game is on this page now)'),
+        trigger: tr('トリガー', 'Trigger '),
+        noConditions: tr('条件なし', 'No conditions'),
+        gameOnPage: tr('ゲームでは今 {0}ページ', 'The game is on page {0}'),
+        ofPages: tr('(全 {0} ページ)', ' (of {0})'),
+        onlyWhilePlaying: tr('テストプレイ中だけ書き換えられます', 'You can change this only while test playing'),
+        toggleSelf: tr('セルフスイッチ {0} を切り替え', 'Toggle self switch {0}'),
+        usedHere: tr('(このイベントで使っている)', ' (used in this event)'),
+        noEventsOnMap: tr('(このマップにイベントはありません)', '(No events on this map)'),
+        notOnMap: tr('(マップにいません)', '(Not on a map)'),
+        parallelCommons: tr('並列処理のコモンイベント', 'Parallel common events'),
+        noName: tr('(名前なし)', '(no name)'),
+        otherMaps: tr('ほかのマップ(ON のもの)', 'Other maps (the ones that are ON)'),
+        map: tr('マップ', 'Map '),
+        typeCount: tr('個数を打って Enter で書き込み', 'Type a number and press Enter to write it'),
+        typeGold: tr('金額を打って Enter で書き込み', 'Type an amount and press Enter to write it'),
+        noMatch: tr('(当てはまるものはありません)', '(Nothing matches)'),
+        noItems: tr('(アイテムがありません)', '(No items)'),
+        nothingOwned: tr('(何も持っていません)', '(The party has nothing)'),
+        kinds: tr('{0}種類', '{0} kinds'),
+        ofAll: tr(' / 全{0}', ' / {0} in all'),
+        clickToggle: tr('クリックで切り替え', 'Click to toggle'),
+        typeValue: tr('値を打って Enter で書き込み(文字は "…" で囲む)', 'Type a value and press Enter to write it (put text in "…")'),
+        playing: tr('テストプレイ中', 'Test playing'),
+        lastValues: tr('テストプレイの最後の値', 'Last values of the test play'),
+        noWord: tr('(ゲームから知らせがありません)', ' (no word from the game)'),
+        lineN: tr(' {0}行目', ' line {0}'),
+        nearLine: tr('(近い行)', ' (nearby line)'),
+        clickToOpenLine: tr('押すとその行を開きます。', 'Click to open that line.')
+    };
     return `<!DOCTYPE html>
-<html lang="ja"><head><meta charset="utf-8">
+<html lang="${tr('ja', 'en')}"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
 <style nonce="${nonce}">
   [hidden] { display: none !important; }
@@ -73,19 +121,20 @@ export function liveViewHtml(): string {
 <div id="top">
   <span id="status"></span>
   <span id="running" hidden></span>
-  <input id="filter" type="search" placeholder="番号・名前で絞り込み">
-  <label title="「すべて」「すべてのイベント」にチェックがある列は、OFF・0 も並べます"><input id="hideDefault" type="checkbox"> OFF・0 を隠す</label>
-  <label title="実行しているイベントのテキストを自動で開く(設定 text2frame.openRunningText)"><input id="openRunning" type="checkbox"> 実行中のテキストを開く</label>
+  <input id="filter" type="search" placeholder="${html(tr('番号・名前で絞り込み', 'Filter by id or name'))}">
+  <label title="${html(tr('「すべて」「すべてのイベント」にチェックがある列は、OFF・0 も並べます', 'Columns with All or All events checked still list OFF and 0'))}"><input id="hideDefault" type="checkbox"> ${html(tr('OFF・0 を隠す', 'Hide OFF and 0'))}</label>
+  <label title="${html(tr('実行しているイベントのテキストを自動で開く(設定 text2frame.openRunningText)', 'Open the text of the running event automatically (setting text2frame.openRunningText)'))}"><input id="openRunning" type="checkbox"> ${html(tr('実行中のテキストを開く', 'Open the running text'))}</label>
   <span id="notice"></span>
 </div>
-<div id="empty">テストプレイ中だけ、ここにスイッチ・変数・イベント・アイテム・所持金が出ます。<button id="play">▶ テストプレイ</button></div>
+<div id="empty">${html(tr('テストプレイ中だけ、ここにスイッチ・変数・イベント・アイテム・所持金が出ます。', 'Switches, variables, events, items and gold show here while test playing.'))}<button id="play">▶ ${html(tr('テストプレイ', 'Test play'))}</button></div>
 <div id="cols" hidden>
-  <section><h3>スイッチ<span class="count" id="switchCount"></span></h3><div class="list" id="switches"></div></section>
-  <section><h3>変数<span class="count" id="variableCount"></span></h3><div class="list" id="variables"></div></section>
-  <section><h3>イベント<span class="count" id="selfCount"></span><label title="出現条件もセルフスイッチも使っていないイベントも並べる"><input id="allEvents" type="checkbox"> すべてのイベント</label></h3><div class="list"><div id="commons" hidden></div><div id="selfHere"></div><div id="selfUnused" class="none" hidden>(このマップに出現条件やセルフスイッチを使うイベントはありません)</div><div id="selfOthers"></div></div></section>
-  <section><h3>アイテム<span class="count" id="itemCount"></span><label title="持っていないものも並べる(個数を入れると増やせます)"><input id="allItems" type="checkbox"> すべて</label></h3><div class="row" id="goldRow"><span class="name">所持金</span><input class="var" id="gold"><span class="id" id="currency"></span></div><div class="list"><div id="items"></div><div id="itemNone" class="none" hidden></div></div></section>
+  <section><h3>${html(tr('スイッチ', 'Switches'))}<span class="count" id="switchCount"></span></h3><div class="list" id="switches"></div></section>
+  <section><h3>${html(tr('変数', 'Variables'))}<span class="count" id="variableCount"></span></h3><div class="list" id="variables"></div></section>
+  <section><h3>${html(tr('イベント', 'Events'))}<span class="count" id="selfCount"></span><label title="${html(tr('出現条件もセルフスイッチも使っていないイベントも並べる', 'Also list events that use no conditions or self switches'))}"><input id="allEvents" type="checkbox"> ${html(tr('すべてのイベント', 'All events'))}</label></h3><div class="list"><div id="commons" hidden></div><div id="selfHere"></div><div id="selfUnused" class="none" hidden>${html(tr('(このマップに出現条件やセルフスイッチを使うイベントはありません)', '(No event on this map uses conditions or self switches)'))}</div><div id="selfOthers"></div></div></section>
+  <section><h3>${html(tr('アイテム', 'Items'))}<span class="count" id="itemCount"></span><label title="${html(tr('持っていないものも並べる(個数を入れると増やせます)', 'Also list what the party does not have (enter a number to add some)'))}"><input id="allItems" type="checkbox"> ${html(tr('すべて', 'All'))}</label></h3><div class="row" id="goldRow"><span class="name">${html(tr('所持金', 'Gold'))}</span><input class="var" id="gold"><span class="id" id="currency"></span></div><div class="list"><div id="items"></div><div id="itemNone" class="none" hidden></div></div></section>
 </div>
 <script nonce="${nonce}">
+  ${scriptText(L)}
   const vscode = acquireVsCodeApi();
   const $ = (id) => document.getElementById(id);
   const lists = { switch: $('switches'), variable: $('variables') };
@@ -98,7 +147,7 @@ export function liveViewHtml(): string {
   $('hideDefault').checked = !!saved.hideDefault;
   $('allEvents').checked = !!saved.allEvents;
   $('allItems').checked = !!saved.allItems;
-  const ITEM_KINDS = [['i', 'アイテム'], ['w', '武器'], ['a', '防具']];
+  const ITEM_KINDS = [['i', L.item], ['w', L.weapon], ['a', L.armor]];
   let itemRows = new Map();
   let itemSubs = new Map();
   let itemCounts = new Map();
@@ -109,9 +158,9 @@ export function liveViewHtml(): string {
   let actorsNow = new Set();
   let parallelNow = new Set();
   let commonsSignature = '';
-  const PARALLEL_TITLE = '並列処理で動いています(このページが出ている間、毎フレーム繰り返します)';
+  const PARALLEL_TITLE = L.parallelPage;
   const expanded = new Set();
-  const TRIGGERS = ['決定ボタン', 'プレイヤーから接触', 'イベントから接触', '自動実行', '並列処理'];
+  const TRIGGERS = L.triggers;
 
   const pad = (n) => String(n).padStart(4, '0');
   const blank = (kind) => (kind === 'switch' ? false : 0);
@@ -143,12 +192,12 @@ export function liveViewHtml(): string {
     const nameEl = document.createElement('span');
     nameEl.className = 'name';
     nameEl.textContent = label;
-    nameEl.title = label + '\\nテキストとプレビューを開く';
+    nameEl.title = label + '\\n' + L.openTextPreview;
     const pageEl = document.createElement('span');
     pageEl.className = 'page';
     const parEl = document.createElement('span');
     parEl.className = 'par';
-    parEl.textContent = '並列';
+    parEl.textContent = L.parallel;
     parEl.title = PARALLEL_TITLE;
     parEl.hidden = true;
     const box = document.createElement('span');
@@ -162,7 +211,7 @@ export function liveViewHtml(): string {
     const r = { wrap, row, box, pageEl, parEl, twisty, details, mapId, eventId, buttons: new Map(), used: used || [], pages: pages || [] };
     r.conditional = r.pages.some(hasConditions);
     if (r.pages.length) {
-      twisty.title = 'ページごとの出現条件とトリガー(全 ' + r.pages.length + ' ページ)';
+      twisty.title = fmt(L.pagesTwisty, r.pages.length);
       twisty.addEventListener('click', () => {
         const key = mapId + ',' + eventId;
         if (expanded.has(key)) expanded.delete(key);
@@ -180,16 +229,16 @@ export function liveViewHtml(): string {
 
   function conditionChecks(r, p) {
     const out = [];
-    const sw = (id) => ({ text: 'S' + pad(id) + nameOf(dbNames.switches, id) + ' が ON', ok: !!valueOf('switch', id) });
+    const sw = (id) => ({ text: 'S' + pad(id) + nameOf(dbNames.switches, id) + L.isOn, ok: !!valueOf('switch', id) });
     if (p.switch1) out.push(sw(p.switch1));
     if (p.switch2) out.push(sw(p.switch2));
     if (p.variable) {
       const v = valueOf('variable', p.variable[0]);
-      out.push({ text: 'V' + pad(p.variable[0]) + nameOf(dbNames.variables, p.variable[0]) + ' ≥ ' + p.variable[1] + '(今 ' + text(v) + ')', ok: Number(v) >= p.variable[1] });
+      out.push({ text: 'V' + pad(p.variable[0]) + nameOf(dbNames.variables, p.variable[0]) + ' ≥ ' + p.variable[1] + fmt(L.now, text(v)), ok: Number(v) >= p.variable[1] });
     }
-    if (p.selfSwitch) out.push({ text: 'セルフ ' + p.selfSwitch + ' が ON', ok: selfOn.has(r.mapId + ',' + r.eventId + ',' + p.selfSwitch) });
-    if (p.item) out.push({ text: 'アイテム' + nameOf(dbNames.items.i, p.item) + '(' + pad(p.item) + ')を持つ', ok: (itemCounts.get('i:' + p.item) || 0) > 0 });
-    if (p.actor) out.push({ text: 'アクター' + nameOf(dbNames.actors, p.actor) + '(' + pad(p.actor) + ')が仲間', ok: actorsNow.has(p.actor) });
+    if (p.selfSwitch) out.push({ text: L.self + ' ' + p.selfSwitch + L.isOn, ok: selfOn.has(r.mapId + ',' + r.eventId + ',' + p.selfSwitch) });
+    if (p.item) out.push({ text: fmt(L.hasItem, nameOf(dbNames.items.i, p.item), pad(p.item)), ok: (itemCounts.get('i:' + p.item) || 0) > 0 });
+    if (p.actor) out.push({ text: fmt(L.inParty, nameOf(dbNames.actors, p.actor), pad(p.actor)), ok: actorsNow.has(p.actor) });
     return out;
   }
 
@@ -203,19 +252,19 @@ export function liveViewHtml(): string {
     r.pages.forEach((p, n) => {
       const line = document.createElement('div');
       line.className = 'pline' + (active === n + 1 ? ' active' : '');
-      line.title = (n + 1) + 'ページのテキストとプレビューを開く' + (active === n + 1 ? '(ゲームでは今このページ)' : '');
+      line.title = fmt(L.openPage, n + 1) + (active === n + 1 ? L.activeNow : '');
       const no = document.createElement('span');
       no.className = 'pno';
       no.textContent = 'P' + (n + 1);
       const trig = document.createElement('span');
       trig.className = 'trig';
-      trig.textContent = TRIGGERS[p.trigger] || ('トリガー' + p.trigger);
+      trig.textContent = TRIGGERS[p.trigger] || (L.trigger + p.trigger);
       line.append(no, trig);
       const checks = conditionChecks(r, p);
       if (!checks.length) {
         const none = document.createElement('span');
         none.className = 'cond none';
-        none.textContent = '条件なし';
+        none.textContent = L.noConditions;
         line.appendChild(none);
       }
       for (const c of checks) {
@@ -248,7 +297,7 @@ export function liveViewHtml(): string {
     const page = r.mapId === mapInfo.mapId ? pagesHere.get(r.eventId) : undefined;
     const total = r.pages.length;
     r.pageEl.textContent = page ? 'P' + page + (total ? '/' + total : '') : '';
-    r.pageEl.title = page ? 'ゲームでは今 ' + page + 'ページ' + (total ? '(全 ' + total + ' ページ)' : '') : '';
+    r.pageEl.title = page ? fmt(L.gameOnPage, page) + (total ? fmt(L.ofPages, total) : '') : '';
     r.parallel = r.mapId === mapInfo.mapId && parallelNow.has(r.eventId);
     r.parEl.hidden = !r.parallel;
     let any = false;
@@ -257,7 +306,7 @@ export function liveViewHtml(): string {
       any = any || on;
       button.classList.toggle('on', on);
       button.disabled = disabled;
-      button.title = (disabled ? 'テストプレイ中だけ書き換えられます' : 'セルフスイッチ ' + letter + ' を切り替え') + (r.used.includes(letter) ? '(このイベントで使っている)' : '');
+      button.title = (disabled ? L.onlyWhilePlaying : fmt(L.toggleSelf, letter)) + (r.used.includes(letter) ? L.usedHere : '');
     });
     r.on = any;
   }
@@ -274,7 +323,7 @@ export function liveViewHtml(): string {
     if (!m.events.length) {
       const none = document.createElement('div');
       none.className = 'none';
-      none.textContent = m.mapId ? '(このマップにイベントはありません)' : '(マップにいません)';
+      none.textContent = m.mapId ? L.noEventsOnMap : L.notOnMap;
       frag.appendChild(none);
     }
     $('selfHere').textContent = '';
@@ -296,7 +345,7 @@ export function liveViewHtml(): string {
     if (!ids.length) return;
     const sub = document.createElement('div');
     sub.className = 'sub';
-    sub.textContent = '並列処理のコモンイベント';
+    sub.textContent = L.parallelCommons;
     box.appendChild(sub);
     for (const id of ids) {
       const row = document.createElement('div');
@@ -307,12 +356,12 @@ export function liveViewHtml(): string {
       const name = (dbNames.commonEvents || [])[id] || '';
       const nameEl = document.createElement('span');
       nameEl.className = 'name link' + (name ? '' : ' blank');
-      nameEl.textContent = name || '(名前なし)';
-      nameEl.title = (name ? name + '\\n' : '') + 'テキストとプレビューを開く';
+      nameEl.textContent = name || L.noName;
+      nameEl.title = (name ? name + '\\n' : '') + L.openTextPreview;
       const par = document.createElement('span');
       par.className = 'par';
-      par.textContent = '並列';
-      par.title = '並列処理で動いています(スイッチが ON の間、毎フレーム繰り返します)';
+      par.textContent = L.parallel;
+      par.title = L.parallelCommon;
       for (const el of [idEl, nameEl]) el.addEventListener('click', () => vscode.postMessage({ type: 'openCommon', id }));
       row.append(idEl, nameEl, par);
       box.appendChild(row);
@@ -335,10 +384,10 @@ export function liveViewHtml(): string {
     if (!groups.size) return true;
     const sub = document.createElement('div');
     sub.className = 'sub';
-    sub.textContent = 'ほかのマップ(ON のもの)';
+    sub.textContent = L.otherMaps;
     box.appendChild(sub);
     Array.from(groups).sort((a, b) => a[1][0] - b[1][0] || a[1][1] - b[1][1]).forEach(([group, [m, e]]) => {
-      const r = selfRow(m, e, selfLabels[group] || ('マップ' + m));
+      const r = selfRow(m, e, selfLabels[group] || (L.map + m));
       otherRows.set(group, r);
       box.appendChild(r.wrap);
     });
@@ -353,7 +402,7 @@ export function liveViewHtml(): string {
     idEl.textContent = pad(id);
     const nameEl = document.createElement('span');
     nameEl.className = 'name' + (name ? '' : ' blank');
-    nameEl.textContent = name || '(名前なし)';
+    nameEl.textContent = name || L.noName;
     nameEl.title = name;
     row.append(idEl, nameEl);
     let control;
@@ -387,7 +436,7 @@ export function liveViewHtml(): string {
     idEl.textContent = pad(id);
     const nameEl = document.createElement('span');
     nameEl.className = 'name' + (name ? '' : ' blank');
-    nameEl.textContent = name || '(名前なし)';
+    nameEl.textContent = name || L.noName;
     nameEl.title = name;
     const control = document.createElement('input');
     control.className = 'var count';
@@ -410,7 +459,7 @@ export function liveViewHtml(): string {
     const count = itemCounts.get(key) || 0;
     const disabled = status !== 'live';
     r.control.disabled = disabled;
-    r.control.title = disabled ? 'テストプレイ中だけ書き換えられます' : '個数を打って Enter で書き込み';
+    r.control.title = disabled ? L.onlyWhilePlaying : L.typeCount;
     if (document.activeElement !== r.control) {
       r.control.value = String(count);
       r.control.classList.toggle('set', count > 0);
@@ -421,7 +470,7 @@ export function liveViewHtml(): string {
     const el = $('gold');
     const disabled = status !== 'live';
     el.disabled = disabled;
-    el.title = disabled ? 'テストプレイ中だけ書き換えられます' : '金額を打って Enter で書き込み';
+    el.title = disabled ? L.onlyWhilePlaying : L.typeGold;
     if (document.activeElement !== el) {
       el.value = String(gold);
       el.classList.toggle('set', gold > 0);
@@ -474,8 +523,8 @@ export function liveViewHtml(): string {
     });
     itemSubs.forEach((sub, kind) => { sub.hidden = !shownIn.get(kind); });
     $('itemNone').hidden = shown > 0;
-    $('itemNone').textContent = q ? '(当てはまるものはありません)' : all ? '(アイテムがありません)' : '(何も持っていません)';
-    $('itemCount').textContent = owned + '種類' + (all ? ' / 全' + total : '');
+    $('itemNone').textContent = q ? L.noMatch : all ? L.noItems : L.nothingOwned;
+    $('itemCount').textContent = fmt(L.kinds, owned) + (all ? fmt(L.ofAll, total) : '');
   }
 
   function paint(kind, id) {
@@ -484,7 +533,7 @@ export function liveViewHtml(): string {
     const v = valueOf(kind, id);
     const disabled = status !== 'live';
     r.control.disabled = disabled;
-    r.control.title = disabled ? 'テストプレイ中だけ書き換えられます' : (kind === 'switch' ? 'クリックで切り替え' : '値を打って Enter で書き込み(文字は "…" で囲む)');
+    r.control.title = disabled ? L.onlyWhilePlaying : (kind === 'switch' ? L.clickToggle : L.typeValue);
     if (kind === 'switch') {
       r.control.textContent = v ? 'ON' : 'OFF';
       r.control.classList.toggle('on', !!v);
@@ -516,7 +565,7 @@ export function liveViewHtml(): string {
     $('selfUnused').hidden = !(hereRows.size > 0 && relevantHere === 0);
     const where = mapInfo.mapName ? mapInfo.mapName + ' ' : '';
     const total = all ? hereRows.size : relevantHere;
-    $('selfCount').textContent = where + (shownHere === total ? String(total) : shownHere + ' / ' + total) + (all ? '' : ' / 全' + hereRows.size);
+    $('selfCount').textContent = where + (shownHere === total ? String(total) : shownHere + ' / ' + total) + (all ? '' : fmt(L.ofAll, hereRows.size));
     for (const kind of ['switch', 'variable']) {
       let shown = 0;
       rows[kind].forEach((r, id) => {
@@ -560,8 +609,8 @@ export function liveViewHtml(): string {
     const repaintAll = status !== m.status;
     status = m.status;
     $('status').className = status;
-    $('status').textContent = status === 'live' ? 'テストプレイ中' + project
-      : status === 'stale' ? 'テストプレイの最後の値' + project + '(ゲームから知らせがありません)' : '';
+    $('status').textContent = status === 'live' ? L.playing + project
+      : status === 'stale' ? L.lastValues + project + L.noWord : '';
     $('empty').hidden = status !== 'none';
     $('cols').hidden = status === 'none';
     const next = { switch: new Map(m.switches), variable: new Map(m.variables) };
@@ -644,9 +693,9 @@ export function liveViewHtml(): string {
     }
     el.hidden = false;
     el.className = !inner.found ? 'missing' : inner.line !== null && !inner.exact ? 'approximate' : '';
-    el.textContent = '▶ ' + inner.label + (inner.line !== null ? ' ' + inner.line + '行目' : '') + (inner.line !== null && !inner.exact ? '(近い行)' : '');
-    el.title = m.frames.slice().reverse().map((f) => f.label + (f.line !== null ? ' ' + f.line + '行目' : '') + (f.problem ? ' — ' + f.problem : '')).join('\\n')
-      + (inner.found ? '\\n\\n押すとその行を開きます。' : '');
+    el.textContent = '▶ ' + inner.label + (inner.line !== null ? fmt(L.lineN, inner.line) : '') + (inner.line !== null && !inner.exact ? L.nearLine : '');
+    el.title = m.frames.slice().reverse().map((f) => f.label + (f.line !== null ? fmt(L.lineN, f.line) : '') + (f.problem ? ' — ' + f.problem : '')).join('\\n')
+      + (inner.found ? '\\n\\n' + L.clickToOpenLine : '');
   }
 
   $('running').addEventListener('click', () => { if (!$('running').classList.contains('missing')) vscode.postMessage({ type: 'revealRunning' }); });

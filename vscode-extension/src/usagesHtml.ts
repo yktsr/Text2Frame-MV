@@ -1,4 +1,6 @@
 import * as crypto from 'crypto';
+import { tr } from './db/lang';
+import { scriptText } from './webviewText';
 
 /**
  * 「使っている箇所」の一覧の HTML。VS Code に依存しない。grep のように、ファイルごとに
@@ -15,8 +17,12 @@ import * as crypto from 'crypto';
 
 export function usagesHtml(): string {
     const nonce = crypto.randomBytes(16).toString('base64');
+    const L = {
+        conditionPages: tr('出現条件になっているページ', 'Pages it makes appear'),
+        noTexts: tr('使っているテキストはありません。', 'No text uses it.')
+    };
     return `<!DOCTYPE html>
-<html lang="ja"><head><meta charset="utf-8">
+<html lang="${tr('ja', 'en')}"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
 <style nonce="${nonce}">
   body { margin: 0; padding: 0 12px 12px; font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); background: var(--vscode-editor-background); }
@@ -44,6 +50,7 @@ export function usagesHtml(): string {
 <main id="conditions"></main>
 <main id="files"></main>
 <script nonce="${nonce}">
+  ${scriptText(L)}
   const vscode = acquireVsCodeApi();
   const filesEl = document.getElementById('files');
   const conditionsEl = document.getElementById('conditions');
@@ -85,7 +92,7 @@ export function usagesHtml(): string {
       const summary = document.createElement('summary');
       const label = document.createElement('span');
       label.className = 'label';
-      label.textContent = '出現条件になっているページ';
+      label.textContent = L.conditionPages;
       summary.append(label);
       details.append(summary);
       m.conditions.forEach((c, index) => {
@@ -136,7 +143,7 @@ export function usagesHtml(): string {
     if (!m.files.length) {
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent = '使っているテキストはありません。';
+      empty.textContent = L.noTexts;
       frag.append(empty);
     }
     filesEl.textContent = '';
