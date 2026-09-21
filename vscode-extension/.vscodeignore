@@ -12,3 +12,4 @@ package-lock.json
 .gitignore
 icon.svg
 RELEASE.md
+docs/**
