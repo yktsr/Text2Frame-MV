@@ -1,6 +1,7 @@
 import { scanLines } from './tagRefs';
 import { DbKind } from './database';
 import { PageSummary } from './eventPages';
+import { tr } from './lang';
 
 /**
  * データベースの番号を使っている箇所を、grep のように前後の行つきでまとめる。VS Code に依存しない。
@@ -80,10 +81,10 @@ export function conditionHits(events: ConditionEvent[], kind: DbKind, id: number
     for (const event of events) {
         event.pages.forEach((page, index) => {
             const add = (note: string): void => { out.push({ mapId: event.mapId, eventId: event.eventId, pageId: index + 1, note }); };
-            if (kind === 'switch' && (page.switch1 === id || page.switch2 === id)) add('ON で出る');
-            else if (kind === 'variable' && page.variable && page.variable[0] === id) add(`${page.variable[1]} 以上で出る`);
-            else if (kind === 'item' && page.item === id) add('持っていると出る');
-            else if (kind === 'actor' && page.actor === id) add('仲間にいると出る');
+            if (kind === 'switch' && (page.switch1 === id || page.switch2 === id)) add(tr('ON で出る', 'appears when ON'));
+            else if (kind === 'variable' && page.variable && page.variable[0] === id) add(tr(`${page.variable[1]} 以上で出る`, `appears at ${page.variable[1]} or more`));
+            else if (kind === 'item' && page.item === id) add(tr('持っていると出る', 'appears when the party has it'));
+            else if (kind === 'actor' && page.actor === id) add(tr('仲間にいると出る', 'appears when in the party'));
         });
     }
     return out;

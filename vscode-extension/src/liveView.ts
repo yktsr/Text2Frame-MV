@@ -9,6 +9,7 @@ import { eventId, MapEvent } from './db/describe';
 import { PageSummary } from './db/eventPages';
 import { placeFromKey, placeLabel } from './placeLabel';
 import { RunningFrame, RunTracker, openRunningText, openText, setOpenRunningText } from './runHighlight';
+import { tr } from './db/lang';
 
 export const LIVE_VIEW_ID = 'text2frame.liveValues';
 
@@ -87,7 +88,7 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
             this.tab.reveal();
             return;
         }
-        this.adoptTab(vscode.window.createWebviewPanel(LIVE_TAB_TYPE, 'デバッグメニュー', vscode.ViewColumn.Beside, { retainContextWhenHidden: true }));
+        this.adoptTab(vscode.window.createWebviewPanel(LIVE_TAB_TYPE, tr('デバッグメニュー', 'Debug menu'), vscode.ViewColumn.Beside, { retainContextWhenHidden: true }));
     }
 
     async show(): Promise<void> {
@@ -181,7 +182,7 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
 
     private mapName(ctx: DbContext, mapId: number): string {
         const map = ctx.db.lookup('map', mapId);
-        return map.status === 'named' ? map.name : `マップ${padId(mapId)}`;
+        return map.status === 'named' ? map.name : tr(`マップ${padId(mapId)}`, `Map ${padId(mapId)}`);
     }
 
     private eventsMessage(ctx: DbContext, mapId: number, events: Array<MapEvent | null> | undefined): unknown {
@@ -210,7 +211,7 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
         const running = this.tracker.current().slice().reverse().find((f) => f.key === key && f.uri);
         const file = running?.uri?.fsPath ?? await this.tracker.textFor(ctx, key);
         if (!file) {
-            this.notice(`${placeLabel(this.service, ctx, placeFromKey(key))} のテキストが見つかりません。`);
+            this.notice(tr(`${placeLabel(this.service, ctx, placeFromKey(key))} のテキストが見つかりません。`, `The text of ${placeLabel(this.service, ctx, placeFromKey(key))} was not found.`));
             return;
         }
         await openText(vscode.Uri.file(file), running?.from ?? 0);
@@ -229,8 +230,8 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
                 page = 1;
             } else {
                 const pick = await vscode.window.showQuickPick(
-                    Array.from({ length: count }, (_v, i) => ({ label: `${i + 1}ページ`, page: i + 1 })),
-                    { placeHolder: `${placeLabel(this.service, ctx, { kind: 'event', mapId, eventId: eventNo })} のどのページを開きますか` }
+                    Array.from({ length: count }, (_v, i) => ({ label: tr(`${i + 1}ページ`, `Page ${i + 1}`), page: i + 1 })),
+                    { placeHolder: tr(`${placeLabel(this.service, ctx, { kind: 'event', mapId, eventId: eventNo })} のどのページを開きますか`, `Which page of ${placeLabel(this.service, ctx, { kind: 'event', mapId, eventId: eventNo })} do you want to open?`) }
                 );
                 if (!pick) return;
                 page = pick.page;
@@ -240,7 +241,7 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
         const here = running && running.key === key ? running : undefined;
         const file = here?.uri?.fsPath ?? await this.tracker.textFor(ctx, key);
         if (!file) {
-            this.notice(`${placeLabel(this.service, ctx, placeFromKey(key))} のテキストが見つかりません。`);
+            this.notice(tr(`${placeLabel(this.service, ctx, placeFromKey(key))} のテキストが見つかりません。`, `The text of ${placeLabel(this.service, ctx, placeFromKey(key))} was not found.`));
             return;
         }
         await openText(vscode.Uri.file(file), here?.from ?? 0);
@@ -287,7 +288,7 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
         if (!selfSwitch && !item && !gold && (!Number.isInteger(m.id) || m.id < 1)) return;
         const session = this.live.current();
         if (!session || this.statusOf(session) !== 'live') {
-            this.notice('テストプレイ中だけ書き換えられます。');
+            this.notice(tr('テストプレイ中だけ書き換えられます。', 'You can change this only while test playing.'));
             return;
         }
         let delivered = 0;
@@ -312,7 +313,7 @@ class LiveViewProvider implements vscode.WebviewViewProvider, vscode.WebviewPane
         } else {
             return;
         }
-        if (delivered === 0) this.notice('ゲームに届きませんでした。テストプレイのページを読み直してください。');
+        if (delivered === 0) this.notice(tr('ゲームに届きませんでした。テストプレイのページを読み直してください。', 'Could not reach the game. Reload the test play page.'));
     }
 }
 

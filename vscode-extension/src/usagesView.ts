@@ -9,6 +9,7 @@ import { placeFromMeta, placeKey, placeLabel } from './placeLabel';
 import { readMapInfos } from './db/mapTree';
 import { readOnlyUri } from './eventLinks';
 import { usagesHtml } from './usagesHtml';
+import { tr } from './db/lang';
 
 /**
  * データベースの番号を使っている箇所を、前後の行つきで横に一覧する(grep の結果のように)。
@@ -128,9 +129,9 @@ export class UsagesPanel {
     constructor(private readonly service: DatabaseService) {}
 
     async show(ctx: DbContext, target: UsageTarget): Promise<void> {
-        const title = `${ctx.db.label(target.kind)} ${padId(target.id)} ${target.name || '(名前なし)'}`;
+        const title = `${ctx.db.label(target.kind)} ${padId(target.id)} ${target.name || tr('(名前なし)', '(no name)')}`;
         const { files, textOf } = await vscode.window.withProgress(
-            { location: vscode.ProgressLocation.Window, title: `${title} を探しています` },
+            { location: vscode.ProgressLocation.Window, title: tr(`${title} を探しています`, `Looking for ${title}`) },
             () => collect(this.service, ctx, target)
         );
         const conditions = collectConditions(this.service, ctx, target, textOf);
@@ -138,8 +139,8 @@ export class UsagesPanel {
         this.files = files;
         this.conditions = conditions;
         const summary = [
-            files.length ? `使っている行 ${count}件(${files.length}ファイル)` : '',
-            conditions.length ? `出現条件 ${conditions.length}ページ` : ''
+            files.length ? tr(`使っている行 ${count}件(${files.length}ファイル)`, `${count} lines use it (${files.length} files)`) : '',
+            conditions.length ? tr(`出現条件 ${conditions.length}ページ`, `${conditions.length} pages it makes appear`) : ''
         ].filter((s) => s).join(' / ');
         const message = {
             type: 'render',
@@ -157,7 +158,7 @@ export class UsagesPanel {
         } else {
             this.panel.reveal(undefined, true);
         }
-        this.panel.title = `使用箇所: ${title}`;
+        this.panel.title = tr(`使用箇所: ${title}`, `Usages: ${title}`);
         if (this.ready) this.panel.webview.postMessage(message);
         else this.pending = message;
     }

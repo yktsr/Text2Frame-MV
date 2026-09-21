@@ -12,6 +12,7 @@ import { RunTracker } from './runHighlight';
 import { messageFitFor, overflowNote } from './messageCheck';
 import { EditorLayout, isNextTo, Side } from './editorLayout';
 import { LiveService } from './live';
+import { tr } from './db/lang';
 
 /**
  * 横のプレビュー。テキストをコンパイルし、ツクールのイベント編集画面と同じ見た目で並べる。
@@ -56,10 +57,10 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
         const root = workspaceRootFor(document);
         const ctx = service.forDocument(document);
         const title = path.basename(document.fileName);
-        panel.title = `プレビュー: ${title}`;
+        panel.title = tr(`プレビュー: ${title}`, `Preview: ${title}`);
         const { mod } = loadCompiler(context, root);
         if (!mod || typeof mod.compile !== 'function') {
-            post({ type: 'render', title, rows: [], faces: {}, error: 'コンパイラ (Text2Frame.js) が見つかりません。' });
+            post({ type: 'render', title, rows: [], faces: {}, error: tr('コンパイラ (Text2Frame.js) が見つかりません。', 'The compiler (Text2Frame.js) was not found.') });
             return;
         }
         let commands: RpgCommand[];
@@ -103,7 +104,7 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
                 faces[key] = service.faceUri(ctx, r.face.name, r.face.index, FACE_SIZE) || '';
             }
         }
-        const notice = ctx ? undefined : 'データベース(data/System.json)が見つからないため、名前と顔画像は出せません。';
+        const notice = ctx ? undefined : tr('データベース(data/System.json)が見つからないため、名前と顔画像は出せません。', 'The database (data/System.json) was not found, so names and faces cannot be shown.');
         lastGood = { type: 'render', title, rows, lines, faces, notice };
         stale = false;
         post(lastGood);
@@ -133,7 +134,7 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
     const play = (id: number, folder: string, name: string): void => {
         const ctx = current ? service.forDocument(current) : undefined;
         if (!ctx) {
-            post({ type: 'audioError', id, message: 'データベース(data/System.json)が見つからないので、音声の置き場が分かりません。' });
+            post({ type: 'audioError', id, message: tr('データベース(data/System.json)が見つからないので、音声の置き場が分かりません。', 'The database (data/System.json) was not found, so where the audio is is not known.') });
             return;
         }
         const audio = AUDIO_FOLDERS.includes(folder as AudioFolder)
@@ -189,7 +190,7 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
     const open = (): void => {
         const editor = vscode.window.activeTextEditor;
         if (!editor || editor.document.languageId !== 'text2frame') {
-            vscode.window.showInformationMessage('Text2Frame: プレビューするテキストを開いてください。');
+            vscode.window.showInformationMessage(tr('Text2Frame: プレビューするテキストを開いてください。', 'Text2Frame: Open a text to preview.'));
             return;
         }
         place(editor.document.uri, sideNow(), testPlaying());
@@ -262,7 +263,7 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
     const playingTimer = setInterval(() => { followPlaying(); }, PLAYING_CHECK);
 
     const create = (column: vscode.ViewColumn, document: vscode.TextDocument): void => {
-        panel = vscode.window.createWebviewPanel(PREVIEW_VIEW, 'プレビュー', { viewColumn: column, preserveFocus: true }, {
+        panel = vscode.window.createWebviewPanel(PREVIEW_VIEW, tr('プレビュー', 'Preview'), { viewColumn: column, preserveFocus: true }, {
             enableScripts: true,
             retainContextWhenHidden: true,
             localResourceRoots: []

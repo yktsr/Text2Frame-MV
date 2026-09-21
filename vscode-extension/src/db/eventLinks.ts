@@ -1,5 +1,6 @@
 import { RpgCommand } from './commandRefs';
 import { PageSummary } from './eventPages';
+import { tr } from './lang';
 
 /**
  * イベント同士のつながり。VS Code に依存しないので、テストから直接使える。
@@ -128,11 +129,11 @@ export function conditionLinks(events: EventPages[]): Link[] {
         event.summaries.forEach((page, index) => {
             const to = nodeKey({ kind: 'page', mapId: event.mapId, eventId: event.eventId, pageId: index + 1 });
             const add = (from: string, note: string): void => { out.push({ from, to, how: 'condition', note }); };
-            if (page.switch1) add(nodeKey({ kind: 'switch', id: page.switch1 }), 'ON で出る');
-            if (page.switch2) add(nodeKey({ kind: 'switch', id: page.switch2 }), 'ON で出る');
-            if (page.variable) add(nodeKey({ kind: 'variable', id: page.variable[0] }), `${page.variable[1]} 以上で出る`);
+            if (page.switch1) add(nodeKey({ kind: 'switch', id: page.switch1 }), tr('ON で出る', 'appears when ON'));
+            if (page.switch2) add(nodeKey({ kind: 'switch', id: page.switch2 }), tr('ON で出る', 'appears when ON'));
+            if (page.variable) add(nodeKey({ kind: 'variable', id: page.variable[0] }), tr(`${page.variable[1]} 以上で出る`, `appears at ${page.variable[1]} or more`));
             if (page.selfSwitch) {
-                add(nodeKey({ kind: 'selfSwitch', mapId: event.mapId, eventId: event.eventId, letter: page.selfSwitch }), 'ON で出る');
+                add(nodeKey({ kind: 'selfSwitch', mapId: event.mapId, eventId: event.eventId, letter: page.selfSwitch }), tr('ON で出る', 'appears when ON'));
             }
         });
     }
@@ -155,7 +156,7 @@ export function commonTriggerLinks(commons: CommonTrigger[]): Link[] {
             from: nodeKey({ kind: 'switch', id: common.switchId }),
             to: nodeKey({ kind: 'common', id: common.id }),
             how: 'trigger',
-            note: common.trigger === 1 ? 'ON で自動実行' : 'ON で並列処理'
+            note: common.trigger === 1 ? tr('ON で自動実行', 'autorun when ON') : tr('ON で並列処理', 'parallel when ON')
         });
     }
     return out;

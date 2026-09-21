@@ -5,6 +5,7 @@ import { DatabaseService, DbContext } from './dbService';
 import { workspaceRootFor } from './compiler';
 import { GameServer, startGameServer } from './gameServer';
 import { LiveService } from './live';
+import { tr } from './db/lang';
 
 /**
  * テストプレイ。ゲームのフォルダをローカルの HTTP サーバーで配り、VS Code の中のブラウザ
@@ -41,14 +42,14 @@ export function registerTestPlay(context: vscode.ExtensionContext, service: Data
     const prepare = async (): Promise<vscode.Uri | undefined> => {
         const ctx = projectFor();
         if (!ctx) {
-            vscode.window.showErrorMessage('Text2Frame: ツクールのプロジェクト(data/System.json)が見つかりません。プロジェクトのテキストを開いてから実行してください。');
+            vscode.window.showErrorMessage(tr('Text2Frame: ツクールのプロジェクト(data/System.json)が見つかりません。プロジェクトのテキストを開いてから実行してください。', 'Text2Frame: No RPG Maker project (data/System.json) was found. Open a text of the project first.'));
             return undefined;
         }
         // ゲームのフォルダ(index.html のあるところ)。
         const gameRoot = path.dirname(ctx.dataDir);
         const page = pageFor(gameRoot);
         if (!fs.existsSync(path.join(gameRoot, page))) {
-            vscode.window.showErrorMessage(`Text2Frame: ${path.join(gameRoot, page)} がありません。`);
+            vscode.window.showErrorMessage(tr(`Text2Frame: ${path.join(gameRoot, page)} がありません。`, `Text2Frame: ${path.join(gameRoot, page)} does not exist.`));
             return undefined;
         }
         let server = servers.get(gameRoot);
@@ -102,7 +103,7 @@ export function registerTestPlay(context: vscode.ExtensionContext, service: Data
         await Promise.all(Array.from(servers.values()).map((s) => s.close()));
         servers.forEach((_s, root) => live.clear(root));
         servers.clear();
-        vscode.window.showInformationMessage(count ? 'Text2Frame: テストプレイのサーバーを止めました。' : 'Text2Frame: 動いているテストプレイのサーバーはありません。');
+        vscode.window.showInformationMessage(count ? tr('Text2Frame: テストプレイのサーバーを止めました。', 'Text2Frame: Stopped the test play server.') : tr('Text2Frame: 動いているテストプレイのサーバーはありません。', 'Text2Frame: No test play server is running.'));
     };
 
     context.subscriptions.push(

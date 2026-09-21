@@ -8,9 +8,9 @@ import { TAG_HELP_SECTIONS } from '../tagHelpData';
 
 /** Text2Frame.js の CONFLICT_MARKERS と同じ文字列。 */
 export const CONFLICT_MARKERS = [
-    '=== テキストの変更 / from text ===',
-    '=== ゲームの変更 / from game ===',
-    '=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='
+    '=== テキストの変更 / from text ===', // lang: keep(本体と同じ衝突の目印)
+    '=== ゲームの変更 / from game ===', // lang: keep(本体と同じ衝突の目印)
+    '=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===' // lang: keep(本体と同じ衝突の目印)
 ];
 
 /** 目印1つぶんの行の範囲(<comment> で囲まれていれば、その3行)。両端を含む。 */

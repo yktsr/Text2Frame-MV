@@ -83,12 +83,12 @@ const TONE_PRESETS: Record<string, number[]> = {
     sunset: [68, -34, -34, 0], 夕暮れ: [68, -34, -34, 0],
     night: [-68, -68, 0, 68], 夜: [-68, -68, 0, 68]
 };
-const TONE_KEYS = ['colortone', '色調', 'ct'];
+const TONE_KEYS = ['colortone', '色調', 'ct']; // lang: keep(書き方の別名)
 // getPictureOptions の option_regexp と同じ。キー(角括弧の前)と、角括弧の並び。
 const OPTION = /([^[\]]+)(\[[\s\-a-zA-Z0-9\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf[\]]+\])/i;
 
 // タグの引数(Text2Frame.js と同じく、行の最後の > まで)。
-const TINT_TAGS = new RegExp('(<(?:tintscreen|画面の色調変更)\\s*:?\\s*)([^\\s]*.*)>|(<(?:tintpicture|ピクチャの色調変更|tp)\\s*:\\s*)([^\\s].*)>', 'i');
+const TINT_TAGS = new RegExp('(<(?:tintscreen|画面の色調変更)\\s*:?\\s*)([^\\s]*.*)>|(<(?:tintpicture|ピクチャの色調変更|tp)\\s*:\\s*)([^\\s].*)>', 'i'); // lang: keep(書き方の別名)
 const FLASH_TAG = /(<(?:flashscreen|画面のフラッシュ)\s*:\s*)([^\s].*)>/i;
 const WINDOW_TAG = /(<(?:changewindowcolor|ウィンドウカラーの変更)\s*:\s*)([^\s].*)>/i;
 

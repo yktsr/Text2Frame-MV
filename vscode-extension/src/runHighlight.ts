@@ -4,6 +4,7 @@ import { LiveService } from './live';
 import { RunSources, RunSource } from './runSource';
 import { placeFromKey, placeLabel } from './placeLabel';
 import { alignCommands, CommandMark, commandLines, locateCommand } from './db/runLines';
+import { tr } from './db/lang';
 
 export interface RunningFrame {
     key: string;
@@ -18,7 +19,7 @@ export interface RunningFrame {
 
 const RESOLVE_DELAY = 80;
 const STATUS_CHECK = 1000;
-const APPROXIMATE = 'テキストがゲームのデータと違うため、近い行です(反映してブラウザを読み直すと合います)。';
+const approximateNote = (): string => tr('テキストがゲームのデータと違うため、近い行です(反映してブラウザを読み直すと合います)。', 'The text differs from the game data, so this is a nearby line (apply and reload the browser to match).');
 
 export class RunTracker implements vscode.Disposable {
     private frames: RunningFrame[] = [];
@@ -100,7 +101,7 @@ export class RunTracker implements vscode.Disposable {
                 frames.push(out);
                 const file = await this.sources.find(ctx, frame.key);
                 if (!file) {
-                    out.problem = 'このイベントのテキストが見つかりません。';
+                    out.problem = tr('このイベントのテキストが見つかりません。', 'The text of this event was not found.');
                     continue;
                 }
                 out.uri = vscode.Uri.file(file);
@@ -114,7 +115,7 @@ export class RunTracker implements vscode.Disposable {
                 const target = locateCommand(this.alignment(marks, source), frame.index);
                 const lines = target ? commandLines(source.commands, source.lines, target.index) : undefined;
                 if (!target || !lines) {
-                    out.problem = 'テキストの中の場所が分かりません。';
+                    out.problem = tr('テキストの中の場所が分かりません。', 'The place in the text is not clear.');
                     continue;
                 }
                 Object.assign(out, { from: lines.from, to: lines.to, textIndex: target.index, exact: target.exact });
@@ -148,7 +149,7 @@ export async function revealRunning(tracker: RunTracker, index?: number): Promis
     const frames = tracker.current();
     const frame = index !== undefined && frames[index]?.uri ? frames[index] : tracker.innermost();
     if (!frame || !frame.uri) {
-        vscode.window.showInformationMessage('Text2Frame: テストプレイで実行中のイベントはありません。');
+        vscode.window.showInformationMessage(tr('Text2Frame: テストプレイで実行中のイベントはありません。', 'Text2Frame: No event is running in the test play.'));
         return;
     }
     await openText(frame.uri, frame.from ?? 0);
@@ -175,7 +176,7 @@ export function registerRunHighlight(context: vscode.ExtensionContext, service: 
     const approximate = vscode.window.createTextEditorDecorationType({
         isWholeLine: true,
         backgroundColor: new vscode.ThemeColor('editor.rangeHighlightBackground'),
-        after: { contentText: ' (近い行)', color: new vscode.ThemeColor('descriptionForeground') }
+        after: { contentText: tr(' (近い行)', ' (nearby line)'), color: new vscode.ThemeColor('descriptionForeground') }
     });
     const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
     status.command = 'text2frame.revealRunning';
@@ -193,7 +194,7 @@ export function registerRunHighlight(context: vscode.ExtensionContext, service: 
                 const range = new vscode.Range(from, 0, to, editor.document.lineAt(to).text.length);
                 if (f !== inner) ranges.caller.push({ range });
                 else if (f.exact) ranges.current.push({ range });
-                else ranges.approximate.push({ range, hoverMessage: APPROXIMATE });
+                else ranges.approximate.push({ range, hoverMessage: approximateNote() });
             }
             editor.setDecorations(current, ranges.current);
             editor.setDecorations(caller, ranges.caller);
@@ -203,10 +204,10 @@ export function registerRunHighlight(context: vscode.ExtensionContext, service: 
             status.hide();
             return;
         }
-        const line = inner.from !== undefined ? ` ${inner.from + 1}行目` : '';
-        status.text = `$(debug-stackframe) ${inner.label}${line}${inner.from !== undefined && !inner.exact ? '(近い行)' : ''}`;
+        const line = inner.from !== undefined ? tr(` ${inner.from + 1}行目`, ` line ${inner.from + 1}`) : '';
+        status.text = `$(debug-stackframe) ${inner.label}${line}${inner.from !== undefined && !inner.exact ? tr('(近い行)', ' (nearby line)') : ''}`;
         status.tooltip = ['テストプレイで実行中。押すとその行を開きます。', '']
-            .concat(frames.slice().reverse().map((f) => `${f.label}${f.from !== undefined ? ` ${f.from + 1}行目` : ''}${f.problem ? ` — ${f.problem}` : ''}`))
+            .concat(frames.slice().reverse().map((f) => `${f.label}${f.from !== undefined ? tr(` ${f.from + 1}行目`, ` line ${f.from + 1}`) : ''}${f.problem ? ` — ${f.problem}` : ''}`))
             .join('\n');
         status.show();
     };

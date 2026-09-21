@@ -1,6 +1,7 @@
 import { DatabaseService, DbContext } from './dbService';
 import { padId } from './db/database';
 import { eventId as eventLabelId } from './db/describe';
+import { tr } from './db/lang';
 
 /** テキストが受け持つ場所。マップのイベントのページか、コモンイベント。 */
 export type Place =
@@ -41,14 +42,14 @@ export function placeLabel(service: DatabaseService, ctx: DbContext, place: Plac
     if (!place) return '';
     if (place.kind === 'common') {
         const ce = ctx.db.lookup('commonEvent', place.commonEventId);
-        return `コモンイベント ${padId(place.commonEventId)}${ce.status === 'named' ? ' ' + ce.name : ''}`;
+        return tr(`コモンイベント ${padId(place.commonEventId)}${ce.status === 'named' ? ' ' + ce.name : ''}`, `Common event ${padId(place.commonEventId)}${ce.status === 'named' ? ' ' + ce.name : ''}`);
     }
     const map = ctx.db.lookup('map', place.mapId);
-    const parts = [map.status === 'named' ? map.name : `マップ${padId(place.mapId)}`];
+    const parts = [map.status === 'named' ? map.name : tr(`マップ${padId(place.mapId)}`, `Map ${padId(place.mapId)}`)];
     if (place.eventId !== undefined) {
         const ev = service.mapEvents(ctx, place.mapId)?.[place.eventId];
         parts.push(`${eventLabelId(place.eventId)}${ev && ev.name ? ' ' + ev.name : ''}`);
     }
-    if (place.pageId !== undefined) parts.push(`${place.pageId}ページ`);
+    if (place.pageId !== undefined) parts.push(tr(`${place.pageId}ページ`, `page ${place.pageId}`));
     return parts.join(' / ');
 }

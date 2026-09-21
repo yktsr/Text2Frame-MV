@@ -1,5 +1,6 @@
 import { padId } from './db/database';
 import { CommandMark } from './db/runLines';
+import { tr } from './db/lang';
 
 export type LiveValue = number | string | boolean;
 
@@ -68,7 +69,7 @@ export function parseVariableInput(text: string): { value: number | string } | {
         const n = Number(t);
         if (Number.isFinite(n)) return { value: n };
     }
-    const error = { error: '数字か、"…" で囲んだ文字を入れてください。' };
+    const error = { error: tr('数字か、"…" で囲んだ文字を入れてください。', 'Enter a number, or text in "…".') };
     if (!/^".*"$/.test(t)) return error;
     try {
         const s = JSON.parse(t);
@@ -81,7 +82,7 @@ export function parseVariableInput(text: string): { value: number | string } | {
 export function parseCountInput(text: string): { value: number } | { error: string } {
     const t = text.trim();
     const n = Number(t);
-    return /^\d+$/.test(t) && n <= MAX_COUNT ? { value: n } : { error: '0 以上の整数を入れてください。' };
+    return /^\d+$/.test(t) && n <= MAX_COUNT ? { value: n } : { error: tr('0 以上の整数を入れてください。', 'Enter a whole number, 0 or more.') };
 }
 
 export function parseLiveMessage(json: unknown): LiveMessage | undefined {
@@ -394,13 +395,13 @@ export function formatLiveValue(kind: 'switch' | 'variable', value: LiveValue): 
 const RANGE_LIST_LIMIT = 10;
 
 export function selfSwitchLine(state: LiveState, mapId: number, eventId: number, letter: string, now: number): string {
-    const head = state.connected(now) ? 'テストプレイ中' : 'テストプレイの最後の値';
-    return `${head}: セルフスイッチ ${letter} = ${state.selfSwitchValue(mapId, eventId, letter) ? 'ON' : 'OFF'}`;
+    const head = state.connected(now) ? tr('テストプレイ中', 'Test playing') : tr('テストプレイの最後の値', 'Last test play value');
+    return tr(`${head}: セルフスイッチ ${letter} = ${state.selfSwitchValue(mapId, eventId, letter) ? 'ON' : 'OFF'}`, `${head}: self switch ${letter} = ${state.selfSwitchValue(mapId, eventId, letter) ? 'ON' : 'OFF'}`);
 }
 
 export function liveLine(state: LiveState, kind: string, id: number, endId: number | undefined, now: number): string | undefined {
     if (kind !== 'switch' && kind !== 'variable') return undefined;
-    const head = state.connected(now) ? 'テストプレイ中' : 'テストプレイの最後の値';
+    const head = state.connected(now) ? tr('テストプレイ中', 'Test playing') : tr('テストプレイの最後の値', 'Last test play value');
     const value = (n: number): LiveValue => (kind === 'switch' ? state.switchValue(n) : state.variableValue(n));
     const last = Math.min(endId ?? id, MAX_ID);
     if (last <= id) return `${head}: ${formatLiveValue(kind, value(id))}`;
@@ -409,7 +410,7 @@ export function liveLine(state: LiveState, kind: string, id: number, endId: numb
     if (kind === 'switch') {
         const on = ids.filter((n) => state.switchValue(n));
         const shown = on.slice(0, RANGE_LIST_LIMIT).map(padId).join(', ');
-        return `${head}: ON ${on.length}件 / ${ids.length}件${on.length ? ` (${shown}${on.length > RANGE_LIST_LIMIT ? ', …' : ''})` : ''}`;
+        return tr(`${head}: ON ${on.length}件 / ${ids.length}件${on.length ? ` (${shown}${on.length > RANGE_LIST_LIMIT ? ', …' : ''})` : ''}`, `${head}: ON ${on.length} / ${ids.length}${on.length ? ` (${shown}${on.length > RANGE_LIST_LIMIT ? ', …' : ''})` : ''}`);
     }
     const shown = ids.slice(0, RANGE_LIST_LIMIT).map((n) => `${padId(n)} = ${formatLiveValue(kind, value(n))}`).join(', ');
     return `${head}: ${shown}${ids.length > RANGE_LIST_LIMIT ? ', …' : ''}`;

@@ -7,6 +7,7 @@ import { placeFromMeta } from './placeLabel';
 import { mapLabel } from './db/mapTree';
 import { mapLinks } from './db/eventLinks';
 import { buildGraph } from './db/mapGraph';
+import { tr } from './db/lang';
 
 /**
  * マップのつながりの図(タブ)。丸がマップ、矢印が場所移動。
@@ -57,9 +58,10 @@ export function registerMapGraph(context: vscode.ExtensionContext, service: Data
             if (!ctx) return;
             const all = buildGraph(mapLinks(links.index(ctx).all()), { center: 0, hops: 1, vehicle, maxNodes: 100000 });
             if (all.nodes.length > BIG) {
+                const showAll = tr('全部出す', 'Show all');
                 const choice = await vscode.window.showWarningMessage(
-                    `Text2Frame: マップが ${all.nodes.length} 個あります。全部出すと見づらくなります。`, '全部出す', 'やめる');
-                if (choice !== '全部出す') return;
+                    tr(`Text2Frame: マップが ${all.nodes.length} 個あります。全部出すと見づらくなります。`, `Text2Frame: There are ${all.nodes.length} maps. Showing them all may be hard to read.`), showAll, tr('やめる', 'Cancel'));
+                if (choice !== showAll) return;
             }
             center = 0;
             post(100000);
@@ -73,7 +75,7 @@ export function registerMapGraph(context: vscode.ExtensionContext, service: Data
             post();
             return;
         }
-        panel = vscode.window.createWebviewPanel('text2frameMapGraph', 'マップのつながり', { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false }, {
+        panel = vscode.window.createWebviewPanel('text2frameMapGraph', tr('マップのつながり', 'Map links'), { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false }, {
             enableScripts: true,
             retainContextWhenHidden: true,
             localResourceRoots: []

@@ -114,7 +114,7 @@ export function registerSnippets(context: vscode.ExtensionContext): void {
         if (!fs.existsSync(file)) {
             fs.mkdirSync(path.dirname(file), { recursive: true });
             const example = isJapanese()
-                ? { あいさつ: { prefix: 'あいさつ', body: ['<Face: Actor1(0)>', '${1:こんにちは}'], description: '例: 顔付きのあいさつ。${1:…} は、入れたあと最初にカーソルが入る所' } }
+                ? { あいさつ: { prefix: 'あいさつ', body: ['<Face: Actor1(0)>', '${1:こんにちは}'], description: '例: 顔付きのあいさつ。${1:…} は、入れたあと最初にカーソルが入る所' } } // lang: keep(日本語のときの見本)
                 : { greeting: { prefix: 'greeting', body: ['<Face: Actor1(0)>', '${1:Hello}'], description: 'Example: a greeting with a face. ${1:…} is where the cursor goes first after inserting' } };
             fs.writeFileSync(file, JSON.stringify(example, null, 2) + '\n', 'utf8');
         }

@@ -7,6 +7,7 @@ import { readAudio } from './db/audio';
 import { audioBaseName, AudioFolderName } from './db/checks';
 import { faceEdit, audioEdit, characterEdit, pictureEdit, AssetEdit } from './db/assetEdit';
 import { FACE_COLUMNS, FACE_ROWS } from './db/faces';
+import { tr } from './db/lang';
 
 /**
  * 素材を選ぶ画面(タブ「素材を選ぶ」)。顔画像を見て選んだり、音声を試し聞きして選んだりして、
@@ -58,7 +59,7 @@ export function registerAssetPicker(context: vscode.ExtensionContext, service: D
         for (const folder of FOLDERS) audio[folder] = audioNames(ctx, folder);
         const characters = service.characterNames(ctx);
         const pictures = service.pictureNames(ctx);
-        post({ type: 'init', tab, faces, owners, characters, pictures, audio, target: `${path.basename(target.uri.fsPath)} の ${target.line + 1} 行目` });
+        post({ type: 'init', tab, faces, owners, characters, pictures, audio, target: tr(`${path.basename(target.uri.fsPath)} の ${target.line + 1} 行目`, `${path.basename(target.uri.fsPath)} line ${target.line + 1}`) });
     };
 
     const apply = async (edit: AssetEdit, label: string): Promise<void> => {
@@ -71,7 +72,7 @@ export function registerAssetPicker(context: vscode.ExtensionContext, service: D
         await vscode.workspace.applyEdit(we);
         const editor = vscode.window.visibleTextEditors.find((e) => e.document === doc);
         if (editor) editor.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
-        post({ type: 'done', text: `入れました: ${label}` });
+        post({ type: 'done', text: tr(`入れました: ${label}`, `Put in: ${label}`) });
     };
 
     const receive = async (m: any): Promise<void> => {
@@ -100,7 +101,7 @@ export function registerAssetPicker(context: vscode.ExtensionContext, service: D
         } else if (m.type === 'pickPicture' && typeof m.name === 'string') {
             const doc = await vscode.workspace.openTextDocument(target.uri);
             const text = doc.lineAt(Math.min(target.line, doc.lineCount - 1)).text;
-            await apply(pictureEdit(text, m.name), `ピクチャ ${m.name}`);
+            await apply(pictureEdit(text, m.name), tr(`ピクチャ ${m.name}`, `Picture ${m.name}`));
         } else if (m.type === 'pickAudio' && FOLDERS.includes(m.folder) && typeof m.name === 'string') {
             const doc = await vscode.workspace.openTextDocument(target.uri);
             const text = doc.lineAt(Math.min(target.line, doc.lineCount - 1)).text;
@@ -115,12 +116,12 @@ export function registerAssetPicker(context: vscode.ExtensionContext, service: D
     const open = (which: Tab): void => {
         const editor = vscode.window.activeTextEditor;
         if (!editor || editor.document.languageId !== 'text2frame') {
-            vscode.window.showInformationMessage('Text2Frame: 素材を入れたいテキストを開き、入れたい行にカーソルを置いてから実行してください。');
+            vscode.window.showInformationMessage(tr('Text2Frame: 素材を入れたいテキストを開き、入れたい行にカーソルを置いてから実行してください。', 'Text2Frame: Open the text and put the cursor on the line where the asset should go first.'));
             return;
         }
         const ctx = service.forDocument(editor.document);
         if (!ctx) {
-            vscode.window.showErrorMessage('Text2Frame: ツクールのプロジェクト(data/System.json)が見つかりません。');
+            vscode.window.showErrorMessage(tr('Text2Frame: ツクールのプロジェクト(data/System.json)が見つかりません。', 'Text2Frame: No RPG Maker project (data/System.json) was found.'));
             return;
         }
         target = { uri: editor.document.uri, line: editor.selection.active.line, ctx };
@@ -130,7 +131,7 @@ export function registerAssetPicker(context: vscode.ExtensionContext, service: D
             init();
             return;
         }
-        panel = vscode.window.createWebviewPanel('text2frameAssets', '素材を選ぶ', { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false }, {
+        panel = vscode.window.createWebviewPanel('text2frameAssets', tr('素材を選ぶ', 'Pick an asset'), { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false }, {
             enableScripts: true,
             retainContextWhenHidden: true,
             localResourceRoots: []

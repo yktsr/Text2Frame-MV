@@ -8,6 +8,7 @@ import { projectTextFiles } from './usagesView';
 import { placeFromMeta, placeKey } from './placeLabel';
 import { RpgCommand } from './db/commandRefs';
 import { CommandMark, commandMark } from './db/runLines';
+import { tr } from './db/lang';
 
 export interface RunSource {
     uri: vscode.Uri;
@@ -53,20 +54,20 @@ export class RunSources {
             version = open ? `doc:${open.version}` : `disk:${fs.statSync(fsPath).mtimeMs}`;
             text = open ? open.getText() : fs.readFileSync(fsPath, 'utf8');
         } catch (e) {
-            return { error: 'テキストを読めません。' };
+            return { error: tr('テキストを読めません。', 'Cannot read the text.') };
         }
         const hit = this.compiled.get(fsPath);
         if (hit && hit.version === version) return hit.result;
         const { mod } = loadCompiler(this.context, ctx.root);
         let result: RunSource | { error: string };
         try {
-            if (!mod) throw new Error('コンパイラ (Text2Frame.js) が見つかりません。');
+            if (!mod) throw new Error(tr('コンパイラ (Text2Frame.js) が見つかりません。', 'The compiler (Text2Frame.js) was not found.'));
             const { commands, lines } = compileWithLines(mod, text);
             result = lines
                 ? { uri: vscode.Uri.file(fsPath), commands, lines, marks: commands.map(commandMark) }
-                : { error: 'コンパイラが古いため、行を出せません。' };
+                : { error: tr('コンパイラが古いため、行を出せません。', 'The compiler is too old to give lines.') };
         } catch (e) {
-            result = { error: 'テキストをコンパイルできません。' };
+            result = { error: tr('テキストをコンパイルできません。', 'Cannot compile the text.') };
         }
         this.compiled.set(fsPath, { version, result });
         return result;

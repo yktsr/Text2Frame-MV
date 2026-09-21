@@ -1,3 +1,4 @@
+import { tr } from './db/lang';
 export const LIVE_STATE_PATH = '/__t2f/state';
 export const LIVE_EVENTS_PATH = '/__t2f/events';
 export const LIVE_TOKEN_HEADER = 'x-t2f-token';
@@ -385,8 +386,8 @@ export function monitorScript(token: string): string {
   }
   var banner = null;
   var BANNER_TEXT = {
-    breakpoint: '一時停止中: 印をつけた行で止まりました。VS Code の「続ける」を押すと進みます。',
-    other: '一時停止中です。VS Code の「続ける」を押すと進みます。'
+    breakpoint: ${JSON.stringify(tr('一時停止中: 印をつけた行で止まりました。VS Code の「続ける」を押すと進みます。', 'Paused at a marked line. Press Continue in VS Code to go on.'))},
+    other: ${JSON.stringify(tr('一時停止中です。VS Code の「続ける」を押すと進みます。', 'Paused. Press Continue in VS Code to go on.'))}
   };
   function showBanner() {
     if (typeof document === 'undefined' || !document.body) return;

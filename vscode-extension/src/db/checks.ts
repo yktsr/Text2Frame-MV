@@ -1,4 +1,5 @@
 import { bracketProblems } from '../tagBrackets';
+import { tr } from './lang';
 
 /**
  * 1つのテキストの中だけで分かる指摘。VS Code に依存しない。
@@ -22,7 +23,7 @@ export function basicProblems(lines: string[]): LineProblem[] {
             line,
             start: 0,
             end: lines[line].length,
-            message: problem === 'unclosed' ? 'タグが閉じられていません' : '閉じ括弧が多すぎます',
+            message: problem === 'unclosed' ? tr('タグが閉じられていません', 'The tag is not closed') : tr('閉じ括弧が多すぎます', 'Too many closing brackets'),
             severity: 'error',
             code: problem === 'unclosed' ? 'unclosed' : 'extra-bracket'
         });
@@ -30,7 +31,7 @@ export function basicProblems(lines: string[]): LineProblem[] {
     lines.forEach((text, line) => {
         const m = text.match(/<\s*>/);
         if (m && m.index !== undefined) {
-            out.push({ line, start: m.index, end: m.index + m[0].length, message: '空のタグは使用できません', severity: 'warning', code: 'empty-tag' });
+            out.push({ line, start: m.index, end: m.index + m[0].length, message: tr('空のタグは使用できません', 'An empty tag cannot be used'), severity: 'warning', code: 'empty-tag' });
         }
     });
     return out;

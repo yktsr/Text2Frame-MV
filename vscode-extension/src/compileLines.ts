@@ -1,6 +1,7 @@
 import { frontMatterBody } from './compiler';
 import { T2FModule } from './deploy';
 import { RpgCommand } from './db/commandRefs';
+import { tr } from './db/lang';
 
 /**
  * テキストをコンパイルし、出てきたコマンドと、それぞれが出てきた文書の行番号(0始まり)を返す。
@@ -8,7 +9,7 @@ import { RpgCommand } from './db/commandRefs';
  * lineMap を知らない古いコンパイラでは lines が無い。コンパイルできなければ例外を投げる。
  */
 export function compileWithLines(mod: T2FModule, text: string): { commands: RpgCommand[]; lines?: number[] } {
-    if (typeof mod.compile !== 'function') throw new Error('コンパイラ (Text2Frame.js) が見つかりません。');
+    if (typeof mod.compile !== 'function') throw new Error(tr('コンパイラ (Text2Frame.js) が見つかりません。', 'The compiler (Text2Frame.js) was not found.'));
     const out = mod.compile(frontMatterBody(text), { lineMap: true });
     if (Array.isArray(out)) return { commands: out as RpgCommand[] };
     const r = out as { commands: RpgCommand[]; lineMap: number[] };

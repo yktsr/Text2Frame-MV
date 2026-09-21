@@ -7,6 +7,7 @@ import { scanLines } from './db/tagRefs';
 import { LiveService } from './live';
 import { projectTextFiles, UsagesPanel } from './usagesView';
 import { formatLiveValue, RECENT_CHANGE } from './liveState';
+import { tr } from './db/lang';
 
 /**
  * サイドバーの「データベース」。スイッチ・変数・マップ…を番号と名前で並べる。読むだけ。
@@ -77,13 +78,13 @@ class DatabaseTreeProvider implements vscode.TreeDataProvider<Node> {
             item.contextValue = 'text2frame.dbKind';
             return item;
         }
-        const item = new vscode.TreeItem(`${padId(node.id)} ${node.name || '(名前なし)'}`, vscode.TreeItemCollapsibleState.None);
+        const item = new vscode.TreeItem(`${padId(node.id)} ${node.name || tr('(名前なし)', '(no name)')}`, vscode.TreeItemCollapsibleState.None);
         const same = ctx ? ctx.db.sameName(node.kind, node.id) : [];
         const notes: string[] = [];
         if (same.length) {
             // 同じ名前が他の番号にも付いている。名前だけで選ぶと取り違えるので印をつける。
-            notes.push(`同名 ×${same.length + 1}`);
-            item.tooltip = `同じ名前: ${same.map(padId).join(', ')}`;
+            notes.push(tr(`同名 ×${same.length + 1}`, `same name ×${same.length + 1}`));
+            item.tooltip = tr(`同じ名前: ${same.map(padId).join(', ')}`, `Same name: ${same.map(padId).join(', ')}`);
         }
         const state = ctx ? this.live.forContext(ctx) : undefined;
         if (state && (node.kind === 'switch' || node.kind === 'variable')) {
@@ -97,8 +98,8 @@ class DatabaseTreeProvider implements vscode.TreeDataProvider<Node> {
         if (notes.length) item.description = notes.join(' · ');
         item.contextValue = 'text2frame.dbEntry';
         item.command = node.kind === 'switch' || node.kind === 'variable'
-            ? { command: 'text2frame.db.showUsages', title: '使っている箇所を一覧', arguments: [node] }
-            : { command: 'text2frame.db.insert', title: '番号を挿入', arguments: [node] };
+            ? { command: 'text2frame.db.showUsages', title: tr('使っている箇所を一覧', 'List usages'), arguments: [node] }
+            : { command: 'text2frame.db.insert', title: tr('番号を挿入', 'Insert id'), arguments: [node] };
         return item;
     }
 }
@@ -114,7 +115,7 @@ async function insertId(node: Node): Promise<void> {
     if (node.type !== 'entry') return;
     const editor = targetEditor();
     if (!editor) {
-        vscode.window.showInformationMessage('Text2Frame: 番号を入れるテキストを開いてください。');
+        vscode.window.showInformationMessage(tr('Text2Frame: 番号を入れるテキストを開いてください。', 'Text2Frame: Open the text to put the id in.'));
         return;
     }
     await editor.edit((b) => editor.selections.forEach((s) => b.replace(s, String(node.id))));
@@ -142,13 +143,13 @@ async function findUsages(node: Node, service: DatabaseService): Promise<void> {
             });
         }
     }
-    const title = `${ctx.db.label(node.kind)} ${padId(node.id)} ${node.name || '(名前なし)'}`;
+    const title = `${ctx.db.label(node.kind)} ${padId(node.id)} ${node.name || tr('(名前なし)', '(no name)')}`;
     if (picks.length === 0) {
-        vscode.window.showInformationMessage(`Text2Frame: ${title} を使っているテキストはありません。`);
+        vscode.window.showInformationMessage(tr(`Text2Frame: ${title} を使っているテキストはありません。`, `Text2Frame: No text uses ${title}.`));
         return;
     }
     const pick = await vscode.window.showQuickPick(picks.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })), {
-        title: `${title} を使っている箇所 (${picks.length}件)`,
+        title: tr(`${title} を使っている箇所 (${picks.length}件)`, `Usages of ${title} (${picks.length})`),
         matchOnDescription: true
     });
     if (!pick) return;

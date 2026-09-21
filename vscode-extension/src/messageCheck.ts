@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DatabaseService, DbContext } from './dbService';
 import { messageMetrics, messageProblems, autoWrapPlugin, capacity, lineWidth, MessageMetrics, WidthLookups } from './db/messageFit';
+import { tr } from './db/lang';
 
 /**
  * メッセージのはみ出しチェック(エディタの波線)。見積もりは db/messageFit.ts。
@@ -65,8 +66,8 @@ export function messageDiagnostics(lines: string[], fit: MessageFit): vscode.Dia
     return messageProblems(lines, fit.metrics, { lookups: fit.lookups, lineLength: fit.lineLength }).map((p) => {
         const d = new vscode.Diagnostic(
             new vscode.Range(p.line, p.start, p.line, lines[p.line].length),
-            `ウィンドウの幅を超えています(約 ${round(p.width as number)} 文字ぶん。入るのは約 ${Math.floor(p.capacity as number)} 文字)。はみ出した分は表示されません。`
-                + (p.approximate ? '制御文字を含むので目安です。' : ''),
+            tr(`ウィンドウの幅を超えています(約 ${round(p.width as number)} 文字ぶん。入るのは約 ${Math.floor(p.capacity as number)} 文字)。はみ出した分は表示されません。`, `Wider than the window (about ${round(p.width as number)} characters; about ${Math.floor(p.capacity as number)} fit). The part that sticks out is not shown.`)
+                + (p.approximate ? tr('制御文字を含むので目安です。', ' It has control characters, so this is an estimate.') : ''),
             vscode.DiagnosticSeverity.Warning
         );
         d.code = MESSAGE_CODES.width;
@@ -113,5 +114,5 @@ export function overflowNote(text: string, face: boolean, fit: MessageFit): stri
     const cap = capacity(fit.metrics, face, fit.lineLength);
     const { width, approximate } = lineWidth(text, fit.metrics, fit.lookups);
     if (width <= cap + 1e-9) return undefined;
-    return `ウィンドウの幅を超えています(約 ${round(width)} 文字ぶん。入るのは約 ${Math.floor(cap)} 文字)` + (approximate ? '。目安です' : '');
+    return tr(`ウィンドウの幅を超えています(約 ${round(width)} 文字ぶん。入るのは約 ${Math.floor(cap)} 文字)`, `Wider than the window (about ${round(width)} characters; about ${Math.floor(cap)} fit)`) + (approximate ? tr('。目安です', '; an estimate') : '');
 }

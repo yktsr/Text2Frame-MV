@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { isHistoryCopy, noteWrite } from './db/history';
+import { tr } from './db/lang';
 
 /**
  * Shared helpers for loading the Text2Frame / Frame2Text compilers in-process
@@ -66,7 +67,7 @@ export function isAncestorCopy(fsPath: string): boolean {
     return path.resolve(fsPath).split(path.sep).includes('.t2f-base') || isHistoryCopy(fsPath);
 }
 
-export const ANCESTOR_COPY_MESSAGE = 'Text2Frame: これは控えのコピー(.t2f-base または .t2f-history の中)なので反映しません。text/ の方のテキストを編集してください。';
+export const ancestorCopyMessage = (): string => tr('Text2Frame: これは控えのコピー(.t2f-base または .t2f-history の中)なので反映しません。text/ の方のテキストを編集してください。', 'Text2Frame: This is a kept copy (inside .t2f-base or .t2f-history), so it is not applied. Edit the text under text/ instead.');
 
 /** 履歴に残す操作の数(設定 text2frame.history.keep)。0 なら残さない。 */
 export function historyKeep(): number {

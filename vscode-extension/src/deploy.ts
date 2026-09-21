@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, isDeployable, isAncestorCopy, ANCESTOR_COPY_MESSAGE, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot, snapshotKeyFor, historyKeep } from './compiler';
+import { parseFrontMatter, isDeployable, isAncestorCopy, ancestorCopyMessage, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot, snapshotKeyFor, historyKeep } from './compiler';
 import { noteWrite, withHistory } from './db/history';
 import { placeFromMeta, placeKey } from './placeLabel';
 import { mergePullToText, renderCommands, ExportTarget } from './exportText';
@@ -164,7 +164,7 @@ async function deployDocumentNow(
     options: { review?: boolean; onSave?: boolean }
 ): Promise<ApplyResult | undefined> {
     if (isAncestorCopy(document.uri.fsPath)) {
-        vscode.window.showWarningMessage(ANCESTOR_COPY_MESSAGE);
+        vscode.window.showWarningMessage(ancestorCopyMessage());
         return undefined;
     }
     const workspaceRoot = workspaceRootFor(document);
@@ -341,7 +341,7 @@ interface PreparedFile {
 
 function prepareFile(context: vscode.ExtensionContext, workspaceRoot: string, filePath: string): PreparedFile | ApplyResult {
     if (isAncestorCopy(filePath)) {
-        return { ok: false, textPath: filePath, warnings: [], error: ANCESTOR_COPY_MESSAGE };
+        return { ok: false, textPath: filePath, warnings: [], error: ancestorCopyMessage() };
     }
     let text: string;
     try {
