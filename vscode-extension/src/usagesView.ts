@@ -78,6 +78,12 @@ function collectConditions(service: DatabaseService, ctx: DbContext, target: Usa
     return out;
 }
 
+/** 「(うち 15 はテキストなし)」。全部にテキストがあれば空。 */
+function noTextCount(conditions: ConditionResult[]): string {
+    const n = conditions.filter((c) => c.uri.scheme !== 'file').length;
+    return n ? tr(`(うち ${n} はテキストなし)`, ` (${n} with no text)`) : '';
+}
+
 function conditionResult(service: DatabaseService, ctx: DbContext, hit: ConditionHit, textOf: Map<string, vscode.Uri>): ConditionResult {
     const place = { kind: 'event' as const, mapId: hit.mapId, eventId: hit.eventId, pageId: hit.pageId };
     const key = placeKey(place) as string;
@@ -142,14 +148,14 @@ export class UsagesPanel {
         this.ctx = ctx;
         const summary = [
             files.length ? tr(`使っている行 ${count}件(${files.length}ファイル)`, `${count} lines use it (${files.length} files)`) : '',
-            conditions.length ? tr(`出現条件 ${conditions.length}ページ`, `${conditions.length} pages it makes appear`) : ''
+            conditions.length ? tr(`出現条件 ${conditions.length}ページ`, `${conditions.length} pages it makes appear`) + noTextCount(conditions) : ''
         ].filter((s) => s).join(' / ');
         const message = {
             type: 'render',
             title,
             summary,
             files: files.map((f) => ({ label: f.label, detail: f.detail, blocks: f.blocks })),
-            conditions: conditions.map((c) => ({ label: c.label, note: c.note }))
+            conditions: conditions.map((c) => ({ label: c.label, note: c.note, noText: c.uri.scheme !== 'file' }))
         };
         if (!this.panel) {
             this.panel = vscode.window.createWebviewPanel('text2frame.usages', title, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, { enableScripts: true, retainContextWhenHidden: true });

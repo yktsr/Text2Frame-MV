@@ -19,7 +19,9 @@ export function usagesHtml(): string {
     const nonce = crypto.randomBytes(16).toString('base64');
     const L = {
         conditionPages: tr('出現条件になっているページ', 'Pages it makes appear'),
-        noTexts: tr('使っているテキストはありません。', 'No text uses it.')
+        noTexts: tr('使っているテキストはありません。', 'No text uses it.'),
+        noText: tr('テキストなし', 'no text'),
+        noTextTitle: tr('このページにはテキストがありません。押すと、ゲームのデータから読んだ中身を読むだけの画面で開きます。', 'This page has no text. Click to open what the game data holds, read-only.')
     };
     return `<!DOCTYPE html>
 <html lang="${tr('ja', 'en')}"><head><meta charset="utf-8">
@@ -33,6 +35,8 @@ export function usagesHtml(): string {
   summary { cursor: pointer; padding: 2px 0; }
   summary .label { font-weight: 600; }
   summary .detail { color: var(--vscode-descriptionForeground); margin-left: 8px; }
+  .line.notext .text { color: var(--vscode-descriptionForeground); }
+  .badge { flex: none; margin: 0 8px; padding: 0 5px; border-radius: 3px; font-size: 0.85em; line-height: 1.5em; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); }
   .block { margin: 4px 0 0 0; font-family: var(--vscode-editor-font-family); font-size: var(--vscode-editor-font-size); border-left: 2px solid var(--vscode-panel-border); }
   .block + .block { margin-top: 2px; }
   .gap { font-family: var(--vscode-editor-font-family); color: var(--vscode-descriptionForeground); padding-left: 1em; line-height: 1.2em; }
@@ -97,14 +101,23 @@ export function usagesHtml(): string {
       details.append(summary);
       m.conditions.forEach((c, index) => {
         const row = document.createElement('div');
-        row.className = 'line hit';
+        row.className = 'line hit' + (c.noText ? ' notext' : '');
         const text = document.createElement('span');
         text.className = 'text';
         text.textContent = c.label;
         const note = document.createElement('span');
         note.className = 'detail';
         note.textContent = c.note;
-        row.append(text, note);
+        row.append(text);
+        if (c.noText) {
+          // 右端の「ON で出る」の列がずれないよう、印は名前のすぐ後ろに置く。
+          const badge = document.createElement('span');
+          badge.className = 'badge';
+          badge.textContent = L.noText;
+          row.appendChild(badge);
+          row.title = L.noTextTitle;
+        }
+        row.append(note);
         row.addEventListener('click', () => vscode.postMessage({ type: 'openCondition', index }));
         details.append(row);
       });
