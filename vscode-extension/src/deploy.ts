@@ -79,13 +79,6 @@ function snapshotIdFor(workspaceRoot: string, textPath: string): { key: string }
 }
 
 /**
- * 統合で反映・取り出しをしたあと、相手側にも結果を書く(反映ならテキストへ、取り出しならゲームへ)。
- * 拡張では常に書く(ツクールの中のプラグインと同じ)。衝突したときは「操作の元になった側」に
- * 両方の版と目印が入り、もう一方はその側の版のままになる。
- */
-export const WRITE_BACK = 'always';
-
-/**
  * 反映のあと、祖先(.t2f-base)を進める。
  * 統合の反映では、書き戻しも祖先の保存もコンパイラが済ませている(祖先はゲームに書いたほう)。
  * ここでは、何が起きたかを出力に書くだけ。
@@ -252,7 +245,6 @@ async function deployDocumentNow(
         textPath: document.uri.fsPath,
         ...resolved.opts,
         strategy,
-        writeBack: WRITE_BACK,
         // 祖先(.t2f-base)の置き場所。渡さないとコンパイラは process.cwd() を使い、拡張ホストでは
         // それが / なので保存できない。拡張の祖先(baseSnapshotPath)と同じ場所・同じ鍵になる。
         baseRoot: workspaceRoot
@@ -366,7 +358,6 @@ function prepareFile(context: vscode.ExtensionContext, workspaceRoot: string, fi
         textPath: filePath,
         ...resolved.opts,
         strategy,
-        writeBack: WRITE_BACK,
         baseRoot: workspaceRoot // 祖先の置き場所(上の deployDocument と同じ)
     };
     if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.key)) {
