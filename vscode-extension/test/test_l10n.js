@@ -82,3 +82,28 @@ describe('bundled snippets', function () {
     }
   })
 })
+
+describe('Japanese without English', function () {
+  const { scan, report } = require('../scripts/find-japanese')
+  const texts = function (source) { return scan(source).map(function (f) { return f.text }) }
+
+  it('finds a Japanese string with no English next to it', function () {
+    expect(texts("show('反映しました')")).to.eql(['反映しました'])
+    expect(texts('const a = `${n}件`')).to.eql(['件'])
+  })
+
+  it('accepts tr(), trList(), table(), [日本語, English] pairs, regular expressions and marked lines', function () {
+    expect(texts("show(tr('反映しました', 'Applied'))")).to.eql([])
+    expect(texts("tr(`${n}件`, `${n}`)")).to.eql([])
+    expect(texts("trList(['上', '下'], ['Up', 'Down'])")).to.eql([])
+    expect(texts("const T = table<number>({ 1: '下' }, { 1: 'Down' })")).to.eql([])
+    expect(texts("const N = { 101: ['文章', 'Text'] }")).to.eql([])
+    expect(texts('const R = /<(?:if|条件分岐)>/i')).to.eql([])
+    expect(texts("const K = ['色調'] // lang: keep(書き方の別名)")).to.eql([])
+    expect(texts("// 反映する\n/* 取り出す */ const a = 1")).to.eql([])
+  })
+
+  it('leaves none in the extension', function () {
+    expect(report().map(function (f) { return f.file + ':' + f.line + ' ' + f.text })).to.eql([])
+  })
+})
