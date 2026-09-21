@@ -1,3 +1,4 @@
+import { tr } from './lang';
 import { RpgCommand } from './commandRefs';
 
 /**
@@ -55,8 +56,8 @@ export function cssColor(s: Swatch): string {
 export function describeColor(kind: ColorKind, values: number[]): string {
     const [r, g, b, x] = values;
     return kind === 'tone'
-        ? `色調 赤${r} 緑${g} 青${b} グレー${x}(見本は変化量の目安)`
-        : `フラッシュ 赤${r} 緑${g} 青${b} 強さ${x}`;
+        ? tr(`色調 赤${r} 緑${g} 青${b} グレー${x}(見本は変化量の目安)`, `Tone R${r} G${g} B${b} Gray${x} (the swatch shows the amount of change)`)
+        : tr(`フラッシュ 赤${r} 緑${g} 青${b} 強さ${x}`, `Flash R${r} G${g} B${b} Power${x}`);
 }
 
 /** コンパイル後のコマンドの色。色を持たないコマンドは undefined。 */

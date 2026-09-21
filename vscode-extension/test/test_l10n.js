@@ -47,3 +47,20 @@ describe('package.json strings', function () {
     expect(JAPANESE.test(contributes)).to.equal(false)
   })
 })
+
+describe('command names in the preview', function () {
+  const { commandName } = require('../out/db/commandView')
+  afterEach(function () { setJapanese(true) })
+
+  it('has an English name for every command it names in Japanese', function () {
+    for (let code = 0; code < 1000; code++) {
+      setJapanese(true)
+      const ja = commandName(code)
+      setJapanese(false)
+      const en = commandName(code)
+      if (ja === undefined) { expect(en, String(code)).to.equal(undefined); continue }
+      expect(en, String(code)).to.be.a('string').and.not.equal('')
+      expect(JAPANESE.test(en), code + ': ' + en).to.equal(false)
+    }
+  })
+})

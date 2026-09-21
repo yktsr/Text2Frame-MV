@@ -4,6 +4,8 @@ const path = require('path')
 const os = require('os')
 const { GameDatabase } = require('../out/db/database')
 const { renderCommands } = require('../out/db/commandView')
+const { setJapanese } = require('../out/db/lang')
+const { describeColor } = require('../out/db/colors')
 const T2F = require(path.resolve(__dirname, '..', '..', 'Text2Frame.js'))
 
 /* プレビューの1行が、ツクールのイベント一覧と同じ書き方になること。
@@ -131,5 +133,33 @@ describe('renderCommands', function () {
     const r = rows('<If: Switches[13], ON>\n<Switch: 13, OFF>\n<End>')
     const inner = r.find(function (x) { return x.code === 121 })
     expect(inner.indent).to.equal(1)
+  })
+
+  describe('in English', function () {
+    before(function () { setJapanese(false) })
+    after(function () { setJapanese(true) })
+
+    it('uses the English editor names for commands and their arguments', function () {
+      expect(heads('<Switch: 13, ON>')).to.eql(['Control Switches：#0013 シャチ出てくる = ON'])
+      expect(heads('<TransferPlayer: Direct[1][1][9], Retain, Black>')).to.eql(['Transfer Player：水族館4 (1,9), Direction Retain, Fade Black'])
+      expect(heads('<If: Switches[13], ON>\n<End>')[0]).to.equal('If：#0013 シャチ出てくる is ON')
+      expect(heads('<Timer: Start, 1, 30>')).to.eql(['Control Timer：Start, 1 min 30 sec'])
+      expect(heads('<SetWeatherEffect: Snow, 5, 60, Wait for Completion>')).to.eql(['Set Weather Effect：Snow, Power 5, 60 frames (Wait)'])
+      expect(heads('<Switch: 400, ON>')).to.eql(['Control Switches：#0400 (not in the database) = ON'])
+    })
+
+    it('spells out movement steps and branches in English', function () {
+      const r = rows('<SetMovementRoute: This Event, OFF, OFF, Wait for Completion>\n<MoveRight>\n<ChangeSpeed: x2 faster>')
+      expect(r[0].label + '：' + r[0].text).to.equal('Set Movement Route：This Event (Wait)')
+      expect(r.slice(1, 3).map(function (x) { return x.text })).to.eql(['◇Move Right', '◇Change Speed: x2 Faster'])
+      const choices = rows('<ShowChoices>\n<When: はい>\n<When: Cancel>\n<End>').map(function (x) { return x.text })
+      expect(choices).to.include('When [はい]')
+      expect(choices).to.include('End')
+    })
+
+    it('writes the colour swatch title and unknown commands in English', function () {
+      expect(describeColor('flash', [255, 0, 0, 170])).to.equal('Flash R255 G0 B0 Power170')
+      expect(renderCommands([{ code: 999, indent: 0, parameters: [] }], db)[0].label).to.equal('(code 999)')
+    })
   })
 })
