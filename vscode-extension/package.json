@@ -639,10 +639,10 @@
           "enum": ["off", "always"],
           "default": "always",
           "enumDescriptions": [
-            "競合しなかったときは書き戻さない / only when there is a conflict to resolve",
-            "反映のたびに書き戻す(既定。Text2Frame 本体と同じ) / after every apply (default, as in Text2Frame)"
+            "競合しなかったときは相手側に書かない / only when there is a conflict to resolve",
+            "反映・取り出しのたびに相手側にも書く(既定。Text2Frame 本体と同じ) / after every apply and pull (default, as in Text2Frame)"
           ],
-          "description": "統合で反映したあと、ゲーム側の変更をテキストにも書き戻すか。競合したときは、この設定に関係なく、テキストに両方の版と目印を書き戻します(ゲームには目印を入れず、ゲームの版のままにします)。 / After a merge apply, whether to bring the game-side edits back into the text. A conflict is always written into the text with both versions and the markers, whatever this is; the game keeps its own version without markers."
+          "description": "統合で反映・取り出しをしたあと、相手側にも結果を書くか。反映ならテキストに、取り出しならゲームに書きます。競合したときは、この設定に関係なく、操作の元になった側(反映ならテキスト、取り出しならゲーム)に両方の版と衝突の目印が入り、もう一方はその側の版のままになります。 / Whether a merge apply or pull also writes the result to the other side. A conflict always goes into the side the operation started from (the text when applying, the game when pulling); the other side keeps its own version without markers."
         },
         "text2frame.englishTag": {
           "type": "boolean",

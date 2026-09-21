@@ -53,6 +53,8 @@ function candidateFor(textPath: string, meta: { [key: string]: string }, applyOp
 
 export interface T2FModule {
     applyTextFile: (opts: { [key: string]: unknown }) => ApplyResult;
+    /** コマンド列を、そのままゲームのデータへ書く(取り出しの書き戻しで使う)。 */
+    applyCommandsToData?: (opts: { [key: string]: unknown }) => { ok: boolean; dataPath?: string; error?: string };
     /** opts.lineMap を渡すと { commands, lineMap } を返す(古いコンパイラは無視して配列を返す)。 */
     compile?: (text: string, opts?: { lineMap?: boolean }) => unknown;
 }
@@ -76,10 +78,12 @@ function snapshotIdFor(workspaceRoot: string, textPath: string): { key: string }
 }
 
 /**
- * 統合で反映するときの書き戻しの指定(`text2frame.writeBackAfterMerge`)。コンパイラに渡す。
- *   - always: 衝突しなかったときも、ゲーム側の変更をテキストへ持ってくる(既定。本体のプラグインパラメータと同じ)
- *   - off   : 衝突しなかったときは、テキストを書き直さない
- * 衝突したときは、どちらでもコンパイラがテキストに両方の版と目印を書き、ゲームにはゲームの版を書く。
+ * 統合で反映・取り出しをするときの書き戻しの指定(`text2frame.writeBackAfterMerge`)。
+ *   - always: 衝突しなかったときも、相手側に結果を書く(既定。本体のプラグインパラメータと同じ)
+ *             反映ならテキストへ、取り出しならゲームへ。
+ *   - off   : 衝突しなかったときは、相手側を書き換えない
+ * 衝突したときは、どちらでも「操作の元になった側」に両方の版と目印が入る
+ * (反映ならテキスト、取り出しならゲーム)。もう一方はその側の版のままになる。
  */
 export function writeBackSetting(): 'always' | 'off' {
     return vscode.workspace.getConfiguration('text2frame').get<string>('writeBackAfterMerge', 'always') === 'off' ? 'off' : 'always';

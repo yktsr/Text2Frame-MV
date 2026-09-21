@@ -14,6 +14,8 @@ import {
     historyKeep
 } from './compiler';
 import { noteWrite, withHistory } from './db/history';
+import { loadCompiler, writeBackSetting } from './deploy';
+import { placeFromMeta, placeKey } from './placeLabel';
 import { reviewPull } from './reviewApply';
 
 /**
@@ -35,10 +37,19 @@ interface Frame2TextModule {
         englishTag?: boolean;
         omitDefaults?: boolean;
         strategy?: string;
+        writeBack?: string;
         existingText?: string;
         baseText?: string;
         fallbackHeader?: string;
-    }) => { text?: string; baseText?: string; conflicts?: number; markers?: boolean; skipped?: 'game' | 'text' };
+    }) => {
+        text?: string;
+        baseText?: string;
+        conflicts?: number;
+        markers?: boolean;
+        skipped?: 'game' | 'text';
+        /** ゲームへ書き戻すコマンド列。衝突したときは目印つきの両方が入る。 */
+        writeBack?: { commands: unknown[] } | null;
+    };
     VERSION?: string;
 }
 
@@ -169,8 +180,10 @@ export interface PullPlan {
     error?: string;
     /** 書き込むテキスト。 */
     text?: string;
-    /** 祖先にするゲーム側のテキスト。 */
+    /** 祖先にするテキスト(書き戻したなら、テキストに書いた内容。でなければゲーム側)。 */
     baseText?: string;
+    /** ゲームへ書き戻すコマンド列(衝突したときは目印つき)。 */
+    writeBack?: { commands: unknown[] } | null;
     conflicts?: number;
     markers?: boolean;
     skipped?: 'game' | 'text';
@@ -178,6 +191,19 @@ export interface PullPlan {
     previous?: string;
     /** 材料(確かめたあとで変わっていないかを見る)。 */
     inputs: string[];
+}
+
+/** 履歴に控えるときのページの鍵(e:マップ:イベント:ページ / c:コモン)。 */
+function pageKeyOf(target: ExportTarget): string[] | undefined {
+    const place = placeFromMeta({
+        kind: target.kind,
+        mapId: target.mapId || '',
+        eventId: target.eventId || '',
+        pageId: target.pageId || '',
+        commonEventId: target.commonEventId || ''
+    });
+    const key = place && placeKey(place);
+    return key ? [key] : undefined;
 }
 
 function dataPathFor(workspaceRoot: string, target: ExportTarget): string | undefined {
@@ -229,6 +255,7 @@ export function planPull(
                 englishTag: englishTagSetting(),
                 omitDefaults: omitDefaultTagsSetting(),
                 strategy: 'merge',
+                writeBack: writeBackSetting(),
                 existingText: plan.previous || '',
                 baseText: fs.existsSync(baseP) ? fs.readFileSync(baseP, 'utf8') : '',
                 fallbackHeader: renderFrontMatter(target, mod.VERSION)
@@ -247,6 +274,7 @@ export function planPull(
             ok: true,
             text: built.text,
             baseText: built.baseText,
+            writeBack: built.writeBack,
             conflicts: mode === 'merge' ? built.conflicts : undefined,
             markers: built.markers,
             skipped: built.skipped
@@ -269,6 +297,29 @@ function commitPullNow(context: vscode.ExtensionContext, workspaceRoot: string, 
     // Merging across unresolved markers would re-merge the markers themselves and double them.
     if (plan.skipped) return { ok: true, textPath: target.textPath, skipped: plan.skipped };
     try {
+        /* 先にゲームへ書く。書けなければテキストも祖先も触らない(反映の鏡写し)。
+         * 衝突したときは目印つきの両方がゲームへ入り、テキストはテキスト側の版のまま。 */
+        if (plan.writeBack) {
+            const dataPath = dataPathFor(workspaceRoot, target);
+            const { mod } = loadCompiler(context, workspaceRoot);
+            if (!mod || !mod.applyCommandsToData) {
+                return { ok: false, error: 'ゲームへ書き戻せませんでした。Text2Frame.js を読み込めません(設定 text2frame.modulePath)。' };
+            }
+            if (dataPath) noteWrite(dataPath, 'data', pageKeyOf(target));
+            const wrote = mod.applyCommandsToData({
+                kind: target.kind,
+                mapId: target.mapId,
+                eventId: target.eventId,
+                pageId: target.pageId,
+                commonEventId: target.commonEventId,
+                mapPath: target.kind === 'event' ? dataPath : undefined,
+                commonEventPath: target.kind === 'common' ? dataPath : undefined,
+                commands: plan.writeBack.commands
+            });
+            if (!wrote.ok) {
+                return { ok: false, error: 'ゲームへ書き戻せませんでした: ' + (wrote.error || '') };
+            }
+        }
         writeTextFile(target.textPath, plan.text as string);
         // Record the data baseline: after a pull, text matches data, so a later
         // deploy should not flag this data file as externally changed.
