@@ -50,10 +50,10 @@ export function assetPickerHtml(): string {
 <body>
 <div id="top">
   <button class="tab" data-tab="face">${html(tr('顔画像', 'Faces'))}</button>
-  <button class="tab" data-tab="bgm">BGM</button>
-  <button class="tab" data-tab="bgs">BGS</button>
   <button class="tab" data-tab="character">${html(tr('キャラ', 'Characters'))}</button>
   <button class="tab" data-tab="picture">${html(tr('ピクチャ', 'Pictures'))}</button>
+  <button class="tab" data-tab="bgm">BGM</button>
+  <button class="tab" data-tab="bgs">BGS</button>
   <button class="tab" data-tab="me">ME</button>
   <button class="tab" data-tab="se">SE</button>
   <input id="filter" type="search" placeholder="${html(tr('名前で絞り込み', 'Filter by name'))}">
