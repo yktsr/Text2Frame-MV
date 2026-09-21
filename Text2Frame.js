@@ -11223,11 +11223,15 @@
       const base = opts.baseBody ? compile(opts.baseBody) : []
       const englishTag = opts.englishTag !== false
       let merged
+      /* 取り出しの処理元はゲーム。衝突した所は目印つきの両方をゲームへ書き(mergedForGame)、
+       * テキストにはテキスト側の版だけを残す(merged)。衝突しなければ両方同じ。 */
+      let mergedForGame
       let conflicts = 0
       let warnings = []
       if (base.length > 0) {
-        const m = applyThreeWayMerge(base, gameCommands, theirs)
-        merged = m.commands.slice()
+        const m = applyThreeWayMerge(base, gameCommands, theirs, { keepTheirs: true })
+        mergedForGame = m.commands.slice()
+        merged = m.conflicts ? m.commandsTheirs.slice() : m.commands.slice()
         conflicts = m.conflicts
         warnings = m.warnings
       } else {
@@ -11235,14 +11239,33 @@
         // 既存テキスト(翻訳)があれば上書きになるため警告する。通常は export が祖先を作るので稀。
         if (theirs.length > 0) warnings.push('祖先が無いため既存テキストをゲーム内容で上書きしました / no ancestor: overwrote existing text from game')
         merged = gameCommands.slice()
+        mergedForGame = merged.slice()
       }
-      if (!merged.length || merged[merged.length - 1].code !== 0) merged.push({ code: 0, indent: 0, parameters: [] })
+      const withBottom = function (list) {
+        if (!list.length || list[list.length - 1].code !== 0) list.push({ code: 0, indent: 0, parameters: [] })
+        return list
+      }
+      withBottom(merged)
+      withBottom(mergedForGame)
       const F2T = resolveFrame2Text()
       if (!F2T || !F2T.decompile) { throw new Error('取り出し(merge)には Frame2Text プラグインが必要です。同じプロジェクトに導入してください。 / MERGE pull requires the Frame2Text plugin to be loaded.') }
       // omitDefaults は省略時 undefined のまま渡す。decompile 側が Frame2Text の
       // プラグインパラメータへ落とすので、指定しない呼び出しの挙動は変わらない。
       const text = F2T.decompile(merged, englishTag, { pretty: true, omitDefaults: opts.omitDefaults })
-      return { text, conflicts, warnings }
+      return { text, gameCommands: mergedForGame, conflicts, warnings }
+    }
+
+    /* 2つのコマンド列が「テキストで区別できない差」しかないか。
+     * 取り出しの書き戻しで、意味が変わらないのにデータを書き直さないために使う
+     * (ツクールが省いた引数と、こちらが補った引数の違いなど)。 */
+    const commandsEqual = function (a, b) {
+      const strip = function (cmds) {
+        const copy = (cmds || []).slice()
+        while (copy.length > 0 && copy[copy.length - 1] && copy[copy.length - 1].code === 0) copy.pop()
+        return copy
+      }
+      const key = normalizeKeyFactory()
+      return key(strip(a)) === key(strip(b))
     }
 
     /* コマンド列を、そのままゲームのデータへ書く。取り出し(Frame2Text)の書き戻しが使う。
@@ -11434,7 +11457,7 @@
         // 書き戻したテキストも自分の書き込み。記録しないと 反映 -> 書き戻し -> 反映 と回り続ける。
         if (res.writtenBack && res.writeBackPath) guard.record(res.writeBackPath, res.writeBackText)
         console.log('[sync] 反映: ' + rel(abs) + ' -> ' + rel(res.dataPath || '') +
-          (res.conflicts ? ' (衝突 ' + res.conflicts + '件。目印3行を消して残す方を決めてください)' : ''));
+          (res.conflicts ? ' (衝突 ' + res.conflicts + '件。テキストで衝突の目印を消して残す方を決めてください)' : ''));
         (res.warnings || []).forEach(function (w) { console.warn('[sync] ' + w) })
       }
 
@@ -11449,7 +11472,7 @@
         targets.forEach(function (t) {
           const outPath = _path.join(textRoot, t.key + '.txt')
           const r = F2T.pullTargetToText({
-            dataDir, target: t, outPath, baseDir, englishTag, strategy: opts.strategy
+            dataDir, target: t, outPath, baseDir, englishTag, strategy: opts.strategy, writeBack: opts.writeBack
           })
           if (!r.ok) {
             console.error('[sync] 取り出しに失敗: ' + t.key + ': ' + r.error)
@@ -11461,7 +11484,9 @@
           }
           // 取り出しが書いたテキストは自分の書き込み。反映に跳ね返らせない。
           guard.record(outPath, r.text)
-          console.log('[sync] 取り出し: ' + t.key + (r.conflicts ? ' (衝突 ' + r.conflicts + '件)' : ''))
+          // 書き戻した data も自分の書き込み。記録しないと 取り出し -> 反映 と回り続ける。
+          if (r.dataPath) guard.recordFile(r.dataPath)
+          console.log('[sync] 取り出し: ' + t.key + (r.conflicts ? ' (衝突 ' + r.conflicts + '件。ツクールで衝突の目印を消して残す方を決めてください)' : ''))
           // コメント行(%)は元の位置へ戻すが、周りが大きく変わると位置があやしくなる。
           if (r.approximate) {
             console.warn('[sync] コメント行 ' + r.approximate + '件の位置があやしくなりました(消えてはいません): ' + t.key)
@@ -11693,7 +11718,7 @@
       return { ok, fail, root }
     }
 
-    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, applyCommandsToData, resolveStrategy, readBaseText, saveBaseText, deriveBaseId, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter }
+    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, applyCommandsToData, commandsEqual, resolveStrategy, readBaseText, saveBaseText, deriveBaseId, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter }
     // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
     // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
     // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。

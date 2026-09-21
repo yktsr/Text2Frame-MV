@@ -3190,15 +3190,22 @@ function resolveText2Frame () {
 
     // 取り出し(ゲーム→テキスト)の本文を作る。merge のときだけ既存テキスト・祖先と 3-way する。
     // fs には触らない(ゲーム内は BASE_PATH、CLI は cwd と基準が違うため入出力は呼び出し側)。
-    // 戻り値: { text, baseText, conflicts, markers, approximate, warnings }
+    // 戻り値: { text, baseText, writeBack, conflicts, markers, approximate, warnings }
     // 見送ったときは { skipped: 'game'|'text' }。
     // markers は「書き出した本文に未解決の目印が入っている」印。呼び出し側は祖先を進めないこと。
     //
+    // 取り出しの処理元はゲーム。衝突した所は目印つきの両方をゲームへ書き(writeBack)、
+    // テキストにはテキスト側の版だけを残す。反映(Text2Frame)の鏡写し。
+    // writeBack は { commands } か null。ファイルは書かないので、呼び出し側が
+    // Text2Frame の applyCommandsToData でゲームへ書く(先にゲーム、書けたらテキスト)。
+    //
     // baseText は .t2f-base へ保存する内容で、text とは別物。祖先は「テキストとゲームが
-    // 実際に一致していた地点」でなければならず、取り出しで書き換えるのはテキストのほうなので、
-    // 祖先には書き換えなかった側=ゲームを入れる(反映が祖先にテキストを入れるのと対称)。
-    // ここに merge 結果を入れると、ゲームが一度も到達していない状態が祖先になり、次の反映で
-    // 3-way が「ゲームが消した」と誤読して、取り出し前にテキストへ書いた分が黙って消える。
+    // 実際に一致していた地点」でなければならない。
+    //  ・ゲームへ書き戻したとき: 目印の無い側(テキストに書いた内容)を祖先にする。
+    //    ツクールで目印を消して決着したあとの取り出しが、同じ衝突を繰り返さない。
+    //  ・書き戻さないとき: 書き換えなかった側=ゲームを入れる。ここに merge 結果を入れると、
+    //    ゲームが一度も到達していない状態が祖先になり、次の反映で 3-way が「ゲームが消した」と
+    //    誤読して、取り出し前にテキストへ書いた分が黙って消える。
     const buildPullText = function (opts) {
       opts = opts || {}
       const list = opts.list || []
@@ -3240,6 +3247,8 @@ function resolveText2Frame () {
         const restored = restoreComments(gameText)
         return {
           text: restored.text,
+          // 上書きの取り出しはゲームが真。ゲームへ書き戻すものは無い。
+          writeBack: null,
           // 祖先はゲームが持っているものなので、コメントは戻さない(読むときは compile が落とす)。
           baseText: gameText,
           conflicts: 0,
@@ -3260,15 +3269,44 @@ function resolveText2Frame () {
         englishTag,
         omitDefaults: opts.omitDefaults
       })
-      const restored = restoreComments(header + r.text + '\n')
+      const mergedText = header + r.text + '\n'
+      const restored = restoreComments(mergedText)
+      /* ゲームへ書き戻すか。衝突したときは設定に関係なく書く(目印は処理元=ゲームに置く)。
+       * 衝突していないときは「毎回書き戻す」のときだけ。意味が変わらないなら書かない
+       * (ツクールが省いた引数との違いだけでデータを書き直さないため)。 */
+      const always = String(opts.writeBack || 'off').toLowerCase() === 'always'
+      const gameList = r.gameCommands || []
+      const differs = !T2F.commandsEqual || !T2F.commandsEqual(list, gameList)
+      const writeBack = (r.conflicts || (always && differs)) ? { commands: gameList } : null
       return {
         text: restored.text,
-        baseText: gameText,
+        writeBack,
+        baseText: writeBack ? mergedText : gameText,
         conflicts: r.conflicts || 0,
         approximate: restored.approximate,
         // applyMergePull の警告はこれまで捨てられていた(祖先が無いときの上書き警告など)。
         warnings: r.warnings || []
       }
+    }
+
+    /* buildPullText が返した writeBack を、ゲームのデータへ書く。取り出しの3経路で共通。
+     * 戻り値: { ok, dataPath, error }。書くものが無ければ { ok: true }。 */
+    const writeBackToGame = function (writeBack, target, paths) {
+      if (!writeBack) return { ok: true }
+      const T2F = resolveText2Frame()
+      if (!T2F || !T2F.applyCommandsToData) {
+        return { ok: false, error: '書き戻しには Text2Frame プラグインが必要です。同じプロジェクトに導入してください。 / write-back requires the Text2Frame plugin' }
+      }
+      return T2F.applyCommandsToData({
+        kind: target.kind,
+        mapId: target.mapId,
+        eventId: target.eventId,
+        pageId: target.pageId,
+        commonEventId: target.commonEventId,
+        mapPath: paths.mapPath,
+        commonEventPath: paths.commonEventPath,
+        commands: writeBack.commands
+      })
     }
 
     // data ディレクトリを走査し、出力対象(イベント/コモンイベント)の routing メタだけを返す。
@@ -3313,8 +3351,8 @@ function resolveText2Frame () {
      * 一括取り出しはこれを全ターゲットに回すだけ、同期は変わったファイルの分だけ回す。
      * (全件を回す一括コマンドを変更のたびに呼ぶと、実プロジェクト規模ではゲームが数秒止まる)
      *
-     * opts: { dataDir, target, outPath, baseDir, englishTag, strategy }
-     * 戻り値: { ok, skipped, conflicts, markers, overwritten, approximate, warnings, baseSaveError, error }
+     * opts: { dataDir, target, outPath, baseDir, englishTag, strategy, writeBack }
+     * 戻り値: { ok, skipped, conflicts, markers, overwritten, approximate, warnings, baseSaveError, error, wroteGame, dataPath }
      * 投げずに戻り値で返す。呼び出し側が件数をまとめて報告するため。 */
     const pullTargetToText = function (opts) {
       const _fs = require('fs')
@@ -3341,12 +3379,21 @@ function resolveText2Frame () {
           englishTag: opts.englishTag,
           omitDefaults: opts.omitDefaults,
           strategy: entryStrategy,
+          writeBack: opts.writeBack,
           existingText,
           baseText,
           fallbackHeader: renderFrontMatter(t, t.kind)
         })
         // 未解決の目印が残っているものは書かずに見送る(このファイルだけ飛ばす)。
         if (built.skipped) return { ok: true, skipped: built.skipped }
+        /* 先にゲームへ書く。書けなければテキストも祖先も触らない(片方だけ書いて、
+         * もう片方の版が消えるのを防ぐ。反映側の「テキストを先に書く」と同じ考え)。 */
+        const dataPaths = {
+          mapPath: t.kind === 'event' ? _path.join(opts.dataDir, 'Map' + ('000' + String(t.mapId)).slice(-3) + '.json') : undefined,
+          commonEventPath: t.kind === 'common' ? _path.join(opts.dataDir, 'CommonEvents.json') : undefined
+        }
+        const wrote = writeBackToGame(built.writeBack, t, dataPaths)
+        if (!wrote.ok) return { ok: false, error: wrote.error }
         _fs.writeFileSync(opts.outPath, built.text, 'utf8')
         let baseSaveError = null
         // 目印ごと取り出したときだけ祖先を進めない(理由は単発取り出しの同じ箇所)。
@@ -3360,6 +3407,8 @@ function resolveText2Frame () {
           text: built.text,
           conflicts: built.conflicts || 0,
           markers: !!built.markers,
+          wroteGame: !!built.writeBack,
+          dataPath: wrote.dataPath,
           // 全上書きで既存を潰したときだけ true(merge は上書きではない)。
           overwritten: entryStrategy !== 'merge' && !!existingText,
           // 周りが大きく変わって、コメント行(%)の位置があやしくなった件数。
@@ -3372,7 +3421,7 @@ function resolveText2Frame () {
       }
     }
 
-    Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, pullTargetToText, renderFrontMatter, buildPullText }
+    Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, pullTargetToText, renderFrontMatter, buildPullText, writeBackToGame }
     // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
     // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
     // window / global にもフォールバックする(Text2Frame 側の $LaurusText2Frame と対称)。
@@ -3468,7 +3517,8 @@ function resolveText2Frame () {
           outPath: _path.resolve(BASE_PATH, textBase, t.key + '.txt'),
           baseDir: _baseDir,
           englishTag,
-          strategy: batchStrategy
+          strategy: batchStrategy,
+          writeBack: Laurus.Frame2Text.WriteBack
         })
         if (!r.ok) {
           errCount++
@@ -3510,21 +3560,21 @@ function resolveText2Frame () {
       if (conflictSkipped.length > 0) {
         addWarning('[batch] 衝突未解決で取り出さなかったファイル: ' + conflictSkipped.slice(0, FAILURE_LINES).join(', ') +
           (conflictSkipped.length > FAILURE_LINES ? ' ほか' : ''))
-        addWarning('[batch] 統合はできません。ツクールで目印3行を消すか、上書きで取り出してテキスト側で解決してください。')
+        addWarning('[batch] 統合はできません。ツクールで衝突の目印を消すか、上書きで取り出してテキスト側で解決してください。')
         console.warn('[batch] skipped (unresolved conflict markers): ' + conflictSkipped.join(', '))
       }
       if (markerCarried.length > 0) {
         addWarning('[batch] 目印ごと取り出したファイル ' + markerCarried.length + '件: ' + markerCarried.slice(0, FAILURE_LINES).join(', ') +
           (markerCarried.length > FAILURE_LINES ? ' ほか' : ''))
-        addWarning('[batch] 祖先(.t2f-base)は更新していません。テキストの目印3行を消して残す方を決めたあと、')
+        addWarning('[batch] 祖先(.t2f-base)は更新していません。テキストの衝突の目印を消して残す方を決めたあと、')
         addWarning('[batch] Text2Frameの一括反映を上書きで実行してください(目印がゲーム側にもあるため)。')
         console.warn('[batch] exported with unresolved markers (ancestor not advanced): ' + markerCarried.join(', '))
       }
       if (conflicted.length > 0) {
-        addWarning('[batch] 衝突あり(両方残し) ' + conflicted.length + '件: ' + conflicted.slice(0, FAILURE_LINES).join(', ') +
+        addWarning('[batch] 衝突あり(ゲームに両方残し) ' + conflicted.length + '件: ' + conflicted.slice(0, FAILURE_LINES).join(', ') +
           (conflicted.length > FAILURE_LINES ? ' ほか' : ''))
-        addWarning('[batch] テキストの目印3行を消して残す方を決めたあと、Text2Frameの一括反映(merge)を実行してください。')
-        console.warn('[batch] conflicts kept both: ' + conflicted.join(', '))
+        addWarning('[batch] ツクールで残す方を決めて衝突の目印を消したあと、もう一度一括取り出しを実行してください。')
+        console.warn('[batch] conflicts written into the game: ' + conflicted.join(', '))
       }
       if (approxComments.length > 0) {
         addWarning('[batch] コメント行の位置があやしいファイル ' + approxComments.length + '件: ' +
@@ -3589,6 +3639,7 @@ function resolveText2Frame () {
       list: map_events,
       englishTag: EnglishTag,
       strategy: exportStrategy,
+      writeBack: Laurus.Frame2Text.WriteBack,
       existingText,
       previousText,
       baseText,
@@ -3606,13 +3657,22 @@ function resolveText2Frame () {
     const outputText = built.text
 
     /** ********************************************** */
-    // txtファイルを出力
+    // ゲームへの書き戻し -> txtファイルを出力
     /** ********************************************** */
+    // 先にゲームへ書く。書けなければテキストも祖先も触らない(一括の同じ箇所を参照)。
+    const wroteGame = writeBackToGame(built.writeBack, Object.assign({ kind: exportKind }, exportEntry), {
+      mapPath: Laurus.Frame2Text.MapPath,
+      commonEventPath: Laurus.Frame2Text.CommonEventPath
+    })
+    if (!wroteGame.ok) {
+      throw new Error('ゲームに書き戻せなかったため取り出しを中止しました。テキストもゲームも変更していません。 / write-back failed; nothing was written: ' + wroteGame.error)
+    }
     try { mkdirpSync(require('path').dirname(outPath)) } catch (e) { /* best effort */ }
     writeData(outPath, outputText)
     if (built.conflicts) {
-      logger.error('[merge-pull] ' + built.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath)
-      logger.error('[merge-pull] テキストの目印3行を消して残す方を決めたあと、反映(merge)を実行してください。 / resolve the text, then import with merge')
+      addWarning('衝突 ' + built.conflicts + '件。ゲームのイベントに両方の版と衝突の目印が入りました(テキストはテキストの版のままです)。')
+      addWarning('ツクールで残す方を決めて衝突の目印を消したあと、もう一度取り出してください。')
+      logger.error('[merge-pull] ' + built.conflicts + ' conflict(s) written into the game / 衝突をゲームに残しました: ' + outPath)
     }
     if (built.approximate) {
       addWarning('コメント行 ' + built.approximate + '件は周りが大きく変わったため、位置がずれているかもしれません(消えてはいません)。')
@@ -3673,6 +3733,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-w, --english_tag <true/false>', 'english tag', 'true')
     .option('--omit-default-tags <true/false>', 'omit face/background/position tags that match the defaults', 'true')
     .option('-s, --strategy <merge|overwrite>', 'pull strategy (default merge: keep translations; overwrite: replace)', /^(merge|overwrite)$/i, 'merge')
+    .option('--write-back <always|off>', 'write the merged result back into the game data (default off; conflicts always are)', /^(always|off)$/i, 'off')
     .option('-b, --base <path>', 'ancestor text path for merge (optional; auto .t2f-base when omitted)')
     .parse()
 
@@ -3849,6 +3910,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           englishTag,
           omitDefaults,
           strategy: entryStrategy,
+          writeBack: options.writeBack,
           existingText,
           baseText,
           fallbackHeader: module.exports.renderFrontMatter(t, t.kind)
@@ -3858,6 +3920,15 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           results.push({ ok: true, textPath, skipped: built.skipped })
           return
         }
+        // 先にゲームへ書く。書けなければテキストも祖先も触らない。
+        const wrote = module.exports.writeBackToGame(built.writeBack, t, {
+          mapPath: t.kind === 'event' ? path.join(dataDir, 'Map' + ('000' + String(t.mapId)).slice(-3) + '.json') : undefined,
+          commonEventPath: t.kind === 'common' ? path.join(dataDir, 'CommonEvents.json') : undefined
+        })
+        if (!wrote.ok) {
+          results.push({ ok: false, key: t.key, error: wrote.error })
+          return
+        }
         fs.mkdirSync(path.dirname(textPath), { recursive: true })
         fs.writeFileSync(textPath, built.text, 'utf8')
         // 目印ごと取り出したときだけ祖先を進めない(理由は単発取り出しの同じ箇所)。
@@ -3865,7 +3936,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           // 祖先はゲーム側(built.baseText)。理由は in-engine 側の同じ箇所を参照。
           try { fs.writeFileSync(path.join(baseDir, t.key + '.txt'), built.baseText, 'utf8') } catch (e) { baseSaveError = baseSaveError || e }
         }
-        results.push({ ok: true, textPath, conflicts: built.conflicts, markers: built.markers, approximate: built.approximate })
+        results.push({ ok: true, textPath, conflicts: built.conflicts, markers: built.markers, approximate: built.approximate, wroteGame: !!built.writeBack })
       } catch (error) {
         results.push({ ok: false, key: t.key, error: error.message })
       }

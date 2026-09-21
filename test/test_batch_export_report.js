@@ -77,6 +77,13 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   const basePathOf = function (key) { return path.join(tmp, '.t2f-base', 'text', key + '.txt') }
   const ev1 = 'map001_event001_page1'
   const readIf = function (p) { try { return fs.readFileSync(p, 'utf8') } catch (e) { return '' } }
+  // ゲーム側(Map001 のイベント1 ページ1)の本文と目印。
+  const gameLines = function () {
+    const map = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8'))
+    return (map.events[1].pages[0].list || [])
+      .filter(function (c) { return c.code === 401 || c.code === 108 })
+      .map(function (c) { return String(c.parameters[0]) })
+  }
   const setEvent1 = function (lines) {
     const list = []
     lines.forEach(function (l) {
@@ -265,7 +272,9 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     expect(line('上書きしました')).to.equal(undefined)
   })
 
-  it('merge keeps both on a conflict and advances the ancestor to the game side', function () {
+  /* 取り出しの処理元はゲーム。衝突した所は、目印つきの両方をゲームへ書き、
+   * テキストにはテキスト側の版だけを残す(反映の鏡写し)。 */
+  it('merge writes a conflict into the game and leaves the text with its own version', function () {
     run(path.join(tmp, 'text'))
     // テキストとゲームが同じ行を別々に変える
     fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)).replace('こんにちは', 'テキスト側の変更'), 'utf8')
@@ -275,15 +284,33 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
 
     const text = readIf(textPathOf(ev1))
     expect(text).to.contain('テキスト側の変更')
-    expect(text).to.contain('ゲーム側の変更')
-    expect(text).to.contain('=== どちらかを残し')
-    expect(line('衝突あり(両方残し)')).to.contain(ev1)
-    expect(line('一括反映(merge)を実行してください')).to.be.a('string')
-    // 祖先はゲーム側へ進める。据え置くと、テキストで解決したあとの反映で衝突が再発する。
+    expect(text).to.not.contain('ゲーム側の変更')
+    expect(text).to.not.contain('=== どちらかを残し')
+    // ゲーム: 両方の版と目印
+    expect(gameLines()).to.include('テキスト側の変更')
+    expect(gameLines()).to.include('ゲーム側の変更')
+    expect(gameLines().filter(function (l) { return l.indexOf('===') === 0 })).to.have.lengthOf(3)
+    expect(line('衝突あり(ゲームに両方残し)')).to.contain(ev1)
+    expect(line('ツクールで残す方を決めて')).to.be.a('string')
+    // 祖先は目印の無い側(テキストに書いた内容)。ツクールで決着したあとの取り出しが衝突を繰り返さない。
     const base = readIf(basePathOf(ev1))
-    expect(base).to.contain('ゲーム側の変更')
-    expect(base).to.not.contain('テキスト側の変更')
+    expect(base).to.contain('テキスト側の変更')
     expect(base).to.not.contain('=== どちらかを残し')
+  })
+
+  it('settles after the conflict is resolved in the game', function () {
+    run(path.join(tmp, 'text'))
+    fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)).replace('こんにちは', 'テキスト側の変更'), 'utf8')
+    setEvent1(['ゲーム側の変更'])
+    run(path.join(tmp, 'text'), 'merge')
+
+    // ツクールで目印を消して、ゲーム側の版だけを残した
+    setEvent1(['ゲーム側の変更'])
+    run(path.join(tmp, 'text'), 'merge')
+
+    expect(line('衝突あり')).to.equal(undefined)
+    expect(readIf(textPathOf(ev1))).to.contain('ゲーム側の変更')
+    expect(gameLines().filter(function (l) { return l.indexOf('===') === 0 })).to.have.lengthOf(0)
   })
 
   // 取り出しのしかたは引数だけで決まる。front matter の strategy: は読まない。
@@ -296,10 +323,12 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
 
     run(path.join(tmp, 'text'), 'merge')
 
-    // 引数どおり統合されるので、テキストに書いた翻訳は残る。
+    // 引数どおり統合されるので、テキストに書いた翻訳は残る(上書きなら消えている)。
     const text = readIf(textPathOf(ev1))
-    expect(text).to.contain('ゲームが正')
     expect(text).to.contain('Bonjour')
+    // 同じ行を両方で変えたので衝突。目印はゲーム側。
+    expect(gameLines()).to.include('ゲームが正')
+    expect(gameLines()).to.include('Bonjour')
   })
 
   it('skips a merge whose text still has conflict markers', function () {

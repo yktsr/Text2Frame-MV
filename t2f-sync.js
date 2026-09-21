@@ -131,6 +131,7 @@ function pullTarget (target, opts) {
     list,
     englishTag,
     strategy: entryStrategy,
+    writeBack: o.writeBack,
     existingText: existing || '',
     baseText: (entryStrategy === 'merge' && T2F.readBaseText(root, id.key)) || '',
     fallbackHeader: F2T.renderFrontMatter(target, target.kind)
@@ -146,17 +147,27 @@ function pullTarget (target, opts) {
   const conflicts = built.conflicts || 0
   const markers = !!built.markers
 
+  /* 先にゲームへ書く。書けなければテキストも祖先も触らない。
+   * 書いたものは自分の書き込みとして記録する(見張りが拾って回り続けないように)。 */
+  const wrote = F2T.writeBackToGame(built.writeBack, target, {
+    mapPath: target.kind === 'event' ? path.join(dataDir, mapFileName(target.mapId)) : undefined,
+    commonEventPath: target.kind === 'common' ? path.join(dataDir, 'CommonEvents.json') : undefined
+  })
+  if (!wrote.ok) return { ok: false, textPath, error: wrote.error }
+  if (wrote.dataPath && o.guard) o.guard.recordFile(wrote.dataPath)
+
   const written = built.text
   const prev = readIfExists(textPath)
-  if (prev === written) return { ok: true, textPath, unchanged: true, conflicts, markers }
+  // ゲームへ書いたときは、テキストが同じでも祖先を進める(下まで通す)。
+  if (prev === written && !wrote.dataPath) return { ok: true, textPath, unchanged: true, conflicts, markers }
 
   const dir = path.dirname(textPath)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(textPath, written, 'utf8')
   if (o.guard) o.guard.record(textPath, written)
   if (conflicts) {
-    console.warn('[pull] ' + conflicts + ' conflict(s) kept both ' +
-      '(resolve the markers in the text, then push): ' + textPath)
+    console.warn('[pull] ' + conflicts + ' conflict(s) written into the game ' +
+      '(resolve the markers in the editor, then pull again): ' + textPath)
   }
   // コメント行(%)は元の位置へ戻すが、周りが大きく変わると位置があやしくなる。消えてはいない。
   if (built.approximate) {
@@ -165,15 +176,15 @@ function pullTarget (target, opts) {
   const pullWarnings = built.warnings || []
   pullWarnings.forEach(function (w) { console.warn('[pull] ' + w + ': ' + textPath) })
   // 祖先に目印が入ると次回の 3-way がそれを再マージするので、そのときだけ進めない。
-  // 衝突しただけなら進める(目印はテキストのみ)。据え置くと、テキストで解決したあとの
-  // push で同じ衝突がゲーム側に再発する。
+  // 衝突しただけなら進める(目印はゲームのみ)。据え置くと、ツクールで解決したあとの
+  // 取り出しで同じ衝突が再発する。
   if (markers) {
     console.warn('[pull] exported with unresolved markers; .t2f-base not updated ' +
       '(resolve the markers in the text, then push with --strategy overwrite): ' + textPath)
   } else {
     try {
       const id = T2F.deriveBaseId(textPath, root)
-      // 祖先はゲーム側(built.baseText)。マージ結果を入れると次の push でテキストが消える。
+      // 祖先は buildPullText が決めた側(書き戻したならテキストに書いた内容、でなければゲーム)。
       T2F.saveBaseText(root, id.key, built.baseText)
     } catch (e) { /* best effort */ }
   }
