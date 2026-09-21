@@ -107,7 +107,7 @@ export function assetPickerHtml(): string {
     for (let i = 0; i < count; i++) {
       const cell = document.createElement('div');
       cell.className = 'face';
-      cell.title = name + ' の ' + i + ' 番\n押すと入れます';
+      cell.title = name + ' の ' + i + ' 番\\n押すと入れます';
       const no = document.createElement('span');
       no.className = 'no';
       no.textContent = i;
@@ -131,7 +131,7 @@ export function assetPickerHtml(): string {
     h.textContent = name;
     const cell = document.createElement('div');
     cell.className = 'face';
-    cell.title = name + '\n押すと入れます';
+    cell.title = name + '\\n押すと入れます';
     cell.addEventListener('click', () => vscode.postMessage({ type: 'pickPicture', name }));
     const grid = document.createElement('div');
     grid.className = 'faces';
