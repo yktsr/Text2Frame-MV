@@ -3779,7 +3779,7 @@ function requireFrame2Text () {
 		// ・取り出しに反映方法(統合/上書き)を追加。統合はテキストに書いた内容を残したまま
 		//   ゲーム側の変更だけを取り込みます。プラグインコマンドの既定は従来どおり上書きで、
 		//   プラグインパラメータ「反映方法」から変えられます(CLI・t2f-sync・VSCodeの既定は統合)
-		// ・衝突しても共通の祖先を進めるよう修正。目印3行を消して決着をつければ、統合のまま
+		// ・衝突しても共通の祖先を進めるよう修正。衝突の目印を消して決着をつければ、統合のまま
 		//   反対側へ流せます(従来は上書きでしか抜けられませんでした)
 		// ・未解決の衝突が残っているイベント/テキストは反映・取り出しの対象から外すよう改善
 		// ・NW.js(MV同梱)でtextや.t2f-baseのディレクトリ作成に失敗する不具合の修正
@@ -3851,6 +3851,15 @@ function requireFrame2Text () {
 		 * @value overwrite
 		 * @default overwrite
 		 *
+		 * @arg WriteBack
+		 * @text イベントへの書き戻し条件
+		 * @desc 反映方法が統合(merge)のときだけ働きます。テキスト側の変更を、ツクールのイベントにも書き戻すかを設定します。衝突したときは、この設定に関係なくイベントへ書き戻します。
+		 * @type select
+		 * @option 毎回書き戻す / always
+		 * @value always
+		 * @option 書き戻さない / off
+		 * @value off
+		 *
 		 * @command EXPORT_CE_TO_MESSAGE
 		 * @text コモンイベントをエクスポート
 		 * @desc テキストにコモンイベントをエクスポートします。出力するコモンイベントのIDや、出力先のファイルの情報を指定します。
@@ -3883,6 +3892,15 @@ function requireFrame2Text () {
 		 * @value overwrite
 		 * @default overwrite
 		 *
+		 * @arg WriteBack
+		 * @text イベントへの書き戻し条件
+		 * @desc 反映方法が統合(merge)のときだけ働きます。テキスト側の変更を、ツクールのイベントにも書き戻すかを設定します。衝突したときは、この設定に関係なくイベントへ書き戻します。
+		 * @type select
+		 * @option 毎回書き戻す / always
+		 * @value always
+		 * @option 書き戻さない / off
+		 * @value off
+		 *
 		 * @command BATCH_EXPORT_MESSAGES_TO_FOLDER
 		 * @text フォルダへ一括取り出し
 		 * @desc dataフォルダ内の全イベント/コモンイベントを、見出し情報付きのテキストとしてフォルダへ一括で取り出します(既定は統合)。
@@ -3902,6 +3920,15 @@ function requireFrame2Text () {
 		 * @option 【取り扱い注意】全上書き / overwrite
 		 * @value overwrite
 		 * @default overwrite
+		 *
+		 * @arg WriteBack
+		 * @text イベントへの書き戻し条件
+		 * @desc 反映方法が統合(merge)のときだけ働きます。テキスト側の変更を、ツクールのイベントにも書き戻すかを設定します。衝突したときは、この設定に関係なくイベントへ書き戻します。
+		 * @type select
+		 * @option 毎回書き戻す / always
+		 * @value always
+		 * @option 書き戻さない / off
+		 * @value off
 		 *
 		 * @param Default Scenario Folder
 		 * @text 出力フォルダ名
@@ -3952,6 +3979,16 @@ function requireFrame2Text () {
 		 * @option 【取り扱い注意】全上書き / overwrite
 		 * @value overwrite
 		 * @default overwrite
+		 *
+		 * @param WriteBack
+		 * @text イベントへの書き戻し条件
+		 * @desc 統合(merge)で取り出したあと、テキスト側の変更をツクールのイベントにも書き戻す条件。衝突はイベントだけに出て、テキストには入りません。既定はalwaysです。
+		 * @type select
+		 * @option 毎回書き戻す / always
+		 * @value always
+		 * @option 書き戻さない / off
+		 * @value off
+		 * @default always
 		 *
 		 * @param IsDebug
 		 * @text デバッグモードを利用する
@@ -4468,8 +4505,13 @@ function requireFrame2Text () {
 		    Laurus.Frame2Text.EnglishTag = String(Laurus.Frame2Text.Parameters.EnglishTag) === 'true';
 		    // 未設定(古いプラグイン設定のまま)なら省略する。既定を true にしているため。
 		    Laurus.Frame2Text.OmitDefaultTags = String(Laurus.Frame2Text.Parameters.OmitDefaultTags) !== 'false';
+		    // イベントへの書き戻し。プラグインコマンドの引数で上書きできる。
+		    Laurus.Frame2Text.DefaultWriteBack = String(Laurus.Frame2Text.Parameters.WriteBack || 'always');
+		    Laurus.Frame2Text.WriteBack = Laurus.Frame2Text.DefaultWriteBack;
 		    // 単発取り出しのしかた。コマンドの引数解決で毎回決め直す。
 		    Laurus.Frame2Text.Strategy = 'overwrite';
+		    // ライブラリ・CLI から呼ぶときは、頼まれたときだけ書き戻す(Text2Frame の applyTextFile と同じ)。
+		    Laurus.Frame2Text.WriteBack = 'off';
 		    let PATH_SEP = '/';
 		    let BASE_PATH = '.';
 		    if (typeof commonjsRequire !== 'undefined') {
@@ -4498,20 +4540,20 @@ function requireFrame2Text () {
 		      const event_id = args.EventID;
 		      const page_id = args.PageID;
 		      this.pluginCommand('EXPORT_EVENT_TO_MESSAGE',
-		        [file_folder, file_name, map_id, event_id, page_id, args.Strategy]);
+		        [file_folder, file_name, map_id, event_id, page_id, args.Strategy, args.WriteBack]);
 		    });
 		    PluginManager.registerCommand('Frame2Text', 'EXPORT_CE_TO_MESSAGE', function (args) {
 		      const file_folder = args.FileFolder;
 		      const file_name = args.FileName;
 		      const common_event_id = args.CommonEventID;
 		      this.pluginCommand('EXPORT_CE_TO_MESSAGE',
-		        [file_folder, file_name, common_event_id, args.Strategy]);
+		        [file_folder, file_name, common_event_id, args.Strategy, args.WriteBack]);
 		    });
 		    PluginManager.registerCommand('Frame2Text', 'BATCH_EXPORT_MESSAGES_TO_FOLDER', function (args) {
 		      // 引数順は @arg の並びと合わせる。単体の取り出し・一括反映と同じく
 		      // 出力先 -> 取り出し方法。TextBase は改名前に保存されたコマンドのため。
 		      this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-		        [args.TextFolder || args.TextBase, args.Strategy]);
+		        [args.TextFolder || args.TextBase, args.Strategy, args.WriteBack]);
 		    });
 		  }
 
@@ -4637,6 +4679,19 @@ function requireFrame2Text () {
 		     * 以前の取り出しは上書きしかなかったので、既存のユーザーの動きを変えない。
 		     * MVの引数は手書きなので、日本語でも書けるようにする。 */
 		    const EXPORT_STRATEGY_ALIASES = { merge: 'merge', overwrite: 'overwrite', 統合: 'merge', 上書き: 'overwrite' };
+		    /* イベントへの書き戻し。省略時はプラグインパラメータ、それも無ければ毎回書き戻す。
+		     * MVの引数は手書きなので、日本語でも書けるようにする(表記は MZ の @option に合わせる)。 */
+		    const WRITE_BACK_ALIASES = { always: 'always', off: 'off', 毎回書き戻す: 'always', 書き戻さない: 'off' };
+		    const resolveWriteBack = function (explicit) {
+		      const given = String(explicit == null ? '' : explicit).trim();
+		      const fallback = String(Laurus.Frame2Text.DefaultWriteBack || '').trim();
+		      const value = (given !== '' && given !== 'undefined') ? given : fallback;
+		      if (value === '' || value === 'undefined') return 'always'
+		      const w = WRITE_BACK_ALIASES[value.toLowerCase()] || WRITE_BACK_ALIASES[value];
+		      if (w) return w
+		      throw new Error('Unknown write-back: ' + value +
+		        ' / 書き戻しは always(毎回書き戻す) か off(書き戻さない) を指定してください。')
+		    };
 		    const resolveExportStrategy = function (explicit) {
 		      const given = String(explicit == null ? '' : explicit).trim();
 		      const fallback = String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters.Strategy) || '').trim();
@@ -4659,6 +4714,7 @@ function requireFrame2Text () {
 		        if (args[3]) Laurus.Frame2Text.EventID = args[3];
 		        if (args[4]) Laurus.Frame2Text.PageID = args[4];
 		        Laurus.Frame2Text.Strategy = resolveExportStrategy(args[5]);
+		        Laurus.Frame2Text.WriteBack = resolveWriteBack(args[6]);
 		        if (args[0] || args[1]) {
 		          Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`;
 		          Laurus.Frame2Text.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${(
@@ -4681,6 +4737,7 @@ function requireFrame2Text () {
 		        if (args[1]) Laurus.Frame2Text.FileName = args[1];
 		        if (args[2]) Laurus.Frame2Text.CommonEventID = args[2];
 		        Laurus.Frame2Text.Strategy = resolveExportStrategy(args[3]);
+		        Laurus.Frame2Text.WriteBack = resolveWriteBack(args[4]);
 		        if (args[0] || args[1]) {
 		          Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`;
 		          Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`;
@@ -4696,6 +4753,7 @@ function requireFrame2Text () {
 		        // ゲームのデータは data 固定(他の取り出し・反映コマンドと同じ)。
 		        // 反映方法は単体の取り出しと同じ決め方(省略時はプラグインパラメータ、無ければ上書き)。
 		        const batchStrategy = resolveExportStrategy(args[1]);
+		        Laurus.Frame2Text.WriteBack = resolveWriteBack(args[2]);
 		        // 出力先を省いたときは、プラグインパラメータの出力フォルダ名。
 		        // FileFolder は単発の取り出しが引数で書き換えるので、パラメータを直接読む。
 		        Laurus.Frame2Text.TextBase = args[0] || String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters['Default Scenario Folder']) || '') || 'text';
@@ -6958,15 +7016,22 @@ function requireFrame2Text () {
 
 		    // 取り出し(ゲーム→テキスト)の本文を作る。merge のときだけ既存テキスト・祖先と 3-way する。
 		    // fs には触らない(ゲーム内は BASE_PATH、CLI は cwd と基準が違うため入出力は呼び出し側)。
-		    // 戻り値: { text, baseText, conflicts, markers, approximate, warnings }
+		    // 戻り値: { text, baseText, writeBack, conflicts, markers, approximate, warnings }
 		    // 見送ったときは { skipped: 'game'|'text' }。
 		    // markers は「書き出した本文に未解決の目印が入っている」印。呼び出し側は祖先を進めないこと。
 		    //
+		    // 取り出しの処理元はゲーム。衝突した所は目印つきの両方をゲームへ書き(writeBack)、
+		    // テキストにはテキスト側の版だけを残す。反映(Text2Frame)の鏡写し。
+		    // writeBack は { commands } か null。ファイルは書かないので、呼び出し側が
+		    // Text2Frame の applyCommandsToData でゲームへ書く(先にゲーム、書けたらテキスト)。
+		    //
 		    // baseText は .t2f-base へ保存する内容で、text とは別物。祖先は「テキストとゲームが
-		    // 実際に一致していた地点」でなければならず、取り出しで書き換えるのはテキストのほうなので、
-		    // 祖先には書き換えなかった側=ゲームを入れる(反映が祖先にテキストを入れるのと対称)。
-		    // ここに merge 結果を入れると、ゲームが一度も到達していない状態が祖先になり、次の反映で
-		    // 3-way が「ゲームが消した」と誤読して、取り出し前にテキストへ書いた分が黙って消える。
+		    // 実際に一致していた地点」でなければならない。
+		    //  ・ゲームへ書き戻したとき: 目印の無い側(テキストに書いた内容)を祖先にする。
+		    //    ツクールで目印を消して決着したあとの取り出しが、同じ衝突を繰り返さない。
+		    //  ・書き戻さないとき: 書き換えなかった側=ゲームを入れる。ここに merge 結果を入れると、
+		    //    ゲームが一度も到達していない状態が祖先になり、次の反映で 3-way が「ゲームが消した」と
+		    //    誤読して、取り出し前にテキストへ書いた分が黙って消える。
 		    const buildPullText = function (opts) {
 		      opts = opts || {};
 		      const list = opts.list || [];
@@ -7008,6 +7073,8 @@ function requireFrame2Text () {
 		        const restored = restoreComments(gameText);
 		        return {
 		          text: restored.text,
+		          // 上書きの取り出しはゲームが真。ゲームへ書き戻すものは無い。
+		          writeBack: null,
 		          // 祖先はゲームが持っているものなので、コメントは戻さない(読むときは compile が落とす)。
 		          baseText: gameText,
 		          conflicts: 0,
@@ -7028,15 +7095,44 @@ function requireFrame2Text () {
 		        englishTag,
 		        omitDefaults: opts.omitDefaults
 		      });
-		      const restored = restoreComments(header + r.text + '\n');
+		      const mergedText = header + r.text + '\n';
+		      const restored = restoreComments(mergedText);
+		      /* ゲームへ書き戻すか。衝突したときは設定に関係なく書く(目印は処理元=ゲームに置く)。
+		       * 衝突していないときは「毎回書き戻す」のときだけ。意味が変わらないなら書かない
+		       * (ツクールが省いた引数との違いだけでデータを書き直さないため)。 */
+		      const always = String(opts.writeBack || 'off').toLowerCase() === 'always';
+		      const gameList = r.gameCommands || [];
+		      const differs = !T2F.commandsEqual || !T2F.commandsEqual(list, gameList);
+		      const writeBack = (r.conflicts || (always && differs)) ? { commands: gameList } : null;
 		      return {
 		        text: restored.text,
-		        baseText: gameText,
+		        writeBack,
+		        baseText: writeBack ? mergedText : gameText,
 		        conflicts: r.conflicts || 0,
 		        approximate: restored.approximate,
 		        // applyMergePull の警告はこれまで捨てられていた(祖先が無いときの上書き警告など)。
 		        warnings: r.warnings || []
 		      }
+		    };
+
+		    /* buildPullText が返した writeBack を、ゲームのデータへ書く。取り出しの3経路で共通。
+		     * 戻り値: { ok, dataPath, error }。書くものが無ければ { ok: true }。 */
+		    const writeBackToGame = function (writeBack, target, paths) {
+		      if (!writeBack) return { ok: true }
+		      const T2F = resolveText2Frame();
+		      if (!T2F || !T2F.applyCommandsToData) {
+		        return { ok: false, error: '書き戻しには Text2Frame プラグインが必要です。同じプロジェクトに導入してください。 / write-back requires the Text2Frame plugin' }
+		      }
+		      return T2F.applyCommandsToData({
+		        kind: target.kind,
+		        mapId: target.mapId,
+		        eventId: target.eventId,
+		        pageId: target.pageId,
+		        commonEventId: target.commonEventId,
+		        mapPath: paths.mapPath,
+		        commonEventPath: paths.commonEventPath,
+		        commands: writeBack.commands
+		      })
 		    };
 
 		    // data ディレクトリを走査し、出力対象(イベント/コモンイベント)の routing メタだけを返す。
@@ -7081,8 +7177,8 @@ function requireFrame2Text () {
 		     * 一括取り出しはこれを全ターゲットに回すだけ、同期は変わったファイルの分だけ回す。
 		     * (全件を回す一括コマンドを変更のたびに呼ぶと、実プロジェクト規模ではゲームが数秒止まる)
 		     *
-		     * opts: { dataDir, target, outPath, baseDir, englishTag, strategy }
-		     * 戻り値: { ok, skipped, conflicts, markers, overwritten, approximate, warnings, baseSaveError, error }
+		     * opts: { dataDir, target, outPath, baseDir, englishTag, strategy, writeBack }
+		     * 戻り値: { ok, skipped, conflicts, markers, overwritten, approximate, warnings, baseSaveError, error, wroteGame, dataPath }
 		     * 投げずに戻り値で返す。呼び出し側が件数をまとめて報告するため。 */
 		    const pullTargetToText = function (opts) {
 		      const _fs = require$$1$1;
@@ -7109,12 +7205,21 @@ function requireFrame2Text () {
 		          englishTag: opts.englishTag,
 		          omitDefaults: opts.omitDefaults,
 		          strategy: entryStrategy,
+		          writeBack: opts.writeBack,
 		          existingText,
 		          baseText,
 		          fallbackHeader: renderFrontMatter(t, t.kind)
 		        });
 		        // 未解決の目印が残っているものは書かずに見送る(このファイルだけ飛ばす)。
 		        if (built.skipped) return { ok: true, skipped: built.skipped }
+		        /* 先にゲームへ書く。書けなければテキストも祖先も触らない(片方だけ書いて、
+		         * もう片方の版が消えるのを防ぐ。反映側の「テキストを先に書く」と同じ考え)。 */
+		        const dataPaths = {
+		          mapPath: t.kind === 'event' ? _path.join(opts.dataDir, 'Map' + ('000' + String(t.mapId)).slice(-3) + '.json') : undefined,
+		          commonEventPath: t.kind === 'common' ? _path.join(opts.dataDir, 'CommonEvents.json') : undefined
+		        };
+		        const wrote = writeBackToGame(built.writeBack, t, dataPaths);
+		        if (!wrote.ok) return { ok: false, error: wrote.error }
 		        _fs.writeFileSync(opts.outPath, built.text, 'utf8');
 		        let baseSaveError = null;
 		        // 目印ごと取り出したときだけ祖先を進めない(理由は単発取り出しの同じ箇所)。
@@ -7128,6 +7233,8 @@ function requireFrame2Text () {
 		          text: built.text,
 		          conflicts: built.conflicts || 0,
 		          markers: !!built.markers,
+		          wroteGame: !!built.writeBack,
+		          dataPath: wrote.dataPath,
 		          // 全上書きで既存を潰したときだけ true(merge は上書きではない)。
 		          overwritten: entryStrategy !== 'merge' && !!existingText,
 		          // 周りが大きく変わって、コメント行(%)の位置があやしくなった件数。
@@ -7140,7 +7247,7 @@ function requireFrame2Text () {
 		      }
 		    };
 
-		    Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, pullTargetToText, renderFrontMatter, buildPullText };
+		    Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, pullTargetToText, renderFrontMatter, buildPullText, writeBackToGame };
 		    // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
 		    // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
 		    // window / global にもフォールバックする(Text2Frame 側の $LaurusText2Frame と対称)。
@@ -7236,7 +7343,8 @@ function requireFrame2Text () {
 		          outPath: _path.resolve(BASE_PATH, textBase, t.key + '.txt'),
 		          baseDir: _baseDir,
 		          englishTag,
-		          strategy: batchStrategy
+		          strategy: batchStrategy,
+		          writeBack: Laurus.Frame2Text.WriteBack
 		        });
 		        if (!r.ok) {
 		          errCount++;
@@ -7278,21 +7386,21 @@ function requireFrame2Text () {
 		      if (conflictSkipped.length > 0) {
 		        addWarning('[batch] 衝突未解決で取り出さなかったファイル: ' + conflictSkipped.slice(0, FAILURE_LINES).join(', ') +
 		          (conflictSkipped.length > FAILURE_LINES ? ' ほか' : ''));
-		        addWarning('[batch] 統合はできません。ツクールで目印3行を消すか、上書きで取り出してテキスト側で解決してください。');
+		        addWarning('[batch] 統合はできません。ツクールで衝突の目印を消すか、上書きで取り出してテキスト側で解決してください。');
 		        console.warn('[batch] skipped (unresolved conflict markers): ' + conflictSkipped.join(', '));
 		      }
 		      if (markerCarried.length > 0) {
 		        addWarning('[batch] 目印ごと取り出したファイル ' + markerCarried.length + '件: ' + markerCarried.slice(0, FAILURE_LINES).join(', ') +
 		          (markerCarried.length > FAILURE_LINES ? ' ほか' : ''));
-		        addWarning('[batch] 祖先(.t2f-base)は更新していません。テキストの目印3行を消して残す方を決めたあと、');
+		        addWarning('[batch] 祖先(.t2f-base)は更新していません。テキストの衝突の目印を消して残す方を決めたあと、');
 		        addWarning('[batch] Text2Frameの一括反映を上書きで実行してください(目印がゲーム側にもあるため)。');
 		        console.warn('[batch] exported with unresolved markers (ancestor not advanced): ' + markerCarried.join(', '));
 		      }
 		      if (conflicted.length > 0) {
-		        addWarning('[batch] 衝突あり(両方残し) ' + conflicted.length + '件: ' + conflicted.slice(0, FAILURE_LINES).join(', ') +
+		        addWarning('[batch] 衝突あり(ゲームに両方残し) ' + conflicted.length + '件: ' + conflicted.slice(0, FAILURE_LINES).join(', ') +
 		          (conflicted.length > FAILURE_LINES ? ' ほか' : ''));
-		        addWarning('[batch] テキストの目印3行を消して残す方を決めたあと、Text2Frameの一括反映(merge)を実行してください。');
-		        console.warn('[batch] conflicts kept both: ' + conflicted.join(', '));
+		        addWarning('[batch] ツクールで残す方を決めて衝突の目印を消したあと、もう一度一括取り出しを実行してください。');
+		        console.warn('[batch] conflicts written into the game: ' + conflicted.join(', '));
 		      }
 		      if (approxComments.length > 0) {
 		        addWarning('[batch] コメント行の位置があやしいファイル ' + approxComments.length + '件: ' +
@@ -7357,6 +7465,7 @@ function requireFrame2Text () {
 		      list: map_events,
 		      englishTag: EnglishTag,
 		      strategy: exportStrategy,
+		      writeBack: Laurus.Frame2Text.WriteBack,
 		      existingText,
 		      previousText,
 		      baseText,
@@ -7364,23 +7473,32 @@ function requireFrame2Text () {
 		    });
 		    // 単発コマンドは対象が1つしかないので、見送りは黙って成功にせず理由を出して止める。
 		    if (built.skipped === 'game') {
-		      throw new Error('未解決の衝突がゲーム側に残っています。ツクールで目印3行を消して残す方を決めたあと、もう一度取り出してください。テキスト側で解決したいときは上書きで取り出すと目印ごと出てきます。' +
+		      throw new Error('未解決の衝突がゲーム側に残っています。ツクールで衝突の目印を消して残す方を決めたあと、もう一度取り出してください。テキスト側で解決したいときは上書きで取り出すと目印ごと出てきます。' +
 		        ' / unresolved conflict markers in the game data; resolve in the editor and pull again, or pull with overwrite to resolve in the text')
 		    }
 		    if (built.skipped) {
-		      throw new Error('未解決の衝突がテキストに残っています。目印3行を消して残す方を決めたあと、Text2Frameの「反映」を実行してください。' +
+		      throw new Error('未解決の衝突がテキストに残っています。衝突の目印を消して残す方を決めたあと、Text2Frameの「反映」を実行してください。' +
 		        ' / unresolved conflict markers in the text; resolve them, then import')
 		    }
 		    const outputText = built.text;
 
 		    /** ********************************************** */
-		    // txtファイルを出力
+		    // ゲームへの書き戻し -> txtファイルを出力
 		    /** ********************************************** */
+		    // 先にゲームへ書く。書けなければテキストも祖先も触らない(一括の同じ箇所を参照)。
+		    const wroteGame = writeBackToGame(built.writeBack, Object.assign({ kind: exportKind }, exportEntry), {
+		      mapPath: Laurus.Frame2Text.MapPath,
+		      commonEventPath: Laurus.Frame2Text.CommonEventPath
+		    });
+		    if (!wroteGame.ok) {
+		      throw new Error('ゲームに書き戻せなかったため取り出しを中止しました。テキストもゲームも変更していません。 / write-back failed; nothing was written: ' + wroteGame.error)
+		    }
 		    try { mkdirpSync(require('path').dirname(outPath)); } catch (e) { /* best effort */ }
 		    writeData(outPath, outputText);
 		    if (built.conflicts) {
-		      logger.error('[merge-pull] ' + built.conflicts + ' conflict(s) kept both / 衝突を両方残しました: ' + outPath);
-		      logger.error('[merge-pull] テキストの目印3行を消して残す方を決めたあと、反映(merge)を実行してください。 / resolve the text, then import with merge');
+		      addWarning('衝突 ' + built.conflicts + '件。ゲームのイベントに両方の版と衝突の目印が入りました(テキストはテキストの版のままです)。');
+		      addWarning('ツクールで残す方を決めて衝突の目印を消したあと、もう一度取り出してください。');
+		      logger.error('[merge-pull] ' + built.conflicts + ' conflict(s) written into the game / 衝突をゲームに残しました: ' + outPath);
 		    }
 		    if (built.approximate) {
 		      addWarning('コメント行 ' + built.approximate + '件は周りが大きく変わったため、位置がずれているかもしれません(消えてはいません)。');
@@ -7392,7 +7510,7 @@ function requireFrame2Text () {
 		     * 衝突しただけ(目印はテキストだけ)なら進める。据え置くと、テキストで解決したあとの
 		     * 反映で同じ衝突が再発する。取り出しの3経路で同じ規則。 */
 		    if (built.markers) {
-		      addWarning('未解決の衝突の目印ごと取り出したため、祖先(.t2f-base)は更新していません。テキストの目印3行を消して残す方を決めたあと、反映を上書きで実行してください。');
+		      addWarning('未解決の衝突の目印ごと取り出したため、祖先(.t2f-base)は更新していません。テキストの衝突の目印を消して残す方を決めたあと、反映を上書きで実行してください。');
 		    }
 		    // 祖先はゲーム側(built.baseText)。マージ結果を入れると次の反映でテキストの内容が消える。
 		    try {
@@ -7441,6 +7559,7 @@ function requireFrame2Text () {
 		    .option('-w, --english_tag <true/false>', 'english tag', 'true')
 		    .option('--omit-default-tags <true/false>', 'omit face/background/position tags that match the defaults', 'true')
 		    .option('-s, --strategy <merge|overwrite>', 'pull strategy (default merge: keep translations; overwrite: replace)', /^(merge|overwrite)$/i, 'merge')
+		    .option('--write-back <always|off>', 'write the merged result back into the game data (default off; conflicts always are)', /^(always|off)$/i, 'off')
 		    .option('-b, --base <path>', 'ancestor text path for merge (optional; auto .t2f-base when omitted)')
 		    .parse();
 
@@ -7617,6 +7736,7 @@ function requireFrame2Text () {
 		          englishTag,
 		          omitDefaults,
 		          strategy: entryStrategy,
+		          writeBack: options.writeBack,
 		          existingText,
 		          baseText,
 		          fallbackHeader: module.exports.renderFrontMatter(t, t.kind)
@@ -7626,6 +7746,15 @@ function requireFrame2Text () {
 		          results.push({ ok: true, textPath, skipped: built.skipped });
 		          return
 		        }
+		        // 先にゲームへ書く。書けなければテキストも祖先も触らない。
+		        const wrote = module.exports.writeBackToGame(built.writeBack, t, {
+		          mapPath: t.kind === 'event' ? path.join(dataDir, 'Map' + ('000' + String(t.mapId)).slice(-3) + '.json') : undefined,
+		          commonEventPath: t.kind === 'common' ? path.join(dataDir, 'CommonEvents.json') : undefined
+		        });
+		        if (!wrote.ok) {
+		          results.push({ ok: false, key: t.key, error: wrote.error });
+		          return
+		        }
 		        fs.mkdirSync(path.dirname(textPath), { recursive: true });
 		        fs.writeFileSync(textPath, built.text, 'utf8');
 		        // 目印ごと取り出したときだけ祖先を進めない(理由は単発取り出しの同じ箇所)。
@@ -7633,7 +7762,7 @@ function requireFrame2Text () {
 		          // 祖先はゲーム側(built.baseText)。理由は in-engine 側の同じ箇所を参照。
 		          try { fs.writeFileSync(path.join(baseDir, t.key + '.txt'), built.baseText, 'utf8'); } catch (e) { baseSaveError = baseSaveError || e; }
 		        }
-		        results.push({ ok: true, textPath, conflicts: built.conflicts, markers: built.markers, approximate: built.approximate });
+		        results.push({ ok: true, textPath, conflicts: built.conflicts, markers: built.markers, approximate: built.approximate, wroteGame: !!built.writeBack });
 		      } catch (error) {
 		        results.push({ ok: false, key: t.key, error: error.message });
 		      }
@@ -12620,11 +12749,11 @@ function requireText2Frame () {
 		      // 未解決の衝突が残ったままマージすると、目印ごと再マージされて目印が二重・三重に増え、
 		      // どちらが自分の変更か分からなくなる。解決を促して止める(上書き反映は逃げ道として通す)。
 		      if (hasConflictMarker(existing_events)) {
-		        throw new Error('未解決の衝突がゲーム側に残っています。ツクールで目印3行を消して残す方を決めたあと、Frame2Textの「取り出し」を実行してください。' +
+		        throw new Error('未解決の衝突がゲーム側に残っています。ツクールで衝突の目印を消して残す方を決めたあと、Frame2Textの「取り出し」を実行してください。' +
 		          ' / unresolved conflict markers in the game data; resolve in the editor, then pull')
 		      }
 		      if (hasConflictMarker(event_command_list)) {
-		        throw new Error('未解決の衝突がテキストに残っています。目印3行を消して残す方を決めたあと、もう一度反映してください。' +
+		        throw new Error('未解決の衝突がテキストに残っています。衝突の目印を消して残す方を決めたあと、もう一度反映してください。' +
 		          ' / unresolved conflict markers in the text; resolve them and import again')
 		      }
 		      // 祖先(BASE): 明示 BasePath 優先。無ければ .t2f-base/<key> を自動参照。
@@ -12809,7 +12938,7 @@ function requireText2Frame () {
 		    // 衝突したときの案内。目印はいつもテキストにだけ入る(ゲームはゲームの版のまま)。
 		    const warnConflictsRemain = function (merged) {
 		      if (!merged.conflicts) return
-		      addWarning('衝突 ' + merged.conflicts + '件。テキストに両方の版と目印3行が入りました(ゲームはゲームの版のままです)。' +
+		      addWarning('衝突 ' + merged.conflicts + '件。テキストに両方の版と衝突の目印が入りました(ゲームはゲームの版のままです)。' +
 		        '残す方を決めて目印を消し、もう一度反映してください。 / ' +
 		        merged.conflicts + ' conflict(s) were written into the text (the game keeps its own version); resolve them there and import again');
 		    };
@@ -18552,8 +18681,8 @@ function requireText2Frame () {
 		    /* 3-way マージ(diff3 方式・両方残す)。base=共通祖先, ours=現JSON, theirs=テキスト。
 		     * 釣り合った単位で base↔ours / base↔theirs を LCS 対応し、両方が同じ箇所を別々に変えた領域は
 		     * 「衝突」として両方を残し 108 コメントで囲む(非破壊・常に valid)。
-		     * 戻り値: { commands: 適用後(終端コードなし), commandsOurs, conflicts: 件数, warnings }。
-		     * commandsOurs は keepOurs を渡したときだけ埋まる(後述)。 */
+		     * 戻り値: { commands: 適用後(終端コードなし), commandsOurs, commandsTheirs, conflicts: 件数, warnings }。
+		     * commandsOurs / commandsTheirs は keepOurs / keepTheirs を渡したときだけ埋まる(後述)。 */
 		    const applyThreeWayMerge = function (base_commands, ours_commands, theirs_commands, options) {
 		      const stripBottom = function (cmds) {
 		        const copy = cmds.slice();
@@ -18616,16 +18745,19 @@ function requireText2Frame () {
 		      const result = [];
 		      const warnings = [];
 		      let conflicts = 0;
-		      /* keepOurs: 衝突したハンクを「ゲーム側の版だけ・目印なし」にした列も並行して作る。
-		       * 書き戻し(マージバック)で、目印はテキストに、ゲームには遊べる形を書くために使う。
-		       * 要らないときは配列自体を作らない(一括反映は数千ページ回るため)。 */
+		      /* keepOurs / keepTheirs: 衝突したハンクを「片方の版だけ・目印なし」にした列も並行して作る。
+		       * 目印は処理元の側だけに入れ、もう一方には目印なしの形を書くために使う。
+		       * 要らないときは配列自体を作らない(一括の処理は数千ページ回るため)。 */
 		      const keepOurs = !!(options && options.keepOurs);
+		      const keepTheirs = !!(options && options.keepTheirs);
 		      const resultOurs = keepOurs ? [] : null;
+		      const resultTheirs = keepTheirs ? [] : null;
 		      const pushAll = function (units) {
 		        for (const u of units) {
 		          for (const c of u) {
 		            result.push(c);
 		            if (keepOurs) resultOurs.push(c);
+		            if (keepTheirs) resultTheirs.push(c);
 		          }
 		        }
 		      };
@@ -18699,15 +18831,16 @@ function requireText2Frame () {
 		          pushComment(CONFLICT_MARKERS[1], ind);
 		          pushOnly(result, oReg);
 		          pushComment(CONFLICT_MARKERS[2], ind);
-		          // ゲームへ書くほうは自分の版だけ。目印を入れないので、そのまま遊べる。
+		          // 目印を入れない側は、その側の版だけ。そのまま使える形になる。
 		          if (keepOurs) pushOnly(resultOurs, oReg);
+		          if (keepTheirs) pushOnly(resultTheirs, tReg);
 		          // 衝突の件数は戻り値の conflicts で返す。ここで警告文を積むと、呼び出し側が出す
 		          // 「N件の衝突を両方残しました」と同じ内容が衝突の数だけ重なるため積まない。
 		        }
 		        pos = baseHi;
 		      }
 
-		      return { commands: result, commandsOurs: resultOurs, conflicts, warnings }
+		      return { commands: result, commandsOurs: resultOurs, commandsTheirs: resultTheirs, conflicts, warnings }
 		    };
 
 		    // 単一テキストファイルを単一データJSONへデプロイする再利用関数(CLI監視/VSCode拡張から呼ぶ)。
@@ -18905,11 +19038,15 @@ function requireText2Frame () {
 		      const base = opts.baseBody ? compile(opts.baseBody) : [];
 		      const englishTag = opts.englishTag !== false;
 		      let merged;
+		      /* 取り出しの処理元はゲーム。衝突した所は目印つきの両方をゲームへ書き(mergedForGame)、
+		       * テキストにはテキスト側の版だけを残す(merged)。衝突しなければ両方同じ。 */
+		      let mergedForGame;
 		      let conflicts = 0;
 		      let warnings = [];
 		      if (base.length > 0) {
-		        const m = applyThreeWayMerge(base, gameCommands, theirs);
-		        merged = m.commands.slice();
+		        const m = applyThreeWayMerge(base, gameCommands, theirs, { keepTheirs: true });
+		        mergedForGame = m.commands.slice();
+		        merged = m.conflicts ? m.commandsTheirs.slice() : m.commands.slice();
 		        conflicts = m.conflicts;
 		        warnings = m.warnings;
 		      } else {
@@ -18917,14 +19054,80 @@ function requireText2Frame () {
 		        // 既存テキスト(翻訳)があれば上書きになるため警告する。通常は export が祖先を作るので稀。
 		        if (theirs.length > 0) warnings.push('祖先が無いため既存テキストをゲーム内容で上書きしました / no ancestor: overwrote existing text from game');
 		        merged = gameCommands.slice();
+		        mergedForGame = merged.slice();
 		      }
-		      if (!merged.length || merged[merged.length - 1].code !== 0) merged.push({ code: 0, indent: 0, parameters: [] });
+		      const withBottom = function (list) {
+		        if (!list.length || list[list.length - 1].code !== 0) list.push({ code: 0, indent: 0, parameters: [] });
+		        return list
+		      };
+		      withBottom(merged);
+		      withBottom(mergedForGame);
 		      const F2T = resolveFrame2Text();
 		      if (!F2T || !F2T.decompile) { throw new Error('取り出し(merge)には Frame2Text プラグインが必要です。同じプロジェクトに導入してください。 / MERGE pull requires the Frame2Text plugin to be loaded.') }
 		      // omitDefaults は省略時 undefined のまま渡す。decompile 側が Frame2Text の
 		      // プラグインパラメータへ落とすので、指定しない呼び出しの挙動は変わらない。
 		      const text = F2T.decompile(merged, englishTag, { pretty: true, omitDefaults: opts.omitDefaults });
-		      return { text, conflicts, warnings }
+		      return { text, gameCommands: mergedForGame, conflicts, warnings }
+		    };
+
+		    /* 2つのコマンド列が「テキストで区別できない差」しかないか。
+		     * 取り出しの書き戻しで、意味が変わらないのにデータを書き直さないために使う
+		     * (ツクールが省いた引数と、こちらが補った引数の違いなど)。 */
+		    const commandsEqual = function (a, b) {
+		      const strip = function (cmds) {
+		        const copy = (cmds || []).slice();
+		        while (copy.length > 0 && copy[copy.length - 1] && copy[copy.length - 1].code === 0) copy.pop();
+		        return copy
+		      };
+		      const key = normalizeKeyFactory();
+		      return key(strip(a)) === key(strip(b))
+		    };
+
+		    /* コマンド列を、そのままゲームのデータへ書く。取り出し(Frame2Text)の書き戻しが使う。
+		     * 反映の入口(applyTextFile)はテキストから始まるので、こちらは列を直接受ける。
+		     * 戻り値: { ok, dataPath, error }。投げずに返す(呼び出し側が件数をまとめるため)。 */
+		    const applyCommandsToData = function (opts) {
+		      opts = opts || {};
+		      const pathLib = require$$0$1;
+		      const { BASE_PATH } = getDirParams();
+		      const kind = String(opts.kind || 'event').toLowerCase();
+		      if (!Array.isArray(opts.commands)) return { ok: false, error: 'commands is required' }
+		      const commands = opts.commands.slice();
+		      if (!commands.length || commands[commands.length - 1].code !== 0) commands.push(getCommandBottomEvent());
+		      try {
+		        if (kind === 'event') {
+		          const eventId = Number(opts.eventId);
+		          const pageId = Number(opts.pageId || 1);
+		          const defaultMapPath = opts.mapId
+		            ? pathLib.join('data', 'Map' + ('000' + String(opts.mapId)).slice(-3) + '.json')
+		            : null;
+		          const dataPath = resolveFromRoot(BASE_PATH, opts.mapPath) || resolveFromRoot(BASE_PATH, defaultMapPath);
+		          if (!dataPath) return { ok: false, error: 'mapPath or mapId is required for event entry' }
+		          if (!eventId) return { ok: false, error: 'eventId is required for event entry' }
+		          const mapData = readJsonData(dataPath);
+		          const event = mapData.events && mapData.events[eventId];
+		          if (!event) return { ok: false, error: 'EventID not found. / EventIDが見つかりません。: ' + eventId }
+		          while (!event.pages[pageId - 1]) event.pages.push(getDefaultPage());
+		          event.pages[pageId - 1].list = commands;
+		          writeData(dataPath, mapData);
+		          return { ok: true, dataPath }
+		        }
+		        if (kind === 'common') {
+		          const commonEventId = Number(opts.commonEventId);
+		          const dataPath = resolveFromRoot(BASE_PATH, opts.commonEventPath) ||
+		            resolveFromRoot(BASE_PATH, pathLib.join('data', 'CommonEvents.json'));
+		          const ceData = readJsonData(dataPath);
+		          if (!commonEventId || !ceData[commonEventId]) {
+		            return { ok: false, error: 'Common Event not found. / コモンイベントが見つかりません。: ' + opts.commonEventId }
+		          }
+		          ceData[commonEventId].list = commands;
+		          writeData(dataPath, ceData);
+		          return { ok: true, dataPath }
+		        }
+		        return { ok: false, error: 'unknown kind: ' + kind }
+		      } catch (e) {
+		        return { ok: false, error: (e && e.message) || String(e) }
+		      }
 		    };
 
 		    const resolveFromRoot = function (rootDir, maybeRelativePath) {
@@ -19069,7 +19272,7 @@ function requireText2Frame () {
 		        // 書き戻したテキストも自分の書き込み。記録しないと 反映 -> 書き戻し -> 反映 と回り続ける。
 		        if (res.writtenBack && res.writeBackPath) guard.record(res.writeBackPath, res.writeBackText);
 		        console.log('[sync] 反映: ' + rel(abs) + ' -> ' + rel(res.dataPath || '') +
-		          (res.conflicts ? ' (衝突 ' + res.conflicts + '件。目印3行を消して残す方を決めてください)' : ''));
+		          (res.conflicts ? ' (衝突 ' + res.conflicts + '件。テキストで衝突の目印を消して残す方を決めてください)' : ''));
 		        (res.warnings || []).forEach(function (w) { console.warn('[sync] ' + w); });
 		      };
 
@@ -19084,7 +19287,7 @@ function requireText2Frame () {
 		        targets.forEach(function (t) {
 		          const outPath = _path.join(textRoot, t.key + '.txt');
 		          const r = F2T.pullTargetToText({
-		            dataDir, target: t, outPath, baseDir, englishTag, strategy: opts.strategy
+		            dataDir, target: t, outPath, baseDir, englishTag, strategy: opts.strategy, writeBack: opts.writeBack
 		          });
 		          if (!r.ok) {
 		            console.error('[sync] 取り出しに失敗: ' + t.key + ': ' + r.error);
@@ -19096,7 +19299,9 @@ function requireText2Frame () {
 		          }
 		          // 取り出しが書いたテキストは自分の書き込み。反映に跳ね返らせない。
 		          guard.record(outPath, r.text);
-		          console.log('[sync] 取り出し: ' + t.key + (r.conflicts ? ' (衝突 ' + r.conflicts + '件)' : ''));
+		          // 書き戻した data も自分の書き込み。記録しないと 取り出し -> 反映 と回り続ける。
+		          if (r.dataPath) guard.recordFile(r.dataPath);
+		          console.log('[sync] 取り出し: ' + t.key + (r.conflicts ? ' (衝突 ' + r.conflicts + '件。ツクールで衝突の目印を消して残す方を決めてください)' : ''));
 		          // コメント行(%)は元の位置へ戻すが、周りが大きく変わると位置があやしくなる。
 		          if (r.approximate) {
 		            console.warn('[sync] コメント行 ' + r.approximate + '件の位置があやしくなりました(消えてはいません): ' + t.key);
@@ -19303,12 +19508,12 @@ function requireText2Frame () {
 		      };
 		      if (conflicted.length > 0) {
 		        addMessage('[batch-import] 衝突 ' + conflicted.length + '件: ' + nameList(conflicted));
-		        addMessage('[batch-import] 目印はテキストに入っています(ゲームはゲームの版のままです)。');
-		        addMessage('[batch-import] 残す方を決めて目印3行を消し、もう一度この一括反映を実行してください。');
+		        addMessage('[batch-import] 衝突した箇所はテキストに目印が入っています。');
+		        addMessage('[batch-import] 意図通りに編集し目印を消して、もう一度この一括反映を実行してください。');
 		      }
 		      if (unresolved.length > 0) {
 		        addMessage('[batch-import] 目印が残っていて反映できないファイル ' + unresolved.length + '件: ' + nameList(unresolved));
-		        addMessage('[batch-import] 目印3行を消して残す方を決めてから、もう一度実行してください。');
+		        addMessage('[batch-import] 目印を消して、編集してから、もう一度実行してください。');
 		        unresolved.forEach(function (k) { console.warn('[batch-import] unresolved markers: ' + k); });
 		      }
 		      failures.slice(0, DETAIL_LINES).forEach(function (f) { addMessage('[batch-import] 失敗: ' + f); });
@@ -19328,7 +19533,7 @@ function requireText2Frame () {
 		      return { ok, fail, root }
 		    };
 
-		    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, readBaseText, saveBaseText, deriveBaseId, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter };
+		    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, applyCommandsToData, commandsEqual, resolveStrategy, readBaseText, saveBaseText, deriveBaseId, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter };
 		    // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
 		    // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
 		    // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。
