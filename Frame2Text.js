@@ -82,6 +82,15 @@
  * @value overwrite
  * @default overwrite
  *
+ * @arg WriteBack
+ * @text イベントへの書き戻し条件
+ * @desc 反映方法が統合(merge)のときだけ働きます。テキスト側の変更を、ツクールのイベントにも書き戻すかを設定します。衝突したときは、この設定に関係なくイベントへ書き戻します。
+ * @type select
+ * @option 毎回書き戻す / always
+ * @value always
+ * @option 書き戻さない / off
+ * @value off
+ *
  * @command EXPORT_CE_TO_MESSAGE
  * @text コモンイベントをエクスポート
  * @desc テキストにコモンイベントをエクスポートします。出力するコモンイベントのIDや、出力先のファイルの情報を指定します。
@@ -114,6 +123,15 @@
  * @value overwrite
  * @default overwrite
  *
+ * @arg WriteBack
+ * @text イベントへの書き戻し条件
+ * @desc 反映方法が統合(merge)のときだけ働きます。テキスト側の変更を、ツクールのイベントにも書き戻すかを設定します。衝突したときは、この設定に関係なくイベントへ書き戻します。
+ * @type select
+ * @option 毎回書き戻す / always
+ * @value always
+ * @option 書き戻さない / off
+ * @value off
+ *
  * @command BATCH_EXPORT_MESSAGES_TO_FOLDER
  * @text フォルダへ一括取り出し
  * @desc dataフォルダ内の全イベント/コモンイベントを、見出し情報付きのテキストとしてフォルダへ一括で取り出します(既定は統合)。
@@ -133,6 +151,15 @@
  * @option 【取り扱い注意】全上書き / overwrite
  * @value overwrite
  * @default overwrite
+ *
+ * @arg WriteBack
+ * @text イベントへの書き戻し条件
+ * @desc 反映方法が統合(merge)のときだけ働きます。テキスト側の変更を、ツクールのイベントにも書き戻すかを設定します。衝突したときは、この設定に関係なくイベントへ書き戻します。
+ * @type select
+ * @option 毎回書き戻す / always
+ * @value always
+ * @option 書き戻さない / off
+ * @value off
  *
  * @param Default Scenario Folder
  * @text 出力フォルダ名
@@ -183,6 +210,16 @@
  * @option 【取り扱い注意】全上書き / overwrite
  * @value overwrite
  * @default overwrite
+ *
+ * @param WriteBack
+ * @text イベントへの書き戻し条件
+ * @desc 統合(merge)で取り出したあと、テキスト側の変更をツクールのイベントにも書き戻す条件。衝突はイベントだけに出て、テキストには入りません。既定はalwaysです。
+ * @type select
+ * @option 毎回書き戻す / always
+ * @value always
+ * @option 書き戻さない / off
+ * @value off
+ * @default always
  *
  * @param IsDebug
  * @text デバッグモードを利用する
@@ -700,8 +737,13 @@ function resolveText2Frame () {
     Laurus.Frame2Text.EnglishTag = String(Laurus.Frame2Text.Parameters.EnglishTag) === 'true'
     // 未設定(古いプラグイン設定のまま)なら省略する。既定を true にしているため。
     Laurus.Frame2Text.OmitDefaultTags = String(Laurus.Frame2Text.Parameters.OmitDefaultTags) !== 'false'
+    // イベントへの書き戻し。プラグインコマンドの引数で上書きできる。
+    Laurus.Frame2Text.DefaultWriteBack = String(Laurus.Frame2Text.Parameters.WriteBack || 'always')
+    Laurus.Frame2Text.WriteBack = Laurus.Frame2Text.DefaultWriteBack
     // 単発取り出しのしかた。コマンドの引数解決で毎回決め直す。
     Laurus.Frame2Text.Strategy = 'overwrite'
+    // ライブラリ・CLI から呼ぶときは、頼まれたときだけ書き戻す(Text2Frame の applyTextFile と同じ)。
+    Laurus.Frame2Text.WriteBack = 'off'
     let PATH_SEP = '/'
     let BASE_PATH = '.'
     if (typeof require !== 'undefined') {
@@ -730,20 +772,20 @@ function resolveText2Frame () {
       const event_id = args.EventID
       const page_id = args.PageID
       this.pluginCommand('EXPORT_EVENT_TO_MESSAGE',
-        [file_folder, file_name, map_id, event_id, page_id, args.Strategy])
+        [file_folder, file_name, map_id, event_id, page_id, args.Strategy, args.WriteBack])
     })
     PluginManager.registerCommand('Frame2Text', 'EXPORT_CE_TO_MESSAGE', function (args) {
       const file_folder = args.FileFolder
       const file_name = args.FileName
       const common_event_id = args.CommonEventID
       this.pluginCommand('EXPORT_CE_TO_MESSAGE',
-        [file_folder, file_name, common_event_id, args.Strategy])
+        [file_folder, file_name, common_event_id, args.Strategy, args.WriteBack])
     })
     PluginManager.registerCommand('Frame2Text', 'BATCH_EXPORT_MESSAGES_TO_FOLDER', function (args) {
       // 引数順は @arg の並びと合わせる。単体の取り出し・一括反映と同じく
       // 出力先 -> 取り出し方法。TextBase は改名前に保存されたコマンドのため。
       this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-        [args.TextFolder || args.TextBase, args.Strategy])
+        [args.TextFolder || args.TextBase, args.Strategy, args.WriteBack])
     })
   }
 
@@ -869,6 +911,19 @@ function resolveText2Frame () {
      * 以前の取り出しは上書きしかなかったので、既存のユーザーの動きを変えない。
      * MVの引数は手書きなので、日本語でも書けるようにする。 */
     const EXPORT_STRATEGY_ALIASES = { merge: 'merge', overwrite: 'overwrite', 統合: 'merge', 上書き: 'overwrite' }
+    /* イベントへの書き戻し。省略時はプラグインパラメータ、それも無ければ毎回書き戻す。
+     * MVの引数は手書きなので、日本語でも書けるようにする(表記は MZ の @option に合わせる)。 */
+    const WRITE_BACK_ALIASES = { always: 'always', off: 'off', 毎回書き戻す: 'always', 書き戻さない: 'off' }
+    const resolveWriteBack = function (explicit) {
+      const given = String(explicit == null ? '' : explicit).trim()
+      const fallback = String(Laurus.Frame2Text.DefaultWriteBack || '').trim()
+      const value = (given !== '' && given !== 'undefined') ? given : fallback
+      if (value === '' || value === 'undefined') return 'always'
+      const w = WRITE_BACK_ALIASES[value.toLowerCase()] || WRITE_BACK_ALIASES[value]
+      if (w) return w
+      throw new Error('Unknown write-back: ' + value +
+        ' / 書き戻しは always(毎回書き戻す) か off(書き戻さない) を指定してください。')
+    }
     const resolveExportStrategy = function (explicit) {
       const given = String(explicit == null ? '' : explicit).trim()
       const fallback = String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters.Strategy) || '').trim()
@@ -891,6 +946,7 @@ function resolveText2Frame () {
         if (args[3]) Laurus.Frame2Text.EventID = args[3]
         if (args[4]) Laurus.Frame2Text.PageID = args[4]
         Laurus.Frame2Text.Strategy = resolveExportStrategy(args[5])
+        Laurus.Frame2Text.WriteBack = resolveWriteBack(args[6])
         if (args[0] || args[1]) {
           Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
           Laurus.Frame2Text.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${(
@@ -913,6 +969,7 @@ function resolveText2Frame () {
         if (args[1]) Laurus.Frame2Text.FileName = args[1]
         if (args[2]) Laurus.Frame2Text.CommonEventID = args[2]
         Laurus.Frame2Text.Strategy = resolveExportStrategy(args[3])
+        Laurus.Frame2Text.WriteBack = resolveWriteBack(args[4])
         if (args[0] || args[1]) {
           Laurus.Frame2Text.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Frame2Text.FileFolder}${PATH_SEP}${Laurus.Frame2Text.FileName}`
           Laurus.Frame2Text.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
@@ -928,6 +985,7 @@ function resolveText2Frame () {
         // ゲームのデータは data 固定(他の取り出し・反映コマンドと同じ)。
         // 反映方法は単体の取り出しと同じ決め方(省略時はプラグインパラメータ、無ければ上書き)。
         const batchStrategy = resolveExportStrategy(args[1])
+        Laurus.Frame2Text.WriteBack = resolveWriteBack(args[2])
         // 出力先を省いたときは、プラグインパラメータの出力フォルダ名。
         // FileFolder は単発の取り出しが引数で書き換えるので、パラメータを直接読む。
         Laurus.Frame2Text.TextBase = args[0] || String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters['Default Scenario Folder']) || '') || 'text'
