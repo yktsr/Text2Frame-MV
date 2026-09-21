@@ -228,9 +228,14 @@ VS Code の慣例で **奇数マイナーが pre-release、偶数マイナーが
 拡張はこの同梱コピーで動くので、**プラグイン本体を直したら拡張も出し直す必要があります**。
 
 ```bash
-npx @vscode/vsce package --pre-release      # 安定版はフラグ無し
+npx @vscode/vsce package --pre-release --baseImagesUrl https://github.com/yktsr/Text2Frame-MV/raw/HEAD/vscode-extension
+# 安定版は --pre-release を付けない
 # → text2frame-language-support-<version>.vsix
 ```
+
+README の画像（`docs/images`）は `.vsix` に入れず、Marketplace では GitHub から読みます。
+`--baseImagesUrl` を付けないと、画像の URL がリポジトリの直下を指して表示されません。
+`HEAD` は既定のブランチ（`master`）なので、**画像を `master` に入れてから公開します**。
 
 同梱コンパイラが最新か:
 
@@ -246,7 +251,7 @@ npx @vscode/vsce publish --packagePath text2frame-language-support-<version>.vsi
 
 # 対話ログインしておく場合
 npx @vscode/vsce login <publisher>
-npx @vscode/vsce publish --pre-release
+npx @vscode/vsce publish --pre-release --baseImagesUrl https://github.com/yktsr/Text2Frame-MV/raw/HEAD/vscode-extension
 
 # Open VSX(任意)
 npx ovsx publish text2frame-language-support-<version>.vsix -p <OPENVSX_TOKEN>

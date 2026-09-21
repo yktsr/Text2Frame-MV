@@ -111,7 +111,9 @@ if [ "$EXT_CHANNEL" = auto ]; then
   echo "  マイナー版 $EXT_MINOR から $EXT_CHANNEL と判定しました (--stable / --pre-release で上書きできます)"
 fi
 VSIX="$OUT/text2frame-language-support-${EXT_VERSION}.vsix"
-VSCE_FLAGS=()
+# README の画像は docs/images に置き、.vsix には入れない。Marketplace では GitHub の URL で読むので、
+# vsce が相対パスを書き換える先を拡張のフォルダに合わせる(既定ではリポジトリの直下になり、画像が出ない)。
+VSCE_FLAGS=(--baseImagesUrl https://github.com/yktsr/Text2Frame-MV/raw/HEAD/vscode-extension)
 [ "$EXT_CHANNEL" = pre ] && VSCE_FLAGS+=(--pre-release)
 ( cd vscode-extension && npx --yes @vscode/vsce package "${VSCE_FLAGS[@]}" --out "$VSIX" )
 [ -f "$VSIX" ] || fail "vsix が見つかりません: $VSIX"
