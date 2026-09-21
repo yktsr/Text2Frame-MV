@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { workspaceRootFor } from './compiler';
 import { readSnippetFile, snippetBody, snippetWord, slashAt, SnippetDef } from './db/fixes';
+import { isJapanese, tr } from './db/lang';
 
 /**
  * スニペット(よく使う書き方の型)。行の頭で / を打つと候補に出る。
@@ -23,7 +24,7 @@ const readJson = (file: string): unknown => {
 };
 
 export function registerSnippets(context: vscode.ExtensionContext): void {
-    const defaults = readSnippetFile(readJson(path.join(context.extensionPath, 'snippets', 'defaults.json')), false);
+    const defaults = readSnippetFile(readJson(path.join(context.extensionPath, 'snippets', isJapanese() ? 'defaults.json' : 'defaults.en.json')), false);
 
     const userFile = (document?: vscode.TextDocument): string | undefined => {
         const root = workspaceRootFor(document);
@@ -52,7 +53,7 @@ export function registerSnippets(context: vscode.ExtensionContext): void {
                 item.filterText = '/' + s.words.join(' ') + ' ' + s.name;
                 item.sortText = String(i).padStart(4, '0');
                 item.insertText = new vscode.SnippetString(s.body.join('\n'));
-                item.detail = s.user ? '自分のスニペット' : 'スニペット';
+                item.detail = s.user ? tr('自分のスニペット', 'Your snippet') : tr('スニペット', 'Snippet');
                 item.documentation = preview(s);
                 return item;
             });
@@ -62,12 +63,12 @@ export function registerSnippets(context: vscode.ExtensionContext): void {
     const insert = async (): Promise<void> => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
-            vscode.window.showInformationMessage('Text2Frame: テキストを開いてから実行してください。');
+            vscode.window.showInformationMessage(tr('Text2Frame: テキストを開いてから実行してください。', 'Text2Frame: Open a text first.'));
             return;
         }
         const pick = await vscode.window.showQuickPick(
             snippetsFor(editor.document).map((s) => ({ label: s.name, description: '/' + s.words[0], detail: s.description, s })),
-            { placeHolder: '入れるスニペットを選ぶ', matchOnDescription: true, matchOnDetail: true }
+            { placeHolder: tr('入れるスニペットを選ぶ', 'Pick a snippet to insert'), matchOnDescription: true, matchOnDetail: true }
         );
         if (pick) await editor.insertSnippet(new vscode.SnippetString(pick.s.body.join('\n')));
     };
@@ -75,22 +76,22 @@ export function registerSnippets(context: vscode.ExtensionContext): void {
     const fromSelection = async (): Promise<void> => {
         const editor = vscode.window.activeTextEditor;
         if (!editor || editor.selection.isEmpty) {
-            vscode.window.showInformationMessage('Text2Frame: スニペットにしたい部分をエディタで選んでから実行してください。');
+            vscode.window.showInformationMessage(tr('Text2Frame: スニペットにしたい部分をエディタで選んでから実行してください。', 'Text2Frame: Select the part you want as a snippet first.'));
             return;
         }
         const file = userFile(editor.document);
         if (!file) {
-            vscode.window.showErrorMessage('Text2Frame: ゲームのフォルダを開いてから実行してください。');
+            vscode.window.showErrorMessage(tr('Text2Frame: ゲームのフォルダを開いてから実行してください。', 'Text2Frame: Open the game folder first.'));
             return;
         }
         const word = await vscode.window.showInputBox({
-            title: '選んだ部分をスニペットにする',
-            prompt: '呼び出す言葉(行の頭で / に続けて打つと候補に出ます)',
-            placeHolder: '例: あいさつ',
-            validateInput: (v) => (snippetWord(v) ? undefined : '言葉を入れてください')
+            title: tr('選んだ部分をスニペットにする', 'Make a snippet from the selection'),
+            prompt: tr('呼び出す言葉(行の頭で / に続けて打つと候補に出ます)', 'The word to call it (type / and the word at the start of a line)'),
+            placeHolder: tr('例: あいさつ', 'e.g. greeting'),
+            validateInput: (v) => (snippetWord(v) ? undefined : tr('言葉を入れてください', 'Enter a word'))
         });
         if (!word) return;
-        const description = await vscode.window.showInputBox({ title: '選んだ部分をスニペットにする', prompt: '説明(空でもかまいません)' });
+        const description = await vscode.window.showInputBox({ title: tr('選んだ部分をスニペットにする', 'Make a snippet from the selection'), prompt: tr('説明(空でもかまいません)', 'Description (may be empty)') });
         if (description === undefined) return;
         const name = snippetWord(word);
         const json = readJson(file);
@@ -98,21 +99,24 @@ export function registerSnippets(context: vscode.ExtensionContext): void {
         all[name] = { prefix: name, body: snippetBody(editor.document.getText(editor.selection)), description };
         fs.mkdirSync(path.dirname(file), { recursive: true });
         fs.writeFileSync(file, JSON.stringify(all, null, 2) + '\n', 'utf8');
-        vscode.window.showInformationMessage(`Text2Frame: スニペット「/${name}」を作りました。行の頭で /${name} と打つと候補に出ます。`, 'スニペットを編集する')
+        vscode.window.showInformationMessage(
+            tr(`Text2Frame: スニペット「/${name}」を作りました。行の頭で /${name} と打つと候補に出ます。`, `Text2Frame: Made the snippet "/${name}". Type /${name} at the start of a line to use it.`),
+            tr('スニペットを編集する', 'Edit snippets'))
             .then((p) => { if (p) vscode.commands.executeCommand('text2frame.snippet.edit'); });
     };
 
     const edit = async (): Promise<void> => {
         const file = userFile(vscode.window.activeTextEditor?.document);
         if (!file) {
-            vscode.window.showErrorMessage('Text2Frame: ゲームのフォルダを開いてから実行してください。');
+            vscode.window.showErrorMessage(tr('Text2Frame: ゲームのフォルダを開いてから実行してください。', 'Text2Frame: Open the game folder first.'));
             return;
         }
         if (!fs.existsSync(file)) {
             fs.mkdirSync(path.dirname(file), { recursive: true });
-            fs.writeFileSync(file, JSON.stringify({
-                あいさつ: { prefix: 'あいさつ', body: ['<Face: Actor1(0)>', '${1:こんにちは}'], description: '例: 顔付きのあいさつ。${1:…} は、入れたあと最初にカーソルが入る所' }
-            }, null, 2) + '\n', 'utf8');
+            const example = isJapanese()
+                ? { あいさつ: { prefix: 'あいさつ', body: ['<Face: Actor1(0)>', '${1:こんにちは}'], description: '例: 顔付きのあいさつ。${1:…} は、入れたあと最初にカーソルが入る所' } }
+                : { greeting: { prefix: 'greeting', body: ['<Face: Actor1(0)>', '${1:Hello}'], description: 'Example: a greeting with a face. ${1:…} is where the cursor goes first after inserting' } };
+            fs.writeFileSync(file, JSON.stringify(example, null, 2) + '\n', 'utf8');
         }
         await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(file));
     };

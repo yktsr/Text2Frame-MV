@@ -64,3 +64,21 @@ describe('command names in the preview', function () {
     }
   })
 })
+
+describe('bundled snippets', function () {
+  const ja = JSON.parse(read('snippets/defaults.json'))
+  const en = JSON.parse(read('snippets/defaults.en.json'))
+
+  it('has the same snippets, called by the same words, in both languages', function () {
+    expect(Object.keys(en)).to.have.length(Object.keys(ja).length)
+    const words = function (all) { return Object.values(all).map(function (s) { return s.prefix.slice().sort().join(' ') }) }
+    expect(words(en)).to.deep.equal(words(ja))
+  })
+
+  it('writes the English snippets in English (the Japanese words to call them stay)', function () {
+    for (const [name, s] of Object.entries(en)) {
+      expect(JAPANESE.test(name + s.description + s.body.join('\n')), name).to.equal(false)
+      expect(JAPANESE.test(s.prefix[0]), name + ' is listed by its English word').to.equal(false)
+    }
+  })
+})
