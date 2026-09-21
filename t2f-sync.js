@@ -77,7 +77,6 @@ function pushFile (textPath, opts) {
   const applyOpts = {
     textPath: path.resolve(textPath),
     strategy: o.strategy || 'merge',
-    writeBack: o.writeBack,
     baseRoot: root,
     isDebug: !!o.verbose
   }
@@ -253,7 +252,6 @@ if (require.main === module) {
     .option('-d, --data-dir <dir>', 'game data directory', 'data')
     .option('--root <dir>', 'project root for data/, text/ and .t2f-base (default: current directory)')
     .option('-s, --strategy <merge|overwrite>', 'sync strategy', /^(merge|overwrite)$/i, 'merge')
-    .option('--write-back <always|off>', 'write the merge back to the other side too (default off; conflicts always are)', /^(always|off)$/i, 'off')
     .option('-w, --english_tag <true/false>', 'english tag on pull', 'true')
     .option('--watch', 'watch both sides and sync on change', false)
     .option('--debounce <ms>', 'debounce window for --watch', '250')
@@ -271,7 +269,6 @@ if (require.main === module) {
     dataDir: options.dataDir,
     textDir: options.textDir,
     strategy: String(options.strategy).toLowerCase(),
-    writeBack: String(options.writeBack).toLowerCase(),
     englishTag: String(options.english_tag) !== 'false',
     direction: String(options.direction).toLowerCase(),
     verbose: options.verbose,
@@ -305,12 +302,14 @@ if (require.main === module) {
   const reportPull = function (r) {
     if (!r.ok) { console.log('[' + stamp() + '] PULL  ' + rel(r.textPath) + '  FAIL  ' + r.error); return }
     if (r.unchanged) return
-    console.log('[' + stamp() + '] PULL  ' + rel(r.textPath) + '  OK' + (r.conflicts ? '  (' + r.conflicts + ' conflicts kept both)' : ''))
+    console.log('[' + stamp() + '] PULL  ' + rel(r.textPath) + '  OK' +
+      (r.conflicts ? '  (' + r.conflicts + ' conflict(s) written into the game; resolve them in the editor)' : ''))
   }
   const reportPush = function (r) {
     if (!r.ok) { console.log('[' + stamp() + '] PUSH  ' + rel(r.textPath) + '  FAIL  ' + r.error); return }
     const w = r.warnings && r.warnings.length ? '  (' + r.warnings.length + ' warnings)' : ''
-    console.log('[' + stamp() + '] PUSH  ' + rel(r.textPath) + ' -> ' + rel(r.dataPath || '?') + '  OK' + w)
+    console.log('[' + stamp() + '] PUSH  ' + rel(r.textPath) + ' -> ' + rel(r.dataPath || '?') + '  OK' + w +
+      (r.conflicts ? '  (' + r.conflicts + ' conflict(s) written into the text; resolve them there)' : ''))
     if (r.warnings) r.warnings.forEach(function (x) { console.log('[' + stamp() + ']   warn: ' + x) })
   }
 
