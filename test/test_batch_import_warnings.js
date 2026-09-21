@@ -89,11 +89,11 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
     }
   })
 
-  // 実引数の並びは単体の取り込みと同じく [TextFolder, Strategy, WriteBack]。
+  // 実引数の並びは単体の取り込みと同じく [TextFolder, Strategy]。
   // 位置がずれれば全件落ちる。
-  const runBatch = function (root, strategy, writeBack) {
+  const runBatch = function (root, strategy) {
     Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-      [root || textRoot, strategy || 'merge', writeBack || 'off'])
+      [root || textRoot, strategy || 'merge'])
   }
   /* 画面幅(半角55)を超えるメッセージは addMessage が自動で折り返すため、
    * 1つの文章が複数の $gameMessage 行にまたがる。行ごとではなく通しの文字列から探し、

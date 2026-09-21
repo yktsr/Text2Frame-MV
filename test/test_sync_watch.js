@@ -24,9 +24,7 @@ globalThis.PluginManager = {
       IsDebug: 'false',
       DisplayMsg: 'true',
       DisplayWarning: 'true',
-      EnglishTag: 'false',
-      // 同期はプラグインパラメータを見ない。off にしておくと、見ていないことを観測できる。
-      WriteBackAfterMerge: 'off'
+      EnglishTag: 'false'
     }
   },
   registerCommand: function () {}
@@ -62,18 +60,18 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
   }
   const wait = function (ms) { return new Promise(function (resolve) { setTimeout(resolve, ms) }) }
 
-  /* 同期は単独のコマンド。引数は [Direction, TextFolder, Strategy, WriteBack]。
+  /* 同期は単独のコマンド。引数は [Direction, TextFolder, Strategy]。
    * データフォルダは data 固定で引数から外した。初回に一括で揃えてから見張りに入る。 */
-  const start = function (strategy, direction, writeBack) {
+  const start = function (strategy, direction) {
     shown.length = 0
     Game_Interpreter.prototype.pluginCommandText2Frame('START_DATA_SYNC',
-      [direction || 'both', path.join(tmp, 'text'), strategy || 'merge', writeBack || 'off'])
+      [direction || 'both', path.join(tmp, 'text'), strategy || 'merge'])
     return shown.slice()
   }
   /* fs.watch(macOS の FSEvents)は張った直後の変更を取りこぼす。
    * 監視が効き始めるまで少し待ってから変更を起こす。 */
-  const startArmed = async function (strategy, direction, writeBack) {
-    const out = start(strategy, direction, writeBack)
+  const startArmed = async function (strategy, direction) {
+    const out = start(strategy, direction)
     await wait(ARM)
     return out
   }
@@ -316,7 +314,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
   it('is not started by the batch import', function () {
     shown.length = 0
     Game_Interpreter.prototype.pluginCommandText2Frame('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-      [path.join(tmp, 'text'), 'merge', 'off'])
+      [path.join(tmp, 'text'), 'merge'])
 
     expect(line(shown.slice(), '同期を開始しました')).to.equal(undefined)
     expect(line(stop(), '動いていません')).to.be.a('string')
@@ -361,7 +359,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
     it('puts the conflict markers in the text, not in the game', async function () {
       // 監視を張る前に食い違わせ、監視は push だけ(取り出しに拾わせない)。
       diverge()
-      await startArmed('merge', 'push', 'always')
+      await startArmed('merge', 'push')
       fs.writeFileSync(textPath(ev1), readIf(textPath(ev1)) + '\n')
       await wait(SETTLE)
 
@@ -371,7 +369,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
 
     // 書き戻したテキストを自分の書き込みとして記録しないと、監視が拾って反映が再走する。
     it('does not re-run the import on the text it just wrote back', async function () {
-      await startArmed('merge', 'both', 'always')
+      await startArmed('merge', 'both')
 
       fs.writeFileSync(textPath(ev1), readIf(textPath(ev1)).replace('こんにちは', '一度だけ'), 'utf8')
       await wait(SETTLE)
@@ -389,7 +387,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
   it('works under the Japanese command aliases', function () {
     shown.length = 0
     Game_Interpreter.prototype.pluginCommandText2Frame('テキストとゲームの同期を開始',
-      ['both', path.join(tmp, 'text'), 'merge', 'off'])
+      ['both', path.join(tmp, 'text'), 'merge'])
     expect(line(shown.slice(), '同期を開始しました')).to.be.a('string')
 
     shown.length = 0

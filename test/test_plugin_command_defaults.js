@@ -24,8 +24,7 @@ globalThis.PluginManager = {
       'Default PageID': '1',
       IsDebug: 'false',
       DisplayMsg: 'true',
-      DisplayWarning: 'false',
-      WriteBackAfterMerge: 'off'
+      DisplayWarning: 'false'
     }
   },
   registerCommand: function () {}

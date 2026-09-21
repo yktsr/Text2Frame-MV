@@ -148,15 +148,6 @@
  * @option 【取り扱い注意】上書き / overwrite
  * @value overwrite
  *
- * @arg WriteBack
- * @text テキストへの書き戻し条件
- * @desc 引数Strategyが統合(merge)のときだけ働きます。ツクール側でイベントが修正されていた場合に、その部分をテキストにも反映できます。この引数ではその条件を設定します。
- * @type select
- * @option 毎回書き戻す / always
- * @value always
- * @option 書き戻さない / off
- * @value off
- *
  * @command IMPORT_MESSAGE_TO_CE
  * @text コモンイベントにインポート
  * @desc コモンイベントにメッセージをインポートします。取り込み元ファイルの情報や、取り込み先のコモンイベントID等を指定します。
@@ -190,15 +181,6 @@
  * @option 【取り扱い注意】上書き / overwrite
  * @value overwrite
  *
- * @arg WriteBack
- * @text テキストへの書き戻し条件
- * @desc 引数Strategyが統合(merge)のときだけ働きます。ツクール側でイベントが修正されていた場合に、その部分をテキストにも反映できます。この引数ではその条件を設定します。
- * @type select
- * @option 毎回書き戻す / always
- * @value always
- * @option 書き戻さない / off
- * @value off
- *
  *
  * @command BATCH_IMPORT_MESSAGES_FROM_FOLDER
  * @text フォルダから一括取り込み
@@ -221,15 +203,6 @@
  * @option 【取り扱い注意】上書き / overwrite
  * @value overwrite
  * @default add
- *
- * @arg WriteBack
- * @text テキストへの書き戻し条件
- * @desc 引数Strategyが統合(merge)のときだけ働きます。ツクール側でイベントが修正されていた場合に、その部分をテキストにも反映できます。この引数ではその条件を設定します。
- * @type select
- * @option 毎回書き戻す / always
- * @value always
- * @option 書き戻さない / off
- * @value off
  *
  *
  * @command START_DATA_SYNC
@@ -263,16 +236,6 @@
  * @option 【取り扱い注意】上書き / overwrite
  * @value overwrite
  * @default merge
- *
- * @arg WriteBack
- * @text テキストへの書き戻し条件
- * @desc 引数Strategyが統合(merge)のときだけ働きます。ツクール側でイベントが修正されていた場合に、その部分をテキストにも反映できます。この引数ではその条件を設定します。
- * @type select
- * @option 毎回書き戻す / always
- * @value always
- * @option 書き戻さない / off
- * @value off
- * @default always
  *
  *
  * @command STOP_DATA_SYNC
@@ -359,16 +322,6 @@
  * @desc 行頭に置いた場合、その行をコメントとして処理する記号を定義します。デフォルト値は「％」（半角パーセント）です。
  * @default %
  * @type string
- *
- * @param WriteBackAfterMerge
- * @text テキストへの書き戻し条件
- * @desc mergeで反映したあと、結果をテキストにも書く条件。衝突はテキストだけに出て、ゲームには入りません。既定はalwaysです。
- * @default always
- * @type select
- * @option 毎回書き戻す / always
- * @value always
- * @option 書き戻さない / off
- * @value off
  *
  * @param IsDebug
  * @text デバッグモードを利用する
@@ -4564,7 +4517,7 @@
       const page_id = args.PageID
       const strategy = args.Strategy || args.IsOverwrite
       this.pluginCommand('IMPORT_MESSAGE_TO_EVENT',
-        [file_folder, file_name, map_id, event_id, page_id, strategy, args.WriteBack])
+        [file_folder, file_name, map_id, event_id, page_id, strategy])
     })
     PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_CE', function (args) {
       const file_folder = args.FileFolder
@@ -4572,19 +4525,19 @@
       const common_event_id = args.CommonEventID
       const strategy = args.Strategy || args.IsOverwrite
       this.pluginCommand('IMPORT_MESSAGE_TO_CE',
-        [file_folder, file_name, common_event_id, strategy, args.WriteBack])
+        [file_folder, file_name, common_event_id, strategy])
     })
     PluginManager.registerCommand('Text2Frame', 'BATCH_IMPORT_MESSAGES_FROM_FOLDER', function (args) {
       // 引数順は @arg の並びと合わせる。単体の取り込みと同じく取り込み元が先。
-      // 取り込み元 -> 反映方法 -> 書き戻し。
+      // 取り込み元 -> 反映方法。
       this.pluginCommand('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-        [args.TextFolder, args.Strategy, args.WriteBack])
+        [args.TextFolder, args.Strategy])
     })
     PluginManager.registerCommand('Text2Frame', 'START_DATA_SYNC', function (args) {
       // 引数順は @arg の並びと合わせる。
-      // 向き -> テキストのフォルダ -> 反映方法 -> 書き戻し。
+      // 向き -> テキストのフォルダ -> 反映方法。
       this.pluginCommand('START_DATA_SYNC',
-        [args.Direction, args.TextFolder, args.Strategy, args.WriteBack])
+        [args.Direction, args.TextFolder, args.Strategy])
     })
     PluginManager.registerCommand('Text2Frame', 'STOP_DATA_SYNC', function () {
       this.pluginCommand('STOP_DATA_SYNC', [])
@@ -4612,15 +4565,6 @@
   }
   const IMPORT_STRATEGY_HINT = '反映方法は add(末尾に追記) か merge(統合) か overwrite(上書き) を指定してください。'
 
-  /* 「結果をテキストに書き戻す」の別名表。 */
-  const WRITE_BACK_ALIASES = {
-    always: 'always',
-    off: 'off',
-    毎回書き戻す: 'always',
-    書き戻さない: 'off'
-  }
-  const WRITE_BACK_HINT = '書き戻しは always(毎回書き戻す) か off(書き戻さない) を指定してください。'
-
   /* 同期の向きの別名表。省略時は双方向。 */
   const DIRECTION_ALIASES = {
     both: 'both',
@@ -4644,16 +4588,6 @@
     const d = lookupAlias(DIRECTION_ALIASES, value)
     if (!d) throw new Error('Unknown direction: ' + value + ' / ' + DIRECTION_HINT)
     return d
-  }
-
-  /* 書き戻しのしかた。解釈できない値は投げる。
-   * 素通しにすると planWriteBack が always 以外をすべて off として扱うため、
-   * 綴り間違いが黙って「書き戻さない」になってしまう。 */
-  const resolveWriteBack = function (value, fallback) {
-    if (value === undefined || value === null || value === '') return fallback
-    const w = lookupAlias(WRITE_BACK_ALIASES, value)
-    if (!w) throw new Error('Unknown write-back: ' + value + ' / ' + WRITE_BACK_HINT)
-    return w
   }
 
   // 解釈できなければ null(呼び出し側で「未指定」か「誤り」かを決める)。
@@ -4682,9 +4616,9 @@
     Laurus.Text2Frame.Strategy = 'merge'
     // 引数を省略したときの既定。プラグインコマンドと同じく末尾に追記。
     Laurus.Text2Frame.DefaultStrategy = 'add'
-    // PluginManager が無い経路(CLI / t2f-sync / ライブラリ)は書き戻さない。
-    // 呼び出し側が applyTextFile の writeBack で明示したときだけ有効になる。
-    Laurus.Text2Frame.WriteBackAfterMerge = 'off'
+    // PluginManager が無い経路(CLI / t2f-sync / ライブラリ)は、衝突したときだけ書き戻す。
+    // 呼び出し側が applyTextFile の writeBack に always を渡したときは毎回書き戻す。
+    Laurus.Text2Frame.WriteBack = 'off'
     Laurus.Text2Frame.TextPath = 'dummy'
     Laurus.Text2Frame.MapPath = 'dummy'
     Laurus.Text2Frame.CommonEventPath = 'dummy'
@@ -4716,8 +4650,6 @@
     Laurus.Text2Frame.IsDebug = (String(Laurus.Text2Frame.Parameters.IsDebug) === 'true')
     Laurus.Text2Frame.DisplayMsg = (String(Laurus.Text2Frame.Parameters.DisplayMsg) === 'true')
     Laurus.Text2Frame.DisplayWarning = (String(Laurus.Text2Frame.Parameters.DisplayWarning) === 'true')
-    // 未設定(古いプラグイン設定を引き継いだプロジェクト)は既定の「毎回」。
-    Laurus.Text2Frame.WriteBackAfterMerge = String(Laurus.Text2Frame.Parameters.WriteBackAfterMerge || 'always')
     Laurus.Text2Frame.BatchStrategy = 'diff'
     // 単発反映のしかた。コマンドの引数解決で毎回決め直す。
     Laurus.Text2Frame.Strategy = 'merge'
@@ -5015,15 +4947,12 @@
      * ツクールを開かずに、統合(merge)のまま決着できる。 */
 
     /* 書き戻しの段取り。mode は「衝突しなかったときも書き戻すか」(always / off)。
+     * ツクールの中(プラグインコマンド)は always。ライブラリ(applyTextFile)は呼び出し側の writeBack。
      * 衝突したときは mode に関係なく書き戻す: 目印はテキストにだけ入れ、ゲームには入れない。
      * 書き戻しには Frame2Text が要る。無いまま衝突したら、ゲームも触らずに止める
      * (ゲームに ours だけ入れるとテキスト側の版が消え、目印入りを入れるとゲームが汚れる)。 */
     const planWriteBack = function () {
-      /* WriteBack は今回の実行ぶん(コマンド引数で上書きできる)。無ければプラグインパラメータ。
-       * 値の解釈はここ1箇所。プラグインコマンドは resolveWriteBack が先に弾くが、
-       * applyTextFile(CLI / t2f-sync / VS Code)は素の値が来るので別名もここで吸収する。 */
-      const mode = lookupAlias(WRITE_BACK_ALIASES, Laurus.Text2Frame.WriteBack) ||
-        lookupAlias(WRITE_BACK_ALIASES, Laurus.Text2Frame.WriteBackAfterMerge) || 'off'
+      const mode = String(Laurus.Text2Frame.WriteBack || '').toLowerCase() === 'always' ? 'always' : 'off'
       const found = resolveFrame2Text()
       // コメントアウト行(既定は %)はコンパイル前に捨てられる(eraseCommentOutLines)が、
       // 書き戻しは元テキストを持っているので buildPullText が元の位置へ戻す。見送りは不要。
@@ -5190,7 +5119,9 @@
         }
         Laurus.Text2Frame.Strategy = resolveImportStrategy(strategyArg)
         Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite'
-        Laurus.Text2Frame.WriteBack = resolveWriteBack(args[6], Laurus.Text2Frame.WriteBackAfterMerge || 'off')
+        // ツクールの中では、統合のあと結果をテキストにも書く(書き戻しの条件は選ばせない)。
+        // 以前の版で書き戻しの引数を書いたコマンドが残っていても、その引数は読まない。
+        Laurus.Text2Frame.WriteBack = 'always'
         // テキストに見出し情報があれば、反映先はそちらに従う(実行部で上書きする)。
         Laurus.Text2Frame.RouteByFrontMatter = true
         // 祖先は自動の .t2f-base だけを使う(位置引数は廃止した)。COMMAND_LINE 経由の
@@ -5216,7 +5147,9 @@
         // 4番目は旧来の上書き真偽値と同じ枠。merge/overwrite/add も受ける。
         Laurus.Text2Frame.Strategy = resolveImportStrategy(args[3])
         Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite'
-        Laurus.Text2Frame.WriteBack = resolveWriteBack(args[4], Laurus.Text2Frame.WriteBackAfterMerge || 'off')
+        // ツクールの中では、統合のあと結果をテキストにも書く(書き戻しの条件は選ばせない)。
+        // 以前の版で書き戻しの引数を書いたコマンドが残っていても、その引数は読まない。
+        Laurus.Text2Frame.WriteBack = 'always'
         // テキストに見出し情報があれば、反映先はそちらに従う(実行部で上書きする)。
         Laurus.Text2Frame.RouteByFrontMatter = true
         Laurus.Text2Frame.BasePath = undefined
@@ -5239,7 +5172,9 @@
          * IMPORT_* が実行のたびに書き換えるので、読み込み時に控えたほうを見る。 */
         Laurus.Text2Frame.ImportFolder = args[0] || Laurus.Text2Frame.DefaultFileFolder || 'text'
         Laurus.Text2Frame.BatchStrategy = resolveImportStrategy(args[1])
-        Laurus.Text2Frame.WriteBack = resolveWriteBack(args[2], Laurus.Text2Frame.WriteBackAfterMerge || 'off')
+        // ツクールの中では、統合のあと結果をテキストにも書く(書き戻しの条件は選ばせない)。
+        // 以前の版で書き戻しの引数を書いたコマンドが残っていても、その引数は読まない。
+        Laurus.Text2Frame.WriteBack = 'always'
         Laurus.Text2Frame.ExecMode = 'BATCH_IMPORT_MESSAGES_FROM_FOLDER'
         break
       }
@@ -5262,7 +5197,9 @@
         Laurus.Text2Frame.SyncDirection = normalizeDirection(args[0])
         Laurus.Text2Frame.ImportFolder = args[1] || 'text'
         Laurus.Text2Frame.SyncStrategy = syncStrategy
-        Laurus.Text2Frame.WriteBack = resolveWriteBack(args[3], 'always')
+        // ツクールの中では、統合のあと結果をテキストにも書く(書き戻しの条件は選ばせない)。
+        // 以前の版で書き戻しの引数を書いたコマンドが残っていても、その引数は読まない。
+        Laurus.Text2Frame.WriteBack = 'always'
         Laurus.Text2Frame.ExecMode = 'START_DATA_SYNC'
         break
       }

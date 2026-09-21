@@ -50,10 +50,11 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
   let tmp
   let cwd
   let mainModule
-  // 実引数の並びは [TextFolder, Strategy, WriteBack]。ゲームのデータは BASE_PATH(tmp)の data 固定。
-  const run = function (textBase, strategy, writeBack) {
+  // 実引数の並びは [TextFolder, Strategy]。ゲームのデータは BASE_PATH(tmp)の data 固定。
+  // 3つ目は、以前の版の書き戻しの引数が残ったコマンドを試すときだけ使う(読まれない)。
+  const run = function (textBase, strategy, leftover) {
     shown.length = 0
-    Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [textBase, strategy, writeBack])
+    Game_Interpreter.prototype.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [textBase, strategy, leftover])
   }
   /* 画面幅(半角55)を超えるメッセージは addMessage が自動で折り返すため、
    * 1つの文章が複数の $gameMessage 行にまたがる。行ごとではなく通しの文字列から探し、
@@ -298,36 +299,25 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     expect(base).to.not.contain('=== どちらかを残し')
   })
 
-  /* 書き戻しの設定が決めるのは「衝突しなかったとき、テキスト側の変更をゲームへ入れるか」だけ。
-   * 衝突したときは、どちらでもゲームへ書く(目印は処理元=ゲームに置くため)。 */
-  it('brings the text side edit into the game when asked to write back every time', function () {
+  /* ツクールの中の取り出しは、衝突しなかったときもテキスト側の変更をゲームへ入れる(書き戻しの条件は無い)。 */
+  it('brings the text side edit into the game', function () {
     run(path.join(tmp, 'text'), 'merge')
     fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)).replace('こんにちは', 'テキストだけの変更'), 'utf8')
 
-    run(path.join(tmp, 'text'), 'merge', '毎回書き戻す')
+    run(path.join(tmp, 'text'), 'merge')
 
     expect(gameLines()).to.eql(['テキストだけの変更'])
     expect(readIf(textPathOf(ev1))).to.contain('テキストだけの変更')
   })
 
-  it('leaves the game alone when told not to write back, but still writes a conflict', function () {
+  // 以前の版の「書き戻さない」の引数が残っていても読まない。止めずに、ゲームへも書く。
+  it('ignores a write-back argument left by an older command', function () {
     run(path.join(tmp, 'text'), 'merge')
     fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)).replace('こんにちは', 'テキストだけの変更'), 'utf8')
 
     run(path.join(tmp, 'text'), 'merge', '書き戻さない')
-    expect(gameLines()).to.eql(['こんにちは'])
-
-    // 同じ行を両方で変えた(衝突)。書き戻さない設定でも、目印はゲームへ入る。
-    setEvent1(['ゲーム側の変更'])
-    run(path.join(tmp, 'text'), 'merge', 'off')
-
-    expect(gameLines()).to.include('テキストだけの変更')
-    expect(gameLines().filter(function (l) { return l.indexOf('===') === 0 })).to.have.lengthOf(3)
-  })
-
-  it('refuses a write-back setting it does not know', function () {
-    expect(function () { run(path.join(tmp, 'text'), 'merge', 'sometimes') })
-      .to.throw(/always\(毎回書き戻す\).*off\(書き戻さない\)/)
+    expect(gameLines()).to.eql(['テキストだけの変更'])
+    expect(function () { run(path.join(tmp, 'text'), 'merge', 'sometimes') }).to.not.throw()
   })
 
   it('settles after the conflict is resolved in the game', function () {

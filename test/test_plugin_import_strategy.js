@@ -134,31 +134,17 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
     expect(texts(list)).to.include('Bonjour')
   })
 
-  /* 書き戻しは以前まったく検証しておらず、綴り間違いが黙って「書き戻さない」に
-   * なっていた(planWriteBack が always 以外をすべて off として扱うため)。 */
-  describe('choosing the write-back', function () {
+  /* 書き戻しの条件は無くした(ツクールの中では毎回書き戻す)。以前の版で書き戻しの引数を
+   * 書いたコマンドが残っていても、止めずに読み飛ばす。 */
+  describe('the old write-back argument', function () {
     const run = function (writeBack) {
       Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
         ['text', 'message.txt', '1', '1', '1', 'merge', writeBack])
     }
 
-    // 通る値は投げない(日本語・英語・大文字小文字)。対応付けそのものは
-    // 実際に書き戻す test_writeback.js で確かめる。
-    it('accepts the Japanese names and the English ones in any casing', function () {
-      const ok = ['毎回書き戻す', '書き戻さない', 'always', 'Always', 'OFF']
-      ok.forEach(function (v) { expect(function () { run(v) }, v).to.not.throw() })
-    })
-
-    // ここが本命。黙って off になると、書き戻したつもりのテキストが更新されない。
-    it('refuses a write-back it does not know instead of silently turning it off', function () {
-      expect(function () { run('alway') })
-        .to.throw(/always\(毎回書き戻す\).*off\(書き戻さない\)/)
-    })
-
-    // 「衝突したときだけ」は無くした。衝突したときは、どの設定でもテキストへ書き戻すため。
-    it('no longer knows onConflict', function () {
-      expect(function () { run('onConflict') }).to.throw(/Unknown write-back/)
-      expect(function () { run('衝突したときだけ') }).to.throw(/Unknown write-back/)
+    it('is ignored whatever an older command left in it', function () {
+      const left = ['毎回書き戻す', '書き戻さない', 'always', 'OFF', 'onConflict', 'alway']
+      left.forEach(function (v) { expect(function () { run(v) }, v).to.not.throw() })
     })
   })
 
