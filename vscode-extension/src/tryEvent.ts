@@ -5,6 +5,7 @@ import { parseFrontMatter, workspaceRootFor } from './compiler';
 import { Place, placeFromMeta } from './placeLabel';
 import { deployFile, reviewFiles, unappliedFiles } from './deploy';
 import { whenPausable } from './debugSession';
+import { tr } from './db/lang';
 
 /**
  * 「このイベントから試す」。テキストの先頭にリンクを出す。
@@ -20,14 +21,15 @@ const CONNECT_WAIT = 40000;
 const VISIT_WAIT = 35000;
 type Mode = 'stand' | 'run' | 'common';
 
-const RESULTS: Record<string, [boolean, string]> = {
-    stood: [true, 'イベントの前に立ちました。話しかけるか、触れて試してください。'],
-    ran: [true, '実行しました。'],
-    noEvent: [false, 'ゲームのマップに、このイベントがありません。反映してから、ゲームを読み直してください。'],
-    noPage: [false, 'ゲームのイベントに、このページがありません。反映してから、ゲームを読み直してください。'],
-    failed: [false, 'コモンイベントを動かせませんでした。'],
-    timeout: [false, '移動できませんでした。イベントの実行中などで、ゲームが動けなかったかもしれません。']
-};
+/** ゲームからの答えと、知らせる言葉。言葉は知らせるときに今の言語で選ぶ。 */
+const results = (): Record<string, [boolean, string]> => ({
+    stood: [true, tr('イベントの前に立ちました。話しかけるか、触れて試してください。', 'Standing in front of the event. Talk to it or touch it to try it.')],
+    ran: [true, tr('実行しました。', 'Ran it.')],
+    noEvent: [false, tr('ゲームのマップに、このイベントがありません。反映してから、ゲームを読み直してください。', 'This event is not on the game map. Apply, then reload the game.')],
+    noPage: [false, tr('ゲームのイベントに、このページがありません。反映してから、ゲームを読み直してください。', 'This page is not in the game event. Apply, then reload the game.')],
+    failed: [false, tr('コモンイベントを動かせませんでした。', 'Could not run the common event.')],
+    timeout: [false, tr('移動できませんでした。イベントの実行中などで、ゲームが動けなかったかもしれません。', 'Could not move. The game may have been busy, for example running an event.')]
+});
 
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -48,10 +50,10 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
             if (!hasFrontMatter) return [];
             const range = new vscode.Range(0, 0, 0, 0);
             const lens = (title: string, mode: Mode): vscode.CodeLens =>
-                new vscode.CodeLens(range, { title, command: 'text2frame.tryEvent', arguments: [document.uri, mode], tooltip: 'テストプレイで試す' });
-            if (meta.kind === 'common') return meta.commonEventId ? [lens('▶ すぐ実行', 'common')] : [];
+                new vscode.CodeLens(range, { title, command: 'text2frame.tryEvent', arguments: [document.uri, mode], tooltip: tr('テストプレイで試す', 'Try it in the test play') });
+            if (meta.kind === 'common') return meta.commonEventId ? [lens(tr('▶ すぐ実行', '▶ Run now'), 'common')] : [];
             if (!meta.mapId || !meta.eventId) return [];
-            return [lens('▶ イベントの前に立つ', 'stand'), lens('▶ このページをすぐ実行', 'run')];
+            return [lens(tr('▶ イベントの前に立つ', '▶ Stand in front of the event'), 'stand'), lens(tr('▶ このページをすぐ実行', '▶ Run this page now'), 'run')];
         }
     };
 
@@ -70,7 +72,7 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
     const tryEvent = async (target: vscode.Uri | Place | undefined, mode: Mode): Promise<void> => {
         const here = target === undefined ? current() : undefined;
         if (target === undefined && !here) {
-            vscode.window.showInformationMessage('Text2Frame: 試したいイベントのテキストを開いてから押してください。');
+            vscode.window.showInformationMessage(tr('Text2Frame: 試したいイベントのテキストを開いてから押してください。', 'Text2Frame: Open the text of the event you want to try first.'));
             return;
         }
         const uri = target instanceof vscode.Uri ? target : here;
@@ -79,12 +81,12 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
         const ctx = doc ? service.forDocument(doc) : service.forRoot(workspaceRootFor() || '');
         const root = doc ? workspaceRootFor(doc) : workspaceRootFor();
         if (!ctx || !root) {
-            vscode.window.showErrorMessage('Text2Frame: ツクールのプロジェクト(data/System.json)が見つかりません。');
+            vscode.window.showErrorMessage(tr('Text2Frame: ツクールのプロジェクト(data/System.json)が見つかりません。', 'Text2Frame: No RPG Maker project (data/System.json) was found.'));
             return;
         }
         const place = doc ? placeFromMeta(parseFrontMatter(doc.getText()).meta) : (target as Place);
         if (!place) {
-            vscode.window.showErrorMessage('Text2Frame: このテキストの宛先のメモが読めません。');
+            vscode.window.showErrorMessage(tr('Text2Frame: このテキストの宛先のメモが読めません。', 'Text2Frame: The destination note of this text cannot be read.'));
             return;
         }
         let visit: { mapId?: number; eventId?: number; pageId?: number; x?: number; y?: number; run?: boolean; show?: boolean; common?: number };
@@ -95,7 +97,7 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
             const eventId = Number(place.eventId);
             const ev = service.mapEvents(ctx, mapId)?.[eventId];
             if (!ev) {
-                vscode.window.showErrorMessage('Text2Frame: このイベントは、ゲームのマップにありません。');
+                vscode.window.showErrorMessage(tr('Text2Frame: このイベントは、ゲームのマップにありません。', 'Text2Frame: This event is not on the game map.'));
                 return;
             }
             const reveal = vscode.workspace.getConfiguration('text2frame', uri).get<boolean>('tryEvent.clearPlayerTransparency', true);
@@ -104,14 +106,15 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
 
         let reload = false;
         if (uri && unappliedFiles(context, root, [uri.fsPath]).size) {
+            const applyFirst = tr('反映して試す', 'Apply and try');
             const choice = await vscode.window.showInformationMessage(
-                'Text2Frame: このテキストには、ゲームに反映されていない変更があります。反映してから試しますか？', '反映して試す', 'このまま試す');
+                tr('Text2Frame: このテキストには、ゲームに反映されていない変更があります。反映してから試しますか？', 'Text2Frame: This text has changes not yet applied to the game. Apply before trying?'), applyFirst, tr('このまま試す', 'Try as it is'));
             if (!choice) return;
-            if (choice === '反映して試す') {
-                if (await reviewFiles(context, root, [uri.fsPath], '試す前の反映') === 'cancel') return;
+            if (choice === applyFirst) {
+                if (await reviewFiles(context, root, [uri.fsPath], tr('試す前の反映', 'Apply before trying')) === 'cancel') return;
                 const result = deployFile(context, root, uri.fsPath);
                 if (!result || !result.ok) {
-                    vscode.window.showErrorMessage('Text2Frame: 反映できませんでした - ' + ((result && result.error) || ''));
+                    vscode.window.showErrorMessage(tr('Text2Frame: 反映できませんでした - ', 'Text2Frame: Could not apply - ') + ((result && result.error) || ''));
                     return;
                 }
                 reload = true;
@@ -124,7 +127,7 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
             await vscode.commands.executeCommand('text2frame.testPlay');
             session = await until(connected, CONNECT_WAIT);
             if (!session) {
-                vscode.window.showErrorMessage('Text2Frame: テストプレイのゲームとつながりませんでした。');
+                vscode.window.showErrorMessage(tr('Text2Frame: テストプレイのゲームとつながりませんでした。', 'Text2Frame: Could not connect to the test play.'));
                 return;
             }
         } else if (reload) {
@@ -136,22 +139,22 @@ export function registerTryEvent(context: vscode.ExtensionContext, service: Data
                 return s && s.state.lastSeen > at + 500 ? s : undefined;
             }, CONNECT_WAIT);
             if (!session) {
-                vscode.window.showErrorMessage('Text2Frame: 読み直したゲームとつながりませんでした。');
+                vscode.window.showErrorMessage(tr('Text2Frame: 読み直したゲームとつながりませんでした。', 'Text2Frame: Could not connect to the reloaded game.'));
                 return;
             }
         }
 
         if (!(await whenPausable())) {
-            vscode.window.showWarningMessage('Text2Frame: 一時停止の準備が間に合いませんでした。印をつけた行で止まらないかもしれません。');
+            vscode.window.showWarningMessage(tr('Text2Frame: 一時停止の準備が間に合いませんでした。印をつけた行で止まらないかもしれません。', 'Text2Frame: Pausing was not ready in time. The game may not stop at marked lines.'));
         }
         const sentAt = Date.now();
         const game = session;
         if (!game.send({ visit })) {
-            vscode.window.showErrorMessage('Text2Frame: ゲームに届きませんでした。テストプレイのページを読み直してください。');
+            vscode.window.showErrorMessage(tr('Text2Frame: ゲームに届きませんでした。テストプレイのページを読み直してください。', 'Text2Frame: Could not reach the game. Reload the test play page.'));
             return;
         }
         const answer = await until(() => (game.state.lastVisit && game.state.lastVisit.at >= sentAt ? game.state.lastVisit : undefined), VISIT_WAIT);
-        const [ok, text] = answer ? (RESULTS[answer.result] || [false, answer.result]) : RESULTS.timeout;
+        const [ok, text] = answer ? (results()[answer.result] || [false, answer.result]) : results().timeout;
         if (ok) vscode.window.setStatusBarMessage('Text2Frame: ' + text, 5000);
         else vscode.window.showWarningMessage('Text2Frame: ' + text);
     };

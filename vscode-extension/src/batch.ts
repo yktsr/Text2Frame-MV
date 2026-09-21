@@ -8,6 +8,7 @@ import { writeBackAndRefreshBase, writeBackSetting, reviewFiles, noteApply } fro
 import { reviewEnabled } from './review';
 import { reviewPull, busy, DeploySort } from './reviewApply';
 import { eachSlowly, mapSlowly, SlowlyOptions } from './db/slowly';
+import { tr } from './db/lang';
 
 /**
  * Batch operations over the text folder (text/ by default, `text2frame.textBaseDir`):
@@ -115,44 +116,44 @@ export function enumerateDataTargets(dataDir: string): DataItem[] {
 export async function deployAll(context: vscode.ExtensionContext): Promise<void> {
     const root = workspaceRootFor();
     if (!root) {
-        vscode.window.showErrorMessage('Text2Frame: ワークスペースフォルダが見つかりません。');
+        vscode.window.showErrorMessage(tr('Text2Frame: ワークスペースフォルダが見つかりません。', 'Text2Frame: No workspace folder was found.'));
         return;
     }
     const { mod } = loadModule<T2FModule>(context, root, 'Text2Frame.js', (m) => !!m && typeof (m as T2FModule).applyTextFile === 'function');
     if (!mod) {
-        vscode.window.showErrorMessage('Text2Frame: コンパイラ (Text2Frame.js) が見つかりません。');
+        vscode.window.showErrorMessage(tr('Text2Frame: コンパイラ (Text2Frame.js) が見つかりません。', 'Text2Frame: The compiler (Text2Frame.js) was not found.'));
         return;
     }
     const textDir = path.join(root, textBaseSetting());
     const all = walkTextFiles(textDir);
     const files: string[] = [];
-    const listed = await busy('Text2Frame: 反映するテキストを探しています…', (slowly) => eachSlowly(all, (f) => {
+    const listed = await busy(tr('Text2Frame: 反映するテキストを探しています…', 'Text2Frame: Looking for texts to apply…'), (slowly) => eachSlowly(all, (f) => {
         if (parseFrontMatter(fs.readFileSync(f, 'utf8')).hasFrontMatter) files.push(f);
     }, slowly));
     if (!listed) {
-        vscode.window.setStatusBarMessage('Text2Frame: 反映をやめました。', 4000);
+        vscode.window.setStatusBarMessage(tr('Text2Frame: 反映をやめました。', 'Text2Frame: Stopped applying.'), 4000);
         return;
     }
     if (files.length === 0) {
-        vscode.window.showInformationMessage(`Text2Frame: ${path.relative(root, textDir)} に反映対象がありません。先に「ゲームから取り出す」で用意してください。`);
+        vscode.window.showInformationMessage(tr(`Text2Frame: ${path.relative(root, textDir)} に反映対象がありません。先に「ゲームから取り出す」で用意してください。`, `Text2Frame: Nothing to apply in ${path.relative(root, textDir)}. Use Pull from game first.`));
         return;
     }
 
     // 写しで試して、ゲームが変わるテキストだけを反映する。変わらないテキストまで反映すると、
     // 何千ものデータと祖先が書き直され、ファイルの変化を見張るほかの拡張がいっせいに動いてしまう。
     const sort: DeploySort = { changed: new Set(), failed: new Set() };
-    const decision = await reviewFiles(context, root, files, 'すべての反映', sort);
+    const decision = await reviewFiles(context, root, files, tr('すべての反映', 'Apply all'), sort);
     if (decision === 'cancel') {
-        vscode.window.setStatusBarMessage('Text2Frame: 反映をやめました。', 4000);
+        vscode.window.setStatusBarMessage(tr('Text2Frame: 反映をやめました。', 'Text2Frame: Stopped applying.'), 4000);
         return;
     }
     const targets = files.filter((f) => sort.changed.has(f) || sort.failed.has(f));
     if (!targets.length) {
-        vscode.window.showInformationMessage(`Text2Frame: ゲームは変わりませんでした(${files.length} 件のテキストは、もう反映されています)。`);
+        vscode.window.showInformationMessage(tr(`Text2Frame: ゲームは変わりませんでした(${files.length} 件のテキストは、もう反映されています)。`, `Text2Frame: The game did not change (all ${files.length} texts are already applied).`));
         return;
     }
     const out = getOutput();
-    out.appendLine(`=== ゲームに反映(すべて) ${path.relative(root, textDir) || '.'}: ${targets.length} / ${files.length} files (変わらないものは飛ばす) ===`);
+    out.appendLine(tr(`=== ゲームに反映(すべて) ${path.relative(root, textDir) || '.'}: ${targets.length} / ${files.length} files (変わらないものは飛ばす) ===`, `=== Apply to game (all) ${path.relative(root, textDir) || '.'}: ${targets.length} / ${files.length} files (unchanged ones skipped) ===`));
     let ok = 0;
     let fail = 0;
     let warn = 0;
@@ -160,8 +161,8 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
     const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
     const writeBack = writeBackSetting();
     // 少しずつ反映して、そのたびに手を離す。やめても、済んだ分はそのまま(履歴から戻せる)。
-    const finished = await busy('Text2Frame: ゲームに反映しています…', (slowly: SlowlyOptions) =>
-        withHistory(root, 'applyAll', 'ゲームに反映(すべて)', { keep: historyKeep() }, async (recorder) => {
+    const finished = await busy(tr('Text2Frame: ゲームに反映しています…', 'Text2Frame: Applying to the game…'), (slowly: SlowlyOptions) =>
+        withHistory(root, 'applyAll', tr('ゲームに反映(すべて)', 'Apply to game (all)'), { keep: historyKeep() }, async (recorder) => {
             const done = await eachSlowly(targets, (file) => {
                 try {
                     const fileText = fs.readFileSync(file, 'utf8');
@@ -189,15 +190,15 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
                     out.appendLine(`FAIL ${path.relative(root, file)}  ${e instanceof Error ? e.message : String(e)}`);
                 }
             }, slowly);
-            recorder?.setLabel(`ゲームに反映(すべて) ${ok}件`);
+            recorder?.setLabel(tr(`ゲームに反映(すべて) ${ok}件`, `Apply to game (all) ${ok}`));
             return done;
         }));
     out.appendLine(`=== ${finished ? 'done' : 'cancelled'}: ${ok} ok, ${fail} fail, ${warn} warnings ===`);
     const msg = finished
-        ? `Text2Frame: ゲームに反映 完了 — ${ok} 成功 / ${fail} 失敗`
-        : `Text2Frame: ゲームに反映を途中でやめました — ${ok + fail} / ${targets.length} 件まで済んでいます(${ok} 成功 / ${fail} 失敗)。済んだ分は「履歴」から戻せます。`;
+        ? tr(`Text2Frame: ゲームに反映 完了 — ${ok} 成功 / ${fail} 失敗`, `Text2Frame: Applied to the game — ${ok} ok / ${fail} failed`)
+        : tr(`Text2Frame: ゲームに反映を途中でやめました — ${ok + fail} / ${targets.length} 件まで済んでいます(${ok} 成功 / ${fail} 失敗)。済んだ分は「履歴」から戻せます。`, `Text2Frame: Stopped applying partway — ${ok + fail} of ${targets.length} done (${ok} ok / ${fail} failed). You can undo the done ones from History.`);
     if (fail > 0 || !finished) {
-        vscode.window.showWarningMessage(msg, '詳細').then((p) => { if (p) { out.show(true); } });
+        vscode.window.showWarningMessage(msg, tr('詳細', 'Details')).then((p) => { if (p) { out.show(true); } });
     } else {
         vscode.window.showInformationMessage(msg);
     }
@@ -207,22 +208,23 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
 async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwrite'): Promise<void> {
     const root = workspaceRootFor();
     if (!root) {
-        vscode.window.showErrorMessage('Text2Frame: ワークスペースフォルダが見つかりません。');
+        vscode.window.showErrorMessage(tr('Text2Frame: ワークスペースフォルダが見つかりません。', 'Text2Frame: No workspace folder was found.'));
         return;
     }
     const dataDir = dataDirFor(root);
     if (!fs.existsSync(dataDir)) {
-        vscode.window.showErrorMessage('Text2Frame: データフォルダが見つかりません: ' + dataDir);
+        vscode.window.showErrorMessage(tr('Text2Frame: データフォルダが見つかりません: ', 'Text2Frame: The data folder was not found: ') + dataDir);
         return;
     }
-    const purpose = mode === 'merge' ? 'ゲームから取り出す' : '全部取り直す';
+    const repull = tr('全部取り直す', 'Re-pull (overwrite)');
+    const purpose = mode === 'merge' ? tr('ゲームから取り出す', 'Pull from game') : repull;
     const outDir = path.join(root, textBaseSetting());
     if (mode === 'overwrite' && !reviewEnabled()) {
         const yes = await vscode.window.showWarningMessage(
-            `Text2Frame: ${path.relative(root, outDir) || '.'} のテキストをゲームの内容で全部上書きします。編集内容は失われます。よろしいですか？`,
-            { modal: true }, '全部取り直す'
+            tr(`Text2Frame: ${path.relative(root, outDir) || '.'} のテキストをゲームの内容で全部上書きします。編集内容は失われます。よろしいですか？`, `Text2Frame: Overwrite every text in ${path.relative(root, outDir) || '.'} with the game's contents? Your edits will be lost.`),
+            { modal: true }, repull
         );
-        if (yes !== '全部取り直す') {
+        if (yes !== repull) {
             return;
         }
     }
@@ -240,9 +242,9 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
         }
         return planPull(context, root, target, mode);
     }, slowly);
-    const reviewed = await reviewPull(root, makePlans, mode === 'merge' ? 'すべての取り出し' : '全部取り直し');
+    const reviewed = await reviewPull(root, makePlans, mode === 'merge' ? tr('すべての取り出し', 'Pull all') : tr('全部取り直し', 'Re-pull all'));
     if (!reviewed) {
-        vscode.window.setStatusBarMessage('Text2Frame: 取り出しをやめました。', 4000);
+        vscode.window.setStatusBarMessage(tr('Text2Frame: 取り出しをやめました。', 'Text2Frame: Stopped pulling.'), 4000);
         return;
     }
     const out = getOutput();
@@ -254,15 +256,15 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
     // 目印が未解決で統合を見送ったもの / 目印ごと書き出したもの(どちらも祖先は進まない)。
     let skipped = 0;
     let markers = 0;
-    const finished = await busy(mode === 'merge' ? 'Text2Frame: ゲームから取り出しています…' : 'Text2Frame: 全部取り直しています…', (slowly: SlowlyOptions) =>
-        withHistory(root, mode === 'merge' ? 'pullAll' : 'repullAll', purpose + (mode === 'merge' ? '(すべて)' : ''), { keep: historyKeep() }, async (recorder) => {
+    const finished = await busy(mode === 'merge' ? tr('Text2Frame: ゲームから取り出しています…', 'Text2Frame: Pulling from the game…') : tr('Text2Frame: 全部取り直しています…', 'Text2Frame: Re-pulling everything…'), (slowly: SlowlyOptions) =>
+        withHistory(root, mode === 'merge' ? 'pullAll' : 'repullAll', purpose + (mode === 'merge' ? tr('(すべて)', ' (all)') : ''), { keep: historyKeep() }, async (recorder) => {
             const done = await eachSlowly(reviewed.plans, (plan) => {
                 const target = plan.target;
                 const res = commitPull(context, root, plan);
                 if (res.ok && res.skipped) {
                     // 目印をまたぐ統合はできない。書いていないので written には数えない。
                     skipped++;
-                    out.appendLine(`SKIP ${path.relative(root, target.textPath)}  未解決の衝突の目印が${res.skipped === 'game' ? 'ゲーム側' : 'テキスト'}に残っています`);
+                    out.appendLine(tr(`SKIP ${path.relative(root, target.textPath)}  未解決の衝突の目印が${res.skipped === 'game' ? 'ゲーム側' : 'テキスト'}に残っています`, `SKIP ${path.relative(root, target.textPath)}  unresolved conflict markers remain in the ${res.skipped === 'game' ? 'game' : 'text'}`));
                 } else if (res.ok) {
                     written++;
                     conflicts += res.conflicts || 0;
@@ -270,26 +272,26 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
                         markers++;
                     }
                     out.appendLine(`OK   ${path.relative(root, target.textPath)}`
-                        + (res.conflicts ? `  (${res.conflicts} 競合)` : '')
-                        + (res.markers ? '  (目印ごと取り出し。祖先は据え置き)' : ''));
+                        + (res.conflicts ? tr(`  (${res.conflicts} 競合)`, `  (${res.conflicts} conflicts)`) : '')
+                        + (res.markers ? tr('  (目印ごと取り出し。祖先は据え置き)', '  (pulled with the markers; ancestor kept)') : ''));
                 } else {
                     fail++;
                     out.appendLine(`FAIL ${path.relative(root, target.textPath)}  ${res.error}`);
                 }
             }, slowly);
-            recorder?.setLabel(purpose + (mode === 'merge' ? '(すべて)' : '') + ` ${written}件`);
+            recorder?.setLabel(purpose + (mode === 'merge' ? tr('(すべて)', ' (all)') : '') + tr(` ${written}件`, ` ${written}`));
             return done;
         }));
     out.appendLine(`=== ${finished ? 'done' : 'cancelled'}: ${written} written, ${fail} fail, ${conflicts} conflicts, ${skipped} skipped, ${markers} with markers ===`);
     if (skipped > 0) {
-        out.appendLine('SKIP したファイルは、衝突の目印を消すか「全部取り直す」で目印ごと取り出してテキスト側で解決してください。');
+        out.appendLine(tr('SKIP したファイルは、衝突の目印を消すか「全部取り直す」で目印ごと取り出してテキスト側で解決してください。', 'For the skipped files, remove the conflict markers, or Re-pull (overwrite) to bring them into the text and resolve them there.'));
     }
-    const msg = (finished ? `Text2Frame: ${purpose} 完了 — ${written} 件` : `Text2Frame: ${purpose}を途中でやめました — ${written} 件まで書きました。済んだ分は「履歴」から戻せます`)
-        + (fail ? ` / ${fail} 失敗` : '')
-        + (conflicts ? ` / ${conflicts} 競合(両方残し)` : '')
-        + (skipped ? ` / ${skipped} 件は目印が未解決で除外` : '');
+    const msg = (finished ? tr(`Text2Frame: ${purpose} 完了 — ${written} 件`, `Text2Frame: ${purpose} done — ${written}`) : tr(`Text2Frame: ${purpose}を途中でやめました — ${written} 件まで書きました。済んだ分は「履歴」から戻せます`, `Text2Frame: ${purpose} stopped partway — wrote ${written}. You can undo the done ones from History`))
+        + (fail ? tr(` / ${fail} 失敗`, ` / ${fail} failed`) : '')
+        + (conflicts ? tr(` / ${conflicts} 競合(両方残し)`, ` / ${conflicts} conflicts (both kept)`) : '')
+        + (skipped ? tr(` / ${skipped} 件は目印が未解決で除外`, ` / ${skipped} skipped for unresolved markers`) : '');
     if (fail > 0 || conflicts > 0 || skipped > 0 || !finished) {
-        vscode.window.showWarningMessage(msg, '詳細').then((p) => { if (p) { out.show(true); } });
+        vscode.window.showWarningMessage(msg, tr('詳細', 'Details')).then((p) => { if (p) { out.show(true); } });
     } else {
         vscode.window.showInformationMessage(msg);
     }

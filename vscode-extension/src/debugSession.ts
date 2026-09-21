@@ -11,6 +11,7 @@ import { alignCommands, commandLines, commandMark, locateCommand, CommandMark } 
 import { breakpointAt, readWatch } from './db/breakpoints';
 import { pageList } from './dryRun';
 import { DbKind, padId } from './db/database';
+import { tr } from './db/lang';
 
 /**
  * VS Code の「実行とデバッグ」で、テストプレイを調べる。
@@ -19,7 +20,10 @@ import { DbKind, padId } from './db/database';
  */
 
 export const DEBUG_TYPE = 'text2frame';
-const DEFAULT_CONFIG: vscode.DebugConfiguration = { type: DEBUG_TYPE, request: 'launch', name: 'Text2Frame テストプレイ' };
+/** 起動の設定。名前は画面に出るので、使うときに今の言語で作る。 */
+const defaultConfig = (): vscode.DebugConfiguration => ({ type: DEBUG_TYPE, request: 'launch', name: tr('Text2Frame テストプレイ', 'Text2Frame test play') });
+/** 所持金の行の名前。書き換えのときも同じ名前で見分ける。 */
+const goldName = (): string => tr('所持金', 'Gold');
 const CONNECT_WAIT = 40000;
 const REFS = { switches: 1, variables: 2, self: 3, party: 4 };
 
@@ -164,7 +168,7 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
                 this.respond(request);
                 return;
             case 'threads':
-                this.respond(request, { threads: [{ id: 1, name: 'イベント' }] });
+                this.respond(request, { threads: [{ id: 1, name: tr('イベント', 'Event') }] });
                 return;
             case 'stackTrace': {
                 const frames = await this.stack();
@@ -174,10 +178,10 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
             case 'scopes':
                 this.respond(request, {
                     scopes: [
-                        { name: 'スイッチ', variablesReference: REFS.switches, expensive: false },
-                        { name: '変数', variablesReference: REFS.variables, expensive: false },
-                        { name: 'セルフスイッチ(このイベント)', variablesReference: REFS.self, expensive: false },
-                        { name: '所持金とアイテム', variablesReference: REFS.party, expensive: false }
+                        { name: tr('スイッチ', 'Switches'), variablesReference: REFS.switches, expensive: false },
+                        { name: tr('変数', 'Variables'), variablesReference: REFS.variables, expensive: false },
+                        { name: tr('セルフスイッチ(このイベント)', 'Self switches (this event)'), variablesReference: REFS.self, expensive: false },
+                        { name: tr('所持金とアイテム', 'Gold and items'), variablesReference: REFS.party, expensive: false }
                     ]
                 });
                 return;
@@ -218,11 +222,11 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
 
     private async connect(launch: boolean): Promise<void> {
         if (this.session()) return;
-        if (!launch) throw new Error('テストプレイが動いていません。');
+        if (!launch) throw new Error(tr('テストプレイが動いていません。', 'No test play is running.'));
         await vscode.commands.executeCommand('text2frame.testPlay');
         const end = Date.now() + CONNECT_WAIT;
         while (Date.now() < end && !this.session()) await wait(200);
-        if (!this.session()) throw new Error('テストプレイのゲームとつながりませんでした。');
+        if (!this.session()) throw new Error(tr('テストプレイのゲームとつながりませんでした。', 'Could not connect to the test play.'));
     }
 
     private setBreakpoints(file: string, lines: number[]): Array<{ verified: boolean; line: number; message?: string }> {
@@ -232,7 +236,7 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
         const unverified = (line: number, message: string) => ({ verified: false, line: line + this.base, message });
         if (!ctx || !key) {
             this.files.set(file, { indices: [] });
-            return lines.map((l) => unverified(l, 'このテキストの宛先(先頭の --- の中)が分かりません。'));
+            return lines.map((l) => unverified(l, tr('このテキストの宛先(先頭の --- の中)が分かりません。', 'The destination of this text (inside the --- at the top) is not clear.')));
         }
         const source = this.tracker.sourceFor(ctx, file);
         if ('error' in source) {
@@ -243,14 +247,14 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
         const game = (s && s.state.listMarks(key)) || dataMarks(ctx, key);
         if (!game) {
             this.files.set(file, { key, indices: [] });
-            return lines.map((l) => unverified(l, 'ゲームのデータに、この場所がありません。反映してください。'));
+            return lines.map((l) => unverified(l, tr('ゲームのデータに、この場所がありません。反映してください。', 'This place is not in the game data. Apply the text.')));
         }
         const alignment = alignCommands(game, source.marks);
         const indices: number[] = [];
         const results = lines.map((l) => {
             const at = breakpointAt(source.commands, source.lines, alignment, l);
             if ('problem' in at) {
-                return unverified(l, at.problem === 'noCommand' ? 'この行から後ろに、コマンドがありません。' : 'ゲームのデータと合いません。反映して、ゲームを読み直してください。');
+                return unverified(l, at.problem === 'noCommand' ? tr('この行から後ろに、コマンドがありません。', 'There are no commands from this line on.') : tr('ゲームのデータと合いません。反映して、ゲームを読み直してください。', 'This does not match the game data. Apply, then reload the game.'));
             }
             indices.push(at.game);
             return { verified: true, line: at.line + this.base };
@@ -293,10 +297,11 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
     /** 印で止まったことを、どこで止まったかと進め方と一緒に知らせる。 */
     private async tellStopped(at: number): Promise<void> {
         const [top] = (await this.stack()) as Array<{ name?: string; line?: number; source?: { name?: string } }>;
-        const where = top && top.source && top.line ? `${top.source.name} の ${top.line} 行目` : (top && top.name) || '印をつけた行';
-        const pick = await vscode.window.showInformationMessage(`Text2Frame: 一時停止しました: ${where}`, '続ける', '印をすべて消して続ける');
+        const where = top && top.source && top.line ? tr(`${top.source.name} の ${top.line} 行目`, `${top.source.name} line ${top.line}`) : (top && top.name) || tr('印をつけた行', 'a marked line');
+        const clearAll = tr('印をすべて消して続ける', 'Remove all marks and continue');
+        const pick = await vscode.window.showInformationMessage(tr(`Text2Frame: 一時停止しました: ${where}`, `Text2Frame: Paused at ${where}`), tr('続ける', 'Continue'), clearAll);
         if (!pick || this.ended || !this.stopped || this.stoppedAt !== at) return;
-        if (pick === '印をすべて消して続ける') {
+        if (pick === clearAll) {
             const ours = vscode.debug.breakpoints.filter((b) => b instanceof vscode.SourceBreakpoint && this.files.has(b.location.uri.fsPath));
             vscode.debug.removeBreakpoints(ours);
             this.files.clear();
@@ -339,7 +344,7 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
                     const lines = target ? commandLines(source.commands, source.lines, target.index) : undefined;
                     if (lines) {
                         Object.assign(frame, { line: lines.from + this.base, column: 1, source: { name: path.basename(file), path: file } });
-                        if (target && !target.exact) frame.name = `${frame.name}(近い行)`;
+                        if (target && !target.exact) frame.name = tr(`${frame.name}(近い行)`, `${frame.name} (nearby line)`);
                     }
                 }
             }
@@ -364,7 +369,7 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
         if (!s || !ctx) return [];
         const state = s.state;
         const named = (kind: DbKind, shown: (id: number) => boolean, value: (id: number) => string) =>
-            ctx.db.entries(kind).filter((e) => e.name || shown(e.id)).map((e) => ({ name: `${padId(e.id)} ${e.name || '(名前なし)'}`, value: value(e.id), variablesReference: 0 }));
+            ctx.db.entries(kind).filter((e) => e.name || shown(e.id)).map((e) => ({ name: tr(`${padId(e.id)} ${e.name || '(名前なし)'}`, `${padId(e.id)} ${e.name || '(no name)'}`), value: value(e.id), variablesReference: 0 }));
         if (ref === REFS.switches) return named('switch', (id) => state.switchValue(id), (id) => formatLiveValue('switch', state.switchValue(id)));
         if (ref === REFS.variables) return named('variable', (id) => state.variableValue(id) !== 0, (id) => formatLiveValue('variable', state.variableValue(id)));
         if (ref === REFS.self) {
@@ -374,12 +379,12 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
         }
         if (ref === REFS.party) {
             this.partyKeys.clear();
-            const out = [{ name: '所持金', value: String(state.goldValue()), variablesReference: 0 }];
+            const out = [{ name: goldName(), value: String(state.goldValue()), variablesReference: 0 }];
             const kinds: Record<string, DbKind> = { i: 'item', w: 'weapon', a: 'armor' };
             for (const [key, count] of state.snapshot().items) {
                 const [k, id] = key.split(':');
                 const r = ctx.db.lookup(kinds[k], Number(id));
-                const name = `${k === 'i' ? 'アイテム' : k === 'w' ? '武器' : '防具'} ${padId(Number(id))} ${r.status === 'named' ? r.name : ''}`.trim();
+                const name = tr(`${k === 'i' ? 'アイテム' : k === 'w' ? '武器' : '防具'} ${padId(Number(id))} ${r.status === 'named' ? r.name : ''}`, `${k === 'i' ? 'Item' : k === 'w' ? 'Weapon' : 'Armor'} ${padId(Number(id))} ${r.status === 'named' ? r.name : ''}`).trim();
                 this.partyKeys.set(name, key);
                 out.push({ name, value: String(count), variablesReference: 0 });
             }
@@ -390,11 +395,11 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
 
     private setVariable(ref: number, name: string, value: string): string {
         const s = this.session();
-        if (!s) throw new Error('テストプレイ中だけ書き換えられます。');
+        if (!s) throw new Error(tr('テストプレイ中だけ書き換えられます。', 'You can change this only while test playing.'));
         const onOff = (v: string): boolean => {
             if (/^(on|true|1)$/i.test(v.trim())) return true;
             if (/^(off|false|0)$/i.test(v.trim())) return false;
-            throw new Error('ON か OFF を入れてください。');
+            throw new Error(tr('ON か OFF を入れてください。', 'Enter ON or OFF.'));
         };
         const id = Number((name.match(/^(\d+)/) || [])[1]);
         if (ref === REFS.switches && id > 0) {
@@ -410,25 +415,25 @@ class Text2FrameDebugAdapter implements vscode.DebugAdapter {
         }
         if (ref === REFS.self) {
             const ev = this.innermostEvent();
-            if (!ev) throw new Error('イベントが分かりません。');
+            if (!ev) throw new Error(tr('イベントが分かりません。', 'The event is not clear.'));
             const on = onOff(value);
             s.send({ selfSwitches: { [selfSwitchKey(ev.mapId, ev.eventId, name)]: on } });
             return on ? 'ON' : 'OFF';
         }
         if (ref === REFS.party) {
             const n = Number(value.trim());
-            if (!Number.isInteger(n) || n < 0) throw new Error('0 以上の整数を入れてください。');
-            if (name === '所持金') s.send({ gold: n });
+            if (!Number.isInteger(n) || n < 0) throw new Error(tr('0 以上の整数を入れてください。', 'Enter a whole number, 0 or more.'));
+            if (name === goldName()) s.send({ gold: n });
             else if (this.partyKeys.has(name)) s.send({ items: { [this.partyKeys.get(name) as string]: n } });
             return String(n);
         }
-        throw new Error('書き換えられません。');
+        throw new Error(tr('書き換えられません。', 'This cannot be changed.'));
     }
 
     private evaluate(expression: string): [unknown, string?] {
         const s = this.live.current();
         const target = readWatch(expression);
-        if (!s || !target) return [undefined, 'S12(スイッチ12)や V5(変数5)の形で書いてください。'];
+        if (!s || !target) return [undefined, tr('S12(スイッチ12)や V5(変数5)の形で書いてください。', 'Write it like S12 (switch 12) or V5 (variable 5).')];
         const ctx = this.context();
         const r = ctx ? ctx.db.lookup(target.kind, target.id) : undefined;
         const value = target.kind === 'switch'
@@ -470,7 +475,7 @@ function attach(): Promise<unknown> {
     if (!pauseAtMarks() || adapters.size || !s || !s.state.received() || !s.state.connected(Date.now())) return Promise.resolve();
     if (starting) return starting;
     const folder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(s.projectRoot)) || vscode.workspace.workspaceFolders?.[0];
-    starting = Promise.resolve(vscode.debug.startDebugging(folder, { ...DEFAULT_CONFIG, attachOnly: true }))
+    starting = Promise.resolve(vscode.debug.startDebugging(folder, { ...defaultConfig(), attachOnly: true }))
         .catch(() => false)
         .finally(() => { starting = undefined; });
     return starting;
@@ -514,7 +519,7 @@ export function registerDebugger(context: vscode.ExtensionContext, service: Data
         if (!inText) return;
         hinted = true;
         void vscode.window.showInformationMessage(
-            'Text2Frame: この印で止めるには、「操作」→「上級」の「印をつけた行で一時停止する」をオンにします。', 'オンにする'
+            tr('Text2Frame: この印で止めるには、「操作」→「上級」の「印をつけた行で一時停止する」をオンにします。', 'Text2Frame: To stop at this mark, turn on Commands → Advanced → Pause at marked lines.'), tr('オンにする', 'Turn on')
         ).then((pick) => { if (pick && !pauseAtMarks()) void vscode.commands.executeCommand('text2frame.togglePauseAtMarks'); });
     };
     const toggle = async (): Promise<void> => {
@@ -523,11 +528,11 @@ export function registerDebugger(context: vscode.ExtensionContext, service: Data
         pauseEmitter.fire(on);
         if (on) {
             void attach();
-            vscode.window.setStatusBarMessage('Text2Frame: 印をつけた行で一時停止します。', 5000);
+            vscode.window.setStatusBarMessage(tr('Text2Frame: 印をつけた行で一時停止します。', 'Text2Frame: Pausing at marked lines.'), 5000);
         } else {
             adapters.forEach((a) => a.detach());
             forgetMarks(true);
-            vscode.window.setStatusBarMessage('Text2Frame: 印をつけた行で一時停止しません。', 5000);
+            vscode.window.setStatusBarMessage(tr('Text2Frame: 印をつけた行で一時停止しません。', 'Text2Frame: Not pausing at marked lines.'), 5000);
         }
     };
     context.subscriptions.push(
@@ -542,9 +547,9 @@ export function registerDebugger(context: vscode.ExtensionContext, service: Data
             createDebugAdapterDescriptor: () => new vscode.DebugAdapterInlineImplementation(new Text2FrameDebugAdapter(service, live, tracker))
         }),
         vscode.debug.registerDebugConfigurationProvider(DEBUG_TYPE, {
-            provideDebugConfigurations: () => [DEFAULT_CONFIG],
-            resolveDebugConfiguration: (_folder, config) => (config.type && config.request ? config : { ...DEFAULT_CONFIG })
+            provideDebugConfigurations: () => [defaultConfig()],
+            resolveDebugConfiguration: (_folder, config) => (config.type && config.request ? config : { ...defaultConfig() })
         }),
-        vscode.commands.registerCommand('text2frame.debug', () => vscode.debug.startDebugging(vscode.workspace.workspaceFolders?.[0], DEFAULT_CONFIG))
+        vscode.commands.registerCommand('text2frame.debug', () => vscode.debug.startDebugging(vscode.workspace.workspaceFolders?.[0], defaultConfig()))
     );
 }

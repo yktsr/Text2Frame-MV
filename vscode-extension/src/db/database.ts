@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { pick } from './lang';
 
 /**
  * ツクールのデータベース(data/*.json)を読むだけの窓口。書き換えはしない。
@@ -29,7 +30,8 @@ export interface DbEntry {
 
 interface Source {
     file: string;
-    label: string;
+    /** [日本語, 英語] */
+    label: readonly [string, string];
     /** 番号をそのまま添字にした名前の配列を返す(0番は使わない)。 */
     names: (json: any) => string[];
 }
@@ -42,22 +44,22 @@ const fromRecords = (json: any): string[] =>
 
 /** 並び順はサイドバーの一覧の順でもある。 */
 export const SOURCES: Record<DbKind, Source> = {
-    switch: { file: 'System.json', label: 'スイッチ', names: fromArrayField('switches') },
-    variable: { file: 'System.json', label: '変数', names: fromArrayField('variables') },
-    actor: { file: 'Actors.json', label: 'アクター', names: fromRecords },
-    class: { file: 'Classes.json', label: '職業', names: fromRecords },
-    item: { file: 'Items.json', label: 'アイテム', names: fromRecords },
-    weapon: { file: 'Weapons.json', label: '武器', names: fromRecords },
-    armor: { file: 'Armors.json', label: '防具', names: fromRecords },
-    equipType: { file: 'System.json', label: '装備タイプ', names: fromArrayField('equipTypes') },
-    skill: { file: 'Skills.json', label: 'スキル', names: fromRecords },
-    state: { file: 'States.json', label: 'ステート', names: fromRecords },
-    enemy: { file: 'Enemies.json', label: '敵キャラ', names: fromRecords },
-    troop: { file: 'Troops.json', label: '敵グループ', names: fromRecords },
-    animation: { file: 'Animations.json', label: 'アニメーション', names: fromRecords },
-    commonEvent: { file: 'CommonEvents.json', label: 'コモンイベント', names: fromRecords },
-    map: { file: 'MapInfos.json', label: 'マップ', names: fromRecords },
-    tileset: { file: 'Tilesets.json', label: 'タイルセット', names: fromRecords }
+    switch: { file: 'System.json', label: ['スイッチ', 'Switch'], names: fromArrayField('switches') },
+    variable: { file: 'System.json', label: ['変数', 'Variable'], names: fromArrayField('variables') },
+    actor: { file: 'Actors.json', label: ['アクター', 'Actor'], names: fromRecords },
+    class: { file: 'Classes.json', label: ['職業', 'Class'], names: fromRecords },
+    item: { file: 'Items.json', label: ['アイテム', 'Item'], names: fromRecords },
+    weapon: { file: 'Weapons.json', label: ['武器', 'Weapon'], names: fromRecords },
+    armor: { file: 'Armors.json', label: ['防具', 'Armor'], names: fromRecords },
+    equipType: { file: 'System.json', label: ['装備タイプ', 'Equipment Type'], names: fromArrayField('equipTypes') },
+    skill: { file: 'Skills.json', label: ['スキル', 'Skill'], names: fromRecords },
+    state: { file: 'States.json', label: ['ステート', 'State'], names: fromRecords },
+    enemy: { file: 'Enemies.json', label: ['敵キャラ', 'Enemy'], names: fromRecords },
+    troop: { file: 'Troops.json', label: ['敵グループ', 'Troop'], names: fromRecords },
+    animation: { file: 'Animations.json', label: ['アニメーション', 'Animation'], names: fromRecords },
+    commonEvent: { file: 'CommonEvents.json', label: ['コモンイベント', 'Common Event'], names: fromRecords },
+    map: { file: 'MapInfos.json', label: ['マップ', 'Map'], names: fromRecords },
+    tileset: { file: 'Tilesets.json', label: ['タイルセット', 'Tileset'], names: fromRecords }
 };
 
 export const KINDS = Object.keys(SOURCES) as DbKind[];
@@ -170,7 +172,7 @@ export class GameDatabase {
     }
 
     label(kind: DbKind): string {
-        return SOURCES[kind].label;
+        return pick(SOURCES[kind].label);
     }
 
     /** いちばん大きい番号。0 ならその種類は1つも無い。 */

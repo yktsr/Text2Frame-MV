@@ -9,6 +9,7 @@ import { reviewEnabled } from './review';
 import { reviewDeploy, busy, Decision, DeployCandidate, DeploySort } from './reviewApply';
 import { eachSlowly } from './db/slowly';
 import { PageRef, tryApply } from './dryRun';
+import { tr } from './db/lang';
 
 export { isDeployable };
 
@@ -149,7 +150,7 @@ export function deployDocument(
 ): Promise<ApplyResult | undefined> {
     const root = workspaceRootFor(document);
     const file = document.uri.fsPath;
-    const label = (options.onSave ? '保存時の反映 ' : 'ゲームに反映 ') + (root ? relativeLabel(root, file) : path.basename(file));
+    const label = (options.onSave ? tr('保存時の反映 ', 'Apply on save ') : tr('ゲームに反映 ', 'Apply to game ')) + (root ? relativeLabel(root, file) : path.basename(file));
     // 保存時の反映は、同じテキストで5分以内に続いたら1つにまとめる(保存のたびに履歴が並ばないように)。
     const history = { keep: historyKeep(), mergeKey: options.onSave ? 'save:' + file : undefined };
     return withHistory(root, options.onSave ? 'applyOnSave' : 'apply', label, history,
@@ -168,20 +169,20 @@ async function deployDocumentNow(
     }
     const workspaceRoot = workspaceRootFor(document);
     if (!workspaceRoot) {
-        vscode.window.showErrorMessage('Text2Frame: ワークスペースフォルダが見つかりません。');
+        vscode.window.showErrorMessage(tr('Text2Frame: ワークスペースフォルダが見つかりません。', 'Text2Frame: No workspace folder was found.'));
         return undefined;
     }
 
     const { meta, hasFrontMatter } = parseFrontMatter(document.getText());
     if (!hasFrontMatter) {
-        vscode.window.showWarningMessage('Text2Frame: フロントマターが無いためデプロイ先を特定できません。');
+        vscode.window.showWarningMessage(tr('Text2Frame: フロントマターが無いためデプロイ先を特定できません。', 'Text2Frame: This text has no front matter, so where it goes in the game is unknown.'));
         return undefined;
     }
 
     const { mod, tried } = loadCompiler(context, workspaceRoot);
     if (!mod) {
         vscode.window.showErrorMessage(
-            'Text2Frame: コンパイラ (Text2Frame.js) が見つかりません。設定 text2frame.modulePath にパスを指定するか、ワークスペース直下に Text2Frame.js を配置してください。'
+            tr('Text2Frame: コンパイラ (Text2Frame.js) が見つかりません。設定 text2frame.modulePath にパスを指定するか、ワークスペース直下に Text2Frame.js を配置してください。', 'Text2Frame: The compiler (Text2Frame.js) was not found. Set its path in text2frame.modulePath, or put Text2Frame.js at the top of the workspace.')
         );
         getOutput().appendLine('[deploy] compiler not found. tried:\n  ' + tried.join('\n  '));
         return undefined;
@@ -209,17 +210,20 @@ async function deployDocumentNow(
     // Only overwrite-like strategies can lose those edits; merge preserves them, so we
     // only prompt when the configured strategy would overwrite.
     if (dataPath && isOverwriteLike(strategy) && dataChangedExternally(context, dataPath)) {
+        const safe = tr('安全に反映する(おすすめ)', 'Apply safely (recommended)');
+        const overwrite = tr('全部上書きする', 'Overwrite everything');
+        const pull = tr('ゲームの内容を取り込む', 'Bring in the game\'s contents');
         const choice = await vscode.window.showWarningMessage(
-            `Text2Frame: ${path.basename(dataPath)} はゲーム側で変更されています。テキストで全部上書きすると、その変更が失われる可能性があります。`,
+            tr(`Text2Frame: ${path.basename(dataPath)} はゲーム側で変更されています。テキストで全部上書きすると、その変更が失われる可能性があります。`, `Text2Frame: ${path.basename(dataPath)} was changed in the game. Overwriting everything from the text may lose those changes.`),
             { modal: true },
-            '安全に反映する(おすすめ)',
-            '全部上書きする',
-            'ゲームの内容を取り込む'
+            safe,
+            overwrite,
+            pull
         );
-        if (choice === '安全に反映する(おすすめ)') {
+        if (choice === safe) {
             // Switch this deploy to the non-destructive smart merge, keeping external JSON edits.
             strategy = 'merge';
-        } else if (choice === 'ゲームの内容を取り込む') {
+        } else if (choice === pull) {
             const pullTarget: ExportTarget = {
                 kind: meta.kind === 'common' ? 'common' : 'event',
                 mapId: meta.mapId,
@@ -232,12 +236,12 @@ async function deployDocumentNow(
             const ex = mergePullToText(context, workspaceRoot, pullTarget);
             recordDataState(context, dataPath);
             if (ex.ok) {
-                vscode.window.showInformationMessage('Text2Frame: ゲームの内容を取り込みました(編集は残しました)。内容を確認して保存し直してください。');
+                vscode.window.showInformationMessage(tr('Text2Frame: ゲームの内容を取り込みました(編集は残しました)。内容を確認して保存し直してください。', 'Text2Frame: Brought in the game\'s contents (your edits stay). Check the text and save it again.'));
             } else {
-                vscode.window.showErrorMessage('Text2Frame: 取り込み失敗 - ' + (ex.error || ''));
+                vscode.window.showErrorMessage(tr('Text2Frame: 取り込み失敗 - ', 'Text2Frame: Could not bring it in - ') + (ex.error || ''));
             }
             return undefined;
-        } else if (choice === '全部上書きする') {
+        } else if (choice === overwrite) {
             // Proceed with the overwrite as asked.
         } else {
             out.appendLine(`[${time}] CANCELLED (external change) ${path.basename(dataPath)}`);
@@ -263,10 +267,10 @@ async function deployDocumentNow(
     }
     let decision: Decision | undefined;
     if (options.review) {
-        decision = await reviewDeploy(context, workspaceRoot, mod, [candidateFor(document.uri.fsPath, meta, applyOpts, dataPath)], 'このファイルの反映');
+        decision = await reviewDeploy(context, workspaceRoot, mod, [candidateFor(document.uri.fsPath, meta, applyOpts, dataPath)], tr('このファイルの反映', 'Apply this file'));
         if (decision === 'cancel') {
             out.appendLine(`[${time}] CANCELLED (review) ${resolved.label}  <- ${path.basename(document.uri.fsPath)}`);
-            vscode.window.setStatusBarMessage('Text2Frame: 反映をやめました。', 4000);
+            vscode.window.setStatusBarMessage(tr('Text2Frame: 反映をやめました。', 'Text2Frame: Stopped applying.'), 4000);
             return undefined;
         }
     }
@@ -281,7 +285,7 @@ async function deployDocumentNow(
             (result.warnings.length ? `  (${result.warnings.length} warnings)` : ''));
         result.warnings.forEach((w) => out.appendLine('    warn: ' + w));
         if (result.warnings.length) {
-            vscode.window.showWarningMessage(`Text2Frame: デプロイ完了 (${result.warnings.length} 件の警告)`, '詳細')
+            vscode.window.showWarningMessage(tr(`Text2Frame: デプロイ完了 (${result.warnings.length} 件の警告)`, `Text2Frame: Applied (${result.warnings.length} warnings)`), tr('詳細', 'Details'))
                 .then((pick) => { if (pick) { out.show(true); } });
         }
         // Optionally write the merged result back to the text, then refresh the 3-way BASE.
@@ -290,7 +294,7 @@ async function deployDocumentNow(
         out.appendLine(`[${time}] FAIL  ${resolved.label}  <- ${path.basename(document.uri.fsPath)}  ${result.error}`);
         setDeployDiagnostic(deployDiagnostics, document, result.error || 'deploy failed', result.errorLineText);
         const firstLine = (result.error || 'deploy failed').split('\n')[0];
-        vscode.window.showErrorMessage('Text2Frame: デプロイ失敗 - ' + firstLine);
+        vscode.window.showErrorMessage(tr('Text2Frame: デプロイ失敗 - ', 'Text2Frame: Could not apply - ') + firstLine);
     }
     return result;
 }
@@ -382,7 +386,7 @@ export function deployFile(
     workspaceRoot: string,
     filePath: string
 ): ApplyResult | undefined {
-    return withHistory(workspaceRoot, 'apply', 'ゲームに反映 ' + relativeLabel(workspaceRoot, filePath), { keep: historyKeep() },
+    return withHistory(workspaceRoot, 'apply', tr('ゲームに反映 ', 'Apply to game ') + relativeLabel(workspaceRoot, filePath), { keep: historyKeep() },
         () => deployFileNow(context, workspaceRoot, filePath));
 }
 
@@ -475,7 +479,7 @@ export async function reviewFiles(
         for (const file of files) add(file);
     } else {
         // たくさんのテキストは、少しずつ読む(進み具合を出し、途中でやめられる)。
-        const read = await busy('Text2Frame: 反映するテキストを読んでいます…', (slowly) => eachSlowly(files, add, slowly));
+        const read = await busy(tr('Text2Frame: 反映するテキストを読んでいます…', 'Text2Frame: Reading the texts to apply…'), (slowly) => eachSlowly(files, add, slowly));
         if (!read) return 'cancel';
     }
     if (!candidates.length) return 'unchanged';
@@ -497,13 +501,13 @@ function addCandidate(context: vscode.ExtensionContext, workspaceRoot: string, f
 export function showCompiledJson(context: vscode.ExtensionContext): void {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-        vscode.window.showWarningMessage('Text2Frame: アクティブなエディタがありません。');
+        vscode.window.showWarningMessage(tr('Text2Frame: アクティブなエディタがありません。', 'Text2Frame: No active editor.'));
         return;
     }
     const workspaceRoot = workspaceRootFor(editor.document);
     const { mod } = loadCompiler(context, workspaceRoot);
     if (!mod || typeof mod.compile !== 'function') {
-        vscode.window.showErrorMessage('Text2Frame: コンパイラ (Text2Frame.js) が見つかりません。');
+        vscode.window.showErrorMessage(tr('Text2Frame: コンパイラ (Text2Frame.js) が見つかりません。', 'Text2Frame: The compiler (Text2Frame.js) was not found.'));
         return;
     }
     try {
@@ -513,7 +517,7 @@ export function showCompiledJson(context: vscode.ExtensionContext): void {
             .then((doc) => vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Beside }));
     } catch (e) {
         const msg = e instanceof Error ? e.message.split('\n')[0] : String(e);
-        vscode.window.showErrorMessage('Text2Frame: コンパイルエラー - ' + msg);
+        vscode.window.showErrorMessage(tr('Text2Frame: コンパイルエラー - ', 'Text2Frame: Compile error - ') + msg);
     }
 }
 
@@ -531,10 +535,10 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
     const renderBase = (): void => {
         if (isOn()) {
             statusBar.text = '$(eye) T2F: watching';
-            statusBar.tooltip = '保存時に自動デプロイ: ON (クリックで切替)';
+            statusBar.tooltip = tr('保存時に自動デプロイ: ON (クリックで切替)', 'Apply on save: ON (click to switch)');
         } else {
             statusBar.text = '$(circle-outline) T2F: off';
-            statusBar.tooltip = '保存時に自動デプロイ: OFF (クリックで切替)';
+            statusBar.tooltip = tr('保存時に自動デプロイ: OFF (クリックで切替)', 'Apply on save: OFF (click to switch)');
         }
         statusBar.show();
     };
@@ -582,7 +586,7 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand('text2frame.deployCurrentFile', () => {
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
-                vscode.window.showWarningMessage('Text2Frame: アクティブなエディタがありません。');
+                vscode.window.showWarningMessage(tr('Text2Frame: アクティブなエディタがありません。', 'Text2Frame: No active editor.'));
                 return;
             }
             const review = reviewEnabled();
@@ -594,7 +598,7 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
                     // Explicit command: confirm a clean success with a toast (deployDocument
                     // already toasts on warnings/errors; deploy-on-save stays quiet).
                     if (result && result.ok && result.warnings.length === 0) {
-                        vscode.window.showInformationMessage(result.unchanged ? 'Text2Frame: ゲームは変わりませんでした。' : 'Text2Frame: ゲームに反映しました。');
+                        vscode.window.showInformationMessage(result.unchanged ? tr('Text2Frame: ゲームは変わりませんでした。', 'Text2Frame: The game did not change.') : tr('Text2Frame: ゲームに反映しました。', 'Text2Frame: Applied to the game.'));
                     }
                 }).finally(() => manualSaves.delete(key));
             }, () => manualSaves.delete(key));
@@ -603,7 +607,7 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
             const next = !isOn();
             context.workspaceState.update(stateKey, next);
             renderBase();
-            vscode.window.showInformationMessage('Text2Frame: 保存時の自動デプロイを ' + (next ? 'ON' : 'OFF') + ' にしました。');
+            vscode.window.showInformationMessage(tr('Text2Frame: 保存時の自動デプロイを ', 'Text2Frame: Turned apply on save ') + (next ? 'ON' : 'OFF') + tr(' にしました。', '.'));
         }),
         vscode.workspace.onDidSaveTextDocument((document) => {
             if (!isOn()) {

@@ -16,6 +16,7 @@ import { eventId as eventLabelId, MapEvent } from './db/describe';
 import { PageSummary } from './db/eventPages';
 import { padId } from './db/database';
 import { placeFromMeta } from './placeLabel';
+import { tr } from './db/lang';
 
 /**
  * Activity Bar tree: Maps -> Events -> Pages, plus Common Events. Maps are
@@ -186,7 +187,7 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
             if (here) nodes.push(here);
             nodes.push(...this.mapNodes(ctx, this.maps(ctx).roots));
             if (fs.existsSync(path.join(ctx.dataDir, 'CommonEvents.json'))) {
-                nodes.push(new T2FNode('category', 'コモンイベント', vscode.TreeItemCollapsibleState.Collapsed, { category: 'commons' }));
+                nodes.push(new T2FNode('category', tr('コモンイベント', 'Common Events'), vscode.TreeItemCollapsibleState.Collapsed, { category: 'commons' }));
             }
             return nodes;
         }
@@ -210,7 +211,7 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
         const ctx = this.context2();
         if (!ctx) return undefined;
         if (element.nodeType === 'common') {
-            return new T2FNode('category', 'コモンイベント', vscode.TreeItemCollapsibleState.Collapsed, { category: 'commons' });
+            return new T2FNode('category', tr('コモンイベント', 'Common Events'), vscode.TreeItemCollapsibleState.Collapsed, { category: 'commons' });
         }
         if (element.nodeType === 'page') {
             return this.eventNode(ctx, Number(element.data.mapId), Number(element.data.eventId), undefined, !!element.data.here);
@@ -294,12 +295,12 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
         const marks = this.marks(ctx);
         if (!marks || marks.mapId <= 0) return undefined;
         const info = this.maps(ctx).nodes.get(marks.mapId);
-        const item = new T2FNode('here', '今いるマップ: ' + mapLabel(info ? info.info : { id: marks.mapId, name: '' }), vscode.TreeItemCollapsibleState.Expanded, {
+        const item = new T2FNode('here', tr('今いるマップ: ', 'Current map: ') + mapLabel(info ? info.info : { id: marks.mapId, name: '' }), vscode.TreeItemCollapsibleState.Expanded, {
             mapId: String(marks.mapId), here: true
         });
         item.description = '#' + padId(marks.mapId);
         item.iconPath = new vscode.ThemeIcon('location');
-        item.tooltip = 'テストプレイでプレイヤーがいるマップのイベントです。';
+        item.tooltip = tr('テストプレイでプレイヤーがいるマップのイベントです。', 'Events of the map the player is on in the test play.');
         return item;
     }
 
@@ -320,9 +321,9 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
             { mapId: String(mapId) }
         );
         const marks = this.marks(ctx);
-        item.description = ['#' + padId(mapId), marks && marks.mapId === mapId ? '● いまここ' : ''].filter((s) => s).join('・');
+        item.description = ['#' + padId(mapId), marks && marks.mapId === mapId ? tr('● いまここ', '● here now') : ''].filter((s) => s).join(tr('・', ' · '));
         item.iconPath = new vscode.ThemeIcon('map');
-        item.tooltip = `${mapLabel(info)}(マップ${padId(mapId)})`;
+        item.tooltip = tr(`${mapLabel(info)}(マップ${padId(mapId)})`, `${mapLabel(info)} (map ${padId(mapId)})`);
         return item;
     }
 
@@ -345,9 +346,9 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
             { mapId: String(mapId), eventId: String(eventId), here }
         );
         const mark = eventLiveMark(this.marks(ctx), mapId, eventId);
-        item.description = [`${eventLabelId(eventId)}${event ? ` (${event.x},${event.y})` : ''}`, mark].filter((s) => s).join('・');
+        item.description = [`${eventLabelId(eventId)}${event ? ` (${event.x},${event.y})` : ''}`, mark].filter((s) => s).join(tr('・', ' · '));
         item.iconPath = new vscode.ThemeIcon('symbol-event');
-        item.tooltip = `${eventLabelId(eventId)}${event && event.name ? ' ' + event.name : ''} / ${event ? event.pages : 0}ページ`;
+        item.tooltip = tr(`${eventLabelId(eventId)}${event && event.name ? ' ' + event.name : ''} / ${event ? event.pages : 0}ページ`, `${eventLabelId(eventId)}${event && event.name ? ' ' + event.name : ''} / ${event ? event.pages : 0} pages`);
         return item;
     }
 
@@ -362,15 +363,15 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
     private pageNode(ctx: DbContext, mapId: number, eventId: number, event: MapEvent, index: number, here = false): T2FNode {
         const summary: PageSummary = (event.pageSummaries || [])[index] || { trigger: 0 };
         const empty = !!(event.pageEmpty || [])[index];
-        const item = new T2FNode('page', `ページ ${index + 1}`, vscode.TreeItemCollapsibleState.None, {
+        const item = new T2FNode('page', tr(`ページ ${index + 1}`, `Page ${index + 1}`), vscode.TreeItemCollapsibleState.None, {
             mapId: String(mapId), eventId: String(eventId), pageId: String(index + 1), here
         });
         const conditions = pageConditionTexts(summary, this.names(ctx));
         const map = this.maps(ctx).nodes.get(mapId);
         const mark = pageLiveMark(this.marks(ctx), mapId, eventId, index + 1);
         this.decorateLeaf(item, [pageDescription(summary, empty, this.names(ctx)), mark].filter((s) => s).join('・'), [
-            `${mapLabel(map ? map.info : { id: mapId, name: '' })} / ${eventLabelId(eventId)}${event.name ? ' ' + event.name : ''} / ${index + 1}ページ`,
-            conditions.length ? '出現条件: ' + conditions.join(' / ') : '出現条件: なし'
+            tr(`${mapLabel(map ? map.info : { id: mapId, name: '' })} / ${eventLabelId(eventId)}${event.name ? ' ' + event.name : ''} / ${index + 1}ページ`, `${mapLabel(map ? map.info : { id: mapId, name: '' })} / ${eventLabelId(eventId)}${event.name ? ' ' + event.name : ''} / page ${index + 1}`),
+            conditions.length ? tr('出現条件: ', 'Conditions: ') + conditions.join(' / ') : tr('出現条件: なし', 'Conditions: none')
         ]);
         item.command = { command: 'text2frame.tree.open', title: 'Open', arguments: [item] };
         return item;
@@ -404,7 +405,7 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
     }
 
     private commonNode(ctx: DbContext, entry: CommonSummary): T2FNode {
-        const item = new T2FNode('common', entry.name || `コモン${padId(entry.id)}`, vscode.TreeItemCollapsibleState.None, {
+        const item = new T2FNode('common', entry.name || tr(`コモン${padId(entry.id)}`, `Common ${padId(entry.id)}`), vscode.TreeItemCollapsibleState.None, {
             commonEventId: String(entry.id)
         });
         const description = commonDescription(entry.trigger, entry.switchId, entry.empty, this.names(ctx));
@@ -418,11 +419,11 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
     private decorateLeaf(item: T2FNode, description: string, tooltipLines: string[]): void {
         const textPath = this.texts.get(keyForLeaf(item));
         const unapplied = textPath ? (this.unapplied.get(textPath) || [])[1] : false;
-        item.description = [description, unapplied ? '未反映' : ''].filter((s) => s).join('・');
+        item.description = [description, unapplied ? '未反映' : ''].filter((s) => s).join(tr('・', ' · '));
         item.iconPath = new vscode.ThemeIcon(textPath ? 'file-text' : 'new-file');
         const lines = tooltipLines.concat([
-            textPath ? 'テキスト: ' + vscode.workspace.asRelativePath(textPath) : 'テキストはまだありません(押すと書き出せます)',
-            unapplied ? 'このテキストには、ゲームに反映していない変更があります。' : ''
+            textPath ? tr('テキスト: ', 'Text: ') + vscode.workspace.asRelativePath(textPath) : tr('テキストはまだありません(押すと書き出せます)', 'No text yet (click to export one)'),
+            unapplied ? tr('このテキストには、ゲームに反映していない変更があります。', 'This text has changes not yet applied to the game.') : ''
         ]);
         item.tooltip = lines.filter((line) => line).join('\n');
     }
@@ -489,7 +490,7 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
     const ensureRoot = (): string | undefined => {
         const root = workspaceRootFor();
         if (!root) {
-            vscode.window.showErrorMessage('Text2Frame: ワークスペースフォルダが見つかりません。');
+            vscode.window.showErrorMessage(tr('Text2Frame: ワークスペースフォルダが見つかりません。', 'Text2Frame: No workspace folder was found.'));
         }
         return root;
     };
@@ -508,17 +509,18 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
         }
         const textPath = (await textPathOf(root, node)) || textPathForLeaf(root, node);
         if (!fs.existsSync(textPath)) {
+            const exportLabel = tr('書き出す', 'Export');
             const pick = await vscode.window.showInformationMessage(
-                'Text2Frame: テキストがまだありません。データから書き出しますか?', '書き出す'
+                tr('Text2Frame: テキストがまだありません。データから書き出しますか?', 'Text2Frame: There is no text yet. Export one from the data?'), exportLabel
             );
-            if (pick !== '書き出す') {
+            if (pick !== exportLabel) {
                 return;
             }
             const target = targetForLeaf(node);
             target.textPath = textPath;
             const res = exportToTextFile(context, root, target);
             if (!res.ok) {
-                vscode.window.showErrorMessage('Text2Frame: 書き出し失敗 - ' + (res.error || ''));
+                vscode.window.showErrorMessage(tr('Text2Frame: 書き出し失敗 - ', 'Text2Frame: Could not export - ') + (res.error || ''));
                 return;
             }
             running.reindex();
@@ -552,19 +554,19 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
                 }
                 return [planPull(context, root, target, 'overwrite')];
             };
-            const reviewed = await reviewPull(root, makePlan, 'この行の書き出し');
+            const reviewed = await reviewPull(root, makePlan, tr('この行の書き出し', 'Export this row'));
             if (!reviewed) {
-                vscode.window.setStatusBarMessage('Text2Frame: 書き出しをやめました。', 4000);
+                vscode.window.setStatusBarMessage(tr('Text2Frame: 書き出しをやめました。', 'Text2Frame: Stopped exporting.'), 4000);
                 return;
             }
             const res = commitPull(context, root, reviewed.plans[0]);
             if (res.ok) {
-                vscode.window.showInformationMessage('Text2Frame: 書き出しました — ' + path.relative(root, textPath));
+                vscode.window.showInformationMessage(tr('Text2Frame: 書き出しました — ', 'Text2Frame: Exported — ') + path.relative(root, textPath));
                 running.reindex();
                 provider.refresh();
                 vscode.workspace.openTextDocument(textPath).then((doc) => vscode.window.showTextDocument(doc, { preview: true }));
             } else {
-                vscode.window.showErrorMessage('Text2Frame: 書き出し失敗 - ' + (res.error || ''));
+                vscode.window.showErrorMessage(tr('Text2Frame: 書き出し失敗 - ', 'Text2Frame: Could not export - ') + (res.error || ''));
             }
         }),
         vscode.commands.registerCommand('text2frame.tree.deploy', async (node: T2FNode) => {
@@ -574,19 +576,19 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
             }
             const textPath = (await textPathOf(root, node)) || textPathForLeaf(root, node);
             if (!fs.existsSync(textPath)) {
-                vscode.window.showWarningMessage('Text2Frame: テキストがありません。先に書き出してください。');
+                vscode.window.showWarningMessage(tr('Text2Frame: テキストがありません。先に書き出してください。', 'Text2Frame: There is no text. Export one first.'));
                 return;
             }
-            if (await reviewFiles(context, root, [textPath], 'この行の反映') === 'cancel') {
-                vscode.window.setStatusBarMessage('Text2Frame: 反映をやめました。', 4000);
+            if (await reviewFiles(context, root, [textPath], tr('この行の反映', 'Apply this row')) === 'cancel') {
+                vscode.window.setStatusBarMessage(tr('Text2Frame: 反映をやめました。', 'Text2Frame: Stopped applying.'), 4000);
                 return;
             }
             const res = deployFile(context, root, textPath);
             if (res && res.ok) {
-                vscode.window.showInformationMessage('Text2Frame: デプロイしました — ' + path.relative(root, textPath));
+                vscode.window.showInformationMessage(tr('Text2Frame: デプロイしました — ', 'Text2Frame: Applied — ') + path.relative(root, textPath));
                 provider.refresh();
             } else if (res) {
-                vscode.window.showErrorMessage('Text2Frame: デプロイ失敗 - ' + (res.error || ''));
+                vscode.window.showErrorMessage(tr('Text2Frame: デプロイ失敗 - ', 'Text2Frame: Could not apply - ') + (res.error || ''));
             }
         }),
         vscode.commands.registerCommand('text2frame.tree.try', async (node: T2FNode, mode?: 'stand' | 'run') => {

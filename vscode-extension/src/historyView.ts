@@ -4,6 +4,7 @@ import * as path from 'path';
 import { workspaceRootFor, recordDataState, historyKeep, baseSnapshotPath, snapshotKeyFor } from './compiler';
 import { renderCommands } from './exportText';
 import { pageList, PageRef } from './dryRun';
+import { tr } from './db/lang';
 import {
     HistoryEntry, HistoryFile, listEntries, readEntry, restoreEntry, snapshotFile, historyRoot, withHistory, onHistoryChange, absolutePath
 } from './db/history';
@@ -39,11 +40,11 @@ class HistoryNode extends vscode.TreeItem {
 /** 「3分前」「2時間前」「3日前」。 */
 export function ago(then: number, now: number): string {
     const minutes = Math.floor((now - then) / 60000);
-    if (minutes < 1) return 'いま';
-    if (minutes < 60) return `${minutes}分前`;
+    if (minutes < 1) return tr('いま', 'just now');
+    if (minutes < 60) return tr(`${minutes}分前`, `${minutes} min ago`);
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}時間前`;
-    return `${Math.floor(hours / 24)}日前`;
+    if (hours < 24) return tr(`${hours}時間前`, `${hours} h ago`);
+    return tr(`${Math.floor(hours / 24)}日前`, `${Math.floor(hours / 24)} d ago`);
 }
 
 const clock = (time: number): string => {
@@ -65,9 +66,9 @@ function pageRefOf(key: string): PageRef | undefined {
 
 function pageName(key: string): string {
     const e = /^e:(\d+):(\d+):(\d+)$/.exec(key);
-    if (e) return `マップ${e[1]} EV${e[2].padStart(3, '0')} ${e[3]}ページ`;
+    if (e) return tr(`マップ${e[1]} EV${e[2].padStart(3, '0')} ${e[3]}ページ`, `Map${e[1]} EV${e[2].padStart(3, '0')} page ${e[3]}`);
     const c = /^c:(\d+)$/.exec(key);
-    return c ? `コモンイベント ${c[1]}` : key;
+    return c ? tr(`コモンイベント ${c[1]}`, `Common event ${c[1]}`) : key;
 }
 
 class HistoryProvider implements vscode.TreeDataProvider<HistoryNode> {
@@ -90,18 +91,18 @@ class HistoryProvider implements vscode.TreeDataProvider<HistoryNode> {
             return listEntries(root).map((entry) => {
                 const files = shownFiles(entry);
                 const node = new HistoryNode('entry', entry.label, vscode.TreeItemCollapsibleState.Collapsed, entry);
-                node.description = `${clock(entry.time)}・${ago(entry.time, now)}・${files.length}ファイル`;
+                node.description = tr(`${clock(entry.time)}・${ago(entry.time, now)}・${files.length}ファイル`, `${clock(entry.time)} · ${ago(entry.time, now)} · ${files.length} files`);
                 node.iconPath = new vscode.ThemeIcon(OP_ICONS[entry.op] || 'history');
-                node.tooltip = `${entry.label}\n${new Date(entry.time).toLocaleString()}\n右クリック →「この操作の前に戻す」で、この操作をする前の中身に戻せます。`;
+                node.tooltip = tr(`${entry.label}\n${new Date(entry.time).toLocaleString()}\n右クリック →「この操作の前に戻す」で、この操作をする前の中身に戻せます。`, `${entry.label}\n${new Date(entry.time).toLocaleString()}\nRight-click → Go back to before this, to bring back what was there before this operation.`);
                 return node;
             });
         }
         if (element.kind === 'entry') {
             return shownFiles(element.entry).map((file) => {
                 const node = new HistoryNode('file', file.path, vscode.TreeItemCollapsibleState.None, element.entry, file);
-                node.description = [file.kind === 'data' ? 'データ' : 'テキスト', file.existed ? '' : '(この操作でできた)'].filter((s) => s).join('・');
+                node.description = [file.kind === 'data' ? tr('データ', 'Data') : tr('テキスト', 'Text'), file.existed ? '' : tr('(この操作でできた)', '(made by this operation)')].filter((s) => s).join(tr('・', ' · '));
                 node.iconPath = new vscode.ThemeIcon(file.kind === 'data' ? 'json' : 'file-text');
-                node.command = { command: 'text2frame.history.diff', title: '差分を見る', arguments: [node] };
+                node.command = { command: 'text2frame.history.diff', title: tr('差分を見る', 'Show changes'), arguments: [node] };
                 return node;
             });
         }
@@ -115,7 +116,7 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
 
     const rootOrWarn = (): string | undefined => {
         const root = workspaceRootFor();
-        if (!root) vscode.window.showErrorMessage('Text2Frame: ワークスペースフォルダが見つかりません。');
+        if (!root) vscode.window.showErrorMessage(tr('Text2Frame: ワークスペースフォルダが見つかりません。', 'Text2Frame: No workspace folder was found.'));
         return root;
     };
 
@@ -134,21 +135,21 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
             try {
                 raw = fs.readFileSync(file, 'utf8');
             } catch (e) {
-                return side === 'before' ? '(この操作の前には、このファイルはありませんでした)' : '(今は、このファイルはありません)';
+                return side === 'before' ? tr('(この操作の前には、このファイルはありませんでした)', '(This file did not exist before this operation)') : tr('(今は、このファイルはありません)', '(This file does not exist now)');
             }
             if (!page) return raw;
             const ref = pageRefOf(page);
             let json: unknown;
             try { json = JSON.parse(raw); } catch (e) { return raw; }
             const list = ref ? pageList(json, ref) : undefined;
-            return list ? renderCommands(context, root, list) : '(このページはありません)';
+            return list ? renderCommands(context, root, list) : tr('(このページはありません)', '(This page does not exist)');
         }
     };
 
     const historyUri = (entry: HistoryEntry, rel: string, side: 'before' | 'now', page?: string): vscode.Uri =>
         vscode.Uri.from({
             scheme: SCHEME,
-            path: '/' + (side === 'before' ? '控え' : '今') + '/' + rel + (page ? '.txt' : ''),
+            path: '/' + (side === 'before' ? tr('控え', 'before') : tr('今', 'now')) + '/' + rel + (page ? '.txt' : ''),
             query: new URLSearchParams({ id: entry.id, path: rel, side, ...(page ? { page } : {}) }).toString()
         });
 
@@ -158,12 +159,12 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
         if (file.kind === 'data' && file.pages && file.pages.length) {
             let page = file.pages[0];
             if (file.pages.length > 1) {
-                const pick = await vscode.window.showQuickPick(file.pages.map((p) => ({ label: pageName(p), page: p })), { placeHolder: 'どのページの差分を見ますか' });
+                const pick = await vscode.window.showQuickPick(file.pages.map((p) => ({ label: pageName(p), page: p })), { placeHolder: tr('どのページの差分を見ますか', 'Which page do you want to compare?') });
                 if (!pick) return;
                 page = pick.page;
             }
             await vscode.commands.executeCommand('vscode.diff', historyUri(entry, file.path, 'before', page), historyUri(entry, file.path, 'now', page),
-                `${pageName(page)}: 控え ↔ 今(${entry.label})`);
+                tr(`${pageName(page)}: 控え ↔ 今(${entry.label})`, `${pageName(page)}: before ↔ now (${entry.label})`));
             return;
         }
         if (!file.existed) {
@@ -171,7 +172,7 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
             return;
         }
         await vscode.commands.executeCommand('vscode.diff', vscode.Uri.file(snapshotFile(root, entry.id, file.path)), vscode.Uri.file(absolutePath(root, file.path)),
-            `${path.basename(file.path)}: 控え ↔ 今(${entry.label})`);
+            tr(`${path.basename(file.path)}: 控え ↔ 今(${entry.label})`, `${path.basename(file.path)}: before ↔ now (${entry.label})`));
     };
 
     /** 戻す。テキストを戻すときは、その祖先も一緒に戻す。 */
@@ -191,24 +192,28 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
         // 保存していない変更があるテキストは、戻すと食い違う。先に保存か取り消しをしてもらう。
         const dirty = vscode.workspace.textDocuments.filter((d) => d.isDirty && files.some((f) => path.resolve(absolutePath(root, f.path)) === path.resolve(d.uri.fsPath)));
         if (dirty.length) {
-            vscode.window.showWarningMessage('Text2Frame: 保存していない変更があるテキストがあります。保存するか元に戻してから、もう一度戻してください: '
-                + dirty.map((d) => path.basename(d.uri.fsPath)).join('、'));
+            vscode.window.showWarningMessage(tr('Text2Frame: 保存していない変更があるテキストがあります。保存するか元に戻してから、もう一度戻してください: ', 'Text2Frame: Some texts have unsaved changes. Save or revert them, then go back again: ')
+                + dirty.map((d) => path.basename(d.uri.fsPath)).join(tr('、', ', ')));
             return;
         }
-        const what = only ? `「${only.path}」を` : `「${fresh.label}」の前に`;
+        const what = only ? tr(`「${only.path}」を`, `"${only.path}"`) : tr(`「${fresh.label}」の前に`, `to before "${fresh.label}"`);
         const detail = [
-            back.length ? `${back.length} 個のファイルを、この操作をする前の中身に書き戻します。` : '',
-            created.length ? `この操作でできた ${created.length} 個のファイルは、消さずにそのまま残します。` : '',
-            '戻したことも履歴に残るので、あとから取り消せます。'
+            back.length ? tr(`${back.length} 個のファイルを、この操作をする前の中身に書き戻します。`, `${back.length} files get back what they held before this operation.`) : '',
+            created.length ? tr(`この操作でできた ${created.length} 個のファイルは、消さずにそのまま残します。`, `The ${created.length} files this operation made are kept, not deleted.`) : '',
+            tr('戻したことも履歴に残るので、あとから取り消せます。', 'Going back is recorded in the history too, so you can undo it later.')
         ].filter((s) => s).join('\n');
-        const ok = await vscode.window.showWarningMessage(`Text2Frame: ${what}戻しますか？`, { modal: true, detail }, '戻す');
-        if (ok !== '戻す') return;
+        const goBack = tr('戻す', 'Go back');
+        const ok = await vscode.window.showWarningMessage(tr(`Text2Frame: ${what}戻しますか？`, `Text2Frame: Go back ${what}?`), { modal: true, detail }, goBack);
+        if (ok !== goBack) return;
 
         // 戻したのを取り消すときは「戻す: 戻す: …」と重ねずに、取り消しと分かる名前にする。
-        const original = fresh.label.replace(/^(戻す|戻したのを取り消す): /, '');
-        const label = only ? '戻す: ' + only.path
-            : fresh.op !== 'restore' ? '戻す: ' + fresh.label
-                : fresh.label.startsWith('戻す: ') ? '戻したのを取り消す: ' + original : '戻す: ' + original;
+        // 履歴の名前は書いたときの言語のまま残るので、どちらの言語でも読めるようにする。
+        const original = fresh.label.replace(/^(戻す|戻したのを取り消す|Go back|Undo going back): /, '');
+        const backLabel = tr('戻す: ', 'Go back: ');
+        const undo = tr('戻したのを取り消す: ', 'Undo going back: ');
+        const label = only ? backLabel + only.path
+            : fresh.op !== 'restore' ? backLabel + fresh.label
+                : /^(戻す|Go back): /.test(fresh.label) ? undo + original : backLabel + original;
         const result = withHistory(root, 'restore', label, { keep: historyKeep() }, () => restoreEntry(root, fresh, targets));
         for (const f of files) {
             if (f.kind === 'data' && result.restored.includes(f.path)) recordDataState(context, absolutePath(root, f.path));
@@ -216,10 +221,10 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
         provider.refresh();
         const shown = result.restored.filter((p) => !p.split('/').includes('.t2f-base'));
         const message = [
-            `Text2Frame: 戻しました(${shown.length} ファイル)。`,
-            result.created.filter((p) => !p.split('/').includes('.t2f-base')).length ? `この操作でできたファイルは残しています: ${result.created.filter((p) => !p.split('/').includes('.t2f-base')).join('、')}` : '',
-            result.missing.length ? `控えが見つからず戻せなかったもの: ${result.missing.join('、')}` : '',
-            shown.some((p) => fresh.files.find((f) => f.path === p)?.kind === 'data') ? 'テストプレイ中なら、ゲームを読み直してください。' : ''
+            tr(`Text2Frame: 戻しました(${shown.length} ファイル)。`, `Text2Frame: Went back (${shown.length} files). `),
+            result.created.filter((p) => !p.split('/').includes('.t2f-base')).length ? tr(`この操作でできたファイルは残しています: ${result.created.filter((p) => !p.split('/').includes('.t2f-base')).join('、')}`, `The files this operation made are kept: ${result.created.filter((p) => !p.split('/').includes('.t2f-base')).join(', ')}. `) : '',
+            result.missing.length ? tr(`控えが見つからず戻せなかったもの: ${result.missing.join('、')}`, `Could not go back, no copy found: ${result.missing.join(', ')}. `) : '',
+            shown.some((p) => fresh.files.find((f) => f.path === p)?.kind === 'data') ? tr('テストプレイ中なら、ゲームを読み直してください。', 'If a test play is running, reload the game.') : ''
         ].filter((s) => s).join('');
         vscode.window.showInformationMessage(message);
     };
@@ -227,7 +232,7 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
     const pickFile = async (entry: HistoryEntry): Promise<HistoryFile | undefined> => {
         const files = shownFiles(entry);
         if (files.length <= 1) return files[0];
-        const pick = await vscode.window.showQuickPick(files.map((f) => ({ label: f.path, description: f.kind === 'data' ? 'データ' : 'テキスト', file: f })), { placeHolder: 'どのファイルの差分を見ますか' });
+        const pick = await vscode.window.showQuickPick(files.map((f) => ({ label: f.path, description: f.kind === 'data' ? tr('データ', 'Data') : tr('テキスト', 'Text'), file: f })), { placeHolder: tr('どのファイルの差分を見ますか', 'Which file do you want to compare?') });
         return pick ? pick.file : undefined;
     };
 
@@ -245,7 +250,7 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
             if (!root) return;
             const dir = historyRoot(root);
             if (!fs.existsSync(dir)) {
-                vscode.window.showInformationMessage('Text2Frame: まだ履歴はありません。反映や取り出しをすると、ここに残ります。');
+                vscode.window.showInformationMessage(tr('Text2Frame: まだ履歴はありません。反映や取り出しをすると、ここに残ります。', 'Text2Frame: No history yet. Applying or pulling records it here.'));
                 return;
             }
             vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(dir));
