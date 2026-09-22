@@ -244,132 +244,191 @@ module.exports = { pushFile, pullTarget, pullDataFile, syncOnce, createEchoGuard
 
 if (require.main === module) {
   const { Command } = require('commander')
+
+  const help_text = `
+===== Manual =====
+    NAME
+       t2f-sync - テキストとゲームのデータを双方向にそろえる
+    SYNOPSIS
+        npx t2f-sync start [options]
+        npx t2f-sync once [options]
+    DESCRIPTION
+        npx t2f-sync start
+          テキストとゲームの同期を始めます(プラグインコマンドの START_DATA_SYNC と同じです)。
+          最初にゲームからの取り出しとゲームへの反映を一度ずつ行って両方をそろえ、
+          そのあとは両方を見張り、変わった側からもう一方へ自動で写します。Ctrl-C で止まります。
+          例1: $ npx t2f-sync start
+
+          --direction で向きを選べます。(既定は both)
+            both … 両方向
+            push … テキスト -> ゲームだけ
+            pull … ゲーム -> テキストだけ
+          例2: $ npx t2f-sync start --direction push
+
+          ネットワーク上のフォルダや WSL で変更を拾えないときは --poll を付けてください。
+          例3: $ npx t2f-sync start --poll
+
+        npx t2f-sync once
+          一度だけそろえて終わります。見張りはしません。
+          例1: $ npx t2f-sync once
+          例2: $ npx t2f-sync once --direction pull --text-dir text-en
+
+        start と once で共通の指定
+          テキストの場所は --text-dir、データの場所は --data-dir で変更できます。(既定は text / data)
+          プロジェクトの外から実行するときは --root でプロジェクトの場所を指定してください。
+          テキスト・データ・統合用の情報(.t2f-base)は、すべてこの場所を基準に決まります。
+          (既定は実行時のカレントディレクトリ)
+          例: $ npx t2f-sync start --root /path/to/project
+
+          -s / --strategy でそろえ方を選べます。(既定は merge)
+            merge     … 「統合」。両方の編集を残して合わせます。同じ所を両方で変えていたときは、
+                        写す元の側に両方の版と衝突の目印を入れます。
+            overwrite … 「上書き」。写す先の内容を、写す元の内容で置き換えます。
+
+          注意: RPGツクールでプロジェクトを保存すると data/*.json が丸ごと書き直され、
+          反映した内容が失われます。同期している間、ツクールのエディタは閉じてください。
+`
+
+  const common = function (cmd) {
+    return cmd
+      .option('--direction <both|push|pull>', 'sync direction', /^(both|push|pull)$/i, 'both')
+      .option('-t, --text-dir <dir>', 'text base directory', 'text')
+      .option('-d, --data-dir <dir>', 'game data directory', 'data')
+      .option('--root <dir>', 'project root for data/, text/ and .t2f-base (default: current directory)')
+      .option('-s, --strategy <merge|overwrite>', 'sync strategy', /^(merge|overwrite)$/i, 'merge')
+      .option('-w, --english_tag <true/false>', 'english tag on pull', 'true')
+      .option('-v, --verbose', 'debug mode', false)
+  }
+
+  const run = function (options, watch) {
+    /* テキスト・データ・祖先(.t2f-base)はすべてここから決まる。既定は cwd なので、
+     * プロジェクト直下で流す通常の使い方は今までと同じ。Text2Frame.js の --root と同じ意味。 */
+    const root = options.root ? path.resolve(options.root) : process.cwd()
+    const guard = createEchoGuard()
+    const opts = {
+      root,
+      dataDir: options.dataDir,
+      textDir: options.textDir,
+      strategy: String(options.strategy).toLowerCase(),
+      englishTag: String(options.english_tag) !== 'false',
+      direction: String(options.direction).toLowerCase(),
+      verbose: options.verbose,
+      guard
+    }
+
+    /* 根の外にあるテキストやデータは、祖先だけが根の側に取り残される。さらに根の外の
+     * テキストは祖先の鍵が「フォルダ名/ファイル名」に丸められ、別プロジェクトと取り合う。
+     * どちらも黙って起きるため入口で知らせる(Text2Frame.js の CLI と同じ扱い)。 */
+    const outsideRoot = [];
+    [['text', options.textDir], ['data', options.dataDir]].forEach(function (pair) {
+      const abs = path.resolve(root, pair[1])
+      const r = path.relative(root, abs)
+      if (r && (path.isAbsolute(r) || r.split(path.sep)[0] === '..')) outsideRoot.push(pair[0] + ': ' + abs)
+    })
+    if (outsideRoot.length > 0) {
+      console.warn('[warn] 次のパスが --root の外にあります / outside the project root (root: ' + root + ')')
+      outsideRoot.forEach(function (line) { console.warn('       ' + line) })
+      console.warn('  祖先(.t2f-base)は root 側に作られます。次の反映が祖先なし(テキストが正)に落ち、' +
+        'テキストに書いていないゲーム側の変更が消えることがあります。--root でプロジェクトの場所を指定してください。' +
+        ' / pass --root <project dir>')
+    }
+
+    const stamp = function () {
+      const d = new Date()
+      const p = function (n) { return ('0' + n).slice(-2) }
+      return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds())
+    }
+    const rel = function (p) { return path.relative(root, p) || p }
+
+    const reportPull = function (r) {
+      if (!r.ok) { console.log('[' + stamp() + '] PULL  ' + rel(r.textPath) + '  FAIL  ' + r.error); return }
+      if (r.unchanged) return
+      console.log('[' + stamp() + '] PULL  ' + rel(r.textPath) + '  OK' +
+        (r.conflicts ? '  (' + r.conflicts + ' conflict(s) written into the game; resolve them in the editor)' : ''))
+    }
+    const reportPush = function (r) {
+      if (!r.ok) { console.log('[' + stamp() + '] PUSH  ' + rel(r.textPath) + '  FAIL  ' + r.error); return }
+      const w = r.warnings && r.warnings.length ? '  (' + r.warnings.length + ' warnings)' : ''
+      console.log('[' + stamp() + '] PUSH  ' + rel(r.textPath) + ' -> ' + rel(r.dataPath || '?') + '  OK' + w +
+        (r.conflicts ? '  (' + r.conflicts + ' conflict(s) written into the text; resolve them there)' : ''))
+      if (r.warnings) r.warnings.forEach(function (x) { console.log('[' + stamp() + ']   warn: ' + x) })
+    }
+
+    const initial = syncOnce(opts)
+    initial.pulled.forEach(reportPull)
+    initial.pushed.forEach(reportPush)
+    const failed = initial.pulled.concat(initial.pushed).filter(function (r) { return !r.ok }).length
+    console.log('[' + stamp() + '] initial sync: ' + initial.pulled.length + ' pulled, ' +
+      initial.pushed.length + ' pushed, ' + failed + ' failed (direction=' + opts.direction + ', strategy=' + opts.strategy + ')')
+    if (failed > 0 && !watch) process.exitCode = 1
+
+    if (watch) {
+      let chokidar
+      try { chokidar = require('chokidar') } catch (e) {
+        throw new Error('chokidar is required for start. Run: npm install')
+      }
+      const textRoot = path.resolve(root, opts.textDir)
+      const dataDir = path.resolve(root, opts.dataDir)
+      const usePolling = !!options.poll || /wsl\.localhost|[/\\]mnt[/\\]/.test(root)
+      const debounceMs = parseInt(options.debounce, 10) || 250
+      const timers = {}
+      const schedule = function (key, fn) {
+        if (timers[key]) clearTimeout(timers[key])
+        timers[key] = setTimeout(function () { delete timers[key]; fn() }, debounceMs)
+      }
+
+      const watched = []
+      if (opts.direction === 'push' || opts.direction === 'both') watched.push(textRoot)
+      if (opts.direction === 'pull' || opts.direction === 'both') watched.push(dataDir)
+
+      const watcher = chokidar.watch(watched, {
+        usePolling,
+        interval: 300,
+        awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 50 },
+        ignoreInitial: true
+      })
+
+      watcher.on('all', function (event, file) {
+        if (event !== 'add' && event !== 'change') return
+        const abs = path.resolve(file)
+        const inText = abs.indexOf(textRoot + path.sep) === 0
+        const inData = abs.indexOf(dataDir + path.sep) === 0
+        if (inText && !/\.txt$/i.test(abs)) return
+        if (inData && !/^(Map\d+|CommonEvents)\.json$/i.test(path.basename(abs))) return
+        if (guard.isEcho(abs)) return // 自分の書き込みが原因 -> ループさせない
+        schedule(abs, function () {
+          if (guard.isEcho(abs)) return
+          if (inText) { const r = pushFile(abs, opts); if (r) reportPush(r) } else if (inData) { pullDataFile(abs, opts).forEach(reportPull) }
+        })
+      })
+
+      console.log('[watch] ' + watched.map(rel).join(' + ') + ' を監視中 (direction=' + opts.direction +
+        ', strategy=' + opts.strategy + (usePolling ? ', polling' : '') + ')  Ctrl-C で終了')
+      if (opts.direction !== 'pull') {
+        console.log('[watch] 注意: RPGツクールでプロジェクトを保存すると data/*.json が丸ごと書き戻され、反映済みの内容が失われることがあります。')
+      }
+      process.on('SIGINT', function () {
+        console.log('\n[watch] stopping...')
+        watcher.close().then(function () { process.exit(0) })
+      })
+    }
+  }
+
   const program = new Command()
   program
     .name('t2f-sync')
     .description('テキストとゲームデータを双方向に同期する (Text2Frame / Frame2Text のコントローラ)')
-    .option('--direction <both|push|pull>', 'sync direction', /^(both|push|pull)$/i, 'both')
-    .option('-t, --text-dir <dir>', 'text base directory', 'text')
-    .option('-d, --data-dir <dir>', 'game data directory', 'data')
-    .option('--root <dir>', 'project root for data/, text/ and .t2f-base (default: current directory)')
-    .option('-s, --strategy <merge|overwrite>', 'sync strategy', /^(merge|overwrite)$/i, 'merge')
-    .option('-w, --english_tag <true/false>', 'english tag on pull', 'true')
-    .option('--watch', 'watch both sides and sync on change', false)
-    .option('--debounce <ms>', 'debounce window for --watch', '250')
+    .usage('<start|once> [options]')
+  common(program.command('start')
+    .description('sync once, then keep watching both sides (same as START_DATA_SYNC)'))
+    .option('--debounce <ms>', 'debounce window for watching', '250')
     .option('--poll', 'force polling (network/WSL paths)', false)
-    .option('-v, --verbose', 'debug mode', false)
-    .parse()
-
-  const options = program.opts()
-  /* テキスト・データ・祖先(.t2f-base)はすべてここから決まる。既定は cwd なので、
-   * プロジェクト直下で流す通常の使い方は今までと同じ。Text2Frame.js の --root と同じ意味。 */
-  const root = options.root ? path.resolve(options.root) : process.cwd()
-  const guard = createEchoGuard()
-  const opts = {
-    root,
-    dataDir: options.dataDir,
-    textDir: options.textDir,
-    strategy: String(options.strategy).toLowerCase(),
-    englishTag: String(options.english_tag) !== 'false',
-    direction: String(options.direction).toLowerCase(),
-    verbose: options.verbose,
-    guard
-  }
-
-  /* 根の外にあるテキストやデータは、祖先だけが根の側に取り残される。さらに根の外の
-   * テキストは祖先の鍵が「フォルダ名/ファイル名」に丸められ、別プロジェクトと取り合う。
-   * どちらも黙って起きるため入口で知らせる(Text2Frame.js の CLI と同じ扱い)。 */
-  const outsideRoot = [];
-  [['text', options.textDir], ['data', options.dataDir]].forEach(function (pair) {
-    const abs = path.resolve(root, pair[1])
-    const r = path.relative(root, abs)
-    if (r && (path.isAbsolute(r) || r.split(path.sep)[0] === '..')) outsideRoot.push(pair[0] + ': ' + abs)
-  })
-  if (outsideRoot.length > 0) {
-    console.warn('[warn] 次のパスが --root の外にあります / outside the project root (root: ' + root + ')')
-    outsideRoot.forEach(function (line) { console.warn('       ' + line) })
-    console.warn('  祖先(.t2f-base)は root 側に作られます。次の反映が祖先なし(テキストが正)に落ち、' +
-      'テキストに書いていないゲーム側の変更が消えることがあります。--root でプロジェクトの場所を指定してください。' +
-      ' / pass --root <project dir>')
-  }
-
-  const stamp = function () {
-    const d = new Date()
-    const p = function (n) { return ('0' + n).slice(-2) }
-    return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds())
-  }
-  const rel = function (p) { return path.relative(root, p) || p }
-
-  const reportPull = function (r) {
-    if (!r.ok) { console.log('[' + stamp() + '] PULL  ' + rel(r.textPath) + '  FAIL  ' + r.error); return }
-    if (r.unchanged) return
-    console.log('[' + stamp() + '] PULL  ' + rel(r.textPath) + '  OK' +
-      (r.conflicts ? '  (' + r.conflicts + ' conflict(s) written into the game; resolve them in the editor)' : ''))
-  }
-  const reportPush = function (r) {
-    if (!r.ok) { console.log('[' + stamp() + '] PUSH  ' + rel(r.textPath) + '  FAIL  ' + r.error); return }
-    const w = r.warnings && r.warnings.length ? '  (' + r.warnings.length + ' warnings)' : ''
-    console.log('[' + stamp() + '] PUSH  ' + rel(r.textPath) + ' -> ' + rel(r.dataPath || '?') + '  OK' + w +
-      (r.conflicts ? '  (' + r.conflicts + ' conflict(s) written into the text; resolve them there)' : ''))
-    if (r.warnings) r.warnings.forEach(function (x) { console.log('[' + stamp() + ']   warn: ' + x) })
-  }
-
-  const initial = syncOnce(opts)
-  initial.pulled.forEach(reportPull)
-  initial.pushed.forEach(reportPush)
-  const failed = initial.pulled.concat(initial.pushed).filter(function (r) { return !r.ok }).length
-  console.log('[' + stamp() + '] initial sync: ' + initial.pulled.length + ' pulled, ' +
-    initial.pushed.length + ' pushed, ' + failed + ' failed (direction=' + opts.direction + ', strategy=' + opts.strategy + ')')
-  if (failed > 0 && !options.watch) process.exitCode = 1
-
-  if (options.watch) {
-    let chokidar
-    try { chokidar = require('chokidar') } catch (e) {
-      throw new Error('chokidar is required for --watch. Run: npm install')
-    }
-    const textRoot = path.resolve(root, opts.textDir)
-    const dataDir = path.resolve(root, opts.dataDir)
-    const usePolling = !!options.poll || /wsl\.localhost|[/\\]mnt[/\\]/.test(root)
-    const debounceMs = parseInt(options.debounce, 10) || 250
-    const timers = {}
-    const schedule = function (key, fn) {
-      if (timers[key]) clearTimeout(timers[key])
-      timers[key] = setTimeout(function () { delete timers[key]; fn() }, debounceMs)
-    }
-
-    const watched = []
-    if (opts.direction === 'push' || opts.direction === 'both') watched.push(textRoot)
-    if (opts.direction === 'pull' || opts.direction === 'both') watched.push(dataDir)
-
-    const watcher = chokidar.watch(watched, {
-      usePolling,
-      interval: 300,
-      awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 50 },
-      ignoreInitial: true
-    })
-
-    watcher.on('all', function (event, file) {
-      if (event !== 'add' && event !== 'change') return
-      const abs = path.resolve(file)
-      const inText = abs.indexOf(textRoot + path.sep) === 0
-      const inData = abs.indexOf(dataDir + path.sep) === 0
-      if (inText && !/\.txt$/i.test(abs)) return
-      if (inData && !/^(Map\d+|CommonEvents)\.json$/i.test(path.basename(abs))) return
-      if (guard.isEcho(abs)) return // 自分の書き込みが原因 -> ループさせない
-      schedule(abs, function () {
-        if (guard.isEcho(abs)) return
-        if (inText) { const r = pushFile(abs, opts); if (r) reportPush(r) } else if (inData) { pullDataFile(abs, opts).forEach(reportPull) }
-      })
-    })
-
-    console.log('[watch] ' + watched.map(rel).join(' + ') + ' を監視中 (direction=' + opts.direction +
-      ', strategy=' + opts.strategy + (usePolling ? ', polling' : '') + ')  Ctrl-C で終了')
-    if (opts.direction !== 'pull') {
-      console.log('[watch] 注意: RPGツクールでプロジェクトを保存すると data/*.json が丸ごと書き戻され、反映済みの内容が失われることがあります。')
-    }
-    process.on('SIGINT', function () {
-      console.log('\n[watch] stopping...')
-      watcher.close().then(function () { process.exit(0) })
-    })
-  }
+    .action(function (options) { run(options, true) })
+  common(program.command('once')
+    .description('sync once and exit'))
+    .action(function (options) { run(options, false) })
+  program.addHelpText('after', help_text)
+  // 引数なしで同期を始めない。text2frame / frame2text と同じく使い方を出す。
+  if (process.argv.length <= 2) program.help()
+  program.parse()
 }

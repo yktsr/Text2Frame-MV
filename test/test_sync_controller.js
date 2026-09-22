@@ -401,7 +401,7 @@ describe('t2f-sync controller', function () {
   it('--root puts the ancestor under the project, not the current directory', function () {
     const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 't2fsync-cwd-'))
     try {
-      const r = cp.spawnSync('node', [SYNC_CLI, '--direction', 'pull', '--root', tmp],
+      const r = cp.spawnSync('node', [SYNC_CLI, 'once', '--direction', 'pull', '--root', tmp],
         { cwd: elsewhere, encoding: 'utf8' })
 
       expect(r.status, r.stderr).to.equal(0)
@@ -410,5 +410,47 @@ describe('t2f-sync controller', function () {
     } finally {
       fs.rmSync(elsewhere, { recursive: true, force: true })
     }
+  })
+
+  /* 引数なしで打つと、以前はいきなり同期が走った。text2frame / frame2text と同じく使い方だけ出す。 */
+  describe('command line entry', function () {
+    const runCli = function (args) {
+      return cp.spawnSync('node', [SYNC_CLI].concat(args), { cwd: tmp, encoding: 'utf8' })
+    }
+    const touchedNothing = function () {
+      expect(fs.existsSync(path.join(tmp, '.t2f-base'))).to.equal(false)
+      expect(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8')).to.equal(mapBefore)
+    }
+    let mapBefore
+    beforeEach(function () {
+      mapBefore = fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8')
+    })
+
+    it('shows the usage and writes nothing when run without arguments', function () {
+      const r = runCli([])
+      expect(r.status, r.stderr).to.equal(0)
+      expect(r.stdout).to.contain('npx t2f-sync start')
+      expect(r.stdout).to.contain('npx t2f-sync once')
+      touchedNothing()
+    })
+
+    it('rejects an unknown command and writes nothing', function () {
+      const r = runCli(['sync'])
+      expect(r.status).to.not.equal(0)
+      touchedNothing()
+    })
+
+    it('rejects options without a command and writes nothing', function () {
+      const r = runCli(['--direction', 'pull'])
+      expect(r.status).to.not.equal(0)
+      touchedNothing()
+    })
+
+    it('once syncs and exits', function () {
+      const r = runCli(['once'])
+      expect(r.status, r.stderr).to.equal(0)
+      expect(r.stdout).to.contain('initial sync')
+      expect(fs.existsSync(path.join(tmp, '.t2f-base'))).to.equal(true)
+    })
   })
 })

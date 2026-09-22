@@ -41,8 +41,8 @@
     "stamp:dist": "node tools/stamp-build-meta.js",
     "build:dist": "npm run build && npm run stamp:dist",
     "pack:all": "bash tools/pack-all.sh",
-    "sync": "node t2f-sync.js --watch",
-    "sync_once": "node t2f-sync.js"
+    "sync": "node t2f-sync.js start",
+    "sync_once": "node t2f-sync.js once"
   },
   "repository": {
     "type": "git",
