@@ -98,8 +98,9 @@ node Text2Frame.js -m map|common|compile|test|batch [...] [-l <locale>] [-s merg
 # Frame2Text(書き出し/取り出し)。pull も既定 merge(翻訳を残す)
 node Frame2Text.js -m map|common|decompile|batch [...] [-s merge|overwrite] [-b <base>] [-T]
 #   -s: 既定 merge(翻訳保持+ゲーム変更流入)。overwrite で生の全取り直し   -T=翻訳用(会話のみ)
-# 双方向同期コントローラ(npm run sync / sync_once)
-node t2f-sync.js [--direction both|push|pull] [-t text] [-d data] [-l ja] [-s merge|overwrite] [--watch]
+# 双方向同期コントローラ(npm run sync = start / sync_once = once)。引数なしは使い方を出すだけ
+node t2f-sync.js start|once [--direction both|push|pull] [-t text] [-d data] [-s merge|overwrite] [--root dir]
+#   start = START_DATA_SYNC と同じ(一度そろえてから見張る)。once = 一度だけ
 #   1プロセスが両方向を持つのでループガードが確実。applyTextFile には baseRoot を渡して祖先を root 基準に揃える
 ```
 
