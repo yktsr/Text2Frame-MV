@@ -11241,7 +11241,7 @@
 
     /* ---------------- 同期(見張り) ----------------
      * text と data を見張って、変わったファイルだけを自動で反映・取り出しする。
-     * npx t2f-sync --watch と同じことを、ターミナル無しで回すためのもの。
+     * npx t2f-sync start と同じことを、ターミナル無しで回すためのもの。
      * 呼び出し元は START_DATA_SYNC だけ。止めるのは STOP_DATA_SYNC。
      *
      * ・監視はゲームのプロセスに載るので、プレイテストを閉じると止まる。
@@ -11897,9 +11897,10 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
   const program = new Command()
   program
+    .name('text2frame')
     .version('2.3.0')
     .usage('[options]')
-    .option('-m, --mode <map|common|compile|test|batch>', 'output mode', /^(map|common|compile|test|batch)$/i)
+    .option('-m, --mode <map|common|compile|batch>', 'output mode', /^(map|common|compile|test|batch)$/i)
     .option('-t, --text_path <name>', 'single-file mode (map/common): input text file')
     .option('--text-dir <dir>', 'batch mode: text base directory', 'text')
     .option('-d, --data-dir <dir>', 'game data directory', 'data')
@@ -11922,61 +11923,57 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     NAME
        Text2Frame - Simple compiler to convert text to event command.
     SYNOPSIS
-        node Text2Frame.js --mode batch
-        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
-        node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
-        node Text2Frame.js --mode compile
-        node Text2Frame.js --verbose --mode test
+        npx text2frame --mode batch
+        npx text2frame --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
+        npx text2frame --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
+        npx text2frame --mode compile
     DESCRIPTION
-        node Text2Frame.js --mode batch
+        npx text2frame --mode batch
           テキストの一括反映モードです。
           textフォルダ以下のすべてのテキストファイルを一括でゲームに反映します。
-          例1: $ node Text2Frame.js --mode batch
+          例1: $ npx text2frame --mode batch
 
           テキストの場所は --text-dir、データの場所は --data-dir で変更できます。（既定は text / data ）
-          例2: $ node Text2Frame.js --mode batch --text-dir text --data-dir data
+          例2: $ npx text2frame --mode batch --text-dir text --data-dir data
 
           プロジェクトの外から実行するときは --root でプロジェクトの場所を指定してください。
           テキスト・データ・統合用の情報（.t2f-base）は、すべてこの場所を基準に決まります。
           （既定は実行時のカレントディレクトリ）
-          例3: $ node Text2Frame.js --mode batch --root /path/to/project
+          例3: $ npx text2frame --mode batch --root /path/to/project
 
           --watch を付与すると、テキストの変更を監視し、自動でゲームに反映することができます。
-          例4: $ node Text2Frame.js --mode batch --watch
+          例4: $ npx text2frame --mode batch --watch
 
           テキストのフォルダを分けておけば、複数の版を並行して持てます。
           典型的な利用方法として、ゲームの翻訳が挙げられます。
           例えば、Frame2Textを利用しゲームの内容をtext-enフォルダへ書き出し、ゲームの内容を英語に翻訳後、
           下記のコマンドで翻訳内容をゲームに反映できます。
-          例5: $ node Frame2Text.js --mode batch --text-dir text-en
-               $ node Text2Frame.js --mode batch --text-dir text-en
+          例5: $ npx frame2text --mode batch --text-dir text-en
+               $ npx text2frame --mode batch --text-dir text-en
 
-        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
+        npx text2frame --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
           マップへのイベント出力モードです。
           読み込むファイル、出力マップ、上書きの有無を引数で指定します。
           test/basic.txt を読み込み data/Map001.json に上書きするコマンド例は以下です。
 
-          例1：$ node Text2Frame.js --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --page_id 1 --overwrite true
-          例2：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -p 1 -w true
+          例1：$ npx text2frame --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --page_id 1 --overwrite true
+          例2：$ npx text2frame -m map -t test/basic.txt -o data/Map001.json -e 1 -p 1 -w true
 
-        node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
+        npx text2frame --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
           コモンイベントへのイベント出力モードです。
           読み込むファイル、出力コモンイベント、上書きの有無を引数で指定します。
           test/basic.txt を読み込み data/CommonEvents.json に上書きするコマンド例は以下です。
 
-          例1：$ node Text2Frame.js --mode common --text_path test/basic.txt --output_path data/CommonEvents.json --common_event_id 1 --overwrite true
-          例2：$ node Text2Frame.js -m common -t test/basic.txt -o data/CommonEvents.json -c 1 -w true
+          例1：$ npx text2frame --mode common --text_path test/basic.txt --output_path data/CommonEvents.json --common_event_id 1 --overwrite true
+          例2：$ npx text2frame -m common -t test/basic.txt -o data/CommonEvents.json -c 1 -w true
 
-        node Text2Frame.js --mode compile
+        npx text2frame --mode compile
           コンパイルモードです。
           変換したいテキストファイルをパイプで与えると、対応したイベントに変換されたJSONを、標準出力に出力します。
           このモードでは、Map.json / CommonEvent.jsonの形式へフォーマットされず、イベントに変換したJSONのみが出力されるため、
           Map.json/CommonEvent.json への組み込みは各自で行う必要があります。
 
-          例1: $ cat test/basic.txt | node Text2Frame.js --mode compile
-
-        node Text2Frame.js --mode test
-          テストモードです。test/basic.txtを読み込み、data/Map001.jsonに出力します。
+          例1: $ cat test/basic.txt | npx text2frame --mode compile
 
 `
   program.addHelpText('after', help_text)

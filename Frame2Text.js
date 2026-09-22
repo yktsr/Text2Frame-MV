@@ -3714,9 +3714,10 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
   const program = new Command()
   program
+    .name('frame2text')
     .version('2.3.0')
     .usage('[options]')
-    .option('-m, --mode <map|common|decompile|test|batch>', 'output mode', /^(map|common|decompile|test|batch)$/i)
+    .option('-m, --mode <map|common|decompile|batch>', 'output mode', /^(map|common|decompile|test|batch)$/i)
     .option('-i, --input_path <name>', 'input map data path')
     .option('-o, --output_path <name>', 'output file path')
     .option('-e, --event_id <name>', 'event file id')
@@ -3736,20 +3737,19 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     NAME
        Frame2Text - Simple decompiler to convert event to text.
     SYNOPSIS
-        node Frame2Text.js
-        node Frame2Text.js --mode batch
-        node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
-        node Frame2Text.js --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
-        node Frame2Text.js --mode test
+        npx frame2text --mode batch
+        npx frame2text --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
+        npx frame2text --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
+        npx frame2text --mode decompile
     DESCRIPTION
-        node Frame2Text.js --mode batch
+        npx frame2text --mode batch
           イベントの一括変換モードです。
-          PRGツクールのdataディレクトリを読み込み、 すべてのイベントを text フォルダに書き出します。
-          例1：$ node Frame2Text.js --mode batch
-          例2：$ node Frame2Text.js -m batch
+          RPGツクールのdataディレクトリを読み込み、 すべてのイベントを text フォルダに書き出します。
+          例1：$ npx frame2text --mode batch
+          例2：$ npx frame2text -m batch
 
           テキストの場所は --text-dir、データの場所は --data-dir で変更できます。（既定は text / data ）
-          例3: $ node Frame2Text.js --mode batch --text-dir text --data-dir data
+          例3: $ npx frame2text --mode batch --text-dir text --data-dir data
 
           -s / --strategy で取り出しのしかたを選べます。（既定は merge ）
             merge     … 「統合」。テキストに書いた内容を残したまま、ゲーム側の変更だけを
@@ -3758,39 +3758,41 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
                         ツクールで決めて目印を消したあと、もう一度取り出してください。
             overwrite … 「上書き」。ゲームの内容でテキストを全て置き換えます。
                         テキスト側に書いてまだ反映していない編集は失われます。
-          例3-2: $ node Frame2Text.js --mode batch -s overwrite
+          例3-2: $ npx frame2text --mode batch -s overwrite
 
-          --watch を付与すると、テキストの変更を監視し、自動でゲームに反映することができます。
-          例4: $ node Text2Frame.js --mode batch --watch
+          テキストの変更を見張って自動でゲームに反映するときは text2frame の --watch を、
+          両方向を自動でそろえるときは t2f-sync を使います。
+          例4: $ npx text2frame --mode batch --watch
+               $ npx t2f-sync start
 
           --text-dir でテキストのフォルダを分けておけば、複数の版を並行して持てます。
           典型的な利用方法として、言語ごとのテキストの管理が挙げられます。
           例えば、Frame2Textを利用しゲームの内容をtext-enフォルダへ書き出し、テキストを英語で書き直した後、
           下記のコマンドでその内容をゲームに反映できます。
-          例5: $ node Frame2Text.js --mode batch --text-dir text-en
-               $ node Text2Frame.js --mode batch --text-dir text-en
+          例5: $ npx frame2text --mode batch --text-dir text-en
+               $ npx text2frame --mode batch --text-dir text-en
 
-        node Frame2Text.js --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
+        npx frame2text --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
           マップイベントのテキスト出力モードです。
           読み込むマップファイル、出力テキストファイル、イベントID、ページIDを指定します。
           test/expected_basic.json を読み込み、 test/tmp.txt に書き出すコマンド例は以下です。
 
-          例1：$ node Frame2Text.js --mode map --input_path test/expected_basic.json --output_path test/tmp.txt --event_id 1 --page_id 1
-          例2：$ node Frame2Text.js -m map -i test/expected_basic.json -o test/tmp.txt -e 1 -p 1
+          例1：$ npx frame2text --mode map --input_path test/expected_basic.json --output_path test/tmp.txt --event_id 1 --page_id 1
+          例2：$ npx frame2text -m map -i test/expected_basic.json -o test/tmp.txt -e 1 -p 1
 
-        node Frame2Text.js --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
+        npx frame2text --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
           コモンイベントへのテキスト出力モードです。
           読み込むコモンイベントファイル、出力テキストイベント、コモンイベントIDを引数で指定します。
           data/CommonEvents.json を読み込み、 test/tmp.txt に上書きするコマンド例は以下です。
 
-          例1：$ node Frame2Text.js --mode common --input_path data/CommonEvents.json --common_event_id 1 --output_path test/tmp.txt
-          例2：$ node Frame2Text.js -m common -i data/CommonEvents.json -c 1 -o test/tmp.txt
+          例1：$ npx frame2text --mode common --input_path data/CommonEvents.json --common_event_id 1 --output_path test/tmp.txt
+          例2：$ npx frame2text -m common -i data/CommonEvents.json -c 1 -o test/tmp.txt
 
-        node Frame2Text.js --mode decompile
+        npx frame2text --mode decompile
            デコンパイルモードです。
            変換したいイベントをパイプで与えると、対応したテキストファイルに変換し、標準出力に出力します。
            このモードでは、Map.json / CommonEvent.json 単位で変換され、イベントやページ番号は無視されます。
-           例1: $ cat data/Map001.json | node Frame2Text.js --mode decompile
+           例1: $ cat data/Map001.json | npx frame2text --mode decompile
 `
 
   program.addHelpText('after', help_text)
