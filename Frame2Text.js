@@ -3391,13 +3391,18 @@ function resolveText2Frame () {
         }
         const wrote = writeBackToGame(built.writeBack, t, dataPaths)
         if (!wrote.ok) return { ok: false, error: wrote.error }
+        // ライブラリとして1件だけ呼ばれたときも書けるよう、置き場所のフォルダを作る。
+        _fs.mkdirSync(_path.dirname(opts.outPath), { recursive: true })
         _fs.writeFileSync(opts.outPath, built.text, 'utf8')
         let baseSaveError = null
         // 目印ごと取り出したときだけ祖先を進めない(理由は単発取り出しの同じ箇所)。
         if (!built.markers) {
           // 祖先はゲーム側(built.baseText)。マージ結果を入れるとゲームが到達していない
           // 状態が祖先になり、次の反映でテキストの内容が消える。
-          try { _fs.writeFileSync(_path.join(opts.baseDir, t.key + '.txt'), built.baseText, 'utf8') } catch (e) { baseSaveError = e }
+          try {
+            _fs.mkdirSync(opts.baseDir, { recursive: true })
+            _fs.writeFileSync(_path.join(opts.baseDir, t.key + '.txt'), built.baseText, 'utf8')
+          } catch (e) { baseSaveError = e }
         }
         return {
           ok: true,
