@@ -7,7 +7,7 @@
 | --- | --- | --- | --- |
 | ツクール用プラグイン | `Text2Frame.js` / `Frame2Text.js` の生ファイル | GitHub Releases | `package.json` の `version`（例 `2.3.0`）|
 | npm パッケージ | CLI（`text2frame` / `frame2text` / `t2f-sync`）とライブラリ | npm `@yktsr/text2frame-mv` | 同上 |
-| VS Code 拡張 | `vscode-extension/` | VS Code Marketplace | `vscode-extension/package.json` の `version`（例 `0.1.1`）|
+| VS Code 拡張 | `vscode-extension/` | VS Code Marketplace | `vscode-extension/package.json` の `version`（例 `0.1.3`）|
 
 プラグインと npm パッケージは同じ `package.json` の版番号を共有します。**npm パッケージ＝
 プラグインファイルではありません**（利用者にとっては別チャネルです）。
@@ -28,7 +28,7 @@ release/
   Text2Frame.js                              ← GitHub Releases に添付する(刻印付き)
   Frame2Text.js
   yktsr-text2frame-mv-2.3.0.tgz              ← npm publish するもの / ローカル検証にも使う
-  text2frame-language-support-0.1.1.vsix     ← vsce publish するもの
+  text2frame-language-support-0.1.3.vsix     ← vsce publish するもの
   MANIFEST.txt                               ← 一覧(版・コミット・SHA256・検証結果)
 ```
 
@@ -55,7 +55,7 @@ Text2Frame-MV release artifacts
 generated : 2026-08-02T09:46:16Z
 commit    : 9613dab1e939f4d8b43907c9df6451ce884d060e
 plugin/npm: 2.3.0
-vscode ext: 0.1.1 (pre)
+vscode ext: 0.1.3 (pre)
 
      BYTES  SHA256                                    FILE
     182887  71b44846df69bc...                         Frame2Text.js
@@ -100,7 +100,7 @@ npm run audit:prod
 拡張も出すなら:
 
 ```bash
-cd vscode-extension && npm ci && npm run compile && npm run lint
+cd vscode-extension && npm ci && npm run compile && npm run lint && npm test
 ```
 
 CI（[.github/workflows/nodejs.yml](.github/workflows/nodejs.yml)）が push / PR で同じことを

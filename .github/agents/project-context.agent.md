@@ -15,20 +15,17 @@ tools: [read, edit, search, execute]
 
 ## 開発環境(重要)
 
-- リポジトリは WSL 上(`\\wsl.localhost\Ubuntu\home\yuki\workspace\Text2Frame-MV`)。
-- **git-bash / Windows のシステム node は v12 で古く、tsc/rollup が動かない。** node/npm は必ず WSL の nvm node v20 で実行する:
-  ```bash
-  wsl -d ubuntu -- bash -lc 'export PATH="$HOME/.nvm/versions/node/v20.19.5/bin:$PATH"; cd ~/workspace/Text2Frame-MV && <cmd>'
-  ```
-- VSCode 拡張は **VS Code 内蔵 Node(拡張ホスト)** 上でコンパイラを `require` するため、Windows ネイティブで動作する(WSL Remote 不要)。
+- **node 20 以上が必要**(tsc / rollup / vsce 3.x の要件)。古い node では動かない。
+- Windows で WSL を使う場合は、node/npm を WSL 側で動かす(Windows のシステム node が古いと tsc/rollup が動かない)。
+- VSCode 拡張は **VS Code 内蔵 Node(拡張ホスト)** 上でコンパイラを `require` するため、Windows ネイティブでも動く(WSL Remote 不要)。
 
 ## ファイル構成
 
 | パス | 役割 |
 |---|---|
-| `Text2Frame.js` | テキスト→JSON コンパイラ本体。ツクールのプラグインとしても動作。`module.exports = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, resolveStrategy, baseSnapshotPathCore, readBaseText, saveBaseText, deriveBaseId }` |
-| `Frame2Text.js` | JSON→テキスト。`module.exports = { decompile, VERSION, enumerateTargets, renderFrontMatter }`。プラグイン/CLI の取り出しは merge 既定(`MERGE_EVENT_TO_MESSAGE`/`MERGE_CE_TO_MESSAGE` ExecMode、内部で `Text2Frame.applyMergePull` を lazy require) |
-| `Text2Frame.{cjs.js,es.mjs,umd.js}` | `npm run build`(vite)生成物。**直接編集しない**。`// developer mode` 以降(CLI部)は build で除去される |
+| `Text2Frame.js` | テキスト→JSON コンパイラ本体。ツクールのプラグインとしても動作。`module.exports = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, applyCommandsToData, commandsEqual, resolveStrategy, readBaseText, saveBaseText, deriveBaseId, baseIdForTarget, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines, parseFrontMatter }` |
+| `Frame2Text.js` | JSON→テキスト。`module.exports = { decompile, VERSION, baseDirForTextDir, enumerateTargets, indexTexts, outPathFor, defaultFileName, pullTargetToText, renderFrontMatter, buildPullText, writeBackToGame }`。取り出しは merge 既定(内部で `Text2Frame.applyMergePull` を lazy require) |
+| `Text2Frame.{cjs.js,es.mjs,umd.js}` | `npm run build`(rollup)生成物。**直接編集しない**。`// developer mode` 以降(CLI部)は build で除去される |
 | `t2f-sync.js` | 双方向同期コントローラ(CLI専用。ツクールのプラグインではない)。Text2Frame/Frame2Text を**公開APIとして**使い、1プロセスで push/pull を所有。自分の書き込みを内容ハッシュで無視してループを防ぐ |
 | `vscode-extension/` | VSCode 拡張(モノレポのサブディレクトリ)。下記「VSCode拡張」参照 |
 | `data/` | リポジトリ同梱の最小サンプル JSON(`Map001.json` は空イベント、`CommonEvents.json` は2件) |
@@ -40,20 +37,21 @@ tools: [read, edit, search, execute]
 ## 開発コマンド
 
 ```bash
-npm test                       # 主要テスト一式 17 ファイル(下記の test_frame2text は含まれない点に注意)
-npm run test_text2frame        # Text2Frame テスト(test_json_eq.js)
-npm run test_frame2text        # ★往復変換テスト(135件)。npm test に含まれないので別途実行
+npm test                       # test/test_*.js を全部(1ファイル1プロセスで並列。tools/run-tests.js)
+npm test -- test/test_x.js     # 1本だけ / --serial で直列 / --jobs N で並列数
+npm run test_text2frame        # Text2Frame テスト(test_json_eq.js)だけ
+npm run test_frame2text        # 往復変換テスト(130件)だけ。npm test にも含まれる
 npm run lint                   # ESLint(--max-warnings=0)
 npm run build                  # rollup で dist/*.cjs.js / dist/*.es.mjs / dist/*.umd.js を生成
 # ★実データ往復検証(2902件。sample/ が必要=未追跡なので CI では走らない):
-cp -r sample/data /tmp/vd && node tools/verify-roundtrip.js /tmp/vd --locale=ja --en=true --max=0
+cp -r sample/data /tmp/vd && node tools/verify-roundtrip.js /tmp/vd --en=true --max=0
 npm run build:dist             # build + stamp(Version/build id バナー付与)
 # VSCode 拡張(vscode-extension/ で):
 npm run compile                # tsc → out/
 npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ にコピー
 ```
 
-**CI(`.github/workflows/nodejs.yml`)**: push[master]/PR で 2 ジョブ。core = `npm ci → build → lint → npm test → test_frame2text`、extension = `npm ci → compile → lint`。2902 往復は `sample/` が未追跡のため CI 対象外(自己完結の test_frame2text 135 件でガード)。
+**CI(`.github/workflows/nodejs.yml`)**: push[master]/PR で 3 ジョブ。core = `npm ci → build → audit → lint → npm test`、extension = `npm ci → compile → lint → npm test`、package = 配布物3種を作って公開モードの読み込みまで見る。2902 往復は `sample/` が未追跡のため CI 対象外(自己完結の検体130件でガード)。
 
 ## データフロー
 
@@ -76,7 +74,7 @@ npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ �
 **Text2Frame.js**
 - `compile(text)` → イベントコマンド配列(本文のみ。フロントマターは呼び出し側で除去)
 - `applyTextFile(opts)` → 単一テキストを単一データ JSON へデプロイ。`opts={ textPath, kind, mapId, eventId, pageId, commonEventId, mapPath, commonEventPath, strategy, overwrite, baseRoot }`(`baseRoot` 未指定時は `process.cwd()`。cwd と別のプロジェクトを扱う組み込み側は必ず渡す)。戻り値 `{ ok, warnings, error, errorLine, errorLineText, dataPath, target }`。throw せず結果を返す
-- フォルダ一括反映は front matter 走査で行う: 各 `.txt` を `applyTextFile({ textPath, strategy })` で反映(CLI は `--mode batch --text-dir <dir> [--locale <name>]`、プラグインは `BATCH_IMPORT_MESSAGES_FROM_FOLDER`)
+- フォルダ一括反映は front matter 走査で行う: 各 `.txt` を `applyTextFile({ textPath, strategy })` で反映(CLI は `--mode batch --text-dir <dir>`、プラグインは `BATCH_IMPORT_MESSAGES_FROM_FOLDER`)
 - `applyThreeWayMerge(base, ours, theirs)` → 3-way マージ(`{ commands, warnings, conflicts }`)。祖先が無い場合は呼び出し側が現在のゲーム状態を祖先として渡す(TOFU)
 - `applyMergePull({ gameCommands, textBody, baseBody, englishTag })` → `{ text, conflicts, warnings }`。取り出し(ゲーム→テキスト)の 3-way 本体。push と対称(出力先がテキストなだけ)。内部で `Frame2Text.decompile` を lazy require
 - `resolveStrategy(name)` → `{ strategy: 'merge'|'overwrite' }`(未知値は null)
@@ -137,7 +135,7 @@ node t2f-sync.js start|once [--direction both|push|pull] [-t text] [-d data] [-s
 
 ## ハード制約
 
-- **往復変換の維持は絶対**: 変更後は `npm run test_frame2text`(135件)と `npm test`(17ファイル)と `npm run lint` が全緑であること。加えて Frame2Text の出力を変えたら**実データ往復 2902/2902** も確認する(`sample/data` を `/tmp` にコピーして `node tools/verify-roundtrip.js ... --max=0`。sample/ が未追跡のため CI では不可、ローカル必須)。Frame2Text の本文系コード(101本文401/スクロール405/コメント408/スクリプト355,655/プラグインコマンド357,657)は**列0**のまま出力する(Text2Frame が行頭空白を本文として取り込むため)。
+- **往復変換の維持は絶対**: 変更後は `npm test`(test/test_*.js を全部。往復130件を含む)と `npm run lint` が全緑であること。加えて Frame2Text の出力を変えたら**実データ往復 2902/2902** も確認する(`sample/data` を `/tmp` にコピーして `node tools/verify-roundtrip.js ... --max=0`。sample/ が未追跡のため CI では不可、ローカル必須)。Frame2Text の本文系コード(101本文401/スクロール405/コメント408/スクリプト355,655/プラグインコマンド357,657)は**列0**のまま出力する(Text2Frame が行頭空白を本文として取り込むため)。
 - ビルド成果物は直接編集しない(`npm run build` で再生成)。
 - ESLint 警告 0 件(`--max-warnings=0`)。
 - テキストソースは LF(`.gitattributes` で強制)。
