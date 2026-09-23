@@ -502,6 +502,7 @@
       ],
       "commandPalette": [
         { "command": "text2frame.fix.pickAgain", "when": "false" },
+        { "command": "text2frame.showLinks", "when": "false" },
         { "command": "text2frame.pullThisView", "when": "resourceScheme == text2frame-links" },
         { "command": "text2frame.tryEvent", "when": "false" },
         { "command": "text2frame.review.accept", "when": "text2frame.reviewPending" },
@@ -571,11 +572,7 @@
           "when": "view == text2frameExplorer && viewItem == text2frame.common",
           "group": "3_try@1"
         },
-        {
-          "command": "text2frame.tree.links",
-          "when": "view == text2frameExplorer && (viewItem == text2frame.page || viewItem == text2frame.common || viewItem == text2frame.event || viewItem == text2frame.map)",
-          "group": "4_links@1"
-        },
+
         {
           "command": "text2frame.tree.mapLinks",
           "when": "view == text2frameExplorer && (viewItem == text2frame.map || viewItem == text2frame.here)",
