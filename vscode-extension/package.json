@@ -275,16 +275,6 @@
         "icon": "$(play)"
       },
       {
-        "command": "text2frame.tree.links",
-        "title": "%command.text2frame.tree.links.title%",
-        "icon": "$(type-hierarchy)"
-      },
-      {
-        "command": "text2frame.showLinks",
-        "title": "%command.text2frame.showLinks.title%",
-        "icon": "$(type-hierarchy)"
-      },
-      {
         "command": "text2frame.mapLinks.show",
         "title": "%command.text2frame.mapLinks.show.title%"
       },
@@ -497,7 +487,6 @@
       ],
       "commandPalette": [
         { "command": "text2frame.fix.pickAgain", "when": "false" },
-        { "command": "text2frame.showLinks", "when": "false" },
         { "command": "text2frame.pullThisView", "when": "resourceScheme == text2frame-links" },
         { "command": "text2frame.tryEvent", "when": "false" },
         { "command": "text2frame.review.accept", "when": "text2frame.reviewPending" },
@@ -508,7 +497,6 @@
         { "command": "text2frame.tree.try", "when": "false" },
         { "command": "text2frame.tree.tryRun", "when": "false" },
         { "command": "text2frame.tree.tryCommon", "when": "false" },
-        { "command": "text2frame.tree.links", "when": "false" },
         { "command": "text2frame.tree.mapLinks", "when": "false" },
         { "command": "text2frame.tree.mapGraph", "when": "false" },
         { "command": "text2frame.history.refresh", "when": "false" },

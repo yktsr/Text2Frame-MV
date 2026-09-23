@@ -39,8 +39,6 @@
   "command.text2frame.tree.try.title": "イベントの前に立つ",
   "command.text2frame.tree.tryRun.title": "このページをすぐ実行",
   "command.text2frame.tree.tryCommon.title": "すぐ実行",
-  "command.text2frame.tree.links.title": "つながりを見る",
-  "command.text2frame.showLinks.title": "Text2Frame: イベントのつながりを見る",
   "command.text2frame.mapLinks.show.title": "マップのつながりを見る",
   "command.text2frame.mapLinks.refresh.title": "Text2Frame: つながりを更新",
   "command.text2frame.mapLinks.open.title": "つながりの行を開く",

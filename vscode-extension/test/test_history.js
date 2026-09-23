@@ -3,7 +3,7 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const {
-  HistoryRecorder, withHistory, noteWrite, listEntries, restoreEntry, restoreTo, planRestoreTo, snapshotFile, isHistoryCopy, HISTORY_DIR
+  HistoryRecorder, withHistory, noteWrite, listEntries, restoreTo, planRestoreTo, prune, snapshotFile, isHistoryCopy, HISTORY_DIR
 } = require('../out/db/history')
 
 describe('history', function () {
@@ -82,7 +82,7 @@ describe('history', function () {
     })
     const [saved] = listEntries(root)
     expect(saved.files).to.eql([{ path: 'text/new.txt', existed: false, kind: 'text' }])
-    const result = restoreEntry(root, saved)
+    const result = restoreTo(root, listEntries(root), saved)
     expect(result).to.eql({ restored: [], created: ['text/new.txt'], missing: [] })
     expect(read('text/new.txt')).to.equal('新しい')
   })
@@ -95,26 +95,14 @@ describe('history', function () {
       write('text/map001_event001_page1.txt', 'さようなら')
     })
     const [applied] = listEntries(root)
-    withHistory(root, 'restore', '戻す: 反映', { keep: 10 }, () => restoreEntry(root, applied))
+    withHistory(root, 'restore', '戻す: 反映', { keep: 10 }, () => restoreTo(root, listEntries(root), applied))
     expect(read('data/Map001.json')).to.equal('{"v":1}')
     expect(read('text/map001_event001_page1.txt')).to.equal('こんにちは')
     const [undo] = listEntries(root)
     expect(undo.label).to.equal('戻す: 反映')
-    restoreEntry(root, undo)
+    restoreTo(root, listEntries(root), undo)
     expect(read('data/Map001.json')).to.equal('{"v":2}')
     expect(read('text/map001_event001_page1.txt')).to.equal('さようなら')
-  })
-
-  it('goes back for one file only', function () {
-    withHistory(root, 'apply', 'a', { keep: 10 }, () => {
-      noteWrite(file('data/Map001.json'), 'data')
-      noteWrite(file('text/map001_event001_page1.txt'), 'text')
-      write('data/Map001.json', '{"v":2}')
-      write('text/map001_event001_page1.txt', 'x')
-    })
-    restoreEntry(root, listEntries(root)[0], ['text/map001_event001_page1.txt'])
-    expect(read('text/map001_event001_page1.txt')).to.equal('こんにちは')
-    expect(read('data/Map001.json')).to.equal('{"v":2}')
   })
 
   it('removes the oldest operations beyond the number to keep', function () {
@@ -129,12 +117,13 @@ describe('history', function () {
 
   it('removes old operations when the copies get too big, but always keeps the newest', function () {
     for (let n = 2; n <= 4; n++) {
-      withHistory(root, 'apply', '反映 ' + n, { keep: 10, maxBytes: 20 }, () => {
+      withHistory(root, 'apply', '反映 ' + n, { keep: 10 }, () => {
         noteWrite(file('data/Map001.json'), 'data')
         write('data/Map001.json', '{"v":' + n + ',"pad":"' + 'x'.repeat(10) + '"}')
       })
     }
     // 控えは1つ目が7バイト、2つ目からは約26バイト。20バイトを超えるので、いちばん新しいものだけが残る。
+    prune(root, 10, 20)
     expect(listEntries(root).map((e) => e.label)).to.eql(['反映 4'])
     expect(listEntries(root)[0].bytes).to.be.greaterThan(20)
   })

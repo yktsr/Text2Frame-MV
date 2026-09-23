@@ -125,7 +125,7 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
                     if (res.ok) {
                         ok++;
                         warn += res.warnings.length;
-                        writeBackAndRefreshBase(context, root, meta, file, fileText, res, { key }, mergeLike);
+                        writeBackAndRefreshBase(root, file, fileText, res, key, mergeLike);
                         out.appendLine(`OK   ${label}  <- ${path.relative(root, file)}` + (res.warnings.length ? `  (${res.warnings.length} warn)` : ''));
                     } else {
                         fail++;

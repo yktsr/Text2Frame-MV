@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { parseFrontMatter, isDeployable, isAncestorCopy, ancestorCopyMessage, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot, snapshotKeyForTarget, historyKeep } from './compiler';
 import { noteWrite, withHistory } from './db/history';
 import { placeFromMeta, placeKey } from './placeLabel';
-import { mergePullToText, renderCommands, ExportTarget } from './exportText';
+import { planPull, commitPull, renderCommands, ExportTarget } from './exportText';
 import { reviewEnabled } from './review';
 import { reviewDeploy, busy, Decision, DeployCandidate, DeploySort } from './reviewApply';
 import { eachSlowly } from './db/slowly';
@@ -25,13 +25,10 @@ export { isDeployable };
 interface ApplyResult {
     ok: boolean;
     textPath: string;
-    kind?: string;
-    target?: { [key: string]: string | undefined };
     dataPath?: string;
     warnings: string[];
     conflicts?: number;
     error?: string;
-    errorLine?: number;
     errorLineText?: string;
     /** 差分を確かめたとき、ゲームが何も変わらなかった。 */
     unchanged?: boolean;
@@ -73,8 +70,8 @@ function getOutput(): vscode.OutputChannel {
  * Identity of the 3-way BASE snapshot for a single file: the target the front matter names.
  * Renaming or moving the text keeps the same ancestor, and the pull side uses the same key.
  */
-function snapshotIdFor(workspaceRoot: string, textPath: string, meta: { [key: string]: string }): { key: string } {
-    return { key: snapshotKeyForTarget(workspaceRoot, textPath, meta) };
+function snapshotIdFor(workspaceRoot: string, textPath: string, meta: { [key: string]: string }): string {
+    return snapshotKeyForTarget(workspaceRoot, textPath, meta);
 }
 
 /**
@@ -84,13 +81,11 @@ function snapshotIdFor(workspaceRoot: string, textPath: string, meta: { [key: st
  * 上書き・追記の反映では、反映したテキストを祖先にする。
  */
 export function writeBackAndRefreshBase(
-    context: vscode.ExtensionContext,
     workspaceRoot: string,
-    meta: { [key: string]: string },
     textPath: string,
     originalText: string,
     result: { warnings: string[]; conflicts?: number; writtenBack?: boolean },
-    snap: { key: string },
+    snapKey: string,
     mergeLike: boolean
 ): void {
     if (mergeLike) {
@@ -101,7 +96,7 @@ export function writeBackAndRefreshBase(
         }
         return;
     }
-    saveBaseSnapshot(workspaceRoot, snap.key, originalText);
+    saveBaseSnapshot(workspaceRoot, snapKey, originalText);
 }
 
 /** Locate and load the compiler module that exports applyTextFile(). */
@@ -220,7 +215,7 @@ async function deployDocumentNow(
                 textPath: document.uri.fsPath,
                 frontMatterSource: document.getText()
             };
-            const ex = mergePullToText(context, workspaceRoot, pullTarget);
+            const ex = commitPull(context, workspaceRoot, planPull(context, workspaceRoot, pullTarget, 'merge'));
             recordDataState(context, dataPath);
             if (ex.ok) {
                 vscode.window.showInformationMessage(tr('Text2Frame: ゲームの内容を取り込みました(編集は残しました)。内容を確認して保存し直してください。', 'Text2Frame: Brought in the game\'s contents (your edits stay). Check the text and save it again.'));
@@ -239,7 +234,7 @@ async function deployDocumentNow(
     // Default to 3-way merge: attach the BASE snapshot (common ancestor) when present so a
     // merge deploy reconciles writer text edits with external JSON edits, instead of overlaying.
     const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
-    const snap = snapshotIdFor(workspaceRoot, document.uri.fsPath, meta);
+    const snapKey = snapshotIdFor(workspaceRoot, document.uri.fsPath, meta);
     const applyOpts: { [key: string]: unknown } = {
         textPath: document.uri.fsPath,
         ...resolved.opts,
@@ -248,8 +243,8 @@ async function deployDocumentNow(
         // それが / なので保存できない。拡張の祖先(baseSnapshotPath)と同じ場所・同じ鍵になる。
         baseRoot: workspaceRoot
     };
-    if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.key)) {
-        applyOpts.basePath = baseSnapshotPath(workspaceRoot, snap.key);
+    if (mergeLike && hasBaseSnapshot(workspaceRoot, snapKey)) {
+        applyOpts.basePath = baseSnapshotPath(workspaceRoot, snapKey);
     }
     let decision: Decision | undefined;
     if (options.review) {
@@ -275,7 +270,7 @@ async function deployDocumentNow(
                 .then((pick) => { if (pick) { out.show(true); } });
         }
         // Optionally write the merged result back to the text, then refresh the 3-way BASE.
-        writeBackAndRefreshBase(context, workspaceRoot, meta, document.uri.fsPath, document.getText(), result, snap, mergeLike);
+        writeBackAndRefreshBase(workspaceRoot, document.uri.fsPath, document.getText(), result, snapKey, mergeLike);
     } else {
         out.appendLine(`[${time}] FAIL  ${resolved.label}  <- ${path.basename(document.uri.fsPath)}  ${result.error}`);
         setDeployDiagnostic(deployDiagnostics, document, result.error || 'deploy failed', result.errorLineText);
@@ -321,7 +316,7 @@ interface PreparedFile {
     text: string;
     applyOpts: { [key: string]: unknown };
     dataPath: string;
-    snap: { key: string };
+    snapKey: string;
     mergeLike: boolean;
 }
 
@@ -352,18 +347,18 @@ function prepareFile(context: vscode.ExtensionContext, workspaceRoot: string, fi
     const strategy = vscode.workspace.getConfiguration('text2frame').get<string>('strategy') || 'merge';
     // Default to 3-way merge: attach the BASE snapshot (common ancestor) when present.
     const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
-    const snap = snapshotIdFor(workspaceRoot, filePath, meta);
+    const snapKey = snapshotIdFor(workspaceRoot, filePath, meta);
     const applyOpts: { [key: string]: unknown } = {
         textPath: filePath,
         ...resolved.opts,
         strategy,
         baseRoot: workspaceRoot // 祖先の置き場所(上の deployDocument と同じ)
     };
-    if (mergeLike && hasBaseSnapshot(workspaceRoot, snap.key)) {
-        applyOpts.basePath = baseSnapshotPath(workspaceRoot, snap.key);
+    if (mergeLike && hasBaseSnapshot(workspaceRoot, snapKey)) {
+        applyOpts.basePath = baseSnapshotPath(workspaceRoot, snapKey);
     }
     const dataPath = (resolved.opts.mapPath || resolved.opts.commonEventPath) as string;
-    return { mod, meta, text, applyOpts, dataPath, snap, mergeLike };
+    return { mod, meta, text, applyOpts, dataPath, snapKey, mergeLike };
 }
 
 export function deployFile(
@@ -382,7 +377,7 @@ function deployFileNow(
 ): ApplyResult | undefined {
     const prepared = prepareFile(context, workspaceRoot, filePath);
     if (!('mod' in prepared)) return prepared;
-    const { mod, meta, text, applyOpts, dataPath, snap, mergeLike } = prepared;
+    const { mod, meta, text, applyOpts, dataPath, snapKey, mergeLike } = prepared;
     noteApply(workspaceRoot, filePath, dataPath, meta);
     const result = mod.applyTextFile(applyOpts);
     if (result && result.ok) {
@@ -390,7 +385,7 @@ function deployFileNow(
             recordDataState(context, dataPath);
         }
         // Optionally write the merged result back to the text, then refresh the 3-way BASE.
-        writeBackAndRefreshBase(context, workspaceRoot, meta, filePath, text, result, snap, mergeLike);
+        writeBackAndRefreshBase(workspaceRoot, filePath, text, result, snapKey, mergeLike);
     }
     return result;
 }

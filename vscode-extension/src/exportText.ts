@@ -60,7 +60,7 @@ interface Frame2TextModule {
 }
 
 interface Text2FrameModule {
-    /** game->text merge (mirror of deploy): keeps translations, brings game changes, kept-both on conflict. */
+    /** 取り出しの統合(反映の裏返し)。テキストの編集を残し、ゲームの変更を取り込み、衝突は両方残す。 */
     applyMergePull: (opts: { gameCommands: unknown[]; textBody: string; baseBody: string; englishTag: boolean }) => { text: string; conflicts: number; warnings: string[] };
     VERSION?: string;
 }
@@ -87,7 +87,6 @@ export interface ExportTarget {
     textPath: string;
     /** Reuse this file's existing front matter header if present. */
     frontMatterSource?: string;
-    translationOnly?: boolean;
 }
 
 export interface ExportResult {
@@ -189,8 +188,13 @@ function readEventList(workspaceRoot: string, target: ExportTarget): unknown[] {
 
 /**
  * 取り出しで書くテキストを、書き込まずに作る。書くのは commitPull。
- * mode 'overwrite' はゲームの内容でテキストを作り直す(書き出し・全部取り直す)。
- * mode 'merge' はテキストの編集を残してゲームの変更を取り込む(3-way。仕組みは mergePullToText の説明)。
+ * mode 'overwrite' はゲームの内容でテキストを作り直す(全部取り直す)。
+ * mode 'merge' はテキストの編集を残してゲームの変更を取り込む。反映の裏返しで、同じ 3-way を
+ * 使うが、結果を書くのはゲームのデータではなくテキスト(decompile を通す)。
+ *   ゲームの今の命令 / 今あるテキスト / 祖先(最後に一致していた地点) の3つを突き合わせ、
+ *   テキストだけで直した行は残し、ゲームだけで変わった行は取り込み、
+ *   同じ所が両方で変わっていれば両方を目印付きで残す。
+ *   テキストがまだ無ければ、ゲームの内容をそのまま書く(最初の取り出し)。
  */
 export interface PullPlan {
     target: ExportTarget;
@@ -323,7 +327,7 @@ export function planPull(
     target: ExportTarget,
     mode: 'merge' | 'overwrite'
 ): PullPlan {
-    const baseP = baseSnapshotPath(workspaceRoot, snapshotIdFor(workspaceRoot, target).key);
+    const baseP = baseSnapshotPath(workspaceRoot, snapshotKeyOf(workspaceRoot, target));
     const plan: PullPlan = { target, ok: false, inputs: [target.textPath, dataPathFor(workspaceRoot, target) || '', baseP].filter(Boolean) };
     const mod = frame2Text(context, workspaceRoot);
     if (!mod) {
@@ -430,21 +434,19 @@ function commitPullNow(context: vscode.ExtensionContext, workspaceRoot: string, 
     }
 }
 
-/** Core export: data JSON -> text file. */
-export function exportToTextFile(
+/**
+ * 会話だけを抜き出したテキストを書く。落ちる情報があるので、これは読むためのもの。
+ * 行き先を持たず、祖先にもならないので、取り出し(planPull)とは別の道を通る。
+ */
+export function exportConversationOnlyText(
     context: vscode.ExtensionContext,
     workspaceRoot: string,
     target: ExportTarget
 ): ExportResult {
-    if (!target.translationOnly) {
-        return commitPull(context, workspaceRoot, planPull(context, workspaceRoot, target, 'overwrite'));
-    }
     const mod = frame2Text(context, workspaceRoot);
     if (!mod) {
         return { ok: false, error: frame2TextMissing() };
     }
-    // The conversation-only sidecar is a lossy extract, not a deployable file: it never
-    // routes, never becomes an ancestor, and buildPullText has no translationOnly mode.
     try {
         const body = mod.decompile(readEventList(workspaceRoot, target), englishTagSetting(), {
             pretty: true,
@@ -487,13 +489,13 @@ function sameAsFile(file: string, contents: string): boolean {
     }
 }
 
-function snapshotIdFor(workspaceRoot: string, target: ExportTarget): { key: string } {
+function snapshotKeyOf(workspaceRoot: string, target: ExportTarget): string {
     const meta: { [key: string]: string } = { kind: target.kind };
     if (target.mapId) { meta.mapId = target.mapId; }
     if (target.eventId) { meta.eventId = target.eventId; }
     if (target.pageId) { meta.pageId = target.pageId; }
     if (target.commonEventId) { meta.commonEventId = target.commonEventId; }
-    return { key: snapshotKeyForTarget(workspaceRoot, target.textPath, meta) };
+    return snapshotKeyForTarget(workspaceRoot, target.textPath, meta);
 }
 
 /**
@@ -503,7 +505,7 @@ function snapshotIdFor(workspaceRoot: string, target: ExportTarget): { key: stri
  * 取り出し前にテキストへ書いた内容が黙って消える。
  */
 function saveBaseFor(workspaceRoot: string, target: ExportTarget, gameSideText: string): void {
-    saveBaseSnapshot(workspaceRoot, snapshotIdFor(workspaceRoot, target).key, gameSideText);
+    saveBaseSnapshot(workspaceRoot, snapshotKeyOf(workspaceRoot, target), gameSideText);
 }
 
 function recordDataStateFor(context: vscode.ExtensionContext, workspaceRoot: string, target: ExportTarget): void {
@@ -511,25 +513,6 @@ function recordDataStateFor(context: vscode.ExtensionContext, workspaceRoot: str
     if (dataPath) {
         recordDataState(context, dataPath);
     }
-}
-
-/**
- * Merge-pull: bring the game's content into text/<language>/ WITHOUT clobbering existing
- * translations. This is the mirror image of deploy — the same 3-way merge, but the merged
- * result is written back out as TEXT (via decompile) instead of into the game JSON.
- *   ours   = the game's current commands
- *   theirs = the existing text (translations)
- *   base   = the last-synced ancestor snapshot
- * A line translated only in text is kept; a line changed only in the game is brought in;
- * the same spot changed on both sides is kept as BOTH with the plain marker comments.
- * When the text file does not exist yet, this simply writes the game's content (initial pull).
- */
-export function mergePullToText(
-    context: vscode.ExtensionContext,
-    workspaceRoot: string,
-    target: ExportTarget
-): ExportResult {
-    return commitPull(context, workspaceRoot, planPull(context, workspaceRoot, target, 'merge'));
 }
 
 /** Build an ExportTarget from a text document's front matter. */
@@ -615,9 +598,8 @@ export function exportConversationOnly(context: vscode.ExtensionContext): void {
     const srcPath = editor.document.uri.fsPath;
     const ext = path.extname(srcPath);
     target.textPath = srcPath.slice(0, srcPath.length - ext.length) + '.conversation' + (ext || '.txt');
-    target.translationOnly = true;
     const label = tr('会話のみ書き出し ', 'Pull conversation only ') + path.relative(workspaceRoot, target.textPath).split(path.sep).join('/');
-    const result = withHistory(workspaceRoot, 'conversation', label, { keep: historyKeep() }, () => exportToTextFile(context, workspaceRoot, target));
+    const result = withHistory(workspaceRoot, 'conversation', label, { keep: historyKeep() }, () => exportConversationOnlyText(context, workspaceRoot, target));
     if (result.ok) {
         vscode.window.showInformationMessage(tr('Text2Frame: 会話のみテキストを書き出しました: ', 'Text2Frame: Wrote the conversation-only text: ') + path.basename(result.textPath || ''));
         vscode.workspace.openTextDocument(result.textPath as string).then((doc) => vscode.window.showTextDocument(doc, { preview: true }));

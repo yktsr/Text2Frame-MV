@@ -50,7 +50,6 @@ function maybeAssignLanguage(document: vscode.TextDocument): void {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Text2Frame Language Support is now active!');
     // 画面の言葉は VS Code の表示言語に合わせる(package.json の文字と同じ決め方)。
     setJapanese(vscode.env.language.toLowerCase().startsWith('ja'));
 

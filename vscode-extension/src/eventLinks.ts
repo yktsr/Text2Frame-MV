@@ -240,7 +240,7 @@ export function readOnlyUri(key: string): vscode.Uri {
 }
 
 /** 呼び出し階層の行に出す名前。 */
-export function nodeLabel(service: DatabaseService, ctx: DbContext, node: LinkNode): { name: string; detail: string } {
+function nodeLabel(service: DatabaseService, ctx: DbContext, node: LinkNode): { name: string; detail: string } {
     const named = (kind: 'switch' | 'variable' | 'commonEvent' | 'map', id: number): string => {
         const hit = ctx.db.lookup(kind, id);
         return hit.status === 'named' ? hit.name : '';
@@ -419,25 +419,7 @@ export function registerEventLinks(context: vscode.ExtensionContext, service: Da
     context.subscriptions.push(
         vscode.languages.registerCallHierarchyProvider(SELECTOR, provider),
         vscode.languages.registerCallHierarchyProvider({ scheme: LINKS_SCHEME }, provider),
-        vscode.workspace.registerTextDocumentContentProvider(LINKS_SCHEME, readOnly),
-        vscode.commands.registerCommand('text2frame.showLinks', async (key?: string) => {
-            const ctx = contextFor();
-            if (!ctx) return;
-            let target = key;
-            const editor = vscode.window.activeTextEditor;
-            if (!target && editor && editor.document.languageId === 'text2frame') {
-                target = keyAt(editor.document, editor.selection.active);
-            }
-            if (!target) {
-                vscode.window.showInformationMessage(tr('Text2Frame: つながりを見る場所が分かりません。テキストを開いてから押してください。', 'Text2Frame: It is not clear where to look for links. Open a text first.'));
-                return;
-            }
-            const { uri } = await uriFor(ctx, target);
-            if (!(await confirmNoText(service, ctx, uri))) return;
-            const doc = await vscode.workspace.openTextDocument(uri);
-            await vscode.window.showTextDocument(doc, { preview: true });
-            await vscode.commands.executeCommand('references-view.showCallHierarchy');
-        })
+        vscode.workspace.registerTextDocumentContentProvider(LINKS_SCHEME, readOnly)
     );
     return links;
 }
