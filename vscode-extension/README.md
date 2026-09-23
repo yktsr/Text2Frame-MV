@@ -318,7 +318,7 @@ pageId: 1
 
 - イベントの左の ▸ を押すと、ページごとの出現条件とトリガーが、今の値で満たしているか（✓ / ✗）つきで出ます。「なぜ今このページなのか」が分かります。
 - 「番号・名前で絞り込み」で探せます。「OFF・0 を隠す」で、ON のスイッチや 0 でない値だけになります。
-- 「実行中のテキストを開く」にチェックを入れると、ゲームで動いているイベントのテキストが自動で開きます。
+- 「実行中のテキストを開く」は最初からチェックが入っていて、ゲームで動いているイベントのテキストが自動で開きます。開きたくないときはチェックを外します（設定 `text2frame.openRunningText`）。
 
 ### このイベントから試す
 
@@ -370,7 +370,7 @@ VS Code の設定（`Ctrl+,` / `Cmd+,`）で `text2frame` と検索すると出�
 | `text2frame.history.keep` | `100` | 反映・取り出しの前の中身を、何回ぶん控えるか。`0` で控えない |
 | `text2frame.usageContextLines` | `2` | 「使っている箇所」の一覧に、前後を何行ずつ出すか |
 | `text2frame.tryEvent.clearPlayerTransparency` | オン | 「このページをすぐ実行」で、プレイヤーの透明化を解除してから始める |
-| `text2frame.openRunningText` | オフ | テストプレイ中、動いているイベントのテキストを自動で開く |
+| `text2frame.openRunningText` | オン | テストプレイ中、動いているイベントのテキストを自動で開く |
 | `text2frame.testPlayPage` | （空） | テストプレイで開くページ。空なら `index.html` |
 | `text2frame.textBaseDir` | `text` | テキストを置くフォルダ |
 | `text2frame.dataDir` | `data` | ゲームのデータのフォルダ |

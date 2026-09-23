@@ -710,7 +710,7 @@
           },
           "text2frame.openRunningText": {
             "type": "boolean",
-            "default": false,
+            "default": true,
             "description": "%config.text2frame.openRunningText.description%"
           },
           "text2frame.tryEvent.clearPlayerTransparency": {

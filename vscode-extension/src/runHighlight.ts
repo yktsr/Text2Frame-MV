@@ -131,7 +131,7 @@ export class RunTracker implements vscode.Disposable {
 }
 
 export const openRunningText = (): boolean =>
-    vscode.workspace.getConfiguration('text2frame').get<boolean>('openRunningText', false);
+    vscode.workspace.getConfiguration('text2frame').get<boolean>('openRunningText', true);
 
 export async function setOpenRunningText(value: boolean): Promise<void> {
     const target = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
