@@ -83,5 +83,14 @@
   "debugger.label": "Text2Frame テストプレイ",
   "debugger.configName": "Text2Frame テストプレイ",
   "debugger.snippet.label": "Text2Frame: テストプレイ",
-  "debugger.snippet.description": "テストプレイを、ブレークポイントで止めて調べる"
+  "debugger.snippet.description": "テストプレイを、ブレークポイントで止めて調べる",
+  "config.category.apply": "反映・取り出し",
+  "config.category.write": "テキストを書く",
+  "config.category.testplay": "テストプレイ",
+  "config.category.advanced": "上級",
+  "config.text2frame.strategy.enumItemLabels.0": "統合",
+  "config.text2frame.strategy.enumItemLabels.1": "上書き",
+  "config.text2frame.messageCheck.enumItemLabels.0": "自動",
+  "config.text2frame.messageCheck.enumItemLabels.1": "いつも調べる",
+  "config.text2frame.messageCheck.enumItemLabels.2": "調べない"
 }

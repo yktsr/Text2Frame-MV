@@ -83,5 +83,14 @@
   "debugger.label": "Text2Frame test play",
   "debugger.configName": "Text2Frame test play",
   "debugger.snippet.label": "Text2Frame: test play",
-  "debugger.snippet.description": "Test play, pausing at breakpoints"
+  "debugger.snippet.description": "Test play, pausing at breakpoints",
+  "config.category.apply": "Apply and pull",
+  "config.category.write": "Writing",
+  "config.category.testplay": "Test play",
+  "config.category.advanced": "Advanced",
+  "config.text2frame.strategy.enumItemLabels.0": "Merge",
+  "config.text2frame.strategy.enumItemLabels.1": "Overwrite",
+  "config.text2frame.messageCheck.enumItemLabels.0": "Auto",
+  "config.text2frame.messageCheck.enumItemLabels.1": "Always check",
+  "config.text2frame.messageCheck.enumItemLabels.2": "Do not check"
 }

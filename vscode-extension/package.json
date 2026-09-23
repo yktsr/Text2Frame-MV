@@ -597,102 +597,143 @@
         }
       ]
     },
-    "configuration": {
-      "title": "Text2Frame",
-      "properties": {
-        "text2frame.strategy": {
-          "type": "string",
-          "enum": ["merge", "overwrite"],
-          "default": "merge",
-          "enumDescriptions": [
-            "%config.text2frame.strategy.enumDescriptions.0%",
-            "%config.text2frame.strategy.enumDescriptions.1%"
-          ],
-          "description": "%config.text2frame.strategy.description%"
-        },
-        "text2frame.messageCheck": {
-          "type": "string",
-          "enum": ["auto", "on", "off"],
-          "default": "auto",
-          "enumDescriptions": [
-            "%config.text2frame.messageCheck.enumDescriptions.0%",
-            "%config.text2frame.messageCheck.enumDescriptions.1%",
-            "%config.text2frame.messageCheck.enumDescriptions.2%"
-          ],
-          "description": "%config.text2frame.messageCheck.description%"
-        },
-        "text2frame.history.keep": {
-          "type": "number",
-          "default": 100,
-          "minimum": 0,
-          "description": "%config.text2frame.history.keep.description%"
-        },
-        "text2frame.tryEvent.clearPlayerTransparency": {
-          "type": "boolean",
-          "default": true,
-          "scope": "resource",
-          "description": "%config.text2frame.tryEvent.clearPlayerTransparency.description%"
-        },
-        "text2frame.messageLineLength": {
-          "type": "number",
-          "default": 0,
-          "minimum": 0,
-          "description": "%config.text2frame.messageLineLength.description%"
-        },
-        "text2frame.reviewBeforeApply": {
-          "type": "boolean",
-          "default": true,
-          "description": "%config.text2frame.reviewBeforeApply.description%"
-        },
-        "text2frame.englishTag": {
-          "type": "boolean",
-          "default": true,
-          "description": "%config.text2frame.englishTag.description%"
-        },
-        "text2frame.omitDefaultTags": {
-          "type": "boolean",
-          "default": true,
-          "description": "%config.text2frame.omitDefaultTags.description%"
-        },
-        "text2frame.testPlayPage": {
-          "type": "string",
-          "default": "",
-          "description": "%config.text2frame.testPlayPage.description%"
-        },
-        "text2frame.openRunningText": {
-          "type": "boolean",
-          "default": false,
-          "description": "%config.text2frame.openRunningText.description%"
-        },
-        "text2frame.showDatabaseNames": {
-          "type": "boolean",
-          "default": true,
-          "description": "%config.text2frame.showDatabaseNames.description%"
-        },
-        "text2frame.usageContextLines": {
-          "type": "number",
-          "default": 2,
-          "minimum": 0,
-          "maximum": 20,
-          "description": "%config.text2frame.usageContextLines.description%"
-        },
-        "text2frame.textBaseDir": {
-          "type": "string",
-          "default": "text",
-          "description": "%config.text2frame.textBaseDir.description%"
-        },
-        "text2frame.dataDir": {
-          "type": "string",
-          "default": "data",
-          "description": "%config.text2frame.dataDir.description%"
-        },
-        "text2frame.modulePath": {
-          "type": "string",
-          "default": "",
-          "description": "%config.text2frame.modulePath.description%"
+    "configuration": [
+      {
+        "id": "text2frame.apply",
+        "title": "%config.category.apply%",
+        "order": 1,
+        "properties": {
+          "text2frame.strategy": {
+            "type": "string",
+            "enum": [
+              "merge",
+              "overwrite"
+            ],
+            "default": "merge",
+            "enumDescriptions": [
+              "%config.text2frame.strategy.enumDescriptions.0%",
+              "%config.text2frame.strategy.enumDescriptions.1%"
+            ],
+            "description": "%config.text2frame.strategy.description%",
+            "enumItemLabels": [
+              "%config.text2frame.strategy.enumItemLabels.0%",
+              "%config.text2frame.strategy.enumItemLabels.1%"
+            ]
+          },
+          "text2frame.reviewBeforeApply": {
+            "type": "boolean",
+            "default": true,
+            "description": "%config.text2frame.reviewBeforeApply.description%"
+          },
+          "text2frame.englishTag": {
+            "type": "boolean",
+            "default": true,
+            "description": "%config.text2frame.englishTag.description%"
+          },
+          "text2frame.omitDefaultTags": {
+            "type": "boolean",
+            "default": true,
+            "description": "%config.text2frame.omitDefaultTags.description%"
+          },
+          "text2frame.history.keep": {
+            "type": "number",
+            "default": 100,
+            "minimum": 0,
+            "description": "%config.text2frame.history.keep.description%"
+          },
+          "text2frame.textBaseDir": {
+            "type": "string",
+            "default": "text",
+            "description": "%config.text2frame.textBaseDir.description%"
+          },
+          "text2frame.dataDir": {
+            "type": "string",
+            "default": "data",
+            "description": "%config.text2frame.dataDir.description%"
+          }
+        }
+      },
+      {
+        "id": "text2frame.write",
+        "title": "%config.category.write%",
+        "order": 2,
+        "properties": {
+          "text2frame.messageCheck": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "on",
+              "off"
+            ],
+            "default": "auto",
+            "enumDescriptions": [
+              "%config.text2frame.messageCheck.enumDescriptions.0%",
+              "%config.text2frame.messageCheck.enumDescriptions.1%",
+              "%config.text2frame.messageCheck.enumDescriptions.2%"
+            ],
+            "description": "%config.text2frame.messageCheck.description%",
+            "enumItemLabels": [
+              "%config.text2frame.messageCheck.enumItemLabels.0%",
+              "%config.text2frame.messageCheck.enumItemLabels.1%",
+              "%config.text2frame.messageCheck.enumItemLabels.2%"
+            ]
+          },
+          "text2frame.messageLineLength": {
+            "type": "number",
+            "default": 0,
+            "minimum": 0,
+            "description": "%config.text2frame.messageLineLength.description%"
+          },
+          "text2frame.showDatabaseNames": {
+            "type": "boolean",
+            "default": true,
+            "description": "%config.text2frame.showDatabaseNames.description%"
+          },
+          "text2frame.usageContextLines": {
+            "type": "number",
+            "default": 2,
+            "minimum": 0,
+            "maximum": 20,
+            "description": "%config.text2frame.usageContextLines.description%"
+          }
+        }
+      },
+      {
+        "id": "text2frame.testplay",
+        "title": "%config.category.testplay%",
+        "order": 3,
+        "properties": {
+          "text2frame.testPlayPage": {
+            "type": "string",
+            "default": "",
+            "description": "%config.text2frame.testPlayPage.description%"
+          },
+          "text2frame.openRunningText": {
+            "type": "boolean",
+            "default": false,
+            "description": "%config.text2frame.openRunningText.description%"
+          },
+          "text2frame.tryEvent.clearPlayerTransparency": {
+            "type": "boolean",
+            "default": true,
+            "scope": "resource",
+            "description": "%config.text2frame.tryEvent.clearPlayerTransparency.description%"
+          }
+        }
+      },
+      {
+        "id": "text2frame.advanced",
+        "title": "%config.category.advanced%",
+        "order": 4,
+        "properties": {
+          "text2frame.modulePath": {
+            "type": "string",
+            "default": "",
+            "description": "%config.text2frame.modulePath.description%"
+          }
         }
       }
-    }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile && npm run bundle-compiler",
