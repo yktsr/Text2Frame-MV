@@ -4595,6 +4595,9 @@
     return lookupAlias(IMPORT_STRATEGY_ALIASES, value)
   }
 
+  // マップのデータファイル名。ID は3桁に揃える(ツクールの決まり)。
+  const mapFileName = function (mapId) { return 'Map' + ('000' + String(mapId)).slice(-3) + '.json' }
+
   if (typeof PluginManager === 'undefined') {
     // for test, command line
     Laurus.Text2Frame.WindowPosition = 'Bottom'
@@ -4662,7 +4665,7 @@
       BASE_PATH = mainFile ? path.dirname(mainFile) : process.cwd()
     }
     Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
-    Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
+    Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}${mapFileName(Laurus.Text2Frame.MapID)}`
     Laurus.Text2Frame.CommonEventPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}CommonEvents.json`
   }
 
@@ -5124,7 +5127,7 @@
          * 報告するマップIDと実際の書き込み先が食い違う。 */
         const { PATH_SEP, BASE_PATH } = getDirParams()
         Laurus.Text2Frame.TextPath = `${BASE_PATH}${PATH_SEP}${Laurus.Text2Frame.FileFolder}${PATH_SEP}${Laurus.Text2Frame.FileName}`
-        Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + Laurus.Text2Frame.MapID).slice(-3)}.json`
+        Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}${mapFileName(Laurus.Text2Frame.MapID)}`
         break
       }
       case 'IMPORT_MESSAGE_TO_CE' :
@@ -5190,6 +5193,9 @@
         break
       case 'COMMAND_LINE' :
         Laurus.Text2Frame = Object.assign(Laurus.Text2Frame, args[0])
+        /* 反映のしかたは Strategy 1つで決まる。上書きかどうかはここで導く。
+         * 呼ぶ側が両方渡す形だと、食い違ったときにどちらが効くのか分からない。 */
+        Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite'
         break
       case 'LIBRARY_EXPORT' :
         break
@@ -10975,7 +10981,6 @@
         const parsed = parseFrontMatter(readText(textPath))
         const meta = parsed.meta || {}
         const kind = String(opts.kind || meta.kind || 'event').toLowerCase()
-        const overwrite = strategy === 'overwrite'
 
         let dataPath
         let target
@@ -10987,7 +10992,7 @@
             throw new Error('eventId is required for event entry')
           }
           const defaultMapPath = mapId
-            ? pathLib.join('data', 'Map' + ('000' + String(mapId)).slice(-3) + '.json')
+            ? pathLib.join('data', mapFileName(mapId))
             : null
           dataPath = resolveFromRoot(BASE_PATH, opts.mapPath) || resolveFromRoot(BASE_PATH, defaultMapPath)
           if (!dataPath) {
@@ -11000,10 +11005,9 @@
             MapPath: dataPath,
             EventID: String(eventId),
             PageID: String(pageId),
-            IsOverwrite: overwrite,
             BasePath: opts.basePath,
             BaseRoot: opts.baseRoot,
-            // add はイベント末尾への追記。IsOverwrite が false のまま追記側に落ちる。
+            // add はイベント末尾への追記(上書きにはしない)。
             Strategy: strategy,
             ExecMode: 'IMPORT_MESSAGE_TO_EVENT'
           }])
@@ -11021,7 +11025,6 @@
             TextPath: textPath,
             CommonEventPath: dataPath,
             CommonEventID: String(commonEventId),
-            IsOverwrite: overwrite,
             BasePath: opts.basePath,
             BaseRoot: opts.baseRoot,
             Strategy: strategy,
@@ -11107,12 +11110,19 @@
      * root の外にあるテキスト(CLI に絶対パスを渡した場合など)は、入っているフォルダ名で分ける。 */
     /* テキストのフォルダに対応する祖先の置き場所。deriveBaseId と同じ規約を、
      * 1件ずつではなくフォルダ単位で解いたもの(一括取り出し・同期が使う)。 */
+    /* root の中にあるなら root からの相対パス、外にあるなら null。root と同じ場所なら ''。
+     * 祖先(.t2f-base)の置き場所・その中の区分・根の外の警告は、すべてこの見方で揃える。 */
+    const relInRoot = function (root, target) {
+      const path = require('path')
+      if (!root) return null
+      const rel = path.relative(path.resolve(String(root)), path.resolve(String(target)))
+      if (rel === '') return ''
+      return (!path.isAbsolute(rel) && rel.split(path.sep)[0] !== '..') ? rel : null
+    }
     const baseDirForTextDir = function (root, textDir) {
       const path = require('path')
       const abs = path.resolve(String(textDir))
-      const rel = path.relative(path.resolve(String(root)), abs)
-      const sub = (rel && !path.isAbsolute(rel) && rel.split(path.sep)[0] !== '..') ? rel : path.basename(abs)
-      return path.join(String(root), '.t2f-base', sub)
+      return path.join(String(root), '.t2f-base', relInRoot(root, abs) || path.basename(abs))
     }
     /* 祖先の鍵を、テキストの名前ではなく front matter が指す宛先から決める。
      * 名前を変えても別のフォルダへ移しても同じ祖先を使う(取り出し側と同じ鍵になる)。
@@ -11131,14 +11141,13 @@
       return 'map' + pad3(target.mapId) + '_event' + pad3(target.eventId) + '_page' + String(target.pageId || 1)
     }
     // テキストがどの置き場所のものか。root 直下の1階層(text / text-en)。外にあれば入っているフォルダ名。
+    /* テキストの置き場所(text / text-en など)。祖先はこの区分ごとに分ける。 */
     const textScopeOf = function (textPath, root) {
       const path = require('path')
       const dir = path.dirname(path.resolve(String(textPath)))
-      if (root) {
-        const rel = path.relative(path.resolve(String(root)), dir)
-        if (!rel) return ''
-        if (!path.isAbsolute(rel) && rel.split(path.sep)[0] !== '..') return rel.split(path.sep)[0]
-      }
+      const rel = relInRoot(root, dir)
+      if (rel === '') return ''
+      if (rel) return rel.split(path.sep)[0]
       return path.basename(dir) || 'default'
     }
     const baseIdForTarget = function (textPath, root, target) {
@@ -11153,10 +11162,9 @@
       const abs = path.resolve(String(textPath))
       const noExt = abs.slice(0, abs.length - path.extname(abs).length)
       const asKey = function (p) { return p.split(path.sep).join('/') }
-      if (root) {
-        const rel = path.relative(path.resolve(String(root)), noExt)
-        if (rel && !path.isAbsolute(rel) && rel.split(path.sep)[0] !== '..') return { key: asKey(rel) }
-      }
+      const rel = relInRoot(root, noExt)
+      if (rel) return { key: asKey(rel) }
+      // 根の外のテキストは相対パスが作れないので「フォルダ名/ファイル名」に丸める。
       return { key: asKey(path.join(path.basename(path.dirname(noExt)) || 'default', path.basename(noExt))) }
     }
 
@@ -11231,7 +11239,7 @@
           const eventId = Number(opts.eventId)
           const pageId = Number(opts.pageId || 1)
           const defaultMapPath = opts.mapId
-            ? pathLib.join('data', 'Map' + ('000' + String(opts.mapId)).slice(-3) + '.json')
+            ? pathLib.join('data', mapFileName(opts.mapId))
             : null
           const dataPath = resolveFromRoot(BASE_PATH, opts.mapPath) || resolveFromRoot(BASE_PATH, defaultMapPath)
           if (!dataPath) return { ok: false, error: 'mapPath or mapId is required for event entry' }
@@ -11770,7 +11778,7 @@
         if (fmeta.mapId != null) {
           Laurus.Text2Frame.MapID = fmeta.mapId
           const { PATH_SEP, BASE_PATH } = getDirParams()
-          Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}Map${('000' + fmeta.mapId).slice(-3)}.json`
+          Laurus.Text2Frame.MapPath = `${BASE_PATH}${PATH_SEP}data${PATH_SEP}${mapFileName(fmeta.mapId)}`
           routeFrom.MapID = 'frontMatter'
         }
         if (fmeta.eventId != null) {
@@ -11799,6 +11807,30 @@
       }
     }
 
+    /* テキストのコマンド列をゲームのデータへ入れる。イベントのページでもコモンイベントでも
+     * 手順は同じなので、置き場所(読み書きとファイル)と宛先だけを受け取る。
+     *   merge     … 3-way。衝突はテキストに書き戻し、ゲームは自分の版を保つ
+     *   overwrite … 全置換。テキストとゲームが一致するので祖先を進める
+     *   add       … 末尾に追記。一致しないので祖先は進めない */
+    const applyCommandsTo = function (place, target) {
+      if (Laurus.Text2Frame.Strategy === 'merge') {
+        const merged = mergeWithWriteBack(place.read(), event_command_list,
+          Laurus.Text2Frame.TextPath, Laurus.Text2Frame.BasePath, scenario_text, target)
+        place.write(merged.commandsForGame.concat([getCommandBottomEvent()]))
+        writeData(place.dataPath, place.data)
+        warnConflictsRemain(merged)
+        saveBaseAfterMerge(merged, Laurus.Text2Frame.TextPath)
+        return
+      }
+      const list = Laurus.Text2Frame.IsOverwrite ? [] : place.read()
+      list.pop()
+      place.write(list.concat(event_command_list))
+      writeData(place.dataPath, place.data)
+      if (Laurus.Text2Frame.IsOverwrite) {
+        saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, target)
+      }
+    }
+
     switch (Laurus.Text2Frame.ExecMode) {
       case 'IMPORT_MESSAGE_TO_EVENT':
       case 'メッセージをイベントにインポート': {
@@ -11823,27 +11855,13 @@
           eventId: Laurus.Text2Frame.EventID,
           pageId: Laurus.Text2Frame.PageID
         }
-        if (Laurus.Text2Frame.Strategy === 'merge') {
-          const existing_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list
-          const merged = mergeWithWriteBack(existing_events, event_command_list, Laurus.Text2Frame.TextPath, Laurus.Text2Frame.BasePath, scenario_text, eventTarget)
-          map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list =
-            merged.commandsForGame.concat([getCommandBottomEvent()])
-          writeData(Laurus.Text2Frame.MapPath, map_data)
-          warnConflictsRemain(merged)
-          saveBaseAfterMerge(merged, Laurus.Text2Frame.TextPath)
-        } else {
-          // overwrite は全置換、add は末尾に追記。
-          let map_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list
-          if (Laurus.Text2Frame.IsOverwrite) {
-            map_events = []
-          }
-          map_events.pop()
-          map_events = map_events.concat(event_command_list)
-          map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list = map_events
-          writeData(Laurus.Text2Frame.MapPath, map_data)
-          // 上書きのときだけ text==game になる(追記モードは一致しないので祖先を更新しない)。
-          if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, eventTarget)
-        }
+        const page = map_data.events[Laurus.Text2Frame.EventID].pages[pageID]
+        applyCommandsTo({
+          data: map_data,
+          dataPath: Laurus.Text2Frame.MapPath,
+          read: function () { return page.list },
+          write: function (list) { page.list = list }
+        }, eventTarget)
         addMessage(
           'Success / 書き出し成功！\n' +
             '======> MapID: ' +
@@ -11865,26 +11883,13 @@
         }
 
         const commonTarget = { kind: 'common', commonEventId: Laurus.Text2Frame.CommonEventID }
-        if (Laurus.Text2Frame.Strategy === 'merge') {
-          const existing_ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list
-          const merged = mergeWithWriteBack(existing_ce_events, event_command_list, Laurus.Text2Frame.TextPath, Laurus.Text2Frame.BasePath, scenario_text, commonTarget)
-          ce_data[Laurus.Text2Frame.CommonEventID].list =
-            merged.commandsForGame.concat([getCommandBottomEvent()])
-          writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
-          warnConflictsRemain(merged)
-          saveBaseAfterMerge(merged, Laurus.Text2Frame.TextPath)
-        } else {
-          // overwrite は全置換、add は末尾に追記。
-          let ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list
-          if (Laurus.Text2Frame.IsOverwrite) {
-            ce_events = []
-          }
-          ce_events.pop()
-          ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list)
-          writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
-          // 上書きのときだけ text==game になる(追記モードは一致しないので祖先を更新しない)。
-          if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, commonTarget)
-        }
+        const ce = ce_data[Laurus.Text2Frame.CommonEventID]
+        applyCommandsTo({
+          data: ce_data,
+          dataPath: Laurus.Text2Frame.CommonEventPath,
+          read: function () { return ce.list },
+          write: function (list) { ce.list = list }
+        }, commonTarget)
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break
       }
@@ -12028,6 +12033,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
    * プロジェクト直下で流す通常の使い方は今までと同じ。 */
   const cliRoot = options.root ? path.resolve(options.root) : process.cwd()
   const fromRoot = function (p) { return p ? path.resolve(cliRoot, p) : undefined }
+  const mapFileName = function (mapId) { return 'Map' + ('000' + String(mapId)).slice(-3) + '.json' }
   const cliBase = fromRoot(options.base)
 
   /* 根の外にあるテキストやデータは、祖先だけが根の側に取り残される。さらに根の外の
@@ -12082,7 +12088,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const fm = frontMatterOf(singleTextPath)
     const eventId = options.event_id || fm.eventId
     const mapPath = fromRoot(options.output_path) ||
-      (fm.mapId ? path.resolve(cliRoot, options.dataDir, 'Map' + ('000' + String(fm.mapId)).slice(-3) + '.json') : undefined)
+      (fm.mapId ? path.resolve(cliRoot, options.dataDir, mapFileName(fm.mapId)) : undefined)
     if (!eventId) {
       throw new Error('eventId is required: pass --event_id, or put "eventId:" in the text front matter.')
     }
@@ -12095,7 +12101,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const Text2Frame = {
       IsDebug: options.verbose,
       TextPath: fromRoot(singleTextPath),
-      IsOverwrite: (cliSingleStrategy === 'overwrite'),
       Strategy: cliSingleStrategy,
       ExecMode: execModeFor('event'),
       BasePath: cliBase,
@@ -12119,7 +12124,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const Text2Frame = {
       IsDebug: options.verbose,
       TextPath: fromRoot(singleTextPath),
-      IsOverwrite: (cliSingleStrategy === 'overwrite'),
       Strategy: cliSingleStrategy,
       ExecMode: execModeFor('common'),
       BasePath: cliBase,
@@ -12176,7 +12180,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       if (kind === 'common') {
         opts.commonEventPath = path.resolve(cliRoot, options.dataDir, 'CommonEvents.json')
       } else if (meta.mapId) {
-        opts.mapPath = path.resolve(cliRoot, options.dataDir, 'Map' + ('000' + String(meta.mapId)).slice(-3) + '.json')
+        opts.mapPath = path.resolve(cliRoot, options.dataDir, mapFileName(meta.mapId))
       }
       return module.exports.applyTextFile(opts)
     }
