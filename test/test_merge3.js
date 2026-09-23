@@ -14,6 +14,11 @@ const msg = function (text) {
 const sw = function (id) { return { code: 121, indent: 0, parameters: [id, id, 0, 0] } }
 const texts = function (cmds) { return cmds.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] }) }
 const codes = function (cmds) { return cmds.map(function (c) { return c.code }) }
+const markers = function (cmds) {
+  return cmds.filter(function (c) {
+    return (c.code === 108 || c.code === 408) && String(c.parameters[0]).indexOf('===') === 0
+  })
+}
 
 describe('ThreeWayMerge (applyThreeWayMerge) Test', function () {
   it('theirs-only change: takes the writer edit', function () {
@@ -127,5 +132,46 @@ describe('ThreeWayMerge (applyThreeWayMerge) Test', function () {
       expect(texts(res.commands)).to.eql(['Bonjour'])
       expect(codes(res.commands)).to.include(121) // ツクールの追加も残る
     })
+  })
+})
+
+describe('applyThreeWayMerge with keepOurs / keepTheirs', function () {
+  const base = msg('Hello').concat([bottom])
+  const ours = msg('ゲームの版').concat([bottom])
+  const theirs = msg('テキストの版').concat([bottom])
+
+  it('returns both a marked list and an ours-only list', function () {
+    const r = applyThreeWayMerge(base, ours, theirs, { keepOurs: true })
+
+    expect(r.conflicts).to.equal(1)
+    expect(texts(r.commands)).to.eql(['テキストの版', 'ゲームの版'])
+    expect(markers(r.commands)).to.have.lengthOf(3)
+    // ゲームへ書くほう: 目印なし・自分の版だけ
+    expect(texts(r.commandsOurs)).to.eql(['ゲームの版'])
+    expect(markers(r.commandsOurs)).to.have.lengthOf(0)
+  })
+
+  it('returns a theirs-only list the same way, for the other direction', function () {
+    const r = applyThreeWayMerge(base, ours, theirs, { keepTheirs: true })
+
+    expect(r.conflicts).to.equal(1)
+    // テキストへ書くほう: 目印なし・テキストの版だけ
+    expect(texts(r.commandsTheirs)).to.eql(['テキストの版'])
+    expect(markers(r.commandsTheirs)).to.have.lengthOf(0)
+    // 衝突していない所は、どちらの列にも入る
+    const both = applyThreeWayMerge(
+      msg('Hello').concat(msg('World')).concat([bottom]),
+      msg('Hello').concat(msg('ゲームのWorld')).concat([bottom]),
+      msg('テキストのHello').concat(msg('World')).concat([bottom]),
+      { keepOurs: true, keepTheirs: true })
+    expect(both.conflicts).to.equal(0)
+    expect(texts(both.commandsOurs)).to.eql(['テキストのHello', 'ゲームのWorld'])
+    expect(texts(both.commandsTheirs)).to.eql(['テキストのHello', 'ゲームのWorld'])
+  })
+
+  it('leaves the extra lists empty when not asked, so the default path is untouched', function () {
+    const r = applyThreeWayMerge(base, ours, theirs)
+    expect(r.commandsOurs).to.equal(null)
+    expect(r.commandsTheirs).to.equal(null)
   })
 })

@@ -9,11 +9,10 @@ const path = require('path')
 const text2frame = require('../Text2Frame.js')
 require('../Frame2Text.js')
 
-/* マージバック(書き戻し)。
+/* 統合のあとの書き戻し。
  *
  * 反映が衝突したとき、衝突の目印はこれまでゲーム側に入っていた。直すにはツクールを開くしかなく、
- * テキストで書いている人をいちばん避けたい場所へ追いやっていた。
- * 書き戻しを有効にすると、衝突は「テキストだけ」に出る:
+ * テキストで書いている人をいちばん避けたい場所へ追いやっていた。今は衝突は「テキストだけ」に出る:
  *   ゲーム   … 自分の版(ours)だけ。目印を書かないのでそのまま遊べる
  *   テキスト … 両方 + 衝突の目印
  *   祖先     … ゲームに書いたものと同じ
@@ -118,62 +117,6 @@ describe('write-back after merge', function () {
     writeMap(msg('ゲームの版'))
     fs.writeFileSync(textPath, header + '\nテキストの版\n')
   }
-
-  describe('applyThreeWayMerge with keepOurs / keepTheirs', function () {
-    const base = msg('Hello').concat([bottom])
-    const ours = msg('ゲームの版').concat([bottom])
-    const theirs = msg('テキストの版').concat([bottom])
-
-    it('returns both a marked list and an ours-only list', function () {
-      const r = text2frame.applyThreeWayMerge(base, ours, theirs, { keepOurs: true })
-
-      expect(r.conflicts).to.equal(1)
-      expect(texts(r.commands)).to.eql(['テキストの版', 'ゲームの版'])
-      expect(markers(r.commands)).to.have.lengthOf(3)
-      // ゲームへ書くほう: 目印なし・自分の版だけ
-      expect(texts(r.commandsOurs)).to.eql(['ゲームの版'])
-      expect(markers(r.commandsOurs)).to.have.lengthOf(0)
-    })
-
-    it('returns a theirs-only list the same way, for the other direction', function () {
-      const r = text2frame.applyThreeWayMerge(base, ours, theirs, { keepTheirs: true })
-
-      expect(r.conflicts).to.equal(1)
-      // テキストへ書くほう: 目印なし・テキストの版だけ
-      expect(texts(r.commandsTheirs)).to.eql(['テキストの版'])
-      expect(markers(r.commandsTheirs)).to.have.lengthOf(0)
-      // 衝突していない所は、どちらの列にも入る
-      const both = text2frame.applyThreeWayMerge(
-        msg('Hello').concat(msg('World')).concat([bottom]),
-        msg('Hello').concat(msg('ゲームのWorld')).concat([bottom]),
-        msg('テキストのHello').concat(msg('World')).concat([bottom]),
-        { keepOurs: true, keepTheirs: true })
-      expect(both.conflicts).to.equal(0)
-      expect(texts(both.commandsOurs)).to.eql(['テキストのHello', 'ゲームのWorld'])
-      expect(texts(both.commandsTheirs)).to.eql(['テキストのHello', 'ゲームのWorld'])
-    })
-
-    it('leaves the extra lists empty when not asked, so the default path is untouched', function () {
-      const r = text2frame.applyThreeWayMerge(base, ours, theirs)
-      expect(r.commandsOurs).to.equal(null)
-      expect(r.commandsTheirs).to.equal(null)
-    })
-  })
-
-  // 目印はテキストにだけ入れる。off(applyTextFile の既定)でも、衝突したら書き戻す。
-  it('off (the default for applyTextFile): a conflict still goes into the text, never into the game', function () {
-    setUpConflict()
-
-    const res = push()
-
-    expect(res.ok).to.equal(true)
-    expect(res.conflicts).to.equal(1)
-    expect(res.writtenBack).to.equal(true)
-    expect(markers(mapList())).to.have.lengthOf(0)
-    expect(texts(mapList())).to.eql(['ゲームの版'])
-    expect(readText()).to.contain(MARKER)
-    expect(readText()).to.contain('テキストの版')
-  })
 
   it('puts the conflict in the text and keeps the game playable', function () {
     setUpConflict()
@@ -367,6 +310,8 @@ describe('write-back after merge', function () {
   })
 
   it('leaves the game untouched when the text cannot be written', function () {
+    // root は読み取り専用のファイルにも書けるので、この検査は成り立たない。
+    if (typeof process.getuid === 'function' && process.getuid() === 0) return this.skip()
     setUpConflict()
     const beforeMap = fs.readFileSync(mapPath, 'utf8')
     fs.chmodSync(textPath, 0o444)
