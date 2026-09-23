@@ -15,7 +15,7 @@ describe('examples', function () {
     'compile', 'parseFrontMatter', 'resolveStrategy', 'getMessageDefaults', 'applyThreeWayMerge', 'commandsEqual',
     'restoreAuthoredLines', 'applyMergePull', 'applyTextFile', 'applyCommandsToData', 'deriveBaseId', 'baseIdForTarget',
     'baseDirForTextDir', 'readBaseText', 'saveBaseText',
-    'decompile', 'VERSION', 'renderFrontMatter', 'buildPullText', 'enumerateTargets', 'pullTargetToText', 'writeBackToGame'
+    'decompile', 'VERSION', 'renderFrontMatter', 'buildPullText', 'enumerateTargets', 'indexTexts', 'outPathFor', 'pullTargetToText', 'writeBackToGame'
   ]
   let tmp
   before(function () {

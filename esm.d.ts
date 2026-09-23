@@ -219,6 +219,19 @@ declare namespace Frame2TextMV {
   };
 
   /**
+   * テキストのフォルダを走査し、front matter が指す行き先からファイルの場所を引ける表を作ります。
+   * 同じ行き先のテキストが2つ以上あるものは duplicates に入ります(書き先が決められません)。
+   * Indexes a text folder by the target its front matter names.
+   */
+  export function indexTexts(textDir: string): { paths: { [key: string]: string }; duplicates: { [key: string]: string[] } };
+
+  /**
+   * 取り出しの書き先。同じ行き先のテキストが既にあればその場所、無ければ既定の名前。
+   * Where to write a pull: the existing text for that target, or the default name.
+   */
+  export function outPathFor(textDir: string, index: { paths: { [key: string]: string } } | undefined, target: Target): string;
+
+  /**
    * data フォルダから、取り出せるイベントのページとコモンイベントを並べます。
    * onlyFile を渡すと、そのデータファイルの分だけにします。
    * Lists pull targets in a data folder.

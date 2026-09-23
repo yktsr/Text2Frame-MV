@@ -110,7 +110,14 @@ function pullTarget (target, opts) {
   const dataDir = path.resolve(root, o.dataDir || 'data')
   const englishTag = o.englishTag !== false
   const strategy = o.strategy || 'merge'
-  const textPath = path.resolve(root, o.textDir || 'text', target.key + '.txt')
+  /* 書き先は「同じ行き先のテキストが既にあればその場所」。利用者が付けた名前のまま書き続ける。
+   * 索引は呼び出し側(pullDataFile / syncOnce)が1回だけ作って渡す。 */
+  const textDir = path.resolve(root, o.textDir || 'text')
+  const index = o.index || F2T.indexTexts(textDir)
+  if (index.duplicates && index.duplicates[target.key]) {
+    return { ok: false, textPath: index.duplicates[target.key][0], error: '行き先が同じテキストが複数あります: ' + index.duplicates[target.key].join(' / ') }
+  }
+  const textPath = F2T.outPathFor(textDir, index, target)
 
   let list = []
   if (target.kind === 'event') {
@@ -197,7 +204,9 @@ function pullDataFile (dataFile, opts) {
   const o = opts || {}
   const root = o.root || process.cwd()
   const dataDir = path.resolve(root, o.dataDir || 'data')
-  return targetsForDataFile(dataDir, dataFile).map(function (t) { return pullTarget(t, o) })
+  // 索引はこのファイルぶんで1回だけ作る(1件ごとに走査し直さない)。
+  const withIndex = Object.assign({}, o, { index: o.index || F2T.indexTexts(path.resolve(root, o.textDir || 'text')) })
+  return targetsForDataFile(dataDir, dataFile).map(function (t) { return pullTarget(t, withIndex) })
 }
 
 /* ---------- one-shot ---------- */
@@ -226,8 +235,10 @@ function syncOnce (opts) {
   if (dir === 'pull' || dir === 'both') {
     let files = []
     try { files = fs.readdirSync(dataDir).filter(function (f) { return /^(Map\d+|CommonEvents)\.json$/i.test(f) }) } catch (e) { files = [] }
+    // 索引は一度きりの同期で1回だけ作る。
+    const withIndex = Object.assign({}, o, { index: F2T.indexTexts(textRoot) })
     files.sort().forEach(function (f) {
-      pullDataFile(path.join(dataDir, f), o).forEach(function (r) { results.pulled.push(r) })
+      pullDataFile(path.join(dataDir, f), withIndex).forEach(function (r) { results.pulled.push(r) })
     })
   }
   if (dir === 'push' || dir === 'both') {

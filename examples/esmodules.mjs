@@ -104,9 +104,16 @@ show('baseDirForTextDir', { Frame2Text: baseDir, Text2Frame: T2F.baseDirForTextD
 
 // pullTargetToText: 1件をテキストへ取り出す(テキストと祖先を書く)
 const eventTarget = targets.find(function (t) { return t.kind === 'event' })
+const commonTargetForPath = targets.find(function (t) { return t.kind === 'common' })
 const textPath = path.join(textDir, eventTarget.key + '.txt')
 const pull = F2T.pullTargetToText({ dataDir, target: eventTarget, outPath: textPath, baseDir, englishTag: true, strategy: 'merge' })
 show('pullTargetToText', { ok: pull.ok, text: fs.readFileSync(textPath, 'utf8') })
+
+// indexTexts / outPathFor: テキストを front matter で索引し、取り出しの書き先を決める
+// (既に同じ行き先のテキストがあれば、その名前・その場所のまま書き続ける)
+const index = F2T.indexTexts(textDir)
+show('indexTexts', index)
+show('outPathFor', { 既にある: F2T.outPathFor(textDir, index, eventTarget), まだ無い: F2T.outPathFor(textDir, index, commonTargetForPath) })
 
 // deriveBaseId / readBaseText: テキストに対応する祖先の鍵と中身
 const baseId = T2F.deriveBaseId(textPath, root)

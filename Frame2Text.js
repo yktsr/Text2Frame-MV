@@ -3130,6 +3130,83 @@ function resolveText2Frame () {
       return _path.join(String(root), '.t2f-base', sub)
     }
 
+    /* テキストのフォルダを走査し、「front matter が指す宛先 -> ファイルのパス」の表を作る。
+     * 取り出しの書き先をこの表で決めるので、利用者が付けた名前・置いたフォルダのまま書き続けられる。
+     * 見出しは先頭にしか無いので、ファイルの先頭だけ読む(数千件でも一瞬で済ませる)。
+     * 戻り値: { paths: { 宛先: パス }, duplicates: { 宛先: [パス, ...] } }
+     * 同じ宛先のテキストが2つ以上あるときは、書き先が決められないので呼び出し側が見送る。 */
+    const HEAD_BYTES = 2048
+    const readHead = function (file) {
+      const _fs = require('fs')
+      let fd = null
+      try {
+        fd = _fs.openSync(file, 'r')
+        const buf = Buffer.alloc(HEAD_BYTES)
+        const read = _fs.readSync(fd, buf, 0, HEAD_BYTES, 0)
+        const head = buf.slice(0, read).toString('utf8')
+        // 見出しが 2048 バイトを超えることはまず無いが、切れていたら全部読み直す。
+        if (head.indexOf('\n---\n') >= 0 || read < HEAD_BYTES) return head
+        return _fs.readFileSync(file, 'utf8')
+      } catch (e) {
+        return ''
+      } finally {
+        if (fd !== null) { try { _fs.closeSync(fd) } catch (e) { /* noop */ } }
+      }
+    }
+    const metaOfText = function (text) {
+      const meta = {}
+      const n = String(text).replace(/\r\n/g, '\n')
+      if (n.indexOf('---\n') !== 0) return meta
+      const end = n.indexOf('\n---\n', 4)
+      if (end < 0) return meta
+      n.slice(4, end).split('\n').forEach(function (line) {
+        const m = line.match(/^([A-Za-z0-9_]+)\s*:\s*(.*)$/)
+        if (m) meta[m[1]] = m[2].replace(/^["']|["']$/g, '').trim()
+      })
+      return meta
+    }
+    // 宛先の名前。enumerateTargets が付ける key と同じ規則。
+    const keyOfMeta = function (meta) {
+      const pad3 = function (v) { return ('00' + String(v)).slice(-3) }
+      if (String(meta.kind || '').toLowerCase() === 'common') {
+        return meta.commonEventId ? 'common' + pad3(meta.commonEventId) : ''
+      }
+      if (!meta.mapId || !meta.eventId) return ''
+      return 'map' + pad3(meta.mapId) + '_event' + pad3(meta.eventId) + '_page' + (meta.pageId || '1')
+    }
+    const indexTexts = function (textDir) {
+      const _fs = require('fs')
+      const _path = require('path')
+      const paths = {}
+      const duplicates = {}
+      const walk = function (dir) {
+        let entries = []
+        try { entries = _fs.readdirSync(dir) } catch (e) { return }
+        entries.sort().forEach(function (name) {
+          const full = _path.join(dir, name)
+          let stat = null
+          try { stat = _fs.statSync(full) } catch (e) { return }
+          if (stat.isDirectory()) { walk(full); return }
+          if (!/\.txt$/i.test(name)) return
+          // 会話だけ・翻訳用の書き出しは反映の対象外なので、索引にも入れない。
+          if (/\.(conversation|translation)\.txt$/i.test(name)) return
+          const key = keyOfMeta(metaOfText(readHead(full)))
+          if (!key) return
+          if (paths[key] === undefined) { paths[key] = full; return }
+          if (!duplicates[key]) duplicates[key] = [paths[key]]
+          duplicates[key].push(full)
+        })
+      }
+      walk(_path.resolve(String(textDir)))
+      return { paths, duplicates }
+    }
+    /* 取り出しの書き先。同じ宛先のテキストが既にあればその場所に書き、無ければ既定の名前で作る。 */
+    const outPathFor = function (textBase, index, target) {
+      const _path = require('path')
+      const hit = index && index.paths ? index.paths[target.key] : undefined
+      return hit || _path.join(String(textBase), target.key + '.txt')
+    }
+
     // 書き出したテキストに載せる front matter(YAMLヘッダ)を生成する。
     const renderFrontMatter = function (entry, kind) {
       const lines = ['---']
@@ -3423,7 +3500,7 @@ function resolveText2Frame () {
       }
     }
 
-    Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, pullTargetToText, renderFrontMatter, buildPullText, writeBackToGame }
+    Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, indexTexts, outPathFor, pullTargetToText, renderFrontMatter, buildPullText, writeBackToGame }
     // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
     // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
     // window / global にもフォールバックする(Text2Frame 側の $LaurusText2Frame と対称)。
@@ -3495,6 +3572,10 @@ function resolveText2Frame () {
       // 祖先はテキストの置き場所ごとに分ける(Text2Frame の deriveBaseId と同じ規約)。
       const _baseDir = baseDirForTextDir(_baseRoot, outDir)
       try { mkdirpSync(_baseDir) } catch (e) { _baseSaveError = _baseSaveError || e }
+      /* 既にあるテキストは、利用者が付けた名前・置いたフォルダのまま書き続ける。
+       * 同じ宛先のテキストが2つ以上あるものは、書き先が決められないので見送る。 */
+      const _index = indexTexts(outDir)
+      const _duplicated = Object.keys(_index.duplicates)
 
       // データフォルダが無いと readdirSync が投げる。生の例外ではなくパスを見せて止める。
       let targets = []
@@ -3512,11 +3593,12 @@ function resolveText2Frame () {
       }
 
       targets.forEach(function (t) {
+        if (_index.duplicates[t.key]) return
         // 1件ぶんの取り出しは同期と共通(pullTargetToText)。ここは件数の集計だけ行う。
         const r = pullTargetToText({
           dataDir,
           target: t,
-          outPath: _path.resolve(BASE_PATH, textBase, t.key + '.txt'),
+          outPath: outPathFor(outDir, _index, t),
           baseDir: _baseDir,
           englishTag,
           strategy: batchStrategy
@@ -3550,6 +3632,12 @@ function resolveText2Frame () {
         (conflictSkipped.length > 0 ? '、衝突未解決で除外 ' + conflictSkipped.length + '件' : '') +
         (markerCarried.length > 0 ? '、目印ごと取り出し ' + markerCarried.length + '件' : ''))
       addMessage('[batch] 出力先: ' + outDir)
+      if (_duplicated.length > 0) {
+        addWarning('[batch] 同じ行き先のテキストが複数あるため ' + _duplicated.length + '件を見送りました。どれか1つにしてください。')
+        _duplicated.forEach(function (key) {
+          console.warn('[batch] 見送り(行き先が同じテキストが複数): ' + key + ' -> ' + _index.duplicates[key].join(' / '))
+        })
+      }
       if (overwrittenCount > 0) {
         // 「取り出しはマージしません」と書いていた名残があったが、一括取り出しは統合を選べる。
         // この行は上書きしたファイルだけを数えているので、統合との違いを言って対処に繋げる。
@@ -3889,59 +3977,34 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     // 祖先はテキストの置き場所ごとに分ける(Text2Frame の deriveBaseId と同じ規約)。
     const baseDir = module.exports.baseDirForTextDir(baseRoot, path.resolve(textDir))
     try { if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true }) } catch (e) { baseSaveError = baseSaveError || e }
+    /* 既にあるテキストは、その名前・その場所のまま書き続ける(索引は front matter で引く)。
+     * 同じ宛先のテキストが2つ以上あるものは、書き先が決められないので見送る。 */
+    const index = module.exports.indexTexts(textDir)
+    const duplicated = Object.keys(index.duplicates)
     const results = []
     module.exports.enumerateTargets(dataDir).forEach(function (t) {
-      try {
-        let list = []
-        if (t.kind === 'event') {
-          const mapData = JSON.parse(fs.readFileSync(path.join(dataDir, 'Map' + ('000' + String(t.mapId)).slice(-3) + '.json'), 'utf8'))
-          list = mapData.events[Number(t.eventId)].pages[Number(t.pageId) - 1].list || []
-        } else {
-          const ceData = JSON.parse(fs.readFileSync(path.join(dataDir, 'CommonEvents.json'), 'utf8'))
-          list = ceData[Number(t.commonEventId)].list || []
-        }
-        const textPath = path.resolve(textDir, t.key + '.txt')
-        let existingText = ''
-        try { existingText = fs.readFileSync(textPath, 'utf8') } catch (e) { existingText = '' }
-        const entryStrategy = String(batchStrategy).toLowerCase() === 'merge' ? 'merge' : 'overwrite'
-        let baseText = ''
-        if (entryStrategy === 'merge') {
-          try { baseText = fs.readFileSync(path.join(baseDir, t.key + '.txt'), 'utf8') } catch (e) { baseText = '' }
-        }
-        const built = module.exports.buildPullText({
-          list,
-          englishTag,
-          omitDefaults,
-          strategy: entryStrategy,
-          existingText,
-          baseText,
-          fallbackHeader: module.exports.renderFrontMatter(t, t.kind)
-        })
-        // 統合できないものは書かずに見送る(上書きなら目印ごと取り出せる)。
-        if (built.skipped) {
-          results.push({ ok: true, textPath, skipped: built.skipped })
-          return
-        }
-        // 先にゲームへ書く。書けなければテキストも祖先も触らない。
-        const wrote = module.exports.writeBackToGame(built.writeBack, t, {
-          mapPath: t.kind === 'event' ? path.join(dataDir, 'Map' + ('000' + String(t.mapId)).slice(-3) + '.json') : undefined,
-          commonEventPath: t.kind === 'common' ? path.join(dataDir, 'CommonEvents.json') : undefined
-        })
-        if (!wrote.ok) {
-          results.push({ ok: false, key: t.key, error: wrote.error })
-          return
-        }
-        fs.mkdirSync(path.dirname(textPath), { recursive: true })
-        fs.writeFileSync(textPath, built.text, 'utf8')
-        // 目印ごと取り出したときだけ祖先を進めない(理由は単発取り出しの同じ箇所)。
-        if (!built.markers) {
-          // 祖先はゲーム側(built.baseText)。理由は in-engine 側の同じ箇所を参照。
-          try { fs.writeFileSync(path.join(baseDir, t.key + '.txt'), built.baseText, 'utf8') } catch (e) { baseSaveError = baseSaveError || e }
-        }
-        results.push({ ok: true, textPath, conflicts: built.conflicts, markers: built.markers, approximate: built.approximate, wroteGame: !!built.writeBack })
-      } catch (error) {
-        results.push({ ok: false, key: t.key, error: error.message })
+      if (index.duplicates[t.key]) return
+      // 1件ぶんの取り出しは in-engine・同期と共通(pullTargetToText)。
+      const r = module.exports.pullTargetToText({
+        dataDir,
+        target: t,
+        outPath: module.exports.outPathFor(textDir, index, t),
+        baseDir,
+        englishTag,
+        omitDefaults,
+        strategy: batchStrategy
+      })
+      const textPath = module.exports.outPathFor(textDir, index, t)
+      if (!r.ok) {
+        results.push({ ok: false, key: t.key, error: r.error })
+        return
       }
+      if (r.skipped) {
+        results.push({ ok: true, textPath, skipped: r.skipped })
+        return
+      }
+      if (r.baseSaveError) baseSaveError = baseSaveError || r.baseSaveError
+      results.push({ ok: true, textPath, conflicts: r.conflicts, markers: r.markers, approximate: r.approximate, wroteGame: r.wroteGame })
     })
     const failures = results.filter(function (r) { return !r.ok })
     const conflicted = results.filter(function (r) { return r.ok && r.conflicts })
@@ -3974,6 +4037,10 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       console.warn('[batch] WARNING: .t2f-base の祖先を保存できませんでした (' + (baseSaveError.message || baseSaveError) +
         ')。テキストは書き出せていますが、次回 --mode batch は祖先無し扱いとなりテキストを全反映します（3-wayになりません）。/ ' +
         'ancestor NOT saved; next import applies text whole (no 3-way).')
+    }
+    if (duplicated.length > 0) {
+      console.warn('[batch] ' + duplicated.length + ' target(s) skipped: more than one text points at them ' +
+        '(keep one): ' + duplicated.map(function (key) { return key + ' -> ' + index.duplicates[key].join(' / ') }).join(', '))
     }
     if (failures.length > 0) {
       process.exitCode = 1

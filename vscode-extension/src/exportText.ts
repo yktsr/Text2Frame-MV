@@ -50,6 +50,8 @@ interface Frame2TextModule {
         /** ゲームへ書き戻すコマンド列。衝突したときは目印つきの両方が入る。 */
         writeBack?: { commands: unknown[] } | null;
     };
+    /** テキストのフォルダを front matter で索引する。取り出しの書き先を既存のファイルに合わせるため。 */
+    indexTexts?: (textDir: string) => { paths: { [key: string]: string }; duplicates: { [key: string]: string[] } };
     VERSION?: string;
 }
 
@@ -213,6 +215,23 @@ function dataPathFor(workspaceRoot: string, target: ExportTarget): string | unde
 }
 
 const frame2TextMissing = (): string => tr('Frame2Text.js を読み込めませんでした(詳細は出力 "Text2Frame Export")。設定 text2frame.modulePath で本体の場所を指定してください。', 'Could not load Frame2Text.js (see the "Text2Frame Export" output). Set its location in text2frame.modulePath.');
+
+/**
+ * テキストのフォルダの索引(front matter -> ファイルの場所)。
+ * 取り出しは「同じ行き先のテキストが既にあればその場所へ書く」ので、利用者が付けた名前が保たれる。
+ */
+export function textIndexFor(context: vscode.ExtensionContext, workspaceRoot: string, textDir: string):
+    { paths: { [key: string]: string }; duplicates: { [key: string]: string[] } } {
+    const mod = frame2Text(context, workspaceRoot);
+    if (!mod || !mod.indexTexts) {
+        return { paths: {}, duplicates: {} };
+    }
+    try {
+        return mod.indexTexts(textDir);
+    } catch (e) {
+        return { paths: {}, duplicates: {} };
+    }
+}
 
 function frame2Text(context: vscode.ExtensionContext, workspaceRoot: string): Frame2TextModule | undefined {
     const { mod, tried } = loadFrame2Text(context, workspaceRoot);

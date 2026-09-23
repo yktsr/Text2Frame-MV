@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor, baseSnapshotPath, hasBaseSnapshot, snapshotKeyForTarget, historyKeep } from './compiler';
 import { withHistory } from './db/history';
-import { commitPull, planPull, ExportTarget, PullPlan } from './exportText';
+import { commitPull, planPull, textIndexFor, ExportTarget, PullPlan } from './exportText';
 import { writeBackAndRefreshBase, reviewFiles, noteApply } from './deploy';
 import { reviewEnabled } from './review';
 import { reviewPull, busy, DeploySort } from './reviewApply';
@@ -227,14 +227,16 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
             return;
         }
     }
-    const makePlans = (slowly: SlowlyOptions): Promise<PullPlan[] | undefined> => mapSlowly(enumerateDataTargets(dataDir), (it) => {
+    // 既にあるテキストは、その名前・その場所のまま書き続ける(front matter で引く)。
+    const index = textIndexFor(context, root, outDir);
+    const makePlans = (slowly: SlowlyOptions): Promise<PullPlan[] | undefined> => mapSlowly(enumerateDataTargets(dataDir).filter((it) => !index.duplicates[it.key]), (it) => {
         const target: ExportTarget = {
             kind: it.kind,
             mapId: it.mapId,
             eventId: it.eventId,
             pageId: it.pageId,
             commonEventId: it.commonEventId,
-            textPath: path.join(outDir, it.key + '.txt')
+            textPath: index.paths[it.key] || path.join(outDir, it.key + '.txt')
         };
         if (mode === 'overwrite' && fs.existsSync(target.textPath)) {
             target.frontMatterSource = fs.readFileSync(target.textPath, 'utf8');
