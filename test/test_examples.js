@@ -13,7 +13,7 @@ describe('examples', function () {
   // 公開している関数。example はこれをすべて使う。
   const api = [
     'compile', 'parseFrontMatter', 'resolveStrategy', 'getMessageDefaults', 'applyThreeWayMerge', 'commandsEqual',
-    'restoreAuthoredLines', 'applyMergePull', 'applyTextFile', 'applyCommandsToData', 'deriveBaseId',
+    'restoreAuthoredLines', 'applyMergePull', 'applyTextFile', 'applyCommandsToData', 'deriveBaseId', 'baseIdForTarget',
     'baseDirForTextDir', 'readBaseText', 'saveBaseText',
     'decompile', 'VERSION', 'renderFrontMatter', 'buildPullText', 'enumerateTargets', 'pullTargetToText', 'writeBackToGame'
   ]

@@ -10,7 +10,7 @@ import {
     recordDataState,
     saveBaseSnapshot,
     baseSnapshotPath,
-    snapshotKeyFor,
+    snapshotKeyForTarget,
     historyKeep
 } from './compiler';
 import { noteWrite, withHistory } from './db/history';
@@ -396,7 +396,12 @@ function sameAsFile(file: string, contents: string): boolean {
 }
 
 function snapshotIdFor(workspaceRoot: string, target: ExportTarget): { key: string } {
-    return { key: snapshotKeyFor(workspaceRoot, target.textPath) };
+    const meta: { [key: string]: string } = { kind: target.kind };
+    if (target.mapId) { meta.mapId = target.mapId; }
+    if (target.eventId) { meta.eventId = target.eventId; }
+    if (target.pageId) { meta.pageId = target.pageId; }
+    if (target.commonEventId) { meta.commonEventId = target.commonEventId; }
+    return { key: snapshotKeyForTarget(workspaceRoot, target.textPath, meta) };
 }
 
 /**

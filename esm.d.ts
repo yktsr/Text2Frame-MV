@@ -135,8 +135,19 @@ declare namespace Text2FrameMV {
     commonEventPath?: string;
   }): { ok: boolean; dataPath?: string; error?: string };
 
-  /** テキストに対応する祖先の鍵 / The ancestor key for a text file. */
+  /** テキストに対応する祖先の鍵(テキストのパスから) / The ancestor key from a text file's path. */
   export function deriveBaseId(textPath: string, root?: string): { key: string };
+
+  /**
+   * 祖先の鍵を、front matter が指す宛先から決めます。テキストの名前を変えても移動しても同じ鍵になります。
+   * 宛先が分からないときは deriveBaseId と同じ(パスから決める)。
+   * The ancestor key for the target the front matter names; renaming or moving the text keeps it.
+   */
+  export function baseIdForTarget(
+    textPath: string,
+    root: string | undefined,
+    target?: { kind?: 'event' | 'common'; mapId?: string | number; eventId?: string | number; pageId?: string | number; commonEventId?: string | number }
+  ): { key: string };
 
   /** テキストのフォルダに対応する祖先(.t2f-base)のフォルダ / The ancestor folder for a text folder. */
   export function baseDirForTextDir(root: string, textDir: string): string;

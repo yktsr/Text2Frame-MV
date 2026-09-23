@@ -113,6 +113,9 @@ const baseId = T2F.deriveBaseId(textPath, root)
 show('deriveBaseId', baseId)
 show('readBaseText', T2F.readBaseText(root, baseId.key))
 
+// baseIdForTarget: 祖先の鍵は front matter の宛先で決まる(名前を変えても同じ鍵)
+show('baseIdForTarget', T2F.baseIdForTarget(path.join(textDir, 'すきな名前.txt'), root, eventTarget))
+
 // applyTextFile: テキストを書き換えて、ゲームへ反映する(見出しから反映先を決める)
 fs.appendFileSync(textPath, '\n<Name: リード>\nテキストで足した行\n')
 const applied = T2F.applyTextFile({ textPath, mapPath, baseRoot: root, strategy: 'merge' })

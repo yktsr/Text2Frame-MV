@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, isDeployable, isAncestorCopy, ancestorCopyMessage, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot, snapshotKeyFor, historyKeep } from './compiler';
+import { parseFrontMatter, isDeployable, isAncestorCopy, ancestorCopyMessage, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot, snapshotKeyForTarget, historyKeep } from './compiler';
 import { noteWrite, withHistory } from './db/history';
 import { placeFromMeta, placeKey } from './placeLabel';
 import { mergePullToText, renderCommands, ExportTarget } from './exportText';
@@ -70,12 +70,11 @@ function getOutput(): vscode.OutputChannel {
 }
 
 /**
- * Identity of the 3-way BASE snapshot for a single file: the text's path relative to the
- * workspace root. Kept consistent with the batch commands so single-file and batch deploys
- * share the same ancestor.
+ * Identity of the 3-way BASE snapshot for a single file: the target the front matter names.
+ * Renaming or moving the text keeps the same ancestor, and the pull side uses the same key.
  */
-function snapshotIdFor(workspaceRoot: string, textPath: string): { key: string } {
-    return { key: snapshotKeyFor(workspaceRoot, textPath) };
+function snapshotIdFor(workspaceRoot: string, textPath: string, meta: { [key: string]: string }): { key: string } {
+    return { key: snapshotKeyForTarget(workspaceRoot, textPath, meta) };
 }
 
 /**
@@ -125,7 +124,7 @@ export function noteApply(workspaceRoot: string, textPath: string, dataPath: str
     const key = place ? placeKey(place) : undefined;
     if (dataPath) noteWrite(dataPath, 'data', key ? [key] : undefined);
     noteWrite(textPath, 'text');
-    noteWrite(baseSnapshotPath(workspaceRoot, snapshotKeyFor(workspaceRoot, textPath)), 'base');
+    noteWrite(baseSnapshotPath(workspaceRoot, snapshotKeyForTarget(workspaceRoot, textPath, meta)), 'base');
 }
 
 const relativeLabel = (workspaceRoot: string, file: string): string => path.relative(workspaceRoot, file).split(path.sep).join('/');
@@ -240,7 +239,7 @@ async function deployDocumentNow(
     // Default to 3-way merge: attach the BASE snapshot (common ancestor) when present so a
     // merge deploy reconciles writer text edits with external JSON edits, instead of overlaying.
     const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
-    const snap = snapshotIdFor(workspaceRoot, document.uri.fsPath);
+    const snap = snapshotIdFor(workspaceRoot, document.uri.fsPath, meta);
     const applyOpts: { [key: string]: unknown } = {
         textPath: document.uri.fsPath,
         ...resolved.opts,
@@ -353,7 +352,7 @@ function prepareFile(context: vscode.ExtensionContext, workspaceRoot: string, fi
     const strategy = vscode.workspace.getConfiguration('text2frame').get<string>('strategy') || 'merge';
     // Default to 3-way merge: attach the BASE snapshot (common ancestor) when present.
     const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
-    const snap = snapshotIdFor(workspaceRoot, filePath);
+    const snap = snapshotIdFor(workspaceRoot, filePath, meta);
     const applyOpts: { [key: string]: unknown } = {
         textPath: filePath,
         ...resolved.opts,

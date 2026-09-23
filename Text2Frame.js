@@ -4859,7 +4859,7 @@
 
     // MERGE(反映): 祖先(BASE)を解決し 3-way / overwrite を自動選択して
     // マージ後のコマンド列を返す。event / CE で共通。祖先の保存キー(baseRoot/baseId)も返す。
-    const resolveMergeCommands = function (existing_events, event_command_list, textPath, explicitBasePath, keepOurs) {
+    const resolveMergeCommands = function (existing_events, event_command_list, textPath, explicitBasePath, keepOurs, target) {
       // 未解決の衝突が残ったままマージすると、目印ごと再マージされて目印が二重・三重に増え、
       // どちらが自分の変更か分からなくなる。解決を促して止める(上書き反映は逃げ道として通す)。
       if (hasConflictMarker(existing_events)) {
@@ -4878,7 +4878,7 @@
         // 祖先は「ユーザーのプロジェクト(cwd)」直下の .t2f-base に置く(ツール本体の場所ではない)。
         baseRoot = Laurus.Text2Frame.BaseRoot ||
           ((typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH)
-        baseId = deriveBaseId(textPath, baseRoot)
+        baseId = baseIdForTarget(textPath, baseRoot, target)
       } catch (e) { baseRoot = null }
       if (explicitBasePath) {
         try { base_cmds = compile(parseFrontMatter(readText(explicitBasePath)).body) } catch (e) { base_cmds = null }
@@ -5016,10 +5016,10 @@
 
     /* MERGE 反映の本体。テキストを先に書き、書けたときだけゲームには目印なしの版を書く。
      * 書けなかったときは中断する(ゲームに ours だけ入ってテキスト側の版が消えるのを防ぐ)。 */
-    const mergeWithWriteBack = function (existing_events, event_command_list, textPath, explicitBasePath, scenario_text) {
+    const mergeWithWriteBack = function (existing_events, event_command_list, textPath, explicitBasePath, scenario_text, target) {
       const plan = planWriteBack()
       if (plan.reason) addWarning(plan.reason)
-      const merged = resolveMergeCommands(existing_events, event_command_list, textPath, explicitBasePath, true)
+      const merged = resolveMergeCommands(existing_events, event_command_list, textPath, explicitBasePath, true, target)
       const wb = writeBackMergedText(plan, merged, textPath, scenario_text)
       if (wb.failed) {
         throw new Error('書き戻せなかったため反映を中止しました。テキストもゲームも変更していません。' +
@@ -5054,11 +5054,11 @@
 
     // overwrite 反映の直後も text==game なので、同じく祖先を更新する。
     // 読み込み済みのテキストを受け取り、ファイルを読み直さない。
-    const saveBaseAfterOverwrite = function (textPath, text) {
+    const saveBaseAfterOverwrite = function (textPath, text, target) {
       try {
         const root = Laurus.Text2Frame.BaseRoot ||
           ((typeof process !== 'undefined' && process.cwd) ? process.cwd() : getDirParams().BASE_PATH)
-        const id = deriveBaseId(textPath, root)
+        const id = baseIdForTarget(textPath, root, target)
         if (root && id) saveBaseText(root, id.key, text)
       } catch (e) { warnBaseSaveFailed(e) }
     }
@@ -11115,6 +11115,40 @@
       const sub = (rel && !path.isAbsolute(rel) && rel.split(path.sep)[0] !== '..') ? rel : path.basename(abs)
       return path.join(String(root), '.t2f-base', sub)
     }
+    /* 祖先の鍵を、テキストの名前ではなく front matter が指す宛先から決める。
+     * 名前を変えても別のフォルダへ移しても同じ祖先を使う(取り出し側と同じ鍵になる)。
+     * テキストの置き場所(text / text-en)だけは分ける。多言語で別々の祖先が要るため。 */
+    const mapIdOfDataPath = function (dataPath) {
+      const m = String(dataPath || '').match(/Map(\d+)\.json$/i)
+      return m ? String(parseInt(m[1], 10)) : ''
+    }
+    const targetKeyOf = function (target) {
+      if (!target) return ''
+      const pad3 = function (v) { return ('00' + String(v == null ? '' : v)).slice(-3) }
+      if (String(target.kind) === 'common') {
+        return target.commonEventId == null ? '' : 'common' + pad3(target.commonEventId)
+      }
+      if (target.mapId == null || target.eventId == null) return ''
+      return 'map' + pad3(target.mapId) + '_event' + pad3(target.eventId) + '_page' + String(target.pageId || 1)
+    }
+    // テキストがどの置き場所のものか。root 直下の1階層(text / text-en)。外にあれば入っているフォルダ名。
+    const textScopeOf = function (textPath, root) {
+      const path = require('path')
+      const dir = path.dirname(path.resolve(String(textPath)))
+      if (root) {
+        const rel = path.relative(path.resolve(String(root)), dir)
+        if (!rel) return ''
+        if (!path.isAbsolute(rel) && rel.split(path.sep)[0] !== '..') return rel.split(path.sep)[0]
+      }
+      return path.basename(dir) || 'default'
+    }
+    const baseIdForTarget = function (textPath, root, target) {
+      const key = targetKeyOf(target)
+      // 宛先が分からないとき(引数だけで反映した古い呼び方など)は、これまでどおりパスから決める。
+      if (!key) return deriveBaseId(textPath, root)
+      const scope = textScopeOf(textPath, root)
+      return { key: scope ? scope + '/' + key : key }
+    }
     const deriveBaseId = function (textPath, root) {
       const path = require('path')
       const abs = path.resolve(String(textPath))
@@ -11627,7 +11661,7 @@
       return { ok, fail, root }
     }
 
-    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, applyCommandsToData, commandsEqual, resolveStrategy, readBaseText, saveBaseText, deriveBaseId, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter }
+    Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, applyCommandsToData, commandsEqual, resolveStrategy, readBaseText, saveBaseText, deriveBaseId, baseIdForTarget, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter }
     // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
     // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
     // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。
@@ -11770,9 +11804,18 @@
           map_data.events[Laurus.Text2Frame.EventID].pages.push(getDefaultPage())
         }
 
+        /* 祖先の鍵は宛先で決まる。マップは書き込み先のファイル名から拾う。
+         * Laurus.Text2Frame.MapID はプラグインパラメータの既定が残っていることがあり、
+         * front matter で行き先を決めた反映では当てにならない。 */
+        const eventTarget = {
+          kind: 'event',
+          mapId: mapIdOfDataPath(Laurus.Text2Frame.MapPath) || Laurus.Text2Frame.MapID,
+          eventId: Laurus.Text2Frame.EventID,
+          pageId: Laurus.Text2Frame.PageID
+        }
         if (Laurus.Text2Frame.Strategy === 'merge') {
           const existing_events = map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list
-          const merged = mergeWithWriteBack(existing_events, event_command_list, Laurus.Text2Frame.TextPath, Laurus.Text2Frame.BasePath, scenario_text)
+          const merged = mergeWithWriteBack(existing_events, event_command_list, Laurus.Text2Frame.TextPath, Laurus.Text2Frame.BasePath, scenario_text, eventTarget)
           map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list =
             merged.commandsForGame.concat([getCommandBottomEvent()])
           writeData(Laurus.Text2Frame.MapPath, map_data)
@@ -11789,7 +11832,7 @@
           map_data.events[Laurus.Text2Frame.EventID].pages[pageID].list = map_events
           writeData(Laurus.Text2Frame.MapPath, map_data)
           // 上書きのときだけ text==game になる(追記モードは一致しないので祖先を更新しない)。
-          if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text)
+          if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, eventTarget)
         }
         addMessage(
           'Success / 書き出し成功！\n' +
@@ -11811,9 +11854,10 @@
           )
         }
 
+        const commonTarget = { kind: 'common', commonEventId: Laurus.Text2Frame.CommonEventID }
         if (Laurus.Text2Frame.Strategy === 'merge') {
           const existing_ce_events = ce_data[Laurus.Text2Frame.CommonEventID].list
-          const merged = mergeWithWriteBack(existing_ce_events, event_command_list, Laurus.Text2Frame.TextPath, Laurus.Text2Frame.BasePath, scenario_text)
+          const merged = mergeWithWriteBack(existing_ce_events, event_command_list, Laurus.Text2Frame.TextPath, Laurus.Text2Frame.BasePath, scenario_text, commonTarget)
           ce_data[Laurus.Text2Frame.CommonEventID].list =
             merged.commandsForGame.concat([getCommandBottomEvent()])
           writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
@@ -11829,7 +11873,7 @@
           ce_data[Laurus.Text2Frame.CommonEventID].list = ce_events.concat(event_command_list)
           writeData(Laurus.Text2Frame.CommonEventPath, ce_data)
           // 上書きのときだけ text==game になる(追記モードは一致しないので祖先を更新しない)。
-          if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text)
+          if (Laurus.Text2Frame.IsOverwrite) saveBaseAfterOverwrite(Laurus.Text2Frame.TextPath, scenario_text, commonTarget)
         }
         addMessage('Success / 書き出し成功！\n' + '=====> Common EventID :' + Laurus.Text2Frame.CommonEventID)
         break

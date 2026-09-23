@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { workspaceRootFor, recordDataState, historyKeep, baseSnapshotPath, snapshotKeyFor } from './compiler';
+import { workspaceRootFor, recordDataState, historyKeep, baseSnapshotPath, snapshotKeyForTarget, parseFrontMatter } from './compiler';
 import { renderCommands } from './exportText';
 import { pageList, PageRef } from './dryRun';
 import { tr } from './db/lang';
@@ -182,7 +182,11 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
         const fresh = readEntry(root, entry.id) || entry;
         let targets = only ? [only.path] : fresh.files.map((f) => f.path);
         if (only && only.kind === 'text') {
-            const base = path.relative(root, baseSnapshotPath(root, snapshotKeyFor(root, absolutePath(root, only.path)))).split(path.sep).join('/');
+            // 祖先の場所はテキストの front matter で決まる。読めなければパスから決める(compiler 側の逃げ道)。
+            const textAbs = absolutePath(root, only.path);
+            let meta: { [key: string]: string } = {};
+            try { meta = parseFrontMatter(fs.readFileSync(textAbs, 'utf8')).meta; } catch (e) { meta = {}; }
+            const base = path.relative(root, baseSnapshotPath(root, snapshotKeyForTarget(root, textAbs, meta))).split(path.sep).join('/');
             if (fresh.files.some((f) => f.path === base)) targets = targets.concat([base]);
         }
         const files = fresh.files.filter((f) => targets.includes(f.path));

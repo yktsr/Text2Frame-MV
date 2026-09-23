@@ -127,7 +127,8 @@ function pullTarget (target, opts) {
 
   // 本文の組み立ては Frame2Text の buildPullText に一本化する(プラグイン/CLI と同じ挙動)。
   const existing = readIfExists(textPath)
-  const id = T2F.deriveBaseId(textPath, root)
+  // 祖先の鍵は宛先で決まる(テキストの名前を変えても同じ祖先を使う)。
+  const id = T2F.baseIdForTarget(textPath, root, target)
   const entryStrategy = String(strategy).toLowerCase() === 'overwrite' ? 'overwrite' : 'merge'
   const built = F2T.buildPullText({
     list,
@@ -184,7 +185,7 @@ function pullTarget (target, opts) {
       '(resolve the markers in the text, then push with --strategy overwrite): ' + textPath)
   } else {
     try {
-      const id = T2F.deriveBaseId(textPath, root)
+      const id = T2F.baseIdForTarget(textPath, root, target)
       // 祖先は buildPullText が決めた側(書き戻したならテキストに書いた内容、でなければゲーム)。
       T2F.saveBaseText(root, id.key, built.baseText)
     } catch (e) { /* best effort */ }

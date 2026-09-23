@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { keyFromTextPath, snapshotKeyForTarget, targetKeyFromMeta } from './db/baseKey';
 import * as fs from 'fs';
 import { isHistoryCopy, noteWrite } from './db/history';
 import { tr } from './db/lang';
@@ -181,20 +182,14 @@ export function dataChangedExternally(context: vscode.ExtensionContext, dataPath
  * common ancestor: writer edits (current text) and dev edits (current JSON) are
  * merged against it.
  *
- * The key is the text file's path relative to the workspace root, so text/ and
- * text_en/ keep separate ancestors even when they hold the same file names.
- * Same rule as Text2Frame.deriveBaseId — change both together.
+ * 鍵は front matter が指す宛先で決まる(db/baseKey.ts)。名前を変えても移動しても同じ祖先を使い、
+ * text/ と text-en/ は置き場所ごとに分かれる。Text2Frame の baseIdForTarget と同じ規則なので、
+ * 変えるときは両方そろえること。snapshotKeyFor は宛先が分からないときの逃げ道。
  */
 export function snapshotKeyFor(workspaceRoot: string, textPath: string): string {
-    const abs = path.resolve(textPath);
-    const noExt = abs.slice(0, abs.length - path.extname(abs).length);
-    const rel = path.relative(path.resolve(workspaceRoot), noExt);
-    if (rel && !path.isAbsolute(rel) && rel.split(path.sep)[0] !== '..') {
-        return rel.split(path.sep).join('/');
-    }
-    // Outside the workspace: fall back to the containing folder name plus the file name.
-    return [path.basename(path.dirname(noExt)) || 'default', path.basename(noExt)].join('/');
+    return keyFromTextPath(workspaceRoot, textPath);
 }
+export { snapshotKeyForTarget, targetKeyFromMeta };
 export function baseSnapshotPath(workspaceRoot: string, key: string): string {
     return path.join(workspaceRoot, '.t2f-base', key + '.txt');
 }
