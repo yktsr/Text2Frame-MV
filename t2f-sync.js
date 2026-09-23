@@ -22,19 +22,6 @@ const sha1 = function (s) { return crypto.createHash('sha1').update(String(s)).d
 const pad3 = function (n) { return ('000' + String(n)).slice(-3) }
 const mapFileName = function (mapId) { return 'Map' + pad3(mapId) + '.json' }
 
-const parseFrontMatter = function (text) {
-  const meta = {}
-  const n = String(text).replace(/\r\n/g, '\n')
-  if (n.indexOf('---\n') !== 0) return { meta: null, body: n }
-  const e = n.indexOf('\n---\n', 4)
-  if (e < 0) return { meta: null, body: n }
-  n.slice(4, e).split('\n').forEach(function (line) {
-    const m = line.match(/^([A-Za-z0-9_]+)\s*:\s*(.*)$/)
-    if (m) meta[m[1]] = m[2].replace(/^["']|["']$/g, '').trim()
-  })
-  return { meta, body: n.slice(e + 5) }
-}
-
 const readIfExists = function (p) {
   try { return fs.readFileSync(p, 'utf8') } catch (e) { return null }
 }
@@ -68,7 +55,7 @@ function pushFile (textPath, opts) {
   const dataDir = path.resolve(root, o.dataDir || 'data')
   const raw = readIfExists(textPath)
   if (raw === null) return { ok: false, textPath, error: 'text not readable' }
-  const parsed = parseFrontMatter(raw)
+  const parsed = T2F.parseFrontMatter(raw)
   if (!parsed.meta || !parsed.meta.kind) return null // front matter 無しは対象外
   const meta = parsed.meta
   const kind = String(meta.kind).toLowerCase()
@@ -91,14 +78,6 @@ function pushFile (textPath, opts) {
 }
 
 /* ---------- pull: game -> text ---------- */
-
-/* このデータファイルぶんの取り出し対象。
- * 範囲の既定は custom(既にテキストがあるものだけ)。ツクールでイベントを足すたびに
- * テキストが増えないようにするため。--scope で変えられる。 */
-function targetsForDataFile (dataDir, dataFile, opts) {
-  const o = opts || {}
-  return F2T.enumerateTargets(dataDir, { onlyFile: dataFile, scope: o.scope || 'custom', index: o.index })
-}
 
 function pullTarget (target, opts) {
   const o = opts || {}
@@ -162,9 +141,8 @@ function pullTarget (target, opts) {
   if (wrote.dataPath && o.guard) o.guard.recordFile(wrote.dataPath)
 
   const written = built.text
-  const prev = readIfExists(textPath)
   // ゲームへ書いたときは、テキストが同じでも祖先を進める(下まで通す)。
-  if (prev === written && !wrote.dataPath) return { ok: true, textPath, unchanged: true, conflicts, markers }
+  if (existing === written && !wrote.dataPath) return { ok: true, textPath, unchanged: true, conflicts, markers }
 
   const dir = path.dirname(textPath)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
@@ -188,7 +166,6 @@ function pullTarget (target, opts) {
       '(resolve the markers in the text, then push with --strategy overwrite): ' + textPath)
   } else {
     try {
-      const id = T2F.baseIdForTarget(textPath, root, target)
       // 祖先は buildPullText が決めた側(書き戻したならテキストに書いた内容、でなければゲーム)。
       T2F.saveBaseText(root, id.key, built.baseText)
     } catch (e) { /* best effort */ }
@@ -202,7 +179,10 @@ function pullDataFile (dataFile, opts) {
   const dataDir = path.resolve(root, o.dataDir || 'data')
   // 索引はこのファイルぶんで1回だけ作る(1件ごとに走査し直さない)。
   const withIndex = Object.assign({}, o, { index: o.index || F2T.indexTexts(path.resolve(root, o.textDir || 'text')) })
-  return targetsForDataFile(dataDir, dataFile, withIndex).map(function (t) { return pullTarget(t, withIndex) })
+  /* 範囲の既定は custom(既にテキストがあるものだけ)。ツクールでイベントを足すたびに
+   * テキストが増えないようにするため。--scope で変えられる。 */
+  const targets = F2T.enumerateTargets(dataDir, { onlyFile: dataFile, scope: withIndex.scope || 'custom', index: withIndex.index })
+  return targets.map(function (t) { return pullTarget(t, withIndex) })
 }
 
 /* ---------- one-shot ---------- */
@@ -246,7 +226,7 @@ function syncOnce (opts) {
   return results
 }
 
-module.exports = { pushFile, pullTarget, pullDataFile, syncOnce, createEchoGuard, targetsForDataFile }
+module.exports = { pushFile, pullTarget, pullDataFile, syncOnce, createEchoGuard }
 
 /* ---------- CLI ---------- */
 

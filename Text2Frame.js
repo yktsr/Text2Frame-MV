@@ -4611,7 +4611,7 @@
     Laurus.Text2Frame.IsDebug = false
     Laurus.Text2Frame.DisplayMsg = true
     Laurus.Text2Frame.DisplayWarning = true
-    Laurus.Text2Frame.BatchStrategy = 'diff'
+    Laurus.Text2Frame.BatchStrategy = 'add'
     // 単発反映のしかた。COMMAND_LINE(CLI / applyTextFile)が毎回上書きする。
     Laurus.Text2Frame.Strategy = 'merge'
     // 引数を省略したときの既定。プラグインコマンドと同じく末尾に追記。
@@ -4647,7 +4647,7 @@
     Laurus.Text2Frame.IsDebug = (String(Laurus.Text2Frame.Parameters.IsDebug) === 'true')
     Laurus.Text2Frame.DisplayMsg = (String(Laurus.Text2Frame.Parameters.DisplayMsg) === 'true')
     Laurus.Text2Frame.DisplayWarning = (String(Laurus.Text2Frame.Parameters.DisplayWarning) === 'true')
-    Laurus.Text2Frame.BatchStrategy = 'diff'
+    Laurus.Text2Frame.BatchStrategy = 'add'
     // 単発反映のしかた。コマンドの引数解決で毎回決め直す。
     Laurus.Text2Frame.Strategy = 'merge'
     let PATH_SEP = '/'
@@ -5153,7 +5153,7 @@
       case 'フォルダから一括取り込み' :
       case '一括反映' : {
         addMessage('batch import from folder. \n/ フォルダから一括反映します。')
-        // 単体の取り込みと同じ並び: 取り込み元 -> 反映方法 -> 書き戻し。
+        // 単体の取り込みと同じ並び: 取り込み元 -> 反映方法。
         // @arg の並び・registerCommand の渡し順と揃えること(ずれると folder に merge が入る)。
         /* 一括反映は「単一の取り込みをまとめて行うもの」なので、反映方法も単一と同じ
          * add/merge/overwrite の3つを取り、既定も単一と同じ add にする。
@@ -8250,7 +8250,6 @@
 
       /* eslint-disable no-useless-escape */
       const num_char_regex = '\\w\u30a0-\u30ff\u3040-\u309f\u3005-\u3006\u30e0-\u9fcf'
-      // const control_variable_arg_regex = `[${num_char_regex}\\[\\]\\.\\-]+`;
       const control_variable_arg_regex = '.+'
       const set_operation_list = ['set', '代入', '=']
       const set_reg_list = set_operation_list.map(
@@ -11308,7 +11307,7 @@
       const textRoot = _path.resolve(BASE_PATH, opts.textBase)
       const dataDir = _path.resolve(BASE_PATH, opts.dataFolder)
       const baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH
-      // 祖先はテキストの置き場所ごとに分ける(deriveBaseId と同じ規約)。
+      // 祖先はテキストの置き場所ごとに分ける。
       const baseDir = baseDirForTextDir(baseRoot, textRoot)
       const englishTag = String(Laurus.Text2Frame.EnglishTag) !== 'false'
       const wantPush = opts.direction === 'push' || opts.direction === 'both'
@@ -11815,9 +11814,9 @@
           map_data.events[Laurus.Text2Frame.EventID].pages.push(getDefaultPage())
         }
 
-        /* 祖先の鍵は宛先で決まる。マップは書き込み先のファイル名から拾う。
-         * Laurus.Text2Frame.MapID はプラグインパラメータの既定が残っていることがあり、
-         * front matter で行き先を決めた反映では当てにならない。 */
+        /* 宛先はここで1つに決める。マップは書き込み先のファイル名から拾う。
+         * Laurus.Text2Frame.MapID にはプラグインパラメータの既定が残っていることがあるので、
+         * 祖先の鍵も知らせに出す番号も、この宛先のほうを使う。 */
         const eventTarget = {
           kind: 'event',
           mapId: mapIdOfDataPath(Laurus.Text2Frame.MapPath) || Laurus.Text2Frame.MapID,
@@ -11848,7 +11847,7 @@
         addMessage(
           'Success / 書き出し成功！\n' +
             '======> MapID: ' +
-            Laurus.Text2Frame.MapID +
+            eventTarget.mapId +
             ' -> EventID: ' +
             Laurus.Text2Frame.EventID +
             ' -> PageID: ' +
@@ -11913,24 +11912,10 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   const fs = require('fs')
   const path = require('path')
 
-  const parseFrontMatterCli = function (text) {
-    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-    if (normalized.indexOf('---\n') !== 0) {
-      return { meta: {}, body: text, hasFrontMatter: false }
-    }
-    const endIndex = normalized.indexOf('\n---\n', 4)
-    if (endIndex < 0) {
-      return { meta: {}, body: text, hasFrontMatter: false }
-    }
-    const header = normalized.slice(4, endIndex)
-    const body = normalized.slice(endIndex + 5)
-    const meta = {}
-    header.split('\n').forEach(function (line) {
-      const m = line.match(/^([A-Za-z0-9_]+)\s*:\s*(.*)$/)
-      if (!m) return
-      meta[m[1]] = m[2].trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1')
-    })
-    return { meta, body, hasFrontMatter: true }
+  // 見出し(front matter)の読み方は本体と1つにする(同じ規則を二度書くと片方だけ直りやすい)。
+  const readFrontMatter = function (text) {
+    const parsed = module.exports.parseFrontMatter(text)
+    return { meta: parsed.meta, body: parsed.body, hasFrontMatter: !!parsed.header }
   }
 
   // Recursively collect *.txt files under a directory.
@@ -11955,7 +11940,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .name('text2frame')
     .version('2.3.0')
     .usage('[options]')
-    .option('-m, --mode <map|common|compile|batch>', 'output mode', /^(map|common|compile|test|batch)$/i)
+    .option('-m, --mode <map|common|compile|batch>', 'output mode', /^(map|common|compile|batch)$/i)
     .option('-f, --text-file <name>', 'single-file mode (map/common): input text file')
     .option('--text_path <name>', 'single-file mode: same as --text-file')
     .option('-t, --text-dir <dir>', 'batch mode: text base directory', 'text')
@@ -12046,8 +12031,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   const cliBase = fromRoot(options.base)
 
   /* 根の外にあるテキストやデータは、祖先だけが根の側に取り残される。さらに根の外の
-   * テキストは deriveBaseId が相対パスを作れず「フォルダ名/ファイル名」に丸めるので、
-   * 別プロジェクトの同名テキストと祖先を取り合う。どちらも黙って起きるため入口で知らせる。 */
+   * テキストは相対パスを作れず「フォルダ名/ファイル名」に丸まるので、別プロジェクトの
+   * 同名テキストと祖先を取り合う。どちらも黙って起きるため入口で知らせる。 */
   const outsideRoot = []
   const noteOutsideRoot = function (label, p) {
     if (!p) return
@@ -12091,7 +12076,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   // 単一ファイルモードでも front matter を反映先のフォールバックに使う(明示した CLI 引数が優先)。
   const frontMatterOf = function (p) {
     if (!p) return {}
-    try { return parseFrontMatterCli(fs.readFileSync(fromRoot(p), { encoding: 'utf8' })).meta || {} } catch (e) { return {} }
+    try { return readFrontMatter(fs.readFileSync(fromRoot(p), { encoding: 'utf8' })).meta || {} } catch (e) { return {} }
   }
   if (options.mode === 'map') {
     const fm = frontMatterOf(singleTextPath)
@@ -12153,7 +12138,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       }
     })
     process.stdin.on('end', () => {
-      console.log(JSON.stringify(module.exports.compile(parseFrontMatterCli(data).body), null, 2))
+      console.log(JSON.stringify(module.exports.compile(readFrontMatter(data).body), null, 2))
     })
   } else if (options.mode === 'batch') {
     // Front matter is the sole source of routing/metadata: scan the text directory for
@@ -12170,12 +12155,12 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
      * 反映したいフォルダを選ぶ。 */
     const collectFiles = function () {
       return walkTextFilesCli(scanRoot).filter(function (f) {
-        return parseFrontMatterCli(fs.readFileSync(f, { encoding: 'utf8' })).hasFrontMatter
+        return readFrontMatter(fs.readFileSync(f, { encoding: 'utf8' })).hasFrontMatter
       })
     }
 
     const deployOne = function (fileArg) {
-      const parsed = parseFrontMatterCli(fs.readFileSync(fileArg, { encoding: 'utf8' }))
+      const parsed = readFrontMatter(fs.readFileSync(fileArg, { encoding: 'utf8' }))
       const meta = parsed.meta || {}
       const kind = String(meta.kind || 'event').toLowerCase()
       const opts = {
@@ -12226,7 +12211,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
       const deployWatched = function (fileArg) {
         let parsed
-        try { parsed = parseFrontMatterCli(fs.readFileSync(fileArg, { encoding: 'utf8' })) } catch (e) { return }
+        try { parsed = readFrontMatter(fs.readFileSync(fileArg, { encoding: 'utf8' })) } catch (e) { return }
         if (!parsed.hasFrontMatter) return
         const res = deployOne(fileArg)
         const rel = path.relative(cliRoot, fileArg)
@@ -12276,16 +12261,5 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         watcher.close().then(function () { process.exit(0) })
       })
     }
-  } else if (options.mode === 'test') {
-    const Text2Frame = {
-      IsDebug: options.verbose,
-      MapID: '1',
-      EventID: '1',
-      PageID: '1',
-      IsOverwrite: true,
-      TextPath: 'test/basic.txt',
-      MapPath: 'data/Map001.json'
-    }
-    Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [Text2Frame])
   }
 }

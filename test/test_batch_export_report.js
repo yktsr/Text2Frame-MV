@@ -310,17 +310,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     expect(readIf(textPathOf(ev1))).to.contain('テキストだけの変更')
   })
 
-  /* 3番目の引数は「取り出す範囲」。以前の版ではここが書き戻しの指定だったので、
-   * 古いコマンドが残っていても読み飛ばす。知らない値は選択肢を挙げて止める。 */
-  it('ignores a write-back argument left by an older command', function () {
-    run(path.join(tmp, 'text'), 'merge')
-    fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)).replace('こんにちは', 'テキストだけの変更'), 'utf8')
-
-    run(path.join(tmp, 'text'), 'merge', '書き戻さない')
-
-    expect(gameLines()).to.eql(['テキストだけの変更'])
-  })
-
+  /* 3番目の引数は「取り出す範囲」。知らない値は、選べるものを挙げて止める。 */
   it('refuses a scope it does not know, and says what can be used', function () {
     expect(function () { run(path.join(tmp, 'text'), 'merge', 'sometimes') })
       .to.throw(/取り出す範囲は all/)
