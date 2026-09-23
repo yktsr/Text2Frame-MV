@@ -30,10 +30,9 @@ jobs:
           npm run audit:prod
       - name: Lint
         run: npm run lint
-      - name: Test (full suite)
+      # test/test_*.js を全部、1ファイル1プロセスで並列に走らせる(往復130件ぶんも含む)。
+      - name: Test (every suite)
         run: npm test
-      - name: Round-trip test (Frame2Text, 130 cases)
-        run: npm run test_frame2text
       # 成果物のアップロードは package ジョブに一本化した(そちらが刻印付きの配布物と
       # MANIFEST を出す)。ここは検査だけ。
 

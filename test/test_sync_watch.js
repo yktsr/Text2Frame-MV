@@ -37,6 +37,8 @@ require('../Frame2Text.js')
 describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
   this.timeout(10000)
   const SETTLE = 900
+  // 起きるはずのことを待つ上限。決め打ちの SETTLE より長くしてよい(待つのは起きるまで)。
+  const PATIENCE = 5000
   const ARM = 300
 
   let tmp
@@ -59,6 +61,19 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
       .filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })
   }
   const wait = function (ms) { return new Promise(function (resolve) { setTimeout(resolve, ms) }) }
+  /* 見張りが反応するのを待つ。起きるはずのことが起きたらすぐ進み、起きなければ上限まで粘る。
+   * 決め打ちで待つより速く、遅い機械では逆に長く待つので取りこぼしにくい。
+   * 「起きないこと」を見るときは待ち切るしかないので、そこは wait(SETTLE) のまま。 */
+  const until = async function (test) {
+    const limit = Date.now() + PATIENCE
+    for (;;) {
+      let ok = false
+      try { ok = !!test() } catch (e) { ok = false }
+      if (ok) return true
+      if (Date.now() > limit) return false
+      await wait(25)
+    }
+  }
 
   /* 同期は単独のコマンド。引数は [Direction, TextFolder, Strategy]。
    * データフォルダは data 固定で引数から外した。初回に一括で揃えてから見張りに入る。 */
@@ -179,7 +194,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
     await startArmed()
 
     fs.writeFileSync(textPath(ev1), readIf(textPath(ev1)).replace('こんにちは', 'テキストで直した'), 'utf8')
-    await wait(SETTLE)
+    await until(function () { return texts()[0] === 'テキストで直した' })
 
     expect(texts()).to.eql(['テキストで直した'])
   })
@@ -190,7 +205,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
     const map = JSON.parse(readIf(mapPath()))
     map.events[1].pages[0].list.find(function (c) { return c.code === 401 }).parameters[0] = 'ツクールで直した'
     fs.writeFileSync(mapPath(), JSON.stringify(map), 'utf8')
-    await wait(SETTLE)
+    await until(function () { return readIf(textPath(ev1)).indexOf('ツクールで直した') !== -1 })
 
     expect(readIf(textPath(ev1))).to.contain('ツクールで直した')
   })
@@ -201,7 +216,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
     await startArmed()
 
     fs.writeFileSync(textPath(ev1), readIf(textPath(ev1)).replace('こんにちは', '一度だけ'), 'utf8')
-    await wait(SETTLE)
+    await until(function () { return texts()[0] === '一度だけ' })
     const textAfterPush = readIf(textPath(ev1))
     const dataAfterPush = readIf(mapPath())
 
@@ -226,7 +241,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
         d.events[1].pages[0].list.find(function (c) { return c.code === 401 }).parameters[0] = '保存で書き戻った'
         fs.writeFileSync(p, JSON.stringify(d), 'utf8')
       })
-      await wait(SETTLE)
+      await until(function () { return warned.join('\n').indexOf('プロジェクト保存とみなして') !== -1 })
     } finally {
       console.warn = realWarn
     }
@@ -243,7 +258,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
     shown.length = 0
 
     fs.writeFileSync(textPath(ev1), readIf(textPath(ev1)).replace('こんにちは', '静かに反映'), 'utf8')
-    await wait(SETTLE)
+    await until(function () { return texts()[0] === '静かに反映' })
 
     expect(texts()).to.eql(['静かに反映'])
     expect(shown).to.eql([])
@@ -365,7 +380,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
     const map = JSON.parse(readIf(mapPath()))
     map.events[1].pages[0].list.find(function (c) { return c.code === 401 }).parameters[0] = 'ツクールで直した'
     fs.writeFileSync(mapPath(), JSON.stringify(map), 'utf8')
-    await wait(SETTLE)
+    await until(function () { return readIf(textPath(ev1)).indexOf('ツクールで直した') !== -1 })
 
     expect(readIf(textPath(ev1))).to.contain('ツクールで直した')
     expect(line(stop(), '停止しました')).to.be.a('string')
@@ -387,7 +402,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
       diverge()
       await startArmed('merge', 'push')
       fs.writeFileSync(textPath(ev1), readIf(textPath(ev1)) + '\n')
-      await wait(SETTLE)
+      await until(function () { return readIf(textPath(ev1)).indexOf('=== ゲームの変更 / from game ===') !== -1 })
 
       expect(readIf(textPath(ev1))).to.contain('=== ゲームの変更 / from game ===')
       expect(texts().join('\n')).to.not.contain('=== ')
@@ -398,7 +413,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
       await startArmed('merge', 'both')
 
       fs.writeFileSync(textPath(ev1), readIf(textPath(ev1)).replace('こんにちは', '一度だけ'), 'utf8')
-      await wait(SETTLE)
+      await until(function () { return texts()[0] === '一度だけ' })
       const textAfter = readIf(textPath(ev1))
       const dataAfter = readIf(mapPath())
 
