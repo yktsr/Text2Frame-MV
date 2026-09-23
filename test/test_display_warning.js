@@ -4,33 +4,14 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 
-globalThis.Game_Interpreter = {}
-Game_Interpreter.prototype = {}
-const shown = []
-globalThis.$gameMessage = { add: function (t) { shown.push(String(t)) } }
+const { installEngine } = require('./helpers')
 
-const BASE_PARAMS = {
-  'Default Window Position': 'Bottom',
-  'Default Background': 'Window',
-  'Comment Out Char': '%',
-  IsOverwrite: 'false',
-  'Default Scenario Folder': 'text',
-  'Default Scenario File': 'message.txt',
-  'Default Common Event ID': '1',
-  'Default MapID': '1',
-  'Default EventID': '1',
-  'Default PageID': '1',
-  IsDebug: 'false',
-  DisplayMsg: 'true',
-  EnglishTag: 'false'
-}
-
-/* プラグイン設定は読み込み時に一度だけ読まれるので、設定ごとに読み直す。 */
+/* プラグイン設定は読み込み時に一度だけ読まれるので、設定ごとに読み直す。
+ * 出荷時と違うのは英語タグを使わないところだけ。「警告文表示」は各テストが指定する
+ * (指定しない = 一度も保存していないプロジェクト)。 */
+let shown = []
 const loadFrame2Text = function (extra) {
-  globalThis.PluginManager = {
-    parameters: function () { return Object.assign({}, BASE_PARAMS, extra) },
-    registerCommand: function () {}
-  }
+  shown = installEngine(Object.assign({ EnglishTag: 'false' }, extra)).shown
   const p = require.resolve('../Frame2Text.js')
   delete require.cache[p]
   require(p)

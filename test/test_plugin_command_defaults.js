@@ -4,31 +4,9 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 
-globalThis.Game_Interpreter = {}
-Game_Interpreter.prototype = {}
-const shown = []
-globalThis.$gameMessage = { add: function (t) { shown.push(String(t)) } }
-globalThis.PluginManager = {
-  parameters: function () {
-    return {
-      'Default Window Position': 'Bottom',
-      'Default Background': 'Window',
-      'Comment Out Char': '%',
-      IsOverwrite: 'false',
-      // 省略した引数はここへ戻る。取り違えが分かるよう、どれも 1 にしておく。
-      'Default Scenario Folder': 'text',
-      'Default Scenario File': 'message.txt',
-      'Default Common Event ID': '1',
-      'Default MapID': '1',
-      'Default EventID': '1',
-      'Default PageID': '1',
-      IsDebug: 'false',
-      DisplayMsg: 'true',
-      DisplayWarning: 'false'
-    }
-  },
-  registerCommand: function () {}
-}
+// 偽のツクールは本体を読み込む前に置く(読み込み時にパラメータを読むため)。
+const { installEngine, texts } = require('./helpers')
+const { shown } = installEngine({ DisplayWarning: 'false' })
 require('../Text2Frame.js')
 
 /* MV のプラグインコマンドは引数を手書きするので、後ろの引数をまるごと省ける。
@@ -51,9 +29,6 @@ describe('MV plugin command: omitted arguments fall back to the plugin parameter
   const event = function (id) { return { id, name: 'EV' + id, pages: [page(), page()] } }
 
   const mapFile = function (n) { return path.join(tmp, 'data', 'Map' + ('000' + n).slice(-3) + '.json') }
-  const texts = function (list) {
-    return list.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })
-  }
   // マップ n のイベント e ページ p の本文。
   const eventTexts = function (n, e, p) {
     const map = JSON.parse(fs.readFileSync(mapFile(n), 'utf8'))

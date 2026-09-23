@@ -4,31 +4,9 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 
-globalThis.Game_Interpreter = {}
-Game_Interpreter.prototype = {}
-const shown = []
-globalThis.$gameMessage = { add: function (t) { shown.push(String(t)) } }
-globalThis.PluginManager = {
-  parameters: function () {
-    return {
-      'Default Window Position': 'Bottom',
-      'Default Background': 'Window',
-      'Comment Out Char': '%',
-      IsOverwrite: 'false',
-      'Default Scenario Folder': 'text',
-      'Default Scenario File': 'message.txt',
-      'Default Common Event ID': '1',
-      'Default MapID': '1',
-      'Default EventID': '1',
-      'Default PageID': '1',
-      IsDebug: 'false',
-      DisplayMsg: 'true',
-      DisplayWarning: 'true',
-      EnglishTag: 'false'
-    }
-  },
-  registerCommand: function () {}
-}
+// 偽のツクールは本体を読み込む前に置く(読み込み時にパラメータを読むため)。
+const { installEngine } = require('./helpers')
+const { shown } = installEngine({ EnglishTag: 'false' })
 require('../Text2Frame.js')
 require('../Frame2Text.js')
 

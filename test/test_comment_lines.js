@@ -1,27 +1,9 @@
 const chai = require('chai')
 const expect = chai.expect
 
-globalThis.Game_Interpreter = {}
-Game_Interpreter.prototype = {}
-globalThis.$gameMessage = { add: function () {} }
-globalThis.PluginManager = {
-  parameters: function () {
-    return {
-      'Default Window Position': 'Bottom',
-      'Default Background': 'Window',
-      'Default Scenario Folder': 'text',
-      'Default Scenario File': 'message.txt',
-      'Default Common Event ID': '1',
-      'Default MapID': '1',
-      'Default EventID': '1',
-      'Default PageID': '1',
-      IsOverwrite: 'false',
-      'Comment Out Char': '%',
-      IsDebug: 'false'
-    }
-  },
-  registerCommand: function () {}
-}
+// 偽のツクールは本体を読み込む前に置く(読み込み時にパラメータを読むため)。
+const { installEngine } = require('./helpers')
+installEngine({ DisplayMsg: 'false' })
 const T2F = require('../Text2Frame.js')
 
 /* コメント行(既定は %)は compile が落とすのでコマンド列に残らない。元テキストが手元に

@@ -3,32 +3,9 @@ const expect = chai.expect
 const fs = require('fs')
 const path = require('path')
 
-globalThis.Game_Interpreter = {}
-Game_Interpreter.prototype = {}
-globalThis.$gameMessage = { add: function () {} }
-// プラグインパラメータは読み込み時に一度だけ読まれる。既定を変えた場合の確認は
-// test_message_tags_custom_defaults.js で行う(読み込み前に差し替える必要があるため)。
-const params = {
-  'Default Window Position': 'Bottom',
-  'Default Background': 'Window',
-  'Comment Out Char': '%',
-  IsOverwrite: 'false',
-  'Default Scenario Folder': 'text',
-  'Default Scenario File': 'message.txt',
-  'Default Common Event ID': '1',
-  'Default MapID': '1',
-  'Default EventID': '1',
-  'Default PageID': '1',
-  IsDebug: 'false',
-  DisplayMsg: 'false',
-  DisplayWarning: 'false',
-  EnglishTag: 'true',
-  OmitDefaultTags: 'true'
-}
-globalThis.PluginManager = {
-  parameters: function () { return params },
-  registerCommand: function () {}
-}
+// 偽のツクールは本体を読み込む前に置く(読み込み時にパラメータを読むため)。
+const { bottom, installEngine } = require('./helpers')
+installEngine({ DisplayMsg: 'false', DisplayWarning: 'false', OmitDefaultTags: 'true' })
 const text2frame = require('../Text2Frame.js')
 const frame2text = require('../Frame2Text.js')
 
@@ -40,7 +17,6 @@ const frame2text = require('../Frame2Text.js')
  * 省略してよいのは「タグが無いとき compile が補う値」と同じときだけ。
  * 出荷時の既定を基準にすると、パラメータを変えているプロジェクトで中身が変わってしまう。 */
 describe('omitting message tags that match the defaults', function () {
-  const bottom = { code: 0, indent: 0, parameters: [] }
   const msg = function (face, faceId, background, position, name, text) {
     return [
       { code: 101, indent: 0, parameters: [face, faceId, background, position, name] },

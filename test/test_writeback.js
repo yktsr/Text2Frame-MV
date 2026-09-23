@@ -1,5 +1,6 @@
 const chai = require('chai')
 const expect = chai.expect
+const { bottom, markers, msg, texts } = require('./helpers')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
@@ -24,13 +25,6 @@ describe('write-back after merge', function () {
   let textPath
   let cwd
 
-  const msg = function (text) {
-    return [
-      { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-      { code: 401, indent: 0, parameters: [text] }
-    ]
-  }
-  const bottom = { code: 0, indent: 0, parameters: [] }
   const header = '---\nkind: event\nmapId: 1\neventId: 1\npageId: 1\n---\n'
   const MARKER = '=== どちらかを残し'
 
@@ -41,14 +35,6 @@ describe('write-back after merge', function () {
   }
   const mapList = function () {
     return JSON.parse(fs.readFileSync(mapPath, 'utf8')).events[1].pages[0].list
-  }
-  const texts = function (list) {
-    return list.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })
-  }
-  const markers = function (list) {
-    return list.filter(function (c) {
-      return (c.code === 108 || c.code === 408) && String(c.parameters[0]).indexOf('===') === 0
-    })
   }
   const readText = function () { return fs.readFileSync(textPath, 'utf8') }
   const basePath = function () { return path.join(tmp, '.t2f-base', 'text', 'map001_event001_page1.txt') }
