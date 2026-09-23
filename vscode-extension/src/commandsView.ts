@@ -124,11 +124,6 @@ function groups(): CommandGroup[] {
                     tooltip: tr('全テキストを調べて、書き間違い・無い番号や素材・はみ出し・反映されていない変更などを「問題」パネルに出します。', 'Checks every text and lists typos, missing ids and assets, overflowing lines, unapplied changes and so on in the Problems panel.')
                 },
                 {
-                    command: 'text2frame.showLinks', icon: 'type-hierarchy',
-                    label: tr('イベントのつながりを見る', 'Show event links'),
-                    tooltip: tr('今のテキスト(またはカーソルの下のスイッチ・コモンイベント)から、呼ぶ先・移動先・変えるスイッチと、それで出てくるページを「呼び出し階層」でたどります。', 'From the current text (or the switch or common event under the cursor), follows what it calls, where it transfers, the switches it changes and the pages those make appear, in the Call Hierarchy view.')
-                },
-                {
                     command: 'text2frame.showMapGraph', icon: 'graph',
                     label: tr('マップのつながりを図で見る', 'Show the map graph'),
                     tooltip: tr('場所移動でつながっているマップを、丸と矢印の図にしてタブで開きます。丸を押すとそのマップが真ん中になり、矢印を押すと移動している行へ飛びます。', 'Opens a tab that draws the maps joined by Transfer Player as circles and arrows. Click a circle to center that map, or an arrow to jump to the transfer line.')
