@@ -15,13 +15,10 @@ describe('resolveStrategy', function () {
     expect(resolveStrategy(undefined)).to.eql({ strategy: 'merge' })
     expect(resolveStrategy(null)).to.eql({ strategy: 'merge' })
   })
-  it('returns null for unknown (incl. removed legacy names)', function () {
-    expect(resolveStrategy('bogus')).to.equal(null)
-    expect(resolveStrategy('import')).to.equal(null)
-    expect(resolveStrategy('diff')).to.equal(null)
-    expect(resolveStrategy('overlay')).to.equal(null)
-    expect(resolveStrategy('merge3')).to.equal(null)
-    expect(resolveStrategy('sync')).to.equal(null)
+  /* 昔あった名前(import / diff / overlay / merge3 / sync)は、黙って別の動きに読み替えず落とす。 */
+  it('returns null for unknown names, the removed ones included', function () {
+    const gone = ['bogus', 'import', 'diff', 'overlay', 'merge3', 'sync']
+    gone.forEach(function (name) { expect(resolveStrategy(name), name).to.equal(null) })
   })
 
   /* add(末尾に追記)は一括反映の既定でもある(単発の取り込みと揃えるため)。

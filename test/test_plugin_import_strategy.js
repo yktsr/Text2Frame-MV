@@ -134,17 +134,18 @@ describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {
     expect(texts(list)).to.include('Bonjour')
   })
 
-  /* 書き戻しの条件は無くした(ツクールの中では毎回書き戻す)。以前の版で書き戻しの引数を
-   * 書いたコマンドが残っていても、止めずに読み飛ばす。 */
-  describe('the old write-back argument', function () {
-    const run = function (writeBack) {
-      Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
-        ['text', 'message.txt', '1', '1', '1', 'merge', writeBack])
-    }
-
-    it('is ignored whatever an older command left in it', function () {
+  /* 反映は第6引数(反映方法)までしか読まない。以前の版で書き戻しの指定を書いたコマンドが
+   * 残っていても、余りの語は読み飛ばして最後まで反映されること(止まらないだけでは足りない)。 */
+  describe('a word left over after the strategy', function () {
+    it('is read past, and the text is still applied', function () {
       const left = ['毎回書き戻す', '書き戻さない', 'always', 'OFF', 'onConflict', 'alway']
-      left.forEach(function (v) { expect(function () { run(v) }, v).to.not.throw() })
+      left.forEach(function (v) {
+        written = null
+        Game_Interpreter.prototype.pluginCommandText2Frame('IMPORT_MESSAGE_TO_EVENT',
+          ['text', 'message.txt', '1', '1', '1', 'merge', v])
+        expect(written, v).to.not.equal(null)
+        expect(texts(eventList()), v).to.eql(['Bonjour'])
+      })
     })
   })
 

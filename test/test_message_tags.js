@@ -1,6 +1,7 @@
 const chai = require('chai')
 const expect = chai.expect
 const fs = require('fs')
+const path = require('path')
 
 globalThis.Game_Interpreter = {}
 Game_Interpreter.prototype = {}
@@ -161,8 +162,7 @@ describe('omitting message tags that match the defaults', function () {
     cases.forEach(function (t) {
       if (seen[t.expfile]) return
       seen[t.expfile] = true
-      let data
-      try { data = JSON.parse(fs.readFileSync(t.expfile, 'utf8')) } catch (e) { return }
+      const data = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', t.expfile), 'utf8'))
       const lists = []
       if (Array.isArray(data)) data.forEach(function (ce) { if (ce && ce.list) lists.push(ce.list) })
       else if (data.events) {
@@ -171,11 +171,8 @@ describe('omitting message tags that match the defaults', function () {
         })
       }
       lists.forEach(function (list) {
-        let on, off
-        try {
-          on = frame2text.decompile(list, true, { pretty: true, omitDefaults: true })
-          off = frame2text.decompile(list, true, { pretty: true, omitDefaults: false })
-        } catch (e) { return }
+        const on = frame2text.decompile(list, true, { pretty: true, omitDefaults: true })
+        const off = frame2text.decompile(list, true, { pretty: true, omitDefaults: false })
         checked++
         expect(text2frame.compile(on), t.expfile).to.eql(text2frame.compile(off))
       })

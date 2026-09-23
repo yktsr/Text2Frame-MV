@@ -71,7 +71,8 @@ describe('loading the plugins the way a deployed game does', function () {
 
       it('loads in MZ and registers its plugin commands', function () {
         const s = load(c.file, { mz: true })
-        expect(s.registered.filter(function (n) { return n.indexOf(c.plugin + ':') === 0 })).to.not.be.empty
+        const mine = s.registered.filter(function (n) { return n.indexOf(c.plugin + ':') === 0 })
+        expect(mine.length, mine.join(',')).to.be.greaterThan(0)
       })
 
       it('shares its API even without globalThis', function () {
