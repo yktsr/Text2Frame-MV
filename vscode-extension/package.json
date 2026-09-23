@@ -439,12 +439,12 @@
         },
         {
           "command": "text2frame.deployCurrentFile",
-          "when": "resourceLangId == text2frame || resourceExtname == .txt",
+          "when": "resourceScheme == file && (resourceLangId == text2frame || resourceExtname == .txt)",
           "group": "navigation@1"
         },
         {
           "command": "text2frame.exportCurrentFile",
-          "when": "resourceLangId == text2frame || resourceExtname == .txt",
+          "when": "resourceScheme == file && (resourceLangId == text2frame || resourceExtname == .txt)",
           "group": "navigation@2"
         },
         {
