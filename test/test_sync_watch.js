@@ -149,6 +149,32 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
     expect(line(stop(), '動いていません')).to.be.a('string')
   })
 
+  /* 同期の開始で一括取り出しはしない。始めただけで、頼んでいないテキストが大量にできないようにする。
+   * 見張り中も、既にテキストがあるものだけを更新する。 */
+  it('does not pull at start, and says so', function () {
+    // テキストのフォルダは残したまま、中身だけ消す(フォルダごと無いと同期は始まらない)。
+    fs.readdirSync(path.join(tmp, 'text')).forEach(function (f) { fs.rmSync(path.join(tmp, 'text', f)) })
+
+    const out = start()
+
+    expect(fs.readdirSync(path.join(tmp, 'text'))).to.eql([])
+    expect(line(out, 'テキストがまだ無いイベント')).to.be.a('string')
+  })
+
+  it('does not make a text for an event that has none', async function () {
+    fs.rmSync(textPath('map002_event001_page1'))
+    await startArmed()
+
+    // ツクール側でそのマップを直す
+    const p = path.join(tmp, 'data', 'Map002.json')
+    const map = JSON.parse(readIf(p))
+    map.events[1].pages[0].list = msg('ツクールで直した').concat([bottom])
+    fs.writeFileSync(p, JSON.stringify(map), 'utf8')
+    await wait(SETTLE)
+
+    expect(fs.existsSync(textPath('map002_event001_page1'))).to.equal(false)
+  })
+
   it('applies a text edit to the game', async function () {
     await startArmed()
 

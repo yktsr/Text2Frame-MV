@@ -11408,14 +11408,23 @@
 
       const pullOne = function (abs) {
         let targets = []
+        /* 同期の取り出しは、既にテキストがあるものだけを更新する(scope: custom)。
+         * ツクールでイベントを足すたびにテキストが増えるのを避けるため。
+         * 新しいイベントをテキストにしたいときは、一括取り出しか VS Code の一覧から取り出す。 */
+        let index = { paths: {}, duplicates: {} }
         try {
-          targets = F2T.enumerateTargets(dataDir, abs)
+          index = F2T.indexTexts(textRoot)
+          targets = F2T.enumerateTargets(dataDir, { onlyFile: abs, scope: 'custom', index })
         } catch (e) {
           console.error('[sync] データを読めませんでした: ' + rel(abs) + ': ' + ((e && e.message) || e))
           return
         }
         targets.forEach(function (t) {
-          const outPath = _path.join(textRoot, t.key + '.txt')
+          if (index.duplicates[t.key]) {
+            console.warn('[sync] 行き先が同じテキストが複数あるため見送りました: ' + t.key)
+            return
+          }
+          const outPath = F2T.outPathFor(textRoot, index, t)
           const r = F2T.pullTargetToText({
             dataDir, target: t, outPath, baseDir, englishTag, strategy: opts.strategy
           })
@@ -11527,6 +11536,10 @@
       if (wantPull) watched.push(rel(dataDir))
       addMessage('[sync] 同期を開始しました(' + opts.direction + ' / ' + opts.strategy + ')。')
       addMessage('[sync] 監視中: ' + watched.join(' + '))
+      if (wantPull) {
+        // 同期は既にあるテキストだけを更新する。無いものは自分で取り出してもらう。
+        addMessage('[sync] テキストがまだ無いイベントは同期されません。Frame2Textの「フォルダへ一括取り出し」か、VS Codeの一覧から取り出してください。')
+      }
       // 止めるコマンドは Text2Frame にしかない。
       addMessage('[sync] 進行状況はコンソール(F8)に出ます。ゲームを閉じるか、Text2Frameの「テキストとゲームの同期を停止」(STOP_DATA_SYNC)で止まります。')
       console.log('[sync] watching ' + watched.join(' + ') + ' (direction=' + opts.direction + ', strategy=' + opts.strategy + ')')
@@ -11721,10 +11734,8 @@
         console.error('[sync] pull requires the Frame2Text plugin; install it or use direction=push')
         return
       }
-      // 初回の一括は取り出し -> 反映の順。逆にすると、いま書いたテキストを反映が読み直す。
-      if (wantPull) {
-        interpreter.pluginCommandFrame2Text('BATCH_EXPORT_MESSAGES_TO_FOLDER', [textFolder, syncStrategy])
-      }
+      /* 同期の開始では取り出しをしない。始めただけで頼んでいないテキストが大量にできるのを避ける。
+       * テキストが無いイベントは、一括取り出しか VS Code の一覧から取り出してもらう。 */
       if (wantPush) {
         runBatchImport({ importFolder: textFolder, strategy: syncStrategy })
       }
