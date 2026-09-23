@@ -3,7 +3,7 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const {
-  HistoryRecorder, withHistory, noteWrite, listEntries, restoreEntry, snapshotFile, isHistoryCopy, HISTORY_DIR
+  HistoryRecorder, withHistory, noteWrite, listEntries, restoreEntry, restoreTo, planRestoreTo, snapshotFile, isHistoryCopy, HISTORY_DIR
 } = require('../out/db/history')
 
 describe('history', function () {
@@ -178,6 +178,68 @@ describe('history', function () {
   it('knows a copy inside the history folder', function () {
     expect(isHistoryCopy(path.join(root, HISTORY_DIR, 'x', 'files', 'text', 'a.txt'))).to.equal(true)
     expect(isHistoryCopy(file('text/a.txt'))).to.equal(false)
+  })
+
+  /* ある時点に戻す。「この操作だけ取り消す」では、反映のときにテキストが動かず
+   * ゲームのデータだけ戻るので分かりにくかった。時点でそろえる。 */
+  describe('going back to a point in time', function () {
+    // 1回の操作を記録して、その操作の行を返す(withHistory は中の関数の戻り値を返すため)。
+    const stamp = (label, op, changes) => {
+      withHistory(root, op, label, { keep: 50 }, () => {
+        changes.forEach(([rel, text]) => {
+          noteWrite(file(rel), rel.startsWith('data/') ? 'data' : 'text')
+          write(rel, text)
+        })
+      })
+      return listEntries(root)[0]
+    }
+
+    it('brings the texts and the game data back to how they were', function () {
+      write('text/a.txt', 'テキスト1')
+      write('data/Map001.json', '{"v":1}')
+      const first = stamp('反映 1', 'apply', [['data/Map001.json', '{"v":2}'], ['text/a.txt', 'テキスト2']])
+      stamp('反映 2', 'apply', [['data/Map001.json', '{"v":3}'], ['text/a.txt', 'テキスト3']])
+
+      const r = restoreTo(root, listEntries(root), first.started)
+
+      expect(read('text/a.txt')).to.equal('テキスト1')
+      expect(read('data/Map001.json')).to.equal('{"v":1}')
+      expect(r.restored.sort()).to.eql(['data/Map001.json', 'text/a.txt'])
+    })
+
+    it('uses the oldest copy when a file was written more than once', function () {
+      write('text/a.txt', '最初')
+      const first = stamp('反映 1', 'apply', [['text/a.txt', '2番目']])
+      stamp('反映 2', 'apply', [['text/a.txt', '3番目']])
+      stamp('反映 3', 'apply', [['text/a.txt', '4番目']])
+
+      restoreTo(root, listEntries(root), first.started)
+
+      expect(read('text/a.txt')).to.equal('最初')
+    })
+
+    it('keeps the files made after that point, and says which', function () {
+      write('text/a.txt', 'もとから')
+      const first = stamp('反映', 'apply', [['text/a.txt', '書き換え']])
+      stamp('取り出し', 'pull', [['text/b.txt', 'あとから作った']])
+
+      const r = restoreTo(root, listEntries(root), first.started)
+
+      expect(read('text/a.txt')).to.equal('もとから')
+      expect(fs.existsSync(file('text/b.txt'))).to.equal(true)
+      expect(r.created).to.eql(['text/b.txt'])
+    })
+
+    it('leaves the operations before that point alone', function () {
+      write('text/b.txt', '古い元')
+      write('text/c.txt', 'あとの元')
+      stamp('古い操作', 'apply', [['text/b.txt', '古い']])
+      const later = stamp('あとの操作', 'apply', [['text/c.txt', 'あとの']])
+
+      const plan = planRestoreTo(listEntries(root), later.started)
+
+      expect(plan.files.map((f) => f.path)).to.eql(['text/c.txt'])
+    })
   })
 
   it('ignores files outside the game folder', function () {
