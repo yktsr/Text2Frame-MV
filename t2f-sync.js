@@ -92,16 +92,12 @@ function pushFile (textPath, opts) {
 
 /* ---------- pull: game -> text ---------- */
 
-function targetsForDataFile (dataDir, dataFile) {
-  const base = path.basename(dataFile)
-  const all = F2T.enumerateTargets(dataDir)
-  if (/^CommonEvents\.json$/i.test(base)) {
-    return all.filter(function (t) { return t.kind === 'common' })
-  }
-  const m = base.match(/^Map(\d+)\.json$/i)
-  if (!m) return []
-  const mapId = String(parseInt(m[1], 10))
-  return all.filter(function (t) { return t.kind === 'event' && String(t.mapId) === mapId })
+/* このデータファイルぶんの取り出し対象。
+ * 範囲の既定は custom(既にテキストがあるものだけ)。ツクールでイベントを足すたびに
+ * テキストが増えないようにするため。--scope で変えられる。 */
+function targetsForDataFile (dataDir, dataFile, opts) {
+  const o = opts || {}
+  return F2T.enumerateTargets(dataDir, { onlyFile: dataFile, scope: o.scope || 'custom', index: o.index })
 }
 
 function pullTarget (target, opts) {
@@ -206,7 +202,7 @@ function pullDataFile (dataFile, opts) {
   const dataDir = path.resolve(root, o.dataDir || 'data')
   // 索引はこのファイルぶんで1回だけ作る(1件ごとに走査し直さない)。
   const withIndex = Object.assign({}, o, { index: o.index || F2T.indexTexts(path.resolve(root, o.textDir || 'text')) })
-  return targetsForDataFile(dataDir, dataFile).map(function (t) { return pullTarget(t, withIndex) })
+  return targetsForDataFile(dataDir, dataFile, withIndex).map(function (t) { return pullTarget(t, withIndex) })
 }
 
 /* ---------- one-shot ---------- */
@@ -309,6 +305,7 @@ if (require.main === module) {
       .option('--root <dir>', 'project root for data/, text/ and .t2f-base (default: current directory)')
       .option('-s, --strategy <merge|overwrite>', 'sync strategy', /^(merge|overwrite)$/i, 'merge')
       .option('-w, --english_tag <true/false>', 'english tag on pull', 'true')
+      .option('--scope <all|nonempty|conversation|custom>', 'which events to pull (default: custom = only texts that exist)', /^(all|nonempty|conversation|custom)$/i, 'custom')
       .option('-v, --verbose', 'debug mode', false)
   }
 
@@ -322,6 +319,7 @@ if (require.main === module) {
       dataDir: options.dataDir,
       textDir: options.textDir,
       strategy: String(options.strategy).toLowerCase(),
+      scope: String(options.scope || 'custom').toLowerCase(),
       englishTag: String(options.english_tag) !== 'false',
       direction: String(options.direction).toLowerCase(),
       verbose: options.verbose,

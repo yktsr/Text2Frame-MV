@@ -49,7 +49,9 @@ describe('t2f-sync controller', function () {
         ]
       }
     ]))
-    opts = { root: tmp, dataDir: 'data', textDir: 'text', strategy: 'merge' }
+    /* 取り出す範囲の既定は custom(既にあるテキストだけ)。
+     * ここでの試験は「取り出しそのもの」を見たいので、中身のあるものを作る範囲にしておく。 */
+    opts = { root: tmp, dataDir: 'data', textDir: 'text', strategy: 'merge', scope: 'nonempty' }
   })
   afterEach(function () {
     process.chdir(cwd)
@@ -396,12 +398,34 @@ describe('t2f-sync controller', function () {
     expect(guard.isEcho(res.dataPath)).to.equal(true) // the data write is recognised as ours
   })
 
+  /* 既定は custom。ツクールでイベントを足しても、テキストが勝手に増えない。
+   * 既にあるテキストは、範囲に関係なく更新される。 */
+  it('makes no new text by default, but updates the ones that exist', function () {
+    const mapPath = path.join(tmp, 'data', 'Map001.json')
+    const plain = { root: tmp, dataDir: 'data', textDir: 'text', strategy: 'merge' }
+
+    sync.pullDataFile(mapPath, plain)
+
+    expect(fs.existsSync(evText())).to.equal(false)
+
+    // 先にテキストを用意すれば、そこへ取り出す。
+    sync.pullDataFile(mapPath, opts)
+    fs.writeFileSync(mapPath, JSON.stringify(Object.assign(JSON.parse(fs.readFileSync(mapPath, 'utf8')), {
+      events: [null, { id: 1, pages: [{ list: [{ code: 401, indent: 0, parameters: ['ツクールで直した'] }, { code: 0, indent: 0, parameters: [] }] }] }]
+    })), 'utf8')
+
+    sync.pullDataFile(mapPath, plain)
+
+    expect(fs.readFileSync(evText(), 'utf8')).to.contain('ツクールで直した')
+  })
+
   /* モジュール API は元から root を受け取るが、CLI 入口だけ cwd を直書きしていて
    * プロジェクトの外から流せなかった。Text2Frame.js の --root と同じ意味。 */
   it('--root puts the ancestor under the project, not the current directory', function () {
     const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 't2fsync-cwd-'))
     try {
-      const r = cp.spawnSync('node', [SYNC_CLI, 'once', '--direction', 'pull', '--root', tmp],
+      // 既定の範囲は custom(既にあるテキストだけ)なので、作る範囲を指定して祖先まで作らせる。
+      const r = cp.spawnSync('node', [SYNC_CLI, 'once', '--direction', 'pull', '--scope', 'nonempty', '--root', tmp],
         { cwd: elsewhere, encoding: 'utf8' })
 
       expect(r.status, r.stderr).to.equal(0)
@@ -447,7 +471,7 @@ describe('t2f-sync controller', function () {
     })
 
     it('once syncs and exits', function () {
-      const r = runCli(['once'])
+      const r = runCli(['once', '--scope', 'nonempty'])
       expect(r.status, r.stderr).to.equal(0)
       expect(r.stdout).to.contain('initial sync')
       expect(fs.existsSync(path.join(tmp, '.t2f-base'))).to.equal(true)
