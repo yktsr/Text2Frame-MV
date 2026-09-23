@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor, baseSnapshotPath, hasBaseSnapshot, snapshotKeyForTarget, historyKeep } from './compiler';
 import { withHistory } from './db/history';
-import { commitPull, planPull, textIndexFor, ExportTarget, PullPlan } from './exportText';
+import { commitPull, planPull, pullTargetsFor, ExportTarget, PullPlan } from './exportText';
 import { writeBackAndRefreshBase, reviewFiles, noteApply } from './deploy';
 import { reviewEnabled } from './review';
 import { reviewPull, busy, DeploySort } from './reviewApply';
@@ -32,6 +32,11 @@ function getOutput(): vscode.OutputChannel {
 function textBaseSetting(): string {
     return vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text');
 }
+/** 取り出す範囲。既定は中身のあるものだけ。 */
+export function exportScopeSetting(): string {
+    return vscode.workspace.getConfiguration('text2frame').get<string>('exportScope', 'nonempty');
+}
+
 function strategySetting(): string {
     return vscode.workspace.getConfiguration('text2frame').get<string>('strategy', 'merge');
 }
@@ -53,64 +58,6 @@ export function walkTextFiles(dir: string): string[] {
     return result;
 }
 
-interface DataItem {
-    kind: 'event' | 'common';
-    mapId?: string;
-    eventId?: string;
-    pageId?: string;
-    commonEventId?: string;
-    key: string;
-}
-
-/** Enumerate every non-empty event/page and common event in the data dir. */
-export function enumerateDataTargets(dataDir: string): DataItem[] {
-    const items: DataItem[] = [];
-    for (const file of fs.readdirSync(dataDir)) {
-        const m = file.match(/^Map(\d+)\.json$/);
-        if (!m) {
-            continue;
-        }
-        const mapId = String(parseInt(m[1], 10));
-        let map;
-        try {
-            map = JSON.parse(fs.readFileSync(path.join(dataDir, file), 'utf8'));
-        } catch (e) {
-            continue;
-        }
-        if (!map.events || !Array.isArray(map.events)) {
-            continue;
-        }
-        map.events.forEach((event: { pages?: { list?: unknown[] }[] }, eventIndex: number) => {
-            if (!event || !event.pages) {
-                return;
-            }
-            event.pages.forEach((page, pageIndex: number) => {
-                if (!page || !Array.isArray(page.list) || page.list.length <= 1) {
-                    return;
-                }
-                const eventId = String(eventIndex);
-                const pageId = String(pageIndex + 1);
-                const key = `map${mapId.padStart(3, '0')}_event${eventId.padStart(3, '0')}_page${pageId}`;
-                items.push({ kind: 'event', mapId, eventId, pageId, key });
-            });
-        });
-    }
-    const cePath = path.join(dataDir, 'CommonEvents.json');
-    if (fs.existsSync(cePath)) {
-        try {
-            const ce = JSON.parse(fs.readFileSync(cePath, 'utf8'));
-            ce.forEach((entry: { list?: unknown[] }, index: number) => {
-                if (!entry || !Array.isArray(entry.list) || entry.list.length <= 1) {
-                    return;
-                }
-                items.push({ kind: 'common', commonEventId: String(index), key: `common${String(index).padStart(3, '0')}` });
-            });
-        } catch (e) {
-            // ignore malformed CommonEvents.json
-        }
-    }
-    return items;
-}
 
 /** ゲームに反映(すべて): push every text file under the text folder into the game. */
 export async function deployAll(context: vscode.ExtensionContext): Promise<void> {
@@ -227,16 +174,17 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
             return;
         }
     }
-    // 既にあるテキストは、その名前・その場所のまま書き続ける(front matter で引く)。
-    const index = textIndexFor(context, root, outDir);
-    const makePlans = (slowly: SlowlyOptions): Promise<PullPlan[] | undefined> => mapSlowly(enumerateDataTargets(dataDir).filter((it) => !index.duplicates[it.key]), (it) => {
+    /* 取り出す対象と書き先は、同梱の Frame2Text に合わせる(CLI・プラグインと同じ規則)。
+     * 範囲は設定 text2frame.exportScope。既にあるテキストは、範囲に関係なく必ず対象に入る。 */
+    const { targets: dataTargets, pathOf } = pullTargetsFor(context, root, dataDir, outDir, exportScopeSetting());
+    const makePlans = (slowly: SlowlyOptions): Promise<PullPlan[] | undefined> => mapSlowly(dataTargets, (it) => {
         const target: ExportTarget = {
             kind: it.kind,
             mapId: it.mapId,
             eventId: it.eventId,
             pageId: it.pageId,
             commonEventId: it.commonEventId,
-            textPath: index.paths[it.key] || path.join(outDir, it.key + '.txt')
+            textPath: pathOf(it)
         };
         if (mode === 'overwrite' && fs.existsSync(target.textPath)) {
             target.frontMatterSource = fs.readFileSync(target.textPath, 'utf8');

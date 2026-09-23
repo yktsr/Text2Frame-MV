@@ -52,6 +52,10 @@ interface Frame2TextModule {
     };
     /** テキストのフォルダを front matter で索引する。取り出しの書き先を既存のファイルに合わせるため。 */
     indexTexts?: (textDir: string) => { paths: { [key: string]: string }; duplicates: { [key: string]: string[] } };
+    /** 取り出す対象。scope で範囲を絞る(既にテキストがあるものは範囲に関係なく入る)。 */
+    enumerateTargets?: (dataDir: string, options?: { onlyFile?: string; scope?: string; index?: { paths: { [key: string]: string } } }) => PullTarget[];
+    /** 新しく作るときのファイル名(ID + ツクールで付けた名前)。 */
+    defaultFileName?: (target: PullTarget) => string;
     VERSION?: string;
 }
 
@@ -59,6 +63,18 @@ interface Text2FrameModule {
     /** game->text merge (mirror of deploy): keeps translations, brings game changes, kept-both on conflict. */
     applyMergePull: (opts: { gameCommands: unknown[]; textBody: string; baseBody: string; englishTag: boolean }) => { text: string; conflicts: number; warnings: string[] };
     VERSION?: string;
+}
+
+/** 取り出す対象1件。Frame2Text の enumerateTargets が返すもの。 */
+export interface PullTarget {
+    kind: 'event' | 'common';
+    mapId?: string;
+    eventId?: string;
+    pageId?: string;
+    commonEventId?: string;
+    key: string;
+    mapName?: string;
+    name?: string;
 }
 
 export interface ExportTarget {
@@ -230,6 +246,63 @@ export function textIndexFor(context: vscode.ExtensionContext, workspaceRoot: st
         return mod.indexTexts(textDir);
     } catch (e) {
         return { paths: {}, duplicates: {} };
+    }
+}
+
+/**
+ * 取り出す対象と、テキストのフォルダの索引。
+ * 範囲(scope)は「新しく作るかどうか」だけを決め、既にあるテキストは必ず対象に入る。
+ * 書き先は「同じ行き先のテキストがあればその場所、無ければ既定の名前」。
+ */
+export function pullTargetsFor(
+    context: vscode.ExtensionContext,
+    workspaceRoot: string,
+    dataDir: string,
+    textDir: string,
+    scope: string
+): { targets: PullTarget[]; index: { paths: { [key: string]: string }; duplicates: { [key: string]: string[] } }; pathOf: (t: PullTarget) => string } {
+    const index = textIndexFor(context, workspaceRoot, textDir);
+    const mod = frame2Text(context, workspaceRoot);
+    const pathOf = (t: PullTarget): string =>
+        index.paths[t.key] || path.join(textDir, mod && mod.defaultFileName ? mod.defaultFileName(t) : t.key + '.txt');
+    if (!mod || !mod.enumerateTargets) {
+        return { targets: [], index, pathOf };
+    }
+    const targets = mod.enumerateTargets(dataDir, { scope, index }).filter((t) => !index.duplicates[t.key]);
+    return { targets, index, pathOf };
+}
+
+/**
+ * 1件ぶんの取り出し先。既にその行き先のテキストがあればその場所、無ければ既定の名前
+ * (ID にツクールで付けた名前を添えたもの)。データは対象のファイルだけ読む。
+ */
+export function newTextPathFor(
+    context: vscode.ExtensionContext,
+    workspaceRoot: string,
+    dataDir: string,
+    textDir: string,
+    target: ExportTarget
+): string {
+    const key = target.kind === 'common'
+        ? `common${String(target.commonEventId).padStart(3, '0')}`
+        : `map${String(target.mapId).padStart(3, '0')}_event${String(target.eventId).padStart(3, '0')}_page${target.pageId || '1'}`;
+    const index = textIndexFor(context, workspaceRoot, textDir);
+    if (index.paths[key]) {
+        return index.paths[key];
+    }
+    const mod = frame2Text(context, workspaceRoot);
+    const fallback = path.join(textDir, key + '.txt');
+    if (!mod || !mod.enumerateTargets || !mod.defaultFileName) {
+        return fallback;
+    }
+    const onlyFile = target.kind === 'common'
+        ? 'CommonEvents.json'
+        : `Map${String(target.mapId).padStart(3, '0')}.json`;
+    try {
+        const hit = mod.enumerateTargets(dataDir, { onlyFile, scope: 'all' }).find((t) => t.key === key);
+        return hit ? path.join(textDir, mod.defaultFileName(hit)) : fallback;
+    } catch (e) {
+        return fallback;
     }
 }
 

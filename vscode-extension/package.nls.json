@@ -92,5 +92,15 @@
   "config.text2frame.strategy.enumItemLabels.1": "Overwrite",
   "config.text2frame.messageCheck.enumItemLabels.0": "Auto",
   "config.text2frame.messageCheck.enumItemLabels.1": "Always check",
-  "config.text2frame.messageCheck.enumItemLabels.2": "Do not check"
+  "config.text2frame.messageCheck.enumItemLabels.2": "Do not check",
+  "config.text2frame.exportScope.description": "Which events \"Pull all from game\" writes. Texts that already exist are always kept up to date.",
+  "config.text2frame.exportScope.enumItemLabels.0": "Only what holds something",
+  "config.text2frame.exportScope.enumItemLabels.1": "Only what holds a conversation",
+  "config.text2frame.exportScope.enumItemLabels.2": "Only the texts that exist",
+  "config.text2frame.exportScope.enumItemLabels.3": "Everything",
+  "config.text2frame.exportScope.enumDescriptions.0": "Skip pages and common events that hold no commands (default)",
+  "config.text2frame.exportScope.enumDescriptions.1": "Write only what shows a message, a choice or scrolling text",
+  "config.text2frame.exportScope.enumDescriptions.2": "Make no new text; keep the ones you already have up to date",
+  "config.text2frame.exportScope.enumDescriptions.3": "Write every page and common event, empty ones included",
+  "command.text2frame.pullThisView.title": "Text2Frame: Pull this event from the game"
 }
