@@ -1,33 +1,16 @@
 const chai = require('chai')
 const expect = chai.expect
 
-globalThis.Game_Interpreter = {}
-Game_Interpreter.prototype = {}
-globalThis.$gameMessage = { add: function () {} }
-/* プラグインパラメータは読み込み時に一度だけ読まれるので、既定を変えたプロジェクトを
- * 模すには require の前に差し替える必要がある。そのためこれだけ別ファイルにしている。 */
-globalThis.PluginManager = {
-  parameters: function () {
-    return {
-      'Default Window Position': '上', // 出荷時は「下」
-      'Default Background': '暗くする', // 出荷時は「ウインドウ」
-      'Comment Out Char': '%',
-      IsOverwrite: 'false',
-      'Default Scenario Folder': 'text',
-      'Default Scenario File': 'message.txt',
-      'Default Common Event ID': '1',
-      'Default MapID': '1',
-      'Default EventID': '1',
-      'Default PageID': '1',
-      IsDebug: 'false',
-      DisplayMsg: 'false',
-      DisplayWarning: 'false',
-      EnglishTag: 'true',
-      OmitDefaultTags: 'true'
-    }
-  },
-  registerCommand: function () {}
-}
+// 偽のツクールは本体を読み込む前に置く(読み込み時にパラメータを読むため)。
+const { bottom, installEngine } = require('./helpers')
+installEngine({
+  // 出荷時は「下」「ウインドウ」。既定を変えたプロジェクトを模す。
+  'Default Window Position': '上',
+  'Default Background': '暗くする',
+  DisplayMsg: 'false',
+  DisplayWarning: 'false',
+  OmitDefaultTags: 'true'
+})
 const text2frame = require('../Text2Frame.js')
 const frame2text = require('../Frame2Text.js')
 
@@ -35,7 +18,6 @@ const frame2text = require('../Frame2Text.js')
  * 出荷時の既定(ウインドウ/下)を基準にすると、既定を変えているプロジェクトで
  * ゲームの見た目が黙って変わる。これがこの機能でいちばん壊しやすいところ。 */
 describe('omitting tags follows the project\'s own defaults', function () {
-  const bottom = { code: 0, indent: 0, parameters: [] }
   const msg = function (background, position, text) {
     return [
       { code: 101, indent: 0, parameters: ['', 0, background, position, ''] },

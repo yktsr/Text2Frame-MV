@@ -4,43 +4,17 @@ const sinon = require('sinon')
 const fs = require('fs')
 const path = require('path')
 
-globalThis.Game_Interpreter = {}
-Game_Interpreter.prototype = {}
-const shown = []
-globalThis.$gameMessage = { add: function (t) { shown.push(String(t)) } }
-globalThis.PluginManager = {
-  parameters: function () {
-    return {
-      'Default Window Position': 'Bottom',
-      'Default Background': 'Window',
-      // 走査できる場所を指すよう絶対パスにしておく(フォールバックの検査に使う)。
-      'Default Scenario Folder': path.resolve('/virt/text'),
-      'Default Scenario File': 'message.txt',
-      'Default Common Event ID': '1',
-      'Default MapID': '1',
-      'Default EventID': '1',
-      'Default PageID': '1',
-      IsOverwrite: 'false',
-      'Comment Out Char': '%',
-      IsDebug: 'false',
-      DisplayMsg: 'true',
-      DisplayWarning: 'true'
-    }
-  },
-  registerCommand: function () {}
-}
+// 偽のツクールは本体を読み込む前に置く(読み込み時にパラメータを読むため)。
+const { bottom, installEngine, msg } = require('./helpers')
+const { shown } = installEngine({
+  // 走査できる場所を指すよう絶対パスにしておく(省略時のフォールバックの検査に使う)。
+  'Default Scenario Folder': path.resolve('/virt/text')
+})
 require('../Text2Frame.js')
 
 describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
   const textRoot = path.resolve('/virt/text')
   const eventPage = function (list) { return { list } }
-  const msg = function (line) {
-    return [
-      { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-      { code: 401, indent: 0, parameters: [line] }
-    ]
-  }
-  const bottom = { code: 0, indent: 0, parameters: [] }
   const mapData = {
     events: [null,
       { id: 1, pages: [eventPage(msg('Hello 1').concat([bottom]))] },

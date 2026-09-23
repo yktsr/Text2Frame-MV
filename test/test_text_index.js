@@ -1,5 +1,6 @@
 const chai = require('chai')
 const expect = chai.expect
+const { bottom, msg } = require('./helpers')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
@@ -16,13 +17,6 @@ describe('text index (front matter -> file)', function () {
   let textDir
   let cwd
 
-  const bottom = { code: 0, indent: 0, parameters: [] }
-  const msg = function (text) {
-    return [
-      { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-      { code: 401, indent: 0, parameters: [text] }
-    ]
-  }
   const files = function (dir) {
     const out = []
     const walk = function (cur, rel) {

@@ -4,31 +4,9 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 
-globalThis.Game_Interpreter = {}
-Game_Interpreter.prototype = {}
-const shown = []
-globalThis.$gameMessage = { add: function (t) { shown.push(String(t)) } }
-globalThis.PluginManager = {
-  parameters: function () {
-    return {
-      'Default Window Position': 'Bottom',
-      'Default Background': 'Window',
-      'Comment Out Char': '%',
-      IsOverwrite: 'false',
-      'Default Scenario Folder': 'text',
-      'Default Scenario File': 'message.txt',
-      'Default Common Event ID': '1',
-      'Default MapID': '1',
-      'Default EventID': '1',
-      'Default PageID': '1',
-      IsDebug: 'false',
-      DisplayMsg: 'true',
-      DisplayWarning: 'true',
-      EnglishTag: 'true'
-    }
-  },
-  registerCommand: function () {}
-}
+// 偽のツクールは本体を読み込む前に置く(読み込み時にパラメータを読むため)。
+const { bottom, installEngine } = require('./helpers')
+const { shown } = installEngine()
 const frame2text = require('../Frame2Text.js')
 
 /* 取り出す範囲。数千イベントのプロジェクトでは、全部を書き出すと編集したいものを探せなくなる。
@@ -38,7 +16,6 @@ describe('export scope', function () {
   let tmp
   let cwd
   let mainModule
-  const bottom = { code: 0, indent: 0, parameters: [] }
   const message = [
     { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
     { code: 401, indent: 0, parameters: ['やあ'] },

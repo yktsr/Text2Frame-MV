@@ -4,33 +4,9 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 
-globalThis.Game_Interpreter = {}
-Game_Interpreter.prototype = {}
-const shown = []
-globalThis.$gameMessage = { add: function (t) { shown.push(String(t)) } }
-// merge 取り出しでは Text2Frame が遅延ロードされ、これらのパラメータでタグを解釈する。
-// 欠けていると "undefined" が既定値になり <Background: ...> 等が文法エラーになる。
-// テストから書き換えられるよう、同じオブジェクトを返す。
-const params = {
-  'Default Window Position': 'Bottom',
-  'Default Background': 'Window',
-  'Comment Out Char': '%',
-  IsOverwrite: 'false',
-  'Default Scenario Folder': 'text',
-  'Default Scenario File': 'message.txt',
-  'Default Common Event ID': '1',
-  'Default MapID': '1',
-  'Default EventID': '1',
-  'Default PageID': '1',
-  IsDebug: 'false',
-  DisplayMsg: 'true',
-  DisplayWarning: 'true',
-  EnglishTag: 'true'
-}
-globalThis.PluginManager = {
-  parameters: function () { return params },
-  registerCommand: function () {}
-}
+// 偽のツクールは本体を読み込む前に置く(読み込み時にパラメータを読むため)。
+const { installEngine } = require('./helpers')
+const { shown, parameters: params } = installEngine()
 require('../Frame2Text.js')
 
 function msgEvent (line) {

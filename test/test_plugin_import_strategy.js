@@ -3,29 +3,9 @@ const expect = chai.expect
 const sinon = require('sinon')
 const fs = require('fs')
 
-globalThis.Game_Interpreter = {}
-Game_Interpreter.prototype = {}
-globalThis.$gameMessage = { add: function () {} }
-globalThis.PluginManager = {
-  parameters: function () {
-    return {
-      'Default Window Position': 'Bottom',
-      'Default Background': 'Window',
-      'Default Scenario Folder': 'text',
-      'Default Scenario File': 'message.txt',
-      'Default Common Event ID': '1',
-      'Default MapID': '1',
-      'Default EventID': '1',
-      'Default PageID': '1',
-      // 2.2.4 までの既定値のまま(= 末尾に追記)。省略時のフォールバックの検査に使う。
-      IsOverwrite: 'false',
-      'Comment Out Char': '%',
-      IsDebug: 'false',
-      DisplayWarning: 'true'
-    }
-  },
-  registerCommand: function () {}
-}
+// 偽のツクールは本体を読み込む前に置く(読み込み時にパラメータを読むため)。
+const { installEngine } = require('./helpers')
+installEngine({ DisplayMsg: 'false' })
 require('../Text2Frame.js')
 
 describe('IMPORT_MESSAGE_TO_EVENT with strategy=merge', function () {

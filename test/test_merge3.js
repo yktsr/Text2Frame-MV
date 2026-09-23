@@ -1,24 +1,12 @@
 const chai = require('chai')
 const expect = chai.expect
+const { bottom, markers, msg, texts } = require('./helpers')
 
 const text2frame = require('../Text2Frame.js')
 const applyThreeWayMerge = text2frame.applyThreeWayMerge
 
-const bottom = { code: 0, indent: 0, parameters: [] }
-const msg = function (text) {
-  return [
-    { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-    { code: 401, indent: 0, parameters: [text] }
-  ]
-}
 const sw = function (id) { return { code: 121, indent: 0, parameters: [id, id, 0, 0] } }
-const texts = function (cmds) { return cmds.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] }) }
 const codes = function (cmds) { return cmds.map(function (c) { return c.code }) }
-const markers = function (cmds) {
-  return cmds.filter(function (c) {
-    return (c.code === 108 || c.code === 408) && String(c.parameters[0]).indexOf('===') === 0
-  })
-}
 
 describe('ThreeWayMerge (applyThreeWayMerge) Test', function () {
   it('theirs-only change: takes the writer edit', function () {

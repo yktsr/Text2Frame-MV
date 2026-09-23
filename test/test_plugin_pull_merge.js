@@ -3,27 +3,9 @@ const expect = chai.expect
 const sinon = require('sinon')
 const fs = require('fs')
 
-globalThis.Game_Interpreter = {}
-Game_Interpreter.prototype = {}
-globalThis.$gameMessage = { add: function () {} }
-globalThis.PluginManager = {
-  parameters: function () {
-    return {
-      'Default Window Position': 'Bottom',
-      'Default Background': 'Window',
-      'Default Scenario Folder': 'text',
-      'Default Scenario File': 'message.txt',
-      'Default Common Event ID': '1',
-      'Default MapID': '1',
-      'Default EventID': '1',
-      'Default PageID': '1',
-      IsOverwrite: 'false',
-      'Comment Out Char': '%',
-      IsDebug: 'false'
-    }
-  },
-  registerCommand: function () {}
-}
+// 偽のツクールは本体を読み込む前に置く(読み込み時にパラメータを読むため)。
+const { installEngine } = require('./helpers')
+installEngine({ DisplayMsg: 'false' })
 // Pre-load both modules before fs is stubbed (Frame2Text lazy-requires Text2Frame at runtime;
 // stubbing fs.readFileSync would otherwise break the module loader).
 require('../Text2Frame.js')

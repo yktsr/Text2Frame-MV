@@ -1,5 +1,6 @@
 const chai = require('chai')
 const expect = chai.expect
+const { bottom, msg, texts } = require('./helpers')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
@@ -16,16 +17,6 @@ describe('ancestor key from the front matter', function () {
   let mapPath
   let cwd
 
-  const bottom = { code: 0, indent: 0, parameters: [] }
-  const msg = function (text) {
-    return [
-      { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
-      { code: 401, indent: 0, parameters: [text] }
-    ]
-  }
-  const texts = function (list) {
-    return list.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })
-  }
   const mapList = function () {
     return JSON.parse(fs.readFileSync(mapPath, 'utf8')).events[1].pages[0].list
   }
