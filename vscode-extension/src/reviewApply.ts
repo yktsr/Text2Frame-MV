@@ -93,7 +93,7 @@ export async function reviewDeploy(
         if (!items.length) return 'unchanged';
         if (options.show === false) return 'accept';
         const notes = [
-            conflicts ? tr(`競合 ${conflicts} 件は両方を残します`, `${conflicts} conflicts keep both versions`) : '',
+            conflicts ? tr(`衝突 ${conflicts} 件は両方を残します`, `${conflicts} conflicts keep both versions`) : '',
             failed ? tr(`書き方の誤りで反映できないものが ${failed} 件あります`, `${failed} cannot be applied because of writing errors`) : ''
         ].filter(Boolean);
         const accepted = await review({
@@ -138,7 +138,7 @@ export async function reviewPull(
         const conflicts = usable.reduce((n, p) => n + (p.conflicts || 0), 0);
         const notes = [
             created ? tr(`新しく作るテキストが ${created} 件あります`, `${created} new texts will be made`) : '',
-            conflicts ? tr(`競合 ${conflicts} 件は両方を残します`, `${conflicts} conflicts keep both versions`) : ''
+            conflicts ? tr(`衝突 ${conflicts} 件は両方を残します`, `${conflicts} conflicts keep both versions`) : ''
         ].filter(Boolean);
         const accepted = await review({
             title: tr(`取り出しの確認（${items.length} ファイル）`, `Review the pull (${items.length} files)`),

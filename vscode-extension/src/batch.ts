@@ -271,7 +271,7 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
                         markers++;
                     }
                     out.appendLine(`OK   ${path.relative(root, target.textPath)}`
-                        + (res.conflicts ? tr(`  (${res.conflicts} 競合)`, `  (${res.conflicts} conflicts)`) : '')
+                        + (res.conflicts ? tr(`  (${res.conflicts} 衝突)`, `  (${res.conflicts} conflicts)`) : '')
                         + (res.markers ? tr('  (目印ごと取り出し。祖先は据え置き)', '  (pulled with the markers; ancestor kept)') : ''));
                 } else {
                     fail++;
@@ -287,7 +287,7 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
     }
     const msg = (finished ? tr(`Text2Frame: ${purpose} 完了 — ${written} 件`, `Text2Frame: ${purpose} done — ${written}`) : tr(`Text2Frame: ${purpose}を途中でやめました — ${written} 件まで書きました。済んだ分は「履歴」から戻せます`, `Text2Frame: ${purpose} stopped partway — wrote ${written}. You can undo the done ones from History`))
         + (fail ? tr(` / ${fail} 失敗`, ` / ${fail} failed`) : '')
-        + (conflicts ? tr(` / ${conflicts} 競合(両方残し)`, ` / ${conflicts} conflicts (both kept)`) : '')
+        + (conflicts ? tr(` / ${conflicts} 衝突(両方残し)`, ` / ${conflicts} conflicts (both kept)`) : '')
         + (skipped ? tr(` / ${skipped} 件は目印が未解決で除外`, ` / ${skipped} skipped for unresolved markers`) : '');
     if (fail > 0 || conflicts > 0 || skipped > 0 || !finished) {
         vscode.window.showWarningMessage(msg, tr('詳細', 'Details')).then((p) => { if (p) { out.show(true); } });

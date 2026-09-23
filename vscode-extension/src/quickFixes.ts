@@ -10,7 +10,7 @@ import { tr } from './db/lang';
 /**
  * クイックフィックス(電球)。
  *   知らないタグ: タグの形をしているのに、コンパイラが文章として読む行(ゲームにそのまま文字で出る)。
- *   競合の目印: 3つそろったものに、残す方を選ぶ直し方を出す。
+ *   衝突の目印: 3つそろったものに、残す方を選ぶ直し方を出す。
  *   閉じ忘れ・空のタグ・データベースの番号: 今の診断に付けたコードを見て、直し方を出す。
  */
 
@@ -70,7 +70,7 @@ export function registerQuickFixes(context: vscode.ExtensionContext): void {
             const first = conflict.units[0];
             const d = new vscode.Diagnostic(
                 new vscode.Range(first.start, 0, conflict.units[2].end, lines[conflict.units[2].end].length),
-                tr('未解決の競合です。電球(または Ctrl+.)から、残す方を選べます。', 'Unresolved conflict. Pick what to keep from the light bulb (or Ctrl+.).'),
+                tr('未解決の衝突です。電球(または Ctrl+.)から、残す方を選べます。', 'Unresolved conflict. Pick what to keep from the light bulb (or Ctrl+.).'),
                 vscode.DiagnosticSeverity.Warning
             );
             d.code = FIX.conflict;

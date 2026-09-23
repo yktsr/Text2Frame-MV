@@ -139,7 +139,7 @@ export function registerProjectCheck(context: vscode.ExtensionContext, service: 
                     }
                 });
                 for (const c of findConflicts(lines)) {
-                    list.push(diagnostic(c.units[0].start, 0, lines[c.units[0].start].length, tr('未解決の競合です。', 'Unresolved conflict.'), 'warning', 'conflict'));
+                    list.push(diagnostic(c.units[0].start, 0, lines[c.units[0].start].length, tr('未解決の衝突です。', 'Unresolved conflict.'), 'warning', 'conflict'));
                 }
                 if (compile) {
                     try {

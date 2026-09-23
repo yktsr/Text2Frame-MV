@@ -4,7 +4,7 @@ import { TAG_HELP_SECTIONS } from '../tagHelpData';
  * クイックフィックス(電球)とスニペットのうち、VS Code に依存しない部分。
  */
 
-/* ---------- 競合の目印 ---------- */
+/* ---------- 衝突の目印 ---------- */
 
 /** Text2Frame.js の CONFLICT_MARKERS と同じ文字列。 */
 export const CONFLICT_MARKERS = [
@@ -32,7 +32,7 @@ function markerUnit(lines: string[], line: number): MarkerUnit {
     return { start: line, end: line };
 }
 
-/** 目印が3つそろった競合を、上から順に。 */
+/** 目印が3つそろった衝突を、上から順に。 */
 export function findConflicts(lines: string[]): Conflict[] {
     const out: Conflict[] = [];
     let found: MarkerUnit[] = [];
@@ -50,7 +50,7 @@ export function findConflicts(lines: string[]): Conflict[] {
     return out;
 }
 
-/** 競合を解いたあとの行(start から end まで(両端を含む)を置き換える)。 */
+/** 衝突を解いたあとの行(start から end まで(両端を含む)を置き換える)。 */
 export function resolveConflict(lines: string[], conflict: Conflict, keep: 'text' | 'game' | 'both'): { start: number; end: number; lines: string[] } {
     const [a, b, c] = conflict.units;
     const text = lines.slice(a.end + 1, b.start);

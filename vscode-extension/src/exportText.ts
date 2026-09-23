@@ -489,7 +489,7 @@ export async function exportCurrentFile(context: vscode.ExtensionContext): Promi
         vscode.window.showWarningMessage(tr('Text2Frame: テキストに未解決の衝突の目印が残っているため統合できません。衝突の目印を消して残す方を決めたあと、反映してください。', 'Text2Frame: Cannot merge: unresolved conflict markers remain in the text. Choose what to keep, remove the markers, then apply.'));
     } else if (result.ok) {
         const c = result.conflicts || 0;
-        vscode.window.showInformationMessage(tr(`Text2Frame: ゲームから取り出しました${c ? `（${c} 件の競合は両方残しました。確認してください）` : ''}`, `Text2Frame: Pulled from the game${c ? ` (both versions of ${c} conflicts were kept; check them)` : ''}`));
+        vscode.window.showInformationMessage(tr(`Text2Frame: ゲームから取り出しました${c ? `（${c} 件の衝突は両方残しました。確認してください）` : ''}`, `Text2Frame: Pulled from the game${c ? ` (both versions of ${c} conflicts were kept; check them)` : ''}`));
     } else {
         vscode.window.showErrorMessage(tr('Text2Frame: 取り出し失敗 - ', 'Text2Frame: Could not pull - ') + (result.error || ''));
     }
