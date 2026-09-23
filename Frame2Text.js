@@ -3186,21 +3186,28 @@ function resolveText2Frame () {
         if (fd !== null) { try { _fs.closeSync(fd) } catch (e) { /* noop */ } }
       }
     }
-    const metaOfText = function (text) {
-      const meta = {}
+    /* 見出し(front matter)を1か所で切り分ける。header は '---' から '---' までの丸ごと、
+     * body はその後ろ、meta は中の key: value。見出しが無ければ header は null。
+     * Frame2Text は単体で動く必要があるので、Text2Frame の同名の関数には頼らない。 */
+    const splitFrontMatter = function (text) {
       const n = String(text).replace(/\r\n/g, '\n')
-      if (n.indexOf('---\n') !== 0) return meta
+      const none = { meta: {}, body: text, header: null }
+      if (n.indexOf('---\n') !== 0) return none
       const end = n.indexOf('\n---\n', 4)
-      if (end < 0) return meta
+      if (end < 0) return none
+      const meta = {}
       n.slice(4, end).split('\n').forEach(function (line) {
         const m = line.match(/^([A-Za-z0-9_]+)\s*:\s*(.*)$/)
         if (m) meta[m[1]] = m[2].replace(/^["']|["']$/g, '').trim()
       })
-      return meta
+      return { meta, body: n.slice(end + 5), header: n.slice(0, end + 5) }
     }
+    const metaOfText = function (text) { return splitFrontMatter(text).meta }
     // 宛先の名前。enumerateTargets が付ける key と同じ規則。
+    const pad3 = function (v) { return ('00' + String(v)).slice(-3) }
+    /* 宛先の見分け(map001_event003_page1 / common001)。テキストの見出し・データの走査・
+     * 既定のファイル名・祖先の鍵は、すべてこの1つの書式で揃える。 */
     const keyOfMeta = function (meta) {
-      const pad3 = function (v) { return ('00' + String(v)).slice(-3) }
       if (String(meta.kind || '').toLowerCase() === 'common') {
         return meta.commonEventId ? 'common' + pad3(meta.commonEventId) : ''
       }
@@ -3254,10 +3261,7 @@ function resolveText2Frame () {
     // ファイル名の上限(多くの環境で255バイト)。超えるなら名前を諦めて ID だけにする。
     const NAME_BYTES_LIMIT = 250
     const defaultFileName = function (target) {
-      const pad3 = function (v) { return ('00' + String(v)).slice(-3) }
-      const plain = String(target.kind) === 'common'
-        ? 'common' + pad3(target.commonEventId) + '.txt'
-        : 'map' + pad3(target.mapId) + '_event' + pad3(target.eventId) + '_page' + String(target.pageId || 1) + '.txt'
+      const plain = keyOfMeta(target) + '.txt'
       const named = String(target.kind) === 'common'
         ? 'common' + pad3(target.commonEventId) + namePart(target.name) + '.txt'
         : 'map' + pad3(target.mapId) + namePart(target.mapName) +
@@ -3311,18 +3315,8 @@ function resolveText2Frame () {
     }
 
     // front matter(先頭の --- ブロック)の取り外し/取り出し。取り出し系で共有する。
-    const stripFrontMatter = function (t) {
-      const n = String(t).replace(/\r\n/g, '\n')
-      if (n.indexOf('---\n') !== 0) return t
-      const e = n.indexOf('\n---\n', 4)
-      return e < 0 ? t : n.slice(e + 5)
-    }
-    const frontMatterHeader = function (t) {
-      const n = String(t).replace(/\r\n/g, '\n')
-      if (n.indexOf('---\n') !== 0) return null
-      const e = n.indexOf('\n---\n', 4)
-      return e < 0 ? null : n.slice(0, e + 5)
-    }
+    const stripFrontMatter = function (t) { return splitFrontMatter(t).body }
+    const frontMatterHeader = function (t) { return splitFrontMatter(t).header }
     // 見出しの末尾を「---\n」+空行1つに揃える(renderFrontMatter は空行込み、既存ファイルの
     // 見出しは空行なしで返るため、ここで吸収して本文との間隔を一定にする)。
     const normalizeHeader = function (h) {
@@ -3509,7 +3503,7 @@ function resolveText2Frame () {
           if (!event || !event.pages || !Array.isArray(event.pages)) return
           event.pages.forEach(function (page, pageIndex) {
             const pageId = String(pageIndex + 1)
-            const key = 'map' + mapId.padStart(3, '0') + '_event' + String(eventIndex).padStart(3, '0') + '_page' + pageId
+            const key = keyOfMeta({ kind: 'event', mapId, eventId: String(eventIndex), pageId })
             if (!inScope(scope, page && page.list, key, index)) return
             targets.push({
               kind: 'event',
@@ -3529,7 +3523,7 @@ function resolveText2Frame () {
         if (Array.isArray(commonData)) {
           commonData.forEach(function (ce, ceIndex) {
             if (!ce) return
-            const key = 'common' + String(ceIndex).padStart(3, '0')
+            const key = keyOfMeta({ kind: 'common', commonEventId: String(ceIndex) })
             if (!inScope(scope, ce.list, key, index)) return
             targets.push({ kind: 'common', commonEventId: String(ceIndex), key, name: ce.name || '' })
           })
@@ -3685,7 +3679,7 @@ function resolveText2Frame () {
         console.error('[batch] failed to create output directory: ' + outDir + ' (' + (e.message || e) + ')')
         return
       }
-      // 祖先はテキストの置き場所ごとに分ける(Text2Frame の deriveBaseId と同じ規約)。
+      // 祖先はテキストの置き場所ごとに分ける(Text2Frame と同じ規約)。
       const _baseDir = baseDirForTextDir(_baseRoot, outDir)
       try { mkdirpSync(_baseDir) } catch (e) { _baseSaveError = _baseSaveError || e }
       /* 既にあるテキストは、利用者が付けた名前・置いたフォルダのまま書き続ける。
@@ -3719,6 +3713,7 @@ function resolveText2Frame () {
           outPath: outPathFor(outDir, _index, t),
           baseDir: _baseDir,
           englishTag,
+          omitDefaults: Laurus.Frame2Text.OmitDefaultTags,
           strategy: batchStrategy
         })
         if (!r.ok) {
@@ -4084,7 +4079,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する(既存 dir は existsSync でガード)。
     let baseSaveError = null
     const baseRoot = cliRoot
-    // 祖先はテキストの置き場所ごとに分ける(Text2Frame の deriveBaseId と同じ規約)。
+    // 祖先はテキストの置き場所ごとに分ける(Text2Frame と同じ規約)。
     const baseDir = module.exports.baseDirForTextDir(baseRoot, textDir)
     try { if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true }) } catch (e) { baseSaveError = baseSaveError || e }
     /* 既にあるテキストは、その名前・その場所のまま書き続ける(索引は front matter で引く)。
@@ -4096,16 +4091,16 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     module.exports.enumerateTargets(dataDir, { scope, index }).forEach(function (t) {
       if (index.duplicates[t.key]) return
       // 1件ぶんの取り出しは in-engine・同期と共通(pullTargetToText)。
+      const textPath = module.exports.outPathFor(textDir, index, t)
       const r = module.exports.pullTargetToText({
         dataDir,
         target: t,
-        outPath: module.exports.outPathFor(textDir, index, t),
+        outPath: textPath,
         baseDir,
         englishTag,
         omitDefaults,
         strategy: batchStrategy
       })
-      const textPath = module.exports.outPathFor(textDir, index, t)
       if (!r.ok) {
         results.push({ ok: false, key: t.key, error: r.error })
         return
