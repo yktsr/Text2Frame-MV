@@ -55,7 +55,7 @@ if [ "$RUN_TESTS" -eq 1 ]; then
   npm run lint
   npm test
   npm run test_frame2text
-  ( cd vscode-extension && npm run compile && npm run lint )
+  ( cd vscode-extension && npm run compile && npm run lint && npm test )
 else
   step "検査 (--skip-tests のため飛ばしました)"
 fi

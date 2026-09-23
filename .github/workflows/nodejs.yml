@@ -38,7 +38,7 @@ jobs:
       # MANIFEST を出す)。ここは検査だけ。
 
   extension:
-    name: VS Code extension (compile + lint)
+    name: VS Code extension (compile + lint + test)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -55,6 +55,9 @@ jobs:
         working-directory: vscode-extension
       - name: Lint
         run: npm run lint
+        working-directory: vscode-extension
+      - name: Test
+        run: npm test
         working-directory: vscode-extension
       # .vsix の作成とアップロードは package ジョブへ移した。ここで作ると
       # --pre-release が付かず、pre-release のつもりの版が安定版として出せてしまう

@@ -45,8 +45,14 @@
     "languages": [
       {
         "id": "text2frame",
-        "aliases": ["Text2Frame", "text2frame"],
-        "extensions": [".t2f", ".text2frame"],
+        "aliases": [
+          "Text2Frame",
+          "text2frame"
+        ],
+        "extensions": [
+          ".t2f",
+          ".text2frame"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -54,24 +60,38 @@
       {
         "type": "text2frame",
         "label": "%debugger.label%",
-        "languages": ["text2frame"],
+        "languages": [
+          "text2frame"
+        ],
         "configurationAttributes": {
-          "launch": { "properties": {} }
+          "launch": {
+            "properties": {}
+          }
         },
         "initialConfigurations": [
-          { "type": "text2frame", "request": "launch", "name": "%debugger.configName%" }
+          {
+            "type": "text2frame",
+            "request": "launch",
+            "name": "%debugger.configName%"
+          }
         ],
         "configurationSnippets": [
           {
             "label": "%debugger.snippet.label%",
             "description": "%debugger.snippet.description%",
-            "body": { "type": "text2frame", "request": "launch", "name": "%debugger.configName%" }
+            "body": {
+              "type": "text2frame",
+              "request": "launch",
+              "name": "%debugger.configName%"
+            }
           }
         ]
       }
     ],
     "breakpoints": [
-      { "language": "text2frame" }
+      {
+        "language": "text2frame"
+      }
     ],
     "grammars": [
       {
@@ -486,27 +506,90 @@
         }
       ],
       "commandPalette": [
-        { "command": "text2frame.fix.pickAgain", "when": "false" },
-        { "command": "text2frame.pullThisView", "when": "resourceScheme == text2frame-links" },
-        { "command": "text2frame.tryEvent", "when": "false" },
-        { "command": "text2frame.review.accept", "when": "text2frame.reviewPending" },
-        { "command": "text2frame.review.cancel", "when": "text2frame.reviewPending" },
-        { "command": "text2frame.tree.deploy", "when": "false" },
-        { "command": "text2frame.tree.export", "when": "false" },
-        { "command": "text2frame.tree.refresh", "when": "false" },
-        { "command": "text2frame.tree.try", "when": "false" },
-        { "command": "text2frame.tree.tryRun", "when": "false" },
-        { "command": "text2frame.tree.tryCommon", "when": "false" },
-        { "command": "text2frame.tree.mapLinks", "when": "false" },
-        { "command": "text2frame.tree.mapGraph", "when": "false" },
-        { "command": "text2frame.history.refresh", "when": "false" },
-        { "command": "text2frame.history.diff", "when": "false" },
-        { "command": "text2frame.history.restore", "when": "false" },
-        { "command": "text2frame.mapLinks.show", "when": "false" },
-        { "command": "text2frame.mapLinks.open", "when": "false" },
-        { "command": "text2frame.db.insert", "when": "false" },
-        { "command": "text2frame.db.findUsages", "when": "false" },
-        { "command": "text2frame.db.showUsages", "when": "false" }
+        {
+          "command": "text2frame.fix.pickAgain",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.pullThisView",
+          "when": "resourceScheme == text2frame-links"
+        },
+        {
+          "command": "text2frame.tryEvent",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.review.accept",
+          "when": "text2frame.reviewPending"
+        },
+        {
+          "command": "text2frame.review.cancel",
+          "when": "text2frame.reviewPending"
+        },
+        {
+          "command": "text2frame.tree.deploy",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.export",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.refresh",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.try",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.tryRun",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.tryCommon",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.mapLinks",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.mapGraph",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.history.refresh",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.history.diff",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.history.restore",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.mapLinks.show",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.mapLinks.open",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.db.insert",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.db.findUsages",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.db.showUsages",
+          "when": "false"
+        }
       ],
       "view/item/context": [
         {
@@ -554,7 +637,6 @@
           "when": "view == text2frameExplorer && viewItem == text2frame.common",
           "group": "3_try@1"
         },
-
         {
           "command": "text2frame.tree.mapLinks",
           "when": "view == text2frameExplorer && (viewItem == text2frame.map || viewItem == text2frame.here)",
@@ -575,7 +657,6 @@
           "when": "view == text2frameHistory && viewItem == text2frame.history.entry",
           "group": "2_diff@1"
         },
-
         {
           "command": "text2frame.history.diff",
           "when": "view == text2frameHistory && viewItem == text2frame.history.file",
@@ -591,7 +672,12 @@
         "properties": {
           "text2frame.exportScope": {
             "type": "string",
-            "enum": ["nonempty", "conversation", "custom", "all"],
+            "enum": [
+              "nonempty",
+              "conversation",
+              "custom",
+              "all"
+            ],
             "default": "nonempty",
             "enumDescriptions": [
               "%config.text2frame.exportScope.enumDescriptions.0%",
@@ -747,7 +833,7 @@
     "update-tag-help": "node ./scripts/update-tag-help.js",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile",
-    "test": "node ../node_modules/mocha/bin/mocha.js test",
+    "test": "mocha --forbid-only test",
     "lint": "eslint src test --ext ts,js"
   },
   "devDependencies": {
@@ -755,7 +841,9 @@
     "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^6.x",
     "@typescript-eslint/parser": "^6.x",
+    "chai": "^4.5.0",
     "eslint": "^8.x",
+    "mocha": "^11.8.0",
     "typescript": "^5.3.0"
   },
   "repository": {
@@ -768,4 +856,3 @@
   },
   "homepage": "https://github.com/yktsr/Text2Frame-MV#readme"
 }
-
