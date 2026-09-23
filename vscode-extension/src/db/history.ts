@@ -332,6 +332,54 @@ export function restoreEntry(root: string, entry: HistoryEntry, only?: string[])
     return { restored, created, missing };
 }
 
+/**
+ * ある時点へ戻す計画。その時刻以降の操作で書き換わったファイルを、すべてその時点の中身に戻す。
+ * 同じファイルを何度も書き換えていたときは、いちばん古い控え(＝その時点の中身)を使う。
+ * その時刻より後にできたファイルは、消さずに残して名前だけ返す。
+ */
+export function planRestoreTo(entries: HistoryEntry[], time: number): {
+    files: { path: string; kind: HistoryFileKind; pages?: string[]; entryId: string }[];
+    created: string[];
+} {
+    const files: { path: string; kind: HistoryFileKind; pages?: string[]; entryId: string }[] = [];
+    const created: string[] = [];
+    const seen = new Set<string>();
+    // 古い順に見て、そのファイルを最初に書き換えた操作の控えを採る。
+    const wanted = entries.filter((e) => e.started >= time).sort((a, b) => a.started - b.started || (a.id < b.id ? -1 : 1));
+    for (const entry of wanted) {
+        for (const file of entry.files) {
+            if (seen.has(file.path)) continue;
+            seen.add(file.path);
+            if (!file.existed) {
+                created.push(file.path);
+                continue;
+            }
+            files.push({ path: file.path, kind: file.kind, pages: file.pages, entryId: entry.id });
+        }
+    }
+    return { files, created };
+}
+
+/** ある時点へ戻す。計画(planRestoreTo)のとおりに控えを書き戻す。 */
+export function restoreTo(root: string, entries: HistoryEntry[], time: number): { restored: string[]; created: string[]; missing: string[] } {
+    const plan = planRestoreTo(entries, time);
+    const restored: string[] = [];
+    const missing: string[] = [];
+    for (const file of plan.files) {
+        const copy = snapshotFile(root, file.entryId, file.path);
+        if (!fs.existsSync(copy)) {
+            missing.push(file.path);
+            continue;
+        }
+        const abs = fromRel(root, file.path);
+        noteWrite(abs, file.kind, file.pages);
+        fs.mkdirSync(path.dirname(abs), { recursive: true });
+        fs.copyFileSync(copy, abs);
+        restored.push(file.path);
+    }
+    return { restored, created: plan.created, missing };
+}
+
 export function absolutePath(root: string, rel: string): string {
     return fromRel(root, rel);
 }

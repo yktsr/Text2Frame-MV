@@ -336,11 +336,6 @@
         "command": "text2frame.history.restore",
         "title": "%command.text2frame.history.restore.title%",
         "icon": "$(discard)"
-      },
-      {
-        "command": "text2frame.history.restoreFile",
-        "title": "%command.text2frame.history.restoreFile.title%",
-        "icon": "$(discard)"
       }
     ],
     "viewsContainers": {
@@ -519,7 +514,6 @@
         { "command": "text2frame.history.refresh", "when": "false" },
         { "command": "text2frame.history.diff", "when": "false" },
         { "command": "text2frame.history.restore", "when": "false" },
-        { "command": "text2frame.history.restoreFile", "when": "false" },
         { "command": "text2frame.mapLinks.show", "when": "false" },
         { "command": "text2frame.mapLinks.open", "when": "false" },
         { "command": "text2frame.db.insert", "when": "false" },
@@ -593,11 +587,7 @@
           "when": "view == text2frameHistory && viewItem == text2frame.history.entry",
           "group": "2_diff@1"
         },
-        {
-          "command": "text2frame.history.restoreFile",
-          "when": "view == text2frameHistory && viewItem == text2frame.history.file",
-          "group": "1_restore@1"
-        },
+
         {
           "command": "text2frame.history.diff",
           "when": "view == text2frameHistory && viewItem == text2frame.history.file",

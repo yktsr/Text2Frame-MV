@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { workspaceRootFor, recordDataState, historyKeep, baseSnapshotPath, snapshotKeyForTarget, parseFrontMatter } from './compiler';
+import { workspaceRootFor, recordDataState, historyKeep } from './compiler';
 import { renderCommands } from './exportText';
 import { pageList, PageRef } from './dryRun';
 import { tr } from './db/lang';
 import {
-    HistoryEntry, HistoryFile, listEntries, readEntry, restoreEntry, snapshotFile, historyRoot, withHistory, onHistoryChange, absolutePath
+    HistoryEntry, HistoryFile, listEntries, readEntry, planRestoreTo, restoreTo, snapshotFile, historyRoot, withHistory, onHistoryChange, absolutePath
 } from './db/history';
 
 /**
@@ -93,14 +93,14 @@ class HistoryProvider implements vscode.TreeDataProvider<HistoryNode> {
                 const node = new HistoryNode('entry', entry.label, vscode.TreeItemCollapsibleState.Collapsed, entry);
                 node.description = tr(`${clock(entry.time)}・${ago(entry.time, now)}・${files.length}ファイル`, `${clock(entry.time)} · ${ago(entry.time, now)} · ${files.length} files`);
                 node.iconPath = new vscode.ThemeIcon(OP_ICONS[entry.op] || 'history');
-                node.tooltip = tr(`${entry.label}\n${new Date(entry.time).toLocaleString()}\n右クリック →「この操作の前に戻す」で、この操作をする前の中身に戻せます。`, `${entry.label}\n${new Date(entry.time).toLocaleString()}\nRight-click → Go back to before this, to bring back what was there before this operation.`);
+                node.tooltip = tr(`${entry.label}\n${new Date(entry.time).toLocaleString()}\n右クリック →「この時点に戻す」で、この操作を始める直前の状態(テキストもゲームのデータも)に戻せます。`, `${entry.label}\n${new Date(entry.time).toLocaleString()}\nRight-click → Go back to this point, to bring the texts and the game data back to how they were just before this operation.`);
                 return node;
             });
         }
         if (element.kind === 'entry') {
             return shownFiles(element.entry).map((file) => {
                 const node = new HistoryNode('file', file.path, vscode.TreeItemCollapsibleState.None, element.entry, file);
-                node.description = [file.kind === 'data' ? tr('データ', 'Data') : tr('テキスト', 'Text'), file.existed ? '' : tr('(この操作でできた)', '(made by this operation)')].filter((s) => s).join(tr('・', ' · '));
+                node.description = [file.kind === 'data' ? tr('ゲームのデータ', 'Game data') : tr('テキスト', 'Text'), file.existed ? '' : tr('(この操作でできた)', '(made by this operation)')].filter((s) => s).join(tr('・', ' · '));
                 node.iconPath = new vscode.ThemeIcon(file.kind === 'data' ? 'json' : 'file-text');
                 node.command = { command: 'text2frame.history.diff', title: tr('差分を見る', 'Show changes'), arguments: [node] };
                 return node;
@@ -175,60 +175,54 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
             tr(`${path.basename(file.path)}: 控え ↔ 今(${entry.label})`, `${path.basename(file.path)}: before ↔ now (${entry.label})`));
     };
 
-    /** 戻す。テキストを戻すときは、その祖先も一緒に戻す。 */
-    const restore = async (entry: HistoryEntry, only?: HistoryFile): Promise<void> => {
+    /* ある時点に戻す。その操作を始める直前の状態へ、テキストもゲームのデータもまとめてそろえる。
+     * 操作1つだけを取り消す形にしていたが、「反映を取り消したのにテキストは動かない(動くのは
+     * ゲームのデータ)」が分かりにくかったため、時点で戻す形にした。 */
+    const restore = async (entry: HistoryEntry): Promise<void> => {
         const root = rootOrWarn();
         if (!root) return;
         const fresh = readEntry(root, entry.id) || entry;
-        let targets = only ? [only.path] : fresh.files.map((f) => f.path);
-        if (only && only.kind === 'text') {
-            // 祖先の場所はテキストの front matter で決まる。読めなければパスから決める(compiler 側の逃げ道)。
-            const textAbs = absolutePath(root, only.path);
-            let meta: { [key: string]: string } = {};
-            try { meta = parseFrontMatter(fs.readFileSync(textAbs, 'utf8')).meta; } catch (e) { meta = {}; }
-            const base = path.relative(root, baseSnapshotPath(root, snapshotKeyForTarget(root, textAbs, meta))).split(path.sep).join('/');
-            if (fresh.files.some((f) => f.path === base)) targets = targets.concat([base]);
-        }
-        const files = fresh.files.filter((f) => targets.includes(f.path));
-        const back = files.filter((f) => f.existed && f.kind !== 'base');
-        const created = files.filter((f) => !f.existed && f.kind !== 'base');
+        const plan = planRestoreTo(listEntries(root), fresh.started);
+        const shownFilesOf = (paths: string[]): string[] => paths.filter((p) => !p.split('/').includes('.t2f-base'));
+        const texts = plan.files.filter((f) => f.kind === 'text');
+        const data = plan.files.filter((f) => f.kind === 'data');
 
         // 保存していない変更があるテキストは、戻すと食い違う。先に保存か取り消しをしてもらう。
-        const dirty = vscode.workspace.textDocuments.filter((d) => d.isDirty && files.some((f) => path.resolve(absolutePath(root, f.path)) === path.resolve(d.uri.fsPath)));
+        const dirty = vscode.workspace.textDocuments.filter((d) => d.isDirty && plan.files.some((f) => path.resolve(absolutePath(root, f.path)) === path.resolve(d.uri.fsPath)));
         if (dirty.length) {
             vscode.window.showWarningMessage(tr('Text2Frame: 保存していない変更があるテキストがあります。保存するか元に戻してから、もう一度戻してください: ', 'Text2Frame: Some texts have unsaved changes. Save or revert them, then go back again: ')
                 + dirty.map((d) => path.basename(d.uri.fsPath)).join(tr('、', ', ')));
             return;
         }
-        const what = only ? tr(`「${only.path}」を`, `"${only.path}"`) : tr(`「${fresh.label}」の前に`, `to before "${fresh.label}"`);
+        if (!plan.files.length && !plan.created.length) {
+            vscode.window.showInformationMessage(tr('Text2Frame: この時点から変わったものはありません。', 'Text2Frame: Nothing has changed since then.'));
+            return;
+        }
+        const when = clock(fresh.started);
+        const createdShown = shownFilesOf(plan.created);
         const detail = [
-            back.length ? tr(`${back.length} 個のファイルを、この操作をする前の中身に書き戻します。`, `${back.length} files get back what they held before this operation.`) : '',
-            created.length ? tr(`この操作でできた ${created.length} 個のファイルは、消さずにそのまま残します。`, `The ${created.length} files this operation made are kept, not deleted.`) : '',
+            tr(`テキスト ${texts.length} 個、ゲームのデータ ${data.length} 個を、この時点の中身に書き戻します。`, `${texts.length} text file(s) and ${data.length} game data file(s) get back what they held at that point.`),
+            createdShown.length ? tr(`このあとに作られた ${createdShown.length} 個のファイルは、消さずにそのまま残します。`, `The ${createdShown.length} files made after that point are kept, not deleted.`) : '',
             tr('戻したことも履歴に残るので、あとから取り消せます。', 'Going back is recorded in the history too, so you can undo it later.')
         ].filter((s) => s).join('\n');
         const goBack = tr('戻す', 'Go back');
-        const ok = await vscode.window.showWarningMessage(tr(`Text2Frame: ${what}戻しますか？`, `Text2Frame: Go back ${what}?`), { modal: true, detail }, goBack);
+        const ok = await vscode.window.showWarningMessage(
+            tr(`Text2Frame: ${when} の状態に戻しますか？`, `Text2Frame: Go back to how things were at ${when}?`), { modal: true, detail }, goBack
+        );
         if (ok !== goBack) return;
 
-        // 戻したのを取り消すときは「戻す: 戻す: …」と重ねずに、取り消しと分かる名前にする。
-        // 履歴の名前は書いたときの言語のまま残るので、どちらの言語でも読めるようにする。
-        const original = fresh.label.replace(/^(戻す|戻したのを取り消す|Go back|Undo going back): /, '');
-        const backLabel = tr('戻す: ', 'Go back: ');
-        const undo = tr('戻したのを取り消す: ', 'Undo going back: ');
-        const label = only ? backLabel + only.path
-            : fresh.op !== 'restore' ? backLabel + fresh.label
-                : /^(戻す|Go back): /.test(fresh.label) ? undo + original : backLabel + original;
-        const result = withHistory(root, 'restore', label, { keep: historyKeep() }, () => restoreEntry(root, fresh, targets));
-        for (const f of files) {
+        const label = tr(`${when} の状態に戻す`, `Go back to ${when}`);
+        const result = withHistory(root, 'restore', label, { keep: historyKeep() }, () => restoreTo(root, listEntries(root), fresh.started));
+        for (const f of plan.files) {
             if (f.kind === 'data' && result.restored.includes(f.path)) recordDataState(context, absolutePath(root, f.path));
         }
         provider.refresh();
-        const shown = result.restored.filter((p) => !p.split('/').includes('.t2f-base'));
+        const shown = shownFilesOf(result.restored);
         const message = [
-            tr(`Text2Frame: 戻しました(${shown.length} ファイル)。`, `Text2Frame: Went back (${shown.length} files). `),
-            result.created.filter((p) => !p.split('/').includes('.t2f-base')).length ? tr(`この操作でできたファイルは残しています: ${result.created.filter((p) => !p.split('/').includes('.t2f-base')).join('、')}`, `The files this operation made are kept: ${result.created.filter((p) => !p.split('/').includes('.t2f-base')).join(', ')}. `) : '',
+            tr(`Text2Frame: ${when} の状態に戻しました(${shown.length} ファイル)。`, `Text2Frame: Went back to ${when} (${shown.length} files). `),
+            createdShown.length ? tr(`このあとに作られたファイルは残しています: ${createdShown.join('、')}`, `The files made after that point are kept: ${createdShown.join(', ')}. `) : '',
             result.missing.length ? tr(`控えが見つからず戻せなかったもの: ${result.missing.join('、')}`, `Could not go back, no copy found: ${result.missing.join(', ')}. `) : '',
-            shown.some((p) => fresh.files.find((f) => f.path === p)?.kind === 'data') ? tr('テストプレイ中なら、ゲームを読み直してください。', 'If a test play is running, reload the game.') : ''
+            data.length ? tr('テストプレイ中なら、ゲームを読み直してください。', 'If a test play is running, reload the game.') : ''
         ].filter((s) => s).join('');
         vscode.window.showInformationMessage(message);
     };
@@ -265,7 +259,6 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
             if (file) await showDiff(node.entry, file);
         }),
         vscode.commands.registerCommand('text2frame.history.restore', (node: HistoryNode) => node && restore(node.entry)),
-        vscode.commands.registerCommand('text2frame.history.restoreFile', (node: HistoryNode) => node && node.file && restore(node.entry, node.file)),
         view.onDidChangeVisibility((e) => { if (e.visible) provider.refresh(); })
     );
 }
