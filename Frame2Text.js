@@ -134,6 +134,20 @@
  * @value overwrite
  * @default overwrite
  *
+ * @arg Scope
+ * @text 取り出す範囲
+ * @desc どのイベントをテキストにするかです。既にテキストがあるものは、どれを選んでも更新されます。既定は中身のあるものだけです。
+ * @type select
+ * @option 中身のあるものだけ / nonempty
+ * @value nonempty
+ * @option 会話があるものだけ / conversation
+ * @value conversation
+ * @option テキストがあるものだけ(新しく作らない) / custom
+ * @value custom
+ * @option 全部(空のページも作る) / all
+ * @value all
+ * @default nonempty
+ *
  * @param Default Scenario Folder
  * @text 出力フォルダ名
  * @desc シナリオファイルを出力するフォルダ名を設定します。デフォルトはtextです。(MZでは無視されます)
@@ -743,7 +757,7 @@ function resolveText2Frame () {
       // 引数順は @arg の並びと合わせる。単体の取り出し・一括反映と同じく
       // 出力先 -> 取り出し方法。TextBase は改名前に保存されたコマンドのため。
       this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-        [args.TextFolder || args.TextBase, args.Strategy])
+        [args.TextFolder || args.TextBase, args.Strategy, args.Scope])
     })
   }
 
@@ -880,6 +894,30 @@ function resolveText2Frame () {
         ' / 反映方法は merge(統合) か overwrite(上書き) を指定してください。')
     }
 
+    /* 一括取り出しの範囲。省略時は中身のあるものだけ(nonempty)。
+     * MVの引数は手書きなので、日本語でも書けるようにする。 */
+    const EXPORT_SCOPE_ALIASES = {
+      all: 'all',
+      nonempty: 'nonempty',
+      conversation: 'conversation',
+      custom: 'custom',
+      全部: 'all',
+      中身のあるものだけ: 'nonempty',
+      会話があるものだけ: 'conversation',
+      テキストがあるものだけ: 'custom'
+    }
+    // 3番目の引数は、以前は書き戻しの指定だった。古いコマンドが残っていても読まずに流す。
+    const OLD_WRITE_BACK_WORDS = ['always', 'off', '毎回書き戻す', '書き戻さない']
+    const resolveExportScope = function (explicit) {
+      const given = String(explicit == null ? '' : explicit).trim()
+      if (given === '' || given === 'undefined') return 'nonempty'
+      if (OLD_WRITE_BACK_WORDS.indexOf(given.toLowerCase()) !== -1 || OLD_WRITE_BACK_WORDS.indexOf(given) !== -1) return 'nonempty'
+      const v = EXPORT_SCOPE_ALIASES[given.toLowerCase()] || EXPORT_SCOPE_ALIASES[given]
+      if (v) return v
+      throw new Error('Unknown scope: ' + given +
+        ' / 取り出す範囲は all(全部) / nonempty(中身のあるものだけ) / conversation(会話があるものだけ) / custom(テキストがあるものだけ) を指定してください。')
+    }
+
     switch (Laurus.Frame2Text.ExecMode) {
       // for custom plugin command
       case 'EXPORT_EVENT_TO_MESSAGE':
@@ -928,6 +966,7 @@ function resolveText2Frame () {
         // ゲームのデータは data 固定(他の取り出し・反映コマンドと同じ)。
         // 反映方法は単体の取り出しと同じ決め方(省略時はプラグインパラメータ、無ければ上書き)。
         const batchStrategy = resolveExportStrategy(args[1])
+        Laurus.Frame2Text.BatchScope = resolveExportScope(args[2])
         // 出力先を省いたときは、プラグインパラメータの出力フォルダ名。
         // FileFolder は単発の取り出しが引数で書き換えるので、パラメータを直接読む。
         Laurus.Frame2Text.TextBase = args[0] || String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters['Default Scenario Folder']) || '') || 'text'
@@ -3384,13 +3423,46 @@ function resolveText2Frame () {
       })
     }
 
+    /* 取り出す範囲。既定は nonempty(中身のあるものだけ)。
+     *   all          … 全部。中身が空のページも作る(2.3.0 までの動き)
+     *   nonempty     … コマンドが1つも無いページ・コモンイベントは作らない
+     *   conversation … 会話(文章・選択肢・スクロール)を含むものだけ作る
+     *   custom       … 新しくは作らない。既にあるテキストだけを更新する
+     * どの範囲でも、既にテキストがあるものは必ず対象にする(利用者のファイルを同期から外さない)。 */
+    const SCOPES = ['all', 'nonempty', 'conversation', 'custom']
+    const CONVERSATION_SCOPE_CODES = [101, 401, 102, 402, 403, 404, 105, 405]
+    const resolveScope = function (name) {
+      const v = String(name == null ? '' : name).trim().toLowerCase()
+      if (!v) return 'nonempty'
+      return SCOPES.indexOf(v) === -1 ? null : v
+    }
+    const hasBody = function (list) {
+      return (list || []).some(function (c) { return c && c.code !== 0 })
+    }
+    const hasConversation = function (list) {
+      return (list || []).some(function (c) { return c && CONVERSATION_SCOPE_CODES.indexOf(c.code) !== -1 })
+    }
+    const inScope = function (scope, list, key, index) {
+      if (index && index.paths && index.paths[key] !== undefined) return true
+      if (scope === 'all') return true
+      if (scope === 'custom') return false
+      if (!hasBody(list)) return false
+      if (scope === 'conversation') return hasConversation(list)
+      return true
+    }
+
     // data ディレクトリを走査し、出力対象(イベント/コモンイベント)の routing メタだけを返す。
-    // textPath は付けない(呼び出し側が textBase/key.txt を組み立てる)。
-    /* onlyFile を渡すと、そのデータファイル1つぶんの対象だけを返す。
+    // textPath は付けない(呼び出し側が indexTexts / outPathFor で書き先を決める)。
+    /* 第2引数はデータファイル1つぶんに絞る onlyFile か、{ onlyFile, scope, index } のいずれか。
      * 同期は変わったファイルの分だけ処理したいので、全 Map を読み直さずに済ませる。 */
-    const enumerateTargets = function (dataDir, onlyFile) {
+    const enumerateTargets = function (dataDir, onlyFileOrOptions) {
       const _fs = require('fs')
       const _path = require('path')
+      const opts = (onlyFileOrOptions && typeof onlyFileOrOptions === 'object') ? onlyFileOrOptions : { onlyFile: onlyFileOrOptions }
+      const onlyFile = opts.onlyFile
+      const scope = resolveScope(opts.scope)
+      if (!scope) throw new Error('Unknown scope: ' + opts.scope + ' / 取り出す範囲は ' + SCOPES.join(' / ') + ' から指定してください。')
+      const index = opts.index
       const targets = []
       const wanted = onlyFile ? _path.basename(onlyFile) : null
       const keep = function (f) { return !wanted || f.toLowerCase() === wanted.toLowerCase() }
@@ -3405,6 +3477,7 @@ function resolveText2Frame () {
           event.pages.forEach(function (page, pageIndex) {
             const pageId = String(pageIndex + 1)
             const key = 'map' + mapId.padStart(3, '0') + '_event' + String(eventIndex).padStart(3, '0') + '_page' + pageId
+            if (!inScope(scope, page && page.list, key, index)) return
             targets.push({ kind: 'event', mapId, eventId: String(eventIndex), pageId, key })
           })
         })
@@ -3413,9 +3486,11 @@ function resolveText2Frame () {
       if (keep('CommonEvents.json') && _fs.existsSync(commonPath)) {
         const commonData = JSON.parse(_fs.readFileSync(commonPath, 'utf8'))
         if (Array.isArray(commonData)) {
-          commonData.forEach(function (ce, index) {
+          commonData.forEach(function (ce, ceIndex) {
             if (!ce) return
-            targets.push({ kind: 'common', commonEventId: String(index), key: 'common' + String(index).padStart(3, '0') })
+            const key = 'common' + String(ceIndex).padStart(3, '0')
+            if (!inScope(scope, ce.list, key, index)) return
+            targets.push({ kind: 'common', commonEventId: String(ceIndex), key })
           })
         }
       }
@@ -3576,11 +3651,13 @@ function resolveText2Frame () {
        * 同じ宛先のテキストが2つ以上あるものは、書き先が決められないので見送る。 */
       const _index = indexTexts(outDir)
       const _duplicated = Object.keys(_index.duplicates)
+      // 取り出す範囲。既にテキストがあるものは、範囲に関係なく必ず更新する。
+      const _scope = Laurus.Frame2Text.BatchScope || 'nonempty'
 
       // データフォルダが無いと readdirSync が投げる。生の例外ではなくパスを見せて止める。
       let targets = []
       try {
-        targets = enumerateTargets(dataDir)
+        targets = enumerateTargets(dataDir, { scope: _scope, index: _index })
       } catch (e) {
         addWarning('[batch] データフォルダを読めませんでした / cannot read data folder: ' + dataDir + ' (' + (e.message || e) + ')')
         console.error('[batch] cannot read data folder: ' + dataDir + ' (' + (e.message || e) + ')')
@@ -3631,7 +3708,7 @@ function resolveText2Frame () {
       addMessage('[batch] 取り出し完了(' + batchStrategy + '): 成功 ' + okCount + '件 (イベント ' + eventCount + ' / コモン ' + commonCount + ')、失敗 ' + errCount + '件' +
         (conflictSkipped.length > 0 ? '、衝突未解決で除外 ' + conflictSkipped.length + '件' : '') +
         (markerCarried.length > 0 ? '、目印ごと取り出し ' + markerCarried.length + '件' : ''))
-      addMessage('[batch] 出力先: ' + outDir)
+      addMessage('[batch] 出力先: ' + outDir + '(取り出す範囲: ' + _scope + ')')
       if (_duplicated.length > 0) {
         addWarning('[batch] 同じ行き先のテキストが複数あるため ' + _duplicated.length + '件を見送りました。どれか1つにしてください。')
         _duplicated.forEach(function (key) {
@@ -3822,6 +3899,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-w, --english_tag <true/false>', 'english tag', 'true')
     .option('--omit-default-tags <true/false>', 'omit face/background/position tags that match the defaults', 'true')
     .option('-s, --strategy <merge|overwrite>', 'pull strategy (default merge: keep translations; overwrite: replace)', /^(merge|overwrite)$/i, 'merge')
+    .option('--scope <all|nonempty|conversation|custom>', 'batch mode: which events to write (default: nonempty)', /^(all|nonempty|conversation|custom)$/i, 'nonempty')
     .option('-b, --base <path>', 'ancestor text path for merge (optional; auto .t2f-base when omitted)')
     .parse()
 
@@ -3981,8 +4059,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
      * 同じ宛先のテキストが2つ以上あるものは、書き先が決められないので見送る。 */
     const index = module.exports.indexTexts(textDir)
     const duplicated = Object.keys(index.duplicates)
+    const scope = String(options.scope || 'nonempty').toLowerCase()
     const results = []
-    module.exports.enumerateTargets(dataDir).forEach(function (t) {
+    module.exports.enumerateTargets(dataDir, { scope, index }).forEach(function (t) {
       if (index.duplicates[t.key]) return
       // 1件ぶんの取り出しは in-engine・同期と共通(pullTargetToText)。
       const r = module.exports.pullTargetToText({

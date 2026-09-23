@@ -91,12 +91,14 @@ fs.mkdirSync(dataDir)
 fs.writeFileSync(mapPath, JSON.stringify({
   events: [null, { id: 1, name: 'EV001', pages: [{ list: T2F.compile('<Name: テレーゼ>\nこんにちは\n').concat([{ code: 0, indent: 0, parameters: [] }]) }] }]
 }))
-fs.writeFileSync(commonEventPath, JSON.stringify([null, { id: 1, name: 'CE001', list: [{ code: 0, indent: 0, parameters: [] }] }]))
+fs.writeFileSync(commonEventPath, JSON.stringify([null, { id: 1, name: 'CE001', list: T2F.compile('コモンイベントの文\n').concat([{ code: 0, indent: 0, parameters: [] }]) }]))
 console.log('\n(一時フォルダ: ' + root + ')')
 
 // enumerateTargets: データから、取り出せるイベントのページとコモンイベントを数える
+// 第2引数で範囲を選べる(既定は中身のあるものだけ。all で空のページも数える)
 const targets = F2T.enumerateTargets(dataDir)
 show('enumerateTargets', targets)
+show('enumerateTargets (scope: all)', F2T.enumerateTargets(dataDir, { scope: 'all' }).map(function (t) { return t.key }))
 
 // baseDirForTextDir: テキストのフォルダに対応する祖先(.t2f-base)の置き場所
 const baseDir = F2T.baseDirForTextDir(root, textDir)

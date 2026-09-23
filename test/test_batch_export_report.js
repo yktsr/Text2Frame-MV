@@ -103,7 +103,7 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'),
       JSON.stringify({ events: [null, msgEvent('こんにちは'), msgEvent('やあ')] }), 'utf8')
     fs.writeFileSync(path.join(tmp, 'data', 'CommonEvents.json'),
-      JSON.stringify([null, { id: 1, list: [{ code: 0, indent: 0, parameters: [] }] }]), 'utf8')
+      JSON.stringify([null, { id: 1, list: msgEvent('コモン').pages[0].list }]), 'utf8')
     // .t2f-base は cwd 基準、相対のフォルダ名はゲームの置き場所(BASE_PATH)基準で作られる。
     // リポジトリを汚さないよう、両方 tmp に向ける。
     cwd = process.cwd()
@@ -310,14 +310,20 @@ describe('BATCH_EXPORT_MESSAGES_TO_FOLDER report', function () {
     expect(readIf(textPathOf(ev1))).to.contain('テキストだけの変更')
   })
 
-  // 以前の版の「書き戻さない」の引数が残っていても読まない。止めずに、ゲームへも書く。
+  /* 3番目の引数は「取り出す範囲」。以前の版ではここが書き戻しの指定だったので、
+   * 古いコマンドが残っていても読み飛ばす。知らない値は選択肢を挙げて止める。 */
   it('ignores a write-back argument left by an older command', function () {
     run(path.join(tmp, 'text'), 'merge')
     fs.writeFileSync(textPathOf(ev1), readIf(textPathOf(ev1)).replace('こんにちは', 'テキストだけの変更'), 'utf8')
 
     run(path.join(tmp, 'text'), 'merge', '書き戻さない')
+
     expect(gameLines()).to.eql(['テキストだけの変更'])
-    expect(function () { run(path.join(tmp, 'text'), 'merge', 'sometimes') }).to.not.throw()
+  })
+
+  it('refuses a scope it does not know, and says what can be used', function () {
+    expect(function () { run(path.join(tmp, 'text'), 'merge', 'sometimes') })
+      .to.throw(/取り出す範囲は all/)
   })
 
   it('settles after the conflict is resolved in the game', function () {
