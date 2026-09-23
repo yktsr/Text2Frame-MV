@@ -223,6 +223,21 @@ export function dataDirFor(workspaceRoot: string): string {
     return path.resolve(workspaceRoot, configured);
 }
 
+/** テキストのフォルダ(設定 text2frame.textBaseDir、既定は text)。 */
+export function textBaseDirFor(workspaceRoot: string): string {
+    const configured = vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text') || 'text';
+    return path.resolve(workspaceRoot, configured);
+}
+
+/** 作業フォルダ。無いときは理由を出して undefined を返す(呼び側はそこで止める)。 */
+export function workspaceRootOrWarn(): string | undefined {
+    const root = workspaceRootFor();
+    if (!root) {
+        vscode.window.showErrorMessage(tr('Text2Frame: ワークスペースフォルダが見つかりません。', 'Text2Frame: No workspace folder was found.'));
+    }
+    return root;
+}
+
 /** Map###.json path from a map id, under the workspace data dir. */
 export function mapPathFor(workspaceRoot: string, mapId: string | number): string {
     return path.join(dataDirFor(workspaceRoot), 'Map' + ('000' + String(mapId)).slice(-3) + '.json');

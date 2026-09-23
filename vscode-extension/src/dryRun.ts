@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { eachSlowly, SlowlyOptions } from './db/slowly';
+import { readJsonFile } from './db/files';
 
 /**
  * 反映を、ゲームのデータの写しで試す。VS Code に依存しない。
@@ -46,13 +47,6 @@ export interface TrialPage {
     after?: unknown[];
 }
 
-function readJson(file: string): unknown {
-    try {
-        return JSON.parse(fs.readFileSync(file, 'utf8'));
-    } catch (e) {
-        return undefined;
-    }
-}
 
 export function pageList(json: unknown, ref: PageRef): unknown[] | undefined {
     if (ref.kind === 'common') {
@@ -79,7 +73,7 @@ export function tryApply(mod: ApplyModule, steps: TrialStep[]): TrialPage[] {
                 fs.mkdirSync(path.dirname(copy), { recursive: true });
                 if (fs.existsSync(step.dataPath)) fs.copyFileSync(step.dataPath, copy);
                 copies.set(step.dataPath, copy);
-                originals.set(step.dataPath, readJson(step.dataPath));
+                originals.set(step.dataPath, readJsonFile(step.dataPath));
             }
             const opts: { [key: string]: unknown } = { ...step.applyOpts, baseRoot: path.join(dir, 'base') };
             if (step.ref.kind === 'common') opts.commonEventPath = copy;
@@ -101,7 +95,7 @@ export function tryApply(mod: ApplyModule, steps: TrialStep[]): TrialPage[] {
             results.push(result);
         }
         const finals = new Map<string, unknown>();
-        copies.forEach((copy, dataPath) => finals.set(dataPath, readJson(copy)));
+        copies.forEach((copy, dataPath) => finals.set(dataPath, readJsonFile(copy)));
         return steps.map((step, i) => ({
             step,
             result: results[i],

@@ -1,23 +1,14 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import {
-    parseFrontMatter,
-    loadModule,
-    workspaceRootFor,
-    mapPathFor,
-    commonEventsPathFor,
-    recordDataState,
-    saveBaseSnapshot,
-    baseSnapshotPath,
-    snapshotKeyForTarget,
-    historyKeep
-} from './compiler';
+import { baseSnapshotPath, commonEventsPathFor, historyKeep, loadModule, mapPathFor, parseFrontMatter, recordDataState, saveBaseSnapshot, snapshotKeyForTarget, workspaceRootFor } from './compiler';
+import { relLabel } from './db/files';
 import { noteWrite, withHistory } from './db/history';
 import { loadCompiler } from './deploy';
 import { placeFromMeta, placeKey } from './placeLabel';
 import { reviewPull } from './reviewApply';
 import { tr } from './db/lang';
+import { targetKeyFromMeta } from './db/baseKey';
 
 /**
  * Export feature: read the RPG Maker data JSON and write it back out as a
@@ -287,9 +278,14 @@ export function newTextPathFor(
     textDir: string,
     target: ExportTarget
 ): string {
-    const key = target.kind === 'common'
-        ? `common${String(target.commonEventId).padStart(3, '0')}`
-        : `map${String(target.mapId).padStart(3, '0')}_event${String(target.eventId).padStart(3, '0')}_page${target.pageId || '1'}`;
+    // 宛先の名前(map001_event001_page1 / common001)の書式は db/baseKey に1つ。
+    const key = targetKeyFromMeta({
+        kind: target.kind,
+        mapId: target.mapId || '',
+        eventId: target.eventId || '',
+        pageId: target.pageId || '',
+        commonEventId: target.commonEventId || ''
+    }) as string;
     const index = textIndexFor(context, workspaceRoot, textDir);
     if (index.paths[key]) {
         return index.paths[key];
@@ -382,7 +378,7 @@ export function planPull(
 
 /** planPull で作ったテキストを書き、データの状態と祖先を記録する。 */
 export function commitPull(context: vscode.ExtensionContext, workspaceRoot: string, plan: PullPlan): ExportResult {
-    const label = tr('ゲームから取り出す ', 'Pull from game ') + path.relative(workspaceRoot, plan.target.textPath).split(path.sep).join('/');
+    const label = tr('ゲームから取り出す ', 'Pull from game ') + relLabel(workspaceRoot, plan.target.textPath);
     return withHistory(workspaceRoot, 'pull', label, { keep: historyKeep() }, () => commitPullNow(context, workspaceRoot, plan));
 }
 
@@ -598,7 +594,7 @@ export function exportConversationOnly(context: vscode.ExtensionContext): void {
     const srcPath = editor.document.uri.fsPath;
     const ext = path.extname(srcPath);
     target.textPath = srcPath.slice(0, srcPath.length - ext.length) + '.conversation' + (ext || '.txt');
-    const label = tr('会話のみ書き出し ', 'Pull conversation only ') + path.relative(workspaceRoot, target.textPath).split(path.sep).join('/');
+    const label = tr('会話のみ書き出し ', 'Pull conversation only ') + relLabel(workspaceRoot, target.textPath);
     const result = withHistory(workspaceRoot, 'conversation', label, { keep: historyKeep() }, () => exportConversationOnlyText(context, workspaceRoot, target));
     if (result.ok) {
         vscode.window.showInformationMessage(tr('Text2Frame: 会話のみテキストを書き出しました: ', 'Text2Frame: Wrote the conversation-only text: ') + path.basename(result.textPath || ''));

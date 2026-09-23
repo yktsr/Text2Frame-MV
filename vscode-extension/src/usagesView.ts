@@ -4,7 +4,7 @@ import * as path from 'path';
 import { DatabaseService, DbContext } from './dbService';
 import { DbKind, padId } from './db/database';
 import { bodyStart, usageBlocks, usageHits, conditionHits, ConditionEvent, ConditionHit } from './db/usages';
-import { parseFrontMatter } from './compiler';
+import { parseFrontMatter, textBaseDirFor } from './compiler';
 import { placeFromMeta, placeKey, placeLabel } from './placeLabel';
 import { readMapInfos } from './db/mapTree';
 import { confirmNoText, readOnlyUri } from './eventLinks';
@@ -41,8 +41,7 @@ const contextLines = (): number =>
 
 /** プロジェクトのテキストのフォルダにあるテキスト。 */
 export async function projectTextFiles(ctx: DbContext): Promise<vscode.Uri[]> {
-    const textBase = vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text') || 'text';
-    return vscode.workspace.findFiles(new vscode.RelativePattern(vscode.Uri.file(path.join(ctx.root, textBase)), '**/*.{txt,t2f,text2frame}'));
+    return vscode.workspace.findFiles(new vscode.RelativePattern(vscode.Uri.file(textBaseDirFor(ctx.root)), '**/*.{txt,t2f,text2frame}'));
 }
 
 /** テキストの中身。開いているものはエディタの内容(保存前でも)を使う。 */

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { DbContext } from './dbService';
 import { parseFrontMatter } from './compiler';
+import { isSidecarText } from './db/files';
 import { loadCompiler } from './deploy';
 import { compileWithLines } from './compileLines';
 import { projectTextFiles } from './usagesView';
@@ -78,7 +79,7 @@ export class RunSources {
             this.building = (async () => {
                 const files = new Map<string, string>();
                 for (const uri of await projectTextFiles(ctx)) {
-                    if (/\.(conversation|translation)\.txt$/.test(uri.fsPath)) continue;
+                    if (isSidecarText(uri.fsPath)) continue;
                     let text: string;
                     try { text = fs.readFileSync(uri.fsPath, 'utf8'); } catch (e) { continue; }
                     const place = placeFromMeta(parseFrontMatter(text).meta);

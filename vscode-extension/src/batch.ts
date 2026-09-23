@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, resolveTarget, workspaceRootFor, loadModule, dataDirFor, baseSnapshotPath, hasBaseSnapshot, snapshotKeyForTarget, historyKeep } from './compiler';
+import { baseSnapshotPath, dataDirFor, hasBaseSnapshot, historyKeep, loadModule, parseFrontMatter, resolveTarget, snapshotKeyForTarget, textBaseDirFor, workspaceRootFor } from './compiler';
+import { isSidecarText } from './db/files';
 import { withHistory } from './db/history';
 import { commitPull, planPull, pullTargetsFor, ExportTarget, PullPlan } from './exportText';
 import { writeBackAndRefreshBase, reviewFiles, noteApply } from './deploy';
@@ -29,9 +30,6 @@ function getOutput(): vscode.OutputChannel {
     return outputChannel;
 }
 
-function textBaseSetting(): string {
-    return vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text');
-}
 /** 取り出す範囲。既定は中身のあるものだけ。 */
 export function exportScopeSetting(): string {
     return vscode.workspace.getConfiguration('text2frame').get<string>('exportScope', 'nonempty');
@@ -51,7 +49,7 @@ export function walkTextFiles(dir: string): string[] {
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) {
             result.push(...walkTextFiles(full));
-        } else if (entry.isFile() && entry.name.endsWith('.txt') && !entry.name.endsWith('.conversation.txt') && !entry.name.endsWith('.translation.txt')) {
+        } else if (entry.isFile() && entry.name.endsWith('.txt') && !isSidecarText(entry.name)) {
             result.push(full);
         }
     }
@@ -71,7 +69,7 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
         vscode.window.showErrorMessage(tr('Text2Frame: コンパイラ (Text2Frame.js) が見つかりません。', 'Text2Frame: The compiler (Text2Frame.js) was not found.'));
         return;
     }
-    const textDir = path.join(root, textBaseSetting());
+    const textDir = textBaseDirFor(root);
     const all = walkTextFiles(textDir);
     const files: string[] = [];
     const listed = await busy(tr('Text2Frame: 反映するテキストを探しています…', 'Text2Frame: Looking for texts to apply…'), (slowly) => eachSlowly(all, (f) => {
@@ -164,7 +162,7 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
     }
     const repull = tr('全部取り直す', 'Re-pull (overwrite)');
     const purpose = mode === 'merge' ? tr('ゲームから取り出す', 'Pull from game') : repull;
-    const outDir = path.join(root, textBaseSetting());
+    const outDir = textBaseDirFor(root);
     if (mode === 'overwrite' && !reviewEnabled()) {
         const yes = await vscode.window.showWarningMessage(
             tr(`Text2Frame: ${path.relative(root, outDir) || '.'} のテキストをゲームの内容で全部上書きします。編集内容は失われます。よろしいですか？`, `Text2Frame: Overwrite every text in ${path.relative(root, outDir) || '.'} with the game's contents? Your edits will be lost.`),

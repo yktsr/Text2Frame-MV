@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { workspaceRootFor } from './compiler';
+import { readJsonFile } from './db/files';
 import { readSnippetFile, snippetBody, snippetWord, slashAt, SnippetDef } from './db/fixes';
 import { isJapanese, tr } from './db/lang';
 
@@ -15,16 +16,9 @@ import { isJapanese, tr } from './db/lang';
 const SELECTOR: vscode.DocumentSelector = { language: 'text2frame' };
 const USER_FILE = path.join('.vscode', 'text2frame-snippets.json');
 
-const readJson = (file: string): unknown => {
-    try {
-        return JSON.parse(fs.readFileSync(file, 'utf8'));
-    } catch (e) {
-        return undefined;
-    }
-};
 
 export function registerSnippets(context: vscode.ExtensionContext): void {
-    const defaults = readSnippetFile(readJson(path.join(context.extensionPath, 'snippets', isJapanese() ? 'defaults.json' : 'defaults.en.json')), false);
+    const defaults = readSnippetFile(readJsonFile(path.join(context.extensionPath, 'snippets', isJapanese() ? 'defaults.json' : 'defaults.en.json')), false);
 
     const userFile = (document?: vscode.TextDocument): string | undefined => {
         const root = workspaceRootFor(document);
@@ -32,7 +26,7 @@ export function registerSnippets(context: vscode.ExtensionContext): void {
     };
     const snippetsFor = (document?: vscode.TextDocument): SnippetDef[] => {
         const file = userFile(document);
-        const user = file ? readSnippetFile(readJson(file), true) : [];
+        const user = file ? readSnippetFile(readJsonFile(file), true) : [];
         return user.concat(defaults.filter((d) => !user.some((u) => u.name === d.name)));
     };
     const preview = (s: SnippetDef): vscode.MarkdownString => {
@@ -94,7 +88,7 @@ export function registerSnippets(context: vscode.ExtensionContext): void {
         const description = await vscode.window.showInputBox({ title: tr('選んだ部分をスニペットにする', 'Make a snippet from the selection'), prompt: tr('説明(空でもかまいません)', 'Description (may be empty)') });
         if (description === undefined) return;
         const name = snippetWord(word);
-        const json = readJson(file);
+        const json = readJsonFile(file);
         const all = json && typeof json === 'object' && !Array.isArray(json) ? (json as Record<string, unknown>) : {};
         all[name] = { prefix: name, body: snippetBody(editor.document.getText(editor.selection)), description };
         fs.mkdirSync(path.dirname(file), { recursive: true });

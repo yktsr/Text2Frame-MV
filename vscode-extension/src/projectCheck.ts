@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DatabaseService, DbContext } from './dbService';
-import { parseFrontMatter, frontMatterBody, workspaceRootFor } from './compiler';
+import { frontMatterBody, parseFrontMatter, workspaceRootFor } from './compiler';
+import { isSidecarText } from './db/files';
 import { loadCompiler, unappliedFilesSlowly } from './deploy';
 import { projectTextFiles } from './usagesView';
 import { lookupsFor } from './dbFeatures';
@@ -20,7 +21,6 @@ import { tr } from './db/lang';
  * テキストを書き換えると、そのファイルの検査の結果は消える(古くなるので)。
  */
 
-const SIDECAR = /\.(conversation|translation)\.txt$/;
 const ONLY_HERE = new Set(['audio-missing', 'target-missing', 'compile-error', 'unapplied']);
 const AUDIO_FOLDERS: AudioFolderName[] = ['bgm', 'bgs', 'me', 'se'];
 
@@ -96,7 +96,7 @@ export function registerProjectCheck(context: vscode.ExtensionContext, service: 
         collection.clear();
         const counts = { error: 0, warning: 0, info: 0, files: 0 };
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: tr('Text2Frame: プロジェクト全体を検査しています', 'Text2Frame: Checking the whole project'), cancellable: true }, async (progress, token) => {
-            const files = (await projectTextFiles(ctx)).filter((u) => !SIDECAR.test(u.fsPath));
+            const files = (await projectTextFiles(ctx)).filter((u) => !isSidecarText(u.fsPath));
             const { mod } = loadCompiler(context, root);
             const compile = mod && typeof mod.compile === 'function' ? (mod.compile as (t: string) => unknown) : undefined;
             const fit = messageFitFor(ctx);

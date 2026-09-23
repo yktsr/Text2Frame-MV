@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { workspaceRootFor, recordDataState, historyKeep } from './compiler';
+import { workspaceRootFor, workspaceRootOrWarn, recordDataState, historyKeep } from './compiler';
 import { review, reviewEnabled, ReviewItem } from './review';
 import { renderCommands } from './exportText';
 import { pageList, PageRef } from './dryRun';
 import { tr } from './db/lang';
+import { placeFromKey } from './placeLabel';
 import {
     HistoryEntry, HistoryFile, listEntries, readEntry, planRestoreTo, restoreTo, snapshotFile, historyRoot, withHistory, onHistoryChange, absolutePath
 } from './db/history';
@@ -58,18 +59,21 @@ const clock = (time: number): string => {
 /** 欄に出すファイル(祖先は、テキストと一緒に戻すだけで、行には出さない)。 */
 const shownFiles = (entry: HistoryEntry): HistoryFile[] => entry.files.filter((f) => f.kind !== 'base');
 
+/* 場所の鍵(e:マップ:イベント:ページ / c:コモン)の読み方は placeFromKey に1つ。 */
 function pageRefOf(key: string): PageRef | undefined {
-    const e = /^e:(\d+):(\d+):(\d+)$/.exec(key);
-    if (e) return { kind: 'event', mapId: e[1], eventId: e[2], pageId: e[3] };
-    const c = /^c:(\d+)$/.exec(key);
-    return c ? { kind: 'common', commonEventId: c[1] } : undefined;
+    const place = placeFromKey(key);
+    if (!place) return undefined;
+    return place.kind === 'common'
+        ? { kind: 'common', commonEventId: String(place.commonEventId) }
+        : { kind: 'event', mapId: String(place.mapId), eventId: String(place.eventId), pageId: String(place.pageId) };
 }
 
 function pageName(key: string): string {
-    const e = /^e:(\d+):(\d+):(\d+)$/.exec(key);
-    if (e) return tr(`マップ${e[1]} EV${e[2].padStart(3, '0')} ${e[3]}ページ`, `Map${e[1]} EV${e[2].padStart(3, '0')} page ${e[3]}`);
-    const c = /^c:(\d+)$/.exec(key);
-    return c ? tr(`コモンイベント ${c[1]}`, `Common event ${c[1]}`) : key;
+    const place = placeFromKey(key);
+    if (!place) return key;
+    if (place.kind === 'common') return tr(`コモンイベント ${place.commonEventId}`, `Common event ${place.commonEventId}`);
+    const ev = String(place.eventId).padStart(3, '0');
+    return tr(`マップ${place.mapId} EV${ev} ${place.pageId}ページ`, `Map${place.mapId} EV${ev} page ${place.pageId}`);
 }
 
 class HistoryProvider implements vscode.TreeDataProvider<HistoryNode> {
@@ -115,11 +119,6 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
     const provider = new HistoryProvider();
     const view = vscode.window.createTreeView('text2frameHistory', { treeDataProvider: provider });
 
-    const rootOrWarn = (): string | undefined => {
-        const root = workspaceRootFor();
-        if (!root) vscode.window.showErrorMessage(tr('Text2Frame: ワークスペースフォルダが見つかりません。', 'Text2Frame: No workspace folder was found.'));
-        return root;
-    };
 
     /* 1ファイル(データならそのページ)の中身を文字列で。控え(before)と今(now)で共通。
      * まとめて差分を見せるときと、1件の差分を開くときの両方から使う。 */
@@ -161,7 +160,7 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
         });
 
     const showDiff = async (entry: HistoryEntry, file: HistoryFile): Promise<void> => {
-        const root = rootOrWarn();
+        const root = workspaceRootOrWarn();
         if (!root) return;
         if (file.kind === 'data' && file.pages && file.pages.length) {
             let page = file.pages[0];
@@ -186,7 +185,7 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
      * 操作1つだけを取り消す形にしていたが、「反映を取り消したのにテキストは動かない(動くのは
      * ゲームのデータ)」が分かりにくかったため、時点で戻す形にした。 */
     const restore = async (entry: HistoryEntry): Promise<void> => {
-        const root = rootOrWarn();
+        const root = workspaceRootOrWarn();
         if (!root) return;
         const fresh = readEntry(root, entry.id) || entry;
         const plan = planRestoreTo(listEntries(root), fresh);
@@ -277,7 +276,7 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
             await vscode.commands.executeCommand('text2frameHistory.focus');
         }),
         vscode.commands.registerCommand('text2frame.history.openFolder', () => {
-            const root = rootOrWarn();
+            const root = workspaceRootOrWarn();
             if (!root) return;
             const dir = historyRoot(root);
             if (!fs.existsSync(dir)) {
