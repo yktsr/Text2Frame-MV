@@ -84,6 +84,8 @@ jobs:
         working-directory: vscode-extension
       - name: Pack all
         run: npm run pack:all -- --skip-tests
+      - name: Load the built plugins the way a deployed game does
+        run: npx mocha test/test_browser_load.js
       - name: Summary
         run: |
           {
