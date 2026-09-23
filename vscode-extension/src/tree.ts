@@ -2,11 +2,14 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { workspaceRootFor, parseFrontMatter } from './compiler';
-import { exportToTextFile, commitPull, planPull, ExportTarget, PullPlan } from './exportText';
+import { commitPull, planPull, newTextPathFor, ExportTarget, PullPlan } from './exportText';
+import { readOnlyUri, LINKS_SCHEME } from './eventLinks';
+import { dataDirFor } from './compiler';
 import { deployFile, reviewFiles, unappliedFiles } from './deploy';
 import { reviewPull } from './reviewApply';
 import { DatabaseService, DbContext } from './dbService';
 import { RunTracker } from './runHighlight';
+import { placeFromKey } from './placeLabel';
 import { LiveService } from './live';
 import {
     readMapInfos, mapTree, mapLabel, pageDescription, pageConditionTexts, commonDescription,
@@ -66,15 +69,9 @@ function textBaseSetting(): string {
     return vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text');
 }
 
-/** Text file path for a leaf node, by convention text/key.txt. */
-function textPathForLeaf(root: string, node: T2FNode): string {
-    const base = path.join(root, textBaseSetting());
-    if (node.nodeType === 'common') {
-        return path.join(base, `common${String(node.data.commonEventId).padStart(3, '0')}.txt`);
-    }
-    const mapId = String(node.data.mapId).padStart(3, '0');
-    const eventId = String(node.data.eventId).padStart(3, '0');
-    return path.join(base, `map${mapId}_event${eventId}_page${node.data.pageId}.txt`);
+/** この行のテキストを新しく作るときの置き場所。名前は Frame2Text の規則(ID + ツクールで付けた名前)。 */
+function textPathForLeaf(context: vscode.ExtensionContext, root: string, node: T2FNode): string {
+    return newTextPathFor(context, root, dataDirFor(root), path.join(root, textBaseSetting()), targetForLeaf(node));
 }
 
 function targetForLeaf(node: T2FNode): ExportTarget {
@@ -502,30 +499,46 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
         return (index && index.get(key)) || undefined;
     };
 
+    /* テキストがまだ無い行は、ファイルを作らずに読み取り専用で開く。
+     * ゲームのデータから読んだ中身がそのまま出る。書き換えたくなったら、その画面の
+     * 「ゲームから取り出す」を押したときに初めてファイルを作る。 */
     const openLeaf = async (node: T2FNode): Promise<void> => {
         const root = ensureRoot();
         if (!root || (node.nodeType !== 'page' && node.nodeType !== 'common')) {
             return;
         }
-        const textPath = (await textPathOf(root, node)) || textPathForLeaf(root, node);
-        if (!fs.existsSync(textPath)) {
-            const exportLabel = tr('取り出す', 'Pull');
-            const pick = await vscode.window.showInformationMessage(
-                tr('Text2Frame: テキストがまだありません。ゲームから取り出しますか?', 'Text2Frame: There is no text yet. Pull it from the game?'), exportLabel
-            );
-            if (pick !== exportLabel) {
-                return;
-            }
-            const target = targetForLeaf(node);
-            target.textPath = textPath;
-            const res = exportToTextFile(context, root, target);
-            if (!res.ok) {
-                vscode.window.showErrorMessage(tr('Text2Frame: ゲームから取り出せませんでした - ', 'Text2Frame: Could not pull from the game - ') + (res.error || ''));
-                return;
-            }
-            running.reindex();
-            provider.refresh();
+        const textPath = await textPathOf(root, node);
+        if (!textPath || !fs.existsSync(textPath)) {
+            const doc = await vscode.workspace.openTextDocument(readOnlyUri(keyForLeaf(node)));
+            await vscode.window.showTextDocument(doc, { preview: true });
+            return;
         }
+        const doc = await vscode.workspace.openTextDocument(textPath);
+        await vscode.window.showTextDocument(doc, { preview: true });
+    };
+
+    /** 1件を取り出して開く。差分で確かめてから書き込む(一覧の行と読み取り専用の画面で共通)。 */
+    const pullOne = async (root: string, target: ExportTarget, textPath: string): Promise<void> => {
+        const makePlan = (): PullPlan[] => {
+            target.textPath = textPath;
+            if (fs.existsSync(textPath)) {
+                target.frontMatterSource = fs.readFileSync(textPath, 'utf8');
+            }
+            return [planPull(context, root, target, 'overwrite')];
+        };
+        const reviewed = await reviewPull(root, makePlan, tr('この行の取り出し', 'Pull this row'));
+        if (!reviewed) {
+            vscode.window.setStatusBarMessage(tr('Text2Frame: 取り出しをやめました。', 'Text2Frame: Stopped pulling.'), 4000);
+            return;
+        }
+        const res = commitPull(context, root, reviewed.plans[0]);
+        if (!res.ok) {
+            vscode.window.showErrorMessage(tr('Text2Frame: ゲームから取り出せませんでした - ', 'Text2Frame: Could not pull from the game - ') + (res.error || ''));
+            return;
+        }
+        vscode.window.showInformationMessage(tr('Text2Frame: ゲームから取り出しました — ', 'Text2Frame: Pulled from the game — ') + path.relative(root, textPath));
+        running.reindex();
+        provider.refresh();
         const doc = await vscode.workspace.openTextDocument(textPath);
         await vscode.window.showTextDocument(doc, { preview: true });
     };
@@ -545,37 +558,34 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
             if (!root || (node.nodeType !== 'page' && node.nodeType !== 'common')) {
                 return;
             }
-            const textPath = (await textPathOf(root, node)) || textPathForLeaf(root, node);
-            const makePlan = (): PullPlan[] => {
-                const target = targetForLeaf(node);
-                target.textPath = textPath;
-                if (fs.existsSync(textPath)) {
-                    target.frontMatterSource = fs.readFileSync(textPath, 'utf8');
-                }
-                return [planPull(context, root, target, 'overwrite')];
-            };
-            const reviewed = await reviewPull(root, makePlan, tr('この行の取り出し', 'Pull this row'));
-            if (!reviewed) {
-                vscode.window.setStatusBarMessage(tr('Text2Frame: 取り出しをやめました。', 'Text2Frame: Stopped pulling.'), 4000);
+            const textPath = (await textPathOf(root, node)) || textPathForLeaf(context, root, node);
+            await pullOne(root, targetForLeaf(node), textPath);
+        }),
+        /* 読み取り専用で開いている画面(テキストがまだ無いページ)から取り出す。
+         * ここを押したときに初めてファイルを作る。 */
+        vscode.commands.registerCommand('text2frame.pullThisView', async () => {
+            const root = ensureRoot();
+            const uri = vscode.window.activeTextEditor?.document.uri;
+            if (!root || !uri || uri.scheme !== LINKS_SCHEME) {
                 return;
             }
-            const res = commitPull(context, root, reviewed.plans[0]);
-            if (res.ok) {
-                vscode.window.showInformationMessage(tr('Text2Frame: ゲームから取り出しました — ', 'Text2Frame: Pulled from the game — ') + path.relative(root, textPath));
-                running.reindex();
-                provider.refresh();
-                vscode.workspace.openTextDocument(textPath).then((doc) => vscode.window.showTextDocument(doc, { preview: true }));
-            } else {
-                vscode.window.showErrorMessage(tr('Text2Frame: ゲームから取り出せませんでした - ', 'Text2Frame: Could not pull from the game - ') + (res.error || ''));
+            const place = placeFromKey(uri.query);
+            if (!place || (place.kind === 'event' && (place.eventId === undefined))) {
+                return;
             }
+            const target: ExportTarget = place.kind === 'common'
+                ? { kind: 'common', commonEventId: String(place.commonEventId), textPath: '' }
+                : { kind: 'event', mapId: String(place.mapId), eventId: String(place.eventId), pageId: String(place.pageId ?? 1), textPath: '' };
+            const textPath = newTextPathFor(context, root, dataDirFor(root), path.join(root, textBaseSetting()), target);
+            await pullOne(root, target, textPath);
         }),
         vscode.commands.registerCommand('text2frame.tree.deploy', async (node: T2FNode) => {
             const root = ensureRoot();
             if (!root || (node.nodeType !== 'page' && node.nodeType !== 'common')) {
                 return;
             }
-            const textPath = (await textPathOf(root, node)) || textPathForLeaf(root, node);
-            if (!fs.existsSync(textPath)) {
+            const textPath = await textPathOf(root, node);
+            if (!textPath || !fs.existsSync(textPath)) {
                 vscode.window.showWarningMessage(tr('Text2Frame: テキストがありません。先にゲームから取り出してください。', 'Text2Frame: There is no text. Pull it from the game first.'));
                 return;
             }
