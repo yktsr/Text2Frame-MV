@@ -1,0 +1,4 @@
+{
+  "reporter-options": ["maxDiffSize=100000"],
+  "forbid-only": true
+}
