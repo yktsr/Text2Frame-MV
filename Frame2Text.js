@@ -3239,11 +3239,43 @@ function resolveText2Frame () {
       walk(_path.resolve(String(textDir)))
       return { paths, duplicates }
     }
+    /* ファイル名に使えない文字を落とす。Windows / macOS / Linux のどれでも安全な形にする。
+     * 長さは切らない(OS の上限に当たったときだけ、呼び出し側の書き込みが失敗する)。 */
+    const cleanNameForFile = function (name) {
+      return String(name == null ? '' : name)
+        // eslint-disable-next-line no-control-regex
+        .replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, '')
+        .replace(/^[\s.]+|[\s.]+$/g, '')
+        .trim()
+    }
+    // ツクールが自動で付けるイベント名(EV003)は、IDと同じことしか言わないので使わない。
+    const AUTO_EVENT_NAME = /^EV\d+$/i
+    const namePart = function (name) {
+      const cleaned = cleanNameForFile(name)
+      return (!cleaned || AUTO_EVENT_NAME.test(cleaned)) ? '' : '-' + cleaned
+    }
+    /* 新しく作るときのファイル名。ID に、ツクールで付けた名前を添える。
+     *   map001-水族館4_event003-12_ミズクラゲ_page1.txt / common001-回復.txt
+     * 名前が無ければ今までどおり map001_event003_page1.txt。 */
+    // ファイル名の上限(多くの環境で255バイト)。超えるなら名前を諦めて ID だけにする。
+    const NAME_BYTES_LIMIT = 250
+    const defaultFileName = function (target) {
+      const pad3 = function (v) { return ('00' + String(v)).slice(-3) }
+      const plain = String(target.kind) === 'common'
+        ? 'common' + pad3(target.commonEventId) + '.txt'
+        : 'map' + pad3(target.mapId) + '_event' + pad3(target.eventId) + '_page' + String(target.pageId || 1) + '.txt'
+      const named = String(target.kind) === 'common'
+        ? 'common' + pad3(target.commonEventId) + namePart(target.name) + '.txt'
+        : 'map' + pad3(target.mapId) + namePart(target.mapName) +
+          '_event' + pad3(target.eventId) + namePart(target.name) +
+          '_page' + String(target.pageId || 1) + '.txt'
+      return Buffer.byteLength(named, 'utf8') > NAME_BYTES_LIMIT ? plain : named
+    }
     /* 取り出しの書き先。同じ宛先のテキストが既にあればその場所に書き、無ければ既定の名前で作る。 */
     const outPathFor = function (textBase, index, target) {
       const _path = require('path')
       const hit = index && index.paths ? index.paths[target.key] : undefined
-      return hit || _path.join(String(textBase), target.key + '.txt')
+      return hit || _path.join(String(textBase), defaultFileName(target))
     }
 
     // 書き出したテキストに載せる front matter(YAMLヘッダ)を生成する。
@@ -3466,6 +3498,13 @@ function resolveText2Frame () {
       const targets = []
       const wanted = onlyFile ? _path.basename(onlyFile) : null
       const keep = function (f) { return !wanted || f.toLowerCase() === wanted.toLowerCase() }
+      // マップ名は MapInfos.json にある。無いプロジェクトもあるので、読めなければ名前なしで進める。
+      let mapNames = []
+      try { mapNames = JSON.parse(_fs.readFileSync(_path.join(dataDir, 'MapInfos.json'), 'utf8')) || [] } catch (e) { mapNames = [] }
+      const mapNameOf = function (id) {
+        const info = Array.isArray(mapNames) ? mapNames[Number(id)] : null
+        return (info && info.name) || ''
+      }
       _fs.readdirSync(dataDir).filter(function (f) { return /^Map\d+\.json$/.test(f) && keep(f) }).sort().forEach(function (fileName) {
         const m = fileName.match(/^Map(\d+)\.json$/)
         if (!m) return
@@ -3478,7 +3517,15 @@ function resolveText2Frame () {
             const pageId = String(pageIndex + 1)
             const key = 'map' + mapId.padStart(3, '0') + '_event' + String(eventIndex).padStart(3, '0') + '_page' + pageId
             if (!inScope(scope, page && page.list, key, index)) return
-            targets.push({ kind: 'event', mapId, eventId: String(eventIndex), pageId, key })
+            targets.push({
+              kind: 'event',
+              mapId,
+              eventId: String(eventIndex),
+              pageId,
+              key,
+              mapName: mapNameOf(mapId),
+              name: (event && event.name) || ''
+            })
           })
         })
       })
@@ -3490,7 +3537,7 @@ function resolveText2Frame () {
             if (!ce) return
             const key = 'common' + String(ceIndex).padStart(3, '0')
             if (!inScope(scope, ce.list, key, index)) return
-            targets.push({ kind: 'common', commonEventId: String(ceIndex), key })
+            targets.push({ kind: 'common', commonEventId: String(ceIndex), key, name: ce.name || '' })
           })
         }
       }
@@ -3575,7 +3622,7 @@ function resolveText2Frame () {
       }
     }
 
-    Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, indexTexts, outPathFor, pullTargetToText, renderFrontMatter, buildPullText, writeBackToGame }
+    Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, indexTexts, outPathFor, defaultFileName, pullTargetToText, renderFrontMatter, buildPullText, writeBackToGame }
     // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
     // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
     // window / global にもフォールバックする(Text2Frame 側の $LaurusText2Frame と対称)。

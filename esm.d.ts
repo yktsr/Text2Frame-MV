@@ -169,9 +169,16 @@ declare namespace Frame2TextMV {
     eventId?: string;
     pageId?: string;
     commonEventId?: string;
-    /** テキストのファイル名(拡張子なし)にも使う鍵 / Also the text file name without extension */
+    /** 行き先の名前。祖先(.t2f-base)の鍵にも使う / The target's name; also the ancestor key */
     key: string;
+    /** ツクールで付けたマップ名 / The map name from the editor */
+    mapName?: string;
+    /** ツクールで付けたイベント名・コモンイベント名 / The event or common event name */
+    name?: string;
   }
+
+  /** 取り出す範囲 / Which events a batch export writes. */
+  export type Scope = 'all' | 'nonempty' | 'conversation' | 'custom';
 
   /** Frame2Text の版 / The Frame2Text version. */
   export const VERSION: string;
@@ -237,6 +244,13 @@ declare namespace Frame2TextMV {
    * Lists pull targets in a data folder.
    */
   export function enumerateTargets(dataDir: string, onlyFile?: string): Target[];
+  export function enumerateTargets(dataDir: string, options: { onlyFile?: string; scope?: Scope; index?: { paths: { [key: string]: string } } }): Target[];
+
+  /**
+   * 新しく作るときのファイル名。ID に、ツクールで付けた名前を添えます(使えない文字は落とします)。
+   * The default file name for a target: the ids plus the names from the editor.
+   */
+  export function defaultFileName(target: Target): string;
 
   /**
    * 1件をテキストへ取り出します。テキストと祖先を書き、必要ならゲームにも書きます。投げずに ok と error で返します。
