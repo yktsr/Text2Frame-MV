@@ -101,6 +101,9 @@ show('enumerateTargets (scope: all)', F2T.enumerateTargets(dataDir, { scope: 'al
 const baseDir = F2T.baseDirForTextDir(root, textDir)
 show('baseDirForTextDir', { Frame2Text: baseDir, Text2Frame: T2F.baseDirForTextDir(root, textDir) })
 
+// defaultFileName: 新しく作るときのファイル名(ID + ツクールで付けた名前)
+show('defaultFileName', targets.map(function (t) { return F2T.defaultFileName(t) }))
+
 // pullTargetToText: 1件をテキストへ取り出す(テキストと祖先を書く)
 const eventTarget = targets.find(function (t) { return t.kind === 'event' })
 const commonTargetForPath = targets.find(function (t) { return t.kind === 'common' })

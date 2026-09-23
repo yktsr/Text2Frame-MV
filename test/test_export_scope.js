@@ -115,3 +115,33 @@ describe('export scope', function () {
     expect(written()).to.eql(['map001_event001_page1.txt'])
   })
 })
+
+/* 新しく作るときのファイル名。ID に、ツクールで付けた名前を添える。
+ * 3つの OS のどれでも使えない文字は落とす。既にあるファイルの名前は変えない(索引で引くため)。 */
+describe('default file name', function () {
+  const name = frame2text.defaultFileName
+
+  it('adds the map name and the event name', function () {
+    expect(name({ kind: 'event', mapId: '1', mapName: '水族館4', eventId: '3', name: '12_ミズクラゲ', pageId: '1' }))
+      .to.equal('map001-水族館4_event003-12_ミズクラゲ_page1.txt')
+    expect(name({ kind: 'common', commonEventId: '1', name: '回復' })).to.equal('common001-回復.txt')
+  })
+
+  it('leaves out a name the maker filled in for you, and a missing one', function () {
+    expect(name({ kind: 'event', mapId: '1', mapName: '', eventId: '7', name: 'EV007', pageId: '2' }))
+      .to.equal('map001_event007_page2.txt')
+    expect(name({ kind: 'common', commonEventId: '2', name: '' })).to.equal('common002.txt')
+  })
+
+  it('drops the characters a file name cannot hold', function () {
+    // 実際のプロジェクトにあったマップ名(1/100)。Windows / macOS / Linux のどれでも使えない文字を落とす。
+    expect(name({ kind: 'event', mapId: '2', mapName: '1/100', eventId: '1', name: 'a:b*c?d"e<f>g|h', pageId: '1' }))
+      .to.equal('map002-1100_event001-abcdefgh_page1.txt')
+    expect(name({ kind: 'common', commonEventId: '3', name: ' 前後の空白と末尾の点.. ' })).to.equal('common003-前後の空白と末尾の点.txt')
+  })
+
+  it('gives up the name when it would make the file name too long', function () {
+    expect(name({ kind: 'event', mapId: '1', mapName: 'あ'.repeat(200), eventId: '3', pageId: '1' }))
+      .to.equal('map001_event003_page1.txt')
+  })
+})
