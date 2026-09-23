@@ -47,8 +47,6 @@ export const MAX_HISTORY_BYTES = 300 * 1024 * 1024;
 export interface HistoryOptions {
     /** 残す操作の数。0 なら記録しない。 */
     keep?: number;
-    /** 控えの合計の上限(バイト)。 */
-    maxBytes?: number;
     /** 同じ目印の操作が、この時間の中で続いたら1つにまとめる。 */
     mergeKey?: string;
     mergeWindowMs?: number;
@@ -70,7 +68,8 @@ function changed(root: string): void {
 }
 
 const toRel = (root: string, abs: string): string => path.relative(root, abs).split(path.sep).join('/');
-const fromRel = (root: string, rel: string): string => path.join(root, ...rel.split('/'));
+/** 履歴が持つ相対パスを、実際の場所に戻す。 */
+export const absolutePath = (root: string, rel: string): string => path.join(root, ...rel.split('/'));
 
 export function historyRoot(root: string): string {
     return path.join(root, HISTORY_DIR);
@@ -229,7 +228,7 @@ export class HistoryRecorder {
         if (!this.started) return undefined;
         const kept: HistoryFile[] = [];
         for (const file of this.entry.files) {
-            const abs = fromRel(this.root, file.path);
+            const abs = absolutePath(this.root, file.path);
             const copy = snapshotFile(this.root, this.entry.id, file.path);
             const held = this.before.get(file.path);
             const now = readOrUndefined(abs);
@@ -259,7 +258,7 @@ export class HistoryRecorder {
             try { return sum + fs.statSync(snapshotFile(this.root, this.entry.id, file.path)).size; } catch (e) { return sum; }
         }, 0);
         writeEntryFile(this.root, this.entry);
-        if (this.options.keep !== undefined) prune(this.root, this.options.keep, this.options.maxBytes);
+        if (this.options.keep !== undefined) prune(this.root, this.options.keep);
         changed(this.root);
         return this.entry;
     }
@@ -267,10 +266,6 @@ export class HistoryRecorder {
 
 /** 今の操作の記録係。書き込む関数は、これがあれば控えを取る。 */
 let current: HistoryRecorder | undefined;
-
-export function currentRecorder(): HistoryRecorder | undefined {
-    return current;
-}
 
 /**
  * 操作を記録しながら動かす。すでに別の操作を記録している途中なら、その操作に含める
@@ -302,34 +297,6 @@ export function withHistory<T>(root: string | undefined, op: string, label: stri
 /** 書き込む直前に呼ぶ。記録していなければ何もしない。 */
 export function noteWrite(absPath: string, kind: HistoryFileKind, pages?: string[]): void {
     if (current) current.noteBeforeWrite(absPath, kind, pages);
-}
-
-/**
- * 戻す。控えのあるファイルを書き戻す。操作の前に無かったファイルは消さずに、名前だけ返す。
- * only を渡すと、そのファイル(相対パス)だけを戻す。
- */
-export function restoreEntry(root: string, entry: HistoryEntry, only?: string[]): { restored: string[]; created: string[]; missing: string[] } {
-    const restored: string[] = [];
-    const created: string[] = [];
-    const missing: string[] = [];
-    for (const file of entry.files) {
-        if (only && !only.includes(file.path)) continue;
-        if (!file.existed) {
-            created.push(file.path);
-            continue;
-        }
-        const copy = snapshotFile(root, entry.id, file.path);
-        if (!fs.existsSync(copy)) {
-            missing.push(file.path);
-            continue;
-        }
-        const abs = fromRel(root, file.path);
-        noteWrite(abs, file.kind, file.pages);
-        fs.mkdirSync(path.dirname(abs), { recursive: true });
-        fs.copyFileSync(copy, abs);
-        restored.push(file.path);
-    }
-    return { restored, created, missing };
 }
 
 /** 戻したい時点。履歴の行(操作)そのものを指す。 */
@@ -378,15 +345,11 @@ export function restoreTo(root: string, entries: HistoryEntry[], from: HistoryPo
             missing.push(file.path);
             continue;
         }
-        const abs = fromRel(root, file.path);
+        const abs = absolutePath(root, file.path);
         noteWrite(abs, file.kind, file.pages);
         fs.mkdirSync(path.dirname(abs), { recursive: true });
         fs.copyFileSync(copy, abs);
         restored.push(file.path);
     }
     return { restored, created: plan.created, missing };
-}
-
-export function absolutePath(root: string, rel: string): string {
-    return fromRel(root, rel);
 }

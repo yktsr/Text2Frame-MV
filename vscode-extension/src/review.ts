@@ -108,11 +108,12 @@ export async function review(request: ReviewRequest): Promise<boolean> {
     const openOne = (pair: typeof pairs[number]): Thenable<unknown> =>
         vscode.commands.executeCommand('vscode.diff', pair.left, pair.right,
             `${pair.item.label}（${request.sides[0]} ↔ ${request.sides[1]}）`, { preview: pairs.length > 1 });
-    const listed = pairs.length > 1 && !(await vscode.commands.getCommands(true)).includes('vscode.changes');
+    // 複数を1つのタブに並べられるのは vscode.changes があるときだけ。無ければ先頭の1つだけを開くので、
+    // 残りは「一覧から見る」で選べるようにする。
+    const canList = pairs.length > 1 && (await vscode.commands.getCommands(true)).includes('vscode.changes');
+    const oneOfMany = pairs.length > 1 && !canList;
     try {
-        if (pairs.length === 1) {
-            await openOne(pairs[0]);
-        } else if (!listed) {
+        if (canList) {
             await vscode.commands.executeCommand('vscode.changes', request.title,
                 pairs.map((p) => [vscode.Uri.from({ scheme: REVIEW_SCHEME, path: '/' + p.item.label }), p.left, p.right]));
         } else {
@@ -124,13 +125,13 @@ export async function review(request: ReviewRequest): Promise<boolean> {
         return decided;
     }
     if (pending && pending.uris === uris) {
-        pending.watchTabs = !listed;
+        pending.watchTabs = !oneOfMany;
         pending.shown = reviewTabs(uris).length > 0;
     }
 
     const cancel = tr('やめる', 'Cancel');
     const list = tr('一覧から見る', 'Pick from a list');
-    const buttons = listed ? [request.acceptLabel, cancel, list] : [request.acceptLabel, cancel];
+    const buttons = oneOfMany ? [request.acceptLabel, cancel, list] : [request.acceptLabel, cancel];
     const ask = (): void => {
         vscode.window.showInformationMessage(request.message, ...buttons).then((choice) => {
             if (!pending || pending.uris !== uris) return;

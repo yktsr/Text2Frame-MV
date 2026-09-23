@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { keyFromTextPath, snapshotKeyForTarget, targetKeyFromMeta } from './db/baseKey';
+import { snapshotKeyForTarget } from './db/baseKey';
 import * as fs from 'fs';
 import { isHistoryCopy, noteWrite } from './db/history';
 import { tr } from './db/lang';
@@ -184,12 +184,9 @@ export function dataChangedExternally(context: vscode.ExtensionContext, dataPath
  *
  * 鍵は front matter が指す宛先で決まる(db/baseKey.ts)。名前を変えても移動しても同じ祖先を使い、
  * text/ と text-en/ は置き場所ごとに分かれる。Text2Frame の baseIdForTarget と同じ規則なので、
- * 変えるときは両方そろえること。snapshotKeyFor は宛先が分からないときの逃げ道。
+ * 変えるときは両方そろえること。宛先が分からないときの逃げ道は keyFromTextPath。
  */
-export function snapshotKeyFor(workspaceRoot: string, textPath: string): string {
-    return keyFromTextPath(workspaceRoot, textPath);
-}
-export { snapshotKeyForTarget, targetKeyFromMeta };
+export { snapshotKeyForTarget };
 export function baseSnapshotPath(workspaceRoot: string, key: string): string {
     return path.join(workspaceRoot, '.t2f-base', key + '.txt');
 }
