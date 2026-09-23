@@ -4,6 +4,7 @@ import * as path from 'path';
 import { DatabaseService, DbContext } from './dbService';
 import { RunTracker } from './runHighlight';
 import { parseFrontMatter, workspaceRootFor } from './compiler';
+import { readJsonFile } from './db/files';
 import { renderCommands } from './exportText';
 import { placeFromKey, placeFromMeta, placeKey, placeLabel } from './placeLabel';
 import { padId } from './db/database';
@@ -119,12 +120,12 @@ export class LinkService {
         const node = nodeFromKey(key);
         if (!node) return [];
         if (node.kind === 'common') {
-            const list = readJson(path.join(ctx.dataDir, 'CommonEvents.json'));
+            const list = readJsonFile(path.join(ctx.dataDir, 'CommonEvents.json'));
             const entry = Array.isArray(list) ? list[node.id] : undefined;
             return entry && Array.isArray(entry.list) ? entry.list : [];
         }
         if (node.kind !== 'page') return [];
-        const map = readJson(mapPath(ctx, node.mapId));
+        const map = readJsonFile<{ events?: any[] }>(mapPath(ctx, node.mapId));
         const event = map && Array.isArray(map.events) ? map.events[node.eventId] : undefined;
         const page = event && Array.isArray(event.pages) ? event.pages[node.pageId - 1] : undefined;
         return page && Array.isArray(page.list) ? page.list : [];
@@ -156,7 +157,7 @@ export class LinkService {
         if (hit && hit.mtime === mtime) return;
         const byPlace = new Map<string, Link[]>();
         const others: Link[] = [];
-        const json = readJson(file);
+        const json = readJsonFile<{ events?: any[] }>(file);
         if (path.basename(file) === 'CommonEvents.json') {
             const list = Array.isArray(json) ? json : [];
             const triggers: Array<{ id: number; trigger: number; switchId: number }> = [];
@@ -200,13 +201,6 @@ export class LinkService {
     }
 }
 
-function readJson(file: string): any {
-    try {
-        return JSON.parse(fs.readFileSync(file, 'utf8'));
-    } catch (e) {
-        return undefined;
-    }
-}
 
 const mapPath = (ctx: DbContext, mapId: number): string => path.join(ctx.dataDir, 'Map' + String(mapId).padStart(3, '0') + '.json');
 

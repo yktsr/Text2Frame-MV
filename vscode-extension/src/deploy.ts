@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseFrontMatter, isDeployable, isAncestorCopy, ancestorCopyMessage, loadModule, workspaceRootFor, frontMatterBody, resolveTarget, dataChangedExternally, recordDataState, baseSnapshotPath, hasBaseSnapshot, saveBaseSnapshot, snapshotKeyForTarget, historyKeep } from './compiler';
+import { ancestorCopyMessage, baseSnapshotPath, dataChangedExternally, frontMatterBody, hasBaseSnapshot, historyKeep, isAncestorCopy, isDeployable, loadModule, parseFrontMatter, recordDataState, resolveTarget, saveBaseSnapshot, snapshotKeyForTarget, workspaceRootFor } from './compiler';
+import { relLabel } from './db/files';
 import { noteWrite, withHistory } from './db/history';
 import { placeFromMeta, placeKey } from './placeLabel';
 import { planPull, commitPull, renderCommands, ExportTarget } from './exportText';
@@ -122,8 +123,6 @@ export function noteApply(workspaceRoot: string, textPath: string, dataPath: str
     noteWrite(baseSnapshotPath(workspaceRoot, snapshotKeyForTarget(workspaceRoot, textPath, meta)), 'base');
 }
 
-const relativeLabel = (workspaceRoot: string, file: string): string => path.relative(workspaceRoot, file).split(path.sep).join('/');
-
 export function deployDocument(
     document: vscode.TextDocument,
     context: vscode.ExtensionContext,
@@ -132,7 +131,7 @@ export function deployDocument(
 ): Promise<ApplyResult | undefined> {
     const root = workspaceRootFor(document);
     const file = document.uri.fsPath;
-    const label = (options.onSave ? tr('保存時の反映 ', 'Apply on save ') : tr('ゲームに反映 ', 'Apply to game ')) + (root ? relativeLabel(root, file) : path.basename(file));
+    const label = (options.onSave ? tr('保存時の反映 ', 'Apply on save ') : tr('ゲームに反映 ', 'Apply to game ')) + (root ? relLabel(root, file) : path.basename(file));
     // 保存時の反映は、同じテキストで5分以内に続いたら1つにまとめる(保存のたびに履歴が並ばないように)。
     const history = { keep: historyKeep(), mergeKey: options.onSave ? 'save:' + file : undefined };
     return withHistory(root, options.onSave ? 'applyOnSave' : 'apply', label, history,
@@ -366,7 +365,7 @@ export function deployFile(
     workspaceRoot: string,
     filePath: string
 ): ApplyResult | undefined {
-    return withHistory(workspaceRoot, 'apply', tr('ゲームに反映 ', 'Apply to game ') + relativeLabel(workspaceRoot, filePath), { keep: historyKeep() },
+    return withHistory(workspaceRoot, 'apply', tr('ゲームに反映 ', 'Apply to game ') + relLabel(workspaceRoot, filePath), { keep: historyKeep() },
         () => deployFileNow(context, workspaceRoot, filePath));
 }
 

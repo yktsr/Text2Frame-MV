@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { review, reviewEnabled, ReviewItem } from './review';
 import { tryApplySlowly, fingerprint, ApplyModule, TrialStep } from './dryRun';
 import { eachSlowly, SlowlyOptions } from './db/slowly';
 import { renderCommands, PullPlan } from './exportText';
 import { tr } from './db/lang';
+import { relLabel } from './db/files';
 
 /**
  * 反映・取り出しを、差分で確かめてから進める流れ。書き込みはしない(書くのは呼ぶ側)。
@@ -22,7 +22,6 @@ export type Decision = 'accept' | 'cancel' | 'unchanged';
 
 const changedAgain = (): string => tr('Text2Frame: 確かめているあいだに、テキストかゲームの内容が変わりました。もう一度確かめてください。', 'Text2Frame: The text or the game changed while you were reviewing. Review again.');
 
-const relative = (root: string, file: string): string => path.relative(root, file) || path.basename(file);
 
 /** 時間のかかる準備。進み具合を出し、途中でやめられる(やめたら undefined を返す作りにする)。 */
 export async function busy<T>(title: string, work: (slowly: SlowlyOptions) => Promise<T>): Promise<T> {
@@ -84,7 +83,7 @@ export async function reviewDeploy(
                 const was = renderCommands(context, root, trial.before);
                 const will = renderCommands(context, root, trial.after);
                 if (was !== will) {
-                    items.push({ label: relative(root, candidates[i].textPath), before: was, after: will });
+                    items.push({ label: relLabel(root, candidates[i].textPath), before: was, after: will });
                     options.sort?.changed.add(candidates[i].textPath);
                 }
             }, { cancelled: slowly.cancelled });
@@ -132,7 +131,7 @@ export async function reviewPull(
         const usable = plans.filter((p) => p.ok && !p.skipped);
         const items: ReviewItem[] = usable
             .filter((p) => p.previous !== undefined && p.text !== p.previous)
-            .map((p) => ({ label: relative(root, p.target.textPath), before: vscode.Uri.file(p.target.textPath), after: p.text as string }));
+            .map((p) => ({ label: relLabel(root, p.target.textPath), before: vscode.Uri.file(p.target.textPath), after: p.text as string }));
         if (!items.length) return { plans, unchanged: !usable.some((p) => p.previous === undefined) };
         const created = usable.filter((p) => p.previous === undefined).length;
         const conflicts = usable.reduce((n, p) => n + (p.conflicts || 0), 0);

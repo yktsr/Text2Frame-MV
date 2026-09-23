@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import { DatabaseService, DbContext } from './dbService';
 import { RunTracker } from './runHighlight';
 import { parseFrontMatter, workspaceRootFor } from './compiler';
+import { isSidecarText } from './db/files';
 import { projectTextFiles } from './usagesView';
 import { placeFromKey, placeLabel } from './placeLabel';
 import { readStructure, foldingRanges, labelLine, JUMP_TO_LABEL, LABEL, StructureNode, NodeKind } from './db/structure';
@@ -18,7 +19,6 @@ import { bodyStart } from './db/usages';
  */
 
 const SELECTOR: vscode.DocumentSelector = { language: 'text2frame' };
-const SIDECAR = /\.(conversation|translation)\.txt$/;
 
 interface FileScan {
     version: string;
@@ -56,7 +56,7 @@ class ProjectScans {
     async all(ctx: DbContext): Promise<Array<{ uri: vscode.Uri; scan: FileScan }>> {
         const out: Array<{ uri: vscode.Uri; scan: FileScan }> = [];
         for (const uri of await projectTextFiles(ctx)) {
-            if (SIDECAR.test(uri.fsPath)) continue;
+            if (isSidecarText(uri.fsPath)) continue;
             const scan = this.scan(uri.fsPath);
             if (scan) out.push({ uri, scan });
         }

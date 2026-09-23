@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { workspaceRootFor, parseFrontMatter } from './compiler';
+import { parseFrontMatter, workspaceRootFor, workspaceRootOrWarn, textBaseDirFor } from './compiler';
 import { commitPull, planPull, newTextPathFor, ExportTarget, PullPlan } from './exportText';
 import { readOnlyUri, LINKS_SCHEME } from './eventLinks';
 import { dataDirFor } from './compiler';
@@ -9,7 +9,7 @@ import { deployFile, reviewFiles, unappliedFiles } from './deploy';
 import { reviewPull } from './reviewApply';
 import { DatabaseService, DbContext } from './dbService';
 import { RunTracker } from './runHighlight';
-import { placeFromKey } from './placeLabel';
+import { placeFromKey, placeFromMeta, placeKey, Place } from './placeLabel';
 import { LiveService } from './live';
 import {
     readMapInfos, mapTree, mapLabel, pageDescription, pageConditionTexts, commonDescription,
@@ -18,7 +18,6 @@ import {
 import { eventId as eventLabelId, MapEvent } from './db/describe';
 import { PageSummary } from './db/eventPages';
 import { padId } from './db/database';
-import { placeFromMeta } from './placeLabel';
 import { tr } from './db/lang';
 
 /**
@@ -65,13 +64,10 @@ function nodeId(nodeType: NodeType, data: NodeData): string {
     return `${head}page:${data.mapId}:${data.eventId}:${data.pageId}`;
 }
 
-function textBaseSetting(): string {
-    return vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text');
-}
 
 /** この行のテキストを新しく作るときの置き場所。名前は Frame2Text の規則(ID + ツクールで付けた名前)。 */
 function textPathForLeaf(context: vscode.ExtensionContext, root: string, node: T2FNode): string {
-    return newTextPathFor(context, root, dataDirFor(root), path.join(root, textBaseSetting()), targetForLeaf(node));
+    return newTextPathFor(context, root, dataDirFor(root), textBaseDirFor(root), targetForLeaf(node));
 }
 
 function targetForLeaf(node: T2FNode): ExportTarget {
@@ -81,11 +77,12 @@ function targetForLeaf(node: T2FNode): ExportTarget {
     return { kind: 'event', mapId: node.data.mapId, eventId: node.data.eventId, pageId: node.data.pageId, textPath: '' };
 }
 
-/** 場所の鍵。テキストの索引(宛先のメモ)と同じ形。 */
+/** 場所の鍵。テキストの索引(宛先のメモ)と同じ形(書式は placeKey に1つ)。 */
 function keyForLeaf(node: T2FNode): string {
-    return node.nodeType === 'common'
-        ? `c:${Number(node.data.commonEventId)}`
-        : `e:${Number(node.data.mapId)}:${Number(node.data.eventId)}:${Number(node.data.pageId)}`;
+    const place: Place = node.nodeType === 'common'
+        ? { kind: 'common', commonEventId: Number(node.data.commonEventId) }
+        : { kind: 'event', mapId: Number(node.data.mapId), eventId: Number(node.data.eventId), pageId: Number(node.data.pageId) };
+    return placeKey(place) as string;
 }
 
 interface CommonSummary {
@@ -484,13 +481,6 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
         provider.refreshMarks();
     };
 
-    const ensureRoot = (): string | undefined => {
-        const root = workspaceRootFor();
-        if (!root) {
-            vscode.window.showErrorMessage(tr('Text2Frame: ワークスペースフォルダが見つかりません。', 'Text2Frame: No workspace folder was found.'));
-        }
-        return root;
-    };
 
     const textPathOf = async (root: string, node: T2FNode): Promise<string | undefined> => {
         const ctx = service.forRoot(root);
@@ -503,7 +493,7 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
      * ゲームのデータから読んだ中身がそのまま出る。書き換えたくなったら、その画面の
      * 「ゲームから取り出す」を押したときに初めてファイルを作る。 */
     const openLeaf = async (node: T2FNode): Promise<void> => {
-        const root = ensureRoot();
+        const root = workspaceRootOrWarn();
         if (!root || (node.nodeType !== 'page' && node.nodeType !== 'common')) {
             return;
         }
@@ -554,7 +544,7 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
         vscode.commands.registerCommand('text2frame.tree.refresh', () => provider.refresh()),
         vscode.commands.registerCommand('text2frame.tree.open', (node: T2FNode) => openLeaf(node)),
         vscode.commands.registerCommand('text2frame.tree.export', async (node: T2FNode) => {
-            const root = ensureRoot();
+            const root = workspaceRootOrWarn();
             if (!root || (node.nodeType !== 'page' && node.nodeType !== 'common')) {
                 return;
             }
@@ -564,7 +554,7 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
         /* 読み取り専用で開いている画面(テキストがまだ無いページ)から取り出す。
          * ここを押したときに初めてファイルを作る。 */
         vscode.commands.registerCommand('text2frame.pullThisView', async () => {
-            const root = ensureRoot();
+            const root = workspaceRootOrWarn();
             const uri = vscode.window.activeTextEditor?.document.uri;
             if (!root || !uri || uri.scheme !== LINKS_SCHEME) {
                 return;
@@ -576,11 +566,11 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
             const target: ExportTarget = place.kind === 'common'
                 ? { kind: 'common', commonEventId: String(place.commonEventId), textPath: '' }
                 : { kind: 'event', mapId: String(place.mapId), eventId: String(place.eventId), pageId: String(place.pageId ?? 1), textPath: '' };
-            const textPath = newTextPathFor(context, root, dataDirFor(root), path.join(root, textBaseSetting()), target);
+            const textPath = newTextPathFor(context, root, dataDirFor(root), textBaseDirFor(root), target);
             await pullOne(root, target, textPath);
         }),
         vscode.commands.registerCommand('text2frame.tree.deploy', async (node: T2FNode) => {
-            const root = ensureRoot();
+            const root = workspaceRootOrWarn();
             if (!root || (node.nodeType !== 'page' && node.nodeType !== 'common')) {
                 return;
             }
@@ -602,7 +592,7 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
             }
         }),
         vscode.commands.registerCommand('text2frame.tree.try', async (node: T2FNode, mode?: 'stand' | 'run') => {
-            const root = ensureRoot();
+            const root = workspaceRootOrWarn();
             if (!root) return;
             const place = node.nodeType === 'common'
                 ? { kind: 'common' as const, commonEventId: Number(node.data.commonEventId) }
