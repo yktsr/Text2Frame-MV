@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { workspaceRootFor, recordDataState, historyKeep } from './compiler';
+import { review, reviewEnabled, ReviewItem } from './review';
 import { renderCommands } from './exportText';
 import { pageList, PageRef } from './dryRun';
 import { tr } from './db/lang';
@@ -120,6 +121,24 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
         return root;
     };
 
+    /* 1ファイル(データならそのページ)の中身を文字列で。控え(before)と今(now)で共通。
+     * まとめて差分を見せるときと、1件の差分を開くときの両方から使う。 */
+    const sideText = (root: string, entryId: string, rel: string, side: 'before' | 'now', page?: string): string => {
+        const file = side === 'before' ? snapshotFile(root, entryId, rel) : absolutePath(root, rel);
+        let raw: string;
+        try {
+            raw = fs.readFileSync(file, 'utf8');
+        } catch (e) {
+            return side === 'before' ? tr('(この時点には、このファイルはありませんでした)', '(This file did not exist at that point)') : tr('(今は、このファイルはありません)', '(This file does not exist now)');
+        }
+        if (!page) return raw;
+        const ref = pageRefOf(page);
+        let json: unknown;
+        try { json = JSON.parse(raw); } catch (e) { return raw; }
+        const list = ref ? pageList(json, ref) : undefined;
+        return list ? renderCommands(context, root, list) : tr('(このページはありません)', '(This page does not exist)');
+    };
+
     /** 差分の画面の左右の中身。控え(before)と今(now)。データはそのページだけをテキストに直す。 */
     const contents: vscode.TextDocumentContentProvider = {
         provideTextDocumentContent(uri) {
@@ -130,19 +149,7 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
             const rel = q.get('path') || '';
             const side = q.get('side');
             const page = q.get('page');
-            const file = side === 'before' ? snapshotFile(root, id, rel) : absolutePath(root, rel);
-            let raw: string;
-            try {
-                raw = fs.readFileSync(file, 'utf8');
-            } catch (e) {
-                return side === 'before' ? tr('(この操作の前には、このファイルはありませんでした)', '(This file did not exist before this operation)') : tr('(今は、このファイルはありません)', '(This file does not exist now)');
-            }
-            if (!page) return raw;
-            const ref = pageRefOf(page);
-            let json: unknown;
-            try { json = JSON.parse(raw); } catch (e) { return raw; }
-            const list = ref ? pageList(json, ref) : undefined;
-            return list ? renderCommands(context, root, list) : tr('(このページはありません)', '(This page does not exist)');
+            return sideText(root, id, rel, side === 'before' ? 'before' : 'now', page || undefined);
         }
     };
 
@@ -200,16 +207,42 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
         }
         const when = clock(fresh.started);
         const createdShown = shownFilesOf(plan.created);
+        /* 戻す前に、変わる所をまとめて差分で見せる(反映・取り出しの確認と同じ画面)。
+         * 左が「今」、右が「戻したあと」。ゲームのデータは、触ったページだけテキストに直して並べる。 */
+        const items: ReviewItem[] = [];
+        for (const f of plan.files) {
+            if (f.kind === 'base') continue;
+            const pages = f.kind === 'data' && f.pages && f.pages.length ? f.pages : [undefined];
+            for (const page of pages) {
+                const after = sideText(root, f.entryId, f.path, 'before', page);
+                const now = sideText(root, f.entryId, f.path, 'now', page);
+                if (now === after) continue;
+                const label = page ? `${path.basename(f.path)}（${pageName(page)}）` : f.path;
+                items.push({ label, before: page ? now : vscode.Uri.file(absolutePath(root, f.path)), after });
+            }
+        }
         const detail = [
             tr(`テキスト ${texts.length} 個、ゲームのデータ ${data.length} 個を、この時点の中身に書き戻します。`, `${texts.length} text file(s) and ${data.length} game data file(s) get back what they held at that point.`),
             createdShown.length ? tr(`このあとに作られた ${createdShown.length} 個のファイルは、消さずにそのまま残します。`, `The ${createdShown.length} files made after that point are kept, not deleted.`) : '',
             tr('戻したことも履歴に残るので、あとから取り消せます。', 'Going back is recorded in the history too, so you can undo it later.')
         ].filter((s) => s).join('\n');
         const goBack = tr('戻す', 'Go back');
-        const ok = await vscode.window.showWarningMessage(
-            tr(`Text2Frame: ${when} の状態に戻しますか？`, `Text2Frame: Go back to how things were at ${when}?`), { modal: true, detail }, goBack
-        );
-        if (ok !== goBack) return;
+        if (reviewEnabled() && items.length) {
+            const accepted = await review({
+                title: tr(`戻す前の確認（${items.length} 件）`, `Review going back (${items.length} items)`),
+                sides: [tr('今', 'Now'), tr('戻したあと', 'After going back')],
+                items,
+                message: tr(`Text2Frame: ${when} の状態に戻すと、${items.length} 件が変わります。差分を見て、戻すか決めてください。`, `Text2Frame: Going back to ${when} changes ${items.length} items. Look at the changes and decide.`)
+                    + (createdShown.length ? tr(`（このあとに作られた ${createdShown.length} 件は残します）`, ` (${createdShown.length} files made after that point are kept)`) : ''),
+                acceptLabel: goBack
+            });
+            if (!accepted) return;
+        } else {
+            const ok = await vscode.window.showWarningMessage(
+                tr(`Text2Frame: ${when} の状態に戻しますか？`, `Text2Frame: Go back to how things were at ${when}?`), { modal: true, detail }, goBack
+            );
+            if (ok !== goBack) return;
+        }
 
         const label = tr(`${when} の状態に戻す`, `Go back to ${when}`);
         const result = withHistory(root, 'restore', label, { keep: historyKeep() }, () => restoreTo(root, listEntries(root), fresh.started));
