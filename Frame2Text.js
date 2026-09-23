@@ -3942,6 +3942,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-c, --common_event_id <name>', 'common event id')
     .option('-d, --data-dir <dir>', 'game data directory', 'data')
     .option('-t, --text-dir <dir>', 'text base directory (batch)', 'text')
+    .option('--root <dir>', 'project root for data/, text/ and .t2f-base (default: current directory)')
     .option('-v, --verbose', 'debug mode', false)
     .option('-w, --english_tag <true/false>', 'english tag', 'true')
     .option('--omit-default-tags <true/false>', 'omit face/background/position tags that match the defaults', 'true')
@@ -4086,11 +4087,14 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       page_id
     ])
   } else if (options.mode === 'batch') {
-    const dataDir = path.resolve(options.dataDir)
+    /* データ・テキスト・祖先(.t2f-base)は、すべて --root を基準に決まる(text2frame と同じ)。
+     * 既定は実行したフォルダなので、プロジェクトの中で流す使い方は今までと同じ。 */
+    const cliRoot = options.root ? path.resolve(options.root) : process.cwd()
+    const dataDir = path.resolve(cliRoot, options.dataDir)
     if (!fs.existsSync(dataDir)) {
       throw new Error('Data directory not found: ' + dataDir)
     }
-    const textDir = options.textDir
+    const textDir = path.resolve(cliRoot, options.textDir)
     const englishTag = String(options.english_tag) === 'true'
     // 既定と同じタグの省略。プラグインパラメータと同じ既定(省略する)。
     const omitDefaults = String(options.omitDefaultTags) !== 'false'
@@ -4098,9 +4102,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const batchStrategy = _pullOverwrite ? 'overwrite' : 'merge'
     // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する(既存 dir は existsSync でガード)。
     let baseSaveError = null
-    const baseRoot = process.cwd()
+    const baseRoot = cliRoot
     // 祖先はテキストの置き場所ごとに分ける(Text2Frame の deriveBaseId と同じ規約)。
-    const baseDir = module.exports.baseDirForTextDir(baseRoot, path.resolve(textDir))
+    const baseDir = module.exports.baseDirForTextDir(baseRoot, textDir)
     try { if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true }) } catch (e) { baseSaveError = baseSaveError || e }
     /* 既にあるテキストは、その名前・その場所のまま書き続ける(索引は front matter で引く)。
      * 同じ宛先のテキストが2つ以上あるものは、書き先が決められないので見送る。 */

@@ -11956,8 +11956,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .version('2.3.0')
     .usage('[options]')
     .option('-m, --mode <map|common|compile|batch>', 'output mode', /^(map|common|compile|test|batch)$/i)
-    .option('-t, --text_path <name>', 'single-file mode (map/common): input text file')
-    .option('--text-dir <dir>', 'batch mode: text base directory', 'text')
+    .option('-f, --text-file <name>', 'single-file mode (map/common): input text file')
+    .option('--text_path <name>', 'single-file mode: same as --text-file')
+    .option('-t, --text-dir <dir>', 'batch mode: text base directory', 'text')
     .option('-d, --data-dir <dir>', 'game data directory', 'data')
     .option('--root <dir>', 'project root for data/, text/ and .t2f-base (default: current directory)')
     .option('-o, --output_path <name>', 'output file path')
@@ -11966,7 +11967,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-c, --common_event_id <name>', 'common event id')
     .option('-s, --strategy <merge|overwrite>', 'deploy strategy (default merge)', /^(merge|overwrite)$/i, 'merge')
     .option('-b, --base <path>', 'ancestor text path for merge (3-way common ancestor)')
-    .option('-w, --overwrite <true/false>', 'overwrite mode (legacy)', 'false')
+    .option('--overwrite <true/false>', 'overwrite mode (legacy; use --strategy)', 'false')
     .option('-v, --verbose', 'debug mode', false)
     .option('--watch', 'watch text files and redeploy on change (batch mode)', false)
     .option('--debounce <ms>', 'debounce window for --watch', '250')
@@ -11979,8 +11980,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
        Text2Frame - Simple compiler to convert text to event command.
     SYNOPSIS
         npx text2frame --mode batch
-        npx text2frame --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
-        npx text2frame --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
+        npx text2frame --verbose --mode map --text-file <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --strategy <merge|overwrite|add>
+        npx text2frame --verbose --mode common --text-file <text file path> --common_event_id <common event id> --strategy <merge|overwrite|add>
         npx text2frame --mode compile
     DESCRIPTION
         npx text2frame --mode batch
@@ -11989,7 +11990,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           例1: $ npx text2frame --mode batch
 
           テキストの場所は --text-dir、データの場所は --data-dir で変更できます。（既定は text / data ）
-          例2: $ npx text2frame --mode batch --text-dir text --data-dir data
+          例2: $ npx text2frame --mode batch -t text -d data
 
           プロジェクトの外から実行するときは --root でプロジェクトの場所を指定してください。
           テキスト・データ・統合用の情報（.t2f-base）は、すべてこの場所を基準に決まります。
@@ -12006,21 +12007,21 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           例5: $ npx frame2text --mode batch --text-dir text-en
                $ npx text2frame --mode batch --text-dir text-en
 
-        npx text2frame --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
+        npx text2frame --verbose --mode map --text-file <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --strategy <merge|overwrite|add>
           マップへのイベント出力モードです。
           読み込むファイル、出力マップ、上書きの有無を引数で指定します。
           test/basic.txt を読み込み data/Map001.json に上書きするコマンド例は以下です。
 
-          例1：$ npx text2frame --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --page_id 1 --overwrite true
-          例2：$ npx text2frame -m map -t test/basic.txt -o data/Map001.json -e 1 -p 1 -w true
+          例1：$ npx text2frame --mode map --text-file test/basic.txt --output_path data/Map001.json --event_id 1 --page_id 1 --strategy overwrite
+          例2：$ npx text2frame -m map -f test/basic.txt -o data/Map001.json -e 1 -p 1 -s overwrite
 
-        npx text2frame --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
+        npx text2frame --verbose --mode common --text-file <text file path> --common_event_id <common event id> --strategy <merge|overwrite|add>
           コモンイベントへのイベント出力モードです。
           読み込むファイル、出力コモンイベント、上書きの有無を引数で指定します。
           test/basic.txt を読み込み data/CommonEvents.json に上書きするコマンド例は以下です。
 
-          例1：$ npx text2frame --mode common --text_path test/basic.txt --output_path data/CommonEvents.json --common_event_id 1 --overwrite true
-          例2：$ npx text2frame -m common -t test/basic.txt -o data/CommonEvents.json -c 1 -w true
+          例1：$ npx text2frame --mode common --text-file test/basic.txt --output_path data/CommonEvents.json --common_event_id 1 --strategy overwrite
+          例2：$ npx text2frame -m common -f test/basic.txt -o data/CommonEvents.json -c 1 -s overwrite
 
         npx text2frame --mode compile
           コンパイルモードです。
@@ -12063,17 +12064,19 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       ' / pass --root <project dir>')
   }
 
+  // 単発の反映で読むテキスト。-f / --text-file。--text_path は前の名前。
+  const singleTextPath = options.textFile || options.text_path
   const _given = function (long, short) {
     return process.argv.some(function (a) { return a === long || a === short })
   }
   /* 一括反映のしかた。走査で回るので merge か overwrite だけ(add は内容が二重になる)。 */
   const cliStrategy = (module.exports.resolveStrategy(options.strategy) || { strategy: 'merge' }).strategy
   /* 単発(map/common)の反映のしかた。--strategy が明示されていればそれ、
-   * 無ければ旧 -w/--overwrite を見る。-w は true/false のほか merge/overwrite/add も受ける
+   * 無ければ旧 --overwrite を見る。true/false のほか merge/overwrite/add も受ける
    * (true=上書き / false=末尾に追記で、2.2.4 までと同じ意味)。
    * commander は既定値も options.strategy に入れるので、実際に渡されたかで判定する。 */
   const cliSingleStrategy = (function () {
-    if (_given('--strategy', '-s') || !_given('--overwrite', '-w')) return cliStrategy
+    if (_given('--strategy', '-s') || !_given('--overwrite')) return cliStrategy
     const w = String(options.overwrite).toLowerCase()
     if (w === 'true') return 'overwrite'
     if (w === 'false') return 'add'
@@ -12091,7 +12094,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     try { return parseFrontMatterCli(fs.readFileSync(fromRoot(p), { encoding: 'utf8' })).meta || {} } catch (e) { return {} }
   }
   if (options.mode === 'map') {
-    const fm = frontMatterOf(options.text_path)
+    const fm = frontMatterOf(singleTextPath)
     const eventId = options.event_id || fm.eventId
     const mapPath = fromRoot(options.output_path) ||
       (fm.mapId ? path.resolve(cliRoot, options.dataDir, 'Map' + ('000' + String(fm.mapId)).slice(-3) + '.json') : undefined)
@@ -12101,12 +12104,12 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     if (!mapPath) {
       throw new Error('map path is required: pass --output_path, or put "mapId:" in the text front matter.')
     }
-    noteOutsideRoot('text', fromRoot(options.text_path))
+    noteOutsideRoot('text', fromRoot(singleTextPath))
     noteOutsideRoot('data', mapPath)
     reportOutsideRoot()
     const Text2Frame = {
       IsDebug: options.verbose,
-      TextPath: fromRoot(options.text_path),
+      TextPath: fromRoot(singleTextPath),
       IsOverwrite: (cliSingleStrategy === 'overwrite'),
       Strategy: cliSingleStrategy,
       ExecMode: execModeFor('event'),
@@ -12119,18 +12122,18 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     }
     Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [Text2Frame])
   } else if (options.mode === 'common') {
-    const fm = frontMatterOf(options.text_path)
+    const fm = frontMatterOf(singleTextPath)
     const commonEventId = options.common_event_id || fm.commonEventId
     const commonEventPath = fromRoot(options.output_path) || path.resolve(cliRoot, options.dataDir, 'CommonEvents.json')
     if (!commonEventId) {
       throw new Error('commonEventId is required: pass --common_event_id, or put "commonEventId:" in the text front matter.')
     }
-    noteOutsideRoot('text', fromRoot(options.text_path))
+    noteOutsideRoot('text', fromRoot(singleTextPath))
     noteOutsideRoot('data', commonEventPath)
     reportOutsideRoot()
     const Text2Frame = {
       IsDebug: options.verbose,
-      TextPath: fromRoot(options.text_path),
+      TextPath: fromRoot(singleTextPath),
       IsOverwrite: (cliSingleStrategy === 'overwrite'),
       Strategy: cliSingleStrategy,
       ExecMode: execModeFor('common'),
