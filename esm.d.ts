@@ -243,8 +243,7 @@ declare namespace Frame2TextMV {
    * onlyFile を渡すと、そのデータファイルの分だけにします。
    * Lists pull targets in a data folder.
    */
-  export function enumerateTargets(dataDir: string, onlyFile?: string): Target[];
-  export function enumerateTargets(dataDir: string, options: { onlyFile?: string; scope?: Scope; index?: { paths: { [key: string]: string } } }): Target[];
+  export function enumerateTargets(dataDir: string, options?: { onlyFile?: string; scope?: Scope; index?: { paths: { [key: string]: string } } }): Target[];
 
   /**
    * 新しく作るときのファイル名。ID に、ツクールで付けた名前を添えます(使えない文字は落とします)。

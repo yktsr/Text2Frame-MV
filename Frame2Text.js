@@ -906,12 +906,9 @@ function resolveText2Frame () {
       会話があるものだけ: 'conversation',
       テキストがあるものだけ: 'custom'
     }
-    // 3番目の引数は、以前は書き戻しの指定だった。古いコマンドが残っていても読まずに流す。
-    const OLD_WRITE_BACK_WORDS = ['always', 'off', '毎回書き戻す', '書き戻さない']
     const resolveExportScope = function (explicit) {
       const given = String(explicit == null ? '' : explicit).trim()
       if (given === '' || given === 'undefined') return 'nonempty'
-      if (OLD_WRITE_BACK_WORDS.indexOf(given.toLowerCase()) !== -1 || OLD_WRITE_BACK_WORDS.indexOf(given) !== -1) return 'nonempty'
       const v = EXPORT_SCOPE_ALIASES[given.toLowerCase()] || EXPORT_SCOPE_ALIASES[given]
       if (v) return v
       throw new Error('Unknown scope: ' + given +
@@ -1074,9 +1071,6 @@ function resolveText2Frame () {
     const newLine = '\n'
     // カンマ
     const comma = ', '
-    // インデント(半角空白)
-    // const space = ' '
-    // const baseIndent = 4
     const EnglishTag = Laurus.Frame2Text.EnglishTag
     // 関数
     const getOnOffRadioButtonValue = (checkBoxValue) => {
@@ -3485,12 +3479,12 @@ function resolveText2Frame () {
 
     // data ディレクトリを走査し、出力対象(イベント/コモンイベント)の routing メタだけを返す。
     // textPath は付けない(呼び出し側が indexTexts / outPathFor で書き先を決める)。
-    /* 第2引数はデータファイル1つぶんに絞る onlyFile か、{ onlyFile, scope, index } のいずれか。
+    /* 第2引数は { onlyFile, scope, index }。onlyFile でデータファイル1つぶんに絞れる。
      * 同期は変わったファイルの分だけ処理したいので、全 Map を読み直さずに済ませる。 */
-    const enumerateTargets = function (dataDir, onlyFileOrOptions) {
+    const enumerateTargets = function (dataDir, options) {
       const _fs = require('fs')
       const _path = require('path')
-      const opts = (onlyFileOrOptions && typeof onlyFileOrOptions === 'object') ? onlyFileOrOptions : { onlyFile: onlyFileOrOptions }
+      const opts = options || {}
       const onlyFile = opts.onlyFile
       const scope = resolveScope(opts.scope)
       if (!scope) throw new Error('Unknown scope: ' + opts.scope + ' / 取り出す範囲は ' + SCOPES.join(' / ') + ' から指定してください。')
@@ -3934,7 +3928,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .name('frame2text')
     .version('2.3.0')
     .usage('[options]')
-    .option('-m, --mode <map|common|decompile|batch>', 'output mode', /^(map|common|decompile|test|batch)$/i)
+    .option('-m, --mode <map|common|decompile|batch>', 'output mode', /^(map|common|decompile|batch)$/i)
     .option('-i, --input_path <name>', 'input map data path')
     .option('-o, --output_path <name>', 'output file path')
     .option('-e, --event_id <name>', 'event file id')
@@ -4073,19 +4067,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         })
       })
     })
-  } else if (options.mode === 'test') {
-    const folder_name = 'test'
-    const file_name = 'frame2text.txt'
-    const map_id = '1'
-    const event_id = '1'
-    const page_id = '1'
-    Game_Interpreter.prototype.pluginCommandFrame2Text('EXPORT_EVENT_TO_MESSAGE', [
-      folder_name,
-      file_name,
-      map_id,
-      event_id,
-      page_id
-    ])
   } else if (options.mode === 'batch') {
     /* データ・テキスト・祖先(.t2f-base)は、すべて --root を基準に決まる(text2frame と同じ)。
      * 既定は実行したフォルダなので、プロジェクトの中で流す使い方は今までと同じ。 */
