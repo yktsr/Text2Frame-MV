@@ -200,7 +200,7 @@ describe('history', function () {
       const first = stamp('反映 1', 'apply', [['data/Map001.json', '{"v":2}'], ['text/a.txt', 'テキスト2']])
       stamp('反映 2', 'apply', [['data/Map001.json', '{"v":3}'], ['text/a.txt', 'テキスト3']])
 
-      const r = restoreTo(root, listEntries(root), first.started)
+      const r = restoreTo(root, listEntries(root), first)
 
       expect(read('text/a.txt')).to.equal('テキスト1')
       expect(read('data/Map001.json')).to.equal('{"v":1}')
@@ -213,7 +213,7 @@ describe('history', function () {
       stamp('反映 2', 'apply', [['text/a.txt', '3番目']])
       stamp('反映 3', 'apply', [['text/a.txt', '4番目']])
 
-      restoreTo(root, listEntries(root), first.started)
+      restoreTo(root, listEntries(root), first)
 
       expect(read('text/a.txt')).to.equal('最初')
     })
@@ -223,11 +223,24 @@ describe('history', function () {
       const first = stamp('反映', 'apply', [['text/a.txt', '書き換え']])
       stamp('取り出し', 'pull', [['text/b.txt', 'あとから作った']])
 
-      const r = restoreTo(root, listEntries(root), first.started)
+      const r = restoreTo(root, listEntries(root), first)
 
       expect(read('text/a.txt')).to.equal('もとから')
       expect(fs.existsSync(file('text/b.txt'))).to.equal(true)
       expect(r.created).to.eql(['text/b.txt'])
+    })
+
+    it('tells two operations of the same millisecond apart by their id', function () {
+      // 時刻だけで比べると、同じミリ秒に入った1つ前の操作まで巻き戻ってしまう。
+      const at = 1700000000000
+      const entries = [
+        { id: '20260924-000000-000-002', time: at, started: at, op: 'apply', label: 'あと', files: [{ path: 'text/c.txt', kind: 'text', existed: true }] },
+        { id: '20260924-000000-000-001', time: at, started: at, op: 'apply', label: 'さき', files: [{ path: 'text/b.txt', kind: 'text', existed: true }] }
+      ]
+
+      const plan = planRestoreTo(entries, entries[0])
+
+      expect(plan.files.map((f) => f.path)).to.eql(['text/c.txt'])
     })
 
     it('leaves the operations before that point alone', function () {
@@ -236,7 +249,7 @@ describe('history', function () {
       stamp('古い操作', 'apply', [['text/b.txt', '古い']])
       const later = stamp('あとの操作', 'apply', [['text/c.txt', 'あとの']])
 
-      const plan = planRestoreTo(listEntries(root), later.started)
+      const plan = planRestoreTo(listEntries(root), later)
 
       expect(plan.files.map((f) => f.path)).to.eql(['text/c.txt'])
     })

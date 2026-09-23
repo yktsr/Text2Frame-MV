@@ -332,12 +332,17 @@ export function restoreEntry(root: string, entry: HistoryEntry, only?: string[])
     return { restored, created, missing };
 }
 
+/** 戻したい時点。履歴の行(操作)そのものを指す。 */
+export type HistoryPoint = { started: number; id: string };
+
 /**
- * ある時点へ戻す計画。その時刻以降の操作で書き換わったファイルを、すべてその時点の中身に戻す。
+ * ある時点へ戻す計画。その操作以降(その操作を含む)で書き換わったファイルを、すべてその時点の中身に戻す。
  * 同じファイルを何度も書き換えていたときは、いちばん古い控え(＝その時点の中身)を使う。
- * その時刻より後にできたファイルは、消さずに残して名前だけ返す。
+ * その時点より後にできたファイルは、消さずに残して名前だけ返す。
+ * 時点は操作そのもの(時刻と id)で決める。時刻だけで比べると、同じミリ秒に入った1つ前の操作まで
+ * 巻き戻ってしまう(id の末尾は操作ごとに増える連番なので、同じ時刻でも順番が付く)。
  */
-export function planRestoreTo(entries: HistoryEntry[], time: number): {
+export function planRestoreTo(entries: HistoryEntry[], from: HistoryPoint): {
     files: { path: string; kind: HistoryFileKind; pages?: string[]; entryId: string }[];
     created: string[];
 } {
@@ -345,7 +350,9 @@ export function planRestoreTo(entries: HistoryEntry[], time: number): {
     const created: string[] = [];
     const seen = new Set<string>();
     // 古い順に見て、そのファイルを最初に書き換えた操作の控えを採る。
-    const wanted = entries.filter((e) => e.started >= time).sort((a, b) => a.started - b.started || (a.id < b.id ? -1 : 1));
+    const atOrAfter = (e: HistoryEntry): boolean =>
+        e.started > from.started || (e.started === from.started && e.id >= from.id);
+    const wanted = entries.filter(atOrAfter).sort((a, b) => a.started - b.started || (a.id < b.id ? -1 : 1));
     for (const entry of wanted) {
         for (const file of entry.files) {
             if (seen.has(file.path)) continue;
@@ -361,8 +368,8 @@ export function planRestoreTo(entries: HistoryEntry[], time: number): {
 }
 
 /** ある時点へ戻す。計画(planRestoreTo)のとおりに控えを書き戻す。 */
-export function restoreTo(root: string, entries: HistoryEntry[], time: number): { restored: string[]; created: string[]; missing: string[] } {
-    const plan = planRestoreTo(entries, time);
+export function restoreTo(root: string, entries: HistoryEntry[], from: HistoryPoint): { restored: string[]; created: string[]; missing: string[] } {
+    const plan = planRestoreTo(entries, from);
     const restored: string[] = [];
     const missing: string[] = [];
     for (const file of plan.files) {

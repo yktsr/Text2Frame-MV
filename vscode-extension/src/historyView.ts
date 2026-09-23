@@ -189,7 +189,7 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
         const root = rootOrWarn();
         if (!root) return;
         const fresh = readEntry(root, entry.id) || entry;
-        const plan = planRestoreTo(listEntries(root), fresh.started);
+        const plan = planRestoreTo(listEntries(root), fresh);
         const shownFilesOf = (paths: string[]): string[] => paths.filter((p) => !p.split('/').includes('.t2f-base'));
         const texts = plan.files.filter((f) => f.kind === 'text');
         const data = plan.files.filter((f) => f.kind === 'data');
@@ -245,7 +245,7 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
         }
 
         const label = tr(`${when} の状態に戻す`, `Go back to ${when}`);
-        const result = withHistory(root, 'restore', label, { keep: historyKeep() }, () => restoreTo(root, listEntries(root), fresh.started));
+        const result = withHistory(root, 'restore', label, { keep: historyKeep() }, () => restoreTo(root, listEntries(root), fresh));
         for (const f of plan.files) {
             if (f.kind === 'data' && result.restored.includes(f.path)) recordDataState(context, absolutePath(root, f.path));
         }
