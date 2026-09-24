@@ -5290,8 +5290,18 @@
 
     const writeData = function (filepath, jsonData) {
       const fs = require('fs')
+      const text = JSON.stringify(jsonData, null, '  ')
+      /* 中身が同じなら書かない。ツクールが書いた JSON は字下げの形が違うだけのことが多く、
+       * 書き直すとファイル全体の見た目が変わり、何も変わっていない反映でもファイルの変化を
+       * 見張るもの(git や履歴)が動いてしまう。形の違いを無視するため、読んだものを同じ形に
+       * 直してから比べる(JSON.parse は鍵の順を保つので、これで中身の比較になる)。 */
       try {
-        fs.writeFileSync(filepath, JSON.stringify(jsonData, null, '  '), { encoding: 'utf8' })
+        if (JSON.stringify(JSON.parse(fs.readFileSync(filepath, { encoding: 'utf8' })), null, '  ') === text) return
+      } catch (e) {
+        // まだ無い・読めない・壊れている: そのまま書く
+      }
+      try {
+        fs.writeFileSync(filepath, text, { encoding: 'utf8' })
       } catch (e) {
         throw new Error(
           'Save failed. / 保存に失敗しました。\n' + 'ファイルが開いていないか確認してください。\n' + filepath
@@ -11150,6 +11160,8 @@
       const fs = require('fs')
       const path = require('path')
       const p = baseSnapshotPathCore(root, key)
+      // 中身が同じなら書かない(変わっていないファイルの mtime を動かさない)。
+      try { if (fs.readFileSync(p, 'utf8') === text) return } catch (e) { /* まだ無い */ }
       mkdirpSync(path.dirname(p))
       fs.writeFileSync(p, text, 'utf8')
     }
