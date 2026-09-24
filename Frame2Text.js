@@ -646,6 +646,11 @@
   var Laurus = Laurus || {} // eslint-disable-line no-var, no-use-before-define
   Laurus.Frame2Text = {}
 
+  /* このファイルの後半(CLI)は IIFE の外にあるので、中の関数が見えない。かといって
+   * トップレベルに置くと、プラグインとして入れたとき他のプラグインと名前を取り合う。
+   * 内部用の窓口ごしに渡す(列挙しないので公開 API の一覧には出ない)。 */
+  let internalForCli = null
+
   // Text2Frame の共有 API を解決する。ゲーム内(NW.js)は require('./Text2Frame.js') が
   // 解決できないため、まず Text2Frame がグローバル公開した API を使い、無ければ Node の
   // require(兄弟ファイル / __dirname 基準)にフォールバックする。
@@ -3629,6 +3634,54 @@
       }
     }
 
+    /* 一括取り出しの本体。プラグインの一括取り出しと CLI が同じものを使う。
+     * ここは印字をしない(画面へ出すか JSON で出すかは呼ぶ側が決める)し、例外も受け止めない
+     * (CLI はそのまま外へ出して終了コードにする)。
+     * onEach は1件ごとに呼ぶ。数千件あるとき、まとめて最後に出すと進み具合が見えないため。 */
+    const runBatchPull = function (opts, onEach) {
+      // 祖先はテキストの置き場所ごとに分ける(Text2Frame と同じ規約)。
+      const baseDir = baseDirForTextDir(opts.baseRoot, opts.textDir)
+      let baseSaveError = null
+      try { mkdirpSync(baseDir) } catch (e) { baseSaveError = e }
+      const index = opts.index
+      const results = []
+      opts.targets.forEach(function (t) {
+        // 同じ行き先のテキストが2つ以上あるものは、書き先が決められないので見送る(数にも入れない)。
+        if (index.duplicates[t.key]) return
+        const textPath = outPathFor(opts.textDir, index, t)
+        const r = pullTargetToText({
+          dataDir: opts.dataDir,
+          target: t,
+          outPath: textPath,
+          baseDir,
+          englishTag: opts.englishTag,
+          omitDefaults: opts.omitDefaults,
+          strategy: opts.strategy
+        })
+        if (r.baseSaveError) baseSaveError = baseSaveError || r.baseSaveError
+        /* 呼ぶ側へ渡す欄は数えて並べる。pullTargetToText の戻り値には本文(text)まで入って
+         * いるので、そのまま渡すと CLI の報告が本文で埋まる(取り出した中身はファイルにある)。 */
+        const result = {
+          key: t.key,
+          kind: t.kind,
+          textPath,
+          ok: !!r.ok,
+          error: r.error,
+          skipped: r.skipped,
+          overwritten: r.overwritten,
+          conflicts: r.conflicts,
+          markers: r.markers,
+          approximate: r.approximate,
+          warnings: r.warnings,
+          wroteGame: r.wroteGame
+        }
+        results.push(result)
+        if (onEach) onEach(result)
+      })
+      return { baseDir, results, baseSaveError }
+    }
+
+    internalForCli = { runBatchPull }
     Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, indexTexts, outPathFor, defaultFileName, pullTargetToText, renderFrontMatter, buildPullText, writeBackToGame }
     // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
     // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
@@ -3672,7 +3725,6 @@
       // 周りが大きく変わって、コメント行(%)の位置があやしくなったもの。
       const approxComments = []
       // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する。
-      let _baseSaveError = null
       const _baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH
 
       // 統合には Text2Frame の 3-way が要る。無いままだと全ファイルが同じ理由で失敗して
@@ -3698,9 +3750,6 @@
         console.error('[batch] failed to create output directory: ' + outDir + ' (' + (e.message || e) + ')')
         return
       }
-      // 祖先はテキストの置き場所ごとに分ける(Text2Frame と同じ規約)。
-      const _baseDir = baseDirForTextDir(_baseRoot, outDir)
-      try { mkdirpSync(_baseDir) } catch (e) { _baseSaveError = _baseSaveError || e }
       /* 既にあるテキストは、利用者が付けた名前・置いたフォルダのまま書き続ける。
        * 同じ宛先のテキストが2つ以上あるものは、書き先が決められないので見送る。 */
       const _index = indexTexts(outDir)
@@ -3723,39 +3772,38 @@
         return
       }
 
-      targets.forEach(function (t) {
-        if (_index.duplicates[t.key]) return
-        // 1件ぶんの取り出しは同期と共通(pullTargetToText)。ここは件数の集計だけ行う。
-        const r = pullTargetToText({
-          dataDir,
-          target: t,
-          outPath: outPathFor(outDir, _index, t),
-          baseDir: _baseDir,
-          englishTag,
-          omitDefaults: Laurus.Frame2Text.OmitDefaultTags,
-          strategy: batchStrategy
-        })
+      // 取り出しそのものは CLI と共通(runBatchPull)。ここは1件ごとの集計と印字だけ行う。
+      const batch = runBatchPull({
+        dataDir,
+        textDir: outDir,
+        baseRoot: _baseRoot,
+        targets,
+        index: _index,
+        strategy: batchStrategy,
+        englishTag,
+        omitDefaults: Laurus.Frame2Text.OmitDefaultTags
+      }, function (r) {
         if (!r.ok) {
           errCount++
-          failures.push(t.key + ': ' + r.error)
-          console.error('[batch] ' + t.key + ': ' + r.error)
+          failures.push(r.key + ': ' + r.error)
+          console.error('[batch] ' + r.key + ': ' + r.error)
           return
         }
         if (r.skipped) {
-          conflictSkipped.push(t.key)
+          conflictSkipped.push(r.key)
           return
         }
         if (r.overwritten) overwrittenCount++
-        if (r.conflicts) conflicted.push(t.key)
-        if (r.markers) markerCarried.push(t.key)
-        if (r.approximate) approxComments.push(t.key)
+        if (r.conflicts) conflicted.push(r.key)
+        if (r.markers) markerCarried.push(r.key)
+        if (r.approximate) approxComments.push(r.key)
         const pullWarnings = r.warnings || []
-        pullWarnings.forEach(function (w) { console.warn('[batch] ' + t.key + ': ' + w) })
-        if (r.baseSaveError) _baseSaveError = _baseSaveError || r.baseSaveError
-        if (t.kind === 'event') eventCount++
+        pullWarnings.forEach(function (w) { console.warn('[batch] ' + r.key + ': ' + w) })
+        if (r.kind === 'event') eventCount++
         else commonCount++
         okCount++
       })
+      const _baseSaveError = batch.baseSaveError
       if (_baseSaveError) {
         addWarning('[batch] 警告: .t2f-base の祖先を保存できませんでした (' + (_baseSaveError.message || _baseSaveError) + ')。次回反映は祖先無し扱いとなり、テキストを全反映します(3-wayになりません)。')
         console.warn('[batch] WARNING: .t2f-base ancestor NOT saved (' + (_baseSaveError.message || _baseSaveError) + '); next import applies text whole (no 3-way).')
@@ -3928,6 +3976,7 @@
   Game_Interpreter.prototype.pluginCommandFrame2Text('LIBRARY_EXPORT', [0])
   if (typeof module !== 'undefined') {
     module.exports = Laurus.Frame2Text.export
+    Object.defineProperty(module.exports, '_internal', { value: internalForCli })
   }
 })()
 
@@ -4095,41 +4144,30 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const omitDefaults = String(options.omitDefaultTags) !== 'false'
     // map/common モードと同じく -s を尊重する(既定 merge)。既存テキストが無ければ結果は全上書きと同じ。
     const batchStrategy = _pullOverwrite ? 'overwrite' : 'merge'
-    // 取り出し直後は text==game。その内容を次回反映の 3-way 祖先として保存する(既存 dir は existsSync でガード)。
-    let baseSaveError = null
-    const baseRoot = cliRoot
-    // 祖先はテキストの置き場所ごとに分ける(Text2Frame と同じ規約)。
-    const baseDir = module.exports.baseDirForTextDir(baseRoot, textDir)
-    try { if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true }) } catch (e) { baseSaveError = baseSaveError || e }
     /* 既にあるテキストは、その名前・その場所のまま書き続ける(索引は front matter で引く)。
      * 同じ宛先のテキストが2つ以上あるものは、書き先が決められないので見送る。 */
     const index = module.exports.indexTexts(textDir)
     const duplicated = Object.keys(index.duplicates)
     const scope = String(options.scope || 'nonempty').toLowerCase()
-    const results = []
-    module.exports.enumerateTargets(dataDir, { scope, index }).forEach(function (t) {
-      if (index.duplicates[t.key]) return
-      // 1件ぶんの取り出しは in-engine・同期と共通(pullTargetToText)。
-      const textPath = module.exports.outPathFor(textDir, index, t)
-      const r = module.exports.pullTargetToText({
-        dataDir,
-        target: t,
-        outPath: textPath,
-        baseDir,
-        englishTag,
-        omitDefaults,
-        strategy: batchStrategy
-      })
-      if (!r.ok) {
-        results.push({ ok: false, key: t.key, error: r.error })
-        return
-      }
-      if (r.skipped) {
-        results.push({ ok: true, textPath, skipped: r.skipped })
-        return
-      }
-      if (r.baseSaveError) baseSaveError = baseSaveError || r.baseSaveError
-      results.push({ ok: true, textPath, conflicts: r.conflicts, markers: r.markers, approximate: r.approximate, wroteGame: r.wroteGame })
+    const targets = module.exports.enumerateTargets(dataDir, { scope, index })
+    /* 取り出しそのものはプラグインの一括取り出しと共通(runBatchPull)。祖先(.t2f-base)の
+     * 置き場所も、書き先の決め方も、そちらが持っている。ここは報告の組み立てだけ。 */
+    const { runBatchPull } = module.exports._internal
+    const batch = runBatchPull({
+      dataDir,
+      textDir,
+      baseRoot: cliRoot,
+      targets,
+      index,
+      strategy: batchStrategy,
+      englishTag,
+      omitDefaults
+    })
+    const baseSaveError = batch.baseSaveError
+    const results = batch.results.map(function (r) {
+      if (!r.ok) return { ok: false, key: r.key, error: r.error }
+      if (r.skipped) return { ok: true, textPath: r.textPath, skipped: r.skipped }
+      return { ok: true, textPath: r.textPath, conflicts: r.conflicts, markers: r.markers, approximate: r.approximate, wroteGame: r.wroteGame }
     })
     const failures = results.filter(function (r) { return !r.ok })
     const conflicted = results.filter(function (r) { return r.ok && r.conflicts })
