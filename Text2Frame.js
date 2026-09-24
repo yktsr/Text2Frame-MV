@@ -4690,12 +4690,29 @@
   }
 
   const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand
+  /* このプラグインが受け付けるコマンド名。MV の pluginCommand は全プラグイン共通の入口なので、
+   * 自分のコマンドかどうかをここで見分ける(他のプラグインのコマンドに案内を出さないため)。 */
+  const TEXT2FRAME_COMMANDS = [
+    'IMPORT_MESSAGE_TO_EVENT', 'IMPORT_MESSAGE_TO_CE', 'BATCH_IMPORT_MESSAGES_FROM_FOLDER',
+    'START_DATA_SYNC', 'STOP_DATA_SYNC',
+    'メッセージをイベントにインポート', 'メッセージをコモンイベントにインポート',
+    'フォルダから一括取り込み', '一括反映', 'テキストとゲームの同期を開始', 'テキストとゲームの同期を停止'
+  ]
+  const isText2FrameCommand = function (command) {
+    const name = String(command == null ? '' : command)
+    return TEXT2FRAME_COMMANDS.indexOf(name) !== -1 || TEXT2FRAME_COMMANDS.indexOf(name.toUpperCase()) !== -1
+  }
+
   Game_Interpreter.prototype.pluginCommand = function (command, args) {
     _Game_Interpreter_pluginCommand.apply(this, arguments)
-    const isDevelopment = Utils.isOptionValid('test')
+    /* 反映はファイルを読み書きするので、テストプレイ(開発中)でしか動かない。公開用に書き出した
+     * ゲームでは、止めて理由を出す。案内は自分のコマンドのときだけ(ここは全プラグイン共通の
+     * 入口なので、他のプラグインのコマンドで出すと筋違いになる)。
+     * ツクールの外(CLI / ライブラリ)には Utils が無いので、そこは開発中として扱う。 */
+    const isDevelopment = typeof Utils === 'undefined' || Utils.isOptionValid('test')
     if (isDevelopment) {
       this.pluginCommandText2Frame(command, args)
-    } else {
+    } else if (isText2FrameCommand(command)) {
       $gameMessage.add('Text2Frameは開発専用プラグインであり、デプロイメント後は')
       $gameMessage.add('動作しません。このメッセージが繰り返し表示される場合は、')
       $gameMessage.add('このプラグインをOFFにしてデプロイメントしてください。')
