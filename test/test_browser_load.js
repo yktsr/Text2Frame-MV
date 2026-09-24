@@ -2,6 +2,7 @@ const { expect } = require('chai')
 const fs = require('fs')
 const path = require('path')
 const vm = require('vm')
+const cp = require('child_process')
 
 /* 公開(web)用に書き出したゲームでは、require も process も module も無い。
  * 読み込んだだけで例外が出ると、プラグインは丸ごと動かなくなる。
@@ -117,6 +118,18 @@ describe('loading the plugins the way a deployed game does', function () {
         expect(function () { run(s, c.file) }).to.not.throw()
       })
     })
+
+    // 配られるのは dist/ のほう(開発用の区画を削ってある)。同じ検査を当てる。
+    it('does the same for the built plugins, once they have been built', function () {
+      const built = cases.map(function (c) { return path.join('dist', path.basename(c.file)) })
+      if (!built.every(function (b) { return fs.existsSync(path.resolve(__dirname, '..', b)) })) return this.skip()
+      const s = makeSandbox()
+      const before = new Set(Object.keys(s.sandbox))
+      built.forEach(function (b) { run(s, b) })
+      const added = Object.keys(s.sandbox).filter(function (k) { return !before.has(k) })
+      expect(added.sort()).to.eql(['$LaurusFrame2Text', '$LaurusText2Frame'])
+      expect(function () { run(s, built[0]) }).to.not.throw()
+    })
   })
 
   /* 公開されるのは rollup が開発用の区画を削った dist/ のほう。削った結果も読めることを見る。
@@ -127,6 +140,29 @@ describe('loading the plugins the way a deployed game does', function () {
       if (!fs.existsSync(path.resolve(__dirname, '..', built))) return this.skip()
       const s = load(built)
       expect(s.sandbox.Game_Interpreter.prototype[c.command]).to.be.a('function')
+    })
+  })
+
+  /* ツクールの外(CLI / ライブラリ)では、ツクールが用意するものをプラグインが自分で作る。
+   * そこで作り直してしまうと、先に読み込んだもう一方のプラグインのコマンドが消える。
+   * 読み込む順で結果が変わらないことを、別のプロセスで両方の順に試す。 */
+  describe('loading both as libraries', function () {
+    const repo = path.resolve(__dirname, '..')
+    const check = (first, second) => {
+      const script = `require(${JSON.stringify(path.join(repo, first))});` +
+        `require(${JSON.stringify(path.join(repo, second))});` +
+        'console.log(typeof Game_Interpreter.prototype.pluginCommandText2Frame, typeof Game_Interpreter.prototype.pluginCommandFrame2Text)'
+      const r = cp.spawnSync(process.execPath, ['-e', script], { encoding: 'utf8' })
+      return { status: r.status, out: (r.stdout || '').trim(), err: r.stderr }
+    }
+
+    it('keeps both plugin commands whichever is loaded first', function () {
+      const a = check('Text2Frame.js', 'Frame2Text.js')
+      expect(a.status, a.err).to.equal(0)
+      expect(a.out, 'Text2Frame を先に読んだとき').to.equal('function function')
+      const b = check('Frame2Text.js', 'Text2Frame.js')
+      expect(b.status, b.err).to.equal(0)
+      expect(b.out, 'Frame2Text を先に読んだとき').to.equal('function function')
     })
   })
 

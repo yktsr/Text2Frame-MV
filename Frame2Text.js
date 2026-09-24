@@ -694,10 +694,16 @@
     // 単発取り出しのしかた。COMMAND_LINE(CLI)が毎回上書きする。
     Laurus.Frame2Text.Strategy = 'merge'
 
-    globalThis.Game_Interpreter = {}
-    Game_Interpreter.prototype = {}
-    globalThis.$gameMessage = {}
-    $gameMessage.add = function () {}
+    /* ツクールの外(CLI / ライブラリ)では、ツクールが用意するものが無いので用意する。
+     * 既にあるなら作り直さない。作り直すと、先に読み込んだもう一方のプラグインが
+     * Game_Interpreter.prototype に付けたコマンドまで消えてしまう。 */
+    if (typeof globalThis.Game_Interpreter === 'undefined') {
+      globalThis.Game_Interpreter = function () {}
+      globalThis.Game_Interpreter.prototype = {}
+    }
+    if (typeof globalThis.$gameMessage === 'undefined') {
+      globalThis.$gameMessage = { add: function () {} }
+    }
   } else {
     // for default plugin command
     Laurus.Frame2Text.Parameters = PluginManager.parameters('Frame2Text')
