@@ -154,9 +154,11 @@ describe('loading the plugins the way a deployed game does', function () {
     })
 
     // MV の pluginCommand は全プラグイン共通の入口。他のプラグインのコマンドで案内を出さない。
-    it('says nothing when the command belongs to another plugin', function () {
-      const s = runCommand('Frame2Text.js', 'SomeOtherPluginCommand')
-      expect(s.said).to.eql([])
+    cases.forEach(function (c) {
+      it('says nothing when the command belongs to another plugin (' + c.file + ')', function () {
+        const s = runCommand(c.file, 'TorigoyaMZ_SomeOtherPlugin_DoSomething')
+        expect(s.said).to.eql([])
+      })
     })
   })
 
