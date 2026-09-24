@@ -653,6 +653,11 @@
           "group": "1_restore@1"
         },
         {
+          "command": "text2frame.history.restore",
+          "when": "view == text2frameHistory && viewItem == text2frame.history.entry",
+          "group": "inline@1"
+        },
+        {
           "command": "text2frame.history.diff",
           "when": "view == text2frameHistory && viewItem == text2frame.history.entry",
           "group": "2_diff@1"

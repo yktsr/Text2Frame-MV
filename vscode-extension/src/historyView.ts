@@ -1,14 +1,18 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { workspaceRootFor, workspaceRootOrWarn, recordDataState, historyKeep } from './compiler';
+import { workspaceRootFor, workspaceRootOrWarn, recordDataState, historyKeep, dataDirFor, textBaseDirFor } from './compiler';
 import { review, reviewEnabled, ReviewItem } from './review';
-import { renderCommands } from './exportText';
+import { commitPull, ExportTarget, newTextPathFor, planPull, PullPlan, renderCommands, textIndexFor } from './exportText';
+import { busy } from './reviewApply';
 import { pageList, PageRef } from './dryRun';
 import { tr } from './db/lang';
 import { placeFromKey } from './placeLabel';
+import { targetKeyFromMeta } from './db/baseKey';
+import { mapSlowly, SlowlyOptions } from './db/slowly';
+import { isBaseCopy, RestorePiece, restoreOverview } from './db/restorePlan';
 import {
-    HistoryEntry, HistoryFile, listEntries, readEntry, planRestoreTo, restoreTo, snapshotFile, historyRoot, withHistory, onHistoryChange, absolutePath
+    HistoryEntry, HistoryFile, listEntries, readEntry, restoreTo, snapshotFile, historyRoot, withHistory, onHistoryChange, absolutePath, undoneBy
 } from './db/history';
 
 /**
@@ -93,12 +97,30 @@ class HistoryProvider implements vscode.TreeDataProvider<HistoryNode> {
         if (!root) return [];
         if (!element) {
             const now = Date.now();
-            return listEntries(root).map((entry) => {
+            const entries = listEntries(root);
+            return entries.map((entry) => {
                 const files = shownFiles(entry);
+                const data = files.filter((f) => f.kind === 'data').length;
+                const texts = files.length - data;
+                const what = [
+                    data ? tr(`ゲームのデータ ${data}件`, `${data} game data`) : '',
+                    texts ? tr(`テキスト ${texts}件`, `${texts} text(s)`) : ''
+                ].filter((s) => s).join(tr('・', ' · '));
+                // 一緒に取り消される、この操作より後の操作の数。
+                const later = Math.max(0, undoneBy(entries, entry).length - 1);
+                // 出す時刻は「始めた時刻」。巻き戻す先はこの操作の直前なので、確認の文と同じ数字になる。
+                const began = entry.started || entry.time;
                 const node = new HistoryNode('entry', entry.label, vscode.TreeItemCollapsibleState.Collapsed, entry);
-                node.description = tr(`${clock(entry.time)}・${ago(entry.time, now)}・${files.length}ファイル`, `${clock(entry.time)} · ${ago(entry.time, now)} · ${files.length} files`);
+                // 祖先の控えだけの操作は what が空になる(祖先は行に出さない)。区切りだけ残さない。
+                node.description = [clock(began), ago(began, now), what].filter((s) => s).join(tr('・', ' · '));
                 node.iconPath = new vscode.ThemeIcon(OP_ICONS[entry.op] || 'history');
-                node.tooltip = tr(`${entry.label}\n${new Date(entry.time).toLocaleString()}\n右クリック →「この時点に戻す」で、この操作を始める直前の状態(テキストもゲームのデータも)に戻せます。`, `${entry.label}\n${new Date(entry.time).toLocaleString()}\nRight-click → Go back to this point, to bring the texts and the game data back to how they were just before this operation.`);
+                node.tooltip = tr(
+                    `${entry.label}\n${new Date(began).toLocaleString()}\n「巻き戻す」で、この操作の直前まで戻します。`
+                    + (later ? `このあとの ${later} 件の操作も、一緒に取り消されます。` : '')
+                    + 'ゲームのデータが戻るページは、テキストもその内容に作り直してそろえます。',
+                    `${entry.label}\n${new Date(began).toLocaleString()}\nRewind brings everything back to just before this operation.`
+                    + (later ? ` The ${later} operation(s) after it are undone too.` : '')
+                    + ' Pages whose game data goes back get their texts rebuilt to match.');
                 return node;
             });
         }
@@ -181,80 +203,205 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
             tr(`${path.basename(file.path)}: 控え ↔ 今(${entry.label})`, `${path.basename(file.path)}: before ↔ now (${entry.label})`));
     };
 
-    /* ある時点に戻す。その操作を始める直前の状態へ、テキストもゲームのデータもまとめてそろえる。
+    const relOf = (root: string, abs: string): string => path.relative(root, abs).split(path.sep).join('/');
+
+    /** 巻き戻したあとの中身。控えがあればその中身、無ければ今のまま。 */
+    const afterRestore = (root: string, planned: Map<string, string>, rel: string): string | undefined => {
+        const id = planned.get(rel);
+        try {
+            return fs.readFileSync(id ? snapshotFile(root, id, rel) : absolutePath(root, rel), 'utf8');
+        } catch (e) {
+            return undefined;
+        }
+    };
+
+    /**
+     * ゲームのデータが戻るページを、テキストとそろえる計画。巻き戻したあとの命令列からテキストを
+     * 作り直す(まだ書いていないので、控えから読んで planPull に渡す)。書き方(コメント行・空行の幅・
+     * タグの綴り)は、巻き戻したあとのテキストから引き継ぐ。
+     * そろえるのはゲームのデータが動くページだけ。取り出しの巻き戻し(動くのはテキストだけ)で
+     * ゲームから作り直すと、戻したテキストをまた取り出し直すことになり、何もしないのと同じになる。
+     */
+    const alignPlans = async (root: string, planned: Map<string, string>, data: RestorePiece[], slowly: SlowlyOptions):
+        Promise<{ key: string; plan: PullPlan }[] | undefined> => {
+        const wanted: { path: string; key: string }[] = [];
+        data.forEach((f) => f.pages.forEach((key) => wanted.push({ path: f.path, key })));
+        const textDir = textBaseDirFor(root);
+        const dataDir = dataDirFor(root);
+        // 索引は1回だけ。ページごとに引くと、テキストのフォルダを何百回も読み直すことになる。
+        const index = textIndexFor(context, root, textDir);
+        const made = await mapSlowly(wanted, (it) => {
+            const place = placeFromKey(it.key);
+            const ref = pageRefOf(it.key);
+            const raw = afterRestore(root, planned, it.path);
+            if (!place || !ref || raw === undefined) return undefined;
+            let list: unknown[] | undefined;
+            try {
+                list = pageList(JSON.parse(raw), ref);
+            } catch (e) {
+                list = undefined;
+            }
+            if (!list) return undefined; // 巻き戻したあとには、このページが無い
+            const target: ExportTarget = place.kind === 'common'
+                ? { kind: 'common', commonEventId: String(place.commonEventId), textPath: '' }
+                : { kind: 'event', mapId: String(place.mapId), eventId: String(place.eventId ?? 0), pageId: String(place.pageId ?? 1), textPath: '' };
+            const key = targetKeyFromMeta({
+                kind: target.kind,
+                mapId: target.mapId || '',
+                eventId: target.eventId || '',
+                pageId: target.pageId || '',
+                commonEventId: target.commonEventId || ''
+            });
+            target.textPath = (key && index.paths[key]) || newTextPathFor(context, root, dataDir, textDir, target);
+            const previous = afterRestore(root, planned, relOf(root, target.textPath));
+            if (previous !== undefined) target.frontMatterSource = previous;
+            return { key: it.key, plan: planPull(context, root, target, 'overwrite', list) };
+        }, slowly);
+        return made && made.filter((a): a is { key: string; plan: PullPlan } => !!a);
+    };
+
+    /* ある操作の直前まで巻き戻す。その操作以降の書き換えをすべて取り消し、ゲームのデータが戻る
+     * ページは、テキストもその内容に作り直してそろえる。
      * 操作1つだけを取り消す形にしていたが、「反映を取り消したのにテキストは動かない(動くのは
-     * ゲームのデータ)」が分かりにくかったため、時点で戻す形にした。 */
+     * ゲームのデータ)」が分かりにくかったため、時点で戻し、テキストもそろえる形にした。 */
     const restore = async (entry: HistoryEntry): Promise<void> => {
         const root = workspaceRootOrWarn();
         if (!root) return;
         const fresh = readEntry(root, entry.id) || entry;
-        const plan = planRestoreTo(listEntries(root), fresh);
-        const shownFilesOf = (paths: string[]): string[] => paths.filter((p) => !p.split('/').includes('.t2f-base'));
-        const texts = plan.files.filter((f) => f.kind === 'text');
-        const data = plan.files.filter((f) => f.kind === 'data');
-
-        // 保存していない変更があるテキストは、戻すと食い違う。先に保存か取り消しをしてもらう。
-        const dirty = vscode.workspace.textDocuments.filter((d) => d.isDirty && plan.files.some((f) => path.resolve(absolutePath(root, f.path)) === path.resolve(d.uri.fsPath)));
-        if (dirty.length) {
-            vscode.window.showWarningMessage(tr('Text2Frame: 保存していない変更があるテキストがあります。保存するか元に戻してから、もう一度戻してください: ', 'Text2Frame: Some texts have unsaved changes. Save or revert them, then go back again: ')
-                + dirty.map((d) => path.basename(d.uri.fsPath)).join(tr('、', ', ')));
-            return;
-        }
-        if (!plan.files.length && !plan.created.length) {
+        const entries = listEntries(root);
+        const overview = restoreOverview(entries, fresh);
+        if (!overview.files.length && !overview.createdAll.length) {
             vscode.window.showInformationMessage(tr('Text2Frame: この時点から変わったものはありません。', 'Text2Frame: Nothing has changed since then.'));
             return;
         }
-        const when = clock(fresh.started);
-        const createdShown = shownFilesOf(plan.created);
-        /* 戻す前に、変わる所をまとめて差分で見せる(反映・取り出しの確認と同じ画面)。
-         * 左が「今」、右が「戻したあと」。ゲームのデータは、触ったページだけテキストに直して並べる。 */
+        const planned = new Map(overview.files.map((f) => [f.path, f.entryId]));
+        const aligns = overview.data.length
+            ? await busy(tr('Text2Frame: 巻き戻したあとのテキストを作っています…', 'Text2Frame: Making the texts for after the rewind…'),
+                (slowly: SlowlyOptions) => alignPlans(root, planned, overview.data, slowly))
+            : [];
+        if (!aligns) {
+            vscode.window.setStatusBarMessage(tr('Text2Frame: 巻き戻しをやめました。', 'Text2Frame: Stopped the rewind.'), 4000);
+            return;
+        }
+
+        /* 1つのテキストは1件だけ出す。そろえるページのテキストは作り直した中身、
+         * それ以外は控えの中身が「巻き戻したあと」になる。 */
+        const byText = new Map<string, { key: string; plan: PullPlan }>();
+        aligns.forEach((a) => { if (a.plan.ok && a.plan.text !== undefined) byText.set(relOf(root, a.plan.target.textPath), a); });
+
+        // 保存していない変更があるテキストは、巻き戻すと食い違う。先に保存か取り消しをしてもらう。
+        const willWrite = new Set(overview.files.map((f) => path.resolve(absolutePath(root, f.path))));
+        byText.forEach((a) => willWrite.add(path.resolve(a.plan.target.textPath)));
+        const dirty = vscode.workspace.textDocuments.filter((d) => d.isDirty && willWrite.has(path.resolve(d.uri.fsPath)));
+        if (dirty.length) {
+            vscode.window.showWarningMessage(tr('Text2Frame: 保存していない変更があるテキストがあります。保存するか元に戻してから、もう一度巻き戻してください: ', 'Text2Frame: Some texts have unsaved changes. Save or revert them, then rewind again: ')
+                + dirty.map((d) => path.basename(d.uri.fsPath)).join(tr('、', ', ')));
+            return;
+        }
+
+        /* 巻き戻す前に、変わる所をまとめて差分で見せる(反映・取り出しの確認と同じ画面)。
+         * 左が「今」、右が「巻き戻したあと」。ゲームのデータは、そろえたテキストが代わりに表している。 */
         const items: ReviewItem[] = [];
-        for (const f of plan.files) {
-            if (f.kind === 'base') continue;
-            const pages = f.kind === 'data' && f.pages && f.pages.length ? f.pages : [undefined];
-            for (const page of pages) {
+        const shownTexts = new Map<string, string>(); // 相対パス -> 差分に出す名前
+        overview.texts.forEach((f) => shownTexts.set(f.path, f.path));
+        byText.forEach((a, rel) => shownTexts.set(rel, pageName(a.key)));
+        let rebuilt = 0;
+        let restoredTexts = 0;
+        shownTexts.forEach((label, rel) => {
+            const a = byText.get(rel);
+            const after = a ? (a.plan.text as string) : afterRestore(root, planned, rel);
+            if (after === undefined) return;
+            const abs = absolutePath(root, rel);
+            const now = fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : undefined;
+            if (now === after) return;
+            if (a) rebuilt++; else restoredTexts++;
+            items.push({ label, before: now === undefined ? '' : vscode.Uri.file(abs), after });
+        });
+        // テキストを作れなかったページは、今までどおりゲームのデータの差分で見せる。
+        const done = new Set(aligns.filter((a) => a.plan.ok).map((a) => a.key));
+        overview.data.forEach((f) => {
+            (f.pages.length ? f.pages : [undefined]).forEach((page) => {
+                if (page && done.has(page)) return;
                 const after = sideText(root, f.entryId, f.path, 'before', page);
                 const now = sideText(root, f.entryId, f.path, 'now', page);
-                if (now === after) continue;
-                const label = page ? `${path.basename(f.path)}（${pageName(page)}）` : f.path;
-                items.push({ label, before: page ? now : vscode.Uri.file(absolutePath(root, f.path)), after });
-            }
-        }
+                if (now === after) return;
+                items.push({ label: page ? `${path.basename(f.path)}（${pageName(page)}）` : f.path, before: now, after });
+            });
+        });
+
+        const when = clock(fresh.started);
+        const where = tr(`「${fresh.label}」の直前（${when}）`, `just before "${fresh.label}" (${when})`);
+        // 数え方は差分の一覧と合わせる(確認に出す数と、見せる差分の件数が食い違わないように)。
+        const dataCount = overview.pages.length
+            ? tr(`ゲームのデータ ${overview.pages.length} ページ`, `${overview.pages.length} page(s) of game data`)
+            : tr(`ゲームのデータ ${overview.data.length} 個`, `${overview.data.length} game data file(s)`);
         const detail = [
-            tr(`テキスト ${texts.length} 個、ゲームのデータ ${data.length} 個を、この時点の中身に書き戻します。`, `${texts.length} text file(s) and ${data.length} game data file(s) get back what they held at that point.`),
-            createdShown.length ? tr(`このあとに作られた ${createdShown.length} 個のファイルは、消さずにそのまま残します。`, `The ${createdShown.length} files made after that point are kept, not deleted.`) : '',
-            tr('戻したことも履歴に残るので、あとから取り消せます。', 'Going back is recorded in the history too, so you can undo it later.')
-        ].filter((s) => s).join('\n');
-        const goBack = tr('戻す', 'Go back');
+            overview.data.length
+                ? tr(`${dataCount}を、この操作の直前の内容に戻します。`, `${dataCount} get back what they held just before this operation.`)
+                : '',
+            rebuilt
+                ? tr(`そのページのテキスト ${rebuilt} 個も、同じ内容に作り直してそろえます。テキストに残っている未反映の編集は、ゲームの内容に置き換わります。`, `${rebuilt} text(s) of those pages are rebuilt to match, so changes in them that were never applied are replaced by the game's contents.`)
+                : '',
+            restoredTexts
+                ? tr(`テキスト ${restoredTexts} 個を、この操作の直前の内容に戻します。`, `${restoredTexts} text(s) get back what they held just before this operation.`)
+                : '',
+            overview.laterOps
+                ? tr(`このあとの ${overview.laterOps} 件の操作も、一緒に取り消されます。`, `The ${overview.laterOps} operation(s) after it are undone too.`)
+                : '',
+            overview.created.length
+                ? tr(`このあとに作られた ${overview.created.length} 個のファイルは、消さずにそのまま残します。`, `The ${overview.created.length} files made after that point are kept, not deleted.`)
+                : '',
+            tr('巻き戻したことも履歴に残るので、あとから取り消せます。', 'The rewind is recorded in the history too, so you can undo it later.')
+        ].filter((s) => s);
+        const rewind = tr('巻き戻す', 'Rewind');
         if (reviewEnabled() && items.length) {
+            const notes = [
+                overview.data.length ? dataCount : '',
+                rebuilt ? tr(`テキスト ${rebuilt} 個は作り直してそろえます`, `${rebuilt} text(s) are rebuilt to match`) : '',
+                restoredTexts ? tr(`テキスト ${restoredTexts} 個を戻します`, `${restoredTexts} text(s) go back`) : '',
+                overview.laterOps ? tr(`このあとの ${overview.laterOps} 件の操作も取り消します`, `the ${overview.laterOps} operation(s) after it are undone too`) : '',
+                overview.created.length ? tr(`このあとに作られた ${overview.created.length} 個は残します`, `${overview.created.length} files made after that point are kept`) : ''
+            ].filter((s) => s);
             const accepted = await review({
-                title: tr(`戻す前の確認（${items.length} 件）`, `Review going back (${items.length} items)`),
-                sides: [tr('今', 'Now'), tr('戻したあと', 'After going back')],
+                title: tr(`巻き戻す前の確認（${items.length} 件）`, `Review the rewind (${items.length} items)`),
+                sides: [tr('今', 'Now'), tr('巻き戻したあと', 'After the rewind')],
                 items,
-                message: tr(`Text2Frame: ${when} の状態に戻すと、${items.length} 件が変わります。差分を見て、戻すか決めてください。`, `Text2Frame: Going back to ${when} changes ${items.length} items. Look at the changes and decide.`)
-                    + (createdShown.length ? tr(`（このあとに作られた ${createdShown.length} 件は残します）`, ` (${createdShown.length} files made after that point are kept)`) : ''),
-                acceptLabel: goBack
+                message: tr(`Text2Frame: ${where}まで巻き戻すと、${items.length} 件が変わります。差分を見て、決めてください。`, `Text2Frame: Rewinding to ${where} changes ${items.length} items. Look at the changes and decide.`)
+                    + (notes.length ? `（${notes.join(tr('、', '; '))}）` : ''),
+                acceptLabel: rewind,
+                cancelLabel: tr('キャンセル', 'Cancel')
             });
             if (!accepted) return;
         } else {
             const ok = await vscode.window.showWarningMessage(
-                tr(`Text2Frame: ${when} の状態に戻しますか？`, `Text2Frame: Go back to how things were at ${when}?`), { modal: true, detail }, goBack
+                tr(`Text2Frame: ${where}まで巻き戻しますか？`, `Text2Frame: Rewind to ${where}?`), { modal: true, detail: detail.join('\n') }, rewind
             );
-            if (ok !== goBack) return;
+            if (ok !== rewind) return;
         }
 
-        const label = tr(`${when} の状態に戻す`, `Go back to ${when}`);
-        const result = withHistory(root, 'restore', label, { keep: historyKeep() }, () => restoreTo(root, listEntries(root), fresh));
-        for (const f of plan.files) {
-            if (f.kind === 'data' && result.restored.includes(f.path)) recordDataState(context, absolutePath(root, f.path));
-        }
+        const label = tr(`${when} まで巻き戻す`, `Rewind to ${when}`);
+        const result = withHistory(root, 'restore', label, { keep: historyKeep() }, () => {
+            const restored = restoreTo(root, listEntries(root), fresh);
+            // 戻したデータからテキストを作り直す。同じ1つの操作に入るので、まとめて取り消せる。
+            const wrote = aligns.filter((a) => a.plan.ok)
+                .map((a) => ({ key: a.key, out: commitPull(context, root, a.plan) }));
+            return { ...restored, wrote };
+        });
+        overview.data.forEach((f) => {
+            if (result.restored.includes(f.path)) recordDataState(context, absolutePath(root, f.path));
+        });
         provider.refresh();
-        const shown = shownFilesOf(result.restored);
+        const shown = result.restored.filter((p) => !isBaseCopy(p));
+        const broken = aligns.filter((a) => !a.plan.ok).map((a) => a.key)
+            .concat(result.wrote.filter((w) => !w.out.ok).map((w) => w.key))
+            .map(pageName);
         const message = [
-            tr(`Text2Frame: ${when} の状態に戻しました(${shown.length} ファイル)。`, `Text2Frame: Went back to ${when} (${shown.length} files). `),
-            createdShown.length ? tr(`このあとに作られたファイルは残しています: ${createdShown.join('、')}`, `The files made after that point are kept: ${createdShown.join(', ')}. `) : '',
+            tr(`Text2Frame: ${where}まで巻き戻しました(${shown.length} ファイル)。`, `Text2Frame: Rewound to ${where} (${shown.length} files). `),
+            rebuilt ? tr(`テキスト ${rebuilt} 個は、戻したゲームの内容に合わせて作り直しました。`, `${rebuilt} text(s) were rebuilt to match the game. `) : '',
+            overview.created.length ? tr(`このあとに作られたファイルは残しています: ${overview.created.join('、')}`, `The files made after that point are kept: ${overview.created.join(', ')}. `) : '',
             result.missing.length ? tr(`控えが見つからず戻せなかったもの: ${result.missing.join('、')}`, `Could not go back, no copy found: ${result.missing.join(', ')}. `) : '',
-            data.length ? tr('テストプレイ中なら、ゲームを読み直してください。', 'If a test play is running, reload the game.') : ''
+            broken.length ? tr(`テキストをそろえられなかったページ: ${broken.join('、')}`, `Could not line up the texts of: ${broken.join(', ')}. `) : '',
+            overview.data.length ? tr('テストプレイ中なら、ゲームを読み直してください。', 'If a test play is running, reload the game.') : ''
         ].filter((s) => s).join('');
         vscode.window.showInformationMessage(message);
     };
