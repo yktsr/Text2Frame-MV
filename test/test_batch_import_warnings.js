@@ -201,9 +201,12 @@ describe('BATCH_IMPORT_MESSAGES_FROM_FOLDER report', function () {
 
     runBatch()
 
-    // 読点で切れた行はそのまま。割り直すと 'map0' / '01_event001_page1, common001' になる。
-    expect(shown).to.include('[batch-import] 衝突 2件: map001_event001_page1, ')
-    expect(shown).to.include('common001')
+    // 読点で切れた行はそのまま。割り直すと語の途中で切れてしまう。
+    // 並び順はファイル名順(collectTextFiles が並べ替えるので、実行ごとに同じ)。
+    /* 読点で切れた行はそのまま。割り直すと 'common001, map0' / '01_event001_page1' のように
+     * 語の途中で切れる。並び順はファイル名順(collectTextFiles が並べ替える)。 */
+    expect(shown).to.include('[batch-import] 衝突 2件: common001, ')
+    expect(shown).to.include('map001_event001_page1')
   })
 
   /* add(末尾に追記)は単発の取り込みと同じく一括反映でも使える(提案2 の一貫性)。

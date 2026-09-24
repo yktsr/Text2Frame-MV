@@ -4501,7 +4501,32 @@
 
 /* global Game_Interpreter, $gameMessage, process, PluginManager, Utils */
 
-(function () {
+/* テキストのフォルダを歩いて .txt を集める。並べ替えるので、順番は毎回同じ。
+ * 同じ宛先を指すテキストが複数あると最後の1つが残るため、順番が決まっていないと
+ * 実行ごとに結果が変わる。
+ * プラグイン本体(一括反映)と CLI の両方から使うので、IIFE の外に置いてある
+ * (公開 API には出さない)。ブラウザでは呼ばれないので、require はこの中だけ。 */
+const collectTextFiles = function (dir) {
+  const fs = require('fs')
+  const path = require('path')
+  const out = []
+  const stack = [dir]
+  while (stack.length) {
+    const cur = stack.pop()
+    let entries = []
+    try { entries = fs.readdirSync(cur) } catch (e) { continue }
+    entries.forEach(function (name) {
+      const full = path.join(cur, name)
+      let stat
+      try { stat = fs.statSync(full) } catch (e) { return }
+      if (stat.isDirectory()) stack.push(full)
+      else if (stat.isFile() && full.toLowerCase().endsWith('.txt')) out.push(full)
+    })
+  }
+  return out.sort()
+}
+
+;(function () {
   'use strict'
 
   // for MZ plugin command
@@ -11571,24 +11596,12 @@
       const importFolder = o.importFolder || 'text'
       const root = _path.isAbsolute(importFolder) ? importFolder : _path.resolve(BASE_PATH, importFolder)
       const strategy = o.strategy || 'add'
-      const walk = function (dir) {
-        let out = []
-        let entries = []
-        try { entries = _fs.readdirSync(dir) } catch (e) { return out }
-        entries.forEach(function (ent) {
-          const full = _path.join(dir, ent)
-          const stat = _fs.statSync(full)
-          if (stat.isDirectory()) out = out.concat(walk(full))
-          else if (stat.isFile() && /\.txt$/i.test(ent)) out.push(full)
-        })
-        return out
-      }
       if (!_fs.existsSync(root)) {
         addMessage('[batch-import] 反映元フォルダが見つかりません / import folder not found: ' + root)
         console.error('[batch-import] import folder not found: ' + root)
         return { ok: 0, fail: 0, root }
       }
-      const files = walk(root)
+      const files = collectTextFiles(root)
       if (files.length === 0) {
         addMessage('[batch-import] テキストが見つかりませんでした。反映元フォルダを確認してください / no text files found: ' + root)
         console.warn('[batch-import] no text files found under ' + root)
@@ -11923,23 +11936,6 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     return { meta: parsed.meta, body: parsed.body, hasFrontMatter: !!parsed.header }
   }
 
-  // Recursively collect *.txt files under a directory.
-  const walkTextFilesCli = function (dir) {
-    const out = []
-    const stack = [dir]
-    while (stack.length) {
-      const cur = stack.pop()
-      let stat
-      try { stat = fs.statSync(cur) } catch (e) { continue }
-      if (stat.isDirectory()) {
-        fs.readdirSync(cur).forEach(function (name) { stack.push(path.join(cur, name)) })
-      } else if (stat.isFile() && cur.toLowerCase().endsWith('.txt')) {
-        out.push(cur)
-      }
-    }
-    return out.sort()
-  }
-
   const program = new Command()
   program
     .name('text2frame')
@@ -12158,7 +12154,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
      * 同じイベントを指すテキストが複数あると最後の1つだけが残るため、--text-dir で
      * 反映したいフォルダを選ぶ。 */
     const collectFiles = function () {
-      return walkTextFilesCli(scanRoot).filter(function (f) {
+      return collectTextFiles(scanRoot).filter(function (f) {
         return readFrontMatter(fs.readFileSync(f, { encoding: 'utf8' })).hasFrontMatter
       })
     }
