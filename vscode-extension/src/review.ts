@@ -28,6 +28,8 @@ export interface ReviewRequest {
     /** 通知の文。 */
     message: string;
     acceptLabel: string;
+    /** やめる側の名前。進む側と意味が近くなるときだけ変える(既定は「やめる」)。 */
+    cancelLabel?: string;
 }
 
 interface Pending {
@@ -129,7 +131,7 @@ export async function review(request: ReviewRequest): Promise<boolean> {
         pending.shown = reviewTabs(uris).length > 0;
     }
 
-    const cancel = tr('やめる', 'Cancel');
+    const cancel = request.cancelLabel || tr('やめる', 'Cancel');
     const list = tr('一覧から見る', 'Pick from a list');
     const buttons = oneOfMany ? [request.acceptLabel, cancel, list] : [request.acceptLabel, cancel];
     const ask = (): void => {

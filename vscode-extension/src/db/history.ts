@@ -303,11 +303,17 @@ export function noteWrite(absPath: string, kind: HistoryFileKind, pages?: string
 export type HistoryPoint = { started: number; id: string };
 
 /**
+ * 巻き戻しで取り消される操作(選んだ操作と、それ以降)。
+ * 時点は操作そのもの(時刻と id)で決める。時刻だけで比べると、同じミリ秒に入った1つ前の操作まで
+ * 巻き戻ってしまう(id の末尾は操作ごとに増える連番なので、同じ時刻でも順番が付く)。
+ */
+export const undoneBy = (entries: HistoryEntry[], from: HistoryPoint): HistoryEntry[] =>
+    entries.filter((e) => e.started > from.started || (e.started === from.started && e.id >= from.id));
+
+/**
  * ある時点へ戻す計画。その操作以降(その操作を含む)で書き換わったファイルを、すべてその時点の中身に戻す。
  * 同じファイルを何度も書き換えていたときは、いちばん古い控え(＝その時点の中身)を使う。
  * その時点より後にできたファイルは、消さずに残して名前だけ返す。
- * 時点は操作そのもの(時刻と id)で決める。時刻だけで比べると、同じミリ秒に入った1つ前の操作まで
- * 巻き戻ってしまう(id の末尾は操作ごとに増える連番なので、同じ時刻でも順番が付く)。
  */
 export function planRestoreTo(entries: HistoryEntry[], from: HistoryPoint): {
     files: { path: string; kind: HistoryFileKind; pages?: string[]; entryId: string }[];
@@ -317,9 +323,7 @@ export function planRestoreTo(entries: HistoryEntry[], from: HistoryPoint): {
     const created: string[] = [];
     const seen = new Set<string>();
     // 古い順に見て、そのファイルを最初に書き換えた操作の控えを採る。
-    const atOrAfter = (e: HistoryEntry): boolean =>
-        e.started > from.started || (e.started === from.started && e.id >= from.id);
-    const wanted = entries.filter(atOrAfter).sort((a, b) => a.started - b.started || (a.id < b.id ? -1 : 1));
+    const wanted = undoneBy(entries, from).sort((a, b) => a.started - b.started || (a.id < b.id ? -1 : 1));
     for (const entry of wanted) {
         for (const file of entry.files) {
             if (seen.has(file.path)) continue;

@@ -321,7 +321,9 @@ export function planPull(
     context: vscode.ExtensionContext,
     workspaceRoot: string,
     target: ExportTarget,
-    mode: 'merge' | 'overwrite'
+    mode: 'merge' | 'overwrite',
+    /** ゲームの命令列。まだ書いていない中身から作るとき(履歴の巻き戻し)に渡す。既定はデータから読む。 */
+    listOverride?: unknown[]
 ): PullPlan {
     const baseP = baseSnapshotPath(workspaceRoot, snapshotKeyOf(workspaceRoot, target));
     const plan: PullPlan = { target, ok: false, inputs: [target.textPath, dataPathFor(workspaceRoot, target) || '', baseP].filter(Boolean) };
@@ -337,7 +339,7 @@ export function planPull(
         return plan;
     }
     try {
-        const list = readEventList(workspaceRoot, target); // ours
+        const list = listOverride || readEventList(workspaceRoot, target); // ours
         if (fs.existsSync(target.textPath)) plan.previous = fs.readFileSync(target.textPath, 'utf8');
         // The whole 3-way/decompile/guard logic lives in the shared core (Frame2Text.buildPullText),
         // so CLI, plugin, t2f-sync and this extension all behave identically.
