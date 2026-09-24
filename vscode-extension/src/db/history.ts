@@ -247,7 +247,11 @@ export class HistoryRecorder {
         }
         this.before.clear();
         this.entry.files = kept;
-        if (!kept.length) {
+        /* 何も変わっていない操作と、祖先(.t2f-base)だけが変わった操作は残さない。
+         * 祖先は行に出さないので、残しても中身の無い行になり、戻しても目に見えるものは
+         * 変わらない。祖先だけが動くのは、ゲームの命令は同じでテキストのコメント行などだけが
+         * 変わったときで、3-way は祖先を命令に直してから見るので、戻せなくても影響しない。 */
+        if (!kept.some((file) => file.kind !== 'base')) {
             if (fs.existsSync(entryDir(this.root, this.entry.id))) fs.rmSync(entryDir(this.root, this.entry.id), { recursive: true, force: true });
             return undefined;
         }
@@ -318,9 +322,11 @@ export const undoneBy = (entries: HistoryEntry[], from: HistoryPoint): HistoryEn
 export function planRestoreTo(entries: HistoryEntry[], from: HistoryPoint): {
     files: { path: string; kind: HistoryFileKind; pages?: string[]; entryId: string }[];
     created: string[];
+    removed: string[];
 } {
     const files: { path: string; kind: HistoryFileKind; pages?: string[]; entryId: string }[] = [];
     const created: string[] = [];
+    const removed: string[] = [];
     const seen = new Set<string>();
     // 古い順に見て、そのファイルを最初に書き換えた操作の控えを採る。
     const wanted = undoneBy(entries, from).sort((a, b) => a.started - b.started || (a.id < b.id ? -1 : 1));
@@ -329,20 +335,33 @@ export function planRestoreTo(entries: HistoryEntry[], from: HistoryPoint): {
             if (seen.has(file.path)) continue;
             seen.add(file.path);
             if (!file.existed) {
-                created.push(file.path);
+                /* その時点には無かった祖先(.t2f-base)は消す。残すと、テキストを戻したあとも
+                 * 祖先が新しいままになり、次の 3-way が「テキストは変わっていない」と読んで
+                 * ゲームの側で上書きしてしまう。祖先が無ければ初回反映と同じ扱いになり、
+                 * テキストが残る側に転ぶ。消す前の中身は控えるので、この巻き戻しごと戻せる。 */
+                if (file.kind === 'base') removed.push(file.path);
+                else created.push(file.path);
                 continue;
             }
             files.push({ path: file.path, kind: file.kind, pages: file.pages, entryId: entry.id });
         }
     }
-    return { files, created };
+    return { files, created, removed };
 }
 
 /** ある時点へ戻す。計画(planRestoreTo)のとおりに控えを書き戻す。 */
-export function restoreTo(root: string, entries: HistoryEntry[], from: HistoryPoint): { restored: string[]; created: string[]; missing: string[] } {
+export function restoreTo(root: string, entries: HistoryEntry[], from: HistoryPoint): { restored: string[]; created: string[]; removed: string[]; missing: string[] } {
     const plan = planRestoreTo(entries, from);
     const restored: string[] = [];
     const missing: string[] = [];
+    const removed: string[] = [];
+    for (const rel of plan.removed) {
+        const abs = absolutePath(root, rel);
+        if (!fs.existsSync(abs)) continue;
+        noteWrite(abs, 'base');
+        fs.rmSync(abs, { force: true });
+        removed.push(rel);
+    }
     for (const file of plan.files) {
         const copy = snapshotFile(root, file.entryId, file.path);
         if (!fs.existsSync(copy)) {
@@ -355,5 +374,5 @@ export function restoreTo(root: string, entries: HistoryEntry[], from: HistoryPo
         fs.copyFileSync(copy, abs);
         restored.push(file.path);
     }
-    return { restored, created: plan.created, missing };
+    return { restored, created: plan.created, removed, missing };
 }

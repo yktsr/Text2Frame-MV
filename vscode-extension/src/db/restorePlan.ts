@@ -22,10 +22,10 @@ export interface RestoreOverview {
     texts: RestorePiece[];
     /** 戻るゲームのデータのページ(重複を除く)。ここがテキストとそろえる相手になる。 */
     pages: string[];
-    /** その時点より後にできたファイル。消さずに残す(祖先の控えは出さない)。 */
+    /** その時点より後にできたファイル。消さずに残す(祖先の控えは planRestoreTo が除く)。 */
     created: string[];
-    /** 同じものを、祖先の控えも数えたもの(戻すものが本当に無いかを見るため)。 */
-    createdAll: string[];
+    /** その時点には無かった祖先の控え。巻き戻しで消すもの(利用者には見せない)。 */
+    removed: string[];
     /** 選んだ操作と一緒に取り消される、そのあとの操作の数。 */
     laterOps: number;
 }
@@ -47,8 +47,8 @@ export function restoreOverview(entries: HistoryEntry[], from: HistoryPoint): Re
         data,
         texts: files.filter((f) => f.kind === 'text'),
         pages,
-        created: plan.created.filter((rel) => !isBaseCopy(rel)),
-        createdAll: plan.created,
+        created: plan.created,
+        removed: plan.removed,
         laterOps: Math.max(0, undoneBy(entries, from).length - 1)
     };
 }

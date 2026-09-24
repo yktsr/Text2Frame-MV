@@ -270,7 +270,7 @@ export function registerHistoryView(context: vscode.ExtensionContext): void {
         const fresh = readEntry(root, entry.id) || entry;
         const entries = listEntries(root);
         const overview = restoreOverview(entries, fresh);
-        if (!overview.files.length && !overview.createdAll.length) {
+        if (!overview.files.length && !overview.created.length && !overview.removed.length) {
             vscode.window.showInformationMessage(tr('Text2Frame: この時点から変わったものはありません。', 'Text2Frame: Nothing has changed since then.'));
             return;
         }
