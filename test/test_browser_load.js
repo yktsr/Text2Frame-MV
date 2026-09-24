@@ -132,6 +132,34 @@ describe('loading the plugins the way a deployed game does', function () {
     })
   })
 
+  /* 公開(web)用に書き出したゲームでは、ファイルの読み書きができない。そのまま進むと
+   * 「ファイルが見つかりません」のような見当違いの案内になるので、入口で止めて理由を出す。
+   * (この入れ物の Utils.isOptionValid は false = テストプレイではない = 公開モード) */
+  describe('a game that was deployed for the web', function () {
+    const runCommand = function (file, command) {
+      const s = load(file)
+      const interpreter = new s.sandbox.Game_Interpreter()
+      interpreter.pluginCommand(command, ['text', 'message.txt', '1', '1', '1'])
+      return s
+    }
+
+    it('tells the player why Text2Frame does nothing', function () {
+      const s = runCommand('Text2Frame.js', 'IMPORT_MESSAGE_TO_EVENT')
+      expect(s.said.join('\n')).to.contain('Text2Frameは開発専用プラグイン')
+    })
+
+    it('tells the player why Frame2Text does nothing', function () {
+      const s = runCommand('Frame2Text.js', 'EXPORT_EVENT_TO_MESSAGE')
+      expect(s.said.join('\n')).to.contain('Frame2Textは開発専用プラグイン')
+    })
+
+    // MV の pluginCommand は全プラグイン共通の入口。他のプラグインのコマンドで案内を出さない。
+    it('says nothing when the command belongs to another plugin', function () {
+      const s = runCommand('Frame2Text.js', 'SomeOtherPluginCommand')
+      expect(s.said).to.eql([])
+    })
+  })
+
   /* 公開されるのは rollup が開発用の区画を削った dist/ のほう。削った結果も読めることを見る。
    * まだ作っていなければ飛ばす(npm run build:dist で作る)。 */
   cases.forEach(function (c) {
