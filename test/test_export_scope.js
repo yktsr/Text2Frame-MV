@@ -10,7 +10,7 @@ const { shown } = installEngine()
 const frame2text = require('../Frame2Text.js')
 
 /* 取り出す範囲。数千イベントのプロジェクトでは、全部を書き出すと編集したいものを探せなくなる。
- * 既定は「中身のあるもの」だけ。会話があるものだけ・既にテキストがあるものだけも選べる。
+ * 既定は「会話があるもの」だけ。中身のあるものだけ・既にテキストがあるものだけも選べる。
  * customだけが、既にテキストがあるものを条件に更新する。 */
 describe('export scope', function () {
   let tmp
@@ -52,10 +52,10 @@ describe('export scope', function () {
     fs.rmSync(tmp, { recursive: true, force: true })
   })
 
-  it('leaves out the empty pages by default', function () {
+  it('writes only conversations by default', function () {
     run()
 
-    expect(written()).to.eql(['map001_event001_page1.txt', 'map001_event001_page2.txt'])
+    expect(written()).to.eql(['map001_event001_page1.txt'])
   })
 
   it('writes everything when asked for all', function () {
