@@ -86,7 +86,8 @@ describe('Frame2Text Test', function () {
           ])
 
           const expected_json = JSON.parse(expected_data)
-          const actual_json = JSON.parse(message_2_event)
+          // 中身が変わらないときは書かない(mtime を動かさない)ので、書き込みが無ければ元のまま。
+          const actual_json = JSON.parse(message_2_event || test_map_data)
           expect(actual_json).to.eql(expected_json)
           done()
         })
