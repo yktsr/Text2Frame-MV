@@ -4,6 +4,7 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const { bottom, msg } = require('./helpers')
+const F2Tmod = require('../Frame2Text.js')
 
 const ROOT = path.resolve(__dirname, '..')
 const F2T = path.join(ROOT, 'Frame2Text.js')
@@ -43,6 +44,13 @@ describe('batch pull report (CLI --mode batch)', function () {
 
   afterEach(function () {
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }
+  })
+
+  /* CLI(ファイルの後半)は IIFE の外にあるので、中の関数を内部用の窓口ごしに受け取る。
+   * 公開している関数の一覧は増やさない(examples と README が指すものが変わらないように)。 */
+  it('reaches the shared pipeline without growing the published API', function () {
+    expect(F2Tmod._internal.runBatchPull).to.be.a('function')
+    expect(Object.keys(F2Tmod)).to.not.include('_internal')
   })
 
   it('reports the counts and the strategy', function () {
