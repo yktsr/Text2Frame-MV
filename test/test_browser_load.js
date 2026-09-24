@@ -50,11 +50,14 @@ describe('loading the plugins the way a deployed game does', function () {
     return { sandbox, context, registered, said }
   }
 
-  const load = function (file, options) {
-    const s = makeSandbox(options)
+  const run = function (s, file) {
     const code = fs.readFileSync(path.resolve(__dirname, '..', file), 'utf8')
     vm.runInContext(code, s.context, { filename: file })
     return s
+  }
+
+  const load = function (file, options) {
+    return run(makeSandbox(options), file)
   }
 
   const cases = [
@@ -78,6 +81,40 @@ describe('loading the plugins the way a deployed game does', function () {
       it('shares its API even without globalThis', function () {
         const s = load(c.file, { noGlobalThis: true })
         expect(s.sandbox.Game_Interpreter.prototype[c.command]).to.be.a('function')
+      })
+    })
+  })
+
+  /* ツクールはプラグインを全部「同じグローバル」に読み込む。トップレベルで const や
+   * function を宣言すると、他のプラグインが同じ名前を使っていたら読み込みごと失敗する
+   * (SyntaxError: Identifier ... has already been declared)。
+   * ここでは実際のゲームと同じ形(同じ入れ物に2つとも読む)と、同じものを2回読む形
+   * (別プラグインが同名を宣言したときの代わり)で確かめる。 */
+  describe('sharing one global with other plugins', function () {
+    it('loads both plugins into the same place', function () {
+      const s = makeSandbox()
+      run(s, 'Text2Frame.js')
+      run(s, 'Frame2Text.js')
+      expect(s.sandbox.Game_Interpreter.prototype.pluginCommandText2Frame).to.be.a('function')
+      expect(s.sandbox.Game_Interpreter.prototype.pluginCommandFrame2Text).to.be.a('function')
+    })
+
+    it('leaves nothing but the shared API on the global object', function () {
+      const s = makeSandbox()
+      const before = new Set(Object.keys(s.sandbox))
+      run(s, 'Text2Frame.js')
+      run(s, 'Frame2Text.js')
+      const added = Object.keys(s.sandbox).filter(function (k) { return !before.has(k) })
+      // 置いてよいのは、互いを見つけるための共有 API 2つだけ。
+      expect(added.sort()).to.eql(['$LaurusFrame2Text', '$LaurusText2Frame'])
+    })
+
+    cases.forEach(function (c) {
+      it('survives another plugin declaring the same names as ' + c.file, function () {
+        const s = makeSandbox()
+        run(s, c.file)
+        // 2回目で落ちるなら、トップレベルに宣言が残っている。
+        expect(function () { run(s, c.file) }).to.not.throw()
       })
     })
   })

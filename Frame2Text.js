@@ -650,34 +650,34 @@
 
 /* global Game_Interpreter, $gameMessage, process, PluginManager, globalThis, __dirname */
 
-// Text2Frame の共有 API を解決する。ゲーム内(NW.js)は require('./Text2Frame.js') が
-// 解決できないため、まず Text2Frame がグローバル公開した API を使い、無ければ Node の
-// require(兄弟ファイル / __dirname 基準)にフォールバックする。
-function resolveText2Frame () {
-  try {
-    // 古い NW.js(Chromium<71)には globalThis が無い。ゲーム内の共有グローバルは window なので
-    // window / global にもフォールバックしないと $LaurusText2Frame を見つけられず取り出しが失敗する。
-    const glob = (typeof globalThis !== 'undefined')
-      ? globalThis
-      : (typeof window !== 'undefined')
-          ? window
-          : (typeof global !== 'undefined') ? global : null
-    if (glob && glob.$LaurusText2Frame && glob.$LaurusText2Frame.saveBaseText) {
-      return glob.$LaurusText2Frame
-    }
-  } catch (e) { /* noop */ }
-  if (typeof require !== 'undefined') {
-    try { return require('./Text2Frame.js') } catch (e) { /* try next */ }
-    try { return require(require('path').join(__dirname, 'Text2Frame.js')) } catch (e) { /* give up */ }
-  }
-  return null
-}
-
 (function () {
   'use strict'
 
   var Laurus = Laurus || {} // eslint-disable-line no-var, no-use-before-define
   Laurus.Frame2Text = {}
+
+  // Text2Frame の共有 API を解決する。ゲーム内(NW.js)は require('./Text2Frame.js') が
+  // 解決できないため、まず Text2Frame がグローバル公開した API を使い、無ければ Node の
+  // require(兄弟ファイル / __dirname 基準)にフォールバックする。
+  function resolveText2Frame () {
+    try {
+      // 古い NW.js(Chromium<71)には globalThis が無い。ゲーム内の共有グローバルは window なので
+      // window / global にもフォールバックしないと $LaurusText2Frame を見つけられず取り出しが失敗する。
+      const glob = (typeof globalThis !== 'undefined')
+        ? globalThis
+        : (typeof window !== 'undefined')
+            ? window
+            : (typeof global !== 'undefined') ? global : null
+      if (glob && glob.$LaurusText2Frame && glob.$LaurusText2Frame.saveBaseText) {
+        return glob.$LaurusText2Frame
+      }
+    } catch (e) { /* noop */ }
+    if (typeof require !== 'undefined') {
+      try { return require('./Text2Frame.js') } catch (e) { /* try next */ }
+      try { return require(require('path').join(__dirname, 'Text2Frame.js')) } catch (e) { /* give up */ }
+    }
+    return null
+  }
 
   if (typeof PluginManager === 'undefined') {
     Laurus.Frame2Text.FileFolder = 'test'
