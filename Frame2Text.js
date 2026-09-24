@@ -126,7 +126,7 @@
  *
  * @arg Scope
  * @text 取り出す範囲
- * @desc どのイベントをテキストにするかです。既にテキストがあるものは、どれを選んでも更新されます。既定は中身のあるものだけです。
+ * @desc どのイベントをテキストにするかです。customは既にテキストがあるものだけを更新します。既定は中身のあるものだけです。
  * @type select
  * @option 中身のあるものだけ / nonempty
  * @value nonempty
@@ -3472,7 +3472,7 @@
      *   nonempty     … コマンドが1つも無いページ・コモンイベントは作らない
      *   conversation … 会話(文章・選択肢・スクロール)を含むものだけ作る
      *   custom       … 新しくは作らない。既にあるテキストだけを更新する
-     * どの範囲でも、既にテキストがあるものは必ず対象にする(利用者のファイルを同期から外さない)。 */
+     * custom以外は、既にテキストがあってもイベント内容で対象を決める。 */
     const SCOPES = ['all', 'nonempty', 'conversation', 'custom']
     const CONVERSATION_SCOPE_CODES = [101, 401, 102, 402, 403, 404, 105, 405]
     const resolveScope = function (name) {
@@ -3487,9 +3487,8 @@
       return (list || []).some(function (c) { return c && CONVERSATION_SCOPE_CODES.indexOf(c.code) !== -1 })
     }
     const inScope = function (scope, list, key, index) {
-      if (index && index.paths && index.paths[key] !== undefined) return true
+      if (scope === 'custom') return !!(index && index.paths && index.paths[key] !== undefined)
       if (scope === 'all') return true
-      if (scope === 'custom') return false
       if (!hasBody(list)) return false
       if (scope === 'conversation') return hasConversation(list)
       return true
