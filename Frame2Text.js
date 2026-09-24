@@ -648,7 +648,7 @@
  */
 /* eslint-enable spaced-comment */
 
-/* global Game_Interpreter, $gameMessage, process, PluginManager, globalThis, __dirname */
+/* global Game_Interpreter, $gameMessage, process, PluginManager, globalThis, __dirname, Utils */
 
 (function () {
   'use strict'
@@ -767,10 +767,33 @@
     })
   }
 
+  /* このプラグインが受け付けるコマンド名。MV の pluginCommand は全プラグイン共通の入口なので、
+   * 自分のコマンドかどうかをここで見分ける(他のプラグインのコマンドに案内を出さないため)。 */
+  const FRAME2TEXT_COMMANDS = [
+    'EXPORT_EVENT_TO_MESSAGE', 'EXPORT_CE_TO_MESSAGE', 'BATCH_EXPORT_MESSAGES_TO_FOLDER',
+    'イベントをメッセージにエクスポ－ト', 'コモンイベントをメッセージにエクスポート',
+    'フォルダへ一括取り出し', '一括取り出し'
+  ]
+  const isFrame2TextCommand = function (command) {
+    const name = String(command == null ? '' : command)
+    return FRAME2TEXT_COMMANDS.indexOf(name) !== -1 || FRAME2TEXT_COMMANDS.indexOf(name.toUpperCase()) !== -1
+  }
+
   const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand
   Game_Interpreter.prototype.pluginCommand = function (command, args) {
     _Game_Interpreter_pluginCommand.apply(this, arguments)
-    this.pluginCommandFrame2Text(command, args)
+    /* 取り出しはファイルを書くので、テストプレイ(開発中)でしか動かない。公開用に書き出した
+     * ゲームには Node の機能が無く、そのまま進むと「ファイルが見つかりません」のような
+     * 見当違いの案内になる。ここで止めて、本当の理由を出す(Text2Frame と同じ文言)。
+     * ツクールの外(CLI / ライブラリ)には Utils が無いので、そこは開発中として扱う。 */
+    const isDevelopment = typeof Utils === 'undefined' || Utils.isOptionValid('test')
+    if (isDevelopment) {
+      this.pluginCommandFrame2Text(command, args)
+    } else if (isFrame2TextCommand(command)) {
+      $gameMessage.add('Frame2Textは開発専用プラグインであり、デプロイメント後は')
+      $gameMessage.add('動作しません。このメッセージが繰り返し表示される場合は、')
+      $gameMessage.add('このプラグインをOFFにしてデプロイメントしてください。')
+    }
   }
 
   Game_Interpreter.prototype.pluginCommandFrame2Text = function (command, args) {
