@@ -168,7 +168,7 @@ function groups(): CommandGroup[] {
                 },
                 {
                     command: 'text2frame.history.show', icon: 'history',
-                    label: tr('履歴(前の状態に巻き戻す)', 'History'),
+                    label: tr('編集履歴を表示する', 'Show the edit history'),
                     tooltip: tr('反映・取り出しの前の中身の控えを並べます。行の「巻き戻す」で、その操作の直前まで戻せます(そのあとの操作も一緒に取り消され、ゲームのデータが戻るページはテキストもそろえます)。', 'Lists the copies kept before each apply and pull. Rewind on a row brings everything back to just before that operation (later operations are undone too, and pages whose game data goes back get their texts rebuilt to match).')
                 },
                 {
