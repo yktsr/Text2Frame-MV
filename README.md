@@ -81,7 +81,7 @@ npx frame2text --mode batch --data-dir data       # 取り出し(game -> text)
 const { compile, applyTextFile } = require('@yktsr/text2frame-mv')
 ```
 
-（GitHub から直接入れることもできます: `npm install -D github:yktsr/Text2Frame-MV`。ただし `npx` は使えず `node node_modules/@yktsr/text2frame-mv/t2f-sync.js ...` になります）
+（GitHub から直接入れることもできます: `npm install -D github:yktsr/Text2Frame-MV`。この場合も `npx text2frame`、`npx frame2text`、`npx t2f-sync` を使えます）
 
 
 ## テキストとゲームを同期する（SYNC）
@@ -1053,4 +1053,3 @@ $ npm run test
 
 ### License
 MIT LICENSE
-
