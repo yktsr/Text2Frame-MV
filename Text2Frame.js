@@ -4501,32 +4501,7 @@
 
 /* global Game_Interpreter, $gameMessage, process, PluginManager, Utils */
 
-/* テキストのフォルダを歩いて .txt を集める。並べ替えるので、順番は毎回同じ。
- * 同じ宛先を指すテキストが複数あると最後の1つが残るため、順番が決まっていないと
- * 実行ごとに結果が変わる。
- * プラグイン本体(一括反映)と CLI の両方から使うので、IIFE の外に置いてある
- * (公開 API には出さない)。ブラウザでは呼ばれないので、require はこの中だけ。 */
-const collectTextFiles = function (dir) {
-  const fs = require('fs')
-  const path = require('path')
-  const out = []
-  const stack = [dir]
-  while (stack.length) {
-    const cur = stack.pop()
-    let entries = []
-    try { entries = fs.readdirSync(cur) } catch (e) { continue }
-    entries.forEach(function (name) {
-      const full = path.join(cur, name)
-      let stat
-      try { stat = fs.statSync(full) } catch (e) { return }
-      if (stat.isDirectory()) stack.push(full)
-      else if (stat.isFile() && full.toLowerCase().endsWith('.txt')) out.push(full)
-    })
-  }
-  return out.sort()
-}
-
-;(function () {
+(function () {
   'use strict'
 
   // for MZ plugin command
@@ -4719,6 +4694,30 @@ const collectTextFiles = function (dir) {
       $gameMessage.add('動作しません。このメッセージが繰り返し表示される場合は、')
       $gameMessage.add('このプラグインをOFFにしてデプロイメントしてください。')
     }
+  }
+
+  /* テキストのフォルダを歩いて .txt を集める。並べ替えるので、順番は毎回同じ。
+   * 同じ宛先を指すテキストが複数あると最後の1つが残るため、順番が決まっていないと
+   * 実行ごとに結果が変わる。一括反映(プラグイン)と CLI の両方がこれを使う。
+   * ブラウザでは呼ばれないので、require はこの中だけ。 */
+  const collectTextFiles = function (dir) {
+    const fs = require('fs')
+    const path = require('path')
+    const out = []
+    const stack = [dir]
+    while (stack.length) {
+      const cur = stack.pop()
+      let entries = []
+      try { entries = fs.readdirSync(cur) } catch (e) { continue }
+      entries.forEach(function (name) {
+        const full = path.join(cur, name)
+        let stat
+        try { stat = fs.statSync(full) } catch (e) { return }
+        if (stat.isDirectory()) stack.push(full)
+        else if (stat.isFile() && full.toLowerCase().endsWith('.txt')) out.push(full)
+      })
+    }
+    return out.sort()
   }
 
   Game_Interpreter.prototype.pluginCommandText2Frame = function (command, args) {
@@ -11919,6 +11918,11 @@ const collectTextFiles = function (dir) {
   Game_Interpreter.prototype.pluginCommandText2Frame('LIBRARY_EXPORT', [0])
   if (typeof module !== 'undefined') {
     module.exports = Laurus.Text2Frame.export
+    /* このファイルの後半(CLI)は IIFE の外にあるので、中の関数が見えない。かといって
+     * トップレベルに置くと、プラグインとして入れたときに他のプラグインと名前を取り合う
+     * (同名の宣言があると読み込みごと失敗する)。内部用の窓口ごしに渡す。
+     * 列挙しないので、公開 API の一覧(Object.keys)には出ない。 */
+    Object.defineProperty(module.exports, '_internal', { value: { collectTextFiles } })
   }
 })()
 
@@ -12030,6 +12034,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   const cliRoot = options.root ? path.resolve(options.root) : process.cwd()
   const fromRoot = function (p) { return p ? path.resolve(cliRoot, p) : undefined }
   const mapFileName = function (mapId) { return 'Map' + ('000' + String(mapId)).slice(-3) + '.json' }
+  // プラグイン側と同じフォルダ走査を使う(内部用の窓口ごし)。
+  const { collectTextFiles } = module.exports._internal
   const cliBase = fromRoot(options.base)
 
   /* 根の外にあるテキストやデータは、祖先だけが根の側に取り残される。さらに根の外の
