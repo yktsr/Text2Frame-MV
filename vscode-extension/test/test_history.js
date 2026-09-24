@@ -44,6 +44,20 @@ describe('history', function () {
     expect(listEntries(root).length).to.equal(1)
   })
 
+  it('does not keep an operation that only changed an ancestor', function () {
+    // 祖先は行に出さないので、残しても中身の無い行になる(ゲームの命令は変わっていない)。
+    write('.t2f-base/text/a.txt', '前の祖先')
+    const entry = withHistory(root, 'apply', 'ゲームに反映 x', { keep: 10 }, () => {
+      noteWrite(file('data/Map001.json'), 'data', ['e:1:1:1'])
+      noteWrite(file('.t2f-base/text/a.txt'), 'base')
+      write('.t2f-base/text/a.txt', '新しい祖先')
+      return 1
+    })
+    expect(entry).to.equal(1)
+    expect(listEntries(root)).to.eql([])
+    expect(read('.t2f-base/text/a.txt')).to.equal('新しい祖先')
+  })
+
   it('writes nothing on disk at all when nothing changed', function () {
     withHistory(root, 'pullAll', 'すべて', { keep: 10 }, () => {
       for (let i = 0; i < 50; i++) noteWrite(file('text/map001_event001_page1.txt'), 'text')
@@ -83,7 +97,7 @@ describe('history', function () {
     const [saved] = listEntries(root)
     expect(saved.files).to.eql([{ path: 'text/new.txt', existed: false, kind: 'text' }])
     const result = restoreTo(root, listEntries(root), saved)
-    expect(result).to.eql({ restored: [], created: ['text/new.txt'], missing: [] })
+    expect(result).to.eql({ restored: [], created: ['text/new.txt'], removed: [], missing: [] })
     expect(read('text/new.txt')).to.equal('新しい')
   })
 
@@ -205,6 +219,31 @@ describe('history', function () {
       restoreTo(root, listEntries(root), first)
 
       expect(read('text/a.txt')).to.equal('最初')
+    })
+
+    it('deletes an ancestor that did not exist at that point, and can put it back', function () {
+      // 祖先を残すと、戻したテキストに対して祖先が新しいままになり、次の 3-way が
+      // 「テキストは変わっていない」と読んでゲームの側で上書きしてしまう。
+      write('text/a.txt', 'もとから')
+      const first = stamp('反映', 'apply', [['text/a.txt', '書き換え']])
+      withHistory(root, 'pull', '初めての取り出し', { keep: 50 }, () => {
+        noteWrite(file('text/a.txt'), 'text')
+        write('text/a.txt', '取り出した')
+        noteWrite(file('.t2f-base/text/a.txt'), 'base')
+        write('.t2f-base/text/a.txt', 'あとから作った祖先')
+      })
+
+      const r = withHistory(root, 'restore', '巻き戻す', { keep: 50 }, () => restoreTo(root, listEntries(root), first))
+
+      expect(read('text/a.txt')).to.equal('もとから')
+      expect(fs.existsSync(file('.t2f-base/text/a.txt'))).to.equal(false)
+      expect(r.removed).to.eql(['.t2f-base/text/a.txt'])
+      expect(r.created).to.eql([])
+      // 消す前の中身を控えているので、この巻き戻しごと戻せる。
+      const undo = listEntries(root)[0]
+      expect(undo.label).to.equal('巻き戻す')
+      restoreTo(root, listEntries(root), undo)
+      expect(read('.t2f-base/text/a.txt')).to.equal('あとから作った祖先')
     })
 
     it('keeps the files made after that point, and says which', function () {

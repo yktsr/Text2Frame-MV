@@ -61,7 +61,7 @@ describe('restoreOverview', function () {
     expect(o.data).to.have.lengthOf(1)
   })
 
-  it('lists the files made after that point, without the ancestor copies', function () {
+  it('keeps the files made after that point, and marks the ancestor copies for removal', function () {
     const first = entry(1, [text('text/a.txt')], 0)
     const second = entry(2, [
       { path: 'text/b.txt', kind: 'text', existed: false },
@@ -71,6 +71,7 @@ describe('restoreOverview', function () {
     const o = restoreOverview([second, first], first)
 
     expect(o.created).to.eql(['text/b.txt'])
-    expect(o.createdAll).to.eql(['text/b.txt', '.t2f-base/text/b.txt'])
+    // その時点に無かった祖先は残さず消す(戻したテキストと食い違わないように)。
+    expect(o.removed).to.eql(['.t2f-base/text/b.txt'])
   })
 })
