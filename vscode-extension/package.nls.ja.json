@@ -45,7 +45,7 @@
   "command.text2frame.tree.mapLinks.title": "マップのつながりを見る",
   "command.text2frame.showMapGraph.title": "Text2Frame: マップのつながりを図で見る",
   "command.text2frame.tree.mapGraph.title": "マップのつながりを図で見る",
-  "command.text2frame.history.show.title": "Text2Frame: 履歴(前の状態に巻き戻す)",
+  "command.text2frame.history.show.title": "Text2Frame: 編集履歴を表示する",
   "command.text2frame.history.refresh.title": "更新",
   "command.text2frame.history.openFolder.title": "控えのフォルダを開く",
   "command.text2frame.history.diff.title": "差分を見る",

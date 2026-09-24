@@ -45,7 +45,7 @@
   "command.text2frame.tree.mapLinks.title": "Show map links",
   "command.text2frame.showMapGraph.title": "Text2Frame: Show the map graph",
   "command.text2frame.tree.mapGraph.title": "Show the map graph",
-  "command.text2frame.history.show.title": "Text2Frame: Show history (rewind)",
+  "command.text2frame.history.show.title": "Text2Frame: Show the edit history",
   "command.text2frame.history.refresh.title": "Refresh",
   "command.text2frame.history.openFolder.title": "Open the history folder",
   "command.text2frame.history.diff.title": "Show changes",
