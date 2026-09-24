@@ -126,7 +126,7 @@
  *
  * @arg Scope
  * @text 取り出す範囲
- * @desc どのイベントをテキストにするかです。既にテキストがあるものは、どれを選んでも更新されます。既定は中身のあるものだけです。
+ * @desc どのイベントをテキストにするかです。customは既にテキストがあるものだけを更新します。既定は会話があるものだけです。
  * @type select
  * @option 中身のあるものだけ / nonempty
  * @value nonempty
@@ -136,7 +136,7 @@
  * @value custom
  * @option 全部(空のページも作る) / all
  * @value all
- * @default nonempty
+ * @default conversation
  *
  * @param Default Scenario Folder
  * @text 出力フォルダ名
@@ -918,7 +918,7 @@
         ' / 反映方法は merge(統合) か overwrite(上書き) を指定してください。')
     }
 
-    /* 一括取り出しの範囲。省略時は中身のあるものだけ(nonempty)。
+    /* 一括取り出しの範囲。省略時は会話があるものだけ(conversation)。
      * MVの引数は手書きなので、日本語でも書けるようにする。 */
     const EXPORT_SCOPE_ALIASES = {
       all: 'all',
@@ -932,7 +932,7 @@
     }
     const resolveExportScope = function (explicit) {
       const given = String(explicit == null ? '' : explicit).trim()
-      if (given === '' || given === 'undefined') return 'nonempty'
+      if (given === '' || given === 'undefined') return 'conversation'
       const v = EXPORT_SCOPE_ALIASES[given.toLowerCase()] || EXPORT_SCOPE_ALIASES[given]
       if (v) return v
       throw new Error('Unknown scope: ' + given +
@@ -3467,17 +3467,17 @@
       })
     }
 
-    /* 取り出す範囲。既定は nonempty(中身のあるものだけ)。
+    /* 取り出す範囲。既定は conversation(会話があるものだけ)。
      *   all          … 全部。中身が空のページも作る(2.3.0 までの動き)
      *   nonempty     … コマンドが1つも無いページ・コモンイベントは作らない
      *   conversation … 会話(文章・選択肢・スクロール)を含むものだけ作る
      *   custom       … 新しくは作らない。既にあるテキストだけを更新する
-     * どの範囲でも、既にテキストがあるものは必ず対象にする(利用者のファイルを同期から外さない)。 */
+     * custom以外は、既にテキストがあってもイベント内容で対象を決める。 */
     const SCOPES = ['all', 'nonempty', 'conversation', 'custom']
     const CONVERSATION_SCOPE_CODES = [101, 401, 102, 402, 403, 404, 105, 405]
     const resolveScope = function (name) {
       const v = String(name == null ? '' : name).trim().toLowerCase()
-      if (!v) return 'nonempty'
+      if (!v) return 'conversation'
       return SCOPES.indexOf(v) === -1 ? null : v
     }
     const hasBody = function (list) {
@@ -3487,9 +3487,8 @@
       return (list || []).some(function (c) { return c && CONVERSATION_SCOPE_CODES.indexOf(c.code) !== -1 })
     }
     const inScope = function (scope, list, key, index) {
-      if (index && index.paths && index.paths[key] !== undefined) return true
+      if (scope === 'custom') return !!(index && index.paths && index.paths[key] !== undefined)
       if (scope === 'all') return true
-      if (scope === 'custom') return false
       if (!hasBody(list)) return false
       if (scope === 'conversation') return hasConversation(list)
       return true
@@ -3755,7 +3754,7 @@
       const _index = indexTexts(outDir)
       const _duplicated = Object.keys(_index.duplicates)
       // 取り出す範囲。既にテキストがあるものは、範囲に関係なく必ず更新する。
-      const _scope = Laurus.Frame2Text.BatchScope || 'nonempty'
+      const _scope = Laurus.Frame2Text.BatchScope || 'conversation'
 
       // データフォルダが無いと readdirSync が投げる。生の例外ではなくパスを見せて止める。
       let targets = []
@@ -4004,7 +4003,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-w, --english_tag <true/false>', 'english tag', 'true')
     .option('--omit-default-tags <true/false>', 'omit face/background/position tags that match the defaults', 'true')
     .option('-s, --strategy <merge|overwrite>', 'pull strategy (default merge: keep translations; overwrite: replace)', /^(merge|overwrite)$/i, 'merge')
-    .option('--scope <all|nonempty|conversation|custom>', 'batch mode: which events to write (default: nonempty)', /^(all|nonempty|conversation|custom)$/i, 'nonempty')
+    .option('--scope <all|nonempty|conversation|custom>', 'batch mode: which events to write (default: conversation)', /^(all|nonempty|conversation|custom)$/i, 'conversation')
     .option('-b, --base <path>', 'ancestor text path for merge (optional; auto .t2f-base when omitted)')
     .parse()
 
@@ -4148,7 +4147,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
      * 同じ宛先のテキストが2つ以上あるものは、書き先が決められないので見送る。 */
     const index = module.exports.indexTexts(textDir)
     const duplicated = Object.keys(index.duplicates)
-    const scope = String(options.scope || 'nonempty').toLowerCase()
+    const scope = String(options.scope || 'conversation').toLowerCase()
     const targets = module.exports.enumerateTargets(dataDir, { scope, index })
     /* 取り出しそのものはプラグインの一括取り出しと共通(runBatchPull)。祖先(.t2f-base)の
      * 置き場所も、書き先の決め方も、そちらが持っている。ここは報告の組み立てだけ。 */

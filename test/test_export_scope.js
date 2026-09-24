@@ -10,8 +10,8 @@ const { shown } = installEngine()
 const frame2text = require('../Frame2Text.js')
 
 /* 取り出す範囲。数千イベントのプロジェクトでは、全部を書き出すと編集したいものを探せなくなる。
- * 既定は「中身のあるもの」だけ。会話があるものだけ・既にテキストがあるものだけも選べる。
- * どの範囲でも、既にテキストがあるものは必ず更新する(利用者のファイルを同期から外さない)。 */
+ * 既定は「会話があるもの」だけ。中身のあるものだけ・既にテキストがあるものだけも選べる。
+ * customだけが、既にテキストがあるものを条件に更新する。 */
 describe('export scope', function () {
   let tmp
   let cwd
@@ -52,10 +52,10 @@ describe('export scope', function () {
     fs.rmSync(tmp, { recursive: true, force: true })
   })
 
-  it('leaves out the empty pages by default', function () {
+  it('writes only conversations by default', function () {
     run()
 
-    expect(written()).to.eql(['map001_event001_page1.txt', 'map001_event001_page2.txt'])
+    expect(written()).to.eql(['map001_event001_page1.txt'])
   })
 
   it('writes everything when asked for all', function () {
@@ -70,6 +70,19 @@ describe('export scope', function () {
     run('conversation')
 
     expect(written()).to.eql(['map001_event001_page1.txt'])
+  })
+
+  it('does not update an existing text without a conversation', function () {
+    const kept = path.join(tmp, 'text', '移動イベント.txt')
+    fs.mkdirSync(path.dirname(kept))
+    fs.writeFileSync(kept,
+      frame2text.renderFrontMatter({ mapId: '1', eventId: '1', pageId: '2' }, 'event') + 'この内容は残る',
+      'utf8')
+
+    run('conversation')
+
+    expect(fs.readFileSync(kept, 'utf8')).to.contain('この内容は残る')
+    expect(fs.readFileSync(kept, 'utf8')).not.to.contain('<Transfer')
   })
 
   it('writes nothing new for custom, but keeps the texts that exist up to date', function () {
