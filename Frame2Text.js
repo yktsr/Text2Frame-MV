@@ -180,7 +180,7 @@
  *
  * @param Strategy
  * @text 反映方法
- * @desc 取り出しの反映方法。merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます(Text2Frameが必要)。既定はoverwriteです。(MZでは無視されます)
+ * @desc 取り出しの反映方法で、上書き(overwrite)か統合(merge)かを選べます。既定はoverwriteです。(MZでは無視されます)
  * @type select
  * @option 統合 / merge
  * @value merge
@@ -190,7 +190,7 @@
  *
  * @param Default Batch Export Scope
  * @text 一括取り出しの範囲
- * @desc MVで「フォルダへ一括取り出し」を実行するとき、3番目の引数を省略した場合の範囲です。customは見出し情報付きテキストだけを更新します。(MZでは無視されます)
+ * @desc 「フォルダへ一括取り出し」を実行したときのイベントの範囲を指定します。既定は conversationです。(MZでは無視されます)
  * @type select
  * @option 会話があるものだけ / conversation
  * @value conversation
@@ -228,7 +228,7 @@
  *
  * @param OmitDefaultTags
  * @text 既定と同じタグを省略する
- * @desc 顔・背景・位置が既定値と同じときタグを書きません。3つとも既定ならタグ行ごと消えて、テキストが読みやすくなります。デフォルト値はtrueです。
+ * @desc 顔・背景・位置が既定値と同じときタグを書きません。3つとも既定ならタグ行ごと消えます。デフォルト値はtrueです。
  * @default true
  * @type boolean
  *
