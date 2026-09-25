@@ -64,7 +64,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます。overwriteは全上書きです。既定はoverwriteです。
+ * @desc 取り出し時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 統合 / merge
  * @value merge
@@ -96,7 +96,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます。overwriteは全上書きです。既定はoverwriteです。
+ * @desc 取り出し時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 統合 / merge
  * @value merge
@@ -106,7 +106,7 @@
  *
  * @command BATCH_EXPORT_MESSAGES_TO_FOLDER
  * @text フォルダへ一括取り出し
- * @desc dataフォルダ内のイベント/コモンイベントを、見出し情報付きのテキストとしてフォルダへ一括で取り出します。既定では会話があるものだけを対象にし、反映方法はoverwriteです。
+ * @desc dataフォルダ内のイベント/コモンイベントを、見出し情報付きのテキストとしてフォルダへ一括で取り出します。
  *
  * @arg TextFolder
  * @text 出力先フォルダ名
@@ -116,7 +116,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。overwriteはゲームの内容で全上書きです。既定はoverwriteです。
+ * @desc 取り出し時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 統合 / merge
  * @value merge
@@ -126,7 +126,7 @@
  *
  * @arg Scope
  * @text 取り出す範囲
- * @desc どのイベントをテキストにするかです。customは見出し情報付きテキストだけを更新します。既定は会話があるものだけです。
+ * @desc 対象となるテキストの条件を指定します。詳しくはヘルプドキュメントへ
  * @type select
  * @option 会話があるものだけ / conversation
  * @value conversation

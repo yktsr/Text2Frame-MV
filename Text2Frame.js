@@ -140,7 +140,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc addはイベント末尾に追記、overwriteは上書きです。merge(統合)はツクールで加えた編集を残したまま反映しますが、Frame2Textプラグインが必要です。省略するとプラグインパラメータに従います。
+ * @desc 取り込み時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 末尾に追記 / add
  * @value add
@@ -173,7 +173,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc addはコモンイベント末尾に追記、overwriteは上書きです。merge(統合)はツクールで加えた編集を残したまま反映しますが、Frame2Textプラグインが必要です。省略するとプラグインパラメータに従います。
+ * @desc 取り込み時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 末尾に追記 / add
  * @value add
@@ -185,7 +185,7 @@
  *
  * @command BATCH_IMPORT_MESSAGES_FROM_FOLDER
  * @text フォルダから一括取り込み
- * @desc 指定フォルダ内の見出し情報付きテキストを、一括でゲームへ反映します。通常のイベント、コモンイベントのすべてが一括で取り込まれます。見出し情報付きテキストの作成には、Frame2Text の BATCH_EXPORT_MESSAGES_TO_FOLDER を使用してください。
+ * @desc 見出し情報付きテキストを一括でゲームへ反映します。見出し情報の記法はドキュメントの「テキスト内に取り込み先を記述する」へ
  *
  * @arg TextFolder
  * @text 取り込み元フォルダ名
@@ -195,7 +195,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc 単一の取り込みと同じ意味です。既定はaddで、イベント末尾に追記します。merge(統合)にはFrame2Textプラグインが必要です。
+ * @desc 取り込み時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 末尾に追記 / add
  * @value add
@@ -212,7 +212,7 @@
  *
  * @arg Direction
  * @text 同期の向き
- * @desc bothはテキストとゲームの双方向です。pushはテキスト→ゲームだけ、pullはゲーム→テキストだけです。bothとpullにはFrame2Textプラグインが必要です。
+ * @desc 同期の向きを指定します。bothとpullにはFrame2Textプラグインが必要です。
  * @type select
  * @option 双方向 / both
  * @value both
@@ -230,7 +230,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc 同期の反映方法です。既定はmerge(統合)で、テキストとゲームの両方の編集を残します。
+ * @desc 取り込み時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 統合 / merge
  * @value merge
