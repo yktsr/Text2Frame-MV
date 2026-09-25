@@ -3273,24 +3273,28 @@
         .replace(/^[\s.]+|[\s.]+$/g, '')
         .trim()
     }
-    // ツクールが自動で付けるイベント名(EV003)は、IDと同じことしか言わないので使わない。
-    const AUTO_EVENT_NAME = /^EV\d+$/i
     const namePart = function (name) {
       const cleaned = cleanNameForFile(name)
-      return (!cleaned || AUTO_EVENT_NAME.test(cleaned)) ? '' : '-' + cleaned
+      return cleaned ? '-' + cleaned : ''
     }
-    /* 新しく作るときのファイル名。ID に、ツクールで付けた名前を添える。
-     *   map001-水族館4_event003-12_ミズクラゲ_page1.txt / common001-回復.txt
-     * 名前が無ければ今までどおり map001_event003_page1.txt。 */
+    /* 新しく作るマップイベントのファイル名は、ツクールのマップ順・マップ階層・イベント名で
+     * 名前順に並べてもツクールのツリー順になるようにする。
+     *   002_世界-水族館4_12_ミズクラゲ_page1_map003-event003.txt
+     * MapInfos.json が無いなど、この情報を作れないときは従来のID形式へ戻す。 */
     // ファイル名の上限(多くの環境で255バイト)。超えるなら名前を諦めて ID だけにする。
     const NAME_BYTES_LIMIT = 250
     const defaultFileName = function (target) {
       const plain = keyOfMeta(target) + '.txt'
-      const named = String(target.kind) === 'common'
-        ? 'common' + pad3(target.commonEventId) + namePart(target.name) + '.txt'
-        : 'map' + pad3(target.mapId) + namePart(target.mapName) +
-          '_event' + pad3(target.eventId) + namePart(target.name) +
-          '_page' + String(target.pageId || 1) + '.txt'
+      if (String(target.kind) === 'common') {
+        const named = 'common' + pad3(target.commonEventId) + namePart(target.name) + '.txt'
+        return Buffer.byteLength(named, 'utf8') > NAME_BYTES_LIMIT ? plain : named
+      }
+      const mapName = cleanNameForFile(target.mapName)
+      if (!target.mapOrder || !mapName) return plain
+      const eventName = cleanNameForFile(target.name) || ('EV' + pad3(target.eventId))
+      const named = String(target.mapOrder) + '_' + mapName + '_' + eventName +
+        '_page' + String(target.pageId || 1) + '_map' + pad3(target.mapId) +
+        '-event' + pad3(target.eventId) + '.txt'
       return Buffer.byteLength(named, 'utf8') > NAME_BYTES_LIMIT ? plain : named
     }
     /* 取り出しの書き先。同じ宛先のテキストが既にあればその場所に書き、無ければ既定の名前で作る。 */
@@ -3509,12 +3513,34 @@
       const targets = []
       const wanted = onlyFile ? _path.basename(onlyFile) : null
       const keep = function (f) { return !wanted || f.toLowerCase() === wanted.toLowerCase() }
-      // マップ名は MapInfos.json にある。無いプロジェクトもあるので、読めなければ名前なしで進める。
-      let mapNames = []
-      try { mapNames = JSON.parse(_fs.readFileSync(_path.join(dataDir, 'MapInfos.json'), 'utf8')) || [] } catch (e) { mapNames = [] }
+      // MapInfos.json の order と親子関係を使い、名前順でもツクールのマップツリー順になる
+      // ファイル名を作る。無いプロジェクトもあるため、読めなければ従来のID形式へ戻す。
+      let mapInfos = []
+      try { mapInfos = JSON.parse(_fs.readFileSync(_path.join(dataDir, 'MapInfos.json'), 'utf8')) || [] } catch (e) { mapInfos = [] }
+      const mapInfoOf = function (id) { return Array.isArray(mapInfos) ? mapInfos[Number(id)] : null }
+      const mapCount = Array.isArray(mapInfos) ? mapInfos.filter(function (info) { return !!info }).length : 0
+      const orderWidth = String(Math.max(1, mapCount)).length
+      const mapOrderOf = function (id) {
+        const info = mapInfoOf(id)
+        // RPGツクールの正しいキーは order。既存データに ordar があればそれも読める。
+        const order = info && (info.order !== undefined ? info.order : info.ordar)
+        if (order === undefined || order === null || order === '') return ''
+        return String(order).padStart(orderWidth, '0')
+      }
       const mapNameOf = function (id) {
-        const info = Array.isArray(mapNames) ? mapNames[Number(id)] : null
-        return (info && info.name) || ''
+        const names = []
+        const seen = {}
+        let current = Number(id)
+        while (current > 0 && !seen[current]) {
+          seen[current] = true
+          const info = mapInfoOf(current)
+          if (!info) return ''
+          const name = cleanNameForFile(info.name)
+          if (!name) return ''
+          names.unshift(name)
+          current = Number(info.parentId) || 0
+        }
+        return names.join('-')
       }
       _fs.readdirSync(dataDir).filter(function (f) { return /^Map\d+\.json$/.test(f) && keep(f) }).sort().forEach(function (fileName) {
         const m = fileName.match(/^Map(\d+)\.json$/)
@@ -3534,6 +3560,7 @@
               eventId: String(eventIndex),
               pageId,
               key,
+              mapOrder: mapOrderOf(mapId),
               mapName: mapNameOf(mapId),
               name: (event && event.name) || ''
             })
