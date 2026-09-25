@@ -136,7 +136,7 @@ describe('START_DATA_SYNC / STOP_DATA_SYNC', function () {
   })
 
   /* 同期の開始で一括取り出しはしない。始めただけで、頼んでいないテキストが大量にできないようにする。
-   * 見張り中も、既にテキストがあるものだけを更新する。 */
+   * 見張り中も、見出し情報付きテキストだけを更新する。 */
   it('does not pull at start, and says so', function () {
     // テキストのフォルダは残したまま、中身だけ消す(フォルダごと無いと同期は始まらない)。
     fs.readdirSync(path.join(tmp, 'text')).forEach(function (f) { fs.rmSync(path.join(tmp, 'text', f)) })

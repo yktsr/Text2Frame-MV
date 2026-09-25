@@ -64,7 +64,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます。overwriteは全上書きです。既定はmergeです。
+ * @desc merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます。overwriteは全上書きです。既定はoverwriteです。
  * @type select
  * @option 統合 / merge
  * @value merge
@@ -96,7 +96,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます。overwriteは全上書きです。既定はmergeです。
+ * @desc merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます。overwriteは全上書きです。既定はoverwriteです。
  * @type select
  * @option 統合 / merge
  * @value merge
@@ -106,7 +106,7 @@
  *
  * @command BATCH_EXPORT_MESSAGES_TO_FOLDER
  * @text フォルダへ一括取り出し
- * @desc dataフォルダ内の全イベント/コモンイベントを、見出し情報付きのテキストとしてフォルダへ一括で取り出します(既定は統合)。
+ * @desc dataフォルダ内のイベント/コモンイベントを、見出し情報付きのテキストとしてフォルダへ一括で取り出します。既定では会話があるものだけを対象にし、反映方法はoverwriteです。
  *
  * @arg TextFolder
  * @text 出力先フォルダ名
@@ -116,7 +116,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。overwriteはゲームの内容で全上書きです。既定はmergeです。
+ * @desc merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。overwriteはゲームの内容で全上書きです。既定はoverwriteです。
  * @type select
  * @option 統合 / merge
  * @value merge
@@ -126,14 +126,14 @@
  *
  * @arg Scope
  * @text 取り出す範囲
- * @desc どのイベントをテキストにするかです。customは既にテキストがあるものだけを更新します。既定は会話があるものだけです。
+ * @desc どのイベントをテキストにするかです。customは見出し情報付きテキストだけを更新します。既定は会話があるものだけです。
  * @type select
- * @option 中身のあるものだけ / nonempty
- * @value nonempty
  * @option 会話があるものだけ / conversation
  * @value conversation
- * @option テキストがあるものだけ(新しく作らない) / custom
+ * @option 見出し情報付きテキストだけ / custom
  * @value custom
+ * @option 中身のあるものだけ / nonempty
+ * @value nonempty
  * @option 全部(空のページも作る) / all
  * @value all
  * @default conversation
@@ -187,6 +187,20 @@
  * @option 【取り扱い注意】全上書き / overwrite
  * @value overwrite
  * @default overwrite
+ *
+ * @param Default Batch Export Scope
+ * @text 一括取り出しの範囲
+ * @desc MVで「フォルダへ一括取り出し」を実行するとき、3番目の引数を省略した場合の範囲です。customは見出し情報付きテキストだけを更新します。(MZでは無視されます)
+ * @type select
+ * @option 会話があるものだけ / conversation
+ * @value conversation
+ * @option 見出し情報付きテキストだけ / custom
+ * @value custom
+ * @option 中身のあるものだけ / nonempty
+ * @value nonempty
+ * @option 全部(空のページも作る) / all
+ * @value all
+ * @default conversation
  *
  * @param IsDebug
  * @text デバッグモードを利用する
@@ -353,12 +367,12 @@
  *
  *
  * --------------------------------------
- * 既定メッセージ関連タグの省略 (ver1.1.0より)
+ * 既定メッセージ関連タグの省略 (ver2.3.0より)
  * --------------------------------------
- * ver1.1.0より前のバージョンでは、メッセージ1つ1つに顔画像やウィンドウ位置の
+ * ver2.3.0より前のバージョンでは、メッセージ1つ1つに顔画像やウィンドウ位置の
  * タグが付属された状態でテキストに変換されていました。
  *
- * ver1.1.0からは、以下の条件のとき省略されるようになりました。
+ * ver2.3.0からは、以下の条件のとき省略されるようになりました。
  *   - 顔: 指定なしのとき
  *   - 名前: 指定なしのとき
  *   - 位置: Text2Frameのプラグインパラメータで設定されたデフォルト値と同じとき
@@ -375,7 +389,7 @@
  * これは、取り出し元のイベントの情報や、取り出し時のツールの情報を示します。
  *
  * 例1: マップIDが1, イベントIDが2, ページIDが3のイベントを取り出した場合で、
- *       Text2Frameのバージョンが2.3.0の時
+ *       Frame2Textのバージョンが2.3.0の時
  * ↓↓↓↓↓ここから 見出し例1↓↓↓↓↓
  * ---
  * generator: text2frame-mv＠2.3.0
@@ -386,7 +400,7 @@
  * ---
  * ↑↑↑↑↑ここまで 見出し例1↑↑↑↑↑
  *
- * 例2: IDが1のコモンイベントで、Text2Frameのバージョンが2.3.0の時
+ * 例2: IDが1のコモンイベントで、Frame2Textのバージョンが2.3.0の時
  * ↓↓↓↓↓ここから 見出し例2↓↓↓↓↓
  * ---
  * generator: text2frame-mv＠2.3.0
@@ -405,7 +419,7 @@
  *
  *
  * --------------------------------------
- * 反映方法のオプション (ver1.1.0より)
+ * 反映方法のオプション (ver2.3.0より)
  * --------------------------------------
  * イベントからの取り込み時の反映の仕方には、２つのモードがあります。
  * ツクールMVの場合は、プラグインパラメータの「反映方法」から、
@@ -429,7 +443,7 @@
  * --------------------------------------
  * 反映方法の 統合 / merge モードについて
  * --------------------------------------
- * ver1.1.0より追加された反映方法の 統合モードは、テキストとツクール側のイベ
+ * ver2.3.0より追加された反映方法の 統合モードは、テキストとツクール側のイベ
  * ントの両方で編集を行った場合でも、どちらかを削除することなく上手にテキスト
  * に反映します。
  * この際、テキスト側の修正もイベントに自動で反映されます。
@@ -568,12 +582,38 @@
  * フォルダへの一括取り出し
  * --------------------------------------
  * ここまで説明した取り出しは、単一のテキストファイルを対象としたものですが、
- * ゲーム中にあるすべてのイベントを指定したフォルダに取り出す機能も提供して
- * います。
+ * ゲーム中のイベントを指定したフォルダに取り出す機能も提供しています。既定では
+ * 会話があるものだけを対象にし、「取り出す範囲」で対象を変更できます。
  *
- * この際、ファイル名は以下の規則で保存されます。
- *   - 通常イベント: "map{マップID}_event{イベントID}_page{ページID}.txt"
- *   - コモンイベント: "common{コモンイベントID}.txt"
+ * 新しく作成するファイル名には、通常イベントではマップ階層・マップ名・イベント
+ * 名、コモンイベントではコモンイベント名が含まれます。既に同じ取り込み先を示す
+ * 見出し情報付きテキストがある場合は、そのファイル名と保存場所を維持します。
+ * 取り出し後はファイル名を任意のものに変更可能です。
+ *
+ * ◆ 取り出す範囲について
+ *  フォルダへの一括取り出しでは、取り出す対象を指定できる以下の4つの
+ *  オプションがあります。MVではプラグインパラメータの「一括取り出しの範囲」
+ *  から設定でき、プラグインコマンドの引数から上書きできます。MZではプラグイン
+ *  コマンドの引数で設定します。
+ *   ・会話があるものだけ / conversation
+ *      プロジェクト内で、以下の3つのうちいずれかが1つでも含まれる
+ *      イベントを対象として、取り出します。これが既定のオプションです。
+ *       - 「文章の表示」
+ *       - 「選択肢の表示」
+ *       - 「文章スクロールの表示」
+ *
+ *   ・見出し情報付きテキストだけ / custom
+ *      取り出し先フォルダ内にある、見出し情報付きテキストに記述されて
+ *      いるマップイベント・コモンイベントだけを対象にします。
+ *      新たなテキストファイルは取り出されません。
+ *
+ *   ・中身のあるものだけ / nonempty
+ *      イベント内に1つでも何らかのコマンドが含まれているイベントを
+ *      取り出します。
+ *
+ *   ・ 全部 / all
+ *      イベント内容に関わらず、すべてのイベントを取り出します。
+ *
  *
  * ◆ ツクールMZの場合の実行方法
  *  ツクールMZの場合はプラグインコマンドの「フォルダへ一括取り出し」を選択し、
@@ -589,13 +629,14 @@
  *  同じプラグインパラメータを参照します。
  *  また、引数を指定することで以下のようにプラグインパラメータを上書きできます。
  *
- *  例1: textフォルダに統合モードで取り出す
- *    BATCH_EXPORT_MESSAGES_TO_FOLDER text merge
- *    フォルダへ一括取り出し text 統合
+ *  例1: textフォルダに統合モードで会話があるイベントだけ取り出す
+ *    BATCH_EXPORT_MESSAGES_TO_FOLDER text merge conversation
+ *    フォルダへ一括取り出し text 統合 会話があるものだけ
  *
- *  例2: textフォルダに上書きモードで取り出す。
- *    BATCH_EXPORT_MESSAGES_TO_FOLDER text overwrite
- *    フォルダへ一括取り出し text overwrite
+ *  例2: textフォルダに上書きモードで見出し情報付きテキストがあるイベントだけ
+ *       取り出す。
+ *    BATCH_EXPORT_MESSAGES_TO_FOLDER text overwrite custom
+ *    フォルダへ一括取り出し text overwrite 見出し情報付きテキストだけ
  *
  *
  * --------------------------------------
@@ -625,7 +666,7 @@
  * --------------------------------------
  * Version
  * --------------------------------------
- * 1.1.0
+ * 2.3.0
  */
 /* eslint-enable spaced-comment */
 
@@ -749,7 +790,7 @@
       // 引数順は @arg の並びと合わせる。単体の取り出し・一括反映と同じく
       // 出力先 -> 取り出し方法。TextBase は改名前に保存されたコマンドのため。
       this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-        [args.TextFolder || args.TextBase, args.Strategy, args.Scope])
+        [args.TextFolder || args.TextBase, args.Strategy, args.Scope || 'conversation'])
     })
   }
 
@@ -909,8 +950,9 @@
         ' / 反映方法は merge(統合) か overwrite(上書き) を指定してください。')
     }
 
-    /* 一括取り出しの範囲。省略時は会話があるものだけ(conversation)。
-     * MVの引数は手書きなので、日本語でも書けるようにする。 */
+    /* 一括取り出しの範囲。MVで引数を省略した場合はプラグインパラメータ、
+     * それも無ければ会話があるものだけ(conversation)。MVの引数は手書きなので、
+     * 日本語でも書けるようにする。 */
     const EXPORT_SCOPE_ALIASES = {
       all: 'all',
       nonempty: 'nonempty',
@@ -919,15 +961,19 @@
       全部: 'all',
       中身のあるものだけ: 'nonempty',
       会話があるものだけ: 'conversation',
-      テキストがあるものだけ: 'custom'
+      見出し情報付きテキストだけ: 'custom'
     }
     const resolveExportScope = function (explicit) {
       const given = String(explicit == null ? '' : explicit).trim()
-      if (given === '' || given === 'undefined') return 'conversation'
-      const v = EXPORT_SCOPE_ALIASES[given.toLowerCase()] || EXPORT_SCOPE_ALIASES[given]
+      // MVの一括取り出しは第3引数を省略できるため、そのときだけプラグインパラメータを使う。
+      // MZは registerCommand で既定値 conversation を渡すので、この設定の影響を受けない。
+      const fallback = String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters['Default Batch Export Scope']) || '').trim()
+      const value = (given !== '' && given !== 'undefined') ? given : fallback
+      if (value === '' || value === 'undefined') return 'conversation'
+      const v = EXPORT_SCOPE_ALIASES[value.toLowerCase()] || EXPORT_SCOPE_ALIASES[value]
       if (v) return v
-      throw new Error('Unknown scope: ' + given +
-        ' / 取り出す範囲は all(全部) / nonempty(中身のあるものだけ) / conversation(会話があるものだけ) / custom(テキストがあるものだけ) を指定してください。')
+      throw new Error('Unknown scope: ' + value +
+        ' / 取り出す範囲は all(全部) / nonempty(中身のあるものだけ) / conversation(会話があるものだけ) / custom(見出し情報付きテキストだけ) を指定してください。')
     }
 
     switch (Laurus.Frame2Text.ExecMode) {
@@ -3466,7 +3512,7 @@
      *   all          … 全部。中身が空のページも作る(2.3.0 までの動き)
      *   nonempty     … コマンドが1つも無いページ・コモンイベントは作らない
      *   conversation … 会話(文章・選択肢・スクロール)を含むものだけ作る
-     *   custom       … 新しくは作らない。既にあるテキストだけを更新する
+     *   custom       … 新しくは作らない。見出し情報付きテキストだけを更新する
      * custom以外は、既にテキストがあってもイベント内容で対象を決める。 */
     const SCOPES = ['all', 'nonempty', 'conversation', 'custom']
     const CONVERSATION_SCOPE_CODES = [101, 401, 102, 402, 403, 404, 105, 405]

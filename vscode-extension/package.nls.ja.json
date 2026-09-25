@@ -90,14 +90,14 @@
   "config.text2frame.messageCheck.enumItemLabels.0": "自動",
   "config.text2frame.messageCheck.enumItemLabels.1": "いつも調べる",
   "config.text2frame.messageCheck.enumItemLabels.2": "調べない",
-  "config.text2frame.exportScope.description": "「すべてゲームから取り出す」で、どのイベントをテキストにするか。既にあるテキストは、どれを選んでも更新されます。",
+  "config.text2frame.exportScope.description": "「すべてゲームから取り出す」で、どのイベントをテキストにするか。見出し情報付きテキストは、どれを選んでも更新されます。",
   "config.text2frame.exportScope.enumItemLabels.0": "中身のあるものだけ",
   "config.text2frame.exportScope.enumItemLabels.1": "会話があるものだけ",
-  "config.text2frame.exportScope.enumItemLabels.2": "テキストがあるものだけ",
+  "config.text2frame.exportScope.enumItemLabels.2": "見出し情報付きテキストだけ",
   "config.text2frame.exportScope.enumItemLabels.3": "全部",
   "config.text2frame.exportScope.enumDescriptions.0": "コマンドが1つも無いページ・コモンイベントは作らない(既定)",
   "config.text2frame.exportScope.enumDescriptions.1": "文章・選択肢・スクロールを含むものだけ作る",
-  "config.text2frame.exportScope.enumDescriptions.2": "新しくは作らず、今あるテキストだけを更新する",
+  "config.text2frame.exportScope.enumDescriptions.2": "新しくは作らず、見出し情報付きテキストだけを更新する",
   "config.text2frame.exportScope.enumDescriptions.3": "空のページも含めて全部作る",
   "command.text2frame.pullThisView.title": "Text2Frame: このイベントをゲームから取り出す"
 }

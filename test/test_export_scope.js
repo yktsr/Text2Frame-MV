@@ -6,12 +6,12 @@ const os = require('os')
 
 // 偽のツクールは本体を読み込む前に置く(読み込み時にパラメータを読むため)。
 const { bottom, installEngine } = require('./helpers')
-const { shown } = installEngine()
+const { shown, parameters: params } = installEngine()
 const frame2text = require('../Frame2Text.js')
 
 /* 取り出す範囲。数千イベントのプロジェクトでは、全部を書き出すと編集したいものを探せなくなる。
- * 既定は「会話があるもの」だけ。中身のあるものだけ・既にテキストがあるものだけも選べる。
- * customだけが、既にテキストがあるものを条件に更新する。 */
+ * 既定は「会話があるもの」だけ。中身のあるものだけ・見出し情報付きテキストだけも選べる。
+ * customだけが、見出し情報付きテキストを条件に更新する。 */
 describe('export scope', function () {
   let tmp
   let cwd
@@ -58,6 +58,17 @@ describe('export scope', function () {
     expect(written()).to.eql(['map001_event001_page1.txt'])
   })
 
+  it('uses the MV plugin parameter when the scope argument is omitted', function () {
+    params['Default Batch Export Scope'] = 'custom'
+    try {
+      run()
+    } finally {
+      params['Default Batch Export Scope'] = 'conversation'
+    }
+
+    expect(written()).to.eql([])
+  })
+
   it('writes everything when asked for all', function () {
     run('all')
 
@@ -100,9 +111,9 @@ describe('export scope', function () {
   })
 
   it('accepts the Japanese words for the scope', function () {
-    run('会話があるものだけ')
+    run('見出し情報付きテキストだけ')
 
-    expect(written()).to.eql(['map001_event001_page1.txt'])
+    expect(written()).to.eql([])
   })
 })
 
