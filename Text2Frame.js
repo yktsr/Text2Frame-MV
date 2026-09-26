@@ -5178,7 +5178,8 @@
         Laurus.Text2Frame.RouteFrom = {
           MapID: args[2] ? 'arg' : 'param',
           EventID: args[3] ? 'arg' : 'param',
-          PageID: (args[4] && !strategyArg) ? 'arg' : 'param'
+          // 第6引数の反映方法があっても、第5引数のページIDの由来は変わらない。
+          PageID: (args[4] && !toImportStrategy(args[4])) ? 'arg' : 'param'
         }
         Laurus.Text2Frame.Strategy = resolveImportStrategy(strategyArg)
         Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite'
