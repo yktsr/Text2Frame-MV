@@ -17,10 +17,10 @@ describe('renderCommands', function () {
   before(function () {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-view-'))
     const w = function (f, j) { fs.writeFileSync(path.join(dir, f), JSON.stringify(j)) }
-    w('System.json', { switches: ['', '', '', '', '', '', '', '', '', '', '', '', '', 'シャチ出てくる'], variables: ['', '', '', '', '', '体力'] })
-    w('MapInfos.json', [null, { id: 1, name: '水族館4' }])
-    w('CommonEvents.json', [null, { id: 1, name: 'リュウグウ音' }])
-    w('Animations.json', [null, { id: 1, name: 'キラキラ' }])
+    w('System.json', { switches: ['', '', '', '', '', '', '', '', '', '', '', '', '', '橋がかかった'], variables: ['', '', '', '', '', '体力'] })
+    w('MapInfos.json', [null, { id: 1, name: 'はじまりの村' }])
+    w('CommonEvents.json', [null, { id: 1, name: '回復の処理' }])
+    w('Animations.json', [null, { id: 1, name: '回復/単体1' }])
     db = GameDatabase.load(dir)
   })
 
@@ -34,10 +34,10 @@ describe('renderCommands', function () {
   const rows = function (text) { return renderCommands(T2F.compile(text), db) }
 
   it('shows a message with its face, and the lines as continuations', function () {
-    const r = rows('<Face: suzu1(2)>\n【スーズ】\nおわっ')
-    expect(r[0].label + '：' + r[0].text).to.equal('文章：suzu1(2), ウィンドウ, 下')
-    expect(r[0].face).to.eql({ name: 'suzu1', index: 2 })
-    expect(r.slice(1, 3).map(function (x) { return [x.head, x.text] })).to.eql([[false, '【スーズ】'], [false, 'おわっ']])
+    const r = rows('<Face: Actor2(2)>\n【ハロルド】\nおわっ')
+    expect(r[0].label + '：' + r[0].text).to.equal('文章：Actor2(2), ウィンドウ, 下')
+    expect(r[0].face).to.eql({ name: 'Actor2', index: 2 })
+    expect(r.slice(1, 3).map(function (x) { return [x.head, x.text] })).to.eql([[false, '【ハロルド】'], [false, 'おわっ']])
   })
 
   it('puts a colour swatch on tints and flashes', function () {
@@ -51,17 +51,17 @@ describe('renderCommands', function () {
   })
 
   it('puts the database name on switches, variables, maps, common events and animations', function () {
-    expect(heads('<Switch: 13, ON>')).to.eql(['スイッチの操作：#0013 シャチ出てくる = ON'])
+    expect(heads('<Switch: 13, ON>')).to.eql(['スイッチの操作：#0013 橋がかかった = ON'])
     expect(heads('<Sub: 5, 1>')).to.eql(['変数の操作：#0005 体力 -= 1'])
-    expect(heads('<TransferPlayer: Direct[1][1][9], Retain, Black>')).to.eql(['場所移動：水族館4 (1,9), 向き そのまま, フェード 黒'])
+    expect(heads('<TransferPlayer: Direct[1][1][9], Retain, Black>')).to.eql(['場所移動：はじまりの村 (1,9), 向き そのまま, フェード 黒'])
     expect(heads('<TransferPlayer: WithVariables[5][2][3], Up, None>')).to.eql(['場所移動：{#0005 体力} ({#0002},{#0003}), 向き 上, フェード なし'])
-    expect(heads('<場所移動: 直接指定[1][1][9], 下, 白>')).to.eql(['場所移動：水族館4 (1,9), 向き 下, フェード 白'])
-    expect(heads('<CommonEvent: 1>')).to.eql(['コモンイベント：#0001 リュウグウ音'])
-    expect(heads('<ShowAnimation: This Event, 1, OFF>')).to.eql(['アニメーションの表示：このイベント, #0001 キラキラ'])
+    expect(heads('<場所移動: 直接指定[1][1][9], 下, 白>')).to.eql(['場所移動：はじまりの村 (1,9), 向き 下, フェード 白'])
+    expect(heads('<CommonEvent: 1>')).to.eql(['コモンイベント：#0001 回復の処理'])
+    expect(heads('<ShowAnimation: This Event, 1, OFF>')).to.eql(['アニメーションの表示：このイベント, #0001 回復/単体1'])
   })
 
   it('writes conditions the way the editor does', function () {
-    expect(heads('<If: Switches[13], ON>\n<End>')[0]).to.equal('条件分岐：#0013 シャチ出てくる が ON')
+    expect(heads('<If: Switches[13], ON>\n<End>')[0]).to.equal('条件分岐：#0013 橋がかかった が ON')
     expect(heads('<If: Variables[5], >=, 3>\n<End>')[0]).to.equal('条件分岐：#0005 体力 ≥ 3')
   })
 
@@ -71,9 +71,9 @@ describe('renderCommands', function () {
   })
 
   it('names map events with where they stand, when the map is known', function () {
-    const events = { mapId: 1, events: [null, { name: 'ヤドカリ', x: 8, y: 11 }] }
+    const events = { mapId: 1, events: [null, { name: '宝箱', x: 8, y: 11 }] }
     const r = renderCommands(T2F.compile('<SetMovementRoute: 1, OFF, OFF, Wait for Completion>\n<MoveRight>\n<ShowBalloonIcon: 2, Heart>'), db, events)
-    expect(r[0].label + '：' + r[0].text).to.equal('移動ルートの設定：EV001 ヤドカリ (8,11) (ウェイト)')
+    expect(r[0].label + '：' + r[0].text).to.equal('移動ルートの設定：EV001 宝箱 (8,11) (ウェイト)')
     expect(r[2].text).to.equal('EV002 (マップに無い), ハート')
     expect(heads('<SetMovementRoute: 1, OFF, OFF, OFF>')).to.eql(['移動ルートの設定：EV001']) // マップが分からなければ番号だけ
   })
@@ -113,7 +113,7 @@ describe('renderCommands', function () {
     expect(heads('<GetLocationInfo: 5, Region ID, WithVariables[5][5]>')).to.eql(['指定位置の情報取得：#0005 体力, リージョンID, ({#0005 体力},{#0005 体力})'])
     expect(heads('<Timer: Start, 1, 30>')).to.eql(['タイマーの操作：スタート, 1分30秒'])
     expect(heads('<SetEventLocation: This Event, Exchange[8], Down>')).to.eql(['イベントの位置設定：このイベント, EV008 と交換, 向き 下'])
-    expect(heads('<SetVehicleLocation: Boat, Direct[1][4][5]>')).to.eql(['乗り物の位置設定：小型船, #0001 水族館4 (4,5)'])
+    expect(heads('<SetVehicleLocation: Boat, Direct[1][4][5]>')).to.eql(['乗り物の位置設定：小型船, #0001 はじまりの村 (4,5)'])
     expect(heads('<SetWeatherEffect: Snow, 5, 60, Wait for Completion>')).to.eql(['天候の設定：雪, 強さ 5, 60フレーム (ウェイト)'])
     expect(heads('<ChangeMenuAccess: Disable>')).to.eql(['メニュー禁止の変更：禁止'])
     expect(heads('<ScrollMap: Up, 3, x2 slower, OFF>')).to.eql(['マップのスクロール：上, 3, 1/2倍速'])
@@ -140,9 +140,9 @@ describe('renderCommands', function () {
     after(function () { setJapanese(true) })
 
     it('uses the English editor names for commands and their arguments', function () {
-      expect(heads('<Switch: 13, ON>')).to.eql(['Control Switches：#0013 シャチ出てくる = ON'])
-      expect(heads('<TransferPlayer: Direct[1][1][9], Retain, Black>')).to.eql(['Transfer Player：水族館4 (1,9), Direction Retain, Fade Black'])
-      expect(heads('<If: Switches[13], ON>\n<End>')[0]).to.equal('If：#0013 シャチ出てくる is ON')
+      expect(heads('<Switch: 13, ON>')).to.eql(['Control Switches：#0013 橋がかかった = ON'])
+      expect(heads('<TransferPlayer: Direct[1][1][9], Retain, Black>')).to.eql(['Transfer Player：はじまりの村 (1,9), Direction Retain, Fade Black'])
+      expect(heads('<If: Switches[13], ON>\n<End>')[0]).to.equal('If：#0013 橋がかかった is ON')
       expect(heads('<Timer: Start, 1, 30>')).to.eql(['Control Timer：Start, 1 min 30 sec'])
       expect(heads('<SetWeatherEffect: Snow, 5, 60, Wait for Completion>')).to.eql(['Set Weather Effect：Snow, Power 5, 60 frames (Wait)'])
       expect(heads('<Switch: 400, ON>')).to.eql(['Control Switches：#0400 (not in the database) = ON'])

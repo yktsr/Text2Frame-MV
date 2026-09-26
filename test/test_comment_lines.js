@@ -59,14 +59,14 @@ describe('restoreAuthoredLines', function () {
    * ここを「次に残っている行の手前」にすると差し替わった内容の後ろへ落ちる。
    * 実データではこの違いだけで位置一致が 99.9% -> 71.5% まで下がった。 */
   it('lands at the head of the replacement when its anchor was rewritten', function () {
-    const original = 'はじめ\n% ここはスーズの台詞\n【スーズ】\nこんにちは\n'
-    const regenerated = 'はじめ\n【クリス】\nやあ\nこんにちは\n'
+    const original = 'はじめ\n% ここはハロルドの台詞\n【ハロルド】\nこんにちは\n'
+    const regenerated = 'はじめ\n【テレーゼ】\nやあ\nこんにちは\n'
 
     const r = check(original, regenerated)
 
     const lines = r.text.split('\n')
-    // 差し替わった内容(【クリス】)の手前。後ろではない。
-    expect(lines[lines.indexOf('% ここはスーズの台詞') + 1]).to.equal('【クリス】')
+    // 差し替わった内容(【テレーゼ】)の手前。後ろではない。
+    expect(lines[lines.indexOf('% ここはハロルドの台詞') + 1]).to.equal('【テレーゼ】')
   })
 
   it('keeps consecutive comments in their original order', function () {

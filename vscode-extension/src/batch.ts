@@ -173,7 +173,7 @@ async function pullAll(context: vscode.ExtensionContext, mode: 'merge' | 'overwr
         }
     }
     /* 取り出す対象と書き先は、同梱の Frame2Text に合わせる(CLI・プラグインと同じ規則)。
-     * 範囲は設定 text2frame.exportScope。既にあるテキストは、範囲に関係なく必ず対象に入る。 */
+     * 範囲は設定 text2frame.exportScope。見出し情報付きテキストは、範囲に関係なく必ず対象に入る。 */
     const { targets: dataTargets, pathOf } = pullTargetsFor(context, root, dataDir, outDir, exportScopeSetting());
     const makePlans = (slowly: SlowlyOptions): Promise<PullPlan[] | undefined> => mapSlowly(dataTargets, (it) => {
         const target: ExportTarget = {

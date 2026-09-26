@@ -9,14 +9,14 @@ describe('placeLabel', function () {
   let dir
   let ctx
   const service = {
-    mapEvents: function (_ctx, mapId) { return mapId === 4 ? [null, null, { name: 'ヤドカリ', x: 8, y: 11 }] : undefined }
+    mapEvents: function (_ctx, mapId) { return mapId === 4 ? [null, null, { name: '宝箱', x: 8, y: 11 }] : undefined }
   }
 
   before(function () {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-place-'))
     fs.writeFileSync(path.join(dir, 'System.json'), JSON.stringify({ switches: [''], variables: [''] }))
-    fs.writeFileSync(path.join(dir, 'MapInfos.json'), JSON.stringify([null, null, null, null, { id: 4, name: '水族館' }]))
-    fs.writeFileSync(path.join(dir, 'CommonEvents.json'), JSON.stringify([null, { id: 1, name: 'リュウグウ音', list: [] }, { id: 2, name: '', list: [] }]))
+    fs.writeFileSync(path.join(dir, 'MapInfos.json'), JSON.stringify([null, null, null, null, { id: 4, name: 'はじまりの村' }]))
+    fs.writeFileSync(path.join(dir, 'CommonEvents.json'), JSON.stringify([null, { id: 1, name: '回復の処理', list: [] }, { id: 2, name: '', list: [] }]))
     ctx = { db: GameDatabase.load(dir), dataDir: dir }
   })
 
@@ -38,10 +38,10 @@ describe('placeLabel', function () {
   })
 
   it('names the map, the event and the page, or the common event', function () {
-    expect(placeLabel(service, ctx, placeFromKey('e:4:2:1'))).to.equal('水族館 / EV002 ヤドカリ / 1ページ')
-    expect(placeLabel(service, ctx, placeFromMeta({ mapId: '4', eventId: '9' }))).to.equal('水族館 / EV009')
+    expect(placeLabel(service, ctx, placeFromKey('e:4:2:1'))).to.equal('はじまりの村 / EV002 宝箱 / 1ページ')
+    expect(placeLabel(service, ctx, placeFromMeta({ mapId: '4', eventId: '9' }))).to.equal('はじまりの村 / EV009')
     expect(placeLabel(service, ctx, placeFromMeta({ mapId: '7' }))).to.equal('マップ0007')
-    expect(placeLabel(service, ctx, placeFromKey('c:1'))).to.equal('コモンイベント 0001 リュウグウ音')
+    expect(placeLabel(service, ctx, placeFromKey('c:1'))).to.equal('コモンイベント 0001 回復の処理')
     expect(placeLabel(service, ctx, placeFromKey('c:2'))).to.equal('コモンイベント 0002')
     expect(placeLabel(service, ctx, undefined)).to.equal('')
   })

@@ -8,9 +8,9 @@ const shape = (nodes) => nodes.map((n) => [n.info.id, shape(n.children)])
 
 describe('mapTree', function () {
   it('reads MapInfos.json, skipping the empty first slot', function () {
-    const infos = readMapInfos([null, { id: 1, name: '水族館', parentId: 0, order: 2, expanded: true }, { id: 2, name: '', parentId: 1, order: 1 }])
+    const infos = readMapInfos([null, { id: 1, name: 'はじまりの村', parentId: 0, order: 2, expanded: true }, { id: 2, name: '', parentId: 1, order: 1 }])
     expect(infos).to.eql([
-      { id: 1, name: '水族館', parentId: 0, order: 2, expanded: true },
+      { id: 1, name: 'はじまりの村', parentId: 0, order: 2, expanded: true },
       { id: 2, name: '', parentId: 1, order: 1, expanded: false }
     ])
     expect(readMapInfos('not a list')).to.eql([])
@@ -38,7 +38,7 @@ describe('mapTree', function () {
   })
 
   it('names a map without a name by its number', function () {
-    expect(mapLabel({ id: 3, name: '水族館7' })).to.equal('水族館7')
+    expect(mapLabel({ id: 3, name: '港町' })).to.equal('港町')
     expect(mapLabel({ id: 3, name: '' })).to.equal('マップ0003')
   })
 
@@ -46,20 +46,20 @@ describe('mapTree', function () {
     const page = { trigger: 3, switch1: 12, variable: [5, 3], selfSwitch: 'A' }
     expect(pageDescription(page, false)).to.equal('自動実行・S0012 が ON・V0005 ≥ 3・セルフ A が ON')
     expect(pageDescription({ trigger: 0 }, true)).to.equal('中身なし・決定ボタン')
-    const names = (kind, id) => (kind === 'switch' && id === 12 ? 'シャチ出現' : undefined)
-    expect(pageConditionTexts(page, names)[0]).to.equal('S0012 シャチ出現 が ON')
+    const names = (kind, id) => (kind === 'switch' && id === 12 ? '橋がかかった' : undefined)
+    expect(pageConditionTexts(page, names)[0]).to.equal('S0012 橋がかかった が ON')
   })
 
   // 行の右にも名前を出す。番号だけだと、どのスイッチか分からない。
   it('puts the names in the row too, and shortens a long one', function () {
     const page = { trigger: 3, switch1: 12, item: 3 }
     const names = (kind, id) => {
-      if (kind === 'switch' && id === 12) return 'シャチ出現'
+      if (kind === 'switch' && id === 12) return '橋がかかった'
       if (kind === 'item' && id === 3) return 'とてもながい名前のアイテムです'
       return undefined
     }
     const text = pageDescription(page, false, names)
-    expect(text).to.contain('S0012 シャチ出現 が ON')
+    expect(text).to.contain('S0012 橋がかかった が ON')
     expect(text).to.contain('とてもながい名前のアイテ…') // 12文字で切る
     // 名前を渡さなければ今までどおり
     expect(pageDescription(page, false)).to.equal('自動実行・S0012 が ON・アイテム(0003)を持つ')

@@ -326,7 +326,7 @@ export function findEscapeRefs(line: string): TagRef[] {
 export function findRefs(line: string): TagRef[] {
     const out: TagRef[] = [];
 
-    // 顔: <Face: suzu1(4)>。番号だけでなく「名前(番号)」全体を範囲にする。
+    // 顔: <Face: Actor2(4)>。番号だけでなく「名前(番号)」全体を範囲にする。
     // <Face: (5)> は顔画像なし(番号だけ残っている)。コンパイラも顔なしと読むので拾わない。
     each(new RegExp(`(<(?:${FACE_TAGS}) *: *)([^()<>\\s][^()<>]*?)\\((\\d+)\\)`, 'gi'), line, (m) => {
         const start = m.index + m[1].length;
