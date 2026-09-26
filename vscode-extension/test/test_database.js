@@ -4,7 +4,7 @@ const path = require('path')
 const os = require('os')
 const { GameDatabase, padId } = require('../out/db/database')
 
-/* 実データ(アクアリウム)で見つかった癖を、作り物の data/ で再現する:
+/* 実データで見つかった癖を、作り物の data/ で再現する:
  * 同じ名前が複数の番号に付いている / 数字だけの名前 / 名前なし / 範囲外。 */
 describe('GameDatabase', function () {
   let dir
@@ -16,13 +16,13 @@ describe('GameDatabase', function () {
   beforeEach(function () {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-db-'))
     write('System.json', {
-      switches: ['', '全部の水槽みた', 'シャチ出てくる', '', 'シャチ出てくる', '1'],
+      switches: ['', '村人と話した', '橋がかかった', '', '橋がかかった', '1'],
       variables: ['', '所持金', ''],
       faceSize: 120,
       encryptionKey: '00112233445566778899aabbccddeeff'
     })
-    write('Actors.json', [null, { id: 1, name: 'スーズ', faceName: 'suzu1', faceIndex: 0 }, null])
-    write('MapInfos.json', [null, { id: 1, name: '水族館4' }, null, { id: 3, name: 'カウンター' }])
+    write('Actors.json', [null, { id: 1, name: 'ハロルド', faceName: 'Actor2', faceIndex: 0 }, null])
+    write('MapInfos.json', [null, { id: 1, name: 'はじまりの村' }, null, { id: 3, name: '宿屋' }])
   })
 
   afterEach(function () {
@@ -31,8 +31,8 @@ describe('GameDatabase', function () {
 
   it('looks up a named entry', function () {
     const db = GameDatabase.load(dir)
-    expect(db.lookup('switch', 1)).to.eql({ status: 'named', id: 1, name: '全部の水槽みた' })
-    expect(db.lookup('map', 3)).to.eql({ status: 'named', id: 3, name: 'カウンター' })
+    expect(db.lookup('switch', 1)).to.eql({ status: 'named', id: 1, name: '村人と話した' })
+    expect(db.lookup('map', 3)).to.eql({ status: 'named', id: 3, name: '宿屋' })
   })
 
   it('tells an unnamed entry apart from a missing one', function () {
@@ -48,7 +48,7 @@ describe('GameDatabase', function () {
   it('keeps a purely numeric name as a name, not an id', function () {
     const db = GameDatabase.load(dir)
     expect(db.lookup('switch', 5)).to.eql({ status: 'named', id: 5, name: '1' })
-    expect(db.lookup('switch', 1).name).to.equal('全部の水槽みた')
+    expect(db.lookup('switch', 1).name).to.equal('村人と話した')
   })
 
   it('lists the other ids that share the same name', function () {
@@ -93,8 +93,8 @@ describe('GameDatabase', function () {
 
   it('names the actor whose default face it is', function () {
     const db = GameDatabase.load(dir)
-    expect(db.faceOwner('suzu1', 0)).to.equal('スーズ')
-    expect(db.faceOwner('suzu1', 4)).to.equal(undefined)
+    expect(db.faceOwner('Actor2', 0)).to.equal('ハロルド')
+    expect(db.faceOwner('Actor2', 4)).to.equal(undefined)
   })
 
   it('treats a missing file as an empty kind and records a broken one', function () {

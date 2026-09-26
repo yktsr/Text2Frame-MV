@@ -67,12 +67,12 @@ describe('faces', function () {
     for (const ext of ['.png_', '.rpgmvp']) {
       it('reads ' + ext + ' through the game\'s own script', function () {
         const png = fakePng(576, 288)
-        fs.writeFileSync(path.join(img, 'faces', 'suzu1' + ext), packed(png))
-        expect(faces.readFaceSheet(img, 'suzu1', KEY)).to.equal(undefined)
+        fs.writeFileSync(path.join(img, 'faces', 'Actor2' + ext), packed(png))
+        expect(faces.readFaceSheet(img, 'Actor2', KEY)).to.equal(undefined)
         withCore(img)
-        expect(faces.readFaceSheet(img, 'suzu1', KEY).equals(png)).to.equal(true)
-        expect(faces.readFaceSheet(img, 'suzu1')).to.equal(undefined)
-        expect(faces.readFaceSheet(img, 'suzu1', 'ffffffffffffffffffffffffffffffff')).to.equal(undefined)
+        expect(faces.readFaceSheet(img, 'Actor2', KEY).equals(png)).to.equal(true)
+        expect(faces.readFaceSheet(img, 'Actor2')).to.equal(undefined)
+        expect(faces.readFaceSheet(img, 'Actor2', 'ffffffffffffffffffffffffffffffff')).to.equal(undefined)
       })
     }
 
@@ -84,9 +84,9 @@ describe('faces', function () {
 
     it('lists face names across plain and encrypted files', function () {
       fs.writeFileSync(path.join(img, 'faces', 'Actor1.png'), fakePng(576, 288))
-      fs.writeFileSync(path.join(img, 'faces', 'suzu1.png_'), Buffer.alloc(20))
+      fs.writeFileSync(path.join(img, 'faces', 'Actor2.png_'), Buffer.alloc(20))
       fs.writeFileSync(path.join(img, 'faces', 'notes.txt'), '')
-      expect(faces.listFaceNames(img)).to.eql(['Actor1', 'suzu1'])
+      expect(faces.listFaceNames(img)).to.eql(['Actor1', 'Actor2'])
     })
   })
 
