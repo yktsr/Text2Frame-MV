@@ -3798,7 +3798,7 @@
         const _t2f = resolveText2Frame()
         if (!_t2f || !_t2f.applyMergePull) {
           addWarning('[batch] 統合(merge)での取り出しには Text2Frame プラグインが必要です。')
-          addWarning('[batch] 同じプロジェクトに導入するか、「取り出しのしかた」に overwrite を指定してください')
+          addWarning('[batch] 同じプロジェクトに導入するか、「反映方法」に overwrite を指定してください')
           addWarning('[batch] (overwrite はテキストに書いた内容を残しません)。')
           console.error('[batch] MERGE pull requires the Text2Frame plugin; install it or pull with overwrite')
           return
@@ -3886,7 +3886,7 @@
         // 「取り出しはマージしません」と書いていた名残があったが、一括取り出しは統合を選べる。
         // この行は上書きしたファイルだけを数えているので、統合との違いを言って対処に繋げる。
         addWarning('[batch] 既存テキスト ' + overwrittenCount + '件を上書きしました(テキストに書いた内容は残っていません)。')
-        addWarning('[batch] 残したいときは「取り出しのしかた」に merge を指定してください。')
+        addWarning('[batch] 残したいときは「反映方法」に merge を指定してください。')
       }
       // $gameMessage は行数が限られるため、失敗の詳細は先頭数件だけ出して残りはコンソールへ回す。
       const FAILURE_LINES = 5
@@ -4091,7 +4091,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           テキストの場所は --text-dir、データの場所は --data-dir で変更できます。（既定は text / data ）
           例3: $ npx frame2text --mode batch --text-dir text --data-dir data
 
-          -s / --strategy で取り出しのしかたを選べます。（既定は merge ）
+          -s / --strategy で反映方法を選べます。（既定は merge ）
             merge     … 「統合」。テキストに書いた内容を残したまま、ゲーム側の変更だけを
                         取り込みます。同じ場所を両方で変えたときは、ゲームのイベントに
                         両方の版を衝突の目印付きで書きます(テキストはテキストの版のまま)。
