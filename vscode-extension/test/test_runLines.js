@@ -59,9 +59,12 @@ describe('runLines', function () {
     expect(commandLines(commands, lineMap, 99)).to.equal(undefined)
   })
 
+  /* 本物のテキストで確かめる。場所は環境変数 T2F_GAME_DIR で渡す(未設定なら飛ばす)。 */
   it('matches real texts with themselves, quickly', function () {
-    const dir = path.join(__dirname, '..', '..', '250901_アクアリウムは踊らない_日本語_1', 'text')
-    if (!fs.existsSync(dir)) this.skip()
+    const game = process.env.T2F_GAME_DIR
+    if (!game) return this.skip()
+    const dir = path.join(game, 'text')
+    if (!fs.existsSync(dir)) return this.skip()
     const files = fs.readdirSync(dir).filter(function (f) { return f.endsWith('.txt') }).sort().slice(0, 300)
     let checked = 0
     for (const f of files) {
