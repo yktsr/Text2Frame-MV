@@ -34,7 +34,7 @@ Simple compiler to convert text to event.
 ## 機能概要
 ![./introduce_Text2Frame_MV_MZ.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Text2Frame_MV_MZ.png)
 
-このプラグインは、「会話イベント」など、RPGツクール上で編集できる様々なイベントを、RPGツクールMV・MZ**以外**の、テキストエディタで編集し、作成したテキストファイルから一括でイベントコマンドとして取り込むことができます。
+この RPGツクールMV/MZ のプラグインは、「会話イベント」などを、ツクール**以外**の、テキストエディタで編集し、作成したテキストファイルから一括でイベントコマンドとして取り込むことができます。
 
 これにより、イベントの作成はRPGツクール上で、シナリオの取り込みはテキストファイルで、といった、自分の作成スタイルに最も合ったエディタで制作を進めることができます。
 
@@ -81,7 +81,7 @@ npx frame2text --mode batch --data-dir data       # 取り出し(game -> text)
 const { compile, applyTextFile } = require('@yktsr/text2frame-mv')
 ```
 
-（GitHub から直接入れることもできます: `npm install -D github:yktsr/Text2Frame-MV`。ただし `npx` は使えず `node node_modules/@yktsr/text2frame-mv/t2f-sync.js ...` になります）
+（GitHub から直接入れることもできます: `npm install -D github:yktsr/Text2Frame-MV`。この場合も `npx text2frame`、`npx frame2text`、`npx t2f-sync` を使えます）
 
 
 ## テキストとゲームを同期する（SYNC）
@@ -1053,4 +1053,3 @@ $ npm run test
 
 ### License
 MIT LICENSE
-

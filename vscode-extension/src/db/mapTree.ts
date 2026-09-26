@@ -81,7 +81,7 @@ function reachableParent(info: MapInfo, byId: Map<number, MapInfo>): boolean {
     return byId.has(info.parentId);
 }
 
-/** 「水族館1」。名前が無ければ「マップ0003」。 */
+/** 「はじまりの村」。名前が無ければ「マップ0003」。 */
 export function mapLabel(info: { id: number; name: string }): string {
     return info.name || tr(`マップ${padId(info.id)}`, `Map ${padId(info.id)}`);
 }

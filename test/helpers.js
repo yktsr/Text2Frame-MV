@@ -19,6 +19,7 @@ const DEFAULT_PARAMETERS = {
   'Default MapID': '1',
   'Default EventID': '1',
   'Default PageID': '1',
+  'Default Batch Export Scope': 'conversation',
   IsDebug: 'false',
   DisplayMsg: 'true',
   DisplayWarning: 'true',

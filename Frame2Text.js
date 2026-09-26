@@ -64,7 +64,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます。overwriteは全上書きです。既定はmergeです。
+ * @desc 取り出し時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 統合 / merge
  * @value merge
@@ -96,7 +96,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます。overwriteは全上書きです。既定はmergeです。
+ * @desc 取り出し時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 統合 / merge
  * @value merge
@@ -106,7 +106,7 @@
  *
  * @command BATCH_EXPORT_MESSAGES_TO_FOLDER
  * @text フォルダへ一括取り出し
- * @desc dataフォルダ内の全イベント/コモンイベントを、見出し情報付きのテキストとしてフォルダへ一括で取り出します(既定は統合)。
+ * @desc dataフォルダ内のイベント/コモンイベントを、見出し情報付きのテキストとしてフォルダへ一括で取り出します。
  *
  * @arg TextFolder
  * @text 出力先フォルダ名
@@ -116,7 +116,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc merge(統合)はテキストに書いた内容を残し、ゲーム側の変更だけを取り込みます(Text2Frameプラグインが必要)。overwriteはゲームの内容で全上書きです。既定はmergeです。
+ * @desc 取り出し時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 統合 / merge
  * @value merge
@@ -126,14 +126,14 @@
  *
  * @arg Scope
  * @text 取り出す範囲
- * @desc どのイベントをテキストにするかです。customは既にテキストがあるものだけを更新します。既定は会話があるものだけです。
+ * @desc 対象となるテキストの条件を指定します。詳しくはヘルプドキュメントへ
  * @type select
- * @option 中身のあるものだけ / nonempty
- * @value nonempty
  * @option 会話があるものだけ / conversation
  * @value conversation
- * @option テキストがあるものだけ(新しく作らない) / custom
+ * @option 見出し情報付きテキストだけ / custom
  * @value custom
+ * @option 中身のあるものだけ / nonempty
+ * @value nonempty
  * @option 全部(空のページも作る) / all
  * @value all
  * @default conversation
@@ -180,13 +180,27 @@
  *
  * @param Strategy
  * @text 反映方法
- * @desc 取り出しの反映方法。merge(統合)はテキストに書いた内容を残したままゲームの変更を取り込みます(Text2Frameが必要)。既定はoverwriteです。(MZでは無視されます)
+ * @desc 取り出しの反映方法で、上書き(overwrite)か統合(merge)かを選べます。既定はoverwriteです。(MZでは無視されます)
  * @type select
  * @option 統合 / merge
  * @value merge
  * @option 【取り扱い注意】全上書き / overwrite
  * @value overwrite
  * @default overwrite
+ *
+ * @param Default Batch Export Scope
+ * @text 一括取り出しの範囲
+ * @desc 「フォルダへ一括取り出し」を実行したときのイベントの範囲を指定します。既定は conversationです。(MZでは無視されます)
+ * @type select
+ * @option 会話があるものだけ / conversation
+ * @value conversation
+ * @option 見出し情報付きテキストだけ / custom
+ * @value custom
+ * @option 中身のあるものだけ / nonempty
+ * @value nonempty
+ * @option 全部(空のページも作る) / all
+ * @value all
+ * @default conversation
  *
  * @param IsDebug
  * @text デバッグモードを利用する
@@ -214,7 +228,7 @@
  *
  * @param OmitDefaultTags
  * @text 既定と同じタグを省略する
- * @desc 顔・背景・位置が既定値と同じときタグを書きません。3つとも既定ならタグ行ごと消えて、テキストが読みやすくなります。デフォルト値はtrueです。
+ * @desc 顔・背景・位置が既定値と同じときタグを書きません。3つとも既定ならタグ行ごと消えます。デフォルト値はtrueです。
  * @default true
  * @type boolean
  *
@@ -353,12 +367,12 @@
  *
  *
  * --------------------------------------
- * 既定メッセージ関連タグの省略 (ver1.1.0より)
+ * 既定メッセージ関連タグの省略 (ver2.3.0より)
  * --------------------------------------
- * ver1.1.0より前のバージョンでは、メッセージ1つ1つに顔画像やウィンドウ位置の
+ * ver2.3.0より前のバージョンでは、メッセージ1つ1つに顔画像やウィンドウ位置の
  * タグが付属された状態でテキストに変換されていました。
  *
- * ver1.1.0からは、以下の条件のとき省略されるようになりました。
+ * ver2.3.0からは、以下の条件のとき省略されるようになりました。
  *   - 顔: 指定なしのとき
  *   - 名前: 指定なしのとき
  *   - 位置: Text2Frameのプラグインパラメータで設定されたデフォルト値と同じとき
@@ -375,7 +389,7 @@
  * これは、取り出し元のイベントの情報や、取り出し時のツールの情報を示します。
  *
  * 例1: マップIDが1, イベントIDが2, ページIDが3のイベントを取り出した場合で、
- *       Text2Frameのバージョンが2.3.0の時
+ *       Frame2Textのバージョンが2.3.0の時
  * ↓↓↓↓↓ここから 見出し例1↓↓↓↓↓
  * ---
  * generator: text2frame-mv＠2.3.0
@@ -386,7 +400,7 @@
  * ---
  * ↑↑↑↑↑ここまで 見出し例1↑↑↑↑↑
  *
- * 例2: IDが1のコモンイベントで、Text2Frameのバージョンが2.3.0の時
+ * 例2: IDが1のコモンイベントで、Frame2Textのバージョンが2.3.0の時
  * ↓↓↓↓↓ここから 見出し例2↓↓↓↓↓
  * ---
  * generator: text2frame-mv＠2.3.0
@@ -405,7 +419,7 @@
  *
  *
  * --------------------------------------
- * 反映方法のオプション (ver1.1.0より)
+ * 反映方法のオプション (ver2.3.0より)
  * --------------------------------------
  * イベントからの取り込み時の反映の仕方には、２つのモードがあります。
  * ツクールMVの場合は、プラグインパラメータの「反映方法」から、
@@ -414,6 +428,7 @@
  * アップデートの都合で既定は「上書き」ですが、おすすめは「統合 / merge」です。
  *
  *    統合 / merge       … テキストで加えた編集も残して反映します。
+ *                          また、イベント側にも同じ内容を反映します。
  *                          衝突がある場合はアラートを出します。
  *                          最初の1回だけ実質的に上書きとなるため、
  *                          取り扱いにご注意ください。
@@ -428,11 +443,10 @@
  * --------------------------------------
  * 反映方法の 統合 / merge モードについて
  * --------------------------------------
- * ver1.1.0より追加された反映方法の 統合モードは、テキストとツクール側のイベ
+ * ver2.3.0より追加された反映方法の 統合モードは、テキストとツクール側のイベ
  * ントの両方で編集を行った場合でも、どちらかを削除することなく上手にテキスト
  * に反映します。
  * この際、テキスト側の修正もイベントに自動で反映されます。
- * （プラグインコマンド・プラグインパラメータから自動反映の条件を変更可）
  *
  * この統合モードには Text2Frameが必要なため、組み込みをお願いします。
  * なお、初めての実行に限り、実質的に上書きモードとして実行されます。
@@ -490,14 +504,6 @@
  * ところで・・・
  * ↑↑↑↑↑ここまで統合モードでの実行結果↑↑↑↑↑
  *
- * ◆ イベントへの書き戻し
- * 反映方法を統合モードで実行した場合、既定の設定では常にイベントにその結果
- * が反映されます。基本的にはその条件を推奨しますが、MVの場合はプラグイン
- * パラメータ、MZの場合はプラグインコマンドの引数から変更できます。
- * その際は以下の2つから選ぶことができます。
- *  - 毎回書き戻す / always
- *  - 書き戻さない / off
- *
  * ◆ イベントとテキストの変更が衝突した場合
  *  統合モードではイベントとテキストの両方の変更を検知し、問題がないものにつ
  *  いては同時に取り込めますが、例えば同じメッセージを違う形に修正した場合の
@@ -543,7 +549,7 @@
  * ◆ 統合モードでの実行後のテキストのズレについての注意
  *  統合モードで実行し、その内容がテキストにも反映された時、メッセージやタグ
  *  の位置がズレる場合があります。このズレによってゲームの動作上の違いが生ま
- *  ることはありません。（皆さんが書いた内容が削除されることはありません）
+ *  れることはありません。（皆さんが書いた内容が削除されることはありません）
  *
  *
  * --------------------------------------
@@ -554,9 +560,9 @@
  * 実行ができます。
  *
  * 例1:マップIDが1, イベントIDが2, ページIDが3をtext/message.txtに統合モードで
- *    取り出す。また、反映内容をツクール側のイベントに毎回書き戻す。
- *   EXPORT_EVENT_TO_MESSAGE text message.txt 1 2 3 merge always
- *   イベントをメッセージにエクスポ－ト text message.txt 1 2 3 統合 毎回書き戻す
+ *    取り出す。
+ *   EXPORT_EVENT_TO_MESSAGE text message.txt 1 2 3 merge
+ *   イベントをメッセージにエクスポ－ト text message.txt 1 2 3 統合
  *
  * 例2:マップIDが1, イベントIDが2, ページIDが3をtext/message.txtに上書きモードで
  *    取り出す。
@@ -564,9 +570,8 @@
  *   イベントをメッセージにエクスポ－ト text message.txt 1 2 3 overwrite
  *
  * 例3:IDが3のコモンイベントをtext/message.txtに統合モードで取り出す。
- *     また、反映内容をツクール側のイベントに毎回書き戻す。
- *   EXPORT_CE_TO_MESSAGE text message.txt 3 merge always
- *   コモンイベントをメッセージにエクスポート text message.txt 3 merge always
+ *   EXPORT_CE_TO_MESSAGE text message.txt 3 merge
+ *   コモンイベントをメッセージにエクスポート text message.txt 3 統合
  *
  * 例4:IDが3のコモンイベントをtext/message.txtに上書きモードで取り出す。
  *   EXPORT_CE_TO_MESSAGE text message.txt 3 overwrite
@@ -577,12 +582,38 @@
  * フォルダへの一括取り出し
  * --------------------------------------
  * ここまで説明した取り出しは、単一のテキストファイルを対象としたものですが、
- * ゲーム中にあるすべてのイベントを指定したフォルダに取り出す機能も提供して
- * います。
+ * ゲーム中のイベントを指定したフォルダに取り出す機能も提供しています。既定では
+ * 会話があるものだけを対象にし、「取り出す範囲」で対象を変更できます。
  *
- * この際、ファイル名は以下の規則で保存されます。
- *   - 通常イベント: "map{マップID}_event{イベントID}_page{ページID}.txt"
- *   - コモンイベント: "common{コモンイベントID}.txt"
+ * 新しく作成するファイル名には、通常イベントではマップ階層・マップ名・イベント
+ * 名、コモンイベントではコモンイベント名が含まれます。既に同じ取り込み先を示す
+ * 見出し情報付きテキストがある場合は、そのファイル名と保存場所を維持します。
+ * 取り出し後はファイル名を任意のものに変更可能です。
+ *
+ * ◆ 取り出す範囲について
+ *  フォルダへの一括取り出しでは、取り出す対象を指定できる以下の4つの
+ *  オプションがあります。MVではプラグインパラメータの「一括取り出しの範囲」
+ *  から設定でき、プラグインコマンドの引数から上書きできます。MZではプラグイン
+ *  コマンドの引数で設定します。
+ *   ・会話があるものだけ / conversation
+ *      プロジェクト内で、以下の3つのうちいずれかが1つでも含まれる
+ *      イベントを対象として、取り出します。これが既定のオプションです。
+ *       - 「文章の表示」
+ *       - 「選択肢の表示」
+ *       - 「文章スクロールの表示」
+ *
+ *   ・見出し情報付きテキストだけ / custom
+ *      取り出し先フォルダ内にある、見出し情報付きテキストに記述されて
+ *      いるマップイベント・コモンイベントだけを対象にします。
+ *      新たなテキストファイルは取り出されません。
+ *
+ *   ・中身のあるものだけ / nonempty
+ *      イベント内に1つでも何らかのコマンドが含まれているイベントを
+ *      取り出します。
+ *
+ *   ・ 全部 / all
+ *      イベント内容に関わらず、すべてのイベントを取り出します。
+ *
  *
  * ◆ ツクールMZの場合の実行方法
  *  ツクールMZの場合はプラグインコマンドの「フォルダへ一括取り出し」を選択し、
@@ -594,17 +625,19 @@
  *   BATCH_EXPORT_MESSAGES_TO_FOLDER
  *   フォルダへ一括取り出し
  *
- *  この際、反映方法やテキストへの書き戻し、対象フォルダは単体での取り込みと
- *  同じプラグインパラメータを参照します。
+ *  対象フォルダと反映方法は単体での取り出しと同じプラグインパラメータを
+ *  参照します。また、引数を指定することで以下のようにプラグインパラメータを
+ *  上書きできます。
  *  また、引数を指定することで以下のようにプラグインパラメータを上書きできます。
  *
- *  例1: textフォルダに統合モードで取り出し、テキストにも毎回反映する。
- *    BATCH_EXPORT_MESSAGES_TO_FOLDER text merge always
- *    フォルダへ一括取り出し text 統合 毎回書き戻す
+ *  例1: textフォルダに統合モードで会話があるイベントだけ取り出す
+ *    BATCH_EXPORT_MESSAGES_TO_FOLDER text merge conversation
+ *    フォルダへ一括取り出し text 統合 会話があるものだけ
  *
- *  例2: textフォルダに上書きモードで取り出す。
- *    BATCH_EXPORT_MESSAGES_TO_FOLDER text overwrite
- *    フォルダへ一括取り出し text overwrite
+ *  例2: textフォルダに上書きモードで見出し情報付きテキストがあるイベントだけ
+ *       取り出す。
+ *    BATCH_EXPORT_MESSAGES_TO_FOLDER text overwrite custom
+ *    フォルダへ一括取り出し text overwrite 見出し情報付きテキストだけ
  *
  *
  * --------------------------------------
@@ -634,7 +667,7 @@
  * --------------------------------------
  * Version
  * --------------------------------------
- * 1.1.0
+ * 2.3.0
  */
 /* eslint-enable spaced-comment */
 
@@ -758,7 +791,7 @@
       // 引数順は @arg の並びと合わせる。単体の取り出し・一括反映と同じく
       // 出力先 -> 取り出し方法。TextBase は改名前に保存されたコマンドのため。
       this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-        [args.TextFolder || args.TextBase, args.Strategy, args.Scope])
+        [args.TextFolder || args.TextBase, args.Strategy, args.Scope || 'conversation'])
     })
   }
 
@@ -918,8 +951,9 @@
         ' / 反映方法は merge(統合) か overwrite(上書き) を指定してください。')
     }
 
-    /* 一括取り出しの範囲。省略時は会話があるものだけ(conversation)。
-     * MVの引数は手書きなので、日本語でも書けるようにする。 */
+    /* 一括取り出しの範囲。MVで引数を省略した場合はプラグインパラメータ、
+     * それも無ければ会話があるものだけ(conversation)。MVの引数は手書きなので、
+     * 日本語でも書けるようにする。 */
     const EXPORT_SCOPE_ALIASES = {
       all: 'all',
       nonempty: 'nonempty',
@@ -928,15 +962,19 @@
       全部: 'all',
       中身のあるものだけ: 'nonempty',
       会話があるものだけ: 'conversation',
-      テキストがあるものだけ: 'custom'
+      見出し情報付きテキストだけ: 'custom'
     }
     const resolveExportScope = function (explicit) {
       const given = String(explicit == null ? '' : explicit).trim()
-      if (given === '' || given === 'undefined') return 'conversation'
-      const v = EXPORT_SCOPE_ALIASES[given.toLowerCase()] || EXPORT_SCOPE_ALIASES[given]
+      // MVの一括取り出しは第3引数を省略できるため、そのときだけプラグインパラメータを使う。
+      // MZは registerCommand で既定値 conversation を渡すので、この設定の影響を受けない。
+      const fallback = String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters['Default Batch Export Scope']) || '').trim()
+      const value = (given !== '' && given !== 'undefined') ? given : fallback
+      if (value === '' || value === 'undefined') return 'conversation'
+      const v = EXPORT_SCOPE_ALIASES[value.toLowerCase()] || EXPORT_SCOPE_ALIASES[value]
       if (v) return v
-      throw new Error('Unknown scope: ' + given +
-        ' / 取り出す範囲は all(全部) / nonempty(中身のあるものだけ) / conversation(会話があるものだけ) / custom(テキストがあるものだけ) を指定してください。')
+      throw new Error('Unknown scope: ' + value +
+        ' / 取り出す範囲は all(全部) / nonempty(中身のあるものだけ) / conversation(会話があるものだけ) / custom(見出し情報付きテキストだけ) を指定してください。')
     }
 
     switch (Laurus.Frame2Text.ExecMode) {
@@ -3273,24 +3311,28 @@
         .replace(/^[\s.]+|[\s.]+$/g, '')
         .trim()
     }
-    // ツクールが自動で付けるイベント名(EV003)は、IDと同じことしか言わないので使わない。
-    const AUTO_EVENT_NAME = /^EV\d+$/i
     const namePart = function (name) {
       const cleaned = cleanNameForFile(name)
-      return (!cleaned || AUTO_EVENT_NAME.test(cleaned)) ? '' : '-' + cleaned
+      return cleaned ? '-' + cleaned : ''
     }
-    /* 新しく作るときのファイル名。ID に、ツクールで付けた名前を添える。
-     *   map001-水族館4_event003-12_ミズクラゲ_page1.txt / common001-回復.txt
-     * 名前が無ければ今までどおり map001_event003_page1.txt。 */
+    /* 新しく作るマップイベントのファイル名は、ツクールのマップ順・マップ階層・イベント名で
+     * 名前順に並べてもツクールのツリー順になるようにする。
+     *   002_世界-はじまりの村_04_宝箱_page1_map003-event003.txt
+     * MapInfos.json が無いなど、この情報を作れないときは従来のID形式へ戻す。 */
     // ファイル名の上限(多くの環境で255バイト)。超えるなら名前を諦めて ID だけにする。
     const NAME_BYTES_LIMIT = 250
     const defaultFileName = function (target) {
       const plain = keyOfMeta(target) + '.txt'
-      const named = String(target.kind) === 'common'
-        ? 'common' + pad3(target.commonEventId) + namePart(target.name) + '.txt'
-        : 'map' + pad3(target.mapId) + namePart(target.mapName) +
-          '_event' + pad3(target.eventId) + namePart(target.name) +
-          '_page' + String(target.pageId || 1) + '.txt'
+      if (String(target.kind) === 'common') {
+        const named = 'common' + pad3(target.commonEventId) + namePart(target.name) + '.txt'
+        return Buffer.byteLength(named, 'utf8') > NAME_BYTES_LIMIT ? plain : named
+      }
+      const mapName = cleanNameForFile(target.mapName)
+      if (!target.mapOrder || !mapName) return plain
+      const eventName = cleanNameForFile(target.name) || ('EV' + pad3(target.eventId))
+      const named = String(target.mapOrder) + '_' + mapName + '_' + eventName +
+        '_page' + String(target.pageId || 1) + '_map' + pad3(target.mapId) +
+        '-event' + pad3(target.eventId) + '.txt'
       return Buffer.byteLength(named, 'utf8') > NAME_BYTES_LIMIT ? plain : named
     }
     /* 取り出しの書き先。同じ宛先のテキストが既にあればその場所に書き、無ければ既定の名前で作る。 */
@@ -3471,7 +3513,7 @@
      *   all          … 全部。中身が空のページも作る(2.3.0 までの動き)
      *   nonempty     … コマンドが1つも無いページ・コモンイベントは作らない
      *   conversation … 会話(文章・選択肢・スクロール)を含むものだけ作る
-     *   custom       … 新しくは作らない。既にあるテキストだけを更新する
+     *   custom       … 新しくは作らない。見出し情報付きテキストだけを更新する
      * custom以外は、既にテキストがあってもイベント内容で対象を決める。 */
     const SCOPES = ['all', 'nonempty', 'conversation', 'custom']
     const CONVERSATION_SCOPE_CODES = [101, 401, 102, 402, 403, 404, 105, 405]
@@ -3509,12 +3551,34 @@
       const targets = []
       const wanted = onlyFile ? _path.basename(onlyFile) : null
       const keep = function (f) { return !wanted || f.toLowerCase() === wanted.toLowerCase() }
-      // マップ名は MapInfos.json にある。無いプロジェクトもあるので、読めなければ名前なしで進める。
-      let mapNames = []
-      try { mapNames = JSON.parse(_fs.readFileSync(_path.join(dataDir, 'MapInfos.json'), 'utf8')) || [] } catch (e) { mapNames = [] }
+      // MapInfos.json の order と親子関係を使い、名前順でもツクールのマップツリー順になる
+      // ファイル名を作る。無いプロジェクトもあるため、読めなければ従来のID形式へ戻す。
+      let mapInfos = []
+      try { mapInfos = JSON.parse(_fs.readFileSync(_path.join(dataDir, 'MapInfos.json'), 'utf8')) || [] } catch (e) { mapInfos = [] }
+      const mapInfoOf = function (id) { return Array.isArray(mapInfos) ? mapInfos[Number(id)] : null }
+      const mapCount = Array.isArray(mapInfos) ? mapInfos.filter(function (info) { return !!info }).length : 0
+      const orderWidth = String(Math.max(1, mapCount)).length
+      const mapOrderOf = function (id) {
+        const info = mapInfoOf(id)
+        // RPGツクールの正しいキーは order。既存データに ordar があればそれも読める。
+        const order = info && (info.order !== undefined ? info.order : info.ordar)
+        if (order === undefined || order === null || order === '') return ''
+        return String(order).padStart(orderWidth, '0')
+      }
       const mapNameOf = function (id) {
-        const info = Array.isArray(mapNames) ? mapNames[Number(id)] : null
-        return (info && info.name) || ''
+        const names = []
+        const seen = {}
+        let current = Number(id)
+        while (current > 0 && !seen[current]) {
+          seen[current] = true
+          const info = mapInfoOf(current)
+          if (!info) return ''
+          const name = cleanNameForFile(info.name)
+          if (!name) return ''
+          names.unshift(name)
+          current = Number(info.parentId) || 0
+        }
+        return names.join('-')
       }
       _fs.readdirSync(dataDir).filter(function (f) { return /^Map\d+\.json$/.test(f) && keep(f) }).sort().forEach(function (fileName) {
         const m = fileName.match(/^Map(\d+)\.json$/)
@@ -3534,6 +3598,7 @@
               eventId: String(eventIndex),
               pageId,
               key,
+              mapOrder: mapOrderOf(mapId),
               mapName: mapNameOf(mapId),
               name: (event && event.name) || ''
             })

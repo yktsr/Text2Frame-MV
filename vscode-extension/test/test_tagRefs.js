@@ -26,9 +26,9 @@ const compiled = function (line, tail, head) {
 describe('tagRefs agrees with the compiler', function () {
   const cases = [
     // [行, コンパイルに通すときに足す続き, 前に置く行]
-    ['<Face: suzu1(4)>', '\nこんにちは'],
+    ['<Face: Actor2(4)>', '\nこんにちは'],
     ['<FC: Actor1(7)>', '\nx'],
-    ['<顔: ruru1(0)>', '\nx'],
+    ['<顔: Actor3(0)>', '\nx'],
     ['<Switch: 79, ON>'],
     ['<SW: 3-5, OFF>'],
     ['<SwitchOn: 128>', '', '<SetMovementRoute: This Event, OFF, OFF, Wait for Completion>\n'],
@@ -168,7 +168,7 @@ describe('findRefs positions', function () {
   it('covers the whole range and the whole face', function () {
     expect(at('<SW: 3-5, OFF>', findRefs('<SW: 3-5, OFF>')[0])).to.equal('3-5')
     expect(at('    <SwitchOn: 128>', findRefs('    <SwitchOn: 128>')[0])).to.equal('128')
-    expect(at('<Face: suzu1(4)>', findRefs('<Face: suzu1(4)>')[0])).to.equal('suzu1(4)')
+    expect(at('<Face: Actor2(4)>', findRefs('<Face: Actor2(4)>')[0])).to.equal('Actor2(4)')
   })
 
   it('reads \\V[n] and \\N[n] in message text as a variable and an actor', function () {
@@ -262,13 +262,13 @@ describe('expectedAt', function () {
   })
 
   it('lets the writer type a name to filter, and replaces it', function () {
-    const e = exp('<Switch: シャチ')
-    expect(e).to.eql({ kind: 'switch', typed: 'シャチ', start: 9 })
+    const e = exp('<Switch: 橋がか')
+    expect(e).to.eql({ kind: 'switch', typed: '橋がか', start: 9 })
   })
 
   it('offers face sheets first, then the face number of that sheet', function () {
-    expect(exp('<Face: su')).to.eql({ kind: 'face', typed: 'su', start: 7 })
-    expect(exp('<Face: suzu1(')).to.eql({ kind: 'face', typed: '', start: 13, faceName: 'suzu1' })
+    expect(exp('<Face: Ac')).to.eql({ kind: 'face', typed: 'Ac', start: 7 })
+    expect(exp('<Face: Actor2(')).to.eql({ kind: 'face', typed: '', start: 14, faceName: 'Actor2' })
   })
 
   it('stays quiet outside a tag', function () {

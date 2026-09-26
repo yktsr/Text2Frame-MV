@@ -246,7 +246,7 @@ export function textIndexFor(context: vscode.ExtensionContext, workspaceRoot: st
 
 /**
  * 取り出す対象と、テキストのフォルダの索引。
- * 範囲(scope)は「新しく作るかどうか」だけを決め、既にあるテキストは必ず対象に入る。
+ * 範囲(scope)は「新しく作るかどうか」だけを決め、見出し情報付きテキストは必ず対象に入る。
  * 書き先は「同じ行き先のテキストがあればその場所、無ければ既定の名前」。
  */
 export function pullTargetsFor(

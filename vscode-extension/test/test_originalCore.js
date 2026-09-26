@@ -63,12 +63,16 @@ describe('originalCore', function () {
     expect(readAudio(path.join(game, 'audio'), 'se', 'Door4')).to.equal(undefined)
   })
 
+  /* 本物のゲームで確かめる。場所は環境変数 T2F_GAME_DIR で渡す(未設定なら飛ばす)。
+   * 誰のゲームかがリポジトリに残らないよう、パスは書かない。
+   *   T2F_GAME_DIR=/path/to/game npm test */
   it('works with a real game', function () {
-    const root = path.join(__dirname, '..', '..', '250901_アクアリウムは踊らない_日本語_1')
+    const root = process.env.T2F_GAME_DIR
+    if (!root) return this.skip()
     const faces = path.join(root, 'img', 'faces')
-    if (!fs.existsSync(faces)) this.skip()
+    if (!fs.existsSync(faces)) return this.skip()
     const file = fs.readdirSync(faces).find(function (f) { return f.endsWith('.png_') })
-    if (!file) this.skip()
+    if (!file) return this.skip()
     const key = JSON.parse(fs.readFileSync(path.join(root, 'data', 'System.json'), 'utf8')).encryptionKey
     const image = restoreAsset(root, fs.readFileSync(path.join(faces, file)), key)
     expect(image.subarray(0, 8).toString('hex')).to.equal('89504e470d0a1a0a')

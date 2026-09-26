@@ -65,7 +65,7 @@ export interface EventLookup {
     events: Array<MapEvent | null | undefined>;
 }
 
-/** 「ヤドカリ (8,11)」。どのイベントか、名前と置いてある座標で分かるように。 */
+/** 「宝箱 (8,11)」。どのイベントか、名前と置いてある座標で分かるように。 */
 export function eventLabel(e: MapEvent): string {
     return `${e.name || tr('(名前なし)', '(no name)')} (${e.x},${e.y})`;
 }

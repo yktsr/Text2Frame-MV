@@ -179,7 +179,7 @@ function pullDataFile (dataFile, opts) {
   const dataDir = path.resolve(root, o.dataDir || 'data')
   // 索引はこのファイルぶんで1回だけ作る(1件ごとに走査し直さない)。
   const withIndex = Object.assign({}, o, { index: o.index || F2T.indexTexts(path.resolve(root, o.textDir || 'text')) })
-  /* 範囲の既定は custom(既にテキストがあるものだけ)。ツクールでイベントを足すたびに
+  /* 範囲の既定は custom(見出し情報付きテキストだけ)。ツクールでイベントを足すたびに
    * テキストが増えないようにするため。--scope で変えられる。 */
   const targets = F2T.enumerateTargets(dataDir, { onlyFile: dataFile, scope: withIndex.scope || 'custom', index: withIndex.index })
   return targets.map(function (t) { return pullTarget(t, withIndex) })
@@ -285,7 +285,7 @@ if (require.main === module) {
       .option('--root <dir>', 'project root for data/, text/ and .t2f-base (default: current directory)')
       .option('-s, --strategy <merge|overwrite>', 'sync strategy', /^(merge|overwrite)$/i, 'merge')
       .option('-w, --english_tag <true/false>', 'english tag on pull', 'true')
-      .option('--scope <all|nonempty|conversation|custom>', 'which events to pull (default: custom = only texts that exist)', /^(all|nonempty|conversation|custom)$/i, 'custom')
+      .option('--scope <all|nonempty|conversation|custom>', 'which events to pull (default: custom = only texts with front matter)', /^(all|nonempty|conversation|custom)$/i, 'custom')
       .option('-v, --verbose', 'debug mode', false)
   }
 
