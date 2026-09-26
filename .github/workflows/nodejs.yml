@@ -5,6 +5,11 @@ on:
     branches: [master]
   pull_request:
 
+# どのジョブも読むだけ。テストは枝のコードと依存パッケージのスクリプトを走らせるので、
+# 既定の(書ける)トークンを渡さない。成果物の受け渡しは contents: read でも動く。
+permissions:
+  contents: read
+
 jobs:
   core:
     name: Core (lint + tests + round-trip)
