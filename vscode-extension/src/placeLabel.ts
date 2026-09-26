@@ -37,7 +37,7 @@ export function placeFromKey(key: string): Place | undefined {
     return c ? { kind: 'common', commonEventId: Number(c[1]) } : undefined;
 }
 
-/** 「水族館 / EV028 ヤドカリ / 1ページ」「コモンイベント 0012 名前」。 */
+/** 「はじまりの村 / EV028 宝箱 / 1ページ」「コモンイベント 0012 名前」。 */
 export function placeLabel(service: DatabaseService, ctx: DbContext, place: Place | undefined): string {
     if (!place) return '';
     if (place.kind === 'common') {

@@ -186,7 +186,7 @@ export function refText(db: GameDatabase | undefined, kind: DbKind, id: number):
 const rangeText = (db: GameDatabase | undefined, kind: DbKind, a: number, b: number): string =>
     a === b ? refText(db, kind, a) : `#${padId(a)}..#${padId(b)}`;
 
-/** キャラクターの指定。マップのイベントなら、分かれば名前と座標を添える(EV001 ヤドカリ (8,11))。 */
+/** キャラクターの指定。マップのイベントなら、分かれば名前と座標を添える(EV001 宝箱 (8,11))。 */
 function character(id: number, events?: EventLookup): string {
     if (id === -1) return tr('プレイヤー', 'Player');
     if (id === 0) return tr('このイベント', 'This Event');
