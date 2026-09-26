@@ -3,6 +3,9 @@ bin-debug/
 bin-release/
 [Oo]bj/
 [Bb]in/
+# ...but our top-level bin/ holds CLI wrapper sources (npm bin), not build output.
+!/bin/
+!/bin/*.js
 
 # Other files and folders
 .settings/
@@ -18,3 +21,18 @@ bin-release/
 # should NOT be excluded as they contain compiler settings and other important
 # information for Eclipse / Flash Builder.
 node_modules
+
+# VSCode extension (vscode-extension/) build outputs
+vscode-extension/out/
+vscode-extension/lib/
+*.vsix
+
+# Packaging outputs. dist/ is rollup's target; release/ is what tools/pack-all.sh collects.
+# 公開される cjs/es/umd バンドルはリポジトリ直下のコミット済みコピーのほう (RELEASE.md B-1)。
+dist/
+release/
+
+# 3-way merge base snapshots (Text2Frame)
+.t2f-base/
+
+sample*

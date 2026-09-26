@@ -1,0 +1,863 @@
+{
+  "name": "text2frame-language-support",
+  "displayName": "Text2Frame Language Support",
+  "description": "Language support for Text2Frame visual novel scripts",
+  "version": "0.1.3",
+  "publisher": "yktsr",
+  "license": "MIT",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "RPG Maker",
+    "RPGツクール",
+    "MV",
+    "MZ",
+    "Text2Frame",
+    "localization",
+    "translation"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:text2frame",
+    "onView:text2frameCommands",
+    "onView:text2frameExplorer",
+    "onView:text2frameDatabase",
+    "onView:text2frame.liveValues",
+    "onWebviewPanel:text2frameLive",
+    "onDebugResolve:text2frame",
+    "onDebugDynamicConfigurations:text2frame",
+    "workspaceContains:**/text/**/*.txt",
+    "workspaceContains:**/data/Map*.json"
+  ],
+  "contributes": {
+    "configurationDefaults": {
+      "files.readonlyInclude": {
+        "**/.t2f-base/**": true,
+        "**/.t2f-history/**": true
+      }
+    },
+    "languages": [
+      {
+        "id": "text2frame",
+        "aliases": [
+          "Text2Frame",
+          "text2frame"
+        ],
+        "extensions": [
+          ".t2f",
+          ".text2frame"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "text2frame",
+        "label": "%debugger.label%",
+        "languages": [
+          "text2frame"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "properties": {}
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "text2frame",
+            "request": "launch",
+            "name": "%debugger.configName%"
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "%debugger.snippet.label%",
+            "description": "%debugger.snippet.description%",
+            "body": {
+              "type": "text2frame",
+              "request": "launch",
+              "name": "%debugger.configName%"
+            }
+          }
+        ]
+      }
+    ],
+    "breakpoints": [
+      {
+        "language": "text2frame"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "text2frame",
+        "scopeName": "source.text2frame",
+        "path": "./syntaxes/text2frame.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "text2frame.deployCurrentFile",
+        "title": "%command.text2frame.deployCurrentFile.title%",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "text2frame.toggleDeployOnSave",
+        "title": "%command.text2frame.toggleDeployOnSave.title%"
+      },
+      {
+        "command": "text2frame.exportCurrentFile",
+        "title": "%command.text2frame.exportCurrentFile.title%",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "text2frame.exportConversationOnly",
+        "title": "%command.text2frame.exportConversationOnly.title%"
+      },
+      {
+        "command": "text2frame.showPreview",
+        "title": "%command.text2frame.showPreview.title%",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "text2frame.testPlay",
+        "title": "%command.text2frame.testPlay.title%",
+        "icon": "$(play)"
+      },
+      {
+        "command": "text2frame.testPlayExternal",
+        "title": "%command.text2frame.testPlayExternal.title%",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "text2frame.stopTestPlay",
+        "title": "%command.text2frame.stopTestPlay.title%",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "text2frame.showLiveValues",
+        "title": "%command.text2frame.showLiveValues.title%",
+        "icon": "$(symbol-variable)"
+      },
+      {
+        "command": "text2frame.openLiveValuesTab",
+        "title": "%command.text2frame.openLiveValuesTab.title%",
+        "icon": "$(window)"
+      },
+      {
+        "command": "text2frame.checkProject",
+        "title": "%command.text2frame.checkProject.title%",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "text2frame.pickFace",
+        "title": "%command.text2frame.pickFace.title%",
+        "icon": "$(account)"
+      },
+      {
+        "command": "text2frame.pickCharacter",
+        "title": "%command.text2frame.pickCharacter.title%",
+        "icon": "$(account)"
+      },
+      {
+        "command": "text2frame.pickPicture",
+        "title": "%command.text2frame.pickPicture.title%",
+        "icon": "$(file-media)"
+      },
+      {
+        "command": "text2frame.pickAudio",
+        "title": "%command.text2frame.pickAudio.title%",
+        "icon": "$(unmute)"
+      },
+      {
+        "command": "text2frame.snippet.insert",
+        "title": "%command.text2frame.snippet.insert.title%"
+      },
+      {
+        "command": "text2frame.snippet.fromSelection",
+        "title": "%command.text2frame.snippet.fromSelection.title%"
+      },
+      {
+        "command": "text2frame.snippet.edit",
+        "title": "%command.text2frame.snippet.edit.title%"
+      },
+      {
+        "command": "text2frame.standAtEvent",
+        "title": "%command.text2frame.standAtEvent.title%",
+        "icon": "$(person)"
+      },
+      {
+        "command": "text2frame.runThisPage",
+        "title": "%command.text2frame.runThisPage.title%",
+        "icon": "$(play-circle)"
+      },
+      {
+        "command": "text2frame.debug",
+        "title": "%command.text2frame.debug.title%",
+        "icon": "$(debug-alt)"
+      },
+      {
+        "command": "text2frame.togglePauseAtMarks",
+        "title": "%command.text2frame.togglePauseAtMarks.title%",
+        "icon": "$(debug-breakpoint)"
+      },
+      {
+        "command": "text2frame.tryEvent",
+        "title": "%command.text2frame.tryEvent.title%"
+      },
+      {
+        "command": "text2frame.fix.pickAgain",
+        "title": "%command.text2frame.fix.pickAgain.title%"
+      },
+      {
+        "command": "text2frame.review.accept",
+        "title": "%command.text2frame.review.accept.title%",
+        "icon": "$(check)"
+      },
+      {
+        "command": "text2frame.review.cancel",
+        "title": "%command.text2frame.review.cancel.title%",
+        "icon": "$(close)"
+      },
+      {
+        "command": "text2frame.showCompiledJson",
+        "title": "%command.text2frame.showCompiledJson.title%",
+        "icon": "$(json)"
+      },
+      {
+        "command": "text2frame.deployAll",
+        "title": "%command.text2frame.deployAll.title%"
+      },
+      {
+        "command": "text2frame.exportAll",
+        "title": "%command.text2frame.exportAll.title%"
+      },
+      {
+        "command": "text2frame.repullOverwrite",
+        "title": "%command.text2frame.repullOverwrite.title%"
+      },
+      {
+        "command": "text2frame.db.insert",
+        "title": "%command.text2frame.db.insert.title%"
+      },
+      {
+        "command": "text2frame.db.findUsages",
+        "title": "%command.text2frame.db.findUsages.title%",
+        "icon": "$(search)"
+      },
+      {
+        "command": "text2frame.db.showUsages",
+        "title": "%command.text2frame.db.showUsages.title%"
+      },
+      {
+        "command": "text2frame.db.refresh",
+        "title": "%command.text2frame.db.refresh.title%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "text2frame.tree.refresh",
+        "title": "%command.text2frame.tree.refresh.title%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "text2frame.tree.deploy",
+        "title": "%command.text2frame.tree.deploy.title%",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "text2frame.pullThisView",
+        "title": "%command.text2frame.pullThisView.title%",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "text2frame.tree.export",
+        "title": "%command.text2frame.tree.export.title%",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "text2frame.tree.try",
+        "title": "%command.text2frame.tree.try.title%",
+        "icon": "$(person)"
+      },
+      {
+        "command": "text2frame.tree.tryRun",
+        "title": "%command.text2frame.tree.tryRun.title%",
+        "icon": "$(play)"
+      },
+      {
+        "command": "text2frame.tree.tryCommon",
+        "title": "%command.text2frame.tree.tryCommon.title%",
+        "icon": "$(play)"
+      },
+      {
+        "command": "text2frame.mapLinks.show",
+        "title": "%command.text2frame.mapLinks.show.title%"
+      },
+      {
+        "command": "text2frame.mapLinks.refresh",
+        "title": "%command.text2frame.mapLinks.refresh.title%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "text2frame.mapLinks.open",
+        "title": "%command.text2frame.mapLinks.open.title%"
+      },
+      {
+        "command": "text2frame.tree.mapLinks",
+        "title": "%command.text2frame.tree.mapLinks.title%",
+        "icon": "$(arrow-both)"
+      },
+      {
+        "command": "text2frame.showMapGraph",
+        "title": "%command.text2frame.showMapGraph.title%",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "text2frame.tree.mapGraph",
+        "title": "%command.text2frame.tree.mapGraph.title%",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "text2frame.history.show",
+        "title": "%command.text2frame.history.show.title%",
+        "icon": "$(history)"
+      },
+      {
+        "command": "text2frame.history.refresh",
+        "title": "%command.text2frame.history.refresh.title%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "text2frame.history.openFolder",
+        "title": "%command.text2frame.history.openFolder.title%",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "text2frame.history.diff",
+        "title": "%command.text2frame.history.diff.title%",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "text2frame.history.restore",
+        "title": "%command.text2frame.history.restore.title%",
+        "icon": "$(discard)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "text2frame",
+          "title": "Text2Frame",
+          "icon": "$(book)"
+        }
+      ],
+      "panel": [
+        {
+          "id": "text2frameLive",
+          "title": "%viewContainer.text2frameLive.title%",
+          "icon": "$(play)"
+        }
+      ]
+    },
+    "views": {
+      "text2frame": [
+        {
+          "id": "text2frameCommands",
+          "name": "%view.text2frameCommands.name%"
+        },
+        {
+          "id": "text2frameExplorer",
+          "name": "Maps / Common Events"
+        },
+        {
+          "id": "text2frameMapLinks",
+          "name": "%view.text2frameMapLinks.name%",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "text2frameHistory",
+          "name": "%view.text2frameHistory.name%",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "text2frameDatabase",
+          "name": "%view.text2frameDatabase.name%"
+        }
+      ],
+      "text2frameLive": [
+        {
+          "type": "webview",
+          "id": "text2frame.liveValues",
+          "name": "%view.text2frame.liveValues.name%"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "text2frameDatabase",
+        "contents": "%viewsWelcome.text2frameDatabase.contents%"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "text2frame.snippet.fromSelection",
+          "when": "editorLangId == text2frame && editorHasSelection",
+          "group": "9_text2frame@1"
+        },
+        {
+          "command": "text2frame.snippet.insert",
+          "when": "editorLangId == text2frame",
+          "group": "9_text2frame@2"
+        },
+        {
+          "command": "text2frame.pickFace",
+          "when": "editorLangId == text2frame",
+          "group": "9_text2frame@3"
+        },
+        {
+          "command": "text2frame.pickAudio",
+          "when": "editorLangId == text2frame",
+          "group": "9_text2frame@4"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "text2frame.review.accept",
+          "when": "text2frame.reviewPending && (isInDiffEditor || activeEditor == multiDiffEditor)",
+          "group": "navigation@-2"
+        },
+        {
+          "command": "text2frame.review.cancel",
+          "when": "text2frame.reviewPending && (isInDiffEditor || activeEditor == multiDiffEditor)",
+          "group": "navigation@-1"
+        },
+        {
+          "command": "text2frame.pullThisView",
+          "when": "resourceScheme == text2frame-links",
+          "group": "navigation@1"
+        },
+        {
+          "command": "text2frame.deployCurrentFile",
+          "when": "resourceScheme == file && (resourceLangId == text2frame || resourceExtname == .txt)",
+          "group": "navigation@1"
+        },
+        {
+          "command": "text2frame.exportCurrentFile",
+          "when": "resourceScheme == file && (resourceLangId == text2frame || resourceExtname == .txt)",
+          "group": "navigation@2"
+        },
+        {
+          "command": "text2frame.showPreview",
+          "when": "resourceLangId == text2frame",
+          "group": "navigation@3"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "text2frame.openLiveValuesTab",
+          "when": "view == text2frame.liveValues",
+          "group": "navigation"
+        },
+        {
+          "command": "text2frame.tree.refresh",
+          "when": "view == text2frameExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "text2frame.mapLinks.refresh",
+          "when": "view == text2frameMapLinks",
+          "group": "navigation"
+        },
+        {
+          "command": "text2frame.history.refresh",
+          "when": "view == text2frameHistory",
+          "group": "navigation@1"
+        },
+        {
+          "command": "text2frame.history.openFolder",
+          "when": "view == text2frameHistory",
+          "group": "navigation@2"
+        },
+        {
+          "command": "text2frame.db.refresh",
+          "when": "view == text2frameDatabase",
+          "group": "navigation"
+        },
+        {
+          "command": "text2frame.deployAll",
+          "when": "view == text2frameExplorer",
+          "group": "1_batch@1"
+        },
+        {
+          "command": "text2frame.exportAll",
+          "when": "view == text2frameExplorer",
+          "group": "1_batch@2"
+        },
+        {
+          "command": "text2frame.repullOverwrite",
+          "when": "view == text2frameExplorer",
+          "group": "2_advanced@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "text2frame.fix.pickAgain",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.pullThisView",
+          "when": "resourceScheme == text2frame-links"
+        },
+        {
+          "command": "text2frame.tryEvent",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.review.accept",
+          "when": "text2frame.reviewPending"
+        },
+        {
+          "command": "text2frame.review.cancel",
+          "when": "text2frame.reviewPending"
+        },
+        {
+          "command": "text2frame.tree.deploy",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.export",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.refresh",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.try",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.tryRun",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.tryCommon",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.mapLinks",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.mapGraph",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.history.refresh",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.history.diff",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.history.restore",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.mapLinks.show",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.mapLinks.open",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.db.insert",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.db.findUsages",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.db.showUsages",
+          "when": "false"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "text2frame.db.findUsages",
+          "when": "view == text2frameDatabase && viewItem == text2frame.dbEntry",
+          "group": "inline@1"
+        },
+        {
+          "command": "text2frame.db.findUsages",
+          "when": "view == text2frameDatabase && viewItem == text2frame.dbEntry",
+          "group": "1_find@1"
+        },
+        {
+          "command": "text2frame.db.showUsages",
+          "when": "view == text2frameDatabase && viewItem == text2frame.dbEntry",
+          "group": "1_find@2"
+        },
+        {
+          "command": "text2frame.db.insert",
+          "when": "view == text2frameDatabase && viewItem == text2frame.dbEntry",
+          "group": "2_insert@1"
+        },
+        {
+          "command": "text2frame.tree.deploy",
+          "when": "view == text2frameExplorer && (viewItem == text2frame.page || viewItem == text2frame.common)",
+          "group": "inline@2"
+        },
+        {
+          "command": "text2frame.tree.export",
+          "when": "view == text2frameExplorer && (viewItem == text2frame.page || viewItem == text2frame.common)",
+          "group": "inline@1"
+        },
+        {
+          "command": "text2frame.tree.try",
+          "when": "view == text2frameExplorer && (viewItem == text2frame.event || viewItem == text2frame.page)",
+          "group": "3_try@1"
+        },
+        {
+          "command": "text2frame.tree.tryRun",
+          "when": "view == text2frameExplorer && viewItem == text2frame.page",
+          "group": "3_try@2"
+        },
+        {
+          "command": "text2frame.tree.tryCommon",
+          "when": "view == text2frameExplorer && viewItem == text2frame.common",
+          "group": "3_try@1"
+        },
+        {
+          "command": "text2frame.tree.mapLinks",
+          "when": "view == text2frameExplorer && (viewItem == text2frame.map || viewItem == text2frame.here)",
+          "group": "4_links@2"
+        },
+        {
+          "command": "text2frame.tree.mapGraph",
+          "when": "view == text2frameExplorer && (viewItem == text2frame.map || viewItem == text2frame.here)",
+          "group": "4_links@3"
+        },
+        {
+          "command": "text2frame.history.restore",
+          "when": "view == text2frameHistory && viewItem == text2frame.history.entry",
+          "group": "1_restore@1"
+        },
+        {
+          "command": "text2frame.history.restore",
+          "when": "view == text2frameHistory && viewItem == text2frame.history.entry",
+          "group": "inline@1"
+        },
+        {
+          "command": "text2frame.history.diff",
+          "when": "view == text2frameHistory && viewItem == text2frame.history.entry",
+          "group": "2_diff@1"
+        },
+        {
+          "command": "text2frame.history.diff",
+          "when": "view == text2frameHistory && viewItem == text2frame.history.file",
+          "group": "2_diff@1"
+        }
+      ]
+    },
+    "configuration": [
+      {
+        "id": "text2frame.apply",
+        "title": "%config.category.apply%",
+        "order": 1,
+        "properties": {
+          "text2frame.exportScope": {
+            "type": "string",
+            "enum": [
+              "nonempty",
+              "conversation",
+              "custom",
+              "all"
+            ],
+            "default": "nonempty",
+            "enumDescriptions": [
+              "%config.text2frame.exportScope.enumDescriptions.0%",
+              "%config.text2frame.exportScope.enumDescriptions.1%",
+              "%config.text2frame.exportScope.enumDescriptions.2%",
+              "%config.text2frame.exportScope.enumDescriptions.3%"
+            ],
+            "enumItemLabels": [
+              "%config.text2frame.exportScope.enumItemLabels.0%",
+              "%config.text2frame.exportScope.enumItemLabels.1%",
+              "%config.text2frame.exportScope.enumItemLabels.2%",
+              "%config.text2frame.exportScope.enumItemLabels.3%"
+            ],
+            "description": "%config.text2frame.exportScope.description%"
+          },
+          "text2frame.strategy": {
+            "type": "string",
+            "enum": [
+              "merge",
+              "overwrite"
+            ],
+            "default": "merge",
+            "enumDescriptions": [
+              "%config.text2frame.strategy.enumDescriptions.0%",
+              "%config.text2frame.strategy.enumDescriptions.1%"
+            ],
+            "description": "%config.text2frame.strategy.description%",
+            "enumItemLabels": [
+              "%config.text2frame.strategy.enumItemLabels.0%",
+              "%config.text2frame.strategy.enumItemLabels.1%"
+            ]
+          },
+          "text2frame.reviewBeforeApply": {
+            "type": "boolean",
+            "default": true,
+            "description": "%config.text2frame.reviewBeforeApply.description%"
+          },
+          "text2frame.englishTag": {
+            "type": "boolean",
+            "default": true,
+            "description": "%config.text2frame.englishTag.description%"
+          },
+          "text2frame.omitDefaultTags": {
+            "type": "boolean",
+            "default": true,
+            "description": "%config.text2frame.omitDefaultTags.description%"
+          },
+          "text2frame.history.keep": {
+            "type": "number",
+            "default": 100,
+            "minimum": 0,
+            "description": "%config.text2frame.history.keep.description%"
+          },
+          "text2frame.textBaseDir": {
+            "type": "string",
+            "default": "text",
+            "description": "%config.text2frame.textBaseDir.description%"
+          },
+          "text2frame.dataDir": {
+            "type": "string",
+            "default": "data",
+            "description": "%config.text2frame.dataDir.description%"
+          }
+        }
+      },
+      {
+        "id": "text2frame.write",
+        "title": "%config.category.write%",
+        "order": 2,
+        "properties": {
+          "text2frame.messageCheck": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "on",
+              "off"
+            ],
+            "default": "auto",
+            "enumDescriptions": [
+              "%config.text2frame.messageCheck.enumDescriptions.0%",
+              "%config.text2frame.messageCheck.enumDescriptions.1%",
+              "%config.text2frame.messageCheck.enumDescriptions.2%"
+            ],
+            "description": "%config.text2frame.messageCheck.description%",
+            "enumItemLabels": [
+              "%config.text2frame.messageCheck.enumItemLabels.0%",
+              "%config.text2frame.messageCheck.enumItemLabels.1%",
+              "%config.text2frame.messageCheck.enumItemLabels.2%"
+            ]
+          },
+          "text2frame.messageLineLength": {
+            "type": "number",
+            "default": 0,
+            "minimum": 0,
+            "description": "%config.text2frame.messageLineLength.description%"
+          },
+          "text2frame.showDatabaseNames": {
+            "type": "boolean",
+            "default": true,
+            "description": "%config.text2frame.showDatabaseNames.description%"
+          },
+          "text2frame.usageContextLines": {
+            "type": "number",
+            "default": 2,
+            "minimum": 0,
+            "maximum": 20,
+            "description": "%config.text2frame.usageContextLines.description%"
+          }
+        }
+      },
+      {
+        "id": "text2frame.testplay",
+        "title": "%config.category.testplay%",
+        "order": 3,
+        "properties": {
+          "text2frame.testPlayPage": {
+            "type": "string",
+            "default": "",
+            "description": "%config.text2frame.testPlayPage.description%"
+          },
+          "text2frame.openRunningText": {
+            "type": "boolean",
+            "default": true,
+            "description": "%config.text2frame.openRunningText.description%"
+          },
+          "text2frame.tryEvent.clearPlayerTransparency": {
+            "type": "boolean",
+            "default": true,
+            "scope": "resource",
+            "description": "%config.text2frame.tryEvent.clearPlayerTransparency.description%"
+          }
+        }
+      },
+      {
+        "id": "text2frame.advanced",
+        "title": "%config.category.advanced%",
+        "order": 4,
+        "properties": {
+          "text2frame.modulePath": {
+            "type": "string",
+            "default": "",
+            "description": "%config.text2frame.modulePath.description%"
+          }
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile && npm run bundle-compiler",
+    "compile": "tsc -p ./",
+    "bundle-compiler": "node ./scripts/bundle-compiler.js",
+    "update-grammar": "node ./scripts/update-grammar.js",
+    "update-tag-help": "node ./scripts/update-tag-help.js",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "mocha --forbid-only test",
+    "lint": "eslint src test --ext ts,js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.x",
+    "@typescript-eslint/parser": "^6.x",
+    "chai": "^4.5.0",
+    "eslint": "^8.x",
+    "mocha": "^11.8.0",
+    "typescript": "^5.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yktsr/Text2Frame-MV.git",
+    "directory": "vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/yktsr/Text2Frame-MV/issues"
+  },
+  "homepage": "https://github.com/yktsr/Text2Frame-MV#readme"
+}

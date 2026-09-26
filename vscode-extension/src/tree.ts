@@ -1,0 +1,627 @@
+import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
+import { parseFrontMatter, workspaceRootFor, workspaceRootOrWarn, textBaseDirFor } from './compiler';
+import { commitPull, planPull, newTextPathFor, ExportTarget, PullPlan } from './exportText';
+import { readOnlyUri, LINKS_SCHEME } from './eventLinks';
+import { dataDirFor } from './compiler';
+import { deployFile, reviewFiles, unappliedFiles } from './deploy';
+import { reviewPull } from './reviewApply';
+import { DatabaseService, DbContext } from './dbService';
+import { RunTracker } from './runHighlight';
+import { placeFromKey, placeFromMeta, placeKey, Place } from './placeLabel';
+import { LiveService } from './live';
+import {
+    readMapInfos, mapTree, mapLabel, pageDescription, pageConditionTexts, commonDescription,
+    eventLiveMark, pageLiveMark, commonLiveMark, MapNode, NameLookup, LiveMarks
+} from './db/mapTree';
+import { eventId as eventLabelId, MapEvent } from './db/describe';
+import { PageSummary } from './db/eventPages';
+import { padId } from './db/database';
+import { tr } from './db/lang';
+
+/**
+ * Activity Bar tree: Maps -> Events -> Pages, plus Common Events. Maps are
+ * nested like the RPG Maker editor (MapInfos.json). Each leaf can be deployed
+ * (text -> data) or exported (data -> text) and opens its text file.
+ */
+
+/** 続けて来た更新の合図を、この間だけまとめる(ミリ秒)。 */
+const REFRESH_WAIT = 200;
+
+type NodeType = 'category' | 'map' | 'event' | 'page' | 'common' | 'here';
+
+interface NodeData {
+    category?: 'maps' | 'commons';
+    mapId?: string;
+    eventId?: string;
+    pageId?: string;
+    commonEventId?: string;
+    /** 「今いるマップ」の下の行か(ツリーの中で番号が重ならないように分ける)。 */
+    here?: boolean;
+}
+
+class T2FNode extends vscode.TreeItem {
+    constructor(
+        public readonly nodeType: NodeType,
+        label: string,
+        collapsible: vscode.TreeItemCollapsibleState,
+        public readonly data: NodeData = {}
+    ) {
+        super(label, collapsible);
+        this.contextValue = 'text2frame.' + nodeType;
+        this.id = nodeId(nodeType, data);
+    }
+}
+
+function nodeId(nodeType: NodeType, data: NodeData): string {
+    const head = data.here ? 'here-' : '';
+    if (nodeType === 'here') return 'here';
+    if (nodeType === 'category') return 'category:' + data.category;
+    if (nodeType === 'common') return head + 'common:' + data.commonEventId;
+    if (nodeType === 'map') return head + 'map:' + data.mapId;
+    if (nodeType === 'event') return `${head}event:${data.mapId}:${data.eventId}`;
+    return `${head}page:${data.mapId}:${data.eventId}:${data.pageId}`;
+}
+
+
+/** この行のテキストを新しく作るときの置き場所。名前は Frame2Text の規則(ID + ツクールで付けた名前)。 */
+function textPathForLeaf(context: vscode.ExtensionContext, root: string, node: T2FNode): string {
+    return newTextPathFor(context, root, dataDirFor(root), textBaseDirFor(root), targetForLeaf(node));
+}
+
+function targetForLeaf(node: T2FNode): ExportTarget {
+    if (node.nodeType === 'common') {
+        return { kind: 'common', commonEventId: node.data.commonEventId, textPath: '' };
+    }
+    return { kind: 'event', mapId: node.data.mapId, eventId: node.data.eventId, pageId: node.data.pageId, textPath: '' };
+}
+
+/** 場所の鍵。テキストの索引(宛先のメモ)と同じ形(書式は placeKey に1つ)。 */
+function keyForLeaf(node: T2FNode): string {
+    const place: Place = node.nodeType === 'common'
+        ? { kind: 'common', commonEventId: Number(node.data.commonEventId) }
+        : { kind: 'event', mapId: Number(node.data.mapId), eventId: Number(node.data.eventId), pageId: Number(node.data.pageId) };
+    return placeKey(place) as string;
+}
+
+interface CommonSummary {
+    id: number;
+    name: string;
+    trigger: number;
+    switchId: number;
+    empty: boolean;
+}
+
+export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
+    private _onDidChange = new vscode.EventEmitter<T2FNode | undefined | void>();
+    readonly onDidChangeTreeData = this._onDidChange.event;
+
+    /** マップの親子。番号 → その下のマップ。 */
+    private tree: { dataDir: string; mtime: number; roots: MapNode[]; parents: Map<number, number>; nodes: Map<number, MapNode> } | undefined;
+    /** テキストの索引(場所の鍵 → ファイル)。 */
+    private texts = new Map<string, string>();
+    /** 反映していない変更があるテキスト。ファイル → [調べたときの目印, 未反映か]。 */
+    private readonly unapplied = new Map<string, [string, boolean]>();
+    private checking = false;
+    private soon: NodeJS.Timeout | undefined;
+
+    constructor(
+        private readonly context: vscode.ExtensionContext,
+        private readonly service: DatabaseService,
+        private readonly running: RunTracker,
+        private readonly live: LiveService
+    ) {}
+
+    refresh(node?: T2FNode): void {
+        if (!node) {
+            this.tree = undefined;
+            this.unapplied.clear();
+        }
+        this._onDidChange.fire(node);
+    }
+
+    /* 少し待ってから作り直す。テキストを保存して反映すると、保存の合図とデータの書き換えの
+     * 合図が続けて来る。そのたびに全部作り直すと、マップの多いプロジェクトでは重い。 */
+    refreshSoon(): void {
+        if (this.soon) return;
+        this.soon = setTimeout(() => { this.soon = undefined; this.refresh(); }, REFRESH_WAIT);
+    }
+
+    dispose(): void {
+        clearTimeout(this.soon);
+        this.soon = undefined;
+    }
+
+    /** テストプレイの様子だけが変わったとき(ためたものは捨てない)。 */
+    refreshMarks(): void {
+        this._onDidChange.fire();
+    }
+
+    /** 今のゲームの様子。テストプレイしていなければ undefined。 */
+    marks(ctx: DbContext): LiveMarks | undefined {
+        const state = this.live.forContext(ctx);
+        if (!state || !state.connected(Date.now())) return undefined;
+        const snapshot = state.snapshot();
+        return {
+            mapId: snapshot.mapId,
+            pages: new Map(snapshot.pages),
+            parallelEvents: new Set(snapshot.parallel.events),
+            parallelCommons: new Set(snapshot.parallel.commons),
+            running: new Set(this.running.current().map((frame) => frame.key))
+        };
+    }
+
+    /** ツリーを描き直すかどうかを決める目印。 */
+    markSignature(): string {
+        const ctx = this.context2();
+        const marks = ctx && this.marks(ctx);
+        if (!marks) return '';
+        return JSON.stringify([
+            marks.mapId,
+            Array.from(marks.pages.entries()),
+            Array.from(marks.parallelEvents),
+            Array.from(marks.parallelCommons),
+            Array.from(marks.running)
+        ]);
+    }
+
+    getTreeItem(element: T2FNode): vscode.TreeItem {
+        return element;
+    }
+
+    async getChildren(element?: T2FNode): Promise<T2FNode[]> {
+        const ctx = this.context2();
+        if (!ctx) return [];
+        this.texts = await this.running.textIndex(ctx);
+
+        if (!element) {
+            const nodes: T2FNode[] = [];
+            const here = this.hereNode(ctx);
+            if (here) nodes.push(here);
+            nodes.push(...this.mapNodes(ctx, this.maps(ctx).roots));
+            if (fs.existsSync(path.join(ctx.dataDir, 'CommonEvents.json'))) {
+                nodes.push(new T2FNode('category', tr('コモンイベント', 'Common Events'), vscode.TreeItemCollapsibleState.Collapsed, { category: 'commons' }));
+            }
+            return nodes;
+        }
+        if (element.nodeType === 'here') {
+            const marks = this.marks(ctx);
+            return marks ? this.eventNodes(ctx, marks.mapId, true) : [];
+        }
+        if (element.nodeType === 'category') return this.commonNodes(ctx);
+        if (element.nodeType === 'map') {
+            const mapId = Number(element.data.mapId);
+            const node = this.maps(ctx).nodes.get(mapId);
+            return this.mapNodes(ctx, node ? node.children : []).concat(this.eventNodes(ctx, mapId));
+        }
+        if (element.nodeType === 'event') {
+            return this.pageNodes(ctx, Number(element.data.mapId), Number(element.data.eventId), !!element.data.here);
+        }
+        return [];
+    }
+
+    getParent(element: T2FNode): T2FNode | undefined {
+        const ctx = this.context2();
+        if (!ctx) return undefined;
+        if (element.nodeType === 'common') {
+            return new T2FNode('category', tr('コモンイベント', 'Common Events'), vscode.TreeItemCollapsibleState.Collapsed, { category: 'commons' });
+        }
+        if (element.nodeType === 'page') {
+            return this.eventNode(ctx, Number(element.data.mapId), Number(element.data.eventId), undefined, !!element.data.here);
+        }
+        if (element.nodeType === 'event') {
+            if (element.data.here) return this.hereNode(ctx);
+            return this.mapNode(ctx, Number(element.data.mapId));
+        }
+        if (element.nodeType === 'map') {
+            const parent = this.maps(ctx).parents.get(Number(element.data.mapId));
+            return parent ? this.mapNode(ctx, parent) : undefined;
+        }
+        return undefined;
+    }
+
+    /** ツリーの中の、そのテキストのページ(またはコモンイベント)の行。 */
+    nodeForFile(fsPath: string): T2FNode | undefined {
+        const ctx = this.context2();
+        if (!ctx) return undefined;
+        let text: string;
+        try {
+            const open = vscode.workspace.textDocuments.find((d) => d.uri.fsPath === fsPath);
+            text = open ? open.getText() : fs.readFileSync(fsPath, 'utf8');
+        } catch (e) {
+            return undefined;
+        }
+        const place = placeFromMeta(parseFrontMatter(text).meta);
+        if (!place) return undefined;
+        if (place.kind === 'common') {
+            const entry = this.commons(ctx).find((c) => c.id === place.commonEventId);
+            return entry ? this.commonNode(ctx, entry) : undefined;
+        }
+        if (place.eventId === undefined) return undefined;
+        const event = this.service.mapEvents(ctx, place.mapId)?.[place.eventId];
+        if (!event) return undefined;
+        return this.pageNode(ctx, place.mapId, place.eventId, event, (place.pageId ?? 1) - 1);
+    }
+
+    private context2(): DbContext | undefined {
+        const root = workspaceRootFor();
+        if (!root) return undefined;
+        const ctx = this.service.forRoot(root);
+        return ctx && fs.existsSync(ctx.dataDir) ? ctx : undefined;
+    }
+
+    /** MapInfos.json を読んで親子に並べる(更新時刻が変わるまで使い回す)。 */
+    private maps(ctx: DbContext): { roots: MapNode[]; parents: Map<number, number>; nodes: Map<number, MapNode> } {
+        const file = path.join(ctx.dataDir, 'MapInfos.json');
+        let mtime = 0;
+        try { mtime = fs.statSync(file).mtimeMs; } catch (e) { mtime = 0; }
+        if (this.tree && this.tree.dataDir === ctx.dataDir && this.tree.mtime === mtime) return this.tree;
+        let roots: MapNode[] = [];
+        try {
+            roots = mapTree(readMapInfos(JSON.parse(fs.readFileSync(file, 'utf8'))));
+        } catch (e) {
+            roots = [];
+        }
+        const parents = new Map<number, number>();
+        const nodes = new Map<number, MapNode>();
+        const walk = (list: MapNode[], parent: number): void => {
+            for (const node of list) {
+                nodes.set(node.info.id, node);
+                if (parent) parents.set(node.info.id, parent);
+                walk(node.children, node.info.id);
+            }
+        };
+        walk(roots, 0);
+        this.tree = { dataDir: ctx.dataDir, mtime, roots, parents, nodes };
+        return this.tree;
+    }
+
+    private names(ctx: DbContext): NameLookup {
+        return (kind, id) => {
+            const hit = ctx.db.lookup(kind, id);
+            return hit.status === 'named' ? hit.name : undefined;
+        };
+    }
+
+    /** テストプレイ中だけ、いちばん上に出す「今いるマップ」。 */
+    private hereNode(ctx: DbContext): T2FNode | undefined {
+        const marks = this.marks(ctx);
+        if (!marks || marks.mapId <= 0) return undefined;
+        const info = this.maps(ctx).nodes.get(marks.mapId);
+        const item = new T2FNode('here', tr('今いるマップ: ', 'Current map: ') + mapLabel(info ? info.info : { id: marks.mapId, name: '' }), vscode.TreeItemCollapsibleState.Expanded, {
+            mapId: String(marks.mapId), here: true
+        });
+        item.description = '#' + padId(marks.mapId);
+        item.iconPath = new vscode.ThemeIcon('location');
+        item.tooltip = tr('テストプレイでプレイヤーがいるマップのイベントです。', 'Events of the map the player is on in the test play.');
+        return item;
+    }
+
+    private mapNodes(ctx: DbContext, list: MapNode[]): T2FNode[] {
+        return list.map((node) => this.mapNode(ctx, node.info.id, node));
+    }
+
+    private mapNode(ctx: DbContext, mapId: number, known?: MapNode): T2FNode {
+        const node = known || this.maps(ctx).nodes.get(mapId);
+        const info = node ? node.info : { id: mapId, name: '', parentId: 0, order: 0, expanded: false };
+        const events = this.service.mapEvents(ctx, mapId);
+        const hasEvents = !!events && events.some((e) => !!e);
+        const children = (node ? node.children.length : 0) + (hasEvents ? 1 : 0);
+        const item = new T2FNode(
+            'map',
+            mapLabel(info),
+            children ? (info.expanded ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed) : vscode.TreeItemCollapsibleState.None,
+            { mapId: String(mapId) }
+        );
+        const marks = this.marks(ctx);
+        item.description = ['#' + padId(mapId), marks && marks.mapId === mapId ? tr('● いまここ', '● here now') : ''].filter((s) => s).join(tr('・', ' · '));
+        item.iconPath = new vscode.ThemeIcon('map');
+        item.tooltip = tr(`${mapLabel(info)}(マップ${padId(mapId)})`, `${mapLabel(info)} (map ${padId(mapId)})`);
+        return item;
+    }
+
+    private eventNodes(ctx: DbContext, mapId: number, here = false): T2FNode[] {
+        const events = this.service.mapEvents(ctx, mapId);
+        const out: T2FNode[] = [];
+        (events || []).forEach((event, id) => {
+            if (event && id > 0) out.push(this.eventNode(ctx, mapId, id, event, here));
+        });
+        return out;
+    }
+
+    private eventNode(ctx: DbContext, mapId: number, eventId: number, known?: MapEvent, here = false): T2FNode {
+        const event = known || this.service.mapEvents(ctx, mapId)?.[eventId];
+        const label = event && event.name ? event.name : eventLabelId(eventId);
+        const item = new T2FNode(
+            'event',
+            label,
+            event && event.pages ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
+            { mapId: String(mapId), eventId: String(eventId), here }
+        );
+        const mark = eventLiveMark(this.marks(ctx), mapId, eventId, event ? event.pages : undefined);
+        item.description = [`${eventLabelId(eventId)}${event ? ` (${event.x},${event.y})` : ''}`, mark].filter((s) => s).join(tr('・', ' · '));
+        item.iconPath = new vscode.ThemeIcon('symbol-event');
+        item.tooltip = tr(`${eventLabelId(eventId)}${event && event.name ? ' ' + event.name : ''} / ${event ? event.pages : 0}ページ`, `${eventLabelId(eventId)}${event && event.name ? ' ' + event.name : ''} / ${event ? event.pages : 0} pages`);
+        return item;
+    }
+
+    private pageNodes(ctx: DbContext, mapId: number, eventId: number, here = false): T2FNode[] {
+        const event = this.service.mapEvents(ctx, mapId)?.[eventId];
+        const out: T2FNode[] = [];
+        for (let index = 0; index < (event ? event.pages || 0 : 0); index++) out.push(this.pageNode(ctx, mapId, eventId, event as MapEvent, index, here));
+        this.checkUnapplied(ctx, out);
+        return out;
+    }
+
+    private pageNode(ctx: DbContext, mapId: number, eventId: number, event: MapEvent, index: number, here = false): T2FNode {
+        const summary: PageSummary = (event.pageSummaries || [])[index] || { trigger: 0 };
+        const empty = !!(event.pageEmpty || [])[index];
+        const item = new T2FNode('page', tr(`ページ ${index + 1}`, `Page ${index + 1}`), vscode.TreeItemCollapsibleState.None, {
+            mapId: String(mapId), eventId: String(eventId), pageId: String(index + 1), here
+        });
+        const conditions = pageConditionTexts(summary, this.names(ctx));
+        const map = this.maps(ctx).nodes.get(mapId);
+        const mark = pageLiveMark(this.marks(ctx), mapId, eventId, index + 1);
+        this.decorateLeaf(item, [pageDescription(summary, empty, this.names(ctx)), mark].filter((s) => s).join(tr('・', ' · ')), [
+            tr(`${mapLabel(map ? map.info : { id: mapId, name: '' })} / ${eventLabelId(eventId)}${event.name ? ' ' + event.name : ''} / ${index + 1}ページ`, `${mapLabel(map ? map.info : { id: mapId, name: '' })} / ${eventLabelId(eventId)}${event.name ? ' ' + event.name : ''} / page ${index + 1}`),
+            conditions.length ? tr('出現条件: ', 'Conditions: ') + conditions.join(' / ') : tr('出現条件: なし', 'Conditions: none')
+        ]);
+        item.command = { command: 'text2frame.tree.open', title: 'Open', arguments: [item] };
+        return item;
+    }
+
+    private commons(ctx: DbContext): CommonSummary[] {
+        let list: unknown;
+        try {
+            list = JSON.parse(fs.readFileSync(path.join(ctx.dataDir, 'CommonEvents.json'), 'utf8'));
+        } catch (e) {
+            return [];
+        }
+        const out: CommonSummary[] = [];
+        (Array.isArray(list) ? list : []).forEach((entry: any, index: number) => {
+            if (!entry || index === 0) return;
+            out.push({
+                id: index,
+                name: typeof entry.name === 'string' ? entry.name : '',
+                trigger: Number(entry.trigger) || 0,
+                switchId: Number(entry.switchId) || 0,
+                empty: !(Array.isArray(entry.list) && entry.list.length > 1)
+            });
+        });
+        return out;
+    }
+
+    private commonNodes(ctx: DbContext): T2FNode[] {
+        const out = this.commons(ctx).map((entry) => this.commonNode(ctx, entry));
+        this.checkUnapplied(ctx, out);
+        return out;
+    }
+
+    private commonNode(ctx: DbContext, entry: CommonSummary): T2FNode {
+        const item = new T2FNode('common', entry.name || tr(`コモン${padId(entry.id)}`, `Common ${padId(entry.id)}`), vscode.TreeItemCollapsibleState.None, {
+            commonEventId: String(entry.id)
+        });
+        const description = commonDescription(entry.trigger, entry.switchId, entry.empty, this.names(ctx));
+        const mark = commonLiveMark(this.marks(ctx), entry.id);
+        this.decorateLeaf(item, [padId(entry.id), description, mark].filter((s) => s).join(tr('・', ' · ')), []);
+        item.command = { command: 'text2frame.tree.open', title: 'Open', arguments: [item] };
+        return item;
+    }
+
+    /** テキストの有無・未反映の印・ツールチップ。 */
+    private decorateLeaf(item: T2FNode, description: string, tooltipLines: string[]): void {
+        const textPath = this.texts.get(keyForLeaf(item));
+        const unapplied = textPath ? (this.unapplied.get(textPath) || [])[1] : false;
+        item.description = [description, unapplied ? '未反映' : ''].filter((s) => s).join(tr('・', ' · '));
+        item.iconPath = new vscode.ThemeIcon(textPath ? 'file-text' : 'new-file');
+        const lines = tooltipLines.concat([
+            textPath ? tr('テキスト: ', 'Text: ') + vscode.workspace.asRelativePath(textPath) : tr('テキストはまだありません(押すとゲームから取り出せます)', 'No text yet (click to pull it from the game)'),
+            unapplied ? tr('このテキストには、ゲームに反映していない変更があります。', 'This text has changes not yet applied to the game.') : ''
+        ]);
+        item.tooltip = lines.filter((line) => line).join('\n');
+    }
+
+    /** 表に出した行のテキストが未反映かを、あとから調べて印を付ける。 */
+    private checkUnapplied(ctx: DbContext, nodes: T2FNode[]): void {
+        const targets: Array<[string, string]> = [];
+        for (const node of nodes) {
+            const textPath = this.texts.get(keyForLeaf(node));
+            if (!textPath) continue;
+            const stamp = this.stampOf(ctx, textPath, node);
+            if (!stamp) continue;
+            const known = this.unapplied.get(textPath);
+            if (!known || known[0] !== stamp) targets.push([textPath, stamp]);
+        }
+        if (!targets.length || this.checking) return;
+        this.checking = true;
+        setTimeout(() => {
+            let changed = false;
+            try {
+                const hits = unappliedFiles(this.context, ctx.root, targets.map(([file]) => file));
+                for (const [file, stamp] of targets) {
+                    const value: [string, boolean] = [stamp, hits.has(file)];
+                    const before = this.unapplied.get(file);
+                    this.unapplied.set(file, value);
+                    if (!before || before[1] !== value[1]) changed = true;
+                }
+            } catch (e) {
+                for (const [file, stamp] of targets) this.unapplied.set(file, [stamp, false]);
+            }
+            this.checking = false;
+            if (changed) this._onDidChange.fire();
+        }, 0);
+    }
+
+    /**
+     * 保存したテキストとゲームのデータの更新時刻。どちらかが変われば調べ直す。
+     * 書きかけ(保存していない分)は反映の対象にならないので、ここでは見ない。
+     */
+    private stampOf(ctx: DbContext, textPath: string, node: T2FNode): string | undefined {
+        const dataFile = node.nodeType === 'common'
+            ? path.join(ctx.dataDir, 'CommonEvents.json')
+            : path.join(ctx.dataDir, 'Map' + String(Number(node.data.mapId)).padStart(3, '0') + '.json');
+        try {
+            return fs.statSync(textPath).mtimeMs + '/' + fs.statSync(dataFile).mtimeMs;
+        } catch (e) {
+            return undefined;
+        }
+    }
+}
+
+/** Register the tree view and its node commands. */
+export function registerTreeView(context: vscode.ExtensionContext, service: DatabaseService, running: RunTracker, live: LiveService): void {
+    const provider = new T2FTreeProvider(context, service, running, live);
+    const view = vscode.window.createTreeView('text2frameExplorer', { treeDataProvider: provider });
+    let signature = provider.markSignature();
+    const marksChanged = (): void => {
+        const next = provider.markSignature();
+        if (next === signature) return;
+        signature = next;
+        provider.refreshMarks();
+    };
+
+
+    const textPathOf = async (root: string, node: T2FNode): Promise<string | undefined> => {
+        const ctx = service.forRoot(root);
+        const key = keyForLeaf(node);
+        const index = ctx ? await running.textIndex(ctx) : undefined;
+        return (index && index.get(key)) || undefined;
+    };
+
+    /* テキストがまだ無い行は、ファイルを作らずに読み取り専用で開く。
+     * ゲームのデータから読んだ中身がそのまま出る。書き換えたくなったら、その画面の
+     * 「ゲームから取り出す」を押したときに初めてファイルを作る。 */
+    const openLeaf = async (node: T2FNode): Promise<void> => {
+        const root = workspaceRootOrWarn();
+        if (!root || (node.nodeType !== 'page' && node.nodeType !== 'common')) {
+            return;
+        }
+        const textPath = await textPathOf(root, node);
+        if (!textPath || !fs.existsSync(textPath)) {
+            const doc = await vscode.workspace.openTextDocument(readOnlyUri(keyForLeaf(node)));
+            await vscode.window.showTextDocument(doc, { preview: true });
+            return;
+        }
+        const doc = await vscode.workspace.openTextDocument(textPath);
+        await vscode.window.showTextDocument(doc, { preview: true });
+    };
+
+    /** 1件を取り出して開く。差分で確かめてから書き込む(一覧の行と読み取り専用の画面で共通)。 */
+    const pullOne = async (root: string, target: ExportTarget, textPath: string): Promise<void> => {
+        const makePlan = (): PullPlan[] => {
+            target.textPath = textPath;
+            if (fs.existsSync(textPath)) {
+                target.frontMatterSource = fs.readFileSync(textPath, 'utf8');
+            }
+            return [planPull(context, root, target, 'overwrite')];
+        };
+        const reviewed = await reviewPull(root, makePlan, tr('この行の取り出し', 'Pull this row'));
+        if (!reviewed) {
+            vscode.window.setStatusBarMessage(tr('Text2Frame: 取り出しをやめました。', 'Text2Frame: Stopped pulling.'), 4000);
+            return;
+        }
+        const res = commitPull(context, root, reviewed.plans[0]);
+        if (!res.ok) {
+            vscode.window.showErrorMessage(tr('Text2Frame: ゲームから取り出せませんでした - ', 'Text2Frame: Could not pull from the game - ') + (res.error || ''));
+            return;
+        }
+        vscode.window.showInformationMessage(tr('Text2Frame: ゲームから取り出しました — ', 'Text2Frame: Pulled from the game — ') + path.relative(root, textPath));
+        running.reindex();
+        provider.refresh();
+        const doc = await vscode.workspace.openTextDocument(textPath);
+        await vscode.window.showTextDocument(doc, { preview: true });
+    };
+
+    const revealForEditor = (editor: vscode.TextEditor | undefined): void => {
+        if (!editor || !view.visible || editor.document.languageId !== 'text2frame') return;
+        const node = provider.nodeForFile(editor.document.uri.fsPath);
+        if (node) view.reveal(node, { select: true, focus: false, expand: true }).then(undefined, () => undefined);
+    };
+
+    context.subscriptions.push(
+        view,
+        vscode.commands.registerCommand('text2frame.tree.refresh', () => provider.refresh()),
+        vscode.commands.registerCommand('text2frame.tree.open', (node: T2FNode) => openLeaf(node)),
+        vscode.commands.registerCommand('text2frame.tree.export', async (node: T2FNode) => {
+            const root = workspaceRootOrWarn();
+            if (!root || (node.nodeType !== 'page' && node.nodeType !== 'common')) {
+                return;
+            }
+            const textPath = (await textPathOf(root, node)) || textPathForLeaf(context, root, node);
+            await pullOne(root, targetForLeaf(node), textPath);
+        }),
+        /* 読み取り専用で開いている画面(テキストがまだ無いページ)から取り出す。
+         * ここを押したときに初めてファイルを作る。 */
+        vscode.commands.registerCommand('text2frame.pullThisView', async () => {
+            const root = workspaceRootOrWarn();
+            const uri = vscode.window.activeTextEditor?.document.uri;
+            if (!root || !uri || uri.scheme !== LINKS_SCHEME) {
+                return;
+            }
+            const place = placeFromKey(uri.query);
+            if (!place || (place.kind === 'event' && (place.eventId === undefined))) {
+                return;
+            }
+            const target: ExportTarget = place.kind === 'common'
+                ? { kind: 'common', commonEventId: String(place.commonEventId), textPath: '' }
+                : { kind: 'event', mapId: String(place.mapId), eventId: String(place.eventId), pageId: String(place.pageId ?? 1), textPath: '' };
+            const textPath = newTextPathFor(context, root, dataDirFor(root), textBaseDirFor(root), target);
+            await pullOne(root, target, textPath);
+        }),
+        vscode.commands.registerCommand('text2frame.tree.deploy', async (node: T2FNode) => {
+            const root = workspaceRootOrWarn();
+            if (!root || (node.nodeType !== 'page' && node.nodeType !== 'common')) {
+                return;
+            }
+            const textPath = await textPathOf(root, node);
+            if (!textPath || !fs.existsSync(textPath)) {
+                vscode.window.showWarningMessage(tr('Text2Frame: テキストがありません。先にゲームから取り出してください。', 'Text2Frame: There is no text. Pull it from the game first.'));
+                return;
+            }
+            if (await reviewFiles(context, root, [textPath], tr('この行の反映', 'Apply this row')) === 'cancel') {
+                vscode.window.setStatusBarMessage(tr('Text2Frame: 反映をやめました。', 'Text2Frame: Stopped applying.'), 4000);
+                return;
+            }
+            const res = deployFile(context, root, textPath);
+            if (res && res.ok) {
+                vscode.window.showInformationMessage(tr('Text2Frame: ゲームに反映しました — ', 'Text2Frame: Applied to the game — ') + path.relative(root, textPath));
+                provider.refresh();
+            } else if (res) {
+                vscode.window.showErrorMessage(tr('Text2Frame: ゲームに反映できませんでした - ', 'Text2Frame: Could not apply to the game - ') + (res.error || ''));
+            }
+        }),
+        vscode.commands.registerCommand('text2frame.tree.try', async (node: T2FNode, mode?: 'stand' | 'run') => {
+            const root = workspaceRootOrWarn();
+            if (!root) return;
+            const place = node.nodeType === 'common'
+                ? { kind: 'common' as const, commonEventId: Number(node.data.commonEventId) }
+                : { kind: 'event' as const, mapId: Number(node.data.mapId), eventId: Number(node.data.eventId), pageId: Number(node.data.pageId || '1') };
+            const textPath = await textPathOf(root, node);
+            const target = textPath && fs.existsSync(textPath) ? vscode.Uri.file(textPath) : place;
+            const how = node.nodeType === 'common' ? 'common' : (mode || 'stand');
+            await vscode.commands.executeCommand('text2frame.tryEvent', target, how);
+        }),
+        vscode.commands.registerCommand('text2frame.tree.tryRun', (node: T2FNode) => vscode.commands.executeCommand('text2frame.tree.try', node, 'run')),
+        vscode.commands.registerCommand('text2frame.tree.tryCommon', (node: T2FNode) => vscode.commands.executeCommand('text2frame.tree.try', node)),
+        vscode.commands.registerCommand('text2frame.tree.mapLinks', async (node: T2FNode) => {
+            await vscode.commands.executeCommand('text2frame.mapLinks.show', Number(node.data.mapId));
+            await vscode.commands.executeCommand('text2frameMapLinks.focus');
+        }),
+        vscode.workspace.onDidSaveTextDocument((doc) => {
+            if (doc.languageId === 'text2frame') provider.refreshSoon();
+        }),
+        vscode.window.onDidChangeActiveTextEditor(revealForEditor),
+        view.onDidChangeVisibility(() => revealForEditor(vscode.window.activeTextEditor)),
+        live.onDidChange(marksChanged),
+        live.onDidChangeRun(marksChanged),
+        running.onDidChange(marksChanged)
+    );
+
+    // Refresh the tree when data files change.
+    const watcher = vscode.workspace.createFileSystemWatcher('**/data/{Map*.json,CommonEvents.json}');
+    watcher.onDidChange(() => provider.refreshSoon());
+    watcher.onDidCreate(() => provider.refreshSoon());
+    watcher.onDidDelete(() => provider.refreshSoon());
+    context.subscriptions.push(watcher, provider);
+}
