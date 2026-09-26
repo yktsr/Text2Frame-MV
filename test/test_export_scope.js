@@ -123,8 +123,8 @@ describe('default file name', function () {
   const name = frame2text.defaultFileName
 
   it('adds the map order, hierarchy, and event name', function () {
-    expect(name({ kind: 'event', mapId: '3', mapOrder: '002', mapName: '世界-水族館4', eventId: '3', name: '12_ミズクラゲ', pageId: '1' }))
-      .to.equal('002_世界-水族館4_12_ミズクラゲ_page1_map003-event003.txt')
+    expect(name({ kind: 'event', mapId: '3', mapOrder: '002', mapName: '世界-はじまりの村', eventId: '3', name: '04_宝箱', pageId: '1' }))
+      .to.equal('002_世界-はじまりの村_04_宝箱_page1_map003-event003.txt')
     expect(name({ kind: 'common', commonEventId: '1', name: '回復' })).to.equal('common001-回復.txt')
   })
 
@@ -137,9 +137,9 @@ describe('default file name', function () {
   })
 
   it('drops the characters a file name cannot hold', function () {
-    // 実際のプロジェクトにあったマップ名(1/100)。Windows / macOS / Linux のどれでも使えない文字を落とす。
-    expect(name({ kind: 'event', mapId: '2', mapOrder: '2', mapName: '世界-1/100', eventId: '1', name: 'a:b*c?d"e<f>g|h', pageId: '1' }))
-      .to.equal('2_世界-1100_abcdefgh_page1_map002-event001.txt')
+    // マップ名に区切り文字が入ることはある。Windows / macOS / Linux のどれでも使えない文字は落とす。
+    expect(name({ kind: 'event', mapId: '2', mapOrder: '2', mapName: '世界-港町1/2', eventId: '1', name: 'a:b*c?d"e<f>g|h', pageId: '1' }))
+      .to.equal('2_世界-港町12_abcdefgh_page1_map002-event001.txt')
     expect(name({ kind: 'common', commonEventId: '3', name: ' 前後の空白と末尾の点.. ' })).to.equal('common003-前後の空白と末尾の点.txt')
   })
 
