@@ -3563,14 +3563,12 @@
       let mapInfos = []
       try { mapInfos = JSON.parse(_fs.readFileSync(_path.join(dataDir, 'MapInfos.json'), 'utf8')) || [] } catch (e) { mapInfos = [] }
       const mapInfoOf = function (id) { return Array.isArray(mapInfos) ? mapInfos[Number(id)] : null }
-      const mapCount = Array.isArray(mapInfos) ? mapInfos.filter(function (info) { return !!info }).length : 0
-      const orderWidth = String(Math.max(1, mapCount)).length
       const mapOrderOf = function (id) {
         const info = mapInfoOf(id)
         // RPGツクールの正しいキーは order。既存データに ordar があればそれも読める。
         const order = info && (info.order !== undefined ? info.order : info.ordar)
         if (order === undefined || order === null || order === '') return ''
-        return String(order).padStart(orderWidth, '0')
+        return String(order).padStart(3, '0')
       }
       const mapNameOf = function (id) {
         const names = []
