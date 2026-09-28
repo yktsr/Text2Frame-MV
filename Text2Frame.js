@@ -138,7 +138,7 @@
  * @type number
  * @default 1
  *
- * @arg Strategy
+ * @arg IsOverwrite
  * @text 反映方法
  * @desc 取り込み時の反映方法を指定します。merge にはFrame2Textが必要です。詳しくはヘルプドキュメントをご覧ください。
  * @type select
@@ -148,6 +148,10 @@
  * @value merge
  * @option 【取り扱い注意】上書き / overwrite
  * @value overwrite
+ * @option 【旧設定】上書きする(= overwrite)
+ * @value true
+ * @option 【旧設定】上書きしない(= add)
+ * @value false
  * @default add
  *
  * @command IMPORT_MESSAGE_TO_CE
@@ -172,7 +176,7 @@
  * @type common_event
  * @default 1
  *
- * @arg Strategy
+ * @arg IsOverwrite
  * @text 反映方法
  * @desc 取り込み時の反映方法を指定します。merge にはFrame2Textが必要です。詳しくはヘルプドキュメントをご覧ください。
  * @type select
@@ -182,6 +186,10 @@
  * @value merge
  * @option 【取り扱い注意】上書き / overwrite
  * @value overwrite
+ * @option 【旧設定】上書きする(= overwrite)
+ * @value true
+ * @option 【旧設定】上書きしない(= add)
+ * @value false
  * @default add
  *
  *
@@ -4526,16 +4534,15 @@
 
   // for MZ plugin command
   if (typeof PluginManager !== 'undefined' && PluginManager.registerCommand) {
-    /* 反映のしかたは、旧来の上書き真偽値と同じ枠に入れる(true/false も受ける)。
-     * IsOverwrite は @arg から外したが、それ以前に保存されたコマンドにはまだ入っているので、
-     * Strategy が空のときの手掛かりとして使う。 */
+    /* 保存済みコマンドとの互換性のため、引数名は IsOverwrite を維持する。
+     * 値は add/merge/overwrite と旧来の true/false を共通処理で解釈する。 */
     PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_EVENT', function (args) {
       const file_folder = args.FileFolder
       const file_name = args.FileName
       const map_id = args.MapID
       const event_id = args.EventID
       const page_id = args.PageID
-      const strategy = args.Strategy || args.IsOverwrite
+      const strategy = args.IsOverwrite
       this.pluginCommand('IMPORT_MESSAGE_TO_EVENT',
         [file_folder, file_name, map_id, event_id, page_id, strategy])
     })
@@ -4543,7 +4550,7 @@
       const file_folder = args.FileFolder
       const file_name = args.FileName
       const common_event_id = args.CommonEventID
-      const strategy = args.Strategy || args.IsOverwrite
+      const strategy = args.IsOverwrite
       this.pluginCommand('IMPORT_MESSAGE_TO_CE',
         [file_folder, file_name, common_event_id, strategy])
     })
