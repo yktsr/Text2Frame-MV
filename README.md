@@ -382,6 +382,8 @@ A development support plugin for RPG Maker MV/MZ that easily converts text files
 
 [![Download Frame2Text](https://img.shields.io/badge/Download-Frame2Text.js-blue)](https://github.com/yktsr/Text2Frame-MV/releases/download/2.3.0/Frame2Text.js)
 
+[![Download VisualStudioCode Plugin](https://img.shields.io/badge/Download-VisualStudioCodePlugin-blue)](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support)
+
 ### Description
 ![./introduce_Text2Frame_MV_MZ.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Text2Frame_MV_MZ.png)
 
@@ -412,37 +414,6 @@ For more detailed instructions, refer to the [wiki](https://github.com/yktsr/Tex
 1. Download Text2Frame.js from [here](https://github.com/yktsr/Text2Frame-MV/releases).
 2. Place it in the plugin folder of your project.
 3. Enable the Text2Frame plugin from the plugin editor.
-
-Install and enable Frame2Text.js as well for exporting and merge write-back.
-
-### Import Strategies and Synchronization
-
-The import plugin commands support `add` (append, the initial default), `merge` and `overwrite`. In MZ, `IMPORT_MESSAGE_TO_EVENT` and `IMPORT_MESSAGE_TO_CE` retain the argument key `IsOverwrite`, displayed as “反映方法”. Saved `true` / `false` values still mean overwrite / append. Batch import and synchronization use the `Strategy` argument.
-
-MV command examples (run each separately when needed):
-
-```
-BATCH_EXPORT_MESSAGES_TO_FOLDER text merge conversation
-BATCH_IMPORT_MESSAGES_FROM_FOLDER text merge
-START_DATA_SYNC both text merge
-STOP_DATA_SYNC
-```
-
-Synchronization arguments are direction (`both` / `push` / `pull`), text folder and strategy (`merge` / `overwrite`), defaulting to `both text merge`. Batch commands run once. `START_DATA_SYNC` imports existing texts before watching in `both` / `push` mode; `pull` starts watching without an initial export. Export first if you have no texts yet. Game-to-text synchronization updates events that already have a text with matching front matter. Plugin watchers monitor the top level of the text and data folders, and stop when playtesting closes.
-
-For CLI use:
-
-```bash
-npm install -D @yktsr/text2frame-mv
-npx frame2text --mode batch --text-dir text --scope conversation
-npx t2f-sync start
-# Or synchronize once and exit:
-npx t2f-sync once
-```
-
-CLI synchronization defaults to `merge` and scope `custom` (existing texts with front matter). Unlike the plugin start command, CLI synchronization in `both` mode starts with pull, then push. Use `--scope conversation` to include events with dialogue that do not have texts yet. Keep the RPG Maker editor closed during automatic imports to avoid saving stale data over imported changes.
-
-On a merge conflict, both versions and markers are written to the source side: **the text on import, the game on export**. Resolve the marked side and repeat the same operation. The destination keeps its own version at the conflicting location.
 
 ### Setting Face, Background, Position, and Name
 You can use tags to change message settings such as face, background, and position.
@@ -546,7 +517,6 @@ For more specific examples and other event commands, refer to the [Test Text Exa
 #### Comment Out
 If you write "%" at the beginning of a line, it will be treated as a comment and will not be imported.
 This comment-out symbol can be changed in the plugin parameters.
-For examples, refer to the [corresponding wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%86%E3%82%AD%E3%82%B9%E3%83%88%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9).
 
 #### Export to Common Events
 You can export not only to map events but also to common events.
@@ -558,10 +528,37 @@ This feature is for RPG Maker MV. In RPG Maker MZ, you can set directly from the
 
 For details, refer to the [corresponding wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3).
 
-#### Skip <Skip> … <SkipEnd>
-Supports RPG Maker MZ's "Skip" (event command 109). A block enclosed by `<Skip>`
-and `<SkipEnd>` is kept in the data but skipped at runtime. It is preserved as-is
-through the export/import round-trip.
+#### Apply Strategy Options
+Choose one of three ways to apply text: append (`add`), merge (`merge`), or overwrite (`overwrite`). We recommend `merge`.
+
+For details, see the [wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/Apply-Strategy-Options-en).
+
+#### Specify an Import Destination in the Text File
+In addition to plugin-command arguments and plugin parameters, you can specify the import destination in the text file. Add front matter like the following at the top of the file.
+
+Example: import into map ID 1, event ID 2, page ID 3.
+
+```
+---
+kind: event
+mapId: 1
+eventId: 2
+pageId: 3
+---
+(text continues here)
+```
+
+For details, see the [wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/Specifying-Import-Destinations-en).
+
+#### Batch Import from a Folder
+You can import multiple text files in a specified folder at once. Each text file's front matter determines its import destination.
+
+For details, see the [wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/Batch-Import-from-Folder-en).
+
+#### Seamless Bidirectional Synchronization
+This feature continuously watches text files and RPG Maker event JSON files in the `data` folder, and immediately synchronizes changes in either direction.
+
+For details, see the [wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/Seamless-Bidirectional-Sync-en).
 
 ### Reverse Conversion Plugin: Frame2Text
 Frame2Text is also available - a plugin that exports RPG Maker MV/MZ event commands to text following Text2Frame notation.
@@ -569,6 +566,19 @@ Frame2Text is also available - a plugin that exports RPG Maker MV/MZ event comma
 Download Frame2Text from [here](https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Frame2Text.js).
 
 For detailed usage, refer to the [Frame2Text introduction page](https://github.com/yktsr/Text2Frame-MV/wiki/%E9%80%86%E5%A4%89%E6%8F%9B%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3Frame2Text) or the help documentation in the plugin itself.
+
+### Visual Studio Code Plugin
+Text2Frame is available as a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support).
+
+It lets you run plugin commands from the UI, synchronize text and game data with a single action, and spot syntax errors with syntax highlighting.
+
+For features and usage details, see the [Marketplace page](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support).
+![./introduce_Text2Frame_plugin.png](./vscode.png)
+
+### Command-Line Interface (CLI)
+In addition to plugin commands and the Visual Studio Code extension, an npm package provides command-line access to Text2Frame and Frame2Text.
+
+See the [CLI wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/Command-Line-Interface-en) for details.
 
 ### Author/Contact
 * [@kryptos_nv](https://twitter.com/kryptos_nv)
@@ -579,45 +589,12 @@ For detailed usage, refer to the [Frame2Text introduction page](https://github.c
 * inazumasoft:Shick
   * [Inazumasoft Production Support](https://ci-en.net/creator/12715)
 
-### Development
+### Node.js Library Usage and Developer Checks
 
-#### Install dependencies
-```
-$ npm ci
-$ npm run build --if-present
-```
-
-#### Show help
-
-```bash
-npx text2frame --help
-npx frame2text --help
-npx t2f-sync start --help
-npx t2f-sync once --help
-```
-
-Text2Frame supports `--mode map|common|compile|batch`. Use `-f, --text-file` for a single input file (`--text_path` is also accepted), and `-t, --text-dir` for a batch folder. Use `--root` to set the project directory; relative data, text and base paths are resolved against it.
-
-CLI imports default to `--strategy merge`; use `--strategy overwrite` to replace the target. Export first to establish a common ancestor before editing both sides: without an ancestor, the first merge import replaces the target with the text. Single-file imports also accept legacy `--overwrite true` (replace) and `--overwrite false` (append), unless an explicit `--strategy` takes precedence. Text2Frame has no `-w` option.
-
-#### Run Text2Frame.js with command line
-
-From a repository checkout:
-
-```bash
-node Text2Frame.js --mode map --text-file text/map001_event001_page1.txt
-node Text2Frame.js -m map -f test/basic.txt -o data/Map001.json -e 1 -p 1 --strategy overwrite
-node Text2Frame.js -m common -f test/basic.txt -o data/CommonEvents.json -c 1 --strategy overwrite
-node Text2Frame.js --mode batch --text-dir text
-cat test/basic.txt | node Text2Frame.js --mode compile
-```
-
-With the npm package, replace `node Text2Frame.js` with `npx text2frame`. Reopen the RPG Maker project without saving after importing.
-
-#### Using Text2Frame Module in Node.js Projects
+#### Using the Text2Frame Module in Node.js Projects
 
 Text2Frame can be used as a library in Node.js projects.
-It supports both CommonJS and ES Module formats, allowing you to choose based on your project environment.
+Use CommonJS with `require`. ES modules can use a default import through Node.js CommonJS interoperability.
 
 ##### Installation
 
@@ -666,7 +643,7 @@ $ node examples/commonjs.js
 
 ##### Using as an ES Module
 
-Node.js ES modules can use a default import of the package's CommonJS entry point.
+The package entry point is CommonJS. Import it as the default export from Node.js ES modules.
 You need to either use `.mjs` file extension or specify `"type": "module"` in package.json.
 
 **examples/esmodules.mjs:**
@@ -725,8 +702,17 @@ fs.writeFileSync("data/Map001.json", JSON.stringify(mapData, null, 2))
 console.log("Event commands have been successfully incorporated!")
 ```
 
+This example overwrites `data/Map001.json` directly. Back up your project first; saving an open RPG Maker project can discard these changes, so reopen it without saving after the update.
 
-#### Lint check
+#### Build and Basic Checks
+```
+$ npm ci
+$ npm run build:dist
+```
+
+GitHub Actions also runs this distribution build after installing dependencies.
+
+#### Lint Check
 ```
 $ npm run lint
 ```
@@ -734,6 +720,13 @@ $ npm run lint
 #### Test
 ```
 $ npm run test
+```
+
+#### Round-Trip Check (Real Data Validation)
+This compares command lists after a Frame2Text export followed by a Text2Frame import. Harmless MV/MZ representation differences are normalized by default; use `--strict=true` to disable that normalization. The script rewrites the specified game data and text output, so run it only on a copy of your project.
+
+```
+$ npm run verify-roundtrip -- /path/to/game-copy/data --text=/path/to/game-copy/roundtrip-text --en=true
 ```
 
 ### License
