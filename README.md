@@ -233,7 +233,7 @@ Visual Studio Codeの[Plugin](https://marketplace.visualstudio.com/items?itemNam
 ### Node.jsプロジェクトでのText2Frameモジュールの使用方法
 
 Text2FrameはNode.jsプロジェクトでライブラリとして使用することができます。
-CommonJS形式とES Module形式の両方をサポートしているため、プロジェクトの環境に合わせて選択できます。
+CommonJS の `require` で利用できます。ES Module からも、Node.js の CommonJS 相互運用によりデフォルトインポートで利用できます。
 
 #### インストール方法
 
@@ -282,7 +282,7 @@ $ node examples/commonjs.js
 
 #### ES Moduleとして使用する場合
 
-Node.js の `import` からも、CommonJS のエントリーポイントをデフォルトインポートできます。
+パッケージのエントリーポイントは CommonJS です。Node.js の `import` からはデフォルトインポートしてください。
 `.mjs`拡張子のファイルか、package.jsonで`"type": "module"`を指定する必要があります。
 
 **examples/esmodules.mjs:**
@@ -341,11 +341,15 @@ fs.writeFileSync("data/Map001.json", JSON.stringify(mapData, null, 2))
 console.log("イベントコマンドの組み込みが完了しました！")
 ```
 
-### Install dependencies
+この例は `data/Map001.json` を直接上書きします。ツクールを開いたまま保存すると変更が失われることがあるため、実行前にバックアップを取り、反映後はツクール側をセーブせずに開き直してください。
+
+### ビルドと基本検査
 ```
 $ npm ci
-$ npm run build --if-present
+$ npm run build:dist
 ```
+
+GitHub Actions でも、依存関係の導入後にこの配布用ビルドを実行しています。
 
 ### Lint check
 ```
@@ -360,7 +364,7 @@ $ npm run test
 ### Round-trip check（実データ検証）
 書き出し(Frame2Text)→取り込み(Text2Frame)の往復で、コマンドリストを比較します。既定では MV/MZ の無害な表現差を正規化し、`--strict=true` でその正規化を無効にします。このスクリプトは指定したゲームデータと出力テキストを書き換えるため、検証用コピーで実行してください。
 ```
-$ npm run verify-roundtrip -- sample/data --text=roundtrip-text --en=true
+$ npm run verify-roundtrip -- /path/to/game-copy/data --text=/path/to/game-copy/roundtrip-text --en=true
 ```
 
 ## ライセンス
