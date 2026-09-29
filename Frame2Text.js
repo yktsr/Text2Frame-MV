@@ -64,7 +64,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc 取り出し時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
+ * @desc 取り出し時の反映方法を指定します。merge にはText2Frameが必要です。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 統合 / merge
  * @value merge
@@ -96,7 +96,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc 取り出し時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
+ * @desc 取り出し時の反映方法を指定します。merge にはText2Frameが必要です。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 統合 / merge
  * @value merge
@@ -116,7 +116,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc 取り出し時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
+ * @desc 取り出し時の反映方法を指定します。merge にはText2Frameが必要です。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 統合 / merge
  * @value merge
@@ -126,7 +126,7 @@
  *
  * @arg Scope
  * @text 取り出す範囲
- * @desc 対象となるテキストの条件を指定します。詳しくはヘルプドキュメントへ
+ * @desc 対象となるイベントの条件を指定します。デフォルト値は conversation です。詳しくはヘルプドキュメントへ
  * @type select
  * @option 会話があるものだけ / conversation
  * @value conversation
@@ -233,17 +233,18 @@
  * @type boolean
  *
  * @help
- * 本プラグインはツクールMV・MZのイベントコマンドを、テキストファイル(.txtファ
- * イルなど)に取り出すための開発支援プラグインです。テキストからゲームへ取り込む
- * Text2Frame の、逆方向を担当します。
+ * 本プラグインはツクールMV・MZのイベントコマンドを、テキストファイル
+ * (.txtファイルなど)に取り出すための開発支援プラグインです。
+ * テキストからゲームへ取り込むText2Frame の、逆方向を担当します。
  *
  * 以降のヘルプドキュメントは、すべてText2Frameが導入されているという前提で
  * 説明されます。（Frame2TextはあくまでText2Frameの補助プラグインだからです）
  *
- * 所定のプラグインコマンド（後述）を実行することにより、マップイベントやコモン
- * イベントの内容を Text2Frame 記法のテキストとして書き出すことができます。既存
- * のイベントをテキストで管理したい場合や、Text2Frameで一度取り込んだイベントを
- * イベントエディターで編集した後に、その変更をテキストに戻したい場合に使います。
+ * 所定のプラグインコマンド（後述）を実行することにより、マップイベントや
+ * コモンイベントの内容を Text2Frame 記法のテキストとして書き出すことが
+ * できます。既存のイベントをテキストで管理したい場合や、Text2Frameで一度
+ * 取り込んだイベントをツクールMV・MZで編集した後に、その変更をテキストに
+ * 戻したい場合に使います。
  *
  * テストプレイおよびイベントテスト（イベントエディタ上で右クリック→テスト）
  * から実行することを想定しています。
@@ -559,13 +560,13 @@
  * プラグインパラメータで指定したテキストファイルやマップIDとは違うパラメータで
  * 実行ができます。
  *
- * 例1:マップIDが1, イベントIDが2, ページIDが3をtext/message.txtに統合モードで
- *    取り出す。
+ * 例1:マップIDが1, イベントIDが2, ページIDが3をtext/message.txtに
+ *     統合モードで取り出す。
  *   EXPORT_EVENT_TO_MESSAGE text message.txt 1 2 3 merge
  *   イベントをメッセージにエクスポ－ト text message.txt 1 2 3 統合
  *
- * 例2:マップIDが1, イベントIDが2, ページIDが3をtext/message.txtに上書きモードで
- *    取り出す。
+ * 例2:マップIDが1, イベントIDが2, ページIDが3をtext/message.txtに
+ *     上書きモードで取り出す。
  *   EXPORT_EVENT_TO_MESSAGE text message.txt 1 2 3 overwrite
  *   イベントをメッセージにエクスポ－ト text message.txt 1 2 3 overwrite
  *
@@ -582,19 +583,25 @@
  * フォルダへの一括取り出し
  * --------------------------------------
  * ここまで説明した取り出しは、単一のテキストファイルを対象としたものですが、
- * ゲーム中のイベントを指定したフォルダに取り出す機能も提供しています。既定では
- * 会話があるものだけを対象にし、「取り出す範囲」で対象を変更できます。
+ * ゲーム中のイベントを指定したフォルダに取り出す機能も提供しています。
+ * 既定では会話があるものだけを対象にし、「取り出す範囲」で対象を変更できます。
  *
- * 新しく作成するファイル名には、通常イベントではマップ階層・マップ名・イベント
- * 名、コモンイベントではコモンイベント名が含まれます。既に同じ取り込み先を示す
- * 見出し情報付きテキストがある場合は、そのファイル名と保存場所を維持します。
- * 取り出し後はファイル名を任意のものに変更可能です。
+ * 取り出し対象に対応する見出し情報付きテキストがフォルダ内にない場合は、
+ * ファイル名を規則に従って自動で付けて保存します。通常イベントの
+ * ファイル名にはマップ階層・マップ名・イベント名・IDが、
+ * コモンイベントのファイル名にはコモンイベントID・コモンイベント名が
+ * 含まれます。
+ *
+ * 取り出し対象になったイベントと同じ取り込み先を示す見出し情報付きテキストが
+ * 既にある場合は、その既存ファイルを出力先として使います。取り出し方法が
+ * overwrite なら内容を置き換え、merge なら既存の内容と統合します。この場合、
+ * 新しいファイルは作成されません。
  *
  * ◆ 取り出す範囲について
  *  フォルダへの一括取り出しでは、取り出す対象を指定できる以下の4つの
  *  オプションがあります。MVではプラグインパラメータの「一括取り出しの範囲」
- *  から設定でき、プラグインコマンドの引数から上書きできます。MZではプラグイン
- *  コマンドの引数で設定します。
+ *  から設定でき、プラグインコマンドの引数から上書きできます。
+ *  MZではプラグインコマンドの引数で設定します。
  *   ・会話があるものだけ / conversation
  *      プロジェクト内で、以下の3つのうちいずれかが1つでも含まれる
  *      イベントを対象として、取り出します。これが既定のオプションです。
@@ -614,21 +621,22 @@
  *   ・ 全部 / all
  *      イベント内容に関わらず、すべてのイベントを取り出します。
  *
+ *  ※見出し情報付きテキストが既にあっても、取り出す範囲 の条件に合わない
+ *    イベントのテキストファイルは更新されません。
  *
  * ◆ ツクールMZの場合の実行方法
- *  ツクールMZの場合はプラグインコマンドの「フォルダへ一括取り出し」を選択し、
- *  画面にある引数に従って設定してください。
+ *  ツクールMZの場合はプラグインコマンドの「フォルダへ一括取り出し」を
+ *  選択し、画面にある引数に従って設定してください。
  *
  * ◆ ツクールMVの場合の実行方法
- *  ツクールMVの場合は、以下のうちいずれかを記述したプラグインコマンドを作成し、
- *  テストプレイかイベントテストで実行してください。
+ *  ツクールMVの場合は、以下のうちいずれかを記述したプラグインコマンドを
+ *  作成し、テストプレイかイベントテストで実行してください。
  *   BATCH_EXPORT_MESSAGES_TO_FOLDER
  *   フォルダへ一括取り出し
  *
  *  対象フォルダと反映方法は単体での取り出しと同じプラグインパラメータを
  *  参照します。また、引数を指定することで以下のようにプラグインパラメータを
  *  上書きできます。
- *  また、引数を指定することで以下のようにプラグインパラメータを上書きできます。
  *
  *  例1: textフォルダに統合モードで会話があるイベントだけ取り出す
  *    BATCH_EXPORT_MESSAGES_TO_FOLDER text merge conversation
@@ -3556,14 +3564,12 @@
       let mapInfos = []
       try { mapInfos = JSON.parse(_fs.readFileSync(_path.join(dataDir, 'MapInfos.json'), 'utf8')) || [] } catch (e) { mapInfos = [] }
       const mapInfoOf = function (id) { return Array.isArray(mapInfos) ? mapInfos[Number(id)] : null }
-      const mapCount = Array.isArray(mapInfos) ? mapInfos.filter(function (info) { return !!info }).length : 0
-      const orderWidth = String(Math.max(1, mapCount)).length
       const mapOrderOf = function (id) {
         const info = mapInfoOf(id)
         // RPGツクールの正しいキーは order。既存データに ordar があればそれも読める。
         const order = info && (info.order !== undefined ? info.order : info.ordar)
         if (order === undefined || order === null || order === '') return ''
-        return String(order).padStart(orderWidth, '0')
+        return String(order).padStart(3, '0')
       }
       const mapNameOf = function (id) {
         const names = []
@@ -3798,7 +3804,7 @@
         const _t2f = resolveText2Frame()
         if (!_t2f || !_t2f.applyMergePull) {
           addWarning('[batch] 統合(merge)での取り出しには Text2Frame プラグインが必要です。')
-          addWarning('[batch] 同じプロジェクトに導入するか、「取り出しのしかた」に overwrite を指定してください')
+          addWarning('[batch] 同じプロジェクトに導入するか、「反映方法」に overwrite を指定してください')
           addWarning('[batch] (overwrite はテキストに書いた内容を残しません)。')
           console.error('[batch] MERGE pull requires the Text2Frame plugin; install it or pull with overwrite')
           return
@@ -3886,7 +3892,7 @@
         // 「取り出しはマージしません」と書いていた名残があったが、一括取り出しは統合を選べる。
         // この行は上書きしたファイルだけを数えているので、統合との違いを言って対処に繋げる。
         addWarning('[batch] 既存テキスト ' + overwrittenCount + '件を上書きしました(テキストに書いた内容は残っていません)。')
-        addWarning('[batch] 残したいときは「取り出しのしかた」に merge を指定してください。')
+        addWarning('[batch] 残したいときは「反映方法」に merge を指定してください。')
       }
       // $gameMessage は行数が限られるため、失敗の詳細は先頭数件だけ出して残りはコンソールへ回す。
       const FAILURE_LINES = 5
@@ -4091,7 +4097,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           テキストの場所は --text-dir、データの場所は --data-dir で変更できます。（既定は text / data ）
           例3: $ npx frame2text --mode batch --text-dir text --data-dir data
 
-          -s / --strategy で取り出しのしかたを選べます。（既定は merge ）
+          -s / --strategy で反映方法を選べます。（既定は merge ）
             merge     … 「統合」。テキストに書いた内容を残したまま、ゲーム側の変更だけを
                         取り込みます。同じ場所を両方で変えたときは、ゲームのイベントに
                         両方の版を衝突の目印付きで書きます(テキストはテキストの版のまま)。

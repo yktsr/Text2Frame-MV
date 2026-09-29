@@ -165,6 +165,14 @@ describe('MV plugin command: omitted arguments fall back to the plugin parameter
     expect(next).to.contain('マップ 3(引数)')
     expect(next).to.contain('イベント 2(引数)')
     expect(next).to.contain('ページ 1(プラグインパラメータ)')
+
+    // MZ は第6引数に反映方法も渡す。この場合も第5引数のページIDは引数由来。
+    run('IMPORT_MESSAGE_TO_EVENT', ['text', 'a.txt', '3', '2', '2', 'overwrite'])
+
+    const withStrategy = shown.join('')
+    expect(withStrategy).to.contain('マップ 3(引数)')
+    expect(withStrategy).to.contain('イベント 2(引数)')
+    expect(withStrategy).to.contain('ページ 2(引数)')
   })
 
   it('says where the common event number came from', function () {
