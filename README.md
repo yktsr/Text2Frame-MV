@@ -150,7 +150,7 @@ Simple compiler to convert text to event.
 ## 逆変換プラグイン Frame2Text
 RPGツクールMV/MZのイベントコマンドを、Text2Frameの記法に則ったテキストにエクスポートするプラグインです。
 
-Frame2Textのダウンロードは[ここ](https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Frame2Text.js)からお願いします。
+Frame2Textのダウンロードは[ここ](https://github.com/yktsr/Text2Frame-MV/releases/download/2.3.0/Frame2Text.js)からお願いします。
 
 また、詳細な使い方は[Frame2Textの紹介ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E9%80%86%E5%A4%89%E6%8F%9B%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3Frame2Text)かプラグイン本体のヘルプドキュメントを参照してください。
 
@@ -211,7 +211,8 @@ Visual Studio Codeの[Plugin](https://marketplace.visualstudio.com/items?itemNam
 ボタンひとつでゲームとテキストを相互に同期できるようになり、従来難しかった、文法のミスもシンタックスハイライト機能により、視覚的にわかるようになりました。
 
 詳細な機能や使い方は[マーケットプレイス](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support)を参照してください。
-![./introduce_Text2Frame_plugin.png](./vscode.png)
+![./introduce_Text2Frame_plugin.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_vscode_plugin.png)
+※ 画面はpre-release版のものです
 
 
 ## コマンドライン操作(CLI)
@@ -229,7 +230,7 @@ Visual Studio Codeの[Plugin](https://marketplace.visualstudio.com/items?itemNam
 * inazumasoft:Shick
   * [いなずまそふと制作支援部](https://ci-en.net/creator/12715)
 
-## Node.js ライブラリ利用と開発者向け検査
+## プラグイン開発者向けテスト方法
 ### Node.jsプロジェクトでのText2Frameモジュールの使用方法
 
 Text2FrameはNode.jsプロジェクトでライブラリとして使用することができます。
@@ -257,23 +258,7 @@ $ npm install @yktsr/text2frame-mv
 
 Node.js の `require` ではパッケージのエントリーポイントを読み込みます。
 
-**examples/commonjs.js:**
-```javascript
-const TF = require("@yktsr/text2frame-mv")
-
-// テキストからイベントコマンドのJSONを生成
-const date = new Date().toLocaleString()
-const text = `<comment>
-CommonJSモジュールで使用
-出力日時: ${date}
-</comment>
-<Wait: 60>
-こんにちは、世界！`
-
-// compile()メソッドでText2Frame記法をJSONに変換
-const eventCommands = TF.compile(text)
-console.log(JSON.stringify(eventCommands, null, 2))
-```
+使用例は[examples/commonjs.js](examples/commonjs.js)を参照してください。
 
 **実行方法:**
 ```bash
@@ -285,23 +270,7 @@ $ node examples/commonjs.js
 パッケージのエントリーポイントは CommonJS です。Node.js の `import` からはデフォルトインポートしてください。
 `.mjs`拡張子のファイルか、package.jsonで`"type": "module"`を指定する必要があります。
 
-**examples/esmodules.mjs:**
-```javascript
-import TF from "@yktsr/text2frame-mv"
-
-// テキストからイベントコマンドのJSONを生成
-const date = new Date().toLocaleString()
-const text = `<comment>
-ES Moduleで使用
-出力日時: ${date}
-</comment>
-<PlayBGM: Theme1, 90, 100, 0>
-今日も一日がんばるぞい！`
-
-// compile()メソッドでText2Frame記法をJSONに変換
-const eventCommands = TF.compile(text)
-console.log(JSON.stringify(eventCommands, null, 2))
-```
+使用例は[examples/esmodules.mjs](examples/esmodules.mjs)を参照してください。
 
 **実行方法:**
 ```bash
@@ -314,34 +283,6 @@ Text2Frameモジュールは以下のメソッドを提供します：
 
 - **`TF.compile(text)`**: Text2Frame記法のテキストをRPGツクールMV/MZのイベントコマンドJSON配列に変換します
 - 戻り値: イベントコマンドのJSON配列。イベントの `list` に直接組み込む場合は、末尾に終端コマンド `{ code: 0, indent: 0, parameters: [] }` を追加します。
-
-#### 実用的な使用例
-
-```javascript
-import TF from "@yktsr/text2frame-mv"
-import fs from "fs"
-
-// テキストファイルを読み込む
-const scenarioText = fs.readFileSync("scenario/chapter1.txt", "utf-8")
-
-// Text2Frame記法をイベントコマンドに変換
-const eventCommands = TF.compile(scenarioText)
-
-// 既存のマップJSONを読み込む
-const mapData = JSON.parse(fs.readFileSync("data/Map001.json", "utf-8"))
-
-// イベントコマンドを指定のイベントに組み込む
-const eventId = 1
-const pageId = 0
-mapData.events[eventId].pages[pageId].list = eventCommands.concat([{ code: 0, indent: 0, parameters: [] }])
-
-// マップJSONを保存
-fs.writeFileSync("data/Map001.json", JSON.stringify(mapData, null, 2))
-
-console.log("イベントコマンドの組み込みが完了しました！")
-```
-
-この例は `data/Map001.json` を直接上書きします。ツクールを開いたまま保存すると変更が失われることがあるため、実行前にバックアップを取り、反映後はツクール側をセーブせずに開き直してください。
 
 ### ビルドと基本検査
 ```
@@ -573,7 +514,8 @@ Text2Frame is available as a [Visual Studio Code extension](https://marketplace.
 It lets you run plugin commands from the UI, synchronize text and game data with a single action, and spot syntax errors with syntax highlighting.
 
 For features and usage details, see the [Marketplace page](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support).
-![./introduce_Text2Frame_plugin.png](./vscode.png)
+![./introduce_Text2Frame_plugin.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_vscode_plugin.png)
+*The screenshot shows the pre-release version.*
 
 ### Command-Line Interface (CLI)
 In addition to plugin commands and the Visual Studio Code extension, an npm package provides command-line access to Text2Frame and Frame2Text.
@@ -616,25 +558,7 @@ Or add the following to your package.json:
 
 ##### Using as a CommonJS Module
 
-With Node.js `require`, load the package entry point.
-
-**examples/commonjs.js:**
-```javascript
-const TF = require("@yktsr/text2frame-mv")
-
-// Generate event command JSON from text
-const date = new Date().toLocaleString()
-const text = `<comment>
-Using CommonJS module
-Output date: ${date}
-</comment>
-<Wait: 60>
-Hello, World!`
-
-// Convert Text2Frame notation to JSON using compile() method
-const eventCommands = TF.compile(text)
-console.log(JSON.stringify(eventCommands, null, 2))
-```
+With Node.js `require`, load the package entry point. See [examples/commonjs.js](examples/commonjs.js) for a runnable example.
 
 **How to run:**
 ```bash
@@ -644,25 +568,7 @@ $ node examples/commonjs.js
 ##### Using as an ES Module
 
 The package entry point is CommonJS. Import it as the default export from Node.js ES modules.
-You need to either use `.mjs` file extension or specify `"type": "module"` in package.json.
-
-**examples/esmodules.mjs:**
-```javascript
-import TF from "@yktsr/text2frame-mv"
-
-// Generate event command JSON from text
-const date = new Date().toLocaleString()
-const text = `<comment>
-Using ES Module
-Output date: ${date}
-</comment>
-<PlayBGM: Theme1, 90, 100, 0>
-Let's do our best today!`
-
-// Convert Text2Frame notation to JSON using compile() method
-const eventCommands = TF.compile(text)
-console.log(JSON.stringify(eventCommands, null, 2))
-```
+You need to either use `.mjs` file extension or specify `"type": "module"` in package.json. See [examples/esmodules.mjs](examples/esmodules.mjs) for a runnable example.
 
 **How to run:**
 ```bash
@@ -675,34 +581,6 @@ The Text2Frame module provides the following methods:
 
 - **`TF.compile(text)`**: Converts Text2Frame notation text into RPG Maker MV/MZ event command JSON array
 - Return value: an array of event commands. When assigning it directly to an event's `list`, append the terminator `{ code: 0, indent: 0, parameters: [] }`.
-
-##### Practical Usage Example
-
-```javascript
-import TF from "@yktsr/text2frame-mv"
-import fs from "fs"
-
-// Read text file
-const scenarioText = fs.readFileSync("scenario/chapter1.txt", "utf-8")
-
-// Convert Text2Frame notation to event commands
-const eventCommands = TF.compile(scenarioText)
-
-// Load existing map JSON
-const mapData = JSON.parse(fs.readFileSync("data/Map001.json", "utf-8"))
-
-// Incorporate event commands into specified event
-const eventId = 1
-const pageId = 0
-mapData.events[eventId].pages[pageId].list = eventCommands.concat([{ code: 0, indent: 0, parameters: [] }])
-
-// Save map JSON
-fs.writeFileSync("data/Map001.json", JSON.stringify(mapData, null, 2))
-
-console.log("Event commands have been successfully incorporated!")
-```
-
-This example overwrites `data/Map001.json` directly. Back up your project first; saving an open RPG Maker project can discard these changes, so reopen it without saving after the update.
 
 #### Build and Basic Checks
 ```
