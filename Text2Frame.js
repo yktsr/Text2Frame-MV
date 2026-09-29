@@ -116,7 +116,7 @@
  *
  * @arg FileName
  * @text 取り込み元ファイル名
- * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @desc 読み込むテキストファイルのファイル名を設定します。デフォルトはmessage.txtです。
  * @type string
  * @default message.txt
  *
@@ -138,9 +138,9 @@
  * @type number
  * @default 1
  *
- * @arg Strategy
+ * @arg IsOverwrite
  * @text 反映方法
- * @desc 取り込み時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
+ * @desc 取り込み時の反映方法を指定します。merge にはFrame2Textが必要です。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 末尾に追記 / add
  * @value add
@@ -148,6 +148,11 @@
  * @value merge
  * @option 【取り扱い注意】上書き / overwrite
  * @value overwrite
+ * @option 【旧設定】上書きする(= overwrite)
+ * @value true
+ * @option 【旧設定】上書きしない(= add)
+ * @value false
+ * @default add
  *
  * @command IMPORT_MESSAGE_TO_CE
  * @text コモンイベントにインポート
@@ -161,7 +166,7 @@
  *
  * @arg FileName
  * @text 取り込み元ファイル名
- * @desc 読み込むシナリオファイルのファイル名を設定します。デフォルトはmessage.txtです。
+ * @desc 読み込むテキストファイルのファイル名を設定します。デフォルトはmessage.txtです。
  * @type string
  * @default message.txt
  *
@@ -171,9 +176,9 @@
  * @type common_event
  * @default 1
  *
- * @arg Strategy
+ * @arg IsOverwrite
  * @text 反映方法
- * @desc 取り込み時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
+ * @desc 取り込み時の反映方法を指定します。merge にはFrame2Textが必要です。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 末尾に追記 / add
  * @value add
@@ -181,6 +186,11 @@
  * @value merge
  * @option 【取り扱い注意】上書き / overwrite
  * @value overwrite
+ * @option 【旧設定】上書きする(= overwrite)
+ * @value true
+ * @option 【旧設定】上書きしない(= add)
+ * @value false
+ * @default add
  *
  *
  * @command BATCH_IMPORT_MESSAGES_FROM_FOLDER
@@ -189,13 +199,13 @@
  *
  * @arg TextFolder
  * @text 取り込み元フォルダ名
- * @desc 走査するテキストフォルダ名です。デフォルトはtextです。
+ * @desc 走査対象となるテキストの保存されているフォルダ名です。デフォルトはtextです。
  * @type string
  * @default text
  *
  * @arg Strategy
  * @text 反映方法
- * @desc 取り込み時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
+ * @desc 取り込み時の反映方法を指定します。merge にはFrame2Textが必要です。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 末尾に追記 / add
  * @value add
@@ -212,7 +222,7 @@
  *
  * @arg Direction
  * @text 同期の向き
- * @desc 同期の向きを指定します。bothとpullにはFrame2Textプラグインが必要です。
+ * @desc 同期の向きを指定します。bothとpullにはFrame2Textプラグインが必要です。デフォルト値は both です。
  * @type select
  * @option 双方向 / both
  * @value both
@@ -230,7 +240,7 @@
  *
  * @arg Strategy
  * @text 反映方法
- * @desc 取り込み時の反映方法を指定します。詳しくはヘルプドキュメントをご覧ください。
+ * @desc 同期時の反映方法を指定します。merge にはFrame2Textが必要です。詳しくはヘルプドキュメントをご覧ください。
  * @type select
  * @option 統合 / merge
  * @value merge
@@ -854,9 +864,9 @@
  *
  * 見出しと上部と下部にはそれぞれ "---" （ハイフンが3つ）が必要です。
  *
- * Frame2Textの機能や後述する機能の影響で、generatorといったその他のキーと値が
- * 見出しに自動付与されることがあります。これらは内部処理の都合で必要になる
- * 場合があります。それらは可能な限り消さないようお願いします。
+ * Frame2Textの機能や後述する機能の影響で、generatorといったその他のキーと
+ * 値が見出しに自動付与されることがあります。これらは内部処理の都合で必要に
+ * なる場合があります。それらは可能な限り消さないようお願いします。
  *
  * この見出し情報が付与されているテキストは、すべてこちらの取り込み先が優先さ
  * れます。以下に、優先される順番を示します。
@@ -882,12 +892,12 @@
  * なお、見出し情報がないテキストは無視されます。
  *
  * ◆ ツクールMZの場合の実行方法
- *  ツクールMZの場合はプラグインコマンドの「フォルダから一括取り込み」を選択し、
- *  画面にある引数に従って設定してください。
+ *  ツクールMZの場合はプラグインコマンドの「フォルダから一括取り込み」を
+ *  選択し、画面にある引数に従って設定してください。
  *
  * ◆ ツクールMVの場合の実行方法
- *  ツクールMVの場合は、以下のうちいずれかを記述したプラグインコマンドを作成し、
- *  テストプレイかイベントテストで実行してください。
+ *  ツクールMVの場合は、以下のうちいずれかを記述したプラグインコマンドを
+ *  作成し、テストプレイかイベントテストで実行してください。
  *   BATCH_IMPORT_MESSAGES_FROM_FOLDER
  *   フォルダから一括取り込み
  *
@@ -926,8 +936,8 @@
  * --------------------------------------
  * 双方向シームレス同期
  * --------------------------------------
- * ここまでの機能では、プラグインコマンドを実行し、ツクールにイベントを反映して
- * 終了するというものでした。
+ * ここまでの機能では、プラグインコマンドを実行し、ツクールにイベントを
+ * 反映して終了するというものでした。
  *
  * 実行すると常時テキストとツクールのイベント(dataフォルダ内のJSONファイル)を
  * 監視し、即時イベントとテキストの双方向に反映する（同期する）機能も用意して
@@ -941,8 +951,8 @@
  * また逆に、イベントを編集しプロジェクトファイルを保存すると、テキストに
  * 即時に反映されます。
  *
- * なお対象は「フォルダから一括取り込み」と同様に見出し情報が含まれるテキストに
- * 限られます。見出し情報がないテキストについては無視されます。
+ * なお対象は「フォルダから一括取り込み」と同様に見出し情報が含まれる
+ * テキストに限られます。見出し情報がないテキストについては無視されます。
  *
  *
  * ◆ おすすめの準備手順
@@ -954,18 +964,18 @@
  *  プラグインコマンドの「テキストとゲームの同期を開始」を作成してください。
  *  基本的にはデフォルト設定で問題がありません。
  *
- *  作成したプラグインコマンドを、テストプレイもしくはイベントテストから実行して
- *  ください。
+ *  作成したプラグインコマンドを、テストプレイもしくはイベントテストから実行
+ *  してください。
  *
  * ◆ ツクールMVでの開始方法
- *  ツクールMVの場合は、以下のうちいずれかを記述したプラグインコマンドを作成し、
- *  テストプレイかイベントテストで実行してください。
+ *  ツクールMVの場合は、以下のうちいずれかを記述したプラグインコマンドを
+ *  作成し、テストプレイかイベントテストで実行してください。
  *   START_DATA_SYNC
  *   テキストとゲームの同期を開始
  *
  *  引数を指定することでその挙動を制御できます。
- *  なお、その他のプラグインコマンドは基本的にプラグインパラメータを参照します
- *  が、双方向シームレス同期では一切参照しません。
+ *  なお、その他のプラグインコマンドは基本的にプラグインパラメータを
+ *  参照しますが、双方向シームレス同期では一切参照しません。
  *
  *    第1引数: 同期の向き。以下の3つのうちいずれかを設定できる
  *      - both: 双方向    (デフォルト)
@@ -987,8 +997,8 @@
  *    テキストとゲームの同期を開始 テキスト→ゲームだけ text 上書き
  *
  * ◆ 同期開始後の挙動と使い方。
- *  同期を開始すると、対象フォルダ(デフォルトでは text)内の見出し情報付きテキ
- *  ストと、ゲームのイベント(dataフォルダ内のJSONファイル)を監視します。
+ *  同期を開始すると、対象フォルダ(デフォルトでは text)内の見出し情報付き
+ *  テキストと、ゲームのイベント(dataフォルダ内のJSONファイル)を監視します。
  *  見出し情報付きテキストを編集するとツクールのイベントに反映され、ゲームの
  *  イベントを修正しプロジェクトファイルを保存すると、テキストに反映されます
  *  （同期の向きが対応している場合）。
@@ -1007,9 +1017,9 @@
  *
  * ◆ その他の同期の注意事項
  *  - 進行状況はコンソール（F8）に出ます。ゲーム画面には出ません。
- *  - 反映方法の既定は merge（統合）です。一括反映の既定（add）とは異なります。
- *    繰り返し流すため、追記だと同じ内容が積み上がってしまうためそもそも選べ
- *    ません。
+ *  - 反映方法の既定は merge（統合）です。一括反映の既定（add）とは
+ *    異なります。繰り返し流すため、追記だと同じ内容が積み上がってしまうため
+ *    そもそも選べません。
  *
  *
  * --------------------------------------
@@ -4524,16 +4534,15 @@
 
   // for MZ plugin command
   if (typeof PluginManager !== 'undefined' && PluginManager.registerCommand) {
-    /* 反映のしかたは、旧来の上書き真偽値と同じ枠に入れる(true/false も受ける)。
-     * IsOverwrite は @arg から外したが、それ以前に保存されたコマンドにはまだ入っているので、
-     * Strategy が空のときの手掛かりとして使う。 */
+    /* 保存済みコマンドとの互換性のため、引数名は IsOverwrite を維持する。
+     * 値は add/merge/overwrite と旧来の true/false を共通処理で解釈する。 */
     PluginManager.registerCommand('Text2Frame', 'IMPORT_MESSAGE_TO_EVENT', function (args) {
       const file_folder = args.FileFolder
       const file_name = args.FileName
       const map_id = args.MapID
       const event_id = args.EventID
       const page_id = args.PageID
-      const strategy = args.Strategy || args.IsOverwrite
+      const strategy = args.IsOverwrite
       this.pluginCommand('IMPORT_MESSAGE_TO_EVENT',
         [file_folder, file_name, map_id, event_id, page_id, strategy])
     })
@@ -4541,7 +4550,7 @@
       const file_folder = args.FileFolder
       const file_name = args.FileName
       const common_event_id = args.CommonEventID
-      const strategy = args.Strategy || args.IsOverwrite
+      const strategy = args.IsOverwrite
       this.pluginCommand('IMPORT_MESSAGE_TO_CE',
         [file_folder, file_name, common_event_id, strategy])
     })
@@ -5178,7 +5187,8 @@
         Laurus.Text2Frame.RouteFrom = {
           MapID: args[2] ? 'arg' : 'param',
           EventID: args[3] ? 'arg' : 'param',
-          PageID: (args[4] && !strategyArg) ? 'arg' : 'param'
+          // 第6引数の反映方法があっても、第5引数のページIDの由来は変わらない。
+          PageID: (args[4] && !toImportStrategy(args[4])) ? 'arg' : 'param'
         }
         Laurus.Text2Frame.Strategy = resolveImportStrategy(strategyArg)
         Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite'

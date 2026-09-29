@@ -20,23 +20,14 @@ Simple compiler to convert text to event.
 
 [![Download VisualStudioCode Plugin](https://img.shields.io/badge/Download-VisualStudioCodePlugin-blue)](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support)
 
-## 更新履歴
-* Version 2.3.0：
-  * テキストファイルの取り込み方法を強化し、従来の「追記」、「上書き」の他に、変更の「統合」が選べるようになりました。この統合モードは、RPGツクール上のUIを使ったゲーム編集を壊すことなく、テキストファイルで行った編集をゲームに反映することができるようになりました。
-  * 一括反映コマンド、一括取り出しコマンドを追加しました。従来、一つのテキストを一つのイベントに書き込むには、一つのプラグインコマンドが必要でしたが、すべてのイベント・コモンイベントを一括で処理する機能を追加しました。これにより、コマンドを一つ実行するだけで、ゲームとテキストを同期できるようになりました。
-  * テキストとゲームを**自動で双方向同期**できるようになりました。テキストを保存すればゲームへ、ツクールでイベントを直せばテキストへ、それぞれ自動で追従します。ターミナルからの `npx t2f-sync --watch` に加え、**一括反映・一括取り出しの「そのあとも見張る」オプション**でも起動できるため、npm や Node.js の導入なしで使えます。詳細は「[テキストとゲームを同期する（SYNC）](#テキストとゲームを同期するsync)」を参照してください。
-  * 取り出したテキストから、**既定値と同じ顔・背景・位置のタグを省く**ようにしました。3つとも既定ならタグ行ごと消え、セリフだけが並びます。取り込んだ結果は変わりません。
-  * [Visual Studio Code](https://code.visualstudio.com)の[Plugin](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support)に対応しました。プラグインコマンドの実行をUI上から簡単に行えるようになりました。ボタンひとつでゲームとテキストを相互に同期できるようになり、従来難しかった、文法のミスもシンタックスハイライト機能により、視覚的にわかるようになりました。Watch & Deploy 機能により、テキストの変更を監視し、テキストファイルを保存すると自動的にゲームに反映できるようになりました。詳細な機能や使い方は[マーケットプレイス](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support)を参照してください。
-  * 不具合を修正し、安定性を向上しました。
-![./introduce_Text2Frame_plugin.png](./vscode.png)
-
-
-## 機能概要
+## 説明
 ![./introduce_Text2Frame_MV_MZ.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Text2Frame_MV_MZ.png)
 
-この RPGツクールMV/MZ のプラグインは、「会話イベント」などを、ツクール**以外**の、テキストエディタで編集し、作成したテキストファイルから一括でイベントコマンドとして取り込むことができます。
+会話などをツクールMV・MZ**以外**のエディタで編集して、あとでイベントコマンドとして組み込みたい人をサポートします。
 
-これにより、イベントの作成はRPGツクール上で、シナリオの取り込みはテキストファイルで、といった、自分の作成スタイルに最も合ったエディタで制作を進めることができます。
+プラグインコマンドを実行すると、テキストファイルを読み込み、ツクールMV・MZのマップイベントまたはコモンイベントにイベントコマンドとして取り込むことができます。
+
+これによりツクール上でセリフ、ウインドウの表示方法（表示位置、背景）、BGMの編集などをする必要がなくなります。
 
 最も基本的な使い方は、以下のデモを見てください。
 高度な使い方やプラグインパラメータの詳細は[wiki](https://github.com/yktsr/Text2Frame-MV/wiki)を参照してください。
@@ -57,132 +48,37 @@ Simple compiler to convert text to event.
 
 
 ## 導入方法
-
-### ゲームのプラグインとして使う（基本）
 1. [ここ](https://github.com/yktsr/Text2Frame-MV/releases)から Text2Frame.js をダウンロードします。
-1. 導入したいプロジェクトのプラグインフォルダ(`js/plugins/`)に入れます。
+1. 導入したいプロジェクトのプラグインフォルダに入れます。
 1. プラグインエディターからText2Frameのプラグインを有効にします。
 
-（取り出し機能を使うときは Frame2Text.js も同じ場所に入れてください）
 
-### npm / CLI として使う（上級者向け）
-ターミナルからの一括反映・取り出し・双方向同期や、ライブラリとしての利用はこちら。**ゲームのプラグイン導入とは別チャネル**です（npm パッケージ＝プラグインファイルではありません）。
-
-```bash
-npm install -D @yktsr/text2frame-mv
-
-npx t2f-sync --watch                              # テキスト⇄ゲームを双方向に自動同期
-npx text2frame --mode batch --text-dir text      # 反映(text -> game)
-npx frame2text --mode batch --data-dir data       # 取り出し(game -> text)
-```
-
-ライブラリとして:
-```js
-const { compile, applyTextFile } = require('@yktsr/text2frame-mv')
-```
-
-（GitHub から直接入れることもできます: `npm install -D github:yktsr/Text2Frame-MV`。この場合も `npx text2frame`、`npx frame2text`、`npx t2f-sync` を使えます）
-
-
-## テキストとゲームを同期する（SYNC）
-
-テキストを書き換えたらゲームへ、ツクールで直したらテキストへ。**双方向を自動で追従**させる機能です。
-どちらか一方だけが「正しい」わけではなく、**両側の編集を残したまま**突き合わせます（3-way マージ）。
-同じ場所を両方で変えたときだけ、どちらも捨てずに[目印付きで両方残し](#競合したときの表示両方残す)ます。
-
-同じ同期が **3つの入口**から使えます。結果は同じなので、混ぜて使っても構いません。
-
-| 入口 | 起動方法 | 必要なもの |
-| --- | --- | --- |
-| **プラグインコマンド** | 一括反映・一括取り出しの「見張る」オプション | Text2Frame.js と Frame2Text.js だけ |
-| **VS Code 拡張** | 「保存時に自動反映」を ON | [VS Code 拡張](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support) |
-| **ターミナル (CLI)** | `npx t2f-sync --watch` | Node.js / npm |
-
-### プラグインコマンドで同期する（ターミナル不要）
-
-いちばん手軽な方法です。npm も Node.js も要りません。プラグインを2つ入れて、プレイテストから実行します。
-
-監視は独立したコマンドではなく、**一括コマンドの「そのあとも見張る」オプション**です。
-まず全部を突き合わせて食い違いを無くし、そのまま変更を見張り続けます。
-「一括反映してから監視を始める」という順番を間違えようがないので、始めた瞬間から同期が揃っています。
-
-```
-BATCH_IMPORT_MESSAGES_FROM_FOLDER merge both   # 全部反映してから双方向で見張る
-BATCH_IMPORT_MESSAGES_FROM_FOLDER merge push   # 全部反映してからテキスト→ゲームだけ見張る
-BATCH_EXPORT_MESSAGES_TO_FOLDER   merge both   # 全部取り出してから双方向で見張る
-STOP_SYNC_WATCH                                # 同期監視の停止
-```
-
-テキストを正として始めたいなら一括反映から、ゲームを正として始めたいなら一括取り出しから。
-どちらから始めても監視の中身は同じで、**止めるコマンドは `STOP_SYNC_WATCH` ひとつ**です。
-
-MV では上記をプラグインコマンドにそのまま書きます（日本語の別名 `一括反映` / `一括取り出し` / `同期監視の停止` も使えます）。
-MZ ではプラグインのコマンドを選び、引数「反映のあとも見張る」（取り出し側は「取り出しのあとも見張る」）を画面から設定します。
-
-MV の引数はよく変える順です。すべて省略できます。
-
-- 一括反映: 方式（`merge`/`overwrite`）・見張りかた（`off`/`both`/`push`）・テキストフォルダ・データフォルダ
-- 一括取り出し: 方式（`merge`/`overwrite`）・見張りかた（`off`/`both`/`pull`）・テキストフォルダ・データフォルダ
-
-見張りかたの既定は `off` なので、これまでどおり一括処理だけを実行することもできます。
-
-開始すると `text/` 直下と `data/` 直下を見張り、
-
-- **テキストを保存した** → そのファイルをゲームへ反映（push）
-- **`data/*.json` が変わった** → そのイベントをテキストへ取り出し（pull）
-
-を自動で行います。自分が書いたファイルは内容を覚えているので、text→game→text のピンポンは起きません。
-
-覚えておくこと:
-
-- 監視は**ゲームのプロセスで動く**ので、プレイテストを閉じると止まります。
-- **実行中のゲームの画面は変わりません**（起動時に読んだデータを持ち続けるため）。確認は F5 でリロードしてください。
-- 進行状況はコンソール（F8）に出ます。
-- ツクールのエディタは**閉じて**使ってください。エディタの「プロジェクトの保存」は `data` を丸ごと書き戻すため、まとまった変更を見つけたときは保存とみなして自動取り出しを見送ります。
-- 監視対象は `text/` 直下と `data/` 直下だけです（サブフォルダは見ません）。
-- `chokidar` などの外部ライブラリは使わず、Node 組み込みの `fs.watch` で動くので、npm 導入なしで使えます。
-
-### ターミナルから同期する（t2f-sync）
-
-npm を使える環境なら、ゲームを起動しなくても同期できます。オプションの一覧は
-「[4. 双方向同期（t2f-sync）](#4-双方向同期t2f-sync)」を参照してください。
-
-```bash
-npx t2f-sync --watch                                   # 双方向に自動同期
-npx t2f-sync --direction pull --text-dir text-en       # 一度だけ、英語版のフォルダへ取り出す
-```
-
-
-## プラグイン固有の文法
-このプラグインでは、基本となるメッセージの取り込み以外にも、下記のような専用のタグを使うことで、より高度な取り込みを実現できます。
-
-下記は代表的なものであり、詳細な文法は[wiki](https://github.com/yktsr/Text2Frame-MV/wiki)を参照してください。
-
-### 顔・背景・位置・名前の設定
+## 顔・背景・位置・名前の設定
 タグを使って、顔・背景・位置等のメッセージの設定を変更することができます。
 これらのデフォルト値は、プラグインのオプションから変更することができます。
 
-#### 顔の指定 <顔: 顔の指定>
+### 顔の指定 <顔: 顔の指定>
 ウインドウに表示される顔を指定することができます。
 
 ![./introduce_Face.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Face.png)
 
-#### 背景の変更 <背景: 背景の指定>
+### 背景の変更 <背景: 背景の指定>
 ウインドウの背景を変更することができます。
 
 ![./introduce_Background.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Background.png)
 
-#### 位置の変更 <位置: 位置の指定>
+### 位置の変更 <位置: 位置の指定>
 ウインドウの位置を変更することができます。
 
 ![./introduce_WindowPosition.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_WindowPosition.png)
 
-#### 名前の設定(MZ用) <名前: ○○○○>
+### 名前の設定(MZ用) <名前: ○○○○>
 ウィンドウに表示される名前を指定することができます。
 
 ![./introduce_WindowPosition.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_namebox.png)
 
-### イベントコマンドを組み込むタグ
+
+## イベントコマンドを組み込むタグ
 「文章の表示」以外にも、他のすべてのイベントコマンドにも対応しています。
 以下のタグをメッセージの間に挟むことで、そのタグがイベントコマンドに置き換わります。
 例えば、
@@ -196,7 +92,6 @@ npx t2f-sync --direction pull --text-dir text-en       # 一度だけ、英語�
 全てのタグの詳細は[wikiの文法ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%86%E3%82%AD%E3%82%B9%E3%83%88%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9)や
 プラグイン本体のヘルプ文に記載しています。
 
-
 ### よく使われるイベントコマンドの早見表
 以下に、よく使われるイベントコマンドに絞って早見表を記載しています。ここに記載しているもの以外にも、すべてのイベントコマンドに対応しています。
 
@@ -207,10 +102,10 @@ npx t2f-sync --direction pull --text-dir text-en       # 一度だけ、英語�
 |スイッチの操作(OFF)| <Switch: 1, OFF> | スイッチ1をOFFにする。|
 |変数の操作(代入)| <Set: 1, 2> |変数1に定数2を代入する。|
 |変数の操作(加算)| <Add: 1, V[20]>|変数1に変数20の値を加算する。|
-|変数の操作(減算)| <Sub: 1, R\[50\]\[100\]>|変数1に最小値50最大値50の乱数を減算する。|
-|変数の操作(乗算)| <Mul: 1-10, GD\[Item\]\[2\]>|変数1~10にID2のアイテムの所持数を乗算する。|
+|変数の操作(減算)| <Sub: 1, R\[50\]\[100\]>|変数1に最小値50最大値100の乱数を減算する。|
+|変数の操作(乗算)| <Mul: 1-10, GD\[Item\]\[2\]>|変数1〜10にID2のアイテムの所持数を乗算する。|
 |変数の操作(除算)| <Div: 1, GD\[BattleCount\]\> |変数1に戦闘回数を除算する。|
-|変数の操作(剰余)| <Mod: 1-10, SC\[$dataMap.width;\]>|変数1〜10に"$dataMap.width"の値の剰余を代入する。|
+|変数の操作(剰余)| <Mod: 1-10, SC\[$dataMap.width\]>|変数1〜10に"$dataMap.width"の値で割った余りを代入する。|
 |セルフスイッチの操作(ON)|<SelfSwitch: A, ON>|セルフスイッチAをONにする。|
 |セルフスイッチの操作(OFF)|<SelfSwitch: A, OFF>|セルフスイッチAをOFFにする。|
 |条件分岐|<If: Switch[1], ON><br>条件を満たしている時の処理<br>\<Else\><br>条件を満たしていない時の処理<br>\<End\>|「スイッチ1がONの場合」という条件で処理を分岐する。|
@@ -239,7 +134,7 @@ npx t2f-sync --direction pull --text-dir text-en       # 一度だけ、英語�
 |BGMの演奏|<PlayBGM: Battle1, 90, 100, 0>|BGMをBattle1に、音量90,ピッチ100, 位相0で変更する。|
 |BGMのフェードアウト|<FadeoutBGM: 10>|10秒かけてBGMをフェードアウトする。|
 |BGSの演奏|<PlayBGS: City, 90, 100, 0>|BGSをCityに、音量90,ピッチ100, 位相0で変更する。|
-|BGSのフェードアウト|<FadeoutBGS: 20>|10秒かけてBGSをフェードアウトする。|
+|BGSのフェードアウト|<FadeoutBGS: 20>|20秒かけてBGSをフェードアウトする。|
 |MEの演奏|<PlayME: Curse1, 90, 100, 0>|Curse1をMEとして、音量90,ピッチ100, 位相0で演奏する。|
 |SEの演奏|<PlaySE: Attack1, 90, 100, 0>|Attack1をSEとして、音量90,ピッチ100, 位相0で演奏する。|
 |SEの停止|\<StopSE\>|SEの停止イベントを挿入する。|
@@ -251,21 +146,18 @@ npx t2f-sync --direction pull --text-dir text-en       # 一度だけ、英語�
 
 より具体的かつその他のイベントコマンドのサンプルは、[動作確認用テキスト文例ページ](https://github.com/yktsr/Text2Frame-MV/wiki/動作確認テキスト)を参照してください。
 
+
+## 逆変換プラグイン Frame2Text
+RPGツクールMV/MZのイベントコマンドを、Text2Frameの記法に則ったテキストにエクスポートするプラグインです。
+
+Frame2Textのダウンロードは[ここ](https://github.com/yktsr/Text2Frame-MV/releases/download/2.3.0/Frame2Text.js)からお願いします。
+
+また、詳細な使い方は[Frame2Textの紹介ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E9%80%86%E5%A4%89%E6%8F%9B%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3Frame2Text)かプラグイン本体のヘルプドキュメントを参照してください。
+
+## その他の機能
 ### コメントアウト
 取り込みたい文章の行の先頭に「%」を記載すると、それはコメントと見なされ、取り込まれません。
 このコメントアウト記号はプラグインパラメータで変更することができます。
-
-**コメント行はテキストからは消えません。** ゲームに取り込まれない行なので、取り出し（統合・上書きとも）や反映結果の書き戻しでテキストを作り直しても、元のテキストを見て元の位置へ戻します。周りの内容がゲーム側で大きく書き換わったときだけ位置がずれることがあり、そのときはファイル名を挙げて知らせます（消えることはありません）。
-
-### 書き手が入れた書き方も残ります
-読みやすさのために入れた次のものも、コメント行と同じ理由で残ります。いずれもゲームには入らないものなので、残してもゲームの中身は変わりません。
-
-- 余分な空行（場面の区切りに2行3行と空けたもの、本文の先頭・末尾の空行）
-- タグ行の字下げ（`  <If: スイッチ, 1, ON>` など）
-- タグ名の大文字小文字（`<script>` と `<Script>`）
-
-残らないものもあります。`<script>` ブロックの中の空行の数（ブロックの中身はゲームに入るため）、ゲーム側で内容が変わってしまった行の字下げ、そして**空行が無いところに空行は増えません**（1つのメッセージが2つのウィンドウに割れてしまうため）。
-動作例は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%86%E3%82%AD%E3%82%B9%E3%83%88%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9)を参照してください。
 
 ### コモンイベントへの書き出し
 マップ上のイベントへの書き出しだけでなく、コモンイベントへも書き出すことができます。
@@ -277,13 +169,38 @@ npx t2f-sync --direction pull --text-dir text-en       # 一度だけ、英語�
 
 詳細は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3)を参照してください。
 
+### 反映方法のオプション
+テキストからの取り込み時の反映の仕方には、３つのモードがあります。具体的には、末尾に追記(add)・統合(merge)・上書き(overwrite)の3つのうちいずれかを選択できます。おすすめは統合(merge)です。
 
-## 逆変換プラグイン Frame2Text
-RPGツクールMV/MZのイベントコマンドを、Text2Frameの記法に則ったテキストにエクスポートするプラグインです。
+詳細は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E5%8F%8D%E6%98%A0%E6%96%B9%E6%B3%95%E3%81%AE%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3)を参照してください。
 
-Frame2Textのダウンロードは[ここ](https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Frame2Text.js)からお願いします。
+### テキスト内に取り込み先を記述する
+プラグインコマンドの引数・プラグインパラメータ以外にも、テキストファイル内に取り込み先を書いておくこともできます。
+テキストの最上部に以下のような例で見出し情報を記載します。
 
-また、詳細な使い方は[Frame2Textの紹介ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E9%80%86%E5%A4%89%E6%8F%9B%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3Frame2Text)かプラグイン本体のヘルプドキュメントを参照してください。
+例: マップIDが1, イベントIDが2, ページIDが3のイベントに取り込む場合
+```
+---
+kind: event
+mapId: 1
+eventId: 2
+pageId: 3
+---
+（テキストの内容が続く）
+```
+詳細は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%86%E3%82%AD%E3%82%B9%E3%83%88%E5%86%85%E3%81%AB%E5%8F%96%E3%82%8A%E8%BE%BC%E3%81%BF%E5%85%88%E3%82%92%E8%A8%98%E8%BF%B0%E3%81%99%E3%82%8B)を参照してください。
+
+
+### フォルダから一括取り込み
+フォルダ名を指定して、その中に保存してある複数のテキストファイルをまとめて取り込む機能を提供しています。
+一括取り込みで対象としたいテキストファイルごとの取り込み先は、テキスト上部の見出し情報を参照します。
+
+詳細は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%95%E3%82%A9%E3%83%AB%E3%83%80%E3%81%8B%E3%82%89%E4%B8%80%E6%8B%AC%E5%8F%96%E3%82%8A%E8%BE%BC%E3%81%BF)を参照してください。
+
+### 双方向シームレス同期
+実行すると常時テキストとツクールのイベント(dataフォルダ内のJSONファイル)を監視し、即時イベントとテキストの双方向に反映する（同期する）機能も用意しています。
+
+詳細は[wikiの該当ページ](https://github.com/yktsr/Text2Frame-MV/wiki/%E5%8F%8C%E6%96%B9%E5%90%91%E3%82%B7%E3%83%BC%E3%83%A0%E3%83%AC%E3%82%B9%E5%90%8C%E6%9C%9F)を参照してください。
 
 
 ## Visual Studio Code Plugin
@@ -294,157 +211,15 @@ Visual Studio Codeの[Plugin](https://marketplace.visualstudio.com/items?itemNam
 ボタンひとつでゲームとテキストを相互に同期できるようになり、従来難しかった、文法のミスもシンタックスハイライト機能により、視覚的にわかるようになりました。
 
 詳細な機能や使い方は[マーケットプレイス](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support)を参照してください。
-![./introduce_Text2Frame_plugin.png](./vscode.png)
+![./introduce_Text2Frame_plugin.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_vscode_plugin.png)
+※ 画面はpre-release版のものです
 
 
-## フォルダ一括同期と英語化ワークフロー（CLI）
+## コマンドライン操作(CLI)
+プラグインコマンドやVisual Studio Code のプラグイン以外にも、npmパッケージによるコマンドライン操作も提供しています。これにより、より自由度高くText2FrameおよびFrame2Textをお使いいただけます。
 
-> この節は **ターミナル（コマンド）でまとめて処理したい人向け** です。ボタン操作だけで反映・取り出し・英語化をしたい方は、上記「[Visual Studio Code Plugin](#visual-studio-code-plugin)」をお使いください（専門用語もやさしく表示されます）。
+詳細はwikiの[コマンドライン操作](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E3%83%A9%E3%82%A4%E3%83%B3%E6%93%8D%E4%BD%9C(CLI))をご覧ください。
 
-Text2Frame/Frame2Text は、front matter 付きテキストのフォルダを丸ごと一括処理できます。以下では次の言葉を使います —— **反映**＝テキストをゲームへ書き込む、**取り出し（pull）**＝ゲームの内容をテキストへ書き出す、**front matter**＝ファイル先頭の `---` で囲む設定欄。反映・取り出しの方式は **`merge`（＝安全に統合。勝手に消さない・既定）** と **`overwrite`（＝全部上書き）** の2つです。
-
-### 1. メタ情報付きテキスト
-
-一括取り出し(--mode batch)で書き出すファイルは、先頭に YAML front matter を持ちます。
-
-```yaml
----
-kind: event
-mapId: 1
-eventId: 1
-pageId: 1
-key: map001_event001_page001
----
-<Face: (0)><Background: Window><WindowPosition: Bottom>
-Hello
-```
-
-#### 既定と同じタグは書かれません
-
-取り出したテキストは、メッセージごとに `<Face: (0)><Background: Window><WindowPosition: Bottom>` が付きますが、**既定値と同じものは省略**されます。3つとも既定ならタグ行ごと消え、セリフだけが並びます（実プロジェクトでは「文章の表示」の 43.8% が該当し、テキストが約2割短くなります）。
-
-何を「既定」とするかは **Text2Frame のプラグインパラメータ**（`Default Window Position` / `Default Background`）です。タグが無いとき Text2Frame が補う値そのものなので、省略しても取り込み結果は変わりません。パラメータを変えているプロジェクトでは、その値が基準になります。顔にはパラメータが無く、空の顔は常に省略されます。
-
-ウィンドウの区切りは**メッセージのあいだの空行**が担うので、タグ行が無くなっても分かれたままです。
-
-従来どおり全部書き出すには、Frame2Text のプラグインパラメータ「既定と同じタグを省略する」を false にするか、CLI で `--omit-default-tags false` を渡します。
-
-### 2. 取り出し（JSON -> text、既定は merge）
-
-取り出し（pull）も**既定は merge**で、**既存の翻訳を残したまま**ゲーム側の新規・変更だけを取り込みます（同一箇所を双方で変えたら両方残す）。白紙から取り直したいときだけ `--strategy overwrite`。CLI・t2f-sync・VS Code・プラグインコマンド（`BATCH_EXPORT_MESSAGES_TO_FOLDER`）すべてで既定は merge です。
-
-```bash
-# 単発（既定 merge：翻訳を残す）
-node Frame2Text.js --mode map --input_path data/Map001.json --output_path text-en/map001_event001_page1.txt --event_id 1 --page_id 1
-# 全部取り直す（上書き）
-node Frame2Text.js --mode map --strategy overwrite --input_path data/Map001.json --output_path text-en/map001_event001_page1.txt --event_id 1 --page_id 1
-# 一括（data/ を走査し text-en/ 配下へ front matter 付きで書き出し）
-node Frame2Text.js --mode batch --data-dir data --text-dir text-en --english_tag true
-```
-
-3-way の祖先は `.t2f-base/<テキストの置き場所>/<key>.txt` に**自動保存/自動参照**されます（`--base` で明示も可・通常不要）。
-
-### 3. 一括反映（text -> JSON、既定は merge）
-
-**ルーティング情報は各テキスト先頭の front matter（YAML ヘッダ）だけで決まります。**
-
-```bash
-# text/ 配下の front matter 付き .txt を再帰走査して一括反映
-node Text2Frame.js --mode batch --text-dir text
-
-# フォルダを選んで反映（取り出しの --text-dir と対称。多言語プロジェクトではこちら）
-node Text2Frame.js --mode batch --text-dir text-en
-```
-
-`--strategy` を省略すると `merge`（既定）です。全上書きしたいときだけ `--strategy overwrite` を付けます。
-
-- **front matter で振り分け**: 各 `.txt` は自分の front matter（`kind`/`mapId`/`eventId`/`pageId`/`commonEventId`、任意で `strategy`/`basePath`）に従って反映先が決まります。front matter を持たない `.txt` はスキップされます。
-- **フォルダの選択（`--text-dir`）**: 同じイベントを指すテキストが複数のフォルダにあると、**順に反映され最後の1つだけが残ります**。多言語プロジェクトでは取り出し時と同じく `--text-dir <dir>` で1つ選んでください。
-- **front matter での strategy 指定（任意）**: ファイル先頭に `strategy: overwrite` 等を書くと、そのファイルだけ方式を上書きできます（`basePath` で 3-way の祖先も指定可）。
-- **監視**: `--watch` を付けると text ディレクトリを監視し、変更・追加された `.txt` を自動で再反映します。
-
-### 4. 双方向同期（t2f-sync）
-
-反映と取り出しを1コマンドで面倒みるコントローラです。`Text2Frame.js` / `Frame2Text.js` をライブラリとして呼び出し、**1プロセスが双方向を所有**します。
-
-```bash
-# 一度だけ同期（pull -> push）
-npm run sync_once
-# 監視して自動同期（text 変更 -> 反映 / data 変更 -> 取り出し）
-npm run sync
-# 方向やフォルダを指定
-node t2f-sync.js --watch --direction both --text-dir text --strategy merge
-```
-
-| オプション | 既定 | 説明 |
-| --- | --- | --- |
-| `--direction <both\|push\|pull>` | `both` | 同期方向 |
-| `-t, --text-dir <dir>` | `text` | テキストのベースディレクトリ |
-| `-d, --data-dir <dir>` | `data` | ゲームデータディレクトリ |
-| `-s, --strategy <merge\|overwrite>` | `merge` | 反映・取り出しの方式 |
-| `--watch` / `--debounce <ms>` / `--poll` | - | 監視モード |
-
-- **無限ループしません**: 自分が書いたファイルは内容ハッシュで覚えており、その変更イベントは無視します（text→game→text のピンポンが起きない）。
-- 取り出しは既定 `merge` なので**翻訳を残したまま**ゲーム側の変更だけを取り込みます。祖先（`.t2f-base`）も双方向で更新されます。
-- ⚠️ **RPGツクールを開いたまま使う場合の注意**: ツクールはプロジェクト保存時に `data/*.json` を丸ごと書き戻すため、反映済みの内容が保存操作で失われることがあります。反映後はツクール側を**セーブせずに開き直して**ください。
-
-> ターミナルも npm も使わずに同じ同期をしたい場合は、一括反映・一括取り出しの「そのあとも見張る」オプションがあります
-> （「[テキストとゲームを同期する（SYNC）](#テキストとゲームを同期するsync)」を参照）。
-
-### strategy 一覧（text→JSON の反映方式）
-
-方式は **2 つ**に集約されています。既定は `merge` です。
-
-| strategy | 挙動 | 使いどころ |
-| --- | --- | --- |
-| `merge`（既定） | **JSON 構造を保ちつつテキストを賢く反映**。自動判定で、祖先があれば 3-way マージ（同一箇所の相反変更のみ**両方残す**）、祖先が無ければ現在のゲーム状態を祖先として記録した上でテキストを反映（初回=TOFU、以後は 3-way）。移動/分岐/スイッチ等の UI 編集を、祖先があれば消しません。 | 通常はこれ。まず書き出し（export）で祖先を作ってから編集する運用に最適 |
-| `overwrite` | **テキストを完全な正として全上書き**（テキストに無い JSON 側コマンドは削除） | 初回取り込み・完全再生成・テキストが唯一の正のとき |
-
-**3-way の祖先（BASE）は `.t2f-base/<テキストの置き場所>/<key>.txt` に自動保存・自動参照**されます（VS Code / CLI / プラグインで共通・相互運用可、`.gitignore` 済）。`--base`/`BaseFolder` は明示したいときだけの任意指定です。
-
-#### 競合したときの表示（両方残す）
-同じ箇所をテキストとゲームの**両方で変更**した 3-way マージでは、どちらも捨てずに次の目印付きで両方を残します。
-
-```
-=== テキストの変更 / from text ===
-(テキスト側の内容)
-=== ゲームの変更 / from game ===
-(ゲーム側の内容)
-=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ===
-```
-
-解消は「**目印が入った方で決めて、反対側へ流す**」の2手です。`strategy` は `merge` のままで構いません。
-
-1. 目印が入った側（反映ならゲーム、取り出しならテキスト）で、残す方だけにして**目印3行を消す**
-2. 反対側へ流す（テキストで決めたなら反映、ゲームで決めたなら取り出し）
-
-衝突したときも祖先（BASE）は進めているため、2 であなたが決めた形がそのまま反対側に入ります。
-目印を消さないまま実行すると、その側は対象から外れます（目印ごと再マージすると二重に増えるため）。
-
-#### 3系統の機能パリティ
-反映（text→ゲーム）・取り出し（ゲーム→text）とも **merge が既定・3-way は祖先があれば自動**。VS Code / CLI / プラグインで同じことができます:
-
-| 操作 | VS Code | CLI | プラグイン(MZ) |
-| --- | --- | --- | --- |
-| ゲームに反映(merge/overwrite) | パネル「ゲームに反映」 | `Text2Frame.js --mode map/common/batch [--strategy merge\|overwrite]` | `IMPORT_MESSAGE_TO_EVENT`/`_TO_CE`(反映のしかたで merge/overwrite/add)・`BATCH_IMPORT_MESSAGES_FROM_FOLDER` |
-| ゲームから取り出し(merge/overwrite) | パネル「ゲームから取り出す」 | `Frame2Text.js --mode map/common/batch [--strategy merge\|overwrite]` | `EXPORT_EVENT_TO_MESSAGE`/`_CE`(取り出しのしかたで merge/overwrite)・`BATCH_EXPORT_MESSAGES_TO_FOLDER` |
-| 3-way 祖先 | 自動 `.t2f-base` | 自動 `.t2f-base`（`--base` 任意） | 自動 `.t2f-base`（`BaseFolder`/`BaseFileName` 任意） |
-| 競合(両方残す) | あり | あり | あり |
-| 統合のあと、もう一方にも結果を書く | 常に | 常に | 常に |
-
-### 英語化の固定フロー（推奨）
-
-1. `--mode batch --text-dir text-en` で英語版のフォルダへ出力
-2. text-en 配下を翻訳
-3. batch で JSON へ反映（既定 `merge`。UI 編集を残したまま会話だけ反映されます）
-4. 失敗レコードは CLI の JSON レポートで確認
-
-> 反映時の警告について: ブロックの**内容変更**は「`Block changed / ブロックが変更されます`」、
-> テキストから消えて**削除されるブロックのみ**「`Block removed / ブロックが削除されます`」と報告されます
-> (変更を削除と誤報告しません)。
-
-> VS Code だけで英語化を完結させたい場合は、拡張機能の「ゲームから取り出す / ゲームに反映」
-> コマンドを使うフローもあります（[vscode-extension/README.md](vscode-extension/README.md) 参照）。
 
 ## Author/連絡先
 * [@kryptos_nv](https://twitter.com/kryptos_nv)
@@ -455,106 +230,18 @@ node t2f-sync.js --watch --direction both --text-dir text --strategy merge
 * inazumasoft:Shick
   * [いなずまそふと制作支援部](https://ci-en.net/creator/12715)
 
-## CI Mode
-### Install dependencies
-```
-npm install -D @yktsr/text2frame-mv
-
-npx t2f-sync --watch                                    # 双方向同期
-npx text2frame --mode batch --text-dir text  # 反映
-npx frame2text --mode batch --data-dir data  # 取り出し
-```
-
-### Show help
-```
-Usage: Text2Frame [options]
-
-Options:
-  -V, --version                               output the version number
-  -m, --mode <map|common|compile|test|batch>  output mode
-  -t, --text_path <name>                      single-file mode (map/common): input text file
-  --text-dir <dir>                            batch mode: text base directory (default: "text")
-  -d, --data-dir <dir>                        game data directory (default: "data")
-  -o, --output_path <name>                    output file path
-  -e, --event_id <name>                       event file id
-  -p, --page_id <name>                        page id
-  -c, --common_event_id <name>                common event id
-  -s, --strategy <merge|overwrite>            deploy strategy (default merge) (default: "merge")
-  -b, --base <path>                           ancestor text path for merge (3-way common ancestor)
-  -w, --overwrite <true/false>                overwrite mode (legacy) (default: "false")
-  -v, --verbose                               debug mode (default: false)
-  --watch                                     watch text files and redeploy on change (batch mode) (default: false)
-  --debounce <ms>                             debounce window for --watch (default: "250")
-  --poll                                      force polling for --watch (recommended on network/WSL paths) (default: false)
-  -h, --help                                  display help for command
-
-===== Manual =====
-    NAME
-       Text2Frame - Simple compiler to convert text to event command.
-    SYNOPSIS
-        node Text2Frame.js --mode map --text_path <text> [--output_path <map json>] [--event_id <id>] [--page_id <id>] [--strategy merge|overwrite] [--base <ancestor text>]
-        node Text2Frame.js --mode common --text_path <text> [--output_path <common json>] [--common_event_id <id>] [--strategy merge|overwrite] [--base <ancestor text>]
-        node Text2Frame.js --mode batch [--text-dir <dir>] [--strategy merge|overwrite] [--watch]
-        node Text2Frame.js --mode compile
-        node Text2Frame.js --mode test
-    DESCRIPTION
-        反映の既定は `--strategy merge`(既定なので省略可)です。**JSON の構造(移動/分岐/スイッチ等の UI 編集)を保ちつつ**、
-        テキストを賢く反映します(祖先があれば 3-way、無ければ現在のゲーム状態を祖先として記録した上で反映=初回 TOFU、空なら新規反映)。テキストを唯一の正として
-        全上書きしたいときだけ `--strategy overwrite` を付けます。祖先(BASE)は `.t2f-base/` に自動保存/自動参照されるため、
-        `--base` は明示したいときだけの任意指定です。旧 `-w/--overwrite true` は互換用途に残っています(= overwrite 相当)。
-
-        node Text2Frame.js --mode map ...
-          マップへのイベント反映モードです。読み込むテキスト、出力マップ、対象イベント/ページを指定します。
-          テキストに front matter があれば `--output_path`(mapId から導出) / `--event_id` / `--page_id` は
-          省略でき、front matter の値が使われます(明示した引数が優先)。
-          例: $ node Text2Frame.js --mode map --text_path text/map001_event001_page1.txt
-          例1：$ node Text2Frame.js --mode map --text_path text/map001_event001_page1.txt --output_path data/Map001.json --event_id 1 --page_id 1
-          例2(全上書き)：$ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -p 1 --strategy overwrite
-
-        node Text2Frame.js --mode common ...
-          コモンイベントへの反映モードです。読み込むテキスト、出力先、対象コモンイベントIDを指定します。
-          例1：$ node Text2Frame.js --mode common --text_path text/common001.txt --output_path data/CommonEvents.json --common_event_id 1
-          例2(全上書き)：$ node Text2Frame.js -m common -t test/basic.txt -o data/CommonEvents.json -c 1 --strategy overwrite
-
-        node Text2Frame.js --mode batch ...
-          一括反映モードです。`--text-dir <dir>`(既定 `text`)配下の front matter 付き
-          `.txt` を再帰走査し、各ファイル先頭の front matter に従って反映します(詳細は上記「フォルダ一括同期」節)。
-
-        node Text2Frame.js --mode compile
-          コンパイルモードです。変換したいテキストをパイプで与えると、イベントに変換された JSON を標準出力へ出力します
-          (Map.json / CommonEvents.json への組み込みは各自で行います)。
-          例1: $ cat test/basic.txt | node Text2Frame.js --mode compile
-
-        node Text2Frame.js --mode test
-          テストモードです。test/basic.txt を読み込み、data/Map001.json に出力します。
-
-    取り出し(逆変換)も既定 merge です:
-        node Frame2Text.js --mode map|common|batch [--strategy merge|overwrite] [--base <ancestor text>] [-w true|false]
-      (翻訳などを残したままゲーム変更を取り込みます。`node Frame2Text.js --help` と上記ワークフロー節を参照)
-```
-
-### Run Text2frame.js with command line
-```
-$ npm run debug -- --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --overwrite true
-
-> Text2Frame-MV@1.1.2 debug /home/yuki/github/Text2Frame-MV
-> node Text2Frame.js "--mode" "map" "--text_path" "test/basic.txt" "--output_path" "data/Map001.json" "--event_id" "1" "--overwrite" "true"
-
-Please restart RPG Maker MV(Editor) WITHOUT save.
-**セーブせずに**プロジェクトファイルを開き直してください
-```
-
+## プラグイン開発者向けテスト方法
 ### Node.jsプロジェクトでのText2Frameモジュールの使用方法
 
 Text2FrameはNode.jsプロジェクトでライブラリとして使用することができます。
-CommonJS形式とES Module形式の両方をサポートしているため、プロジェクトの環境に合わせて選択できます。
+CommonJS の `require` で利用できます。ES Module からも、Node.js の CommonJS 相互運用によりデフォルトインポートで利用できます。
 
 #### インストール方法
 
-npmを使用してGitHubリポジトリから直接インストールできます：
+npm パッケージをインストールします：
 
 ```bash
-$ npm install 'yktsr/Text2Frame-MV'
+$ npm install @yktsr/text2frame-mv
 ```
 
 または、package.jsonに以下を追加してください：
@@ -562,32 +249,16 @@ $ npm install 'yktsr/Text2Frame-MV'
 ```json
 {
   "dependencies": {
-    "Text2Frame-MV": "yktsr/Text2Frame-MV"
+    "@yktsr/text2frame-mv": "^2.3.0"
   }
 }
 ```
 
 #### CommonJSモジュールとして使用する場合
 
-Node.jsの従来のrequire構文を使用する場合は、`.cjs.js`ファイルをインポートします。
+Node.js の `require` ではパッケージのエントリーポイントを読み込みます。
 
-**examples/commonjs.js:**
-```javascript
-const TF = require("Text2Frame-MV/Text2Frame.cjs.js")
-
-// テキストからイベントコマンドのJSONを生成
-const date = new Date().toLocaleString()
-const text = `<comment>
-CommonJSモジュールで使用
-出力日時: ${date}
-</comment>
-<Wait: 60>
-こんにちは、世界！`
-
-// compile()メソッドでText2Frame記法をJSONに変換
-const eventCommands = TF.compile(text)
-console.log(JSON.stringify(eventCommands, null, 2))
-```
+使用例は[examples/commonjs.js](examples/commonjs.js)を参照してください。
 
 **実行方法:**
 ```bash
@@ -596,26 +267,10 @@ $ node examples/commonjs.js
 
 #### ES Moduleとして使用する場合
 
-モダンなJavaScriptのimport構文を使用する場合は、`.es.mjs`ファイルをインポートします。
+パッケージのエントリーポイントは CommonJS です。Node.js の `import` からはデフォルトインポートしてください。
 `.mjs`拡張子のファイルか、package.jsonで`"type": "module"`を指定する必要があります。
 
-**examples/esmodules.mjs:**
-```javascript
-import TF from "Text2Frame-MV/Text2Frame.es.mjs"
-
-// テキストからイベントコマンドのJSONを生成
-const date = new Date().toLocaleString()
-const text = `<comment>
-ES Moduleで使用
-出力日時: ${date}
-</comment>
-<PlayBGM: Theme1, 90, 100, 0>
-今日も一日がんばるぞい！`
-
-// compile()メソッドでText2Frame記法をJSONに変換
-const eventCommands = TF.compile(text)
-console.log(JSON.stringify(eventCommands, null, 2))
-```
+使用例は[examples/esmodules.mjs](examples/esmodules.mjs)を参照してください。
 
 **実行方法:**
 ```bash
@@ -627,39 +282,15 @@ $ node examples/esmodules.mjs
 Text2Frameモジュールは以下のメソッドを提供します：
 
 - **`TF.compile(text)`**: Text2Frame記法のテキストをRPGツクールMV/MZのイベントコマンドJSON配列に変換します
-- 戻り値: イベントコマンドのJSON配列（Map.jsonやCommonEvents.jsonに組み込み可能な形式）
+- 戻り値: イベントコマンドのJSON配列。イベントの `list` に直接組み込む場合は、末尾に終端コマンド `{ code: 0, indent: 0, parameters: [] }` を追加します。
 
-#### 実用的な使用例
-
-```javascript
-import TF from "Text2Frame-MV/Text2Frame.es.mjs"
-import fs from "fs"
-
-// テキストファイルを読み込む
-const scenarioText = fs.readFileSync("scenario/chapter1.txt", "utf-8")
-
-// Text2Frame記法をイベントコマンドに変換
-const eventCommands = TF.compile(scenarioText)
-
-// 既存のマップJSONを読み込む
-const mapData = JSON.parse(fs.readFileSync("data/Map001.json", "utf-8"))
-
-// イベントコマンドを指定のイベントに組み込む
-const eventId = 1
-const pageId = 0
-mapData.events[eventId].pages[pageId].list = eventCommands
-
-// マップJSONを保存
-fs.writeFileSync("data/Map001.json", JSON.stringify(mapData, null, 2))
-
-console.log("イベントコマンドの組み込みが完了しました！")
-```
-
-### Install dependencies
+### ビルドと基本検査
 ```
 $ npm ci
-$ npm run build --if-present
+$ npm run build:dist
 ```
+
+GitHub Actions でも、依存関係の導入後にこの配布用ビルドを実行しています。
 
 ### Lint check
 ```
@@ -672,9 +303,9 @@ $ npm run test
 ```
 
 ### Round-trip check（実データ検証）
-書き出し(Frame2Text)→取り込み(Text2Frame)の往復で、コマンドリストが完全一致するかを実データで検証します。
+書き出し(Frame2Text)→取り込み(Text2Frame)の往復で、コマンドリストを比較します。既定では MV/MZ の無害な表現差を正規化し、`--strict=true` でその正規化を無効にします。このスクリプトは指定したゲームデータと出力テキストを書き換えるため、検証用コピーで実行してください。
 ```
-$ npm run verify-roundtrip -- sample/data --en=true
+$ npm run verify-roundtrip -- /path/to/game-copy/data --text=/path/to/game-copy/roundtrip-text --en=true
 ```
 
 ## ライセンス
@@ -688,9 +319,11 @@ MIT LICENSE
 A development support plugin for RPG Maker MV/MZ that easily converts text files (.txt files, etc.) into "Show Text" event commands.
 
 ### Download Latest Plugin
-[![Download Text2Frame](https://img.shields.io/badge/Download-Text2Frame.js-blue)](https://github.com/yktsr/Text2Frame-MV/releases/download/2.2.4/Text2Frame.js)
+[![Download Text2Frame](https://img.shields.io/badge/Download-Text2Frame.js-blue)](https://github.com/yktsr/Text2Frame-MV/releases/download/2.3.0/Text2Frame.js)
 
-[![Download Frame2Text](https://img.shields.io/badge/Download-Frame2Text.js-blue)](https://github.com/yktsr/Text2Frame-MV/releases/download/2.2.4/Frame2Text.js)
+[![Download Frame2Text](https://img.shields.io/badge/Download-Frame2Text.js-blue)](https://github.com/yktsr/Text2Frame-MV/releases/download/2.3.0/Frame2Text.js)
+
+[![Download VisualStudioCode Plugin](https://img.shields.io/badge/Download-VisualStudioCodePlugin-blue)](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support)
 
 ### Description
 ![./introduce_Text2Frame_MV_MZ.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_Text2Frame_MV_MZ.png)
@@ -779,7 +412,7 @@ Below is a quick reference table for commonly used event commands. All event com
 |Control Variables (Subtract)| <Sub: 1, R\[50\]\[100\]>|Subtract a random number (min 50, max 100) from variable 1.|
 |Control Variables (Multiply)| <Mul: 1-10, GD\[Item\]\[2\]>|Multiply variables 1-10 by the number of items with ID 2.|
 |Control Variables (Divide)| <Div: 1, GD\[BattleCount\]\> |Divide variable 1 by the battle count.|
-|Control Variables (Modulo)| <Mod: 1-10, SC\[$dataMap.width;\]>|Assign the modulo of "$dataMap.width" to variables 1-10.|
+|Control Variables (Modulo)| <Mod: 1-10, SC\[$dataMap.width\]>|Set variables 1-10 to their remainders after division by "$dataMap.width".|
 |Control Self Switch (ON)|<SelfSwitch: A, ON>|Turn self switch A ON.|
 |Control Self Switch (OFF)|<SelfSwitch: A, OFF>|Turn self switch A OFF.|
 |Conditional Branch|<If: Switch[1], ON><br>Process when condition is met<br>\<Else\><br>Process when condition is not met<br>\<End\>|Branch process based on "if switch 1 is ON".|
@@ -825,7 +458,6 @@ For more specific examples and other event commands, refer to the [Test Text Exa
 #### Comment Out
 If you write "%" at the beginning of a line, it will be treated as a comment and will not be imported.
 This comment-out symbol can be changed in the plugin parameters.
-For examples, refer to the [corresponding wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%86%E3%82%AD%E3%82%B9%E3%83%88%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9).
 
 #### Export to Common Events
 You can export not only to map events but also to common events.
@@ -837,10 +469,37 @@ This feature is for RPG Maker MV. In RPG Maker MZ, you can set directly from the
 
 For details, refer to the [corresponding wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3).
 
-#### Skip <Skip> … <SkipEnd>
-Supports RPG Maker MZ's "Skip" (event command 109). A block enclosed by `<Skip>`
-and `<SkipEnd>` is kept in the data but skipped at runtime. It is preserved as-is
-through the export/import round-trip.
+#### Apply Strategy Options
+Choose one of three ways to apply text: append (`add`), merge (`merge`), or overwrite (`overwrite`). We recommend `merge`.
+
+For details, see the [wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/Apply-Strategy-Options-en).
+
+#### Specify an Import Destination in the Text File
+In addition to plugin-command arguments and plugin parameters, you can specify the import destination in the text file. Add front matter like the following at the top of the file.
+
+Example: import into map ID 1, event ID 2, page ID 3.
+
+```
+---
+kind: event
+mapId: 1
+eventId: 2
+pageId: 3
+---
+(text continues here)
+```
+
+For details, see the [wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/Specifying-Import-Destinations-en).
+
+#### Batch Import from a Folder
+You can import multiple text files in a specified folder at once. Each text file's front matter determines its import destination.
+
+For details, see the [wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/Batch-Import-from-Folder-en).
+
+#### Seamless Bidirectional Synchronization
+This feature continuously watches text files and RPG Maker event JSON files in the `data` folder, and immediately synchronizes changes in either direction.
+
+For details, see the [wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/Seamless-Bidirectional-Sync-en).
 
 ### Reverse Conversion Plugin: Frame2Text
 Frame2Text is also available - a plugin that exports RPG Maker MV/MZ event commands to text following Text2Frame notation.
@@ -848,6 +507,20 @@ Frame2Text is also available - a plugin that exports RPG Maker MV/MZ event comma
 Download Frame2Text from [here](https://raw.githubusercontent.com/yktsr/Text2Frame-MV/master/Frame2Text.js).
 
 For detailed usage, refer to the [Frame2Text introduction page](https://github.com/yktsr/Text2Frame-MV/wiki/%E9%80%86%E5%A4%89%E6%8F%9B%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3Frame2Text) or the help documentation in the plugin itself.
+
+### Visual Studio Code Plugin
+Text2Frame is available as a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support).
+
+It lets you run plugin commands from the UI, synchronize text and game data with a single action, and spot syntax errors with syntax highlighting.
+
+For features and usage details, see the [Marketplace page](https://marketplace.visualstudio.com/items?itemName=yktsr.text2frame-language-support).
+![./introduce_Text2Frame_plugin.png](https://raw.githubusercontent.com/wiki/yktsr/Text2Frame-MV/img/introduce_vscode_plugin.png)
+*The screenshot shows the pre-release version.*
+
+### Command-Line Interface (CLI)
+In addition to plugin commands and the Visual Studio Code extension, an npm package provides command-line access to Text2Frame and Frame2Text.
+
+See the [CLI wiki page](https://github.com/yktsr/Text2Frame-MV/wiki/Command-Line-Interface-en) for details.
 
 ### Author/Contact
 * [@kryptos_nv](https://twitter.com/kryptos_nv)
@@ -858,88 +531,19 @@ For detailed usage, refer to the [Frame2Text introduction page](https://github.c
 * inazumasoft:Shick
   * [Inazumasoft Production Support](https://ci-en.net/creator/12715)
 
-### Development
+### Node.js Library Usage and Developer Checks
 
-#### Install dependencies
-```
-$ npm ci
-$ npm run build --if-present
-```
-
-#### Show help
-```
-Usage: Text2Frame [options]
-
-Options:
-  -V, --version                         output the version number
-  -m, --mode <map|common|compile|test>  output mode
-  -t, --text_path <name>                text file path
-  -o, --output_path <name>              output file path
-  -e, --event_id <name>                 event file id
-  -p, --page_id <name>                  page id
-  -c, --common_event_id <name>          common event id
-  -w, --overwrite <true/false>          overwrite mode (default: "false")
-  -v, --verbose                         debug mode (default: false)
-  -h, --help                            display help for command
-
-===== Manual =====
-    NAME
-       Text2Frame - Simple compiler to convert text to event command.
-    SYNOPSIS
-        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
-        node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
-        node Text2Frame.js --mode compile
-        node Text2Frame.js --verbose --mode test
-    DESCRIPTION
-        node Text2Frame.js --verbose --mode map --text_path <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --overwrite <true|false>
-          Map event output mode.
-          Specify the file to read, output map, and whether to overwrite with arguments.
-          Example commands to read test/basic.txt and overwrite data/Map001.json:
-
-          Example 1: $ node Text2Frame.js --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --page_id 1 --overwrite true
-          Example 2: $ node Text2Frame.js -m map -t test/basic.txt -o data/Map001.json -e 1 -p 1 -w true
-
-        node Text2Frame.js --verbose --mode common --text_path <text file path> --common_event_id <common event id> --overwrite <true|false>
-          Common event output mode.
-          Specify the file to read, output common event, and whether to overwrite with arguments.
-          Example commands to read test/basic.txt and overwrite data/CommonEvents.json:
-
-          Example 1: $ node Text2Frame.js --mode common --text_path test/basic.txt --output_path data/CommonEvents.json --common_event_id 1 --overwrite true
-          Example 2: $ node Text2Frame.js -m common -t test/basic.txt -o data/CommonEvents.json -c 1 -w true
-
-        node Text2Frame.js --mode compile
-          Compile mode.
-          When you provide text to convert via pipe, it outputs JSON converted to corresponding events to stdout.
-          In this mode, it is not formatted as Map.json / CommonEvent.json, but only outputs JSON converted to events,
-          so you need to incorporate it into Map.json/CommonEvent.json yourself.
-
-          Example 1: $ cat test/basic.txt | node Text2Frame.js --mode compile
-
-        node Text2Frame.js --mode test
-          Test mode. Reads test/basic.txt and outputs to data/Map001.json.
-```
-
-#### Run Text2frame.js with command line
-```
-$ npm run debug -- --mode map --text_path test/basic.txt --output_path data/Map001.json --event_id 1 --overwrite true
-
-> Text2Frame-MV@1.1.2 debug /home/yuki/github/Text2Frame-MV
-> node Text2Frame.js "--mode" "map" "--text_path" "test/basic.txt" "--output_path" "data/Map001.json" "--event_id" "1" "--overwrite" "true"
-
-Please restart RPG Maker MV(Editor) WITHOUT save.
-```
-
-#### Using Text2Frame Module in Node.js Projects
+#### Using the Text2Frame Module in Node.js Projects
 
 Text2Frame can be used as a library in Node.js projects.
-It supports both CommonJS and ES Module formats, allowing you to choose based on your project environment.
+Use CommonJS with `require`. ES modules can use a default import through Node.js CommonJS interoperability.
 
 ##### Installation
 
-You can install directly from the GitHub repository using npm:
+Install the npm package:
 
 ```bash
-$ npm install 'yktsr/Text2Frame-MV'
+$ npm install @yktsr/text2frame-mv
 ```
 
 Or add the following to your package.json:
@@ -947,32 +551,14 @@ Or add the following to your package.json:
 ```json
 {
   "dependencies": {
-    "Text2Frame-MV": "yktsr/Text2Frame-MV"
+    "@yktsr/text2frame-mv": "^2.3.0"
   }
 }
 ```
 
 ##### Using as a CommonJS Module
 
-If you're using traditional Node.js require syntax, import the `.cjs.js` file.
-
-**examples/commonjs.js:**
-```javascript
-const TF = require("Text2Frame-MV/Text2Frame.cjs.js")
-
-// Generate event command JSON from text
-const date = new Date().toLocaleString()
-const text = `<comment>
-Using CommonJS module
-Output date: ${date}
-</comment>
-<Wait: 60>
-Hello, World!`
-
-// Convert Text2Frame notation to JSON using compile() method
-const eventCommands = TF.compile(text)
-console.log(JSON.stringify(eventCommands, null, 2))
-```
+With Node.js `require`, load the package entry point. See [examples/commonjs.js](examples/commonjs.js) for a runnable example.
 
 **How to run:**
 ```bash
@@ -981,26 +567,8 @@ $ node examples/commonjs.js
 
 ##### Using as an ES Module
 
-If you're using modern JavaScript import syntax, import the `.es.mjs` file.
-You need to either use `.mjs` file extension or specify `"type": "module"` in package.json.
-
-**examples/esmodules.mjs:**
-```javascript
-import TF from "Text2Frame-MV/Text2Frame.es.mjs"
-
-// Generate event command JSON from text
-const date = new Date().toLocaleString()
-const text = `<comment>
-Using ES Module
-Output date: ${date}
-</comment>
-<PlayBGM: Theme1, 90, 100, 0>
-Let's do our best today!`
-
-// Convert Text2Frame notation to JSON using compile() method
-const eventCommands = TF.compile(text)
-console.log(JSON.stringify(eventCommands, null, 2))
-```
+The package entry point is CommonJS. Import it as the default export from Node.js ES modules.
+You need to either use `.mjs` file extension or specify `"type": "module"` in package.json. See [examples/esmodules.mjs](examples/esmodules.mjs) for a runnable example.
 
 **How to run:**
 ```bash
@@ -1012,36 +580,17 @@ $ node examples/esmodules.mjs
 The Text2Frame module provides the following methods:
 
 - **`TF.compile(text)`**: Converts Text2Frame notation text into RPG Maker MV/MZ event command JSON array
-- Return value: JSON array of event commands (format that can be incorporated into Map.json or CommonEvents.json)
+- Return value: an array of event commands. When assigning it directly to an event's `list`, append the terminator `{ code: 0, indent: 0, parameters: [] }`.
 
-##### Practical Usage Example
-
-```javascript
-import TF from "Text2Frame-MV/Text2Frame.es.mjs"
-import fs from "fs"
-
-// Read text file
-const scenarioText = fs.readFileSync("scenario/chapter1.txt", "utf-8")
-
-// Convert Text2Frame notation to event commands
-const eventCommands = TF.compile(scenarioText)
-
-// Load existing map JSON
-const mapData = JSON.parse(fs.readFileSync("data/Map001.json", "utf-8"))
-
-// Incorporate event commands into specified event
-const eventId = 1
-const pageId = 0
-mapData.events[eventId].pages[pageId].list = eventCommands
-
-// Save map JSON
-fs.writeFileSync("data/Map001.json", JSON.stringify(mapData, null, 2))
-
-console.log("Event commands have been successfully incorporated!")
+#### Build and Basic Checks
+```
+$ npm ci
+$ npm run build:dist
 ```
 
+GitHub Actions also runs this distribution build after installing dependencies.
 
-#### Lint check
+#### Lint Check
 ```
 $ npm run lint
 ```
@@ -1049,6 +598,13 @@ $ npm run lint
 #### Test
 ```
 $ npm run test
+```
+
+#### Round-Trip Check (Real Data Validation)
+This compares command lists after a Frame2Text export followed by a Text2Frame import. Harmless MV/MZ representation differences are normalized by default; use `--strict=true` to disable that normalization. The script rewrites the specified game data and text output, so run it only on a copy of your project.
+
+```
+$ npm run verify-roundtrip -- /path/to/game-copy/data --text=/path/to/game-copy/roundtrip-text --en=true
 ```
 
 ### License

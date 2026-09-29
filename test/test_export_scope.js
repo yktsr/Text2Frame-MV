@@ -148,7 +148,7 @@ describe('default file name', function () {
       .to.equal('map001_event003_page1.txt')
   })
 
-  it('derives the map order width and the root-first map hierarchy', function () {
+  it('pads the map order to three digits and derives the root-first map hierarchy', function () {
     const mapTmp = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-map-names-'))
     fs.mkdirSync(path.join(mapTmp, 'data'))
     fs.writeFileSync(path.join(mapTmp, 'data', 'MapInfos.json'), JSON.stringify([
@@ -171,9 +171,9 @@ describe('default file name', function () {
     const targets = frame2text.enumerateTargets(path.join(mapTmp, 'data'), { scope: 'all', index: { paths: {}, duplicates: {} } })
     const target = targets.find(function (entry) { return entry.key === 'map003_event001_page1' })
 
-    expect(target.mapOrder).to.equal('03')
+    expect(target.mapOrder).to.equal('003')
     expect(target.mapName).to.equal('世界-村-宿屋')
-    expect(name(target)).to.equal('03_世界-村-宿屋_店主_page1_map003-event001.txt')
+    expect(name(target)).to.equal('003_世界-村-宿屋_店主_page1_map003-event001.txt')
     fs.rmSync(mapTmp, { recursive: true, force: true })
   })
 })
