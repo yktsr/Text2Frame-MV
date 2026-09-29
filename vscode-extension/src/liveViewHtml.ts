@@ -1,0 +1,735 @@
+import * as crypto from 'crypto';
+import { tr, trList } from './db/lang';
+import { html, scriptText } from './webviewText';
+
+export function liveViewHtml(): string {
+    const nonce = crypto.randomBytes(16).toString('base64');
+    const L = {
+        item: tr('アイテム', 'Items'), weapon: tr('武器', 'Weapons'), armor: tr('防具', 'Armors'),
+        parallelPage: tr('並列処理で動いています(このページが出ている間、毎フレーム繰り返します)', 'Running as a parallel process (repeats every frame while this page is active)'),
+        parallelCommon: tr('並列処理で動いています(スイッチが ON の間、毎フレーム繰り返します)', 'Running as a parallel process (repeats every frame while the switch is ON)'),
+        triggers: trList(
+            ['決定ボタン', 'プレイヤーから接触', 'イベントから接触', '自動実行', '並列処理'],
+            ['Action Button', 'Player Touch', 'Event Touch', 'Autorun', 'Parallel']),
+        openTextPreview: tr('テキストとプレビューを開く', 'Open the text and preview'),
+        parallel: tr('並列', 'Parallel'),
+        pagesTwisty: tr('ページごとの出現条件とトリガー(全 {0} ページ)', 'Conditions and trigger of each page ({0} pages)'),
+        isOn: tr(' が ON', ' is ON'),
+        now: tr('(今 {0})', ' (now {0})'),
+        self: tr('セルフ', 'Self switch'),
+        hasItem: tr('アイテム{0}({1})を持つ', 'Has item{0} ({1})'),
+        inParty: tr('アクター{0}({1})が仲間', 'Actor{0} ({1}) is in the party'),
+        openPage: tr('{0}ページのテキストとプレビューを開く', 'Open the text and preview of page {0}'),
+        activeNow: tr('(ゲームでは今このページ)', ' (the game is on this page now)'),
+        trigger: tr('トリガー', 'Trigger '),
+        noConditions: tr('条件なし', 'No conditions'),
+        gameOnPage: tr('ゲームでは今 {0}ページ', 'The game is on page {0}'),
+        ofPages: tr('(全 {0} ページ)', ' (of {0})'),
+        onlyWhilePlaying: tr('テストプレイ中だけ書き換えられます', 'You can change this only while test playing'),
+        toggleSelf: tr('セルフスイッチ {0} を切り替え', 'Toggle self switch {0}'),
+        usedHere: tr('(このイベントで使っている)', ' (used in this event)'),
+        noEventsOnMap: tr('(このマップにイベントはありません)', '(No events on this map)'),
+        notOnMap: tr('(マップにいません)', '(Not on a map)'),
+        parallelCommons: tr('並列処理のコモンイベント', 'Parallel common events'),
+        noName: tr('(名前なし)', '(no name)'),
+        otherMaps: tr('ほかのマップ(ON のもの)', 'Other maps (the ones that are ON)'),
+        map: tr('マップ', 'Map '),
+        typeCount: tr('個数を打って Enter で書き込み', 'Type a number and press Enter to write it'),
+        typeGold: tr('金額を打って Enter で書き込み', 'Type an amount and press Enter to write it'),
+        noMatch: tr('(当てはまるものはありません)', '(Nothing matches)'),
+        noItems: tr('(アイテムがありません)', '(No items)'),
+        nothingOwned: tr('(何も持っていません)', '(The party has nothing)'),
+        kinds: tr('{0}種類', '{0} kinds'),
+        ofAll: tr(' / 全{0}', ' / {0} in all'),
+        clickToggle: tr('クリックで切り替え', 'Click to toggle'),
+        typeValue: tr('値を打って Enter で書き込み(文字は "…" で囲む)', 'Type a value and press Enter to write it (put text in "…")'),
+        playing: tr('テストプレイ中', 'Test playing'),
+        lastValues: tr('テストプレイの最後の値', 'Last values of the test play'),
+        noWord: tr('(ゲームから知らせがありません)', ' (no word from the game)'),
+        lineN: tr(' {0}行目', ' line {0}'),
+        nearLine: tr('(近い行)', ' (nearby line)'),
+        clickToOpenLine: tr('押すとその行を開きます。', 'Click to open that line.')
+    };
+    return `<!DOCTYPE html>
+<html lang="${tr('ja', 'en')}"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
+<style nonce="${nonce}">
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; padding: 0 8px; display: flex; flex-direction: column; box-sizing: border-box; font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); }
+  #top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 0; flex: none; }
+  #status.live::before { content: '●'; color: var(--vscode-testing-iconPassed, #3c3); margin-right: 4px; }
+  #status.stale { color: var(--vscode-descriptionForeground); }
+  #filter { flex: 0 1 16em; min-width: 8em; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, transparent); padding: 2px 4px; font: inherit; }
+  #notice { color: var(--vscode-errorForeground); }
+  #empty { padding: 8px 0; color: var(--vscode-descriptionForeground); }
+  #cols { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 12px; padding-bottom: 4px; }
+  @media (max-width: 900px) { #cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 540px) { #cols { grid-template-columns: minmax(0, 1fr); } }
+  section { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  h3 { margin: 0 0 2px; font-size: inherit; font-weight: 600; flex: none; }
+  h3 .count { font-weight: normal; color: var(--vscode-descriptionForeground); margin-left: 6px; }
+  .list { flex: 1; min-height: 0; overflow: auto; border-top: 1px solid var(--vscode-panel-border); }
+  .row { display: flex; align-items: center; gap: 6px; padding: 1px 2px; line-height: 1.6em; }
+  .row:hover { background: var(--vscode-list-hoverBackground); }
+  .id { flex: none; font-family: var(--vscode-editor-font-family); color: var(--vscode-descriptionForeground); }
+  .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .name.blank { color: var(--vscode-descriptionForeground); font-style: italic; }
+  .sw { flex: none; width: 3.4em; padding: 0; font: inherit; line-height: 1.4em; cursor: pointer; border: 1px solid var(--vscode-button-border, var(--vscode-panel-border)); border-radius: 3px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+  .sw.on { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+  .var { flex: none; width: 6em; text-align: right; font-family: var(--vscode-editor-font-family); background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, transparent); padding: 0 3px; }
+  .var.set { color: var(--vscode-textLink-foreground); }
+  .var.count { width: 4.5em; }
+  #gold { width: 8em; }
+  #goldRow { flex: none; }
+  .link { cursor: pointer; }
+  .row .link:hover { color: var(--vscode-textLink-foreground); text-decoration: underline; }
+  .page { flex: none; font-size: 0.9em; color: var(--vscode-descriptionForeground); }
+  .par { flex: none; font-size: 0.85em; line-height: 1.3em; padding: 0 4px; border-radius: 3px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); }
+  #commons { padding-bottom: 2px; border-bottom: 1px solid var(--vscode-panel-border); margin-bottom: 2px; }
+  .twisty { flex: none; width: 1em; text-align: center; color: var(--vscode-descriptionForeground); cursor: pointer; }
+  .twisty:empty { cursor: default; }
+  .pages { padding: 0 0 4px 1.4em; }
+  .pline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; padding: 1px 2px; cursor: pointer; font-size: 0.95em; line-height: 1.5em; }
+  .pline:hover { background: var(--vscode-list-hoverBackground); }
+  .pline.active { background: var(--vscode-list-inactiveSelectionBackground); }
+  .pno { flex: none; font-family: var(--vscode-editor-font-family); }
+  .pline.active .pno::before { content: '▶ '; }
+  .trig { flex: none; color: var(--vscode-descriptionForeground); }
+  .cond.ok { color: var(--vscode-testing-iconPassed, #3a3); }
+  .cond.ng { color: var(--vscode-errorForeground); }
+  .cond.none { color: var(--vscode-descriptionForeground); }
+  .ssw { flex: none; display: flex; gap: 2px; }
+  .ss { width: 1.9em; padding: 0; font: inherit; line-height: 1.4em; cursor: pointer; border: 1px solid var(--vscode-button-border, var(--vscode-panel-border)); border-radius: 3px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+  .ss.on { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+  .sub { margin: 6px 0 2px; color: var(--vscode-descriptionForeground); font-size: 0.95em; }
+  .none { padding: 4px 2px; color: var(--vscode-descriptionForeground); }
+  h3 label { font-weight: normal; color: var(--vscode-descriptionForeground); margin-left: 10px; font-size: 0.95em; }
+  .ss.used { border-style: solid; font-weight: 600; }
+  button:disabled, input:disabled { opacity: 0.5; cursor: default; }
+  .row.flash { animation: flash 3s ease-out; }
+  @keyframes flash { from { background: var(--vscode-editor-findMatchHighlightBackground, rgba(255, 200, 0, 0.4)); } to { background: transparent; } }
+  #running { cursor: pointer; color: var(--vscode-textLink-foreground); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #running:hover { text-decoration: underline; }
+  #running.approximate { color: var(--vscode-descriptionForeground); }
+  #running.missing { cursor: default; color: var(--vscode-descriptionForeground); text-decoration: none; }
+  .row.running .id::before { content: '▶ '; color: var(--vscode-debugIcon-continueForeground, var(--vscode-textLink-foreground)); }
+  .row.running { background: var(--vscode-editor-stackFrameHighlightBackground, rgba(255, 255, 0, 0.12)); }
+  #play { font: inherit; padding: 2px 10px; margin-left: 6px; cursor: pointer; border: none; background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+</style></head>
+<body>
+<div id="top">
+  <span id="status"></span>
+  <span id="running" hidden></span>
+  <input id="filter" type="search" placeholder="${html(tr('番号・名前で絞り込み', 'Filter by id or name'))}">
+  <label title="${html(tr('「すべて」「すべてのイベント」にチェックがある列は、OFF・0 も並べます', 'Columns with All or All events checked still list OFF and 0'))}"><input id="hideDefault" type="checkbox"> ${html(tr('OFF・0 を隠す', 'Hide OFF and 0'))}</label>
+  <label title="${html(tr('実行しているイベントのテキストを自動で開く(設定 text2frame.openRunningText)', 'Open the text of the running event automatically (setting text2frame.openRunningText)'))}"><input id="openRunning" type="checkbox"> ${html(tr('実行中のテキストを開く', 'Open the running text'))}</label>
+  <span id="notice"></span>
+</div>
+<div id="empty">${html(tr('テストプレイ中だけ、ここにスイッチ・変数・イベント・アイテム・所持金が出ます。', 'Switches, variables, events, items and gold show here while test playing.'))}<button id="play">▶ ${html(tr('テストプレイ', 'Test play'))}</button></div>
+<div id="cols" hidden>
+  <section><h3>${html(tr('スイッチ', 'Switches'))}<span class="count" id="switchCount"></span></h3><div class="list" id="switches"></div></section>
+  <section><h3>${html(tr('変数', 'Variables'))}<span class="count" id="variableCount"></span></h3><div class="list" id="variables"></div></section>
+  <section><h3>${html(tr('イベント', 'Events'))}<span class="count" id="selfCount"></span><label title="${html(tr('出現条件もセルフスイッチも使っていないイベントも並べる', 'Also list events that use no conditions or self switches'))}"><input id="allEvents" type="checkbox"> ${html(tr('すべてのイベント', 'All events'))}</label></h3><div class="list"><div id="commons" hidden></div><div id="selfHere"></div><div id="selfUnused" class="none" hidden>${html(tr('(このマップに出現条件やセルフスイッチを使うイベントはありません)', '(No event on this map uses conditions or self switches)'))}</div><div id="selfOthers"></div></div></section>
+  <section><h3>${html(tr('アイテム', 'Items'))}<span class="count" id="itemCount"></span><label title="${html(tr('持っていないものも並べる(個数を入れると増やせます)', 'Also list what the party does not have (enter a number to add some)'))}"><input id="allItems" type="checkbox"> ${html(tr('すべて', 'All'))}</label></h3><div class="row" id="goldRow"><span class="name">${html(tr('所持金', 'Gold'))}</span><input class="var" id="gold"><span class="id" id="currency"></span></div><div class="list"><div id="items"></div><div id="itemNone" class="none" hidden></div></div></section>
+</div>
+<script nonce="${nonce}">
+  ${scriptText(L)}
+  const vscode = acquireVsCodeApi();
+  const $ = (id) => document.getElementById(id);
+  const lists = { switch: $('switches'), variable: $('variables') };
+  const counts = { switch: $('switchCount'), variable: $('variableCount') };
+  let rows = { switch: [], variable: [] };
+  let values = { switch: new Map(), variable: new Map() };
+  let status = 'none';
+  const saved = vscode.getState() || {};
+  $('filter').value = saved.filter || '';
+  $('hideDefault').checked = !!saved.hideDefault;
+  $('allEvents').checked = !!saved.allEvents;
+  $('allItems').checked = !!saved.allItems;
+  const ITEM_KINDS = [['i', L.item], ['w', L.weapon], ['a', L.armor]];
+  let itemRows = new Map();
+  let itemSubs = new Map();
+  let itemCounts = new Map();
+  let ownedSignature = '';
+  let pagesHere = new Map();
+  let gold = 0;
+  let dbNames = { switches: [], variables: [], items: {}, actors: [] };
+  let actorsNow = new Set();
+  let parallelNow = new Set();
+  let commonsSignature = '';
+  const PARALLEL_TITLE = L.parallelPage;
+  const expanded = new Set();
+  const TRIGGERS = L.triggers;
+
+  const pad = (n) => String(n).padStart(4, '0');
+  const blank = (kind) => (kind === 'switch' ? false : 0);
+  const valueOf = (kind, id) => (values[kind].has(id) ? values[kind].get(id) : blank(kind));
+  const text = (v) => (typeof v === 'string' ? JSON.stringify(v) : String(v));
+  const LETTERS = ['A', 'B', 'C', 'D'];
+  const pad3 = (n) => 'EV' + String(n).padStart(3, '0');
+  let mapInfo = { mapId: 0, mapName: '', events: [] };
+  let selfOn = new Set();
+  let selfLabels = {};
+  let hereRows = new Map();
+  let otherRows = new Map();
+  let othersSignature = '';
+  let runningEvent = null;
+
+  function selfRow(mapId, eventId, label, used, pages) {
+    const wrap = document.createElement('div');
+    const row = document.createElement('div');
+    row.className = 'row';
+    const twisty = document.createElement('span');
+    twisty.className = 'twisty';
+    const details = document.createElement('div');
+    details.className = 'pages';
+    details.hidden = true;
+    wrap.append(row, details);
+    const idEl = document.createElement('span');
+    idEl.className = 'id';
+    idEl.textContent = pad3(eventId);
+    const nameEl = document.createElement('span');
+    nameEl.className = 'name';
+    nameEl.textContent = label;
+    nameEl.title = label + '\\n' + L.openTextPreview;
+    const pageEl = document.createElement('span');
+    pageEl.className = 'page';
+    const parEl = document.createElement('span');
+    parEl.className = 'par';
+    parEl.textContent = L.parallel;
+    parEl.title = PARALLEL_TITLE;
+    parEl.hidden = true;
+    const box = document.createElement('span');
+    box.className = 'ssw';
+    for (const el of [idEl, nameEl]) {
+      el.classList.add('link');
+      el.addEventListener('click', () => vscode.postMessage({ type: 'openEvent', mapId, eventId }));
+    }
+    row.append(twisty, idEl, nameEl, pageEl, parEl, box);
+    row.dataset.search = label.toLowerCase();
+    const r = { wrap, row, box, pageEl, parEl, twisty, details, mapId, eventId, buttons: new Map(), used: used || [], pages: pages || [] };
+    r.conditional = r.pages.some(hasConditions);
+    if (r.pages.length) {
+      twisty.title = fmt(L.pagesTwisty, r.pages.length);
+      twisty.addEventListener('click', () => {
+        const key = mapId + ',' + eventId;
+        if (expanded.has(key)) expanded.delete(key);
+        else expanded.add(key);
+        renderPages(r);
+      });
+    }
+    LETTERS.forEach((letter) => addLetter(r, letter));
+    renderPages(r);
+    return r;
+  }
+
+  const hasConditions = (p) => !!(p.switch1 || p.switch2 || p.variable || p.selfSwitch || p.item || p.actor);
+  const nameOf = (list, id) => (list && list[id] ? ' ' + list[id] : '');
+
+  function conditionChecks(r, p) {
+    const out = [];
+    const sw = (id) => ({ text: 'S' + pad(id) + nameOf(dbNames.switches, id) + L.isOn, ok: !!valueOf('switch', id) });
+    if (p.switch1) out.push(sw(p.switch1));
+    if (p.switch2) out.push(sw(p.switch2));
+    if (p.variable) {
+      const v = valueOf('variable', p.variable[0]);
+      out.push({ text: 'V' + pad(p.variable[0]) + nameOf(dbNames.variables, p.variable[0]) + ' ≥ ' + p.variable[1] + fmt(L.now, text(v)), ok: Number(v) >= p.variable[1] });
+    }
+    if (p.selfSwitch) out.push({ text: L.self + ' ' + p.selfSwitch + L.isOn, ok: selfOn.has(r.mapId + ',' + r.eventId + ',' + p.selfSwitch) });
+    if (p.item) out.push({ text: fmt(L.hasItem, nameOf(dbNames.items.i, p.item), pad(p.item)), ok: (itemCounts.get('i:' + p.item) || 0) > 0 });
+    if (p.actor) out.push({ text: fmt(L.inParty, nameOf(dbNames.actors, p.actor), pad(p.actor)), ok: actorsNow.has(p.actor) });
+    return out;
+  }
+
+  function renderPages(r) {
+    const open = expanded.has(r.mapId + ',' + r.eventId) && r.pages.length > 0;
+    r.twisty.textContent = r.pages.length ? (open ? '▾' : '▸') : '';
+    r.details.hidden = !open;
+    if (!open) return;
+    const active = r.mapId === mapInfo.mapId ? pagesHere.get(r.eventId) : undefined;
+    r.details.textContent = '';
+    r.pages.forEach((p, n) => {
+      const line = document.createElement('div');
+      line.className = 'pline' + (active === n + 1 ? ' active' : '');
+      line.title = fmt(L.openPage, n + 1) + (active === n + 1 ? L.activeNow : '');
+      const no = document.createElement('span');
+      no.className = 'pno';
+      no.textContent = 'P' + (n + 1);
+      const trig = document.createElement('span');
+      trig.className = 'trig';
+      trig.textContent = TRIGGERS[p.trigger] || (L.trigger + p.trigger);
+      line.append(no, trig);
+      const checks = conditionChecks(r, p);
+      if (!checks.length) {
+        const none = document.createElement('span');
+        none.className = 'cond none';
+        none.textContent = L.noConditions;
+        line.appendChild(none);
+      }
+      for (const c of checks) {
+        const el = document.createElement('span');
+        el.className = 'cond ' + (c.ok ? 'ok' : 'ng');
+        el.textContent = (c.ok ? '✓ ' : '✗ ') + c.text;
+        line.appendChild(el);
+      }
+      line.addEventListener('click', () => vscode.postMessage({ type: 'openEvent', mapId: r.mapId, eventId: r.eventId, page: n + 1 }));
+      r.details.appendChild(line);
+    });
+  }
+
+  function addLetter(r, letter) {
+    const button = document.createElement('button');
+    button.className = 'ss' + (r.used.includes(letter) ? ' used' : '');
+    button.textContent = letter;
+    const key = r.mapId + ',' + r.eventId + ',' + letter;
+    button.addEventListener('click', () => vscode.postMessage({ type: 'set', kind: 'selfSwitch', key, value: !selfOn.has(key) }));
+    r.box.appendChild(button);
+    r.buttons.set(letter, button);
+  }
+
+  function paintSelf(r) {
+    const prefix = r.mapId + ',' + r.eventId + ',';
+    for (const key of selfOn) {
+      if (key.startsWith(prefix) && !r.buttons.has(key.slice(prefix.length))) addLetter(r, key.slice(prefix.length));
+    }
+    const disabled = status !== 'live';
+    const page = r.mapId === mapInfo.mapId ? pagesHere.get(r.eventId) : undefined;
+    const total = r.pages.length;
+    r.pageEl.textContent = page ? 'P' + page + (total ? '/' + total : '') : '';
+    r.pageEl.title = page ? fmt(L.gameOnPage, page) + (total ? fmt(L.ofPages, total) : '') : '';
+    r.parallel = r.mapId === mapInfo.mapId && parallelNow.has(r.eventId);
+    r.parEl.hidden = !r.parallel;
+    let any = false;
+    r.buttons.forEach((button, letter) => {
+      const on = selfOn.has(prefix + letter);
+      any = any || on;
+      button.classList.toggle('on', on);
+      button.disabled = disabled;
+      button.title = (disabled ? L.onlyWhilePlaying : fmt(L.toggleSelf, letter)) + (r.used.includes(letter) ? L.usedHere : '');
+    });
+    r.on = any;
+  }
+
+  function setEvents(m) {
+    mapInfo = m;
+    hereRows = new Map();
+    const frag = document.createDocumentFragment();
+    for (const [id, name, x, y, used, pages] of m.events) {
+      const r = selfRow(m.mapId, id, (name && name !== pad3(id) ? name + ' ' : '') + '(' + x + ',' + y + ')', used, pages);
+      hereRows.set(m.mapId + ',' + id, r);
+      frag.appendChild(r.wrap);
+    }
+    if (!m.events.length) {
+      const none = document.createElement('div');
+      none.className = 'none';
+      none.textContent = m.mapId ? L.noEventsOnMap : L.notOnMap;
+      frag.appendChild(none);
+    }
+    $('selfHere').textContent = '';
+    $('selfHere').appendChild(frag);
+    markRunning();
+    othersSignature = '';
+    renderOthers();
+    hereRows.forEach(paintSelf);
+    filter();
+  }
+
+  function renderCommons(ids) {
+    const signature = ids.join(',');
+    if (signature === commonsSignature) return;
+    commonsSignature = signature;
+    const box = $('commons');
+    box.textContent = '';
+    box.hidden = !ids.length;
+    if (!ids.length) return;
+    const sub = document.createElement('div');
+    sub.className = 'sub';
+    sub.textContent = L.parallelCommons;
+    box.appendChild(sub);
+    for (const id of ids) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const idEl = document.createElement('span');
+      idEl.className = 'id link';
+      idEl.textContent = pad(id);
+      const name = (dbNames.commonEvents || [])[id] || '';
+      const nameEl = document.createElement('span');
+      nameEl.className = 'name link' + (name ? '' : ' blank');
+      nameEl.textContent = name || L.noName;
+      nameEl.title = (name ? name + '\\n' : '') + L.openTextPreview;
+      const par = document.createElement('span');
+      par.className = 'par';
+      par.textContent = L.parallel;
+      par.title = L.parallelCommon;
+      for (const el of [idEl, nameEl]) el.addEventListener('click', () => vscode.postMessage({ type: 'openCommon', id }));
+      row.append(idEl, nameEl, par);
+      box.appendChild(row);
+    }
+  }
+
+  function renderOthers() {
+    const groups = new Map();
+    for (const key of selfOn) {
+      const [m, e] = key.split(',');
+      const group = m + ',' + e;
+      if (!hereRows.has(group)) groups.set(group, [Number(m), Number(e)]);
+    }
+    const signature = Array.from(groups.keys()).sort().join(' ');
+    if (signature === othersSignature) return false;
+    othersSignature = signature;
+    otherRows = new Map();
+    const box = $('selfOthers');
+    box.textContent = '';
+    if (!groups.size) return true;
+    const sub = document.createElement('div');
+    sub.className = 'sub';
+    sub.textContent = L.otherMaps;
+    box.appendChild(sub);
+    Array.from(groups).sort((a, b) => a[1][0] - b[1][0] || a[1][1] - b[1][1]).forEach(([group, [m, e]]) => {
+      const r = selfRow(m, e, selfLabels[group] || (L.map + m));
+      otherRows.set(group, r);
+      box.appendChild(r.wrap);
+    });
+    return true;
+  }
+
+  function makeRow(kind, id, name) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const idEl = document.createElement('span');
+    idEl.className = 'id';
+    idEl.textContent = pad(id);
+    const nameEl = document.createElement('span');
+    nameEl.className = 'name' + (name ? '' : ' blank');
+    nameEl.textContent = name || L.noName;
+    nameEl.title = name;
+    row.append(idEl, nameEl);
+    let control;
+    if (kind === 'switch') {
+      control = document.createElement('button');
+      control.className = 'sw';
+      control.addEventListener('click', () => vscode.postMessage({ type: 'set', kind, id, value: !valueOf(kind, id) }));
+    } else {
+      control = document.createElement('input');
+      control.className = 'var';
+      control.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          vscode.postMessage({ type: 'set', kind, id, text: control.value });
+          control.blur();
+        } else if (e.key === 'Escape') {
+          control.blur();
+        }
+      });
+      control.addEventListener('blur', () => paint(kind, id));
+    }
+    row.appendChild(control);
+    row.dataset.search = (name || '').toLowerCase();
+    return { row, control };
+  }
+
+  function itemRow(key, id, name) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const idEl = document.createElement('span');
+    idEl.className = 'id';
+    idEl.textContent = pad(id);
+    const nameEl = document.createElement('span');
+    nameEl.className = 'name' + (name ? '' : ' blank');
+    nameEl.textContent = name || L.noName;
+    nameEl.title = name;
+    const control = document.createElement('input');
+    control.className = 'var count';
+    control.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        vscode.postMessage({ type: 'set', kind: 'item', key, text: control.value });
+        control.blur();
+      } else if (e.key === 'Escape') {
+        control.blur();
+      }
+    });
+    control.addEventListener('blur', () => paintItem(key));
+    row.append(idEl, nameEl, control);
+    return { row, control, id, name, search: (name || '').toLowerCase() };
+  }
+
+  function paintItem(key) {
+    const r = itemRows.get(key);
+    if (!r) return;
+    const count = itemCounts.get(key) || 0;
+    const disabled = status !== 'live';
+    r.control.disabled = disabled;
+    r.control.title = disabled ? L.onlyWhilePlaying : L.typeCount;
+    if (document.activeElement !== r.control) {
+      r.control.value = String(count);
+      r.control.classList.toggle('set', count > 0);
+    }
+  }
+
+  function paintGold() {
+    const el = $('gold');
+    const disabled = status !== 'live';
+    el.disabled = disabled;
+    el.title = disabled ? L.onlyWhilePlaying : L.typeGold;
+    if (document.activeElement !== el) {
+      el.value = String(gold);
+      el.classList.toggle('set', gold > 0);
+    }
+  }
+
+  function setItems(names) {
+    const box = $('items');
+    const scroll = box.parentNode.scrollTop;
+    const frag = document.createDocumentFragment();
+    itemRows = new Map();
+    itemSubs = new Map();
+    for (const [kind, title] of ITEM_KINDS) {
+      const list = names[kind] || [];
+      const sub = document.createElement('div');
+      sub.className = 'sub';
+      sub.textContent = title;
+      itemSubs.set(kind, sub);
+      frag.appendChild(sub);
+      for (let id = 1; id < list.length; id++) {
+        const key = kind + ':' + id;
+        const r = itemRow(key, id, list[id]);
+        r.kind = kind;
+        itemRows.set(key, r);
+        frag.appendChild(r.row);
+      }
+    }
+    box.textContent = '';
+    box.appendChild(frag);
+    box.parentNode.scrollTop = scroll;
+    itemRows.forEach((_r, key) => paintItem(key));
+  }
+
+  function filterItems(q, number) {
+    const all = $('allItems').checked;
+    const shownIn = new Map();
+    let shown = 0;
+    let owned = 0;
+    let total = 0;
+    itemRows.forEach((r, key) => {
+      const count = itemCounts.get(key) || 0;
+      if (count > 0) owned++;
+      if (r.name || count > 0) total++;
+      const hit = !q || r.id === number || r.search.includes(q);
+      const visible = hit && (count > 0 || (all && !!r.name));
+      r.row.hidden = !visible;
+      if (!visible) return;
+      shown++;
+      shownIn.set(r.kind, (shownIn.get(r.kind) || 0) + 1);
+    });
+    itemSubs.forEach((sub, kind) => { sub.hidden = !shownIn.get(kind); });
+    $('itemNone').hidden = shown > 0;
+    $('itemNone').textContent = q ? L.noMatch : all ? L.noItems : L.nothingOwned;
+    $('itemCount').textContent = fmt(L.kinds, owned) + (all ? fmt(L.ofAll, total) : '');
+  }
+
+  function paint(kind, id) {
+    const r = rows[kind][id];
+    if (!r) return;
+    const v = valueOf(kind, id);
+    const disabled = status !== 'live';
+    r.control.disabled = disabled;
+    r.control.title = disabled ? L.onlyWhilePlaying : (kind === 'switch' ? L.clickToggle : L.typeValue);
+    if (kind === 'switch') {
+      r.control.textContent = v ? 'ON' : 'OFF';
+      r.control.classList.toggle('on', !!v);
+    } else if (document.activeElement !== r.control) {
+      r.control.value = text(v);
+      r.control.classList.toggle('set', v !== 0);
+    }
+  }
+
+  function filter() {
+    const q = $('filter').value.trim().toLowerCase();
+    const number = /^[0-9]+$/.test(q) ? Number(q) : NaN;
+    const hide = $('hideDefault').checked;
+    const all = $('allEvents').checked;
+    vscode.setState({ filter: $('filter').value, hideDefault: hide, allEvents: all, allItems: $('allItems').checked });
+    filterItems(q, number);
+    let shownHere = 0;
+    let relevantHere = 0;
+    for (const rowsOfSelf of [hereRows, otherRows]) {
+      rowsOfSelf.forEach((r) => {
+        const relevant = all || rowsOfSelf === otherRows || r.used.length > 0 || r.conditional || r.on || r.parallel || r.row.classList.contains('running');
+        const hit = !q || r.eventId === number || r.row.dataset.search.includes(q);
+        const visible = hit && (all || (relevant && (!hide || r.on)));
+        r.wrap.hidden = !visible;
+        if (rowsOfSelf === hereRows && relevant) relevantHere++;
+        if (visible && rowsOfSelf === hereRows) shownHere++;
+      });
+    }
+    $('selfUnused').hidden = !(hereRows.size > 0 && relevantHere === 0);
+    const where = mapInfo.mapName ? mapInfo.mapName + ' ' : '';
+    const total = all ? hereRows.size : relevantHere;
+    $('selfCount').textContent = where + (shownHere === total ? String(total) : shownHere + ' / ' + total) + (all ? '' : fmt(L.ofAll, hereRows.size));
+    for (const kind of ['switch', 'variable']) {
+      let shown = 0;
+      rows[kind].forEach((r, id) => {
+        if (!r) return;
+        const hit = !q || id === number || r.row.dataset.search.includes(q);
+        const visible = hit && (!hide || valueOf(kind, id) !== blank(kind));
+        r.row.hidden = !visible;
+        if (visible) shown++;
+      });
+      const total = rows[kind].filter(Boolean).length;
+      counts[kind].textContent = shown === total ? String(total) : shown + ' / ' + total;
+    }
+  }
+
+  function setNames(m) {
+    for (const kind of ['switch', 'variable']) {
+      const names = kind === 'switch' ? m.switches : m.variables;
+      const frag = document.createDocumentFragment();
+      const scroll = lists[kind].scrollTop;
+      rows[kind] = [];
+      for (let id = 1; id < names.length; id++) {
+        const r = makeRow(kind, id, names[id]);
+        rows[kind][id] = r;
+        frag.appendChild(r.row);
+      }
+      lists[kind].textContent = '';
+      lists[kind].appendChild(frag);
+      lists[kind].scrollTop = scroll;
+      rows[kind].forEach((_r, id) => paint(kind, id));
+    }
+    setItems(m.items || {});
+    dbNames = { switches: m.switches || [], variables: m.variables || [], items: m.items || {}, actors: m.actors || [], commonEvents: m.commonEvents || [] };
+    commonsSignature = '';
+    hereRows.forEach(renderPages);
+    $('currency').textContent = m.currencyUnit || '';
+    filter();
+  }
+
+  function setValues(m) {
+    const project = m.project ? ' — ' + m.project : '';
+    const repaintAll = status !== m.status;
+    status = m.status;
+    $('status').className = status;
+    $('status').textContent = status === 'live' ? L.playing + project
+      : status === 'stale' ? L.lastValues + project + L.noWord : '';
+    $('empty').hidden = status !== 'none';
+    $('cols').hidden = status === 'none';
+    const next = { switch: new Map(m.switches), variable: new Map(m.variables) };
+    for (const kind of ['switch', 'variable']) {
+      const touched = new Set([...values[kind].keys(), ...next[kind].keys()]);
+      values[kind] = next[kind];
+      if (repaintAll) rows[kind].forEach((_r, id) => paint(kind, id));
+      else touched.forEach((id) => paint(kind, id));
+      for (const id of (kind === 'switch' ? m.changed.switches : m.changed.variables)) {
+        const r = rows[kind][id];
+        if (!r) continue;
+        r.row.classList.remove('flash');
+        void r.row.offsetWidth;
+        r.row.classList.add('flash');
+      }
+    }
+    const nextItems = new Map(m.items || []);
+    const touchedItems = new Set([...itemCounts.keys(), ...nextItems.keys()]);
+    itemCounts = nextItems;
+    if (repaintAll) itemRows.forEach((_r, key) => paintItem(key));
+    else touchedItems.forEach(paintItem);
+    for (const key of m.changed.items || []) {
+      const r = itemRows.get(key);
+      if (!r) continue;
+      r.row.classList.remove('flash');
+      void r.row.offsetWidth;
+      r.row.classList.add('flash');
+    }
+    gold = m.gold || 0;
+    paintGold();
+    if (m.changed.gold) {
+      $('goldRow').classList.remove('flash');
+      void $('goldRow').offsetWidth;
+      $('goldRow').classList.add('flash');
+    }
+    const owned = Array.from(itemCounts.keys()).sort().join(' ');
+    const itemsChanged = owned !== ownedSignature;
+    ownedSignature = owned;
+    pagesHere = new Map(m.pages || []);
+    actorsNow = new Set(m.actors || []);
+    parallelNow = new Set((m.parallel && m.parallel.events) || []);
+    renderCommons((m.parallel && m.parallel.commons) || []);
+    selfOn = new Set(m.selfSwitches);
+    selfLabels = m.selfLabels || {};
+    const rebuilt = renderOthers();
+    hereRows.forEach(paintSelf);
+    hereRows.forEach(renderPages);
+    otherRows.forEach(paintSelf);
+    for (const key of m.changed.selfSwitches || []) {
+      const group = key.split(',').slice(0, 2).join(',');
+      const r = hereRows.get(group) || otherRows.get(group);
+      if (!r) continue;
+      r.row.classList.remove('flash');
+      void r.row.offsetWidth;
+      r.row.classList.add('flash');
+    }
+    const selfChanged = Array.from(hereRows.values()).some((r) => r.on !== r.wasOn || r.parallel !== r.wasParallel);
+    hereRows.forEach((r) => { r.wasOn = r.on; r.wasParallel = r.parallel; });
+    if ($('hideDefault').checked || rebuilt || selfChanged || itemsChanged) filter();
+  }
+
+  function markRunning() {
+    let changed = false;
+    hereRows.forEach((r) => {
+      const running = !!runningEvent && r.mapId === runningEvent[0] && r.eventId === runningEvent[1];
+      if (r.row.classList.contains('running') !== running) changed = true;
+      r.row.classList.toggle('running', running);
+    });
+    if (changed) filter();
+  }
+
+  function setRunning(m) {
+    const el = $('running');
+    const inner = m.frames[m.frames.length - 1];
+    runningEvent = m.event;
+    markRunning();
+    if (!inner) {
+      el.hidden = true;
+      return;
+    }
+    el.hidden = false;
+    el.className = !inner.found ? 'missing' : inner.line !== null && !inner.exact ? 'approximate' : '';
+    el.textContent = '▶ ' + inner.label + (inner.line !== null ? fmt(L.lineN, inner.line) : '') + (inner.line !== null && !inner.exact ? L.nearLine : '');
+    el.title = m.frames.slice().reverse().map((f) => f.label + (f.line !== null ? fmt(L.lineN, f.line) : '') + (f.problem ? ' — ' + f.problem : '')).join('\\n')
+      + (inner.found ? '\\n\\n' + L.clickToOpenLine : '');
+  }
+
+  $('running').addEventListener('click', () => { if (!$('running').classList.contains('missing')) vscode.postMessage({ type: 'revealRunning' }); });
+  $('filter').addEventListener('input', filter);
+  $('hideDefault').addEventListener('change', filter);
+  $('allEvents').addEventListener('change', filter);
+  $('allItems').addEventListener('change', filter);
+  $('gold').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      vscode.postMessage({ type: 'set', kind: 'gold', text: $('gold').value });
+      $('gold').blur();
+    } else if (e.key === 'Escape') {
+      $('gold').blur();
+    }
+  });
+  $('gold').addEventListener('blur', paintGold);
+  $('openRunning').addEventListener('change', () => vscode.postMessage({ type: 'openRunning', value: $('openRunning').checked }));
+  $('play').addEventListener('click', () => vscode.postMessage({ type: 'testPlay' }));
+  let noticeTimer;
+  window.addEventListener('message', (event) => {
+    const m = event.data;
+    if (!m) return;
+    if (m.type === 'names') setNames(m);
+    else if (m.type === 'events') setEvents(m);
+    else if (m.type === 'values') setValues(m);
+    else if (m.type === 'running') setRunning(m);
+    else if (m.type === 'options') $('openRunning').checked = !!m.openRunning;
+    else if (m.type === 'notice') {
+      $('notice').textContent = m.text;
+      clearTimeout(noticeTimer);
+      noticeTimer = setTimeout(() => { $('notice').textContent = ''; }, 6000);
+    }
+  });
+  vscode.postMessage({ type: 'ready' });
+</script>
+</body></html>`;
+}

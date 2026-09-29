@@ -1,0 +1,136 @@
+{
+  "選択肢(2つ)": {
+    "prefix": [
+      "選択肢2",
+      "choices2"
+    ],
+    "body": [
+      "<ShowChoices: Window, Right, 1, 2>",
+      "<When: ${1:はい}>",
+      "$2",
+      "<When: ${3:いいえ}>",
+      "$4",
+      "<End>"
+    ],
+    "description": "選択肢を2つ出して、選んだ方の処理を書く"
+  },
+  "選択肢(3つ)": {
+    "prefix": [
+      "選択肢3",
+      "choices3"
+    ],
+    "body": [
+      "<ShowChoices: Window, Right, 1, 3>",
+      "<When: ${1:選択肢1}>",
+      "$2",
+      "<When: ${3:選択肢2}>",
+      "$4",
+      "<When: ${5:選択肢3}>",
+      "$6",
+      "<End>"
+    ],
+    "description": "選択肢を3つ出して、選んだものの処理を書く"
+  },
+  "条件分岐(スイッチ)": {
+    "prefix": [
+      "条件分岐スイッチ",
+      "ifswitch"
+    ],
+    "body": [
+      "<If: Switches[${1:1}], ${2|ON,OFF|}>",
+      "$3",
+      "<Else>",
+      "$4",
+      "<End>"
+    ],
+    "description": "スイッチが ON(OFF)のときと、それ以外のとき"
+  },
+  "条件分岐(変数)": {
+    "prefix": [
+      "条件分岐変数",
+      "ifvariable"
+    ],
+    "body": [
+      "<If: Variables[${1:1}], ${2|>=,==,<=,>,<,!=|}, ${3:0}>",
+      "$4",
+      "<Else>",
+      "$5",
+      "<End>"
+    ],
+    "description": "変数が条件に合うときと、それ以外のとき"
+  },
+  "顔付きのセリフ": {
+    "prefix": [
+      "顔",
+      "face"
+    ],
+    "body": [
+      "<Face: ${1:Actor1}(${2:0})>",
+      "${3:セリフ}"
+    ],
+    "description": "顔グラフィックを付けたセリフ"
+  },
+  "スイッチの操作": {
+    "prefix": [
+      "スイッチ",
+      "switch"
+    ],
+    "body": [
+      "<Switch: ${1:1}, ${2|ON,OFF|}>"
+    ],
+    "description": "スイッチを ON / OFF にする"
+  },
+  "変数の操作": {
+    "prefix": [
+      "変数",
+      "set"
+    ],
+    "body": [
+      "<Set: ${1:1}, ${2:0}>"
+    ],
+    "description": "変数に値を入れる"
+  },
+  "場所移動": {
+    "prefix": [
+      "場所移動",
+      "transfer"
+    ],
+    "body": [
+      "<TransferPlayer: Direct[${1:1}][${2:0}][${3:0}], Retain, Black>"
+    ],
+    "description": "別のマップへ移動する(マップ番号・X・Y)"
+  },
+  "BGMの演奏": {
+    "prefix": [
+      "BGM",
+      "bgm"
+    ],
+    "body": [
+      "<PlayBGM: ${1:Theme1}, 90, 100, 0>"
+    ],
+    "description": "BGM を鳴らす(名前・音量・ピッチ・位相)"
+  },
+  "ウェイト": {
+    "prefix": [
+      "ウェイト",
+      "wait"
+    ],
+    "body": [
+      "<Wait: ${1:60}>"
+    ],
+    "description": "指定したフレームだけ待つ(60 で約1秒)"
+  },
+  "ループ": {
+    "prefix": [
+      "ループ",
+      "loop"
+    ],
+    "body": [
+      "<Loop>",
+      "$1",
+      "<BreakLoop>",
+      "<RepeatAbove>"
+    ],
+    "description": "ループ(<BreakLoop> で抜ける)"
+  }
+}
