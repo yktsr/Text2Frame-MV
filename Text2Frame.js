@@ -11405,7 +11405,8 @@
       const baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH
       // 祖先はテキストの置き場所ごとに分ける。
       const baseDir = baseDirForTextDir(baseRoot, textRoot)
-      const englishTag = String(Laurus.Text2Frame.EnglishTag) !== 'false'
+      // 英語タグは Frame2Text 側の設定。こちらの名前空間には同じ名前のものが無い(5051 と同じ読み方)。
+      const englishTag = String(Laurus.Frame2Text && Laurus.Frame2Text.EnglishTag) !== 'false'
       const wantPush = opts.direction === 'push' || opts.direction === 'both'
       const wantPull = opts.direction === 'pull' || opts.direction === 'both'
 

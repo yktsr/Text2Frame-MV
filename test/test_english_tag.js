@@ -152,8 +152,75 @@ describe('english tag from the command line', function () {
     japanese(fs.readFileSync(path.join(dir, file), 'utf8'))
   })
 
+  /* 以前は batch だけ述語が違い(=== 'true')、-w TRUE や -w 1 で日本語になっていた。 */
+  it('--mode batch treats anything but "false" as English', function () {
+    run(['-m', 'batch', '-d', 'data', '-t', 'text', '-w', 'TRUE', '--scope', 'nonempty'])
+    const dir = path.join(tmp, 'text')
+    const file = fs.readdirSync(dir).filter(function (f) { return /\.txt$/.test(f) })[0]
+    expect(fs.readFileSync(path.join(dir, file), 'utf8')).to.contain('<Switch: 1, ON>')
+  })
+
   it('--mode decompile follows -w, and writes English without it', function () {
     japanese(run(['-m', 'decompile', '-w', 'false'], mapData))
     expect(run(['-m', 'decompile'], mapData)).to.contain('<Switch: 1, ON>')
+  })
+})
+
+/* ツクールの中の同期(START_DATA_SYNC)の取り出し側は、Frame2Text の設定を読む。
+ * 以前はここだけ Laurus.Text2Frame.EnglishTag という「誰も代入しない名前」を読んでいて、
+ * 設定を切っても常に英語で書き出していた。見張りを張って駆動すると非同期で不安定な
+ * 試験になるので、壊れていた性質(存在しない名前を読む)をソースで固定する。
+ * ソースを直に見る検査は test_l10n.js / test_grammar.js と同じ流儀。 */
+describe('english tag in the in-game sync', function () {
+  const source = fs.readFileSync(path.join(ROOT, 'Text2Frame.js'), 'utf8')
+
+  it('does not read an english tag that nothing assigns', function () {
+    expect(source).to.not.contain('Laurus.Text2Frame.EnglishTag')
+  })
+
+  it('reads it from the Frame2Text namespace instead', function () {
+    expect(source).to.contain('Laurus.Frame2Text && Laurus.Frame2Text.EnglishTag')
+  })
+})
+
+/* t2f-sync の公開 API。CLI は自分で畳んでから渡すが、ライブラリとして呼ぶ人は
+ * CLI から受けた文字列をそのまま渡す。以前はここで真偽値に変換していたため、
+ * 'false' が truthy のまま通って英語になっていた。 */
+describe('english tag through t2f-sync', function () {
+  const sync = require('../t2f-sync.js')
+  let tmp
+  let cwd
+
+  beforeEach(function () {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-sync-tag-'))
+    fs.mkdirSync(path.join(tmp, 'data'))
+    fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify({
+      events: [null, { id: 1, name: 'EV001', pages: [{ list: list.concat([{ code: 0, indent: 0, parameters: [] }]) }] }]
+    }), 'utf8')
+    cwd = process.cwd()
+    process.chdir(tmp)
+  })
+  afterEach(function () {
+    process.chdir(cwd)
+    try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }
+  })
+
+  const pulled = function (englishTag) {
+    const target = frame2text.enumerateTargets('data', { scope: 'nonempty' })[0]
+    const r = sync.pullTarget(target, { root: tmp, dataDir: 'data', textDir: 'text', englishTag, strategy: 'overwrite' })
+    expect(r.ok, r.error).to.equal(true)
+    return fs.readFileSync(r.textPath, 'utf8')
+  }
+
+  it('takes the string "false" as Japanese', function () {
+    expect(pulled('false')).to.contain('<スイッチ: 1, オン>')
+  })
+
+  it('takes the boolean false as Japanese', function () {
+    expect(pulled(false)).to.contain('<スイッチ: 1, オン>')
+  })
+
+  it('writes English when nothing is asked for', function () {
+    expect(pulled(undefined)).to.contain('<Switch: 1, ON>')
   })
 })

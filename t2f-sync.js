@@ -83,7 +83,9 @@ function pullTarget (target, opts) {
   const o = opts || {}
   const root = o.root || process.cwd()
   const dataDir = path.resolve(root, o.dataDir || 'data')
-  const englishTag = o.englishTag !== false
+  /* 畳み方は Frame2Text 側の1か所(toFlag)に任せる。ここで真偽値にすると、文字列の
+   * 'false' を渡されたとき truthy のまま通ってしまう(CLI は 303 で畳んでから渡す)。 */
+  const englishTag = o.englishTag
   const strategy = o.strategy || 'merge'
   /* 書き先は「同じ行き先のテキストが既にあればその場所」。利用者が付けた名前のまま書き続ける。
    * 索引は呼び出し側(pullDataFile / syncOnce)が1回だけ作って渡す。 */
