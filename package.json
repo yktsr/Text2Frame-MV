@@ -42,6 +42,8 @@
     "stamp:dist": "node tools/stamp-build-meta.js",
     "build:dist": "npm run build && npm run stamp:dist",
     "pack:all": "bash tools/pack-all.sh",
+    "copy-bundles": "node tools/copy-bundles.js",
+    "prepack": "npm run build:dist && npm run copy-bundles",
     "sync": "node t2f-sync.js start",
     "sync_once": "node t2f-sync.js once"
   },
