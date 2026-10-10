@@ -1143,7 +1143,10 @@
     const newLine = '\n'
     // カンマ
     const comma = ', '
-    const EnglishTag = Laurus.Frame2Text.EnglishTag
+    /* タグと値(パラメータ)の言語。下のヘルパ群と decompile の本体が両方これを見る。
+     * プラグインコマンドや CLI の -w からは文字列の 'true'/'false' で届くため畳む。
+     * decompile は、その呼び出しの間だけここを差し替える(下の decompile を参照)。 */
+    let EnglishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
     // 関数
     const getOnOffRadioButtonValue = (checkBoxValue) => {
       if (checkBoxValue === 0) return EnglishTag ? 'ON' : 'オン'
@@ -1568,7 +1571,7 @@
     // 101/401: 文章の表示(顔・名前・位置・背景タグを含む), 102/402/403/404: 選択肢,
     // 105/405: 文章のスクロール表示。これ以外(スイッチ・変数・移動等)は出力しない。
     const CONVERSATION_CODES = [101, 401, 102, 402, 403, 404, 105, 405]
-    const decompile = function (map_events, EnglishTag, options) {
+    const decompileCore = function (map_events, options) {
       // イベントコード毎にループ
       const pretty = !!(options && options.pretty)
       const translationOnly = !!(options && options.translationOnly)
@@ -3201,6 +3204,20 @@
       return text
     }
 
+    /* 言語は引数で決める。値を組み立てるヘルパ群は上の EnglishTag を見ているので、
+     * 引数で来た言語をこの呼び出しの間だけそこへ入れ、終わったら戻す。decompile は
+     * 同期で入れ子にならないので、この退避・復元で足りる。
+     * 引数を省いた呼び出しは今の値のまま(プラグインパラメータ or CLI の -w)。 */
+    const decompile = function (map_events, englishTag, options) {
+      const previousEnglishTag = EnglishTag
+      if (englishTag !== undefined) EnglishTag = String(englishTag) !== 'false'
+      try {
+        return decompileCore(map_events, options)
+      } finally {
+        EnglishTag = previousEnglishTag
+      }
+    }
+
     // 書き出し主体のバージョン(リリース時に package.json と揃えて更新する)。
     // 書き出したテキストのフロントマターに generator: text2frame-mv@<VERSION> として埋める。
     const VERSION = '2.3.0'
@@ -4198,7 +4215,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     process.stdin.on('end', () => {
       JSON.parse(data).events.filter(event => event !== null).forEach(function (event) {
         event.pages.forEach(function (p) {
-          console.log(module.exports.decompile(p.list))
+          console.log(module.exports.decompile(p.list, String(options.english_tag) !== 'false'))
         })
       })
     })
