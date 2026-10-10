@@ -86,6 +86,34 @@ describe('english tag', function () {
   })
 })
 
+/* 畳み方は toEnglishTag の1か所に寄せてある。未設定のときどちらに寄せるかだけは入口で違い、
+ * プラグインパラメータだけ「未設定なら日本語」(この設定が無かった頃からの扱い)を残している。
+ * パラメータは読み込み時に1度だけ読まれるので、別のプロセスで確かめる。 */
+describe('english tag from the plugin parameter', function () {
+  const show = function (parameter) {
+    const code = 'const { installEngine } = require("./test/helpers");' +
+      'installEngine({ EnglishTag: ' + parameter + ' });' +
+      'const f = require("./Frame2Text.js");' +
+      'process.stdout.write(f.decompile([{ code: 121, indent: 0, parameters: [1, 1, 0] }], undefined, { pretty: true }))'
+    const r = cp.spawnSync(process.execPath, ['-e', code], { cwd: ROOT, encoding: 'utf8' })
+    expect(r.status, r.stderr).to.equal(0)
+    return r.stdout
+  }
+
+  it('writes English when the parameter says true', function () {
+    expect(show('"true"')).to.contain('<Switch: 1, ON>')
+  })
+
+  it('writes Japanese when the parameter says false', function () {
+    expect(show('"false"')).to.contain('<スイッチ: 1, オン>')
+  })
+
+  it('writes Japanese when the parameter is not set at all', function () {
+    expect(show('undefined')).to.contain('<スイッチ: 1, オン>')
+    expect(show('""')).to.contain('<スイッチ: 1, オン>')
+  })
+})
+
 describe('english tag from the command line', function () {
   const CLI = path.join(ROOT, 'Frame2Text.js')
   const mapData = JSON.stringify({

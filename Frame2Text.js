@@ -717,6 +717,14 @@
     return null
   }
 
+  /* 英語タグの指定を1か所で畳む。ツクールのパラメータ・プラグインコマンドの引数・CLI の -w は
+   * どれも文字列で届き、'false' は truthy なので、ここを通さないと指定が黙って無視される。
+   * 未設定のときどちらに寄せるかだけ入口ごとに違うので、第2引数で渡す。 */
+  const toEnglishTag = function (value, whenUnset) {
+    if (value === undefined || value === null || value === '') return !!whenUnset
+    return String(value) !== 'false'
+  }
+
   if (typeof PluginManager === 'undefined') {
     Laurus.Frame2Text.FileFolder = 'test'
     Laurus.Frame2Text.FileName = 'basic.txt'
@@ -755,7 +763,8 @@
     Laurus.Frame2Text.DisplayMsg = String(Laurus.Frame2Text.Parameters.DisplayMsg) === 'true'
     // 未設定(この設定が無かった頃のまま)なら出す。既定を true にしているため。
     Laurus.Frame2Text.DisplayWarning = String(Laurus.Frame2Text.Parameters.DisplayWarning) !== 'false'
-    Laurus.Frame2Text.EnglishTag = String(Laurus.Frame2Text.Parameters.EnglishTag) === 'true'
+    // 未設定(この設定が無かった頃のまま)なら日本語。@default は true だが、ここだけ昔の扱いを残している。
+    Laurus.Frame2Text.EnglishTag = toEnglishTag(Laurus.Frame2Text.Parameters.EnglishTag, false)
     // 未設定(古いプラグイン設定のまま)なら省略する。既定を true にしているため。
     Laurus.Frame2Text.OmitDefaultTags = String(Laurus.Frame2Text.Parameters.OmitDefaultTags) !== 'false'
     // 単発取り出しのしかた。コマンドの引数解決で毎回決め直す。
@@ -1144,9 +1153,8 @@
     // カンマ
     const comma = ', '
     /* タグと値(パラメータ)の言語。下のヘルパ群と decompile の本体が両方これを見る。
-     * プラグインコマンドや CLI の -w からは文字列の 'true'/'false' で届くため畳む。
      * decompile は、その呼び出しの間だけここを差し替える(下の decompile を参照)。 */
-    let EnglishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
+    let EnglishTag = toEnglishTag(Laurus.Frame2Text.EnglishTag, true)
     // 関数
     const getOnOffRadioButtonValue = (checkBoxValue) => {
       if (checkBoxValue === 0) return EnglishTag ? 'ON' : 'オン'
@@ -1559,7 +1567,6 @@
     }
 
     // 出力するテキスト変数
-    // Laurus.Frame2Text.EnglishTagの値を別変数に代入
     // 整形(pretty)時にインデントを付与しないコード。
     // 複数行の本文を持つもの(メッセージ本文/スクロール文/注釈/スクリプト)は
     // 行頭の空白がそのまま本文として取り込まれ往復変換が壊れるため列0のままにする。
@@ -3210,7 +3217,7 @@
      * 引数を省いた呼び出しは今の値のまま(プラグインパラメータ or CLI の -w)。 */
     const decompile = function (map_events, englishTag, options) {
       const previousEnglishTag = EnglishTag
-      if (englishTag !== undefined) EnglishTag = String(englishTag) !== 'false'
+      if (englishTag !== undefined) EnglishTag = toEnglishTag(englishTag, true)
       try {
         return decompileCore(map_events, options)
       } finally {
@@ -3438,7 +3445,7 @@
     const buildPullText = function (opts) {
       opts = opts || {}
       const list = opts.list || []
-      const englishTag = opts.englishTag !== false
+      const englishTag = toEnglishTag(opts.englishTag, true)
       const existingText = opts.existingText || ''
       const merge = String(opts.strategy || 'overwrite').toLowerCase() === 'merge'
       // 目印入りのゲームを統合すると、目印ごと再マージされて二重・三重に増える。統合だけ見送る。
@@ -3796,7 +3803,7 @@
       const _path = require('path')
       const dataDir = _path.resolve(BASE_PATH, 'data')
       const textBase = Laurus.Frame2Text.TextBase
-      const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
+      const englishTag = toEnglishTag(Laurus.Frame2Text.EnglishTag, true)
       const batchStrategy = Laurus.Frame2Text.BatchStrategy || 'overwrite'
       let okCount = 0
       let errCount = 0
