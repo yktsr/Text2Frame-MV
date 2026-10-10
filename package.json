@@ -36,6 +36,7 @@
     "watch": "node Text2Frame.js -m batch --text-dir text --watch",
     "verify-roundtrip": "node tools/verify-roundtrip.js",
     "update-snapshot": "node tools/snapshot-text.js",
+    "check-params": "node tools/check-params.js",
     "debug": "node Text2Frame.js",
     "build": "rollup -c",
     "stamp:dist": "node tools/stamp-build-meta.js",
