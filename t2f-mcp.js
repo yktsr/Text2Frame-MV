@@ -1220,8 +1220,171 @@ TOOLS.push({
   }
 })
 
-const TOOLS_BY_NAME = {}
-TOOLS.forEach(function (t) { TOOLS_BY_NAME[t.name] = t })
+/* 名前で引く。**その場で引く**のが要点 - 一度作った表に固めると、下に道具を足した日に
+ * tools/list には出るのに tools/call が「知らない道具」と言う(実際にそうなった)。 */
+const toolNamed = function (name) {
+  const hit = TOOLS.filter(function (t) { return t.name === name })
+  return hit.length ? hit[0] : undefined
+}
+
+/* ---------- データベースの名前を付ける ---------- */
+
+/*
+ * ここだけが data/System.json を書く。ほかの道具は全部「イベントのテキスト」の話で、
+ * これは境界を1つ越えている。だから対象を **switch と variable の名前だけ**に絞った。
+ * イベントが番号で参照するのはこの2つなので、「イベントのために要る最小限」で説明が付く。
+ * アイテムの値段や敵の能力値には触らない(あれはツクールのデータベース編集器の仕事)。
+ *
+ * なぜ要るか: MCP でイベントを1つ作ってみたら、エージェントが使ったスイッチが
+ * 名前の無いまま残った。逆引きも「スイッチ259」としか言えない。番号だけが残ると、
+ * 後で読む人にも AI にも効く。
+ */
+const NAMEABLE = {
+  switch: { field: 'switches', label: 'スイッチ' },
+  variable: { field: 'variables', label: '変数' }
+}
+
+const systemPathOf = function (ctx) { return path.join(ctx.dataDir, 'System.json') }
+
+/** System.json を読む。**丸ごと保って、名前の配列だけを差し替える**ために全体を返す。 */
+const readSystem = function (ctx) {
+  const file = systemPathOf(ctx)
+  let data
+  try {
+    data = JSON.parse(fs.readFileSync(file, 'utf8'))
+  } catch (e) {
+    throw new Error('System.json が読めません: ' + relOf(ctx, file))
+  }
+  if (!data || typeof data !== 'object') throw new Error('System.json の形が違います: ' + relOf(ctx, file))
+  return data
+}
+
+TOOLS.push({
+  name: 't2f_name_plan',
+  title: 'スイッチ・変数に名前を付ける(下書き)',
+  partOfWriting: true,
+  description: 'スイッチか変数の名前を付ける下書きを作ります。data/System.json は1バイトも書きません。' +
+    '返ってくる札(token)を t2f_name_apply に渡すと実際に書きます。' +
+    '\n名前を付けられるのは**スイッチと変数だけ**です(イベントが番号で参照するのがこの2つなので)。' +
+    'アイテムや敵などの名前はツクールのデータベースで付けてください。' +
+    '\n既に名前が付いているものは断ります。差し替えるなら force を渡してください。' +
+    '\n**RPGツクールのエディタを閉じてから**使ってください。あちらも System.json を書き戻します。',
+  annotations: { readOnlyHint: true, idempotentHint: true },
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['kind', 'id', 'name'],
+    properties: {
+      kind: { type: 'string', enum: Object.keys(NAMEABLE), description: '種類' },
+      id: { type: ['integer', 'string'], minimum: 1, description: '番号' },
+      name: { type: 'string', description: '付ける名前' },
+      force: { type: 'boolean', description: '既に名前が付いていても差し替える' }
+    }
+  },
+  run: function (ctx, args) {
+    const kind = String((args && args.kind) || '')
+    const source = NAMEABLE[kind]
+    if (!source) throw new Error('名前を付けられるのは ' + Object.keys(NAMEABLE).join(' と ') + ' だけです: ' + kind)
+    const id = Number(args && args.id)
+    if (!(id > 0) || Math.floor(id) !== id) throw new Error('番号は1以上の整数です: ' + (args && args.id))
+    const name = String((args && args.name) === undefined ? '' : args.name).trim()
+    if (!name) throw new Error('付ける名前が空です')
+
+    const data = readSystem(ctx)
+    const names = data[source.field]
+    if (!Array.isArray(names)) throw new Error('System.json に ' + source.field + ' の配列がありません')
+    if (id >= names.length) {
+      throw new Error(source.label + id + ' は作られていません(' + source.field + ' は ' + (names.length - 1) +
+        ' 番までです)。RPGツクールで枠を増やしてください。')
+    }
+    const current = typeof names[id] === 'string' ? names[id] : ''
+    /* 同じ名前なら何もしない。**force より先に見る** - 同じ名前を頼んだだけで
+     * 「force を渡せ」と言われるのは、やることが無いのに手間を増やしている。 */
+    if (current === name) {
+      return toolResult(source.label + id + ' は既に「' + name + '」です。変えるところがありません。',
+        { kind, id, name, changed: false })
+    }
+    if (current && !(args && args.force)) {
+      return toolError(source.label + id + ' には既に「' + current + '」が付いています。' +
+        '差し替えるなら force を渡してください(人が付けた名前を黙って奪わないため)。')
+    }
+
+    const file = systemPathOf(ctx)
+    const token = sha1(['name', kind, String(id), name, fingerprintOf(file)].join('\u0000'))
+    forgetOldPlans(Date.now())
+    PLANS.set(token, {
+      at: Date.now(),
+      nameChange: { kind, id, name, field: source.field, label: source.label, was: current },
+      systemPath: file,
+      systemFingerprint: fingerprintOf(file)
+    })
+    return toolResult([
+      '付ける名前: ' + source.label + id + '  「' + (current || '(名前なし)') + '」 -> 「' + name + '」',
+      '書くファイル: ' + relOf(ctx, file) + '（' + source.field + ' だけを差し替えます）',
+      '',
+      '※ RPGツクールのエディタを閉じてから適用してください。あちらも System.json を書き戻します。',
+      '',
+      'この内容でよければ t2f_name_apply に token を渡してください: ' + token
+    ].join('\n'), { kind, id, name, was: current, changed: true, token })
+  }
+})
+
+TOOLS.push({
+  name: 't2f_name_apply',
+  title: 'スイッチ・変数に名前を付ける(適用)',
+  description: 't2f_name_plan が返した札(token)を受け取り、本当に data/System.json へ書きます。' +
+    '直前の中身は .t2f-history に控えるので、VS Code 拡張の「編集履歴を表示する」から戻せます。',
+  annotations: { destructiveHint: true, idempotentHint: false },
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['token'],
+    properties: {
+      token: { type: 'string', description: 't2f_name_plan が返した札' }
+    }
+  },
+  run: function (ctx, args) {
+    const token = String((args && args.token) || '')
+    forgetOldPlans(Date.now())
+    const plan = PLANS.get(token)
+    if (!plan || !plan.nameChange) {
+      return toolError('その札は使えません(知らない札か、期限切れ(' + (PLAN_TTL_MS / 60000) + '分)です)。t2f_name_plan からやり直してください。')
+    }
+    if (fingerprintOf(plan.systemPath) !== plan.systemFingerprint) {
+      PLANS.delete(token)
+      return toolError('下書きのあとに System.json が変わりました(ツクールのエディタが書き戻した可能性があります)。t2f_name_plan からやり直してください。')
+    }
+
+    const change = plan.nameChange
+    const history = require(path.join(__dirname, 't2f-history.js'))
+    const recorder = history.beginEntry(ctx.root, 'mcp-name', 'MCP の名前付け ' + change.label + change.id, { keep: ctx.historyKeep })
+    recorder.note(plan.systemPath, 'data')
+
+    try {
+      /* 読み直してから名前の配列だけを差し替える。**全体を作り直さない** -
+       * System.json にはゲームの設定が丸ごと入っているので、ほかのキーを落とせない。 */
+      const data = readSystem(ctx)
+      if (!Array.isArray(data[change.field])) throw new Error('System.json に ' + change.field + ' の配列がありません')
+      data[change.field][change.id] = change.name
+      fs.writeFileSync(plan.systemPath, JSON.stringify(data), 'utf8')
+    } finally {
+      PLANS.delete(token)
+    }
+    const entry = recorder.finish()
+
+    return toolResult([
+      '名前を付けました: ' + change.label + change.id + '  「' + (change.was || '(名前なし)') + '」 -> 「' + change.name + '」',
+      entry ? '直前の中身を .t2f-history に控えました(' + entry.id + ')。戻すときは VS Code 拡張の「編集履歴を表示する」から。' : ''
+    ].filter(function (l) { return l }).join('\n'), {
+      kind: change.kind,
+      id: change.id,
+      name: change.name,
+      was: change.was,
+      systemPath: relOf(ctx, plan.systemPath),
+      historyId: entry ? entry.id : null
+    })
+  }
+})
 
 /* --read-only で隠す道具。MCP の annotations は「この道具は書くか」をクライアントへ
  * 伝えるもので、こちらの印は「書き込みの一連に属すか」。別の関心なので分けておく。 */
@@ -1303,7 +1466,7 @@ const handle = function (request, ctx) {
 
   if (method === 'tools/call') {
     const name = String(params.name || '')
-    const tool = TOOLS_BY_NAME[name]
+    const tool = toolNamed(name)
     /* tools/list に出していない道具は、呼ばれても知らないものとして扱う(扱いを1つに保つ)。
      * 出す/出さないの判断は toolsFor が持っているので、そこを引く。 */
     if (!tool || toolsFor(ctx).indexOf(tool) === -1) {

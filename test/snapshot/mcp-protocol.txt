@@ -369,6 +369,72 @@
           "destructiveHint": true,
           "idempotentHint": false
         }
+      },
+      {
+        "name": "t2f_name_plan",
+        "title": "スイッチ・変数に名前を付ける(下書き)",
+        "description": "スイッチか変数の名前を付ける下書きを作ります。data/System.json は1バイトも書きません。返ってくる札(token)を t2f_name_apply に渡すと実際に書きます。\n名前を付けられるのは**スイッチと変数だけ**です(イベントが番号で参照するのがこの2つなので)。アイテムや敵などの名前はツクールのデータベースで付けてください。\n既に名前が付いているものは断ります。差し替えるなら force を渡してください。\n**RPGツクールのエディタを閉じてから**使ってください。あちらも System.json を書き戻します。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id",
+            "name"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "switch",
+                "variable"
+              ],
+              "description": "種類"
+            },
+            "id": {
+              "type": [
+                "integer",
+                "string"
+              ],
+              "minimum": 1,
+              "description": "番号"
+            },
+            "name": {
+              "type": "string",
+              "description": "付ける名前"
+            },
+            "force": {
+              "type": "boolean",
+              "description": "既に名前が付いていても差し替える"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_name_apply",
+        "title": "スイッチ・変数に名前を付ける(適用)",
+        "description": "t2f_name_plan が返した札(token)を受け取り、本当に data/System.json へ書きます。直前の中身は .t2f-history に控えるので、VS Code 拡張の「編集履歴を表示する」から戻せます。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "token"
+          ],
+          "properties": {
+            "token": {
+              "type": "string",
+              "description": "t2f_name_plan が返した札"
+            }
+          }
+        },
+        "annotations": {
+          "destructiveHint": true,
+          "idempotentHint": false
+        }
       }
     ],
     "_meta": {
@@ -945,6 +1011,72 @@
         },
         "annotations": {
           "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false
+        }
+      },
+      {
+        "name": "t2f_name_plan",
+        "title": "スイッチ・変数に名前を付ける(下書き)",
+        "description": "スイッチか変数の名前を付ける下書きを作ります。data/System.json は1バイトも書きません。返ってくる札(token)を t2f_name_apply に渡すと実際に書きます。\n名前を付けられるのは**スイッチと変数だけ**です(イベントが番号で参照するのがこの2つなので)。アイテムや敵などの名前はツクールのデータベースで付けてください。\n既に名前が付いているものは断ります。差し替えるなら force を渡してください。\n**RPGツクールのエディタを閉じてから**使ってください。あちらも System.json を書き戻します。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id",
+            "name"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "switch",
+                "variable"
+              ],
+              "description": "種類"
+            },
+            "id": {
+              "type": [
+                "integer",
+                "string"
+              ],
+              "minimum": 1,
+              "description": "番号"
+            },
+            "name": {
+              "type": "string",
+              "description": "付ける名前"
+            },
+            "force": {
+              "type": "boolean",
+              "description": "既に名前が付いていても差し替える"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_name_apply",
+        "title": "スイッチ・変数に名前を付ける(適用)",
+        "description": "t2f_name_plan が返した札(token)を受け取り、本当に data/System.json へ書きます。直前の中身は .t2f-history に控えるので、VS Code 拡張の「編集履歴を表示する」から戻せます。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "token"
+          ],
+          "properties": {
+            "token": {
+              "type": "string",
+              "description": "t2f_name_plan が返した札"
+            }
+          }
+        },
+        "annotations": {
           "destructiveHint": true,
           "idempotentHint": false
         }

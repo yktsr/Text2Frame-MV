@@ -59,9 +59,13 @@ describe('mcp tools', function () {
     fs.writeFileSync(path.join(tmp, 'data', 'MapInfos.json'), JSON.stringify([
       null, { id: 1, name: 'はじまりの村', order: 1, parentId: 0 }
     ]))
+    /* gameTitle と partyMembers は「名前を付けるときに壊してはいけないもの」の見張り。
+     * System.json にはゲームの設定が丸ごと入っている。 */
     fs.writeFileSync(path.join(tmp, 'data', 'System.json'), JSON.stringify({
-      switches: ['', 'ドアを開けた', '橋がかかった'],
-      variables: ['', '所持金']
+      gameTitle: 'テストのゲーム',
+      partyMembers: [1, 2],
+      switches: ['', 'ドアを開けた', '橋がかかった', ''],
+      variables: ['', '所持金', '']
     }))
     ctx = mcp.createContext({ root: tmp })
   })
@@ -207,6 +211,116 @@ describe('mcp tools', function () {
         expect(textOf(result).split('\n').filter(function (l) { return l.indexOf('map002_') === 0 }))
           .to.have.lengthOf(result.structuredContent.targets.length)
       })
+    })
+  })
+
+  /* ここだけが data/System.json を書く。ほかの道具は「イベントのテキスト」の話なので、
+   * 境界を1つ越えている。だから対象を switch と variable の名前だけに絞ってある。
+   *
+   * なぜ要るか: MCP でイベントを1つ作ったら、使ったスイッチが名前の無いまま残った。
+   * 番号だけが残ると、後で読む人にも AI にも効く。 */
+  describe('t2f_name_plan と t2f_name_apply', function () {
+    const systemFile = function () { return path.join(tmp, 'data', 'System.json') }
+    const system = function () { return JSON.parse(fs.readFileSync(systemFile(), 'utf8')) }
+
+    it('names an unnamed switch, and nothing else in System.json moves', function () {
+      const before = system()
+      const plan = call('t2f_name_plan', { kind: 'switch', id: 3, name: 'サメが出た' })
+      expect(plan.isError, textOf(plan)).to.equal(undefined)
+      // 下書きは1バイトも書かない。
+      expect(system()).to.eql(before)
+
+      const applied = call('t2f_name_apply', { token: plan.structuredContent.token })
+      expect(applied.isError, textOf(applied)).to.equal(undefined)
+
+      const after = system()
+      expect(after.switches[3]).to.equal('サメが出た')
+      // 配列の長さも、ほかのキーも動かさない(全体を作り直していないこと)。
+      expect(after.switches).to.have.lengthOf(before.switches.length)
+      expect(after.gameTitle).to.equal('テストのゲーム')
+      expect(after.partyMembers).to.eql([1, 2])
+      expect(after.variables).to.eql(before.variables)
+    })
+
+    it('names a variable too', function () {
+      const plan = call('t2f_name_plan', { kind: 'variable', id: 2, name: '話した回数' })
+      call('t2f_name_apply', { token: plan.structuredContent.token })
+
+      expect(system().variables[2]).to.equal('話した回数')
+    })
+
+    /* 人が付けた名前を黙って奪わない。 */
+    it('refuses a name that is already taken unless forced', function () {
+      const refused = call('t2f_name_plan', { kind: 'switch', id: 1, name: '別の名前' })
+      expect(refused.isError).to.equal(true)
+      expect(textOf(refused)).to.contain('ドアを開けた')
+      expect(textOf(refused)).to.contain('force')
+
+      const forced = call('t2f_name_plan', { kind: 'switch', id: 1, name: '別の名前', force: true })
+      expect(forced.isError, textOf(forced)).to.equal(undefined)
+      call('t2f_name_apply', { token: forced.structuredContent.token })
+      expect(system().switches[1]).to.equal('別の名前')
+    })
+
+    /* 同じ名前を頼んだだけで force を要求するのは、やることが無いのに手間を増やしている。 */
+    it('says there is nothing to do when the name already matches', function () {
+      const result = call('t2f_name_plan', { kind: 'switch', id: 1, name: 'ドアを開けた' })
+
+      expect(result.isError).to.equal(undefined)
+      expect(result.structuredContent.changed).to.equal(false)
+      expect(result.structuredContent.token).to.equal(undefined)
+    })
+
+    it('only takes switches and variables', function () {
+      const result = call('t2f_name_plan', { kind: 'item', id: 1, name: 'なにか' })
+      expect(result.isError).to.equal(true)
+      expect(textOf(result)).to.contain('switch')
+    })
+
+    it('will not name a slot the game does not have', function () {
+      const result = call('t2f_name_plan', { kind: 'switch', id: 99, name: 'なにか' })
+      expect(result.isError).to.equal(true)
+      expect(textOf(result)).to.contain('RPGツクール')
+    })
+
+    it('turns down an empty name', function () {
+      expect(call('t2f_name_plan', { kind: 'switch', id: 3, name: '   ' }).isError).to.equal(true)
+    })
+
+    /* 札は一度だけ。使い回せると、同じ書き込みが二度走る。 */
+    it('spends the token once', function () {
+      const plan = call('t2f_name_plan', { kind: 'switch', id: 3, name: '一回だけ' })
+      call('t2f_name_apply', { token: plan.structuredContent.token })
+
+      const again = call('t2f_name_apply', { token: plan.structuredContent.token })
+      expect(again.isError).to.equal(true)
+      expect(textOf(again)).to.contain('その札は使えません')
+    })
+
+    /* ツクールのエディタが書き戻していたら断る(あちらも System.json を持っている)。 */
+    it('refuses when System.json moved after the draft', function () {
+      const plan = call('t2f_name_plan', { kind: 'switch', id: 3, name: 'あとで' })
+      const data = system()
+      data.gameTitle = '誰かが変えた'
+      fs.writeFileSync(systemFile(), JSON.stringify(data))
+
+      const result = call('t2f_name_apply', { token: plan.structuredContent.token })
+      expect(result.isError).to.equal(true)
+      expect(textOf(result)).to.contain('System.json が変わりました')
+      expect(system().switches[3]).to.equal('')
+    })
+
+    /* 戻せることが、書き込みを許す条件。 */
+    it('keeps the previous System.json in .t2f-history', function () {
+      const plan = call('t2f_name_plan', { kind: 'switch', id: 3, name: '控えの検査' })
+      const applied = call('t2f_name_apply', { token: plan.structuredContent.token })
+
+      expect(applied.structuredContent.historyId).to.be.a('string')
+      const entries = fs.readdirSync(path.join(tmp, '.t2f-history')).filter(function (n) { return n.indexOf('.') !== 0 })
+      expect(entries).to.have.lengthOf(1)
+      const entry = JSON.parse(fs.readFileSync(path.join(tmp, '.t2f-history', entries[0], 'entry.json'), 'utf8'))
+      expect(entry.op).to.equal('mcp-name')
+      expect(entry.files.map(function (f) { return f.path })).to.eql(['data/System.json'])
     })
   })
 
