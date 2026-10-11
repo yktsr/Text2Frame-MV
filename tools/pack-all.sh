@@ -86,6 +86,12 @@ ok "Text2Frame.js / Frame2Text.js (刻印付き)"
 # tools/copy-bundles.js 1か所に置き、prepack もそこを呼ぶ (RELEASE.md B-1)。
 node tools/copy-bundles.js >/dev/null || fail "ルートのバンドルを作り直せませんでした"
 ok "ルートのバンドル3つを作り直しました"
+# 逆引き(t2f_usages)が借りている純粋な層。.vsix には out/db/ として既に入っているが、
+# npm の tarball には写さないと入らない。--skip-tests のときは上の検査を飛ばしていて
+# 拡張がコンパイルされていないので、ここで作る(裸の copy-db は out/db が無くて落ちる)。
+npm run build:db >/dev/null || fail "拡張をコンパイルできませんでした(cd vscode-extension && npm ci)"
+node tools/copy-db.js >/dev/null || fail "ルートの db/ を作り直せませんでした"
+ok "ルートの db/ に純粋な層を写しました"
 # scripts は止めない。ここで prepack(= build:dist)が二度走るが数秒で、
 # 「publish の前に必ず作り直す」仕掛けが本当に効くことをこの経路で確かめられる。
 npm pack --pack-destination "$OUT" >/dev/null
@@ -97,6 +103,12 @@ ok "$(basename "$TGZ") ($(tar tzf "$TGZ" | wc -l | tr -d ' ') ファイル)"
 BUNDLES_IN_TGZ=$(tar tzf "$TGZ" | grep -cE '^package/Text2Frame\.(es\.mjs|cjs\.js|umd\.js)$' || true)
 [ "$BUNDLES_IN_TGZ" -eq 3 ] || fail "tarball の cjs/es/umd が $BUNDLES_IN_TGZ 件です(3 件あるはず)"
 ok "tarball に cjs/es/umd が3つ入っています"
+
+# db/ も同じ理由で数える。files に書いてあっても、npm が一覧を作る時点で実体が無ければ
+# ディレクトリと見なされず、黙って0件で通る。無いと npm 経由だけ t2f_usages が消える。
+DB_IN_TGZ=$(tar tzf "$TGZ" | grep -cE '^package/db/[a-zA-Z]+\.js$' || true)
+[ "$DB_IN_TGZ" -eq 4 ] || fail "tarball の db/ が $DB_IN_TGZ 件です(4 件あるはず)"
+ok "tarball に db/ が4つ入っています"
 
 # --- 3. VS Code 拡張 ---------------------------------------------------------
 # vsce package が vscode:prepublish 経由で lib/ にプラグイン本体を取り込む。
@@ -148,6 +160,7 @@ MANIFEST="$OUT/MANIFEST.txt"
   echo "checks"
   echo "  vsix bundled compiler == repo : OK"
   echo "  cjs/es/umd in tarball         : OK (${BUNDLES_IN_TGZ} files, built this run)"
+  echo "  db/ in tarball                : OK (${DB_IN_TGZ} files, built this run)"
 } > "$MANIFEST"
 cat "$MANIFEST"
 cat <<EOS

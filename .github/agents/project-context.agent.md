@@ -29,6 +29,7 @@ tools: [read, edit, search, execute]
 | `t2f-sync.js` | 双方向同期コントローラ(CLI専用。ツクールのプラグインではない)。Text2Frame/Frame2Text を**公開APIとして**使い、1プロセスで push/pull を所有。自分の書き込みを内容ハッシュで無視してループを防ぐ。`module.exports = { pushFile, pullTarget, pullDataFile, syncOnce, createEchoGuard }` |
 | `t2f-mcp.js` | MCP(Model Context Protocol)サーバ(CLI専用)。Text2Frame/Frame2Text を**公開APIとして**使う4つ目の前面。`handle(要求, 文脈)` は純粋な関数で、標準入出力を持つのは殻だけ(テストはプロセス内で叩く)。**標準出力は通信路なので、本物の `process.stdout.write` を退避し、以後 `process.stdout.write` は stderr へ流す**。`console.log` は eslint の override で禁止 |
 | `t2f-help.js` | `Text2Frame.js` の `@help` を見出しごとに切り、タグ名→見出しの対応を作る。MCP の `t2f_syntax` と、拡張の `scripts/update-tag-help.js` の両方がここを呼ぶ(`files` に `tools/` が入らないのでルートに置いた) |
+| `db/` | **生成物(コミットしない)。** 拡張の `vscode-extension/out/db/` から `tools/copy-db.js` が写す4ファイル。`t2f-mcp.js` の逆引き `t2f_usages` が借りている純粋な層で、`.vsix` には `out/db/` として既に入っているが npm の tarball には写さないと入らない。`prepack` が `build:db`(拡張のコンパイル) → `copy-db` の順で作る。`lint` の列挙には**足さない**(tsc が target ES2020 で `??` を出し、根は `ecmaVersion: 2018`) |
 | `t2f-history.js` | 書き換える直前の中身を `.t2f-history` に控える**書き手**。形式は拡張の `src/db/history.ts` が持ち、読み・巻き戻しはあちらが権威。ずれは `vscode-extension/test/test_mcp_history.js` が拡張の読み手に通して見張る |
 | `vscode-extension/` | VSCode 拡張(モノレポのサブディレクトリ)。下記「VSCode拡張」参照 |
 | `data/` | リポジトリ同梱の最小サンプル JSON(`Map001.json` は空イベント、`CommonEvents.json` は2件) |

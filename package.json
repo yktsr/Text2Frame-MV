@@ -18,6 +18,7 @@
     "t2f-help.js",
     "t2f-history.js",
     "bin/",
+    "db/",
     "Text2Frame.cjs.js",
     "Text2Frame.es.mjs",
     "Text2Frame.umd.js",
@@ -48,7 +49,9 @@
     "build:dist": "npm run build && npm run stamp:dist",
     "pack:all": "bash tools/pack-all.sh",
     "copy-bundles": "node tools/copy-bundles.js",
-    "prepack": "npm run build:dist && npm run copy-bundles",
+    "build:db": "node tools/build-db.js",
+    "copy-db": "node tools/copy-db.js",
+    "prepack": "npm run build:dist && npm run copy-bundles && npm run build:db && npm run copy-db",
     "sync": "node t2f-sync.js start",
     "sync_once": "node t2f-sync.js once"
   },

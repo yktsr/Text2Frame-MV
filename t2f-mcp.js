@@ -67,6 +67,9 @@ const INSTRUCTIONS = [
   '・祖先が無い初回の反映だけはテキストが丸ごと勝ちます(ゲーム側の編集は残りません)。警告で知らせます。',
   '・タグ記法は t2f_syntax で引けます。当て推量で書かないでください。',
   '・スイッチや変数の番号は t2f_names で名前から引けます。',
+  '・「このスイッチはどこで操作され、どのページの出現条件か」は t2f_usages で引けます。',
+  '  テキストではなくゲームのデータから引くので、まだ取り出していないイベントも入ります。',
+  '  ただし条件分岐での**読み**は入りません(本文は t2f_search で)。',
   '・書き込みは2段です。t2f_write_plan で何が変わるかを見てから、返ってきた札を t2f_write_apply に渡します。',
   '・RPGツクールのエディタを開いたまま、または t2f-sync の監視を動かしたまま書き込まないでください。',
   '  どちらも data/*.json を書き戻すので、反映した内容が失われます。'
@@ -162,18 +165,23 @@ const hasMarker = function (text) {
  * **書き写さずにそこを使う。**
  *
  * 置き場所が3つあるのは、TypeScript の生成物なのでどこに在るかが配り方で変わるから。
- *   1. ./db/                       npm で配るとき(まだ作っていない)
- *   2. ../out/db/                  .vsix の中。このファイルは lib/ へ写される
- *   3. ./vscode-extension/out/db/  手元のリポジトリ(拡張をコンパイルした後)
+ *   1. ../out/db/                  .vsix の中。このファイルは lib/ へ写される
+ *   2. ./vscode-extension/out/db/  手元のリポジトリ(拡張をコンパイルした後)
+ *   3. ./db/                       npm で配るぶん。prepack が写す生成物
+ *
+ * **この順番は意図したもの。** ./db/ を最後にするのは、あれが配布用の写しに過ぎず、
+ * リポジトリでは out/db/ が権威だから。先にすると、一度 npm pack を走らせた後ずっと
+ * 古い写しが勝ち、拡張を直して再コンパイルしても効かない(gitignore なので誰も消さない)。
+ * npm の tarball には db/ しか入らないので、順番を下げても届く。
  *
  * try して次へ落とす作法は Frame2Text.js:714、多候補の解決器は拡張の compiler.ts:92。
  * どれも無いときは構造を問い合わせる道具を**出さない**。動かない道具を並べるより、
  * 無いことが分かる方がエージェントには親切。
  */
 const DB_DIRS = [
-  path.join(__dirname, 'db'),
   path.join(__dirname, '..', 'out', 'db'),
-  path.join(__dirname, 'vscode-extension', 'out', 'db')
+  path.join(__dirname, 'vscode-extension', 'out', 'db'),
+  path.join(__dirname, 'db')
 ]
 
 const loadDb = function (name) {

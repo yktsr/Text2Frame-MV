@@ -170,9 +170,27 @@ cjs/es/umd バンドルには入れていません。npm 経由でしか渡ら�
 ```
 checks
   cjs/es/umd in tarball         : OK (3 files, built this run)
+  db/ in tarball                : OK (4 files, built this run)
 ```
 
 `main` は生の `Text2Frame.js` なので `require('@yktsr/text2frame-mv')` はこの3つに依りません。
+
+### B-1b. `db/`（同じ仕掛け、別の元）
+
+ルートの `db/` も**コミットしていない生成物**で、元は `vscode-extension/out/db/`（TypeScript の
+コンパイル結果）です。MCP の逆引き `t2f_usages` が借りている純粋な層で、`.vsix` には
+`out/db/` として既に入っていますが、npm の tarball には写さないと入りません。
+
+**だから公開には拡張の依存が必要です。** ルートの `npm ci` は入れません（ロックファイルが別）。
+
+```bash
+cd vscode-extension && npm ci
+```
+
+これを忘れると `prepack` の `build:db` が止まり、同じ指示を出します。写すのは4ファイルだけで
+（`eventLinks` / `eventPages` / `database` / `lang`）、`tools/copy-db.js` が
+**`db/` の外を読む require が無いこと**も機械で確かめます。これが無いと、拡張側で import を
+1つ足した日に、リポジトリも `.vsix` も緑のまま npm の利用者だけが道具を1つ失います。
 
 ### B-2. 中身を確認する
 
@@ -180,7 +198,7 @@ checks
 npm publish --dry-run
 ```
 
-12ファイル・約2.9MB が出れば想定どおりです。`files` に無いものは入りません
+19ファイル・約2.9MB が出れば想定どおりです（db/ の4つを含みます）。`files` に無いものは入りません
 （`test/`、`tools/`、`vscode-extension/`、`dist/` は対象外）。
 
 ### B-3. 公開
