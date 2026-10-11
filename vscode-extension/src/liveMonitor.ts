@@ -412,6 +412,7 @@ export function monitorScript(token: string): string {
     var text = window.$gameMessage;
     var busy = !!(text && typeof text.isBusy === 'function' && text.isBusy());
     var choosing = !!(text && typeof text.isChoice === 'function' && text.isChoice());
+    if (!scene) return null;
     var out = { scene: scene, message: { busy: busy, choice: choosing } };
     var player = window.$gamePlayer;
     if (player && typeof player.x === 'number') {
@@ -482,8 +483,8 @@ export function monitorScript(token: string): string {
       message.scene = here.scene;
       message.message = here.message;
       if (here.player) message.player = here.player;
+      lastHere = hereText;
     }
-    lastHere = hereText;
     var run = running();
     if (run) {
       var runText = JSON.stringify(run.frames);

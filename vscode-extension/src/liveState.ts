@@ -254,6 +254,9 @@ export class LiveState {
     private frames: RunFrame[] = [];
     lastSeen = 0;
     mapId = 0;
+    scene?: string;
+    message?: { busy: boolean; choice: boolean };
+    player?: { x: number; y: number; direction: number };
     /** 「このイベントから試す」の、ゲームからの返事。 */
     lastVisit?: { result: string; at: number };
     resets = 0;
@@ -287,8 +290,14 @@ export class LiveState {
             this.lists.clear();
             run = this.frames.length > 0;
             this.frames = [];
+            this.scene = undefined;
+            this.message = undefined;
+            this.player = undefined;
             changed = true;
         }
+        if (message.scene !== undefined) this.scene = message.scene;
+        if (message.message !== undefined) this.message = message.message;
+        if (message.player !== undefined) this.player = message.player;
         message.lists?.forEach((marks, key) => {
             this.lists.set(key, marks);
             run = true;

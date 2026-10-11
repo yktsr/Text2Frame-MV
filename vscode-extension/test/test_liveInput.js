@@ -2,7 +2,7 @@ const chai = require('chai')
 const expect = chai.expect
 const vm = require('vm')
 const { monitorScript } = require('../out/liveMonitor')
-const { parseLiveMessage } = require('../out/liveState')
+const { parseLiveMessage, LiveState } = require('../out/liveState')
 
 /* 外から操るのに足した2つ - キーとタップを送れること、いま何が見えているかを
  * 言えること。偽のゲームを vm に入れて確かめる(手本は test/test_browser_load.js)。 */
@@ -119,6 +119,19 @@ describe('the injected script can press keys and say where it is', function () {
     expect(reported.message).to.eql({ busy: false, choice: false })
   })
 
+  it('says nothing while the scene has no name yet, then says it once it has one', function () {
+    const game = fakeGame({ SceneManager: { _scene: null } })
+    game.tick(2)
+    expect(game.posted.filter(function (m) { return m.scene !== undefined }), '名乗れないのに報告しています').to.have.lengthOf(0)
+
+    game.win.SceneManager._scene = { constructor: { name: 'Scene_Title' } }
+    game.tick(1)
+    const reported = game.posted.filter(function (m) { return m.scene !== undefined })
+
+    expect(reported, '画面が決まったのに報告していません').to.have.lengthOf(1)
+    expect(reported[0].scene).to.equal('Scene_Title')
+  })
+
   /* 変わらないうちは黙る。 */
   it('says it only when it changed', function () {
     const game = fakeGame()
@@ -137,6 +150,23 @@ describe('the injected script can press keys and say where it is', function () {
     expect(parsed.scene).to.equal('Scene_Battle')
     expect(parsed.message).to.eql({ busy: false, choice: true })
     expect(parsed.player).to.eql({ x: 1, y: 2, direction: 8 })
+  })
+
+  it('keeps the view that came in the same message as a reset', function () {
+    const state = new LiveState()
+    state.apply(parseLiveMessage({ reset: true, scene: 'Scene_Title', message: { busy: false, choice: false } }), 1000)
+
+    expect(state.scene, 'reset と一緒に来た見え方が消えています').to.equal('Scene_Title')
+    expect(state.message).to.eql({ busy: false, choice: false })
+  })
+
+  it('forgets the view on a reset that carries none', function () {
+    const state = new LiveState()
+    state.apply(parseLiveMessage({ scene: 'Scene_Map', player: { x: 1, y: 2, direction: 4 } }), 1000)
+    state.apply(parseLiveMessage({ reset: true }), 2000)
+
+    expect(state.scene).to.equal(undefined)
+    expect(state.player).to.equal(undefined)
   })
 
   it('turns down a report that is the wrong shape', function () {
