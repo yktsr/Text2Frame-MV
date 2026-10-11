@@ -236,6 +236,53 @@ describe('mcp tools', function () {
    * 言っていて、t2f_read と t2f_syntax は向きが逆だった(本文が content だけ)。
    *
    * どちらの半分だけを見ても足りる形にする。 */
+  /* 再生の道具は待つ(サーバの起動、visit の答え)。tools/call だけが Promise を覚え、
+   * 書き込みの道具は同期のまま。**待つ道具が失敗しても、答えは isError で返る。** */
+  describe('a tool that waits', function () {
+    const slow = function (run) {
+      return { name: 't2f_slow_probe', title: '試験用', annotations: { readOnlyHint: true }, inputSchema: { type: 'object', additionalProperties: false }, run }
+    }
+    afterEach(function () {
+      const at = mcp.TOOLS.map(function (t) { return t.name }).indexOf('t2f_slow_probe')
+      if (at >= 0) mcp.TOOLS.splice(at, 1)
+    })
+
+    it('answers with what the promise resolves to', function () {
+      mcp.TOOLS.push(slow(function () { return Promise.resolve({ content: [{ type: 'text', text: '待った' }] }) }))
+
+      return Promise.resolve(mcp.handle({
+        jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 't2f_slow_probe', arguments: {}, _meta: META }
+      }, ctx)).then(function (response) {
+        expect(response.result.content[0].text).to.equal('待った')
+        expect(response.result.resultType).to.equal('complete')
+      })
+    })
+
+    /* 拒否されたら isError の本文にする。**投げっぱなしにすると鎖が止まり、
+     * 以後の要求が全部無視される**(殻の .catch が最後の砦だが、ここで拾うのが本筋)。 */
+    it('turns a rejected promise into a tool error, not a dead chain', function () {
+      mcp.TOOLS.push(slow(function () { return Promise.reject(new Error('繋がっていません')) }))
+
+      return Promise.resolve(mcp.handle({
+        jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 't2f_slow_probe', arguments: {}, _meta: META }
+      }, ctx)).then(function (response) {
+        expect(response.error, JSON.stringify(response.error)).to.equal(undefined)
+        expect(response.result.isError).to.equal(true)
+        expect(response.result.content[0].text).to.contain('繋がっていません')
+      })
+    })
+
+    /* 同期の道具は今までどおり同期で返る(Promise に包まない)。 */
+    it('leaves the synchronous tools synchronous', function () {
+      const response = mcp.handle({
+        jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 't2f_syntax', arguments: { tag: 'switch' }, _meta: META }
+      }, ctx)
+
+      expect(response.then, '同期の道具が Promise になっています').to.equal(undefined)
+      expect(response.result.content[0].text).to.contain('スイッチの操作')
+    })
+  })
+
   describe('both halves of a result', function () {
     it('puts the body in the structured half too', function () {
       writeText('mine.txt', frontMatter + 'やあ\n')

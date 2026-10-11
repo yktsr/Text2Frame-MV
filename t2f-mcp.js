@@ -17,8 +17,11 @@
  *      process.stdout.write を退避し、以後 process.stdout.write は stderr へ流す。
  *      ライブラリの中には console.log を持つ経路がある(今は _quiet で抑制されているが、
  *      通らない経路が増えた日に通路が壊れる)。
- *   2. 道具の handler は同期で書く。applyTextFile は共有の可変状態を退避・復元して
+ *   2. **書き込みの道具は同期で書く。** applyTextFile は共有の可変状態を退避・復元して
  *      使うが、それ自体が完全に同期なので、await を挟まない限り交錯しない。
+ *      待ってよいのは再生の道具だけ(サーバの起動、visit の答え、停止の通知)。
+ *      殻は要求を1本の鎖に並べ、N の答えを送るまで N+1 を始めないので、待つ道具が
+ *      居ても要求どうしは交錯しない。
  *   3. パスは全部絶対にしてから渡し、baseRoot を必ず明示する(省くと基準がこのファイルの
  *      置き場所になる)。--root の外は拒否する。
  */
@@ -1667,7 +1670,7 @@ const describeTool = function (tool) {
 
 /**
  * 要求1つを応答1つにする。通知(id が無いもの)には null を返す。
- * 純粋に保つ(ここで I/O を増やさない)。テストはこれを直に叩く。
+ * I/O は再生の道具だけが持つ(それ以外はここで増やさない)。テストはこれを直に叩く。
  */
 const handle = function (request, ctx) {
   if (!request || typeof request !== 'object' || Array.isArray(request)) {
@@ -1722,12 +1725,20 @@ const handle = function (request, ctx) {
       return jsonrpcError(request.id, INVALID_PARAMS, '知らない道具です: ' + name)
     }
     const args = params.arguments && typeof params.arguments === 'object' ? params.arguments : {}
+    // 道具の中で起きたことはモデルが読んで直せるよう本文で返す。
+    const failed = function (e) { return jsonrpcResult(request.id, toolError((e && e.message) || String(e))) }
+    let out
     try {
-      return jsonrpcResult(request.id, tool.run(ctx, args))
+      out = tool.run(ctx, args)
     } catch (e) {
-      // 道具の中で起きたことはモデルが読んで直せるよう本文で返す。
-      return jsonrpcResult(request.id, toolError(((e && e.message) || String(e))))
+      return failed(e)
     }
+    /* 再生の道具だけが待つ(サーバの起動、visit の答え)。**待つのはここだけ**で、
+     * 書き込みの道具は同期のまま - 殻が鎖なので要求どうしは交錯しない。 */
+    if (out && typeof out.then === 'function') {
+      return out.then(function (result) { return jsonrpcResult(request.id, result) }, failed)
+    }
+    return jsonrpcResult(request.id, out)
   }
 
   return jsonrpcError(request.id, METHOD_NOT_FOUND, '知らないメソッドです: ' + method)
@@ -1757,17 +1768,40 @@ const startServer = function (options) {
     try {
       request = JSON.parse(trimmed)
     } catch (e) {
-      send(jsonrpcError(null, PARSE_ERROR, 'JSON として読めませんでした'))
+      enqueueError(PARSE_ERROR, 'JSON として読めませんでした')
       return
     }
-    let response = null
-    try {
-      response = handle(request, ctx)
-    } catch (e) {
-      // handle は投げない作りだが、投げたときに通路を黙らせない。
-      response = jsonrpcError(request && request.id, INTERNAL_ERROR, (e && e.message) || String(e))
-    }
-    if (response) send(response)
+    enqueue(request)
+  }
+
+  /* 要求を1本の鎖に並べる。**N の答えを送るまで N+1 を始めない。**
+   *
+   * なぜ鎖か: 再生の道具は待つ(サーバの起動、visit の答え、ブレークポイントの停止)。
+   * 素朴に await を足すと2つの要求が同時に飛び、Laurus.Text2Frame の共有状態
+   * (_warnings / _conflicts / _writeBack の退避・復元)が交錯して、片方の警告が
+   * もう片方に混ざる。鎖なら順番が守られるので起きない。
+   *
+   * 3つとも外せない:
+   *  - if (response) … 通知は null。落とすと標準出力に "null" の行が出る
+   *  - .catch …… 無いと、投げた要求に答えが返らないうえ鎖が拒否で止まり、
+   *              **以後の要求が全部無視される**
+   *  - .catch を最後 … 鎖の尾を必ず成功で終える(send 自身が投げる場合も拾う) */
+  let chain = Promise.resolve()
+  const enqueue = function (request) {
+    chain = chain
+      .then(function () { return handle(request, ctx) })
+      .then(function (response) { if (response) send(response) })
+      .catch(function (e) {
+        try {
+          send(jsonrpcError(request && request.id, INTERNAL_ERROR, (e && e.message) || String(e)))
+        } catch (ignored) { /* 通路が死んでいるなら言う先が無い */ }
+      })
+  }
+
+  /* 通路の書き手を1人に保つ。読めない行の知らせも鎖に乗せないと、visit が走っている間に
+   * 順序が入れ替わる。 */
+  const enqueueError = function (code, message) {
+    chain = chain.then(function () { send(jsonrpcError(null, code, message)) }).catch(function () {})
   }
 
   let buffer = ''
@@ -1783,7 +1817,7 @@ const startServer = function (options) {
     }
     if (buffer.length > MAX_LINE_BYTES) {
       buffer = ''
-      send(jsonrpcError(null, PARSE_ERROR, '1行が長すぎます(上限 ' + MAX_LINE_BYTES + ' バイト)'))
+      enqueueError(PARSE_ERROR, '1行が長すぎます(上限 ' + MAX_LINE_BYTES + ' バイト)')
     }
   })
   /* 標準入力が閉じたら終わる(仕様が求める、唯一移植性のある終わり方)。

@@ -163,6 +163,55 @@ describe('mcp over stdio', function () {
     expect(fs.existsSync(path.join(tmp, '.t2f-history'))).to.equal(true)
   })
 
+  /* 殻は要求を1本の鎖に並べる。**N の答えを送るまで N+1 を始めない。**
+   * 再生の道具が待つ(サーバの起動、visit の答え)ので、素朴に await を足すと2つの要求が
+   * 同時に飛び、Laurus.Text2Frame の共有状態が交錯する。鎖ならそれが起きない。
+   *
+   * ここでは鎖の壊れやすい所を3つ見る。どれも外すと静かに壊れる。 */
+  describe('the request chain', function () {
+    /* 通知は handle が null を返す。鎖で if (response) を落とすと "null" の行が通路に出る。 */
+    it('writes nothing at all for a notification, even between answers', function () {
+      const r = run([], [
+        request(1, 'tools/list'),
+        JSON.stringify({ jsonrpc: '2.0', method: 'notifications/cancelled', params: { requestId: 1 } }),
+        request(2, 'tools/list')
+      ])
+
+      expect(r.stdout).to.not.contain('null')
+      expect(messages(r.stdout).map(function (m) { return m.id })).to.eql([1, 2])
+    })
+
+    /* 読めない行の知らせも鎖に乗る。乗せないと通路に書き手が2人になり、
+     * 待つ道具が走っている間に順序が入れ替わる。 */
+    it('keeps the parse error in the same queue as the answers', function () {
+      const r = run([], [
+        request(1, 'tools/list'),
+        'これは JSON ではない',
+        request(3, 'tools/list')
+      ])
+      const out = messages(r.stdout)
+
+      expect(out).to.have.lengthOf(3)
+      expect(out[0].id).to.equal(1)
+      expect(out[1].error.code).to.equal(-32700)
+      expect(out[2].id).to.equal(3)
+    })
+
+    /* 道具が投げても、答えは返るし**鎖は止まらない**。止まると以後の要求が全部無視される。 */
+    it('answers a failing call and keeps serving afterwards', function () {
+      const r = run([], [
+        // 宛先が無いので t2f_read が投げる(道具の中のことなので isError で返る)。
+        request(1, 'tools/call', { name: 't2f_read', arguments: { key: 'map999_event999_page1' } }),
+        request(2, 'tools/list')
+      ])
+      const out = messages(r.stdout)
+
+      expect(out).to.have.lengthOf(2)
+      expect(out[0].result.isError).to.equal(true)
+      expect(out[1].result.tools, '鎖が止まっています').to.be.an('array')
+    })
+  })
+
   /* 終わり方。kill されずに自分で終わること(殺されるなら何かがループを掴んでいる)。 */
   it('exits on its own when the input closes', function () {
     const r = cp.spawnSync(process.execPath, [CLI, '--root', tmp], {
