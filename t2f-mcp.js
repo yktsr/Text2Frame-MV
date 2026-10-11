@@ -153,6 +153,127 @@ const hasMarker = function (text) {
   return MARKERS.some(function (m) { return text.indexOf(m) !== -1 })
 }
 
+/* ---------- 拡張が持っている「純粋な層」 ---------- */
+
+/*
+ * vscode-extension/src/db/* は vscode に依存しない層で、ゲームの構造を問い合わせる仕組み
+ * (逆引き・名前・出現条件)を既に持っている。設計書(.github/agents/project-context.agent.md:133)
+ * がそう宣言していて、あちらのテストも out/db/*.js を素の node で回している。
+ * **書き写さずにそこを使う。**
+ *
+ * 置き場所が3つあるのは、TypeScript の生成物なのでどこに在るかが配り方で変わるから。
+ *   1. ./db/                       npm で配るとき(まだ作っていない)
+ *   2. ../out/db/                  .vsix の中。このファイルは lib/ へ写される
+ *   3. ./vscode-extension/out/db/  手元のリポジトリ(拡張をコンパイルした後)
+ *
+ * try して次へ落とす作法は Frame2Text.js:714、多候補の解決器は拡張の compiler.ts:92。
+ * どれも無いときは構造を問い合わせる道具を**出さない**。動かない道具を並べるより、
+ * 無いことが分かる方がエージェントには親切。
+ */
+const DB_DIRS = [
+  path.join(__dirname, 'db'),
+  path.join(__dirname, '..', 'out', 'db'),
+  path.join(__dirname, 'vscode-extension', 'out', 'db')
+]
+
+const loadDb = function (name) {
+  for (let i = 0; i < DB_DIRS.length; i++) {
+    const file = path.join(DB_DIRS[i], name + '.js')
+    if (!fs.existsSync(file)) continue
+    try {
+      return require(file)
+    } catch (e) { /* 次の置き場所へ */ }
+  }
+  return undefined
+}
+
+/*
+ * つながりの索引を組む。拡張の LinkService(src/eventLinks.ts:69)がやっているのと
+ * 同じ手順だが、あちらは vscode の EventEmitter と編集中のバッファを抱えているので、
+ * 読む所だけをここに写した。**つながりを見分ける規則は1行も書いていない** -
+ * commandLinks / conditionLinks / commonTriggerLinks がそれを持っている。
+ *
+ * 鍵の形は nodeKey が決める(e:マップ:イベント:ページ / c:番号 / s:番号 / v:番号 /
+ * ss:マップ:イベント:文字 / m:番号)。イベントの名前は結果に添えるために覚えておく。
+ */
+const buildLinks = function (ctx, st) {
+  const el = st.eventLinks
+  const links = []
+  const pages = []
+  const names = {}
+
+  const mapFiles = []
+  try {
+    fs.readdirSync(ctx.dataDir).forEach(function (name) {
+      if (/^Map\d+\.json$/.test(name)) mapFiles.push(name)
+    })
+  } catch (e) { /* data が読めなければつながりは無い */ }
+
+  mapFiles.forEach(function (name) {
+    const mapId = Number(name.replace(/\D/g, ''))
+    let map
+    try {
+      map = JSON.parse(fs.readFileSync(path.join(ctx.dataDir, name), 'utf8'))
+    } catch (e) { return }
+    if (!map || !Array.isArray(map.events)) return
+    map.events.forEach(function (event) {
+      if (!event || !Array.isArray(event.pages)) return
+      names[mapId + ':' + event.id] = String(event.name || '')
+      pages.push({ mapId, eventId: event.id, summaries: st.eventPages.summarizePages(event) })
+      event.pages.forEach(function (page, i) {
+        const from = el.nodeKey({ kind: 'page', mapId, eventId: event.id, pageId: i + 1 })
+        links.push.apply(links, el.commandLinks(from, page.list || []))
+      })
+    })
+  })
+
+  const commons = []
+  try {
+    const list = JSON.parse(fs.readFileSync(path.join(ctx.dataDir, 'CommonEvents.json'), 'utf8'))
+    ;(list || []).forEach(function (common) {
+      if (!common) return
+      names['c:' + common.id] = String(common.name || '')
+      commons.push({ id: common.id, trigger: Number(common.trigger) || 0, switchId: Number(common.switchId) || 0 })
+      links.push.apply(links, el.commandLinks(el.nodeKey({ kind: 'common', id: common.id }), common.list || []))
+    })
+  } catch (e) { /* コモンイベントが無いプロジェクトもある */ }
+
+  links.push.apply(links, el.conditionLinks(pages))
+  links.push.apply(links, el.commonTriggerLinks(commons))
+  ctx.log('[mcp] つながり ' + links.length + ' 本')
+
+  /* 名前はデータベースから引く(GameDatabase が16種類ぶん持っている)。読めなければ番号だけ。 */
+  let db
+  try {
+    db = st.database.GameDatabase.load(ctx.dataDir)
+  } catch (e) { db = undefined }
+
+  return {
+    index: new el.LinkIndex(links),
+    names,
+    total: links.length,
+    key: el.nodeKey,
+    node: el.nodeFromKey,
+    /** 問い合わせた番号を人が読める見出しにする。 */
+    label: function (kind, args) {
+      if (kind === 'selfSwitch') {
+        const name = names[Number(args.mapId) + ':' + Number(args.eventId)]
+        return 'マップ' + Number(args.mapId) + ' / イベント' + Number(args.eventId) +
+          (name ? '「' + name + '」' : '') + ' / セルフスイッチ ' + String(args.letter)
+      }
+      const id = Number(args.id)
+      const dbKind = kind === 'map' ? 'map' : kind
+      let found
+      if (db) {
+        try { found = db.lookup(dbKind, id) } catch (e) { found = undefined }
+      }
+      const name = found && found.name ? '「' + found.name + '」' : ''
+      const title = { switch: 'スイッチ', variable: '変数', commonEvent: 'コモンイベント', map: 'マップ' }
+      return (title[kind] || kind) + id + name
+    }
+  }
+}
+
 /* ---------- 文脈(起動時に1回だけ決める) ---------- */
 
 const createContext = function (options) {
@@ -174,6 +295,10 @@ const createContext = function (options) {
   }
   // ヘルプの解析は 12000 行を読むので、引かれたときに1回だけ。
   let help = null
+  // 拡張の純粋な層。配り方によっては無いので、引かれたときに1回だけ試す。
+  let structure
+  // つながりの索引。全マップを読むので、引かれたときに1回だけ。
+  let links = null
   return {
     root,
     dataDir,
@@ -193,6 +318,31 @@ const createContext = function (options) {
         help = parser.buildTagHelp(fs.readFileSync(parser.COMPILER, 'utf8'))
       }
       return help
+    },
+    /** 拡張の純粋な層。無ければ undefined で、呼び側は道具を出さない。 */
+    structure: function () {
+      if (structure !== undefined) return structure || undefined
+      const database = loadDb('database')
+      const eventLinks = loadDb('eventLinks')
+      const eventPages = loadDb('eventPages')
+      if (!database || !eventLinks || !eventPages) {
+        structure = false
+        return undefined
+      }
+      /* db/lang.js はモジュールで1つの旗を持ち、既定が日本語。呼ばないと英語環境でも
+       * 日本語が出るので、こちらの他の文面と揃えて明示する。 */
+      const lang = loadDb('lang')
+      if (lang) lang.setJapanese(true)
+      structure = { database, eventLinks, eventPages }
+      return structure
+    },
+    /** つながりの索引と名前。全マップを読むので、引かれたときに1回だけ。 */
+    links: function () {
+      if (links !== null) return links
+      const st = this.structure()
+      if (!st) return undefined
+      links = buildLinks(this, st)
+      return links
     }
   }
 }
@@ -524,6 +674,129 @@ TOOLS.push({
   }
 })
 
+/* つながりの向きを言葉にする。表に出るのはこれだけなので、短く。 */
+const HOW_TEXT = {
+  call: 'コモンイベントを呼ぶ',
+  transfer: '場所移動',
+  vehicle: '乗り物の位置設定',
+  switchOn: 'ON にする',
+  switchOff: 'OFF にする',
+  variable: '値を変える',
+  selfSwitchOn: 'ON にする',
+  selfSwitchOff: 'OFF にする',
+  condition: '出現条件',
+  trigger: '自動実行・並列処理の起動'
+}
+
+/** 鍵を人が読める場所に直す。イベントには名前も添える。 */
+const placeOf = function (links, key) {
+  const node = links.node(key)
+  if (!node) return key
+  if (node.kind === 'page') {
+    const name = links.names[node.mapId + ':' + node.eventId]
+    return 'マップ' + node.mapId + ' / イベント' + node.eventId +
+      (name ? '「' + name + '」' : '') + ' / ' + node.pageId + 'ページ'
+  }
+  if (node.kind === 'common') {
+    const name = links.names['c:' + node.id]
+    return 'コモンイベント' + node.id + (name ? '「' + name + '」' : '')
+  }
+  if (node.kind === 'selfSwitch') {
+    return 'マップ' + node.mapId + ' / イベント' + node.eventId + ' / セルフスイッチ ' + node.letter
+  }
+  if (node.kind === 'map') return 'マップ' + node.id
+  return key
+}
+
+TOOLS.push({
+  name: 't2f_usages',
+  title: '番号の使われ方を逆に引く',
+  needsStructure: true,
+  description: 'スイッチ・変数・セルフスイッチ・コモンイベント・マップが、どこで操作され、' +
+    'どのページの出現条件になっているかを返します。テキストではなくゲームのデータから引くので、' +
+    'まだ取り出していないイベントも入ります。' +
+    '\n【入っていないもの】条件分岐(<If: ...>)での**読み**は入りません。' +
+    'この図は「操作・呼び出し・出現条件」のつながりで、読んでいる箇所は t2f_search で本文を探してください。',
+  annotations: { readOnlyHint: true, idempotentHint: true },
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['kind'],
+    properties: {
+      kind: {
+        type: 'string',
+        enum: ['switch', 'variable', 'selfSwitch', 'commonEvent', 'map'],
+        description: '種類'
+      },
+      id: { type: 'integer', minimum: 1, description: '番号。selfSwitch 以外で必須' },
+      mapId: { type: 'integer', minimum: 1, description: 'selfSwitch のときのマップ番号' },
+      eventId: { type: 'integer', minimum: 1, description: 'selfSwitch のときのイベント番号' },
+      letter: { type: 'string', description: 'selfSwitch のときの文字(A-D)' },
+      limit: { type: 'integer', minimum: 1, maximum: 500, description: '各向きの最大件数(既定 50)' }
+    }
+  },
+  run: function (ctx, args) {
+    const links = ctx.links()
+    if (!links) throw new Error('つながりの索引が使えません(拡張の純粋な層が見つかりません)')
+    const kind = String((args && args.kind) || '')
+    const limit = Math.min(Math.max(Number((args && args.limit) || 50), 1), 500)
+
+    let key
+    if (kind === 'selfSwitch') {
+      const mapId = Number(args && args.mapId)
+      const eventId = Number(args && args.eventId)
+      const letter = String((args && args.letter) || '')
+      if (!mapId || !eventId || !letter) {
+        throw new Error('selfSwitch には mapId と eventId と letter が要ります')
+      }
+      key = links.key({ kind: 'selfSwitch', mapId, eventId, letter })
+    } else {
+      const id = Number(args && args.id)
+      if (!id) throw new Error(kind + ' には id が要ります')
+      key = links.key({ kind: kind === 'commonEvent' ? 'common' : kind, id })
+    }
+
+    const label = links.label(kind, args || {})
+    const lines = ['■ ' + label]
+    const render = function (title, rows, side) {
+      lines.push('')
+      lines.push(title + ' (' + rows.length + ' 件' + (rows.length > limit ? '、先頭 ' + limit + ' 件' : '') + ')')
+      if (!rows.length) lines.push('  なし')
+      rows.slice(0, limit).forEach(function (link) {
+        const where = placeOf(links, side === 'in' ? link.from : link.to)
+        lines.push('  ' + where + '  … ' + (HOW_TEXT[link.how] || link.how) + (link.note ? '(' + link.note + ')' : ''))
+      })
+    }
+    const inbound = links.index.in(key)
+    const outbound = links.index.out(key)
+    render('ここを操作している / ここから出る条件になっている', inbound, 'in')
+    render('ここが指している先', outbound, 'out')
+    lines.push('')
+    lines.push('※ 条件分岐での読みは入っていません(本文は t2f_search で)。')
+
+    const shape = function (link, side) {
+      const out = {
+        place: side === 'in' ? link.from : link.to,
+        label: placeOf(links, side === 'in' ? link.from : link.to),
+        how: link.how
+      }
+      if (link.note) out.note = link.note
+      if (link.index !== undefined) out.commandIndex = link.index
+      if (link.byVariable) out.byVariable = true
+      return out
+    }
+    return toolResult(lines.join('\n'), {
+      key,
+      label,
+      readsNotIncluded: true,
+      inbound: inbound.slice(0, limit).map(function (l) { return shape(l, 'in') }),
+      outbound: outbound.slice(0, limit).map(function (l) { return shape(l, 'out') }),
+      inboundTotal: inbound.length,
+      outboundTotal: outbound.length
+    })
+  }
+})
+
 TOOLS.push({
   name: 't2f_check',
   title: 'テキストの文法を見る',
@@ -806,8 +1079,15 @@ const isWriteTool = function (tool) {
   return !!tool.partOfWriting || !(tool.annotations && tool.annotations.readOnlyHint)
 }
 
+/* 拡張の純粋な層が要る道具は、それが無い配り方では出さない。
+ * --read-only と同じ「出す/出さない」の仕組みに乗せる。 */
 const toolsFor = function (ctx) {
-  return TOOLS.filter(function (t) { return !(ctx.readOnly && isWriteTool(t)) })
+  const hasStructure = !!ctx.structure()
+  return TOOLS.filter(function (t) {
+    if (ctx.readOnly && isWriteTool(t)) return false
+    if (t.needsStructure && !hasStructure) return false
+    return true
+  })
 }
 
 /** tools/list に出す形。run は内部のものなので出さない。 */
@@ -874,7 +1154,9 @@ const handle = function (request, ctx) {
   if (method === 'tools/call') {
     const name = String(params.name || '')
     const tool = TOOLS_BY_NAME[name]
-    if (!tool || (ctx.readOnly && isWriteTool(tool))) {
+    /* tools/list に出していない道具は、呼ばれても知らないものとして扱う(扱いを1つに保つ)。
+     * 出す/出さないの判断は toolsFor が持っているので、そこを引く。 */
+    if (!tool || toolsFor(ctx).indexOf(tool) === -1) {
       return jsonrpcError(request.id, INVALID_PARAMS, '知らない道具です: ' + name)
     }
     const args = params.arguments && typeof params.arguments === 'object' ? params.arguments : {}

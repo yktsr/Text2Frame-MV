@@ -200,6 +200,60 @@
         }
       },
       {
+        "name": "t2f_usages",
+        "title": "番号の使われ方を逆に引く",
+        "description": "スイッチ・変数・セルフスイッチ・コモンイベント・マップが、どこで操作され、どのページの出現条件になっているかを返します。テキストではなくゲームのデータから引くので、まだ取り出していないイベントも入ります。\n【入っていないもの】条件分岐(<If: ...>)での**読み**は入りません。この図は「操作・呼び出し・出現条件」のつながりで、読んでいる箇所は t2f_search で本文を探してください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "switch",
+                "variable",
+                "selfSwitch",
+                "commonEvent",
+                "map"
+              ],
+              "description": "種類"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "番号。selfSwitch 以外で必須"
+            },
+            "mapId": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "selfSwitch のときのマップ番号"
+            },
+            "eventId": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "selfSwitch のときのイベント番号"
+            },
+            "letter": {
+              "type": "string",
+              "description": "selfSwitch のときの文字(A-D)"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "description": "各向きの最大件数(既定 50)"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
         "name": "t2f_check",
         "title": "テキストの文法を見る",
         "description": "Text2Frame のテキストを読んで、コンパイラが拒む書き方を返します。ファイルもゲームも触りません。注意: 知らないタグ名はセリフとして扱われるため誤りになりません(<Nope: 1> はそのまま文章になります)。ここで捕まるのは主に値が選択肢から外れているもの(例 <位置: よこ>)です。タグ名の確認は t2f_syntax で行ってください。",
@@ -468,6 +522,60 @@
             "query": {
               "type": "string",
               "description": "名前の一部で絞る"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_usages",
+        "title": "番号の使われ方を逆に引く",
+        "description": "スイッチ・変数・セルフスイッチ・コモンイベント・マップが、どこで操作され、どのページの出現条件になっているかを返します。テキストではなくゲームのデータから引くので、まだ取り出していないイベントも入ります。\n【入っていないもの】条件分岐(<If: ...>)での**読み**は入りません。この図は「操作・呼び出し・出現条件」のつながりで、読んでいる箇所は t2f_search で本文を探してください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "switch",
+                "variable",
+                "selfSwitch",
+                "commonEvent",
+                "map"
+              ],
+              "description": "種類"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "番号。selfSwitch 以外で必須"
+            },
+            "mapId": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "selfSwitch のときのマップ番号"
+            },
+            "eventId": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "selfSwitch のときのイベント番号"
+            },
+            "letter": {
+              "type": "string",
+              "description": "selfSwitch のときの文字(A-D)"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "description": "各向きの最大件数(既定 50)"
             }
           }
         },
