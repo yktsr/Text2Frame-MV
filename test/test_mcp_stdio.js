@@ -137,6 +137,32 @@ describe('mcp over stdio', function () {
     expect(r.stdout).to.not.contain('t2f-mcp')
   })
 
+  /* 書き込みまで殻越しに通す。applyTextFile はライブラリで唯一 stdout へ届きうる
+   * console.log を持つ経路(いまは _quiet で抑えられている)なので、ここで通路を見る。 */
+  it('plans and applies through the shell without touching the channel', function () {
+    const plan = request(1, 'tools/call', {
+      name: 't2f_write_plan',
+      arguments: { key: 'map001_event001_page1', text: 'こんばんは\n' }
+    })
+    const first = messages(run(['-v'], [plan]).stdout)
+    const token = first[0].result.structuredContent.token
+    expect(token).to.be.a('string')
+
+    const r = run(['-v'], [plan, request(2, 'tools/call', { name: 't2f_write_apply', arguments: { token } })])
+    const out = messages(r.stdout)
+
+    expect(out).to.have.lengthOf(2)
+    expect(out[1].result.isError, JSON.stringify(out[1].result)).to.equal(undefined)
+    expect(out[1].result.structuredContent.historyId).to.be.a('string')
+    // 反映の案内(RESTART_NOTICE)は _quiet で抑えられている。漏れていれば通路に出る。
+    expect(r.stdout).to.not.contain('RPGツクール')
+    expect(r.stdout).to.not.contain('Please restart')
+    // 本当に書けたこと。
+    const list = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8')).events[1].pages[0].list
+    expect(list.filter(function (c) { return c.code === 401 }).map(function (c) { return c.parameters[0] })).to.eql(['こんばんは'])
+    expect(fs.existsSync(path.join(tmp, '.t2f-history'))).to.equal(true)
+  })
+
   /* 終わり方。kill されずに自分で終わること(殺されるなら何かがループを掴んでいる)。 */
   it('exits on its own when the input closes', function () {
     const r = cp.spawnSync(process.execPath, [CLI, '--root', tmp], {

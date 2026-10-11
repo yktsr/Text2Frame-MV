@@ -24,7 +24,9 @@
  */
 'use strict'
 
+const crypto = require('crypto')
 const fs = require('fs')
+const os = require('os')
 const path = require('path')
 
 /* ---------- プロトコルの定数 ---------- */
@@ -164,6 +166,8 @@ const createContext = function (options) {
     // 取り出す範囲は明示して渡す。省くと enumerateTargets が conversation に落ちる。
     scope: String(o.scope || 'nonempty').toLowerCase(),
     readOnly: !!o.readOnly,
+    // 控えを残す数。拡張の text2frame.history.keep と同じ既定。
+    historyKeep: o.historyKeep === undefined ? 100 : Number(o.historyKeep),
     t2f,
     f2t,
     log: o.log || function () {},
@@ -531,11 +535,260 @@ TOOLS.push({
   }
 })
 
+/* ---------- 書き込み(下書き -> 札 -> 適用の二段) ---------- */
+
+/* 下書きの札。内容のハッシュなので、同じ下書きなら同じ札になる(筆記録も決定的になる)。
+ * MCP は無状態でセッションを持てないため、仕様の「Stateful Tools」の作法どおり、
+ * 明け渡す handle としてこれを使う。寿命つきで、数にも上限を置く。 */
+const PLANS = new Map()
+const PLAN_TTL_MS = 30 * 60 * 1000
+const PLAN_MAX = 64
+
+const sha1 = function (value) { return crypto.createHash('sha1').update(value).digest('hex') }
+const fingerprintOf = function (file) {
+  try { return sha1(fs.readFileSync(file)) } catch (e) { return null }
+}
+
+const forgetOldPlans = function (now) {
+  PLANS.forEach(function (plan, token) {
+    if (now - plan.at > PLAN_TTL_MS) PLANS.delete(token)
+  })
+  // 入った順に消す(Map は挿入順を保つ)。
+  while (PLANS.size > PLAN_MAX) PLANS.delete(PLANS.keys().next().value)
+}
+
+const dataPathOf = function (ctx, target) {
+  // Map\d+\.json の形でないと Laurus.Text2Frame.MapID が前回の値に落ちて祖先の鍵が狂う。
+  return String(target.kind) === 'common'
+    ? path.join(ctx.dataDir, 'CommonEvents.json')
+    : path.join(ctx.dataDir, mapFileName(target.mapId))
+}
+
+/** 祖先(.t2f-base)の置き場所。宛先から決まるので、テキストの名前を変えても同じ。 */
+const basePathOf = function (ctx, textPath, target) {
+  const id = ctx.t2f.baseIdForTarget(textPath, ctx.root, target)
+  return path.join(ctx.root, '.t2f-base', id.key + '.txt')
+}
+
+const pageListOf = function (json, target) {
+  if (String(target.kind) === 'common') {
+    const entry = Array.isArray(json) ? json[Number(target.commonEventId)] : undefined
+    return entry && Array.isArray(entry.list) ? entry.list : undefined
+  }
+  const events = json && json.events
+  const event = Array.isArray(events) ? events[Number(target.eventId)] : undefined
+  const page = event && Array.isArray(event.pages) ? event.pages[Number(target.pageId || 1) - 1] : undefined
+  return page && Array.isArray(page.list) ? page.list : undefined
+}
+
+const applyOptsFor = function (ctx, target, textPath, dataPath, strategy) {
+  const opts = {
+    textPath,
+    strategy,
+    kind: target.kind,
+    baseRoot: ctx.root
+  }
+  if (String(target.kind) === 'common') {
+    opts.commonEventId = String(target.commonEventId)
+    opts.commonEventPath = dataPath
+  } else {
+    opts.mapId = String(target.mapId)
+    opts.eventId = String(target.eventId)
+    opts.pageId = String(target.pageId || 1)
+    opts.mapPath = dataPath
+  }
+  return opts
+}
+
+TOOLS.push({
+  name: 't2f_write_plan',
+  title: '下書き(何が変わるか)',
+  /* 書き込みの一連のうち。readOnlyHint は正直に true(本当に何も書かない)だが、
+   * --read-only では隠す。適用できない下書きを勧めても使えないため。 */
+  partOfWriting: true,
+  description: '渡したテキストをゲームに反映したら何が変わるかを、一時的な写しの上で試して返します。' +
+    '本物のファイルは1バイトも書きません。返ってくる札(token)を t2f_write_apply に渡すと実際に反映します。' +
+    '警告と衝突の数もそのまま返すので、とくに「初回反映」の警告(祖先が無く、その回だけゲーム側の編集が残らない)は必ず読んでください。',
+  annotations: { readOnlyHint: true, idempotentHint: true },
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['text'],
+    properties: Object.assign({}, TARGET_ARGS, {
+      text: { type: 'string', description: '反映したいテキスト(見出し情報は付いていなくてもよい。宛先は引数で決まります)' },
+      strategy: {
+        type: 'string',
+        enum: ['merge', 'overwrite'],
+        description: 'merge=統合(既定。3方向マージ。衝突は目印で両方残る) / overwrite=上書き(テキストで全部置き換える。詰まった統合からの出口)'
+      }
+    })
+  },
+  run: function (ctx, args) {
+    const found = findTarget(ctx, args)
+    const target = found.target
+    const strategy = String((args && args.strategy) || ctx.strategy).toLowerCase()
+    if (strategy !== 'merge' && strategy !== 'overwrite') return toolError('反映方法は merge か overwrite です: ' + strategy)
+    const text = String((args && args.text) || '')
+    if (!text) return toolError('text が空です。')
+
+    const dataPath = dataPathOf(ctx, target)
+    const existing = found.index.paths[target.key]
+    const textPath = existing || ctx.f2t.outPathFor(ctx.textDir, found.index, target)
+    if (!insideRoot(ctx.root, textPath) || !insideRoot(ctx.root, dataPath)) {
+      return toolError('書き先が --root の外です。')
+    }
+
+    /* 試すのは写しの上。テキストも写す(統合が衝突すると、コンパイラはテキストに目印を書く)。
+     * 祖先は読むだけ: 本物を basePath で渡し、新しい祖先は一時フォルダへ逃がす。
+     * ここを省くと、祖先があるのに「初回反映」の扱いになって下書きが実物と食い違う。 */
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-mcp-plan-'))
+    try {
+      const dataCopy = path.join(dir, path.basename(dataPath))
+      fs.copyFileSync(dataPath, dataCopy)
+      const textCopy = path.join(dir, 'proposed.txt')
+      fs.writeFileSync(textCopy, text, 'utf8')
+
+      const opts = applyOptsFor(ctx, target, textCopy, dataCopy, strategy)
+      opts.baseRoot = path.join(dir, 'base')
+      const realBase = basePathOf(ctx, textPath, target)
+      if (fs.existsSync(realBase)) opts.basePath = realBase
+
+      const result = ctx.t2f.applyTextFile(opts)
+      const before = pageListOf(JSON.parse(fs.readFileSync(dataPath, 'utf8')), target)
+      const after = result.ok ? pageListOf(JSON.parse(fs.readFileSync(dataCopy, 'utf8')), target) : undefined
+      if (!result.ok) return toolError('反映できません: ' + (result.error || '原因不明') + (result.errorLine ? '（' + result.errorLine + ' 行目: ' + (result.errorLineText || '') + '）' : ''))
+
+      const render = function (list) {
+        return list ? ctx.f2t.decompile(list, true, { pretty: true }) : '(ページがありません)'
+      }
+      const token = sha1([target.key, strategy, text, fingerprintOf(dataPath), fingerprintOf(textPath)].join('\u0000'))
+      forgetOldPlans(Date.now())
+      PLANS.set(token, {
+        at: Date.now(),
+        key: target.key,
+        target,
+        strategy,
+        text,
+        textPath,
+        dataPath,
+        dataFingerprint: fingerprintOf(dataPath),
+        textFingerprint: fingerprintOf(textPath)
+      })
+
+      const structured = {
+        token,
+        key: target.key,
+        strategy,
+        textPath: relOf(ctx, textPath),
+        textExists: !!existing,
+        warnings: result.warnings || [],
+        conflicts: result.conflicts || 0,
+        writesBackToText: !!result.writtenBack,
+        before: render(before),
+        after: render(after)
+      }
+      const lines = [
+        '反映先: ' + target.key + ' (' + relOf(ctx, dataPath) + ')',
+        'テキスト: ' + relOf(ctx, textPath) + (existing ? '' : ' （新しく作られます）'),
+        '反映方法: ' + strategy,
+        ''
+      ]
+      if (structured.warnings.length) lines.push('警告:', structured.warnings.map(function (w) { return '  ・' + w }).join('\n'), '')
+      if (structured.conflicts) lines.push('衝突 ' + structured.conflicts + ' 件。目印つきで両方が残ります。', '')
+      if (structured.writesBackToText) lines.push('統合の結果はテキストにも書き戻されます。', '')
+      lines.push('--- ゲームの今 ---', structured.before, '', '--- 反映後 ---', structured.after, '')
+      lines.push('この内容でよければ t2f_write_apply に token を渡してください: ' + token)
+      return toolResult(lines.join('\n'), structured)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  }
+})
+
+TOOLS.push({
+  name: 't2f_write_apply',
+  title: '下書きを適用する',
+  partOfWriting: true,
+  description: 't2f_write_plan が返した札(token)を受け取り、本当にゲームとテキストへ書きます。' +
+    '下書きを作ったあとに人やツクールがファイルを触っていたら拒否します(もう一度 t2f_write_plan から)。' +
+    '書き換える直前の中身は .t2f-history に控えるので、VS Code 拡張の「編集履歴を表示する」から戻せます。',
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['token'],
+    properties: {
+      token: { type: 'string', description: 't2f_write_plan が返した札' }
+    }
+  },
+  run: function (ctx, args) {
+    const token = String((args && args.token) || '')
+    forgetOldPlans(Date.now())
+    const plan = PLANS.get(token)
+    if (!plan) {
+      return toolError('その札は使えません(知らない札か、期限切れ(' + (PLAN_TTL_MS / 60000) + '分)です)。t2f_write_plan からやり直してください。')
+    }
+    // 下書きのあとに誰かが触っていたら断る(拡張がレビュー後に指紋を見直すのと同じ)。
+    if (fingerprintOf(plan.dataPath) !== plan.dataFingerprint) {
+      PLANS.delete(token)
+      return toolError('下書きのあとにゲームのデータが変わりました: ' + relOf(ctx, plan.dataPath) + '。t2f_write_plan からやり直してください。')
+    }
+    if (fingerprintOf(plan.textPath) !== plan.textFingerprint) {
+      PLANS.delete(token)
+      return toolError('下書きのあとにテキストが変わりました: ' + relOf(ctx, plan.textPath) + '。t2f_write_plan からやり直してください。')
+    }
+
+    const history = require(path.join(__dirname, 't2f-history.js'))
+    const recorder = history.beginEntry(ctx.root, 'mcp-apply', 'MCP の反映 ' + plan.key, { keep: ctx.historyKeep })
+    // 書く前に控える。拡張の noteApply と同じ3つ(データ・テキスト・祖先)。
+    const pageKey = history.pageKeyOf(plan.target)
+    recorder.note(plan.dataPath, 'data', pageKey ? [pageKey] : undefined)
+    recorder.note(plan.textPath, 'text')
+    recorder.note(basePathOf(ctx, plan.textPath, plan.target), 'base')
+
+    let result = null
+    try {
+      fs.mkdirSync(path.dirname(plan.textPath), { recursive: true })
+      fs.writeFileSync(plan.textPath, plan.text, 'utf8')
+      result = ctx.t2f.applyTextFile(applyOptsFor(ctx, plan.target, plan.textPath, plan.dataPath, plan.strategy))
+    } finally {
+      PLANS.delete(token)
+    }
+    const entry = recorder.finish()
+
+    if (!result.ok) {
+      return toolError('反映できませんでした: ' + (result.error || '原因不明') +
+        (entry ? '（直前の中身は .t2f-history に控えました: ' + entry.id + '）' : ''))
+    }
+    const structured = {
+      key: plan.key,
+      strategy: plan.strategy,
+      textPath: relOf(ctx, plan.textPath),
+      dataPath: relOf(ctx, plan.dataPath),
+      warnings: result.warnings || [],
+      conflicts: result.conflicts || 0,
+      writtenBack: !!result.writtenBack,
+      historyId: entry ? entry.id : null
+    }
+    const lines = ['反映しました: ' + plan.key + ' -> ' + relOf(ctx, plan.dataPath)]
+    if (structured.warnings.length) lines.push('警告:', structured.warnings.map(function (w) { return '  ・' + w }).join('\n'))
+    if (structured.conflicts) lines.push('衝突 ' + structured.conflicts + ' 件を目印つきで残しました。テキストで解決して、もう一度反映してください。')
+    if (structured.writtenBack) lines.push('統合の結果をテキストにも書き戻しました: ' + structured.textPath)
+    lines.push(entry
+      ? '直前の中身を .t2f-history に控えました(' + entry.id + ')。戻すときは VS Code 拡張の「編集履歴を表示する」から。'
+      : '控えるほどの変化はありませんでした。')
+    return toolResult(lines.join('\n'), structured)
+  }
+})
+
 const TOOLS_BY_NAME = {}
 TOOLS.forEach(function (t) { TOOLS_BY_NAME[t.name] = t })
 
-/** 書き込む道具かどうか(--read-only のとき隠す)。 */
-const isWriteTool = function (tool) { return !(tool.annotations && tool.annotations.readOnlyHint) }
+/* --read-only で隠す道具。MCP の annotations は「この道具は書くか」をクライアントへ
+ * 伝えるもので、こちらの印は「書き込みの一連に属すか」。別の関心なので分けておく。 */
+const isWriteTool = function (tool) {
+  return !!tool.partOfWriting || !(tool.annotations && tool.annotations.readOnlyHint)
+}
 
 const toolsFor = function (ctx) {
   return TOOLS.filter(function (t) { return !(ctx.readOnly && isWriteTool(t)) })

@@ -216,6 +216,79 @@
           "readOnlyHint": true,
           "idempotentHint": true
         }
+      },
+      {
+        "name": "t2f_write_plan",
+        "title": "下書き(何が変わるか)",
+        "description": "渡したテキストをゲームに反映したら何が変わるかを、一時的な写しの上で試して返します。本物のファイルは1バイトも書きません。返ってくる札(token)を t2f_write_apply に渡すと実際に反映します。警告と衝突の数もそのまま返すので、とくに「初回反映」の警告(祖先が無く、その回だけゲーム側の編集が残らない)は必ず読んでください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "text"
+          ],
+          "properties": {
+            "key": {
+              "type": "string",
+              "description": "t2f_list が返す宛先の鍵(例 map003_event004_page1)。これだけで足ります"
+            },
+            "mapId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: マップID"
+            },
+            "eventId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: イベントID"
+            },
+            "pageId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: ページ番号(既定 1)"
+            },
+            "commonEventId": {
+              "type": "string",
+              "description": "コモンイベントを指すとき: その番号"
+            },
+            "text": {
+              "type": "string",
+              "description": "反映したいテキスト(見出し情報は付いていなくてもよい。宛先は引数で決まります)"
+            },
+            "strategy": {
+              "type": "string",
+              "enum": [
+                "merge",
+                "overwrite"
+              ],
+              "description": "merge=統合(既定。3方向マージ。衝突は目印で両方残る) / overwrite=上書き(テキストで全部置き換える。詰まった統合からの出口)"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_write_apply",
+        "title": "下書きを適用する",
+        "description": "t2f_write_plan が返した札(token)を受け取り、本当にゲームとテキストへ書きます。下書きを作ったあとに人やツクールがファイルを触っていたら拒否します(もう一度 t2f_write_plan から)。書き換える直前の中身は .t2f-history に控えるので、VS Code 拡張の「編集履歴を表示する」から戻せます。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "token"
+          ],
+          "properties": {
+            "token": {
+              "type": "string",
+              "description": "t2f_write_plan が返した札"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false
+        }
       }
     ],
     "_meta": {
