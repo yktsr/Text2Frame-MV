@@ -47,6 +47,17 @@ const INVALID_PARAMS = -32602
 const INTERNAL_ERROR = -32603
 const UNSUPPORTED_PROTOCOL_VERSION = -32022
 
+/* キャッシュの指定。仕様の CacheableResult が ttlMs と cacheScope を**必須**で持ち、
+ * DiscoverResult と ListToolsResult がそれを継承する(resources / prompts の一覧も同じだが
+ * こちらは出していない)。CallToolResult は継承しないので載せてはいけない。
+ *
+ * 0 は「すぐ陳腐」。道具の一覧は起動時の旗(--read-only)からプロセス内で純粋に決まるので
+ * 作り直しが無料で、キャッシュが何も買わない。将来一覧がプロジェクトの状態に依るように
+ * なっても 0 なら陳腐化しない。private は、この一覧が「このプロセスの旗」を映したもので
+ * あって、認可の文脈を越えて共有してよいものではないから。 */
+const CACHE_TTL_MS = 0
+const CACHE_SCOPE = 'private'
+
 /* LLM への入口。道具の説明だけでは伝わらない「このツールの癖」をここに置く。 */
 const INSTRUCTIONS = [
   'RPGツクール MV/MZ のイベントを、テキストとして読み書きします。',
@@ -85,6 +96,11 @@ const jsonrpcResult = function (id, result) {
   body._meta = Object.assign({}, body._meta)
   body._meta[META_SERVER_INFO] = { name: SERVER_NAME, version: version() }
   return { jsonrpc: '2.0', id, result: body }
+}
+
+/** 一覧ものの結果に付けるキャッシュの指定。付ける先は CACHE_TTL_MS のコメントのとおり。 */
+const cacheable = function (result) {
+  return Object.assign({ ttlMs: CACHE_TTL_MS, cacheScope: CACHE_SCOPE }, result)
 }
 
 /** 道具の返り値。本文は人とモデルが読む文、structured は機械が読む形。 */
@@ -844,15 +860,15 @@ const handle = function (request, ctx) {
   }
 
   if (method === 'server/discover') {
-    return jsonrpcResult(request.id, {
+    return jsonrpcResult(request.id, cacheable({
       supportedVersions: PROTOCOL_VERSIONS,
       capabilities: { tools: {} },
       instructions: INSTRUCTIONS
-    })
+    }))
   }
 
   if (method === 'tools/list') {
-    return jsonrpcResult(request.id, { tools: toolsFor(ctx).map(describeTool) })
+    return jsonrpcResult(request.id, cacheable({ tools: toolsFor(ctx).map(describeTool) }))
   }
 
   if (method === 'tools/call') {
@@ -1017,6 +1033,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
 module.exports = {
   PROTOCOL_VERSIONS,
+  CACHE_TTL_MS,
+  CACHE_SCOPE,
   startServer,
   INSTRUCTIONS,
   TOOLS,

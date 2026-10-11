@@ -9,6 +9,8 @@
   "id": 1,
   "result": {
     "resultType": "complete",
+    "ttlMs": 0,
+    "cacheScope": "private",
     "supportedVersions": [
       "2026-07-28"
     ],
@@ -32,6 +34,8 @@
   "id": 2,
   "result": {
     "resultType": "complete",
+    "ttlMs": 0,
+    "cacheScope": "private",
     "tools": [
       {
         "name": "t2f_project_info",
@@ -307,6 +311,8 @@
   "id": 3,
   "result": {
     "resultType": "complete",
+    "ttlMs": 0,
+    "cacheScope": "private",
     "tools": [
       {
         "name": "t2f_project_info",
