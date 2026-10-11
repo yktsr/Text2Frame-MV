@@ -71,6 +71,9 @@ const INSTRUCTIONS = [
   '  テキストではなくゲームのデータから引くので、まだ取り出していないイベントも入ります。',
   '  ただし条件分岐での**読み**は入りません(本文は t2f_search で)。',
   '・書き込みは2段です。t2f_write_plan で何が変わるかを見てから、返ってきた札を t2f_write_apply に渡します。',
+  '・**テキストからイベントのページは増やせません**(出現条件がテキストに書けないため)。',
+  '  新しいページが要るときは、先に RPGツクールで作ってください。',
+  '・スイッチと変数の名前は t2f_name_plan / t2f_name_apply で付けられます。番号だけ残さないでください。',
   '・RPGツクールのエディタを開いたまま、または t2f-sync の監視を動かしたまま書き込まないでください。',
   '  どちらも data/*.json を書き戻すので、反映した内容が失われます。'
 ].join('\n')
@@ -393,12 +396,46 @@ const listOf = function (ctx, target) {
   return page.list || []
 }
 
+/*
+ * 宛先が無いときの説明。**「ページを増やしたい」のかどうかを見分ける**のが肝。
+ *
+ * テキストからページは増やせない。出現条件がテキストに書けないので、増やすと条件が
+ * 全部 false の無条件ページが末尾に付き、コアは pages.length-1 から逆に走るため
+ * (js/rpg_objects.js の findProperPageIndex)**既存のページが到達しなくなる**。
+ * だから増やさないのが正しい。
+ *
+ * ただし「その宛先はありません」とだけ言うと、エージェントは名前を間違えたと思って
+ * t2f_list を引き直し、見つからずに迷う。理由を言えば、ツクールで先に作ればよいと分かる。
+ */
+const missReason = function (targets, wanted) {
+  if (!wanted || wanted.kind !== 'event' || !(Number(wanted.pageId) > 0)) return ''
+  const pages = targets.filter(function (t) {
+    return t.kind !== 'common' && String(t.mapId) === String(wanted.mapId) && String(t.eventId) === String(wanted.eventId)
+  })
+  if (!pages.length) return ''
+  const most = pages.reduce(function (n, t) { return Math.max(n, Number(t.pageId) || 1) }, 0)
+  if (Number(wanted.pageId) <= most) return ''
+  return 'このイベントは ' + most + ' ページまでです。**テキストからページを増やすことはできません**' +
+    '（出現条件がテキストに書けないため、条件の無いページが既存のページを隠してしまいます）。' +
+    '先に RPGツクールでページを作ってから、もう一度どうぞ。'
+}
+
+const keyParts = function (key) {
+  const m = /^map(\d+)_event(\d+)_page(\d+)$/.exec(String(key || ''))
+  if (!m) return undefined
+  return { kind: 'event', mapId: String(Number(m[1])), eventId: String(Number(m[2])), pageId: String(Number(m[3])) }
+}
+
 const findTarget = function (ctx, args) {
   const found = targetsOf(ctx, 'all')
   const key = args && args.key
   if (key) {
     const hit = found.targets.filter(function (t) { return t.key === key })[0]
-    if (!hit) throw new Error('その宛先はありません: ' + key + '（t2f_list で一覧を見てください）')
+    if (!hit) {
+      const why = missReason(found.targets, keyParts(key))
+      throw new Error('その宛先はありません: ' + key +
+        (why ? '。' + why : '（t2f_list で一覧を見てください）'))
+    }
     return { target: hit, index: found.index }
   }
   const wanted = args && args.commonEventId !== undefined
@@ -409,7 +446,11 @@ const findTarget = function (ctx, args) {
     if (wanted.kind === 'common') return t.commonEventId === wanted.commonEventId
     return t.mapId === wanted.mapId && t.eventId === wanted.eventId && String(t.pageId) === wanted.pageId
   })[0]
-  if (!hit) throw new Error('その宛先はありません（key か mapId/eventId/pageId、または commonEventId を指定してください）')
+  if (!hit) {
+    const why = missReason(found.targets, wanted)
+    throw new Error('その宛先はありません' +
+      (why ? '。' + why : '（key か mapId/eventId/pageId、または commonEventId を指定してください）'))
+  }
   return { target: hit, index: found.index }
 }
 

@@ -219,6 +219,47 @@ describe('mcp tools', function () {
    *
    * なぜ要るか: MCP でイベントを1つ作ったら、使ったスイッチが名前の無いまま残った。
    * 番号だけが残ると、後で読む人にも AI にも効く。 */
+  /* テキストからページは増やせない。増やすと条件の無いページが末尾に付き、コアは
+   * pages.length-1 から逆に走るので(findProperPageIndex)既存のページが到達しなくなる。
+   * findTarget が存在するページしか解決しないので**起きない**が、断り方が
+   * 「その宛先はありません」だけだとエージェントは名前を間違えたと思って迷う。 */
+  describe('when a page does not exist', function () {
+    beforeEach(function () {
+      // 2ページのイベントにする(2ページ目には条件を付けておく)。
+      const data = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8'))
+      data.events[1].pages.push({ conditions: { switch1Valid: true, switch1Id: 1 }, list: msg('2ページ目').concat([bottom]) })
+      fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify(data))
+      ctx = mcp.createContext({ root: tmp })
+    })
+
+    it('says pages cannot be added from text, and why', function () {
+      const result = call('t2f_read', { key: 'map001_event001_page3' })
+
+      expect(result.isError).to.equal(true)
+      expect(textOf(result)).to.contain('2 ページまで')
+      expect(textOf(result)).to.contain('増やすことはできません')
+      expect(textOf(result)).to.contain('RPGツクール')
+    })
+
+    it('says the same on the writing side', function () {
+      const result = call('t2f_write_plan', { key: 'map001_event001_page3', text: frontMatter + 'やあ\n' })
+      expect(textOf(result)).to.contain('増やすことはできません')
+    })
+
+    it('explains it for the mapId/eventId/pageId form too', function () {
+      const result = call('t2f_read', { mapId: 1, eventId: 1, pageId: 3 })
+      expect(textOf(result)).to.contain('増やすことはできません')
+    })
+
+    /* 本当に名前を間違えたときに同じ説明を出すと、今度はそちらが迷う。 */
+    it('keeps the plain message when the key is simply wrong', function () {
+      const result = call('t2f_read', { key: 'map009_event009_page1' })
+
+      expect(textOf(result)).to.contain('t2f_list')
+      expect(textOf(result)).to.not.contain('増やすことはできません')
+    })
+  })
+
   describe('t2f_name_plan と t2f_name_apply', function () {
     const systemFile = function () { return path.join(tmp, 'data', 'System.json') }
     const system = function () { return JSON.parse(fs.readFileSync(systemFile(), 'utf8')) }
