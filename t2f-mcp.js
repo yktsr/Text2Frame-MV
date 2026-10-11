@@ -215,6 +215,30 @@ const buildLinks = function (ctx, st) {
   const pages = []
   const names = {}
 
+  /* 参照している箇所。**つながり(操作・呼び出し・出現条件)とは別の面**で、
+   * commandRefs が「このコマンドがどのデータベースの項目を指すか」を答える。
+   * 条件分岐(111)での読みや、本文の \V[5] はこちらにしか出ない。
+   *
+   * 走査はつながりと同じ1回で済ます(別に回すと202ファイルを読み直す)。種類は4つに絞る -
+   * commandRefs は face/icon なども返すので、入れると索引が無駄に膨らむ。 */
+  const refModule = loadDb('commandRefs')
+  const REF_KINDS = { switch: 's', variable: 'v', commonEvent: 'c', map: 'm' }
+  const refs = {}
+  const noteRefs = function (place, list) {
+    if (!refModule) return
+    ;(list || []).forEach(function (command, index) {
+      refModule.commandRefs(command).forEach(function (ref) {
+        const letter = REF_KINDS[ref.kind]
+        if (!letter) return
+        const id = Number(ref.id)
+        if (!(id > 0)) return
+        const key = letter + ':' + id
+        if (!refs[key]) refs[key] = []
+        refs[key].push({ place, index, code: Number(command && command.code) || 0 })
+      })
+    })
+  }
+
   const mapFiles = []
   try {
     fs.readdirSync(ctx.dataDir).forEach(function (name) {
@@ -236,6 +260,7 @@ const buildLinks = function (ctx, st) {
       event.pages.forEach(function (page, i) {
         const from = el.nodeKey({ kind: 'page', mapId, eventId: event.id, pageId: i + 1 })
         links.push.apply(links, el.commandLinks(from, page.list || []))
+        noteRefs(from, page.list)
       })
     })
   })
@@ -247,7 +272,9 @@ const buildLinks = function (ctx, st) {
       if (!common) return
       names['c:' + common.id] = String(common.name || '')
       commons.push({ id: common.id, trigger: Number(common.trigger) || 0, switchId: Number(common.switchId) || 0 })
-      links.push.apply(links, el.commandLinks(el.nodeKey({ kind: 'common', id: common.id }), common.list || []))
+      const place = el.nodeKey({ kind: 'common', id: common.id })
+      links.push.apply(links, el.commandLinks(place, common.list || []))
+      noteRefs(place, common.list)
     })
   } catch (e) { /* コモンイベントが無いプロジェクトもある */ }
 
@@ -265,6 +292,9 @@ const buildLinks = function (ctx, st) {
     index: new el.LinkIndex(links),
     names,
     total: links.length,
+    /** 鍵ごとの参照箇所。commandRefs が無い配り方では空のまま。 */
+    refs,
+    hasRefs: !!refModule,
     key: el.nodeKey,
     node: el.nodeFromKey,
     /** 問い合わせた番号を人が読める見出しにする。 */
@@ -945,8 +975,11 @@ TOOLS.push({
   description: 'スイッチ・変数・セルフスイッチ・コモンイベント・マップが、どこで操作され、' +
     'どのページの出現条件になっているかを返します。テキストではなくゲームのデータから引くので、' +
     'まだ取り出していないイベントも入ります。' +
-    '\n【入っていないもの】条件分岐(<If: ...>)での**読み**は入りません。' +
-    'この図は「操作・呼び出し・出現条件」のつながりで、読んでいる箇所は t2f_search で本文を探してください。',
+    '\n返すのは2つの面です。**つながり**(操作・呼び出し・出現条件)と、**参照箇所**' +
+    '(そのコマンドがこの番号を指している所。条件分岐 <If: ...> での読みや本文の \\V[5] はこちら)。' +
+    '参照箇所のうち操作でもあるものには印が付きます。' +
+    '\n参照箇所に入らないもの: セルフスイッチ(規則が無いため)、コメント・スクリプト・' +
+    'プラグインコマンドの中(走査していないため。$gameVariables.value(5) は見えません)。',
   annotations: { readOnlyHint: true, idempotentHint: true },
   inputSchema: {
     type: 'object',
@@ -1001,8 +1034,37 @@ TOOLS.push({
     const outbound = links.index.out(key)
     render('ここを操作している / ここから出る条件になっている', inbound, 'in')
     render('ここが指している先', outbound, 'out')
+
+    /* 参照箇所。**引き算しない。**
+     * 最初は「全参照 − 操作 = 読み」を考えたが、実測して捨てた:
+     *   変数7 += 変数7   refs = v7,v7       links = v:7      → 読みが消える(最頻出)
+     *   変数1..5 = 変数3  refs = v1..v5,v3   links = v1..v5   → オペランドの読みが消える
+     *   数値入力 {103}    refs = v7          links = なし     → 書き込みを読みと誤判定
+     * データが read/write の軸を持っていないので、分類ではなく**印**にする。完全さで
+     * 答える方が正直で、守りたいもの(「使われていないから消せる」の誤解)にも効く。 */
+    const written = {}
+    inbound.concat(outbound).forEach(function (link) {
+      if (link.index === undefined) return
+      written[(link.from || '') + '#' + link.index] = true
+      written[(link.to || '') + '#' + link.index] = true
+    })
+    const spots = links.refs[key] || []
     lines.push('')
-    lines.push('※ 条件分岐での読みは入っていません(本文は t2f_search で)。')
+    if (kind === 'selfSwitch') {
+      lines.push('参照箇所: セルフスイッチには出せません(借りている層に見分ける規則が無いため)。')
+    } else if (!links.hasRefs) {
+      lines.push('参照箇所: この配り方では出せません。')
+    } else {
+      lines.push('参照箇所 (' + spots.length + ' 件' + (spots.length > limit ? '、先頭 ' + limit + ' 件' : '') + ')')
+      if (!spots.length) lines.push('  なし')
+      spots.slice(0, limit).forEach(function (spot) {
+        const alsoWrites = !!written[spot.place + '#' + spot.index]
+        lines.push('  ' + placeOf(links, spot.place) + ' の ' + (spot.index + 1) + ' 番目' +
+          (alsoWrites ? '  … 操作でもある' : ''))
+      })
+      lines.push('')
+      lines.push('※ コメント・スクリプト・プラグインコマンドの中は走査していません。')
+    }
 
     const shape = function (link, side) {
       const out = {
@@ -1018,11 +1080,24 @@ TOOLS.push({
     return toolResult(lines.join('\n'), {
       key,
       label,
-      readsNotIncluded: true,
       inbound: inbound.slice(0, limit).map(function (l) { return shape(l, 'in') }),
       outbound: outbound.slice(0, limit).map(function (l) { return shape(l, 'out') }),
       inboundTotal: inbound.length,
-      outboundTotal: outbound.length
+      outboundTotal: outbound.length,
+      /* 参照箇所は commandRefs の当たりを全部。操作でもあるものに印を付けるだけで、
+       * 読みと書きに分類はしない(データがその軸を持っていない)。 */
+      references: spots.slice(0, limit).map(function (spot) {
+        return {
+          place: spot.place,
+          label: placeOf(links, spot.place),
+          commandIndex: spot.index,
+          commandCode: spot.code,
+          alsoOperates: !!written[spot.place + '#' + spot.index]
+        }
+      }),
+      referencesTotal: spots.length,
+      referencesCovered: kind !== 'selfSwitch' && links.hasRefs,
+      notScanned: ['コメント', 'スクリプト', 'プラグインコマンド']
     })
   }
 })

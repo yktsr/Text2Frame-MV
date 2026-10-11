@@ -119,16 +119,82 @@ describe('mcp usages', function () {
     expect(common.structuredContent.inbound[0].how).to.equal('call')
   })
 
-  /* **この道具の約束の境目。** 条件分岐(111)での読みは図に入らない。
-   * 入っていないことを知らせずに返すと、エージェントは「他で使われていない」と
-   * 誤解して消しにかかる。将来 case 111 を足したらここが落ちて気づく。 */
-  it('leaves conditional-branch reads out, and says so', function () {
+  /* つながり(操作・呼び出し・出現条件)は commandLinks が持ち、**条件分岐での読みは
+   * そこに入らない**。だから参照箇所を別の面として並べる。 */
+  it('keeps the link graph to operations only', function () {
     const result = usages({ kind: 'switch', id: 5 })
 
-    // 読んでいるのもイベント1の1ページだが、入るのは ON にした1本だけ。
+    // 読んでいるのもイベント1の1ページだが、つながりに入るのは ON にした1本だけ。
     expect(result.structuredContent.inboundTotal).to.equal(1)
-    expect(result.structuredContent.readsNotIncluded).to.equal(true)
-    expect(textOf(result)).to.contain('条件分岐での読みは入っていません')
+  })
+
+  /* 条件分岐(111)での読みは、ここにしか出ない。 */
+  it('lists the conditional branch as a reference', function () {
+    const result = usages({ kind: 'switch', id: 5 })
+    const refs = result.structuredContent.references
+
+    expect(result.structuredContent.referencesCovered).to.equal(true)
+    expect(refs.map(function (r) { return r.commandCode })).to.include(111)
+    expect(textOf(result)).to.contain('参照箇所')
+  })
+
+  /* 操作でもある行には印を付ける。**引き算で読みを出さない**のがここの約束。 */
+  it('marks a reference that is also an operation', function () {
+    const result = usages({ kind: 'switch', id: 5 })
+    const refs = result.structuredContent.references
+    const write = refs.filter(function (r) { return r.commandCode === 121 })[0]
+
+    expect(write, 'ON にしている箇所が参照に出ていません').to.be.an('object')
+    expect(write.alsoOperates).to.equal(true)
+    expect(refs.filter(function (r) { return r.commandCode === 111 })[0].alsoOperates).to.equal(false)
+  })
+
+  /* **引き算を捨てた理由。** 自己加算は最頻出の形で、「全参照 − 操作」では
+   * 読みが消える。印を付けるだけなら残る。 */
+  it('still lists a self-increment, which subtraction would have lost', function () {
+    const data = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8'))
+    // 変数7 += 変数7
+    data.events[1].pages[0].list.unshift({ code: 122, indent: 0, parameters: [7, 7, 1, 1, 7] })
+    fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify(data))
+    ctx = mcp.createContext({ root: tmp })
+
+    const refs = usages({ kind: 'variable', id: 7 }).structuredContent.references
+    const spot = refs.filter(function (r) { return r.commandCode === 122 })[0]
+
+    expect(spot, '自己加算が参照に出ていません').to.be.an('object')
+    expect(spot.alsoOperates).to.equal(true)
+  })
+
+  /* 書き込みなのに commandLinks が拾わないもの(数値入力)。引き算だと読みと誤判定する。
+   * 印なら「参照箇所」に出るだけで、読みだとは言わない。 */
+  it('does not call a number-input write a read', function () {
+    const data = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8'))
+    data.events[1].pages[0].list.unshift({ code: 103, indent: 0, parameters: [9, 4] })
+    fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify(data))
+    ctx = mcp.createContext({ root: tmp })
+
+    const result = usages({ kind: 'variable', id: 9 })
+    expect(result.structuredContent.references.map(function (r) { return r.commandCode })).to.include(103)
+    // 「読み」という言葉は使っていない(データが read/write の軸を持っていないため)。
+    expect(textOf(result)).to.not.contain('読み')
+  })
+
+  /* 本文の \\V[5] もコマンドなので拾える。 */
+  it('picks up an escape code in the message body', function () {
+    const data = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8'))
+    data.events[1].pages[0].list.unshift({ code: 401, indent: 0, parameters: ['\\V[11] 個あります'] })
+    fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify(data))
+    ctx = mcp.createContext({ root: tmp })
+
+    expect(usages({ kind: 'variable', id: 11 }).structuredContent.referencesTotal).to.be.at.least(1)
+  })
+
+  /* 空の節を黙って返さず、出ないと書く。 */
+  it('says the references cannot be listed for a self switch', function () {
+    const result = usages({ kind: 'selfSwitch', mapId: 1, eventId: 1, letter: 'A' })
+
+    expect(result.structuredContent.referencesCovered).to.equal(false)
+    expect(textOf(result)).to.contain('セルフスイッチには出せません')
   })
 
   it('takes a self switch by map, event and letter', function () {
