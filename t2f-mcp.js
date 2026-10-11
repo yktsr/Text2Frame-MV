@@ -80,7 +80,19 @@ const INSTRUCTIONS = [
   '  新しいページが要るときは、先に RPGツクールで作ってください。',
   '・スイッチと変数の名前は t2f_name_plan / t2f_name_apply で付けられます。番号だけ残さないでください。',
   '・RPGツクールのエディタを開いたまま、または t2f-sync の監視を動かしたまま書き込まないでください。',
-  '  どちらも data/*.json を書き戻すので、反映した内容が失われます。'
+  '  どちらも data/*.json を書き戻すので、反映した内容が失われます。',
+  '',
+  '書いたものを動かして確かめる(t2f_play_*):',
+  '・t2f_play_start でサーバが上がります。**返ってきた URL をブラウザで開くまで何も動きません。**',
+  '  開いたかどうかは t2f_play_status の「繋がっているか」で分かります。',
+  '・t2f_play_goto で任意のイベントをその場で走らせられます(拡張の「このページをすぐ実行」と同じ)。',
+  '  出現条件は見ません。走っているイベントと開いているメッセージは捨てられます。',
+  '  反映した直後は reload: true を付けてください。付けないと古いデータのまま走ります。',
+  '・t2f_play_input でキーとタップを送ります。メッセージを進めるのも、タイトルで決定を押すのもこれ。',
+  '・t2f_play_state で値を見て、t2f_play_set で変えられます(状態を作ってから1か所だけ試せます)。',
+  '・t2f_play_break はテキストの**行番号**で止めます。t2f_play_step で進めると、',
+  '  止まった場所をテキストの行に戻して返します。',
+  '・VS Code のテストプレイと同時には使えません(状態の受け手は1つなので、別のゲームになります)。'
 ].join('\n')
 
 /* ---------- 小さな道具 ---------- */
@@ -192,9 +204,20 @@ const DB_DIRS = [
   path.join(__dirname, 'db')
 ]
 
-const loadDb = function (name) {
-  for (let i = 0; i < DB_DIRS.length; i++) {
-    const file = path.join(DB_DIRS[i], name + '.js')
+/* 再生の層(gameServer / liveMonitor / liveState)は拡張の src/ 直下にある。
+ * **順番は DB_DIRS と必ず同じ。** 逆にすると、手元で copy-db を走らせた後に再生の層だけ
+ * db/ から、構造の層は vscode-extension/out/db/ から読まれ、database と lang が2つの
+ * 別インスタンスになる。 */
+const LIVE_DIRS = [
+  path.join(__dirname, '..', 'out'),
+  path.join(__dirname, 'vscode-extension', 'out'),
+  // 写すときに db/ へ平らに入れている(相対パスを ./db/ -> ./ に書き換えてある)。
+  path.join(__dirname, 'db')
+]
+
+const loadFrom = function (dirs, name) {
+  for (let i = 0; i < dirs.length; i++) {
+    const file = path.join(dirs[i], name + '.js')
     if (!fs.existsSync(file)) continue
     try {
       return require(file)
@@ -202,6 +225,9 @@ const loadDb = function (name) {
   }
   return undefined
 }
+
+const loadDb = function (name) { return loadFrom(DB_DIRS, name) }
+const loadLive = function (name) { return loadFrom(LIVE_DIRS, name) }
 
 /*
  * つながりの索引を組む。拡張の LinkService(src/eventLinks.ts:69)がやっているのと
@@ -347,6 +373,10 @@ const createContext = function (options) {
   let links = null
   // 素材の一覧。img を読むので、引かれたときに1回だけ。
   let assets
+  /* 動いているゲームとの繋がり。サーバを持つのは**状態の受け手が1つしか無い**から
+   * (onState は startGameServer のときに決まる)。命令を送るだけなら2人目の聞き手として
+   * 割り込めるが、状態は読めない。 */
+  let play = null
   return {
     root,
     dataDir,
@@ -415,6 +445,42 @@ const createContext = function (options) {
         }
       }
       return assets
+    },
+    /** 再生の層。無い配り方もあるので、引かれたときに1回だけ試す。 */
+    live: function () {
+      if (this._live !== undefined) return this._live || undefined
+      const gameServer = loadLive('gameServer')
+      const liveState = loadLive('liveState')
+      if (!gameServer || !liveState) {
+        this._live = false
+        return undefined
+      }
+      this._live = { gameServer, liveState }
+      return this._live
+    },
+    /** いま動かしているゲーム(持っていなければ undefined)。 */
+    game: function () { return play || undefined },
+    /** ゲームを持つ。既にあれば使い回す。 */
+    openGame: function () {
+      if (play) return Promise.resolve(play)
+      const live = this.live()
+      if (!live) return Promise.reject(new Error('再生の層が使えません(拡張をコンパイルしてください)'))
+      /* ゲームのフォルダは data/ の親。index.html があるのはそこ。 */
+      const gameRoot = path.dirname(dataDir)
+      const state = new live.liveState.LiveState()
+      return live.gameServer.startGameServer(gameRoot, undefined, {
+        onState: function (message) { state.apply(message, Date.now()) }
+      }).then(function (server) {
+        play = { server, state, gameRoot }
+        return play
+      })
+    },
+    /** 片付ける。**冪等**にする(道具と afterEach の両方が呼ぶ)。 */
+    closeGame: function () {
+      if (!play) return Promise.resolve(false)
+      const closing = play.server
+      play = null
+      return closing.close().then(function () { return true }, function () { return true })
     },
     /** つながりの索引と名前。全マップを読むので、引かれたときに1回だけ。 */
     links: function () {
@@ -1638,6 +1704,561 @@ TOOLS.push({
   }
 })
 
+/* ---------- 動いているゲーム(再生とデバッグ) ---------- */
+
+/*
+ * 拡張のテストプレイでできることを、MCP からも使えるようにする。
+ *
+ * **サーバはこちらが持つ。** 状態を読むには持つしかないので、VS Code 側でテストプレイ中
+ * だと別のゲームになる。
+ *
+ * 待つのはこの一群だけ(不変条件2)。殻が鎖なので、待っても要求どうしは交錯しない。
+ */
+
+/** ゲームが繋がっているか。 */
+const gameIsLive = function (ctx) {
+  const game = ctx.game()
+  if (!game) return false
+  return game.state.received() && game.state.connected(Date.now())
+}
+
+/** 待つ。鎖の中なので、ここで止めるのは次の要求も止める - 締め切りを必ず置く。 */
+const waitFor = function (check, deadlineMs) {
+  const until = Date.now() + Math.max(100, deadlineMs)
+  return new Promise(function (resolve) {
+    const look = function () {
+      const got = check()
+      if (got !== undefined && got !== false) return resolve(got)
+      if (Date.now() >= until) return resolve(undefined)
+      setTimeout(look, 50)
+    }
+    look()
+  })
+}
+
+/** 命令を送る。聞いているゲームが無ければすぐ失敗する(待っても来ない)。 */
+const sendToGame = function (ctx, command) {
+  const game = ctx.game()
+  if (!game) throw new Error('ゲームを動かしていません(先に t2f_play_start)')
+  if (!game.server.send(command)) {
+    throw new Error('ゲームが聞いていません。ブラウザでそのページを開いてください: ' + game.server.url)
+  }
+  return game
+}
+
+/** いまの様子。道具をまたいで同じ形で返す。 */
+const playStatus = function (ctx) {
+  const game = ctx.game()
+  if (!game) return { running: false }
+  const state = game.state
+  const frames = (state.running && state.running()) || []
+  return {
+    running: true,
+    url: game.server.url,
+    port: game.server.port,
+    gameRoot: relOf(ctx, game.gameRoot) || '.',
+    connected: gameIsLive(ctx),
+    scene: state.scene || null,
+    message: state.message || null,
+    player: state.player || null,
+    mapId: state.mapId === undefined ? null : state.mapId,
+    paused: state.paused ? { reason: state.paused.reason, at: state.paused.frames.map(function (f) { return { place: f.key, commandIndex: f.index } }) } : null,
+    frames: frames.map(function (f) { return { place: f.key, commandIndex: f.index } })
+  }
+}
+
+const statusLines = function (info) {
+  if (!info.running) return ['ゲームは動いていません。t2f_play_start で始めてください。']
+  const lines = [
+    'URL: ' + info.url,
+    'ゲームが繋がっているか: ' + (info.connected ? 'はい' : 'いいえ(ブラウザでその URL を開いてください)')
+  ]
+  if (info.scene) lines.push('いまの画面: ' + info.scene)
+  if (info.message) lines.push('メッセージ: ' + (info.message.busy ? (info.message.choice ? '選択肢が出ています' : '出ています') : '出ていません'))
+  if (info.player) lines.push('いる場所: マップ' + info.mapId + ' (' + info.player.x + ',' + info.player.y + ')')
+  else if (info.mapId !== null) lines.push('いるマップ: ' + info.mapId)
+  if (info.paused) {
+    lines.push('**止まっています**(' + info.paused.reason + ')。t2f_play_step で動かしてください:')
+    info.paused.at.forEach(function (f) { lines.push('  ' + f.place + ' の ' + (f.commandIndex + 1) + ' 番目') })
+  }
+  if (info.frames.length) {
+    lines.push('走っているもの:')
+    info.frames.forEach(function (f) { lines.push('  ' + f.place + ' の ' + (f.commandIndex + 1) + ' 番目') })
+  }
+  return lines
+}
+
+TOOLS.push({
+  name: 't2f_play_start',
+  title: 'テストプレイを始める',
+  needsLive: true,
+  /* readOnlyHint は名乗らない。ゲームのファイルは1バイトも書かないが、ポートを開けて
+   * 保ち続けるのは環境を変えること。--read-only では isWriteTool がこれを隠す。 */
+  description: 'ゲームのフォルダを配るサーバを起こし、URL を返します。その URL をブラウザで開くと、' +
+    'ここから状態を読んだり、スイッチを変えたり、イベントを走らせたりできます。' +
+    '\n既に動いていれば同じものを使い回します。' +
+    '\n※ VS Code のテストプレイと同時には使えません(状態の受け手は1つだけなので、別のサーバ=別のゲームになります)。',
+  annotations: { destructiveHint: false, idempotentHint: true },
+  inputSchema: { type: 'object', additionalProperties: false, properties: {} },
+  run: function (ctx) {
+    const already = !!ctx.game()
+    return ctx.openGame().then(function (game) {
+      const info = playStatus(ctx)
+      /* FOSSIL を使うゲームは index.html だと require is not defined で落ちる。
+       * 拡張の testPlay.ts も同じ逃げ道を持っている。 */
+      const fossil = fs.existsSync(path.join(game.gameRoot, 'FOSSILindex.html'))
+      const page = fossil ? 'FOSSILindex.html' : 'index.html'
+      const open = game.server.url + page + '?test'
+      const lines = [(already ? '既に動いていました。' : 'テストプレイを始めました。'), 'ブラウザでここを開いてください: ' + open]
+      if (fossil) lines.push('(このゲームは FOSSIL を使うので index.html ではなく FOSSILindex.html を開きます)')
+      const usual = ctx.live().gameServer.stablePort(game.gameRoot)
+      if (game.server.port !== usual) {
+        lines.push('※ いつもの番号(' + usual + ')が塞がっていたので ' + game.server.port + ' で開きました。' +
+          'セーブの置き場所が番号ごとに分かれるので、前に開いたタブがあれば閉じてください' +
+          '(VS Code のテストプレイか、前のこの道具が掴んでいます)。')
+      }
+      return toolResult(lines.concat('', statusLines(info)).join('\n'),
+        Object.assign({ openUrl: open, page }, info))
+    })
+  }
+})
+
+TOOLS.push({
+  name: 't2f_play_stop',
+  title: 'テストプレイを止める',
+  needsLive: true,
+  description: '配るサーバを閉じます。ブラウザのタブは閉じません。',
+  annotations: { destructiveHint: false, idempotentHint: true },
+  inputSchema: { type: 'object', additionalProperties: false, properties: {} },
+  run: function (ctx) {
+    return ctx.closeGame().then(function (was) {
+      return toolResult(was ? '止めました。' : '動いていませんでした。', { stopped: was })
+    })
+  }
+})
+
+TOOLS.push({
+  name: 't2f_play_status',
+  title: 'いまの様子',
+  needsLive: true,
+  /* 本当に何も書かない(readOnlyHint は正直)。だが --read-only では t2f_play_start が
+   * 隠れるので、見えても繋ぐ手段が無い。t2f_write_plan と同じ理由でここも隠す。 */
+  partOfWriting: true,
+  description: 'ゲームが繋がっているか、いまどの画面でどこに居るか、何が走っているかを返します。',
+  annotations: { readOnlyHint: true, idempotentHint: true },
+  inputSchema: { type: 'object', additionalProperties: false, properties: {} },
+  run: function (ctx) {
+    const info = playStatus(ctx)
+    return toolResult(statusLines(info).join('\n'), info)
+  }
+})
+
+TOOLS.push({
+  name: 't2f_play_state',
+  title: 'スイッチと変数を見る',
+  needsLive: true,
+  /* 本当に何も書かない(readOnlyHint は正直)。だが --read-only では t2f_play_start が
+   * 隠れるので、見えても繋ぐ手段が無い。t2f_write_plan と同じ理由でここも隠す。 */
+  partOfWriting: true,
+  description: '動いているゲームのいまの値を返します。ON のスイッチ、0でない変数、持ち物、所持金、並列処理。' +
+    '番号には名前を添えます。',
+  annotations: { readOnlyHint: true, idempotentHint: true },
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      kind: { type: 'string', enum: ['switch', 'variable', 'selfSwitch', 'item', 'all'], description: '種類。省くと全部' }
+    }
+  },
+  run: function (ctx, args) {
+    const game = ctx.game()
+    if (!game) throw new Error('ゲームを動かしていません(先に t2f_play_start)')
+    if (!game.state.received()) throw new Error('ゲームがまだ何も報告していません。ブラウザでそのページを開いてください: ' + game.server.url)
+    const snap = game.state.snapshot()
+    const want = (args && args.kind) || 'all'
+    const st = ctx.structure()
+    let db
+    if (st) { try { db = st.database.GameDatabase.load(ctx.dataDir) } catch (e) { db = undefined } }
+    /* name は**素の名前だけ**。label が表示用(番号つき)。
+     * 片方の半分だけ見ても足りるようにする - structuredContent に id があるのに
+     * name にも番号が入っていると、機械で読む側が番号を二度持つことになる。 */
+    const named = function (kind, id) {
+      let found
+      if (db) { try { found = db.lookup(kind, Number(id)) } catch (e) { found = undefined } }
+      const name = (found && found.name) || null
+      return { name, label: id + (name ? '「' + name + '」' : '') }
+    }
+    const pairs = function (rows) { return rows || [] }
+    const out = {
+      switches: pairs(snap.switches).map(function (e) { return Object.assign({ id: e[0] }, named('switch', e[0]), { value: e[1] }) }),
+      variables: pairs(snap.variables).map(function (e) { return Object.assign({ id: e[0] }, named('variable', e[0]), { value: e[1] }) }),
+      selfSwitches: pairs(snap.selfSwitches).map(function (key) { return { key: String(key), value: true } }),
+      items: pairs(snap.items).map(function (e) { return { key: e[0], count: e[1] } }),
+      gold: snap.gold === undefined ? null : snap.gold,
+      mapId: snap.mapId === undefined ? null : snap.mapId,
+      parallel: snap.parallel || { events: [], commons: [] }
+    }
+    const lines = []
+    const show = function (kind, label, rows, render) {
+      if (want !== 'all' && want !== kind) return
+      lines.push('[' + label + '] ' + rows.length + ' 件')
+      rows.slice(0, 200).forEach(function (r) { lines.push('  ' + render(r)) })
+    }
+    show('switch', 'ON のスイッチ', out.switches, function (r) { return r.label })
+    show('variable', '0 でない変数', out.variables, function (r) { return r.label + ' = ' + r.value })
+    show('selfSwitch', 'ON のセルフスイッチ', out.selfSwitches, function (r) { return r.key })
+    show('item', '持ち物', out.items, function (r) { return r.key + ' ×' + r.count })
+    if (want === 'all') {
+      lines.push('所持金: ' + out.gold)
+      const running = (out.parallel.events || []).map(function (id) { return 'イベント' + id })
+        .concat((out.parallel.commons || []).map(function (id) { return 'コモン' + id }))
+      if (running.length) lines.push('並列処理: ' + running.join(', '))
+    }
+    return toolResult(lines.join('\n') || '(まだ何も立っていません)', out)
+  }
+})
+
+TOOLS.push({
+  name: 't2f_play_set',
+  needsLive: true,
+  title: '値を変える',
+  description: '動いているゲームのスイッチ・変数・セルフスイッチ・持ち物・所持金を変えます。' +
+    'セルフスイッチの鍵は「マップ,イベント,文字」(例 1,8,A)、持ち物は i:/w:/a: に番号。',
+  annotations: { destructiveHint: true, idempotentHint: true },
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      switches: { type: ['object', 'array'], description: '{番号: true/false} か [{id, value}]' },
+      variables: { type: ['object', 'array'], description: '{番号: 数か文字列} か [{id, value}]' },
+      selfSwitches: { type: ['object', 'array'], description: '{"1,8,A": true/false} か [{key, value}]' },
+      items: { type: ['object', 'array'], description: '{"i:3": 個数} か [{key, count}]' },
+      gold: { type: 'integer', minimum: 0, description: '所持金' }
+    }
+  },
+  run: function (ctx, args) {
+    /* t2f_play_state は [{id, name, label, value}] の形で返す。**読んだ形をそのまま
+     * 書けないと往復が1つ増える**(t2f_list の mapId で同じ罠を踏んだ)。だから配列も畳む。 */
+    const asMap = function (value) {
+      if (!Array.isArray(value)) return value
+      const out = {}
+      value.forEach(function (row) {
+        if (!row || typeof row !== 'object') return
+        const key = row.id !== undefined ? row.id : row.key
+        if (key === undefined) return
+        out[key] = row.value !== undefined ? row.value : row.count
+      })
+      return out
+    }
+    const command = {}
+    ;['switches', 'variables', 'selfSwitches', 'items'].forEach(function (k) {
+      if (args && args[k] && typeof args[k] === 'object') command[k] = asMap(args[k])
+    })
+    if (args && typeof args.gold === 'number') command.gold = args.gold
+    if (!Object.keys(command).length) throw new Error('変えるものがありません')
+    sendToGame(ctx, command)
+    const what = Object.keys(command).map(function (k) {
+      return k === 'gold' ? '所持金' : k + ' ' + Object.keys(command[k]).length + ' 件'
+    })
+    return toolResult('送りました: ' + what.join(' / ') + '\n(ゲーム側に反映されたかは t2f_play_state で確かめてください)', { sent: command })
+  }
+})
+
+TOOLS.push({
+  name: 't2f_play_goto',
+  title: 'イベントを試す',
+  needsLive: true,
+  description: '拡張の「このページをすぐ実行」「イベントの前に立つ」「コモンイベントを試す」と同じもの。' +
+    '\nmode=run はそのページを**出現条件を見ずに**走らせます。stand は前に立つだけ。common はコモンイベントを予約します。' +
+    '\n※ 走っているイベントと開いているメッセージは**捨てられます**(進めるのではなく clear します)。' +
+    '\nタイトル画面のときは新しいゲームを始めてから動きます。',
+  annotations: { destructiveHint: true, idempotentHint: false },
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      mode: { type: 'string', enum: ['run', 'stand', 'common'], description: '既定は run' },
+      key: { type: 'string', description: '宛先の鍵(例 map001_event008_page1)' },
+      mapId: { type: ['integer', 'string'] },
+      eventId: { type: ['integer', 'string'] },
+      pageId: { type: ['integer', 'string'] },
+      commonEventId: { type: ['integer', 'string'], description: 'mode=common のとき' },
+      reload: { type: 'boolean', description: '先にゲームを読み直す(反映した直後はこれが要る。進行は失われます)' },
+      waitMs: { type: 'integer', minimum: 500, maximum: 60000, description: '答えを待つ上限(既定 10000)' }
+    }
+  },
+  run: function (ctx, args) {
+    const game = ctx.game()
+    if (!game) throw new Error('ゲームを動かしていません(先に t2f_play_start)')
+    const mode = (args && args.mode) || 'run'
+    const waitMs = (args && args.waitMs) || 10000
+    let visit
+
+    if (mode === 'common') {
+      const id = Number(args && (args.commonEventId !== undefined ? args.commonEventId : args.key))
+      if (!(id > 0)) throw new Error('mode=common には commonEventId が要ります')
+      visit = { common: id }
+    } else {
+      const found = findTarget(ctx, args)
+      if (String(found.target.kind) === 'common') {
+        visit = { common: Number(found.target.commonEventId) }
+      } else {
+        /* 立つ場所はゲームのデータから取る(テキストには座標が無い)。 */
+        const map = JSON.parse(fs.readFileSync(path.join(ctx.dataDir, mapFileName(found.target.mapId)), 'utf8'))
+        const ev = map.events && map.events[Number(found.target.eventId)]
+        if (!ev) throw new Error('そのイベントがゲームのデータにありません: ' + found.target.key)
+        visit = {
+          mapId: Number(found.target.mapId),
+          eventId: Number(found.target.eventId),
+          pageId: Number(found.target.pageId || 1),
+          x: ev.x,
+          y: ev.y,
+          run: mode === 'run',
+          show: true
+        }
+      }
+    }
+
+    if (args && args.reload) {
+      sendToGame(ctx, { reload: true })
+      // 読み直したページが繋がり直すのを待つ。
+      const at = Date.now()
+      return waitFor(function () { return gameIsLive(ctx) && game.state.lastSeen > at }, waitMs)
+        .then(function (back) {
+          if (!back) throw new Error('読み直したゲームが戻ってきませんでした')
+          /* 読み直すとゲーム側のブレークポイントは消えるので、覚えている分を送り直す。 */
+          if (ctx.breakpoints && Object.keys(ctx.breakpoints).length) sendToGame(ctx, { breakpoints: ctx.breakpoints })
+          return runVisit(ctx, game, visit, mode, waitMs)
+        })
+    }
+    return runVisit(ctx, game, visit, mode, waitMs)
+  }
+})
+
+/** visit を送って、ゲームの答え(ran / stood / noPage …)が来るまで待つ。 */
+const VISIT_WORDS = {
+  ran: '走らせました',
+  stood: '前に立ちました',
+  noEvent: 'そのイベントがありません',
+  noPage: 'そのページがありません',
+  failed: 'うまくいきませんでした',
+  timeout: 'ゲーム側で時間切れになりました'
+}
+const runVisit = function (ctx, game, visit, mode, waitMs) {
+  const before = game.state.lastVisit
+  sendToGame(ctx, { visit })
+  return waitFor(function () {
+    const now = game.state.lastVisit
+    return now && (!before || now.at > before.at) ? now : false
+  }, waitMs).then(function (answer) {
+    if (!answer) {
+      return toolError('ゲームから答えが返りませんでした(' + (waitMs / 1000) + '秒)。' +
+        'ブラウザのタブが裏に回っていると動きません。t2f_play_status で様子を見てください。')
+    }
+    const word = String(answer.result || '')
+    const ok = word === 'ran' || word === 'stood'
+    const text = (VISIT_WORDS[word] || word) + '(' + word + ')'
+    const info = Object.assign({ result: word, ok, mode }, playStatus(ctx))
+    if (!ok) return toolResult(text, info)
+    return toolResult(text + '\n\n' + statusLines(info).join('\n'), info)
+  })
+}
+
+TOOLS.push({
+  name: 't2f_play_input',
+  title: 'キーを押す / 画面を触る',
+  needsLive: true,
+  description: '動いているゲームにキー入力とタップを送ります。メッセージを進めるのも、タイトルで決定するのもこれ。' +
+    '\nキーの名前は RPGツクールのもの: ok(決定) / cancel / up / down / left / right / shift / pageup / pagedown。' +
+    '\n押したあとの様子は返り値に入ります(メッセージがまだ開いているかなど)。',
+  annotations: { destructiveHint: true, idempotentHint: false },
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      keys: { type: 'array', items: { type: 'string' }, description: '一度に押すキー' },
+      key: { type: 'string', description: 'キー1つ' },
+      times: { type: 'integer', minimum: 1, maximum: 50, description: '繰り返す回数(既定 1)' },
+      hold: { type: 'integer', minimum: 1, maximum: 600, description: '押している長さ(フレーム。既定 2)' },
+      tap: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['x', 'y'],
+        properties: { x: { type: 'integer' }, y: { type: 'integer' } },
+        description: '画面を触る(キャンバスの座標)'
+      },
+      waitMs: { type: 'integer', minimum: 0, maximum: 10000, description: '押したあと様子を見るまでの待ち(既定 400)' }
+    }
+  },
+  run: function (ctx, args) {
+    const input = {}
+    if (args && Array.isArray(args.keys)) input.keys = args.keys
+    if (args && typeof args.key === 'string') input.key = args.key
+    if (args && typeof args.hold === 'number') input.hold = args.hold
+    if (args && args.tap) input.tap = args.tap
+    if (!input.keys && !input.key && !input.tap) throw new Error('押すものがありません(keys か key か tap)')
+
+    const times = Math.min(Math.max(Number(args && args.times) || 1, 1), 50)
+    const waitMs = args && args.waitMs !== undefined ? Number(args.waitMs) : 400
+    for (let i = 0; i < times; i++) sendToGame(ctx, { input })
+
+    return waitFor(function () { return false }, waitMs).then(function () {
+      const info = playStatus(ctx)
+      const what = (input.keys || (input.key ? [input.key] : [])).join(', ') + (input.tap ? ' tap(' + input.tap.x + ',' + input.tap.y + ')' : '')
+      return toolResult('押しました: ' + what + (times > 1 ? ' ×' + times : '') + '\n\n' + statusLines(info).join('\n'),
+        Object.assign({ sent: input, times }, info))
+    })
+  }
+})
+
+/* ゲーム側がイベントを指す鍵。拡張の debugSession.ts と同じ作り方にする。 */
+const liveKeyOf = function (target) {
+  if (String(target.kind) === 'common') return 'c:' + Number(target.commonEventId)
+  return 'e:' + Number(target.mapId) + ':' + Number(target.eventId) + ':' + Number(target.pageId || 1)
+}
+
+/* テキストの行とゲームのコマンド番号を結ぶ。借りている層(runLines / breakpoints)が
+ * 両方向を持っているので、こちらは繋ぐだけ。 */
+const alignFor = function (ctx, target) {
+  const lines = loadDb('runLines')
+  if (!lines) throw new Error('行とコマンドの対応が使えません(拡張をコンパイルしてください)')
+  const found = findTarget(ctx, target)
+  const existing = found.index.paths[found.target.key]
+  if (!existing) throw new Error('そのイベントのテキストがまだありません: ' + found.target.key + '(先に t2f_read で取り出してください)')
+  const text = fs.readFileSync(existing, 'utf8')
+  const body = ctx.t2f.parseFrontMatter(text).body
+  /* lineMap は**本文の中の**0始まりの行。利用者が見るのはファイルの行なので、見出し情報の
+   * ぶんだけずらす。body は改行を畳んだ text の後ろ半分なので、そこで測る(見出し情報が
+   * 無いときは body が元の text そのままなので 0 になる)。 */
+  const flat = text.split('\r\n').join('\n')
+  const offset = flat.length > body.length ? flat.slice(0, flat.length - body.length).split('\n').length - 1 : 0
+  const built = ctx.t2f.compile(body, { lineMap: true })
+  const game = listOf(ctx, found.target)
+  const alignment = lines.alignCommands(game.map(lines.commandMark), built.commands.map(lines.commandMark))
+  return { found, built, alignment, offset, lines, textPath: existing }
+}
+
+TOOLS.push({
+  name: 't2f_play_break',
+  title: 'ブレークポイントを置く',
+  needsLive: true,
+  needsStructure: true,
+  description: 'テキストの**行番号**で止める場所を決めます(1 始まり)。行はゲームのコマンド番号に直して送ります。' +
+    '\nlines を空にするとそのイベントの分を消します。clearAll で全部消します。',
+  annotations: { destructiveHint: false, idempotentHint: true },
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: Object.assign({}, TARGET_ARGS, {
+      lines: { type: 'array', items: { type: 'integer', minimum: 1 }, description: '止めたい行(1 始まり)' },
+      clearAll: { type: 'boolean', description: '全部消す' }
+    })
+  },
+  run: function (ctx, args) {
+    if (args && args.clearAll) {
+      ctx.breakpoints = {}
+      sendToGame(ctx, { breakpoints: {} })
+      return toolResult('ブレークポイントを全部消しました。', { breakpoints: {} })
+    }
+    const marks = loadDb('breakpoints')
+    if (!marks) throw new Error('ブレークポイントの層が使えません')
+    const at = alignFor(ctx, args)
+    const key = liveKeyOf(at.found.target)
+    const wanted = (args && Array.isArray(args.lines) ? args.lines : [])
+    const placed = []
+    const missed = []
+    wanted.forEach(function (one) {
+      // 利用者は1始まりで数える。lineMap は本文の中の0始まり。
+      const spot = marks.breakpointAt(at.built.commands, at.built.lineMap, at.alignment, Number(one) - 1 - at.offset)
+      if (spot.problem) { missed.push({ line: one, why: spot.problem }); return }
+      placed.push({ line: spot.line + 1 + at.offset, commandIndex: spot.game })
+    })
+    ctx.breakpoints = ctx.breakpoints || {}
+    if (placed.length) ctx.breakpoints[key] = placed.map(function (p) { return p.commandIndex })
+    else delete ctx.breakpoints[key]
+    sendToGame(ctx, { breakpoints: ctx.breakpoints })
+
+    const lines = placed.length
+      ? ['置きました: ' + key].concat(placed.map(function (p) { return '  ' + p.line + ' 行目 -> コマンド ' + (p.commandIndex + 1) + ' 番目' }))
+      : ['消しました: ' + key]
+    missed.forEach(function (m) {
+      lines.push('  ' + m.line + ' 行目は置けません(' +
+        (m.why === 'noCommand' ? 'そこから先にコマンドがありません' : 'ゲーム側に対応するコマンドがありません。反映していない変更があるかもしれません') + ')')
+    })
+    return toolResult(lines.join('\n'), { key, placed, missed, textPath: relOf(ctx, at.textPath) })
+  }
+})
+
+TOOLS.push({
+  name: 't2f_play_step',
+  title: '続ける / 1歩進める / 止める',
+  needsLive: true,
+  description: 'ブレークポイントで止まったゲームを動かします。' +
+    'continue=続ける / next=次のコマンド(呼び出しは飛ばす) / stepIn=呼び出しの中へ / stepOut=呼び出しから出る / pause=次のコマンドで止める。' +
+    '\n止まった所は**テキストの行に戻して**返します。',
+  annotations: { destructiveHint: false, idempotentHint: false },
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['how'],
+    properties: {
+      how: { type: 'string', enum: ['continue', 'next', 'stepIn', 'stepOut', 'pause'] },
+      waitMs: { type: 'integer', minimum: 100, maximum: 60000, description: '止まるのを待つ上限(既定 5000)' }
+    }
+  },
+  run: function (ctx, args) {
+    const game = ctx.game()
+    if (!game) throw new Error('ゲームを動かしていません(先に t2f_play_start)')
+    const how = String(args && args.how)
+    const waitMs = (args && args.waitMs) || 5000
+    const before = game.state.paused
+    sendToGame(ctx, { debug: how })
+
+    if (how === 'continue') {
+      return toolResult('続けました。', Object.assign(playStatus(ctx), { how, paused: false }))
+    }
+    return waitFor(function () {
+      const now = game.state.paused
+      return now && (!before || now.at > before.at) ? now : false
+    }, waitMs).then(function (stopped) {
+      if (!stopped) {
+        return toolResult('まだ止まっていません(' + (waitMs / 1000) + '秒)。\n\n' + statusLines(playStatus(ctx)).join('\n'),
+          Object.assign(playStatus(ctx), { how, paused: false, stoppedAt: [] }))
+      }
+      const lines = ['止まりました(' + stopped.reason + ')']
+      const stoppedAt = []
+      stopped.frames.forEach(function (frame) {
+        const at = textLineOf(ctx, frame)
+        stoppedAt.push(at)
+        lines.push('  ' + frame.key + ' の ' + (frame.index + 1) + ' 番目' +
+          (at.line ? '  -> ' + at.textPath + ' の ' + at.line + ' 行目' + (at.exact ? '' : '(近くの行)') : ''))
+      })
+      return toolResult(lines.join('\n'),
+        Object.assign(playStatus(ctx), { how, paused: true, reason: stopped.reason, stoppedAt }))
+    })
+  }
+})
+
+/** 止まったコマンド番号を、テキストの行に戻す。 */
+const textLineOf = function (ctx, frame) {
+  const out = { place: frame.key, commandIndex: frame.index, line: null, textPath: null, exact: false }
+  const m = /^e:(\d+):(\d+):(\d+)$/.exec(String(frame.key || ''))
+  const c = /^c:(\d+)$/.exec(String(frame.key || ''))
+  if (!m && !c) return out
+  try {
+    const at = alignFor(ctx, m
+      ? { mapId: m[1], eventId: m[2], pageId: m[3] }
+      : { commonEventId: c[1] })
+    const target = at.lines.locateCommand(at.alignment, frame.index)
+    if (target.index === undefined) return out
+    const span = at.lines.commandLines(at.built.commands, at.built.lineMap, target.index)
+    out.line = span ? span.from + 1 + at.offset : null
+    out.exact = !!target.exact
+    out.textPath = relOf(ctx, at.textPath)
+  } catch (e) { /* テキストがまだ無いなどは、行が無いだけ */ }
+  return out
+}
+
 /* --read-only で隠す道具。MCP の annotations は「この道具は書くか」をクライアントへ
  * 伝えるもので、こちらの印は「書き込みの一連に属すか」。別の関心なので分けておく。 */
 const isWriteTool = function (tool) {
@@ -1648,9 +2269,11 @@ const isWriteTool = function (tool) {
  * --read-only と同じ「出す/出さない」の仕組みに乗せる。 */
 const toolsFor = function (ctx) {
   const hasStructure = !!ctx.structure()
+  const hasLive = !!ctx.live()
   return TOOLS.filter(function (t) {
     if (ctx.readOnly && isWriteTool(t)) return false
     if (t.needsStructure && !hasStructure) return false
+    if (t.needsLive && !hasLive) return false
     return true
   })
 }
@@ -1824,7 +2447,19 @@ const startServer = function (options) {
    * ただし process.exit を呼ばない。標準出力がパイプのとき書き込みは非同期で、
    * 急いで exit すると後ろの応答が切り落ちる。手を離せばループが枯れて自然に終わる
    * (この殻は見張りもタイマも持たない。400要求・1.3MB で切り落ちゼロを確認済み)。 */
-  process.stdin.on('end', function () { ctx.log('[mcp] stdin が閉じました') })
+  /* 終わるときは**鎖が片付いてから**閉じる。end の瞬間に閉じると、走っている visit の
+   * 足元からサーバを抜くことになる。 */
+  const finish = function (why) {
+    ctx.log('[mcp] ' + why)
+    chain = chain.then(function () { return closeContext(ctx) }).catch(function () {})
+    return chain
+  }
+  process.stdin.on('end', function () { finish('stdin が閉じました') })
+  /* MCP のクライアントは stdin を閉じてから SIGTERM を送る。捕まえたら**自分で終わる** -
+   * 捕まえるだけだと既定の kill が消えて、stdin が開いたままなら止まらなくなる。 */
+  process.on('SIGTERM', function () {
+    finish('SIGTERM を受けました').then(function () { process.exit(0) })
+  })
 
   ctx.log('[mcp] ' + SERVER_NAME + ' ' + version() + ' / root=' + ctx.root +
     ' / strategy=' + ctx.strategy + ' / scope=' + ctx.scope + (ctx.readOnly ? ' / read-only' : ''))
@@ -1976,8 +2611,16 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   }
 }
 
+/** 文脈が持っている長生きするものを閉じる。**冪等。** テストの afterEach と、
+ * 殻の終わり(stdin が閉じたとき・SIGTERM)から呼ぶ。 */
+const closeContext = function (ctx) {
+  if (!ctx || typeof ctx.closeGame !== 'function') return Promise.resolve(false)
+  return ctx.closeGame()
+}
+
 module.exports = {
   PROTOCOL_VERSIONS,
+  closeContext,
   NAME_SOURCES,
   CACHE_TTL_MS,
   CACHE_SCOPE,

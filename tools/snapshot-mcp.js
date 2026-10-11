@@ -51,6 +51,11 @@ const EXCHANGES = [
     noStructure: true,
     request: { jsonrpc: '2.0', id: 10, method: 'tools/call', params: { name: 't2f_usages', arguments: { kind: 'switch', id: 1 }, _meta: META } }
   },
+  {
+    label: 'エラー: 再生の層が無いときの t2f_play_start',
+    noStructure: true,
+    request: { jsonrpc: '2.0', id: 11, method: 'tools/call', params: { name: 't2f_play_start', arguments: {}, _meta: META } }
+  },
   { label: 'エラー: _meta が無い', request: { jsonrpc: '2.0', id: 4, method: 'tools/list', params: {} } },
   {
     label: 'エラー: 知らない版',
@@ -85,8 +90,16 @@ const redact = function (value) {
  * inputSchema/annotations だけで、t2f_usages にはそこから層に依る値が1つも無い
  * (kind は5語の literal)。だから層のある本物の install と1バイト違わない。 */
 const STRUCTURE_STUB = { database: {}, eventLinks: {}, eventPages: {} }
+
+/* 再生の層にも同じことをする。**忘れると CI の core ジョブ(拡張をコンパイルしない)でだけ
+ * 落ちる** — 前に構造の層で実際にそうなった。再生の道具も describeTool に出る値は全部
+ * literal なので、偽物で記録したものは層のある本物と1バイト違わない。
+ * 2つは同じ生成物から来る(DB_DIRS と LIVE_DIRS は同じ順)ので、在る無いを揃えて記録する。 */
+const LIVE_STUB = { gameServer: {}, liveState: {}, liveMonitor: {} }
+
 const withStructure = function (ctx, present) {
   ctx.structure = function () { return present ? STRUCTURE_STUB : undefined }
+  ctx.live = function () { return present ? LIVE_STUB : undefined }
   return ctx
 }
 

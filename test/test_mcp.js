@@ -929,5 +929,77 @@ describe('mcp tools', function () {
 
       expect(response.error.code).to.equal(-32602)
     })
+
+    /* 再生の道具は、ゲームを動かすしかできない(--read-only では t2f_play_start が
+     * 隠れるので、見えても繋ぐ手段が無い)。だから一群ごと消す。 */
+    it('hides the play tools too', function () {
+      const readOnly = mcp.createContext({ root: tmp, readOnly: true })
+      const names = mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: { _meta: META } }, readOnly)
+        .result.tools.map(function (t) { return t.name })
+
+      expect(names.filter(function (n) { return n.indexOf('t2f_play_') === 0 })).to.eql([])
+    })
+  })
+
+  /* 再生の層(gameServer / liveState)は TypeScript の生成物なので、配り方によっては無い。
+   * **この機械に層があるかで検査が変わらないよう、ctx.live を差し替えて両方を見る**
+   * (tools/snapshot-mcp.js が筆記録で同じことをしている)。往復そのものは拡張の側の
+   * test_mcp_play.js が本物の層で見る。 */
+  describe('the live layer', function () {
+    const listed = function (ctx) {
+      return mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: { _meta: META } }, ctx)
+        .result.tools.map(function (t) { return t.name })
+        .filter(function (n) { return n.indexOf('t2f_play_') === 0 })
+    }
+
+    it('offers the nine play tools where it resolved', function () {
+      const withLive = mcp.createContext({ root: tmp })
+      withLive.live = function () { return { gameServer: {}, liveState: {} } }
+
+      expect(listed(withLive)).to.have.lengthOf(9)
+    })
+
+    it('offers none of them where it did not', function () {
+      const without = mcp.createContext({ root: tmp })
+      without.live = function () { return undefined }
+
+      expect(listed(without)).to.eql([])
+    })
+
+    /* 一覧から消すだけでなく、名前で呼ばれても断る。扱いを1つに保つ。 */
+    it('refuses to call one by name where it did not resolve', function () {
+      const without = mcp.createContext({ root: tmp })
+      without.live = function () { return undefined }
+      const response = mcp.handle({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 't2f_play_start', arguments: {}, _meta: META }
+      }, without)
+
+      expect(response.error.code).to.equal(-32602)
+      expect(response.error.message).to.contain('知らない道具')
+    })
+
+    /* **待つのはこの一群だけ**(殻の不変条件: 書き込みの道具は同期のまま)。旗を立てて
+     * 数えると旗の方が腐るので、実際に呼んで Promise が返らないことを見る。 */
+    it('is the only group whose tools may wait', function () {
+      const sync = {
+        t2f_project_info: {},
+        t2f_list: {},
+        t2f_read: { key: 'map001_event001_page1' },
+        t2f_search: { query: 'ごはん' },
+        t2f_syntax: {},
+        t2f_names: { kind: 'switch' },
+        t2f_check: { text: 'ごはん' },
+        t2f_write_plan: { key: 'map001_event001_page1', text: 'ごはん' }
+      }
+      Object.keys(sync).forEach(function (name) {
+        const response = mcp.handle({
+          jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: sync[name], _meta: META }
+        }, ctx)
+        expect(typeof response.then, name + ' が待つようになっています').to.equal('undefined')
+      })
+    })
   })
 })

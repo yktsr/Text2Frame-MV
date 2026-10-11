@@ -56,7 +56,12 @@ describe('mcp over stdio', function () {
   const run = function (args, lines) {
     const r = cp.spawnSync(process.execPath, [CLI, '--root', tmp].concat(args || []), {
       encoding: 'utf8',
-      input: lines.join('\n') + '\n'
+      input: lines.join('\n') + '\n',
+      /* spawnSync の既定は 1MB で、超えると**子を殺して status に出す** - サーバの
+       * 不具合と見分けが付かない。tools/list は1回で約19KB(道具21個の説明文)なので、
+       * 下の「60回ぶん吐き切る」検査が既定のままだと必ず当たる。測りたいのは
+       * 吐き切るかどうかなので、ここは広く取る。 */
+      maxBuffer: 64 * 1024 * 1024
     })
     expect(r.status, r.stderr).to.equal(0)
     return r
