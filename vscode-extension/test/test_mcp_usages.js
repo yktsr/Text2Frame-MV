@@ -71,6 +71,74 @@ describe('mcp usages', function () {
         ]
       }]
     }))
+    /* マップ2 は出口だけのマップ。関門のある出口と無い出口を並べる。
+     * 「どの出口も無条件だ」と読まれると進行の詰まりを見落とすので、ここが肝。 */
+    fs.writeFileSync(path.join(tmp, 'data', 'Map002.json'), JSON.stringify({
+      events: [null, {
+        id: 1,
+        name: '素通り',
+        pages: [{ conditions: {}, list: [{ code: 201, indent: 0, parameters: [0, 1, 5, 5, 0, 0] }, bottom] }]
+      }, {
+        id: 2,
+        name: '関門',
+        pages: [{
+          conditions: {},
+          list: [
+            { code: 111, indent: 0, parameters: [1, 2, 0, 5, 1] },
+            { code: 201, indent: 1, parameters: [0, 1, 9, 9, 0, 0] },
+            { code: 412, indent: 0, parameters: [] },
+            bottom
+          ]
+        }]
+      }, {
+        id: 3,
+        name: 'それ以外のとき',
+        pages: [{
+          conditions: {},
+          list: [
+            { code: 111, indent: 0, parameters: [0, 5, 0] },
+            { code: 411, indent: 0, parameters: [] },
+            { code: 201, indent: 1, parameters: [0, 1, 1, 1, 0, 0] },
+            { code: 412, indent: 0, parameters: [] },
+            bottom
+          ]
+        }]
+      }, {
+        id: 4,
+        name: '選ばせる',
+        pages: [{
+          conditions: {},
+          list: [
+            { code: 102, indent: 0, parameters: [['行く', 'やめる'], 1] },
+            { code: 402, indent: 0, parameters: [0, '行く'] },
+            { code: 201, indent: 1, parameters: [0, 1, 2, 2, 0, 0] },
+            { code: 404, indent: 0, parameters: [] },
+            bottom
+          ]
+        }]
+      }, {
+        id: 5,
+        name: '二重の関門',
+        pages: [{
+          conditions: {},
+          list: [
+            { code: 111, indent: 0, parameters: [0, 5, 0] },
+            { code: 111, indent: 1, parameters: [1, 2, 0, 5, 1] },
+            { code: 201, indent: 2, parameters: [0, 1, 3, 3, 0, 0] },
+            { code: 412, indent: 1, parameters: [] },
+            { code: 412, indent: 0, parameters: [] },
+            bottom
+          ]
+        }]
+      }, {
+        id: 6,
+        name: '行き先は変数',
+        pages: [{ conditions: {}, list: [{ code: 201, indent: 0, parameters: [1, 11, 12, 13, 0, 0] }, bottom] }]
+      }]
+    }))
+    fs.writeFileSync(path.join(tmp, 'data', 'MapInfos.json'), JSON.stringify([
+      null, { id: 1, name: '入口' }, { id: 2, name: '広間' }
+    ]))
     fs.writeFileSync(path.join(tmp, 'data', 'CommonEvents.json'), JSON.stringify([
       null,
       null,
@@ -79,7 +147,7 @@ describe('mcp usages', function () {
     ]))
     fs.writeFileSync(path.join(tmp, 'data', 'System.json'), JSON.stringify({
       switches: ['', '', '', '', '', '扉が開いた'],
-      variables: ['', '', '', '', '', '', '', '話した回数']
+      variables: ['', '', 'ルルを探した', '', '', '', '', '話した回数']
     }))
     ctx = mcp.createContext({ root: tmp })
   })
@@ -117,6 +185,95 @@ describe('mcp usages', function () {
     const common = usages({ kind: 'commonEvent', id: 3 })
     expect(common.structuredContent.inbound.map(function (r) { return r.place })).to.eql(['e:1:1:1'])
     expect(common.structuredContent.inbound[0].how).to.equal('call')
+  })
+
+  /* **マップの「出ていく側」。** index.out('m:N') は構造上いつも空(辺は必ず
+   * 「ページかコモンイベント → もの」の向きで、マップは行き先にしかならない)。
+   * 畳んだ移動から引き直す。 */
+  describe('the exits of a map', function () {
+    const exitsOf = function (id) { return usages({ kind: 'map', id }).structuredContent.exits }
+    // 鍵は丸ごと突き合わせる。部分一致だと e:2:1:1 が eventId=2 にも当たる。
+    const forEvent = function (id, eventId) {
+      return exitsOf(id).filter(function (one) { return one.place === 'e:' + id + ':' + eventId + ':1' })[0]
+    }
+
+    it('lists where you can go from here, with the destination named', function () {
+      const result = usages({ kind: 'map', id: 2 })
+
+      expect(result.structuredContent.exitsTotal).to.equal(6)
+      expect(forEvent(2, 1).toMap).to.equal(1)
+      expect(forEvent(2, 1).toLabel).to.contain('入口')
+      expect(textOf(result)).to.contain('ここから出ていく')
+    })
+
+    /* **今回の肝。** 条件が出ないと「どこへでも行ける」と読まれる(実際に誤読された)。 */
+    it('says what blocks the exit', function () {
+      const gated = forEvent(2, 2)
+
+      expect(gated.guards).to.have.lengthOf(1)
+      expect(gated.guards[0].text).to.contain('Variables[2]')
+      expect(gated.guards[0].text).to.contain('5')
+      expect(gated.guards[0].negated).to.equal(false)
+      expect(textOf(usages({ kind: 'map', id: 2 }))).to.contain('条件: <If: Variables[2], >=, 5>')
+    })
+
+    /* 条件が無いことは**黙らずに言う**。黙ると、条件を取れていないのか本当に無いのかが
+     * 区別できない。 */
+    it('says plainly when an exit has no condition', function () {
+      expect(forEvent(2, 1).guards).to.eql([])
+      expect(textOf(usages({ kind: 'map', id: 2 }))).to.contain('条件なし')
+    })
+
+    it('says it the other way round for the else side', function () {
+      const other = forEvent(2, 3)
+
+      expect(other.guards).to.have.lengthOf(1)
+      expect(other.guards[0].negated, 'それ以外のときだと言えていません').to.equal(true)
+      expect(other.guards[0].text).to.contain('Switches[5]')
+    })
+
+    it('keeps both of a nested pair, outermost first', function () {
+      const deep = forEvent(2, 5)
+
+      expect(deep.guards).to.have.lengthOf(2)
+      expect(deep.guards[0].text).to.contain('Switches[5]')
+      expect(deep.guards[1].text).to.contain('Variables[2]')
+    })
+
+    /* 選択肢の先にある出口を「無条件」と言うと、選ばないと通れないことが消える。 */
+    it('counts a chosen branch as a condition', function () {
+      const picked = forEvent(2, 4)
+
+      expect(picked.guards).to.have.lengthOf(1)
+      expect(picked.guards[0].text).to.contain('行く')
+    })
+
+    /* 行き先が変数で決まる出口を落とすと「出口はこれで全部」と誤解させる。 */
+    it('keeps an exit whose destination a variable decides', function () {
+      const guess = forEvent(2, 6)
+
+      expect(guess.toMap).to.equal(null)
+      expect(guess.byVariable).to.be.a('number')
+      expect(textOf(usages({ kind: 'map', id: 2 }))).to.contain('行き先は変数')
+    })
+
+    /* 入ってくる側はこれまでどおり。マップ1 へはマップ2 から6本入る。 */
+    it('still answers which events come in here', function () {
+      const result = usages({ kind: 'map', id: 1 })
+
+      expect(result.structuredContent.inboundTotal).to.be.greaterThan(0)
+      expect(textOf(result)).to.contain('ここへ入ってくる')
+    })
+
+    /* 覆えない範囲は書いておく。 */
+    it('says what it does not cover', function () {
+      expect(textOf(usages({ kind: 'map', id: 2 }))).to.contain('スクリプトやプラグインコマンド')
+    })
+
+    /* マップ以外では出口の節を出さない(意味が無い)。 */
+    it('offers no exits for anything but a map', function () {
+      expect(usages({ kind: 'switch', id: 5 }).structuredContent.exits).to.eql([])
+    })
   })
 
   /* つながり(操作・呼び出し・出現条件)は commandLinks が持ち、**条件分岐での読みは

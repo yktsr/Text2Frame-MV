@@ -73,6 +73,8 @@ const INSTRUCTIONS = [
   '  素材が無いとゲームは起動してから読み込みで落ちるので、書く前に通してください。',
   '・スイッチや変数の番号は t2f_names で名前から引けます。',
   '・「このスイッチはどこで操作され、どのページの出現条件か」は t2f_usages で引けます。',
+  '・**「ここから先へ進むには何が必要か」も t2f_usages で辿れます。** kind: map でそのマップの',
+  '  出口と通行条件が出るので、条件に出た番号をもう一度引けば、それを満たす場所が分かります。',
   '  テキストではなくゲームのデータから引くので、まだ取り出していないイベントも入ります。',
   '  ただし条件分岐での**読み**は入りません(本文は t2f_search で)。',
   '・書き込みは2段です。t2f_write_plan で何が変わるかを見てから、返ってきた札を t2f_write_apply に渡します。',
@@ -323,6 +325,13 @@ const buildLinks = function (ctx, st) {
     index: new el.LinkIndex(links),
     names,
     total: links.length,
+    /* このマップから出ていく移動。index.out('m:N') は**構造上いつも空**になる -
+     * 辺は必ず「ページかコモンイベント → もの」の向きに張られ、マップは行き先にしか
+     * ならないため。畳むのは借りている層の mapLinks に任せる。 */
+    exitsFrom: function (mapId) {
+      const want = Number(mapId)
+      return el.mapLinks(this.index.all()).filter(function (one) { return one.fromMap === want })
+    },
     /** 鍵ごとの参照箇所。commandRefs が無い配り方では空のまま。 */
     refs,
     hasRefs: !!refModule,
@@ -1042,6 +1051,57 @@ const HOW_TEXT = {
   trigger: '自動実行・並列処理の起動'
 }
 
+/* あるコマンドを囲んでいる関門を、外側から順に返す。
+ *
+ * コマンド列の indent だけで決まる - 条件分岐は indent の1つ内側を支配し、
+ * 分かれ目(411 など)と終わり(412 など)は開始と同じ indent に並ぶ。
+ *
+ * **条件の書き方の規則はここに無い。** 拾ったコマンドを単体で逆変換に通すので、
+ * 比較演算子も対象の種類もプロジェクト自身の語彙で出る。 */
+const OPENS = { 111: 'if', 112: 'loop', 102: 'choices', 301: 'battle' }
+const CLOSES = { 412: true, 413: true, 404: true, 604: true }
+const BRANCHES = { 411: 'else', 402: 'choice', 403: 'cancel', 601: 'win', 602: 'escape', 603: 'lose' }
+
+const guardsAt = function (ctx, list, index) {
+  const target = list[index]
+  if (!target) return []
+  const depth = Number(target.indent) || 0
+  const stack = []
+  for (let i = 0; i < index; i++) {
+    const c = list[i]
+    const at = Number(c.indent) || 0
+    const code = Number(c.code) || 0
+    if (CLOSES[code]) { stack[at] = undefined; continue }
+    if (BRANCHES[code]) {
+      const was = stack[at]
+      if (code === 411) stack[at] = { kind: 'if', cmd: was && was.cmd, negated: true }
+      else stack[at] = { kind: BRANCHES[code], cmd: c }
+      continue
+    }
+    if (OPENS[code]) stack[at] = { kind: OPENS[code], cmd: c }
+  }
+
+  const out = []
+  for (let d = 0; d < depth; d++) {
+    const one = stack[d]
+    if (!one) continue
+    if (one.kind === 'if' && one.cmd) {
+      let said = ''
+      try { said = String(ctx.f2t.decompile([one.cmd], true, { pretty: true })).trim() } catch (e) { said = '' }
+      if (said) out.push({ kind: 'if', negated: !!one.negated, text: said })
+    } else if (one.kind === 'choice') {
+      out.push({ kind: 'choice', negated: false, text: '選択肢「' + String((one.cmd.parameters || [])[1] || '') + '」を選んだとき' })
+    } else if (one.kind === 'cancel') {
+      out.push({ kind: 'choice', negated: false, text: '選択肢をキャンセルしたとき' })
+    } else if (one.kind === 'win' || one.kind === 'escape' || one.kind === 'lose') {
+      out.push({ kind: 'battle', negated: false, text: '戦闘に' + { win: '勝ったとき', escape: '逃げたとき', lose: '負けたとき' }[one.kind] })
+    }
+  }
+  return out
+}
+
+const guardLine = function (g) { return g.text + (g.negated ? '  でないとき' : '') }
+
 /** 鍵を人が読める場所に直す。イベントには名前も添える。 */
 const placeOf = function (links, key) {
   const node = links.node(key)
@@ -1069,11 +1129,14 @@ TOOLS.push({
   description: 'スイッチ・変数・セルフスイッチ・コモンイベント・マップが、どこで操作され、' +
     'どのページの出現条件になっているかを返します。テキストではなくゲームのデータから引くので、' +
     'まだ取り出していないイベントも入ります。' +
+    '\nマップでは、入ってくる側と**出ていく側(行き先と、その出口を塞いでいる条件)**を返します。' +
+    '「ここから先へ進むには何が要るか」は、出口の条件に出た番号をもう一度この道具で引くと辿れます。' +
     '\n返すのは2つの面です。**つながり**(操作・呼び出し・出現条件)と、**参照箇所**' +
     '(そのコマンドがこの番号を指している所。条件分岐 <If: ...> での読みや本文の \\V[5] はこちら)。' +
     '参照箇所のうち操作でもあるものには印が付きます。' +
     '\n参照箇所に入らないもの: セルフスイッチ(規則が無いため)、コメント・スクリプト・' +
-    'プラグインコマンドの中(走査していないため。$gameVariables.value(5) は見えません)。',
+    'プラグインコマンドの中(走査していないため。$gameVariables.value(5) は見えません)。' +
+    '\n出口に入らないもの: スクリプトやプラグインコマンドで動く移動。',
   annotations: { readOnlyHint: true, idempotentHint: true },
   inputSchema: {
     type: 'object',
@@ -1126,8 +1189,56 @@ TOOLS.push({
     }
     const inbound = links.index.in(key)
     const outbound = links.index.out(key)
-    render('ここを操作している / ここから出る条件になっている', inbound, 'in')
-    render('ここが指している先', outbound, 'out')
+    render(kind === 'map' ? 'ここへ入ってくる' : 'ここを操作している / ここから出る条件になっている', inbound, 'in')
+
+    /* マップの「出ていく側」は index.out では答えられない(いつも空)。畳んだ移動から
+     * 引き直し、**その出口を塞いでいる条件も添える**。条件が出ないと「どこへでも行ける」と
+     * 読まれる - 実際にそう誤読された。 */
+    let exits = []
+    if (kind === 'map') {
+      const lists = {}
+      const listFor = function (place) {
+        if (lists[place] === undefined) {
+          lists[place] = null
+          const node = links.node(place)
+          try {
+            if (node && node.kind === 'page') {
+              lists[place] = listOf(ctx, { kind: 'event', mapId: node.mapId, eventId: node.eventId, pageId: node.pageId })
+            } else if (node && node.kind === 'common') {
+              lists[place] = listOf(ctx, { kind: 'common', commonEventId: node.id })
+            }
+          } catch (e) { lists[place] = null }
+        }
+        return lists[place]
+      }
+      exits = links.exitsFrom(Number(args && args.id)).map(function (one) {
+        const list = one.index === undefined ? null : listFor(one.at)
+        return {
+          place: one.at,
+          label: placeOf(links, one.at),
+          commandIndex: one.index,
+          how: one.how,
+          toMap: one.toMap === undefined ? null : one.toMap,
+          toLabel: one.toMap === undefined ? null : links.label('map', { id: one.toMap }),
+          byVariable: one.variableId === undefined ? null : one.variableId,
+          guards: list ? guardsAt(ctx, list, one.index) : []
+        }
+      })
+      lines.push('')
+      lines.push('ここから出ていく (' + exits.length + ' 件' + (exits.length > limit ? '、先頭 ' + limit + ' 件' : '') + ')')
+      if (!exits.length) lines.push('  なし')
+      exits.slice(0, limit).forEach(function (one) {
+        const where = one.toLabel || (one.byVariable ? '行き先は変数' + one.byVariable + 'で決まる' : '行き先が分かりません')
+        lines.push('  ' + one.label + (one.commandIndex === undefined ? '' : ' の ' + (one.commandIndex + 1) + ' 番目') +
+          '  -> ' + where + (one.how === 'vehicle' ? '(乗り物)' : ''))
+        if (!one.guards.length) lines.push('      条件なし')
+        else one.guards.forEach(function (g) { lines.push('      条件: ' + guardLine(g)) })
+      })
+      lines.push('')
+      lines.push('※ スクリプトやプラグインコマンドで動く移動は入りません。')
+    } else {
+      render('ここが指している先', outbound, 'out')
+    }
 
     /* 参照箇所。**引き算しない。**
      * 最初は「全参照 − 操作 = 読み」を考えたが、実測して捨てた:
@@ -1178,6 +1289,9 @@ TOOLS.push({
       outbound: outbound.slice(0, limit).map(function (l) { return shape(l, 'out') }),
       inboundTotal: inbound.length,
       outboundTotal: outbound.length,
+      /* マップのときだけ。出口と、その出口を塞いでいる条件。 */
+      exits: exits.slice(0, limit),
+      exitsTotal: exits.length,
       /* 参照箇所は commandRefs の当たりを全部。操作でもあるものに印を付けるだけで、
        * 読みと書きに分類はしない(データがその軸を持っていない)。 */
       references: spots.slice(0, limit).map(function (spot) {
