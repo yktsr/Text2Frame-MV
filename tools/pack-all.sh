@@ -82,23 +82,21 @@ for f in Text2Frame.js Frame2Text.js; do
   head -1 "$OUT/$f" | grep -q '^/\* Text2Frame-MV | version: ' || fail "$OUT/$f に刻印がありません"
 done
 ok "Text2Frame.js / Frame2Text.js (刻印付き)"
-# 公開されるのは package.json の files に並んだ「ルートの」バンドル。ここで作り直して
-# からでないと古いものが同梱される (RELEASE.md B-1)。
-cp dist/Text2Frame.es.mjs dist/Text2Frame.cjs.js dist/Text2Frame.umd.js .
-for f in Text2Frame.es.mjs Text2Frame.cjs.js Text2Frame.umd.js; do
-  cmp -s "dist/$f" "$f" || fail "ルートの $f を更新できませんでした"
-done
+# 公開されるのは package.json の files に並んだ「ルートの」バンドル。写す手順は
+# tools/copy-bundles.js 1か所に置き、prepack もそこを呼ぶ (RELEASE.md B-1)。
+node tools/copy-bundles.js >/dev/null || fail "ルートのバンドルを作り直せませんでした"
 ok "ルートのバンドル3つを作り直しました"
-BUNDLES_STALE=0
-if ! git diff --quiet -- Text2Frame.es.mjs Text2Frame.cjs.js Text2Frame.umd.js; then
-  BUNDLES_STALE=1
-  printf '\033[33m!!\033[0m ルートのバンドルが更新されました。公開前にコミットしてください:\n'
-  printf '   git add Text2Frame.es.mjs Text2Frame.cjs.js Text2Frame.umd.js\n'
-fi
+# scripts は止めない。ここで prepack(= build:dist)が二度走るが数秒で、
+# 「publish の前に必ず作り直す」仕掛けが本当に効くことをこの経路で確かめられる。
 npm pack --pack-destination "$OUT" >/dev/null
 TGZ="$OUT/yktsr-text2frame-mv-${PKG_VERSION}.tgz"
 [ -f "$TGZ" ] || fail "tarball が見つかりません: $TGZ"
 ok "$(basename "$TGZ") ($(tar tzf "$TGZ" | wc -l | tr -d ' ') ファイル)"
+# バンドルはコミットしていないので、作り忘れると files に並んでいるのに実体が無く、
+# npm は警告もせず tarball から落とす。入っていることを数えて確かめる。
+BUNDLES_IN_TGZ=$(tar tzf "$TGZ" | grep -cE '^package/Text2Frame\.(es\.mjs|cjs\.js|umd\.js)$' || true)
+[ "$BUNDLES_IN_TGZ" -eq 3 ] || fail "tarball の cjs/es/umd が $BUNDLES_IN_TGZ 件です(3 件あるはず)"
+ok "tarball に cjs/es/umd が3つ入っています"
 
 # --- 3. VS Code 拡張 ---------------------------------------------------------
 # vsce package が vscode:prepublish 経由で lib/ にプラグイン本体を取り込む。
@@ -149,11 +147,7 @@ MANIFEST="$OUT/MANIFEST.txt"
   echo
   echo "checks"
   echo "  vsix bundled compiler == repo : OK"
-  if [ "$BUNDLES_STALE" -eq 1 ]; then
-    echo "  committed cjs/es/umd bundles  : STALE (作り直したものをコミットしてください)"
-  else
-    echo "  committed cjs/es/umd bundles  : OK"
-  fi
+  echo "  cjs/es/umd in tarball         : OK (${BUNDLES_IN_TGZ} files, built this run)"
 } > "$MANIFEST"
 cat "$MANIFEST"
 cat <<EOS

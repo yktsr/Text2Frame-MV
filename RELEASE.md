@@ -6,7 +6,7 @@
 | 成果物 | 中身 | 配布先 | バージョン |
 | --- | --- | --- | --- |
 | ツクール用プラグイン | `Text2Frame.js` / `Frame2Text.js` の生ファイル | GitHub Releases | `package.json` の `version`（例 `2.3.0`）|
-| npm パッケージ | CLI（`text2frame` / `frame2text` / `t2f-sync`）とライブラリ | npm `@yktsr/text2frame-mv` | 同上 |
+| npm パッケージ | CLI（`text2frame` / `frame2text` / `t2f-sync` / `t2f-mcp`）とライブラリ | npm `@yktsr/text2frame-mv` | 同上 |
 | VS Code 拡張 | `vscode-extension/` | VS Code Marketplace | `vscode-extension/package.json` の `version`（例 `0.1.3`）|
 
 プラグインと npm パッケージは同じ `package.json` の版番号を共有します。**npm パッケージ＝
@@ -62,7 +62,7 @@ vscode ext: 0.1.3 (pre)
     ...
 checks
   vsix bundled compiler == repo : OK
-  committed cjs/es/umd bundles  : OK
+  cjs/es/umd in tarball         : OK (3 files, built this run)
 ```
 
 ## CI から取る
@@ -151,32 +151,28 @@ cjs/es/umd バンドルには入れていません。npm 経由でしか渡ら�
    バッジのリンクはこの添付ファイルを指しています。
 
 > 注意: バッジのリンク先タグと実際のタグがずれると、README の Download が 404 になります。
-> 現時点で README は `2.3.0` を指していますが、`2.3.0` タグはまだありません。
+> リリースのたびに README のバッジが指すタグを確かめてください。
 
 ---
 
 ## B. npm パッケージ
 
-### B-1. バンドルを作り直す（忘れやすい）
+### B-1. バンドル（手では何もしない）
 
 `npm run build`（rollup）は **`dist/` に出力します**が、公開されるのは `package.json` の
 `files` に並んだ**ルートの** `Text2Frame.cjs.js` / `Text2Frame.es.mjs` / `Text2Frame.umd.js`
-です。この3つは git 管理下のコミット済み成果物で、**自動では更新されません**。
+です。この3つは**コミットしていません**（生成物なので `.gitignore` 済み）。
 
-```bash
-npm run build:dist                 # rollup + ビルドメタの刻印(dist/ へ)
-cp dist/Text2Frame.es.mjs dist/Text2Frame.cjs.js dist/Text2Frame.umd.js .
-git add Text2Frame.es.mjs Text2Frame.cjs.js Text2Frame.umd.js
+手で作り直す必要はありません。`prepack` が `npm pack` と `npm publish` の両方で
+`build:dist` を走らせ、`tools/pack-all.sh` がルートへ写してから tarball を作ります。
+入っていることは `pack:all` が数えて確かめ、`release/MANIFEST.txt` の `checks` に出ます。
+
+```
+checks
+  cjs/es/umd in tarball         : OK (3 files, built this run)
 ```
 
-更新できているかは、直近で足した識別子を探すのが早いです:
-
-```bash
-grep -c buildPullText Text2Frame.cjs.js     # 0 なら古い
-```
-
-`main` は生の `Text2Frame.js` なので `require('@yktsr/text2frame-mv')` は影響を受けません。
-古くなるのは `.cjs.js` / `.es.mjs` / `.umd.js` を直接読む利用者だけです。
+`main` は生の `Text2Frame.js` なので `require('@yktsr/text2frame-mv')` はこの3つに依りません。
 
 ### B-2. 中身を確認する
 
@@ -286,13 +282,14 @@ npm init -y
 npm install ../yktsr-text2frame-mv-<version>.tgz
 ```
 
-`node_modules/.bin/` に `text2frame` / `frame2text` / `t2f-sync` の3つが並べば成功です。
+`node_modules/.bin/` に `text2frame` / `frame2text` / `t2f-sync` / `t2f-mcp` の4つが並べば成功です。
 あとは `data/Map001.json` と `data/CommonEvents.json` のあるプロジェクトで:
 
 ```bash
 npx frame2text --mode batch --data-dir data --text-dir text   # 取り出し
 npx text2frame --mode batch --text-dir text                               # 反映
 npx t2f-sync --help                                                       # 双方向同期
+npx t2f-mcp --help                                                        # MCP サーバ(使い方が出るだけ。サーバは始まらない)
 ```
 
 `frame2text` / `text2frame` は結果を JSON で標準出力に出します。`"failed": 0` と、
@@ -361,9 +358,9 @@ CLI では通らない経路（NW.js、`$gameMessage` への出力、プラグ�
 
 npm:
 
-- [ ] ルートの `Text2Frame.cjs.js` / `.es.mjs` / `.umd.js` を作り直してコミット
+- [ ] `release/MANIFEST.txt` の `cjs/es/umd in tarball` が OK（`prepack` が作るので手では触らない）
 - [ ] `npm publish --dry-run` の中身を確認
-- [ ] tarball を別プロジェクトへ入れて3つの CLI を実行（D-1）
+- [ ] tarball を別プロジェクトへ入れて4つの CLI を実行（D-1）
 
 VS Code 拡張:
 

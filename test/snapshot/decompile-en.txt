@@ -1,0 +1,4735 @@
+# 書き出しのスナップショット (englishTag: true, omitDefaults: false)
+# tools/snapshot-text.js が作る生成物。手で編集しない。
+# 作り直す: npm run update-snapshot
+
+===== Basic =====
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<Face: Actor1(0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！（顔）
+
+<Face: (0)><Background: Window><WindowPosition: Top>
+今日も一日がんばるぞい！（上）
+
+<Face: (0)><Background: Window><WindowPosition: Middle>
+今日も一日がんばるぞい！（中）
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！（下）
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！（ウインドウ）
+
+<Face: (0)><Background: Dim><WindowPosition: Bottom>
+今日も一日がんばるぞい！（暗く）
+
+<Face: (0)><Background: Transparent><WindowPosition: Bottom>
+今日も一日がんばるぞい！（透明）
+
+<Face: Actor1(0)><Background: Dim><WindowPosition: Top>
+今日も一日がんばるぞい！（AC1，上，暗く）
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Top>
+青葉
+今日も一日がんばるぞい！(上,暗い)
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Middle>
+今日も一日がんばるぞい！(中，暗く)
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Bottom>
+今日も一日がんばるぞい！(下，暗く)
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Middle>
+今日も一日がんばるぞい！(中、暗く)
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Middle>
+今日も一日がんばるぞい！(中、暗く)
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Middle>
+今日も一日がんばるぞい！(中、暗く)
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Bottom>
+今日も一日がんばるぞい！(下)
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+// 今日も一日がんばるぞい！（コメントアウト）
+ 今日も一日がんばるぞい！（コメントアウト）
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Top>
+青葉
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+
+<Face: Actor1(2)><Background: Transparent><WindowPosition: Top>
+今日も一日がんばるぞい！(上、透明)
+
+<Face: Actor1(0)><Background: Dim><WindowPosition: Top>
+今日も<一日>がんばる<ぞい！
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+メガ粒子〜
+レクイエム〜
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Top>
+青葉はじめひふみゆん
+シュート！
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+\N[1]
+えと…憧れてた\N[2]さんの下でお手伝いができてこれ以上ないくらい充実した１年だったと思いますけど
+
+<Face: Actor1(0)><Background: Dim><WindowPosition: Top>
+\N[1]
+もう少し役に立てたらって。
+村人以外のキャラもたくさん作らせていただけたらと思います
+
+===== Crlf =====
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<Face: Actor1(0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑（顔）
+
+<Face: (0)><Background: Window><WindowPosition: Top>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑（上）
+
+<Face: (0)><Background: Window><WindowPosition: Middle>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑（中）
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑（下）
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑（ウインドウ）
+
+<Face: (0)><Background: Dim><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑（暗く）
+
+<Face: (0)><Background: Transparent><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑（透明）
+
+<Face: Actor1(0)><Background: Dim><WindowPosition: Top>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑（AC1，上，暗く）
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Top>
+青葉
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑(上,暗い)
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Middle>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑(中，暗く)
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑(下，暗く)
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Middle>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑(中、暗く)
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Middle>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑(中、暗く)
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Middle>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑(中、暗く)
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑(下)
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+// 今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑（コメントアウト）
+ 今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑（コメントアウト）
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Top>
+青葉
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<Face: Actor1(2)><Background: Transparent><WindowPosition: Top>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑(上、透明)
+
+<Face: Actor1(0)><Background: Dim><WindowPosition: Top>
+今日も<一日>がんばる<ぞい！(و ・ㅂ・)و ̑̑
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+メガ粒子〜
+レクイエム〜
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Top>
+青葉はじめひふみゆん
+シュート！(و ・ㅂ・)و ̑̑
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+\N[1]
+えと…憧れてた\N[2]さんの下でお手伝いができてこれ以上ないくらい充実した１年だったと思いますけど
+
+<Face: Actor1(0)><Background: Dim><WindowPosition: Top>
+\N[1]
+もう少し役に立てたらって。
+村人以外のキャラもたくさん作らせていただけたらと思います
+
+===== Name =====
+<Face: (0)><Background: Window><WindowPosition: Bottom><Name: 涼風青葉>
+今日も一日がんばるぞい！
+
+<Face: (0)><Background: Window><WindowPosition: Bottom><Name: 涼風青葉>
+今日も一日がんばるぞい！
+
+<Face: (0)><Background: Window><WindowPosition: Bottom><Name: 涼風青葉>
+今日も一日がんばるぞい！
+
+<Face: Actor1(0)><Background: Window><WindowPosition: Bottom><Name: 涼風青葉>
+今日も一日がんばるぞい！
+
+<Face: Actor1(0)><Background: Dim><WindowPosition: Top><Name: 涼風青葉>
+今日も一日がんばるぞい！
+
+<Face: Actor1(0)><Background: Transparent><WindowPosition: Middle><Name: 涼風青葉>
+今日も一日がんばるぞい！
+
+<Face: (0)><Background: Transparent><WindowPosition: Middle>
+今日も一日がんばるぞい！
+
+<Face: (0)><Background: Window><WindowPosition: Bottom><Name: 涼風青葉>
+今日も一日がんばるぞい！
+
+<Face: (0)><Background: Window><WindowPosition: Bottom><Name:   涼風青葉>
+今日も一日がんばるぞい！
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+<Name:>
+今日も一日がんばるぞい！
+
+<Face: (0)><Background: Window><WindowPosition: Bottom><Name:  >
+今日も一日がんばるぞい！
+
+===== Comment Out 1 =====
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も<一日>がんばる<ぞい！
+
+<Fadein>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も<一日>がんばる<ぞい！
+
+===== Comment Out 2 =====
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も<一日>がんばる<ぞい！
+
+<Fadein>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も<一日>がんばる<ぞい！
+今日も<一日>がんばる<ぞい！
+今日も<一日>がんばる<ぞい！ %ぞいってなにー？
+
+<Script>
+var i = 0;
+for(i=0;i<10;i++){
+  console.log("今日も一日がんばるぞい！");
+}
+</Script>
+
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も<一日>がんばる<ぞい！
+今日も<一日>がんばる<ぞい！
+
+===== Audio =====
+<PlayBGM: Battle1, 91, 99, 1>
+<FadeoutBGM: 5>
+<PlayBGM: Ship1, 91, 99, 1>
+<FadeoutBGM: 20>
+<SaveBGM>
+<SaveBGM>
+<ReplayBGM>
+<ReplayBGM>
+<PlayBGM: None, 90, 100, 0>
+<PlayBGM: None, 91, 99, 1>
+<PlayBGM: None, 90, 100, 0>
+<PlayBGM: None, 90, 100, 0>
+<PlayBGM: None, 90, 100, 0>
+<PlayBGM: None, 90, 100, 0>
+<PlayBGM: None, 90, 100, 0>
+<PlayBGS: City, 90, 100, 0>
+<FadeoutBGS: 1>
+<PlayBGS: City, 0, 50, 0>
+<FadeoutBGS: 20>
+<PlayBGS: None, 90, 100, 0>
+<PlayBGS: None, 91, 99, 1>
+<PlayBGS: None, 90, 100, 0>
+<PlayBGS: None, 90, 100, 0>
+<PlayBGS: None, 90, 100, 0>
+<PlayBGS: None, 90, 100, 0>
+<PlayBGS: None, 90, 100, 0>
+<PlaySE: Save, 91, 99, 1>
+<PlaySE: Save, 90, 100, 0>
+<PlaySE: None, 90, 100, 0>
+<PlaySE: None, 91, 99, 1>
+<PlaySE: None, 90, 100, 0>
+<StopSE>
+<StopSE>
+<PlayME: Victory1, 91, 99, 1>
+<PlayME: Victory1, 90, 100, 0>
+<PlayME: None, 90, 100, 0>
+<PlayME: None, 91, 99, 1>
+<PlayME: None, 90, 100, 0>
+<PlayME: None, 90, 100, 0>
+<PlayME: None, 90, 100, 0>
+<ChangeBattleBGM: Battle1, 91, 99, 1>
+<ChangeBattleBGM: Battle1, 90, 100, 0>
+<ChangeBattleBGM: None, 90, 100, 0>
+<ChangeBattleBGM: None, 90, 100, 0>
+<ChangeBattleBGM: None, 90, 100, 0>
+<ChangeBattleBGM: None, 90, 100, 0>
+
+===== Extend =====
+<PluginCommand: import_message_to_event text basic.txt 1 8 true>
+<PluginCommand: import_message_to_event text basic.txt 1 8 true>
+<PluginCommand: import_message_to_event text basic.txt 1 8 true>
+<CommonEvent: 2>
+<CommonEvent: 2>
+<CommonEvent: 2>
+<Fadeout>
+<Fadeout>
+<Fadeout>
+<Fadein>
+<Fadein>
+<Fadein>
+<Wait: 60>
+<Wait: 60>
+<Script>
+var i = 0;
+for(i=0;i<10;i++){
+  console.log("今日も一日がんばるぞい！");
+}
+</Script>
+
+<Script>
+var i = 0;
+for(i=0;i<10;i++){
+  console.log("今日も一日がんばるぞい！");
+}
+</Script>
+
+<Script>
+var i = 0;
+for(i=0;i<10;i++){
+  console.log("今日も一日がんばるぞい！");
+}
+
+var i = 0;
+for(i=0;i<10;i++){
+  console.log(i);
+}
+</Script>
+
+<comment>
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+</comment>
+<comment>
+ぞいってなにｗｗｗ
+</comment>
+
+===== Mix =====
+<PlayBGM: Battle1, 91, 99, 1>
+
+<Face: Actor1(0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！（顔）
+
+<CommonEvent: 2>
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Middle>
+今日も一日がんばるぞい！(中，暗く)
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も<一日>がんばる<ぞい！
+
+<Script>
+var i = 0;
+for(i=0;i<10;i++){
+  console.log("今日も一日がんばるぞい！");
+}
+</Script>
+
+<Fadeout>
+<Wait: 60>
+<Fadein>
+<PlaySE: Save, 91, 99, 1>
+<PlaySE: None, 90, 100, 0>
+<PlayBGM: None, 90, 100, 0>
+<comment>
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+今日も一日がんばるぞい！
+</comment>
+<PluginCommand: import_message_to_event text basic.txt 1 8 true>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も<一日>がんばる<ぞい！
+
+<ChangeBattleBGM: Battle1, 90, 100, 0>
+
+===== Diff / Add block =====
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+Hello
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+Goodbye
+
+===== Diff / Modify block =====
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+Hi
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+Goodbye
+
+===== Diff / Remove block =====
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+Goodbye
+
+===== Diff / No change =====
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+Hello
+
+===== Diff / Empty existing =====
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+Hello
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+Goodbye
+
+===== Context =====
+<comment>
+この辺でいい感じのBGMを挿入
+</comment>
+<comment>
+この辺でいい感じのBGMを挿入
+</comment>
+<comment>
+この辺でいい感じのBGMを挿入
+</comment>
+<comment>
+この辺でいい感じのBGMを挿入
+</comment>
+<Script>
+console.log("今日も一日がんばるぞい！ ")
+</Script>
+
+<Script>
+console.log("今日も一日がんばるぞい！ ")
+</Script>
+
+<Script>
+console.log("今日も一日がんばるぞい！ ")
+</Script>
+
+<Script>
+console.log("今日も一日がんばるぞい！ ")
+</Script>
+
+<comment>
+この辺でいい感じのBGMを挿入
+あと派手なSEも挿入
+</comment>
+<comment>
+この辺でいい感じのBGMを挿入
+あと派手なSEも挿入
+</comment>
+<comment>
+この辺でいい感じのBGMを挿入
+あと派手なSEも挿入
+</comment>
+<comment>
+この辺でいい感じのBGMを挿入
+あと派手なSEも挿入
+</comment>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+メガ粒子〜
+レクイエム〜
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Top>
+青葉はじめひふみゆん
+シュート！(ﻭ ･ㅂ･)ﻭ ̑̑
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+メガ粒子〜レクイエム〜
+
+<comment>
+この辺でいい感じのBGMを挿入
+</comment>
+
+<Face: Actor1(1)><Background: Dim><WindowPosition: Top>
+青葉はじめひふみゆん
+
+===== Message / Show Choices/document-sample =====
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+長老に会って挨拶は済ませてきたかい？
+
+<ShowChoices: Window, Right, 1, 2>
+<When: はい>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+そうか。それならよかった。
+早速長老の依頼のとおり、北に向かってくれないかい。
+
+<When: いいえ>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+それはいけない。
+長老は君のような若者を探しているんだ。
+挨拶に行って話を聞いてくれないかい。
+
+<End>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+長老に会って挨拶は済ませてきたかい？
+
+<ShowChoices: Window, Right, 1, 2>
+<When: はい>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+そうか。それならよかった。
+早速長老の依頼のとおり、北に向かってくれないかい。
+
+<When: いいえ>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+それはいけない。
+長老は君のような若者を探しているんだ。
+挨拶に行って話を聞いてくれないかい。
+
+<End>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+他にも話したいことがあるんだ。
+何が聞きたい？
+
+<ShowChoices: Transparent, Middle, 1, Branch>
+<When: 勇者ノーゼンの伝説>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+勇者ノーゼンは〜〜（省略
+
+<When: 魔王に挑む冒険者の現状>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+魔王に挑む冒険者は〜〜（省略
+
+<When: 魔王について判明している点>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+魔王について判明している点は〜〜（省略
+
+<WhenCancel>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+・・・え、僕の話、長すぎた？ごめんごめん。
+
+<End>
+
+===== Message / Show Choices/all-args =====
+<ShowChoices: Window, Left, None, Branch>
+<When: Yes>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ほげ
+
+<WhenCancel>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ほげ when cancel
+
+<End>
+<ShowChoices: Window, Left, None, Branch>
+<When: Yes>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ほげ
+
+<WhenCancel>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ほげ when cancel
+
+<End>
+<ShowChoices: Window, Left, None, Branch>
+<When: Yes>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ほげ
+
+<WhenCancel>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ほげ when cancel
+
+<End>
+<ShowChoices: Dim, Middle, 1, Disallow>
+<When: Alice>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+アリス
+
+<When: Bob>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ボブ
+
+<When: Carol>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+キャロル
+
+<When: Dave>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+デイブ
+
+<End>
+<ShowChoices: Dim, Middle, 1, Disallow>
+<When: Alice>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+アリス
+
+<When: Bob>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ボブ
+
+<When: Carol>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+キャロル
+
+<When: Dave>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+デイブ
+
+<End>
+<ShowChoices: Transparent, Right, 2, 1>
+<When: Alice>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+アリス
+
+<When: Bob>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ボブ
+
+<When: Carol>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+キャロル
+
+<When: Dave>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+デイブ
+
+<When: Eve>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+イブ
+
+<When: Isaac>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+アイザック
+
+<End>
+<ShowChoices: Transparent, Right, 2, 1>
+<When: Alice>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+アリス
+
+<When: Bob>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ボブ
+
+<When: Carol>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+キャロル
+
+<When: Dave>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+デイブ
+
+<When: Eve>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+イブ
+
+<When: Isaac>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+アイザック
+
+<End>
+<ShowChoices: Transparent, Right, 3, 4>
+<When: Alice>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+アリス
+
+<When: Bob>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ボブ
+
+<When: Carol>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+キャロル
+
+<When: Dave>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+デイブ
+
+<End>
+<ShowChoices: Transparent, Right, 4, 5>
+<When: Alice>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+アリス
+
+<When: Bob>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ボブ
+
+<When: Carol>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+キャロル
+
+<When: Dave>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+デイブ
+
+<When: Eve>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+イブ
+
+<End>
+<ShowChoices: Transparent, Right, 5, 6>
+<When: Alice>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+アリス
+
+<When: Bob>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ボブ
+
+<When: Carol>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+キャロル
+
+<When: Dave>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+デイブ
+
+<When: Eve>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+イブ
+
+<When: Isaac>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+アイザック
+
+<End>
+<ShowChoices: Transparent, Right, 6, 6>
+<When: Alice>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+アリス
+
+<When: Bob>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ボブ
+
+<When: Carol>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+キャロル
+
+<When: Dave>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+デイブ
+
+<When: Eve>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+イブ
+
+<When: Isaac>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+アイザック
+
+<End>
+<ShowChoices: Transparent, Right, None, 2>
+<When: Alice>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+アリス
+
+<When: Bob>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ボブ
+
+<When: Carol>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+キャロル
+
+<When: Dave>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+デイブ
+
+<When: Eve>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+イブ
+
+<When: Isaac>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+アイザック
+
+<End>
+<ShowChoices: Dim, Right, 1, 2>
+<When: Yes>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ほげ
+
+<When: No>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ほげほげ
+
+<End>
+<ShowChoices: Window, Left, 1, 2>
+<When: Yes>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ほげ
+
+<When: No>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ほげほげ
+
+<End>
+<ShowChoices: Transparent, Right, None, 2>
+<When: Yes>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ほげ
+
+<When: No>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+all-args-end
+
+<End>
+
+===== Message / Show Choices/no-args =====
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+長老に会って挨拶は済ませてきたかい？
+
+<ShowChoices: Window, Right, 1, 2>
+<When: はい>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+そうか。それならよかった。
+早速長老の依頼のとおり、北に向かってくれないかい。
+
+<When: いいえ>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+それはいけない。
+長老は君のような若者を探しているんだ。
+挨拶に行って話を聞いてくれないかい。
+
+<End>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+長老に会って挨拶は済ませてきたかい？
+
+<ShowChoices: Window, Right, 1, 2>
+<When: はい>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+そうか。それならよかった。
+早速長老の依頼のとおり、北に向かってくれないかい。
+
+<When: いいえ>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+それはいけない。
+長老は君のような若者を探しているんだ。
+挨拶に行って話を聞いてくれないかい。
+
+<End>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+長老に会って挨拶は済ませてきたかい？
+
+<ShowChoices: Window, Right, 1, 2>
+<When: はい>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+そうか。それならよかった。
+早速長老の依頼のとおり、北に向かってくれないかい。
+
+<When: いいえ>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+それはいけない。
+長老は君のような若者を探しているんだ。
+挨拶に行って話を聞いてくれないかい。
+
+<End>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+長老に会って挨拶は済ませてきたかい？
+
+<ShowChoices: Window, Right, 1, 2>
+<When: はい>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+そうか。それならよかった。
+早速長老の依頼のとおり、北に向かってくれないかい。
+
+<When: いいえ>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+それはいけない。
+長老は君のような若者を探しているんだ。
+挨拶に行って話を聞いてくれないかい。
+
+<End>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+長老に会って挨拶は済ませてきたかい？
+
+<ShowChoices: Window, Right, 1, 2>
+<When: はい>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+そうか。それならよかった。
+早速長老の依頼のとおり、北に向かってくれないかい。
+
+<When: いいえ>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+それはいけない。
+長老は君のような若者を探しているんだ。
+挨拶に行って話を聞いてくれないかい。
+
+<End>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+長老に会って挨拶は済ませてきたかい？
+
+<ShowChoices: Window, Right, 1, 2>
+<When: はい>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+そうか。それならよかった。
+早速長老の依頼のとおり、北に向かってくれないかい。
+
+<When: いいえ>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+それはいけない。
+長老は君のような若者を探しているんだ。
+挨拶に行って話を聞いてくれないかい。
+
+<End>
+
+===== Message / Show Choices/nest =====
+<ShowChoices: Window, Right, 1, Branch>
+<When: Yes>
+    <ShowChoices: Window, Right, 1, 2>
+    <When: Yes>
+    <When: No>
+    <End>
+<When: No>
+    <ShowChoices: Window, Right, 1, 2>
+    <When: Yes>
+    <When: No>
+        <ShowChoices: Window, Right, 1, 2>
+        <When: Yes>
+        <When: No>
+            <ShowChoices: Window, Right, 1, 2>
+            <When: Yes>
+            <When: No>
+            <End>
+        <End>
+    <End>
+<WhenCancel>
+    <ShowChoices: Window, Right, 1, Branch>
+    <When: Yes>
+    <When: No>
+    <WhenCancel>
+        <ShowChoices: Window, Right, 1, Branch>
+        <When: Yes>
+        <When: No>
+        <WhenCancel>
+        <End>
+    <End>
+<End>
+<If: Switches[1], ON>
+    <ShowChoices: Window, Right, 1, 2>
+    <When: Yes>
+        <If: Switches[1], ON>
+            <ShowChoices: Window, Right, 1, 2>
+            <When: Yes>
+            <When: No>
+            <End>
+        <End>
+    <When: No>
+        <If: Switches[1], ON>
+            <ShowChoices: Window, Right, 1, 2>
+            <When: Yes>
+            <When: No>
+            <End>
+        <End>
+    <End>
+<End>
+<ShowChoices: Window, Right, 1, 1>
+<When: Yes>
+    <ShowChoices: Window, Right, 1, 1>
+    <When: Yes>
+        <ShowChoices: Window, Right, 1, 1>
+        <When: Yes>
+            <ShowChoices: Window, Right, 1, 1>
+            <When: Yes>
+                <ShowChoices: Window, Right, 1, 1>
+                <When: Yes>
+                    <ShowChoices: Window, Right, 1, 1>
+                    <When: Yes>
+                        <ShowChoices: Window, Right, 1, 1>
+                        <When: Yes>
+                            <ShowChoices: Window, Right, 1, 1>
+                            <When: Yes>
+                                <ShowChoices: Window, Right, 1, 1>
+                                <When: Yes>
+                                    <ShowChoices: Window, Right, 1, 1>
+                                    <When: Yes>
+                                    <End>
+                                <End>
+                            <End>
+                        <End>
+                    <End>
+                <End>
+            <End>
+        <End>
+    <End>
+<End>
+
+===== Message / Show Choices/ten-choices =====
+<ShowChoices: Window, Right, 10, 9>
+<When: 11111>
+<When: 22222>
+<When: 33333>
+<When: 44444>
+<When: 55555>
+<When: 66666>
+<When: 77777>
+<When: 88888>
+<When: 99999>
+<When: 1010101010>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+メッセージ
+1010101010
+
+<End>
+
+===== Message / Show Choices/practical-case =====
+<Face: (0)><Background: Window><WindowPosition: Bottom><Name: プリシラ>
+何かお探しですか？それとも何か手伝いが必要ですか？
+
+<ShowChoices: Window, Middle, None, Branch>
+<When: 食事を作ってほしい>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom><Name: リード>
+食事を頼めないか。
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+腹ペコなんだ。
+金ならある。
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom><Name: プリシラ>
+わかりました。何が食べたいですか？
+
+    <ShowChoices: Window, Right, 1, 4>
+    <When: ドラゴンの焼き肉 (500G)>
+        <Set: 1, 500>
+    <When: エルフのフルーツ (400G)>
+        <Set: 1, 400>
+    <When: グリフォンの卵焼き (800G)>
+        <Set: 1, 800>
+    <When: やっぱりいらない>
+        <Set: 1, 0>
+    <End>
+    <Set: 2, GameData[gold]>
+    <If: Variables[1], ==, 0>
+
+        <Face: (0)><Background: Window><WindowPosition: Bottom><Name: リード>
+やっぱりいらない。
+
+        <Face: (0)><Background: Window><WindowPosition: Bottom>
+すまないな、また今度来るよ
+
+        <Face: (0)><Background: Window><WindowPosition: Bottom><Name: プリシラ>
+そうですか・・・。
+
+        <Face: (0)><Background: Window><WindowPosition: Bottom>
+またお待ちしております。
+
+        <Face: (0)><Background: Window><WindowPosition: Bottom><Name: リード>
+じゃあ、またな。
+
+    <Else>
+        <If: Variables[2], >=, Variables[1]>
+
+            <Face: (0)><Background: Window><WindowPosition: Bottom><Name: プリシラ>
+お買い上げありがとうございます♪
+
+            <Face: (0)><Background: Window><WindowPosition: Bottom>
+おまけで試作品のゴーレムの岩塩キャンディがつくんですがいりますか？
+
+            <ShowChoices: Window, Right, 1, 2>
+            <When: はい>
+
+                <Face: (0)><Background: Window><WindowPosition: Bottom><Name: プリシラ>
+ありがとうございます！今度感想を聞かせてください！
+
+            <When: いいえ>
+
+                <Face: (0)><Background: Window><WindowPosition: Bottom><Name: プリシラ>
+そうですか・・・。頑張って作ったのですが残念です。
+
+            <End>
+        <Else>
+
+            <Face: (0)><Background: Window><WindowPosition: Bottom><Name: プリシラ>
+・・・残念ながらお金が足りませんね。
+
+        <End>
+    <End>
+<When: この近辺の地図を知っているか>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom><Name: プリシラ>
+それなら、このお店の隣のお店に売っていますよ。
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom><Name: リード>
+そうか、ありがとう。
+
+<When: 新しい武器を手に入れたい>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom><Name: プリシラ>
+それなら、この町の東にある武器屋さんがおすすめです。
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+もしくは、錬成石があればうちでお手持ちの武器を強化できますよ。
+
+    <ShowChoices: Window, Right, 1, 2>
+    <When: 頼む>
+        <If: Items[1]>
+
+            <Face: (0)><Background: Window><WindowPosition: Bottom><Name: プリシラ>
+少々お待ちください。
+
+            <Fadeout>
+
+            <Face: (0)><Background: Transparent><WindowPosition: Middle>
+　　　　　１０分後・・・
+
+            <Fadein>
+
+            <Face: (0)><Background: Window><WindowPosition: Bottom><Name: プリシラ>
+完成しました！！
+
+<comment>
+MEの設定がイケてないので誰か考えてほしい
+
+助けて・・・
+    
+</comment>
+            <PlayME: Item, 90, 100, 0>
+
+            <Face: (0)><Background: Window><WindowPosition: Top>
+リードは新たな武器を手に入れた！
+
+        <Else>
+
+            <Face: (0)><Background: Window><WindowPosition: Bottom><Name: プリシラ>
+残念ですが、錬成石をお持ちではないようですね。
+
+        <End>
+    <When: 頼まない>
+    <End>
+<WhenCancel>
+
+    <Face: Actor1(0)><Background: Window><WindowPosition: Bottom><Name: リード>
+すまない、急いでいるから後でまた来るよ。
+
+    <Face: Actor1(1)><Background: Window><WindowPosition: Bottom><Name: プリシラ>
+またのご来店をお待ちしております！
+
+<End>
+
+===== Message / Input Number =====
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<InputNumber: 1, 2>
+<InputNumber: 1, 2>
+<InputNumber: 1, 2>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<InputNumber: 20, 10>
+<InputNumber: 20, 10>
+<InputNumber: 20, 10>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+===== Message / Select Item =====
+<SelectItem: 1, Regular Item>
+<SelectItem: 1, Regular Item>
+<SelectItem: 1, Regular Item>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<SelectItem: 20, Hidden Item A>
+<SelectItem: 20, Hidden Item A>
+<SelectItem: 20, Hidden Item A>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<SelectItem: 15, Key Item>
+<SelectItem: 15, Key Item>
+<SelectItem: 15, Key Item>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<SelectItem: 300, Hidden Item B>
+<SelectItem: 300, Hidden Item B>
+<SelectItem: 300, Hidden Item B>
+
+===== Message / Show Scrolling Text =====
+<ShowScrollingText: 2, OFF>
+世界は魔王によって滅ぼされた。
+しかし、勇者は立ち上がった。
+</ShowScrollingText>
+
+<ShowScrollingText: 2, OFF>
+世界は魔王によって滅ぼされた。
+しかし、勇者は立ち上がった。
+</ShowScrollingText>
+
+<ShowScrollingText: 2, OFF>
+世界は魔王によって滅ぼされた。
+しかし、勇者は立ち上がった。
+</ShowScrollingText>
+
+<ShowScrollingText: 2, OFF>
+世界は魔王によって滅ぼされた。
+しかし、勇者は立ち上がった。
+</ShowScrollingText>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<ShowScrollingText: 1, ON>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 2, ON>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 3, ON>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 4, ON>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 5, ON>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 6, OFF>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 7, OFF>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 8, OFF>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<ShowScrollingText: 9, OFF>
+世界は魔王によって滅ぼされた。(速度限界突破1)
+</ShowScrollingText>
+
+<ShowScrollingText: 10, OFF>
+世界は魔王によって滅ぼされた。(速度限界突破2)
+</ShowScrollingText>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<ShowScrollingText: 2, OFF>
+世界は魔王によって滅ぼされた。
+</ShowScrollingText>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<ShowScrollingText: 2, OFF>
+この世界は、魔法が存在し、神話の生き物たちが跋扈するファンタジックな世界である。
+かつて、この世界を支配していた邪悪な存在が滅び、平和が訪れた。
+
+しかし、最近、世界各地で謎の事件が起き始め、闇の力が再び復活しようとしている。
+主人公は、偶然事件に巻き込まれ、その解決に乗り出すことになる。
+
+果たして、主人公たちは邪悪な力を打ち破り、世界を救うことができるのだろうか？
+
+by ChatGPT
+</ShowScrollingText>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<ShowScrollingText: 2, OFF>
+<Name: 青葉>
+今日も一日がんばるぞい！
+<=: 1, 2>
+</ShowScrollingText>
+
+===== Game Progression / Switch =====
+<Switch: 2, ON>
+<Switch: 2, ON>
+<Switch: 2, ON>
+<Switch: 2, ON>
+<Switch: 2, ON>
+<Switch: 2, ON>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<Switch: 3, OFF>
+<Switch: 3, OFF>
+<Switch: 3, OFF>
+<Switch: 3, OFF>
+<Switch: 3, OFF>
+<Switch: 3, OFF>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<Switch: 4-40, ON>
+<Switch: 4-40, ON>
+<Switch: 4-40, ON>
+<Switch: 4-40, ON>
+<Switch: 4-40, ON>
+<Switch: 4-40, ON>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<Switch: 5-50, OFF>
+<Switch: 5-50, OFF>
+<Switch: 5-50, OFF>
+<Switch: 5-50, OFF>
+<Switch: 5-50, OFF>
+<Switch: 5-50, OFF>
+<Switch: 20, ON>
+<Switch: 5000, OFF>
+<Switch: 33-444, ON>
+
+===== Game Progression / Control variables/constant =====
+<Set: 1, 10>
+<Set: 1, 10>
+<Set: 1, 10>
+<Set: 1, 10>
+<Set: 1, 10>
+<Add: 2, 20>
+<Add: 2, 20>
+<Add: 2, 20>
+<Add: 2, 20>
+<Add: 2, 20>
+<Sub: 3, 30>
+<Sub: 3, 30>
+<Sub: 3, 30>
+<Sub: 3, 30>
+<Sub: 3, 30>
+<Mul: 4, 40>
+<Mul: 4, 40>
+<Mul: 4, 40>
+<Mul: 4, 40>
+<Mul: 4, 40>
+<Div: 5, 50>
+<Div: 5, 50>
+<Div: 5, 50>
+<Div: 5, 50>
+<Div: 5, 50>
+<Mod: 6, 60>
+<Mod: 6, 60>
+<Mod: 6, 60>
+<Mod: 6, 60>
+<Mod: 6, 60>
+<Set: 1-30, 10>
+<Set: 1-30, 10>
+<Set: 1-30, 10>
+<Set: 1-30, 10>
+<Set: 1-30, 10>
+<Add: 2-40, 20>
+<Add: 2-40, 20>
+<Add: 2-40, 20>
+<Add: 2-40, 20>
+<Add: 2-40, 20>
+<Sub: 3-50, 30>
+<Sub: 3-50, 30>
+<Sub: 3-50, 30>
+<Sub: 3-50, 30>
+<Sub: 3-50, 30>
+<Mul: 4-60, 40>
+<Mul: 4-60, 40>
+<Mul: 4-60, 40>
+<Mul: 4-60, 40>
+<Mul: 4-60, 40>
+<Div: 5-70, 50>
+<Div: 5-70, 50>
+<Div: 5-70, 50>
+<Div: 5-70, 50>
+<Div: 5-70, 50>
+<Mod: 6-80, 60>
+<Mod: 6-80, 60>
+<Mod: 6-80, 60>
+<Mod: 6-80, 60>
+<Mod: 6-80, 60>
+<Set: 10, 10>
+<Add: 5000, 20>
+<Sub: 333, 30>
+<Div: 1-5000, 50>
+<Mod: 600-800, 3>
+
+===== Game Progression / Control variables/random =====
+<Set: 1, random[1][100]>
+<Set: 1, random[1][100]>
+<Set: 1, random[1][100]>
+<Set: 1, random[1][100]>
+<Set: 1, random[1][100]>
+<Add: 2, random[2][200]>
+<Add: 2, random[2][200]>
+<Add: 2, random[2][200]>
+<Add: 2, random[2][200]>
+<Add: 2, random[2][200]>
+<Sub: 3, random[3][300]>
+<Sub: 3, random[3][300]>
+<Sub: 3, random[3][300]>
+<Sub: 3, random[3][300]>
+<Sub: 3, random[3][300]>
+<Mul: 4, random[4][400]>
+<Mul: 4, random[4][400]>
+<Mul: 4, random[4][400]>
+<Mul: 4, random[4][400]>
+<Mul: 4, random[4][400]>
+<Div: 5, random[5][500]>
+<Div: 5, random[5][500]>
+<Div: 5, random[5][500]>
+<Div: 5, random[5][500]>
+<Div: 5, random[5][500]>
+<Mod: 6, random[6][600]>
+<Mod: 6, random[6][600]>
+<Mod: 6, random[6][600]>
+<Mod: 6, random[6][600]>
+<Mod: 6, random[6][600]>
+<Set: 1-30, random[1][100]>
+<Set: 1-30, random[1][100]>
+<Set: 1-30, random[1][100]>
+<Set: 1-30, random[1][100]>
+<Set: 1-30, random[1][100]>
+<Add: 2-40, random[2][200]>
+<Add: 2-40, random[2][200]>
+<Add: 2-40, random[2][200]>
+<Add: 2-40, random[2][200]>
+<Add: 2-40, random[2][200]>
+<Sub: 3-50, random[3][300]>
+<Sub: 3-50, random[3][300]>
+<Sub: 3-50, random[3][300]>
+<Sub: 3-50, random[3][300]>
+<Sub: 3-50, random[3][300]>
+<Mul: 4-60, random[4][400]>
+<Mul: 4-60, random[4][400]>
+<Mul: 4-60, random[4][400]>
+<Mul: 4-60, random[4][400]>
+<Mul: 4-60, random[4][400]>
+<Div: 5-70, random[5][500]>
+<Div: 5-70, random[5][500]>
+<Div: 5-70, random[5][500]>
+<Div: 5-70, random[5][500]>
+<Div: 5-70, random[5][500]>
+<Mod: 6-80, random[6][600]>
+<Mod: 6-80, random[6][600]>
+<Mod: 6-80, random[6][600]>
+<Mod: 6-80, random[6][600]>
+<Mod: 6-80, random[6][600]>
+
+===== Game Progression / Control variables/gamedata =====
+<Set: 2, GameData[Item][1]>
+<Set: 2, GameData[Item][1]>
+<Set: 2, GameData[Item][1]>
+<Set: 2, GameData[Item][1]>
+<Set: 2, GameData[Item][1]>
+<Set: 2, GameData[Weapon][1]>
+<Set: 2, GameData[Weapon][1]>
+<Set: 2, GameData[Weapon][1]>
+<Set: 2, GameData[Weapon][1]>
+<Set: 2, GameData[Weapon][1]>
+<Set: 2, GameData[Armor][1]>
+<Set: 2, GameData[Armor][1]>
+<Set: 2, GameData[Armor][1]>
+<Set: 2, GameData[Armor][1]>
+<Set: 2, GameData[Armor][1]>
+<Set: 2, GameData[Actor][1][Level]>
+<Set: 2, GameData[Actor][1][Level]>
+<Set: 2, GameData[Actor][1][Level]>
+<Set: 2, GameData[Actor][1][Level]>
+<Set: 2, GameData[Actor][1][Level]>
+<Set: 2, GameData[Actor][1][Exp]>
+<Set: 2, GameData[Actor][1][Exp]>
+<Set: 2, GameData[Actor][1][Exp]>
+<Set: 2, GameData[Actor][1][Exp]>
+<Set: 2, GameData[Actor][1][Exp]>
+<Set: 2, GameData[Actor][1][HP]>
+<Set: 2, GameData[Actor][1][HP]>
+<Set: 2, GameData[Actor][1][HP]>
+<Set: 2, GameData[Actor][1][HP]>
+<Set: 2, GameData[Actor][1][HP]>
+<Set: 2, GameData[Actor][1][MP]>
+<Set: 2, GameData[Actor][1][MP]>
+<Set: 2, GameData[Actor][1][MP]>
+<Set: 2, GameData[Actor][1][MP]>
+<Set: 2, GameData[Actor][1][MP]>
+<Set: 2, GameData[Actor][1][MaxHp]>
+<Set: 2, GameData[Actor][1][MaxHp]>
+<Set: 2, GameData[Actor][1][MaxHp]>
+<Set: 2, GameData[Actor][1][MaxHp]>
+<Set: 2, GameData[Actor][1][MaxHp]>
+<Set: 2, GameData[Actor][1][MaxMP]>
+<Set: 2, GameData[Actor][1][MaxMP]>
+<Set: 2, GameData[Actor][1][MaxMP]>
+<Set: 2, GameData[Actor][1][MaxMP]>
+<Set: 2, GameData[Actor][1][MaxMP]>
+<Set: 2, GameData[Actor][1][Attack]>
+<Set: 2, GameData[Actor][1][Attack]>
+<Set: 2, GameData[Actor][1][Attack]>
+<Set: 2, GameData[Actor][1][Attack]>
+<Set: 2, GameData[Actor][1][Attack]>
+<Set: 2, GameData[Actor][1][Defense]>
+<Set: 2, GameData[Actor][1][Defense]>
+<Set: 2, GameData[Actor][1][Defense]>
+<Set: 2, GameData[Actor][1][Defense]>
+<Set: 2, GameData[Actor][1][Defense]>
+<Set: 2, GameData[Actor][1][M.Attack]>
+<Set: 2, GameData[Actor][1][M.Attack]>
+<Set: 2, GameData[Actor][1][M.Attack]>
+<Set: 2, GameData[Actor][1][M.Attack]>
+<Set: 2, GameData[Actor][1][M.Attack]>
+<Set: 2, GameData[Actor][1][M.Defense]>
+<Set: 2, GameData[Actor][1][M.Defense]>
+<Set: 2, GameData[Actor][1][M.Defense]>
+<Set: 2, GameData[Actor][1][M.Defense]>
+<Set: 2, GameData[Actor][1][M.Defense]>
+<Set: 2, GameData[Actor][1][Agility]>
+<Set: 2, GameData[Actor][1][Agility]>
+<Set: 2, GameData[Actor][1][Agility]>
+<Set: 2, GameData[Actor][1][Agility]>
+<Set: 2, GameData[Actor][1][Agility]>
+<Set: 2, GameData[Actor][1][Luck]>
+<Set: 2, GameData[Actor][1][Luck]>
+<Set: 2, GameData[Actor][1][Luck]>
+<Set: 2, GameData[Actor][1][Luck]>
+<Set: 2, GameData[Actor][1][Luck]>
+<Set: 2, GameData[Enemy][1][HP]>
+<Set: 2, GameData[Enemy][1][HP]>
+<Set: 2, GameData[Enemy][1][HP]>
+<Set: 2, GameData[Enemy][1][HP]>
+<Set: 2, GameData[Enemy][1][HP]>
+<Set: 2, GameData[Enemy][1][MP]>
+<Set: 2, GameData[Enemy][1][MP]>
+<Set: 2, GameData[Enemy][1][MP]>
+<Set: 2, GameData[Enemy][1][MP]>
+<Set: 2, GameData[Enemy][1][MP]>
+<Set: 2, GameData[Enemy][1][MaxHp]>
+<Set: 2, GameData[Enemy][1][MaxHp]>
+<Set: 2, GameData[Enemy][1][MaxHp]>
+<Set: 2, GameData[Enemy][1][MaxHp]>
+<Set: 2, GameData[Enemy][1][MaxHp]>
+<Set: 2, GameData[Enemy][1][MaxMP]>
+<Set: 2, GameData[Enemy][1][MaxMP]>
+<Set: 2, GameData[Enemy][1][MaxMP]>
+<Set: 2, GameData[Enemy][1][MaxMP]>
+<Set: 2, GameData[Enemy][1][MaxMP]>
+<Set: 2, GameData[Enemy][1][Attack]>
+<Set: 2, GameData[Enemy][1][Attack]>
+<Set: 2, GameData[Enemy][1][Attack]>
+<Set: 2, GameData[Enemy][1][Attack]>
+<Set: 2, GameData[Enemy][1][Attack]>
+<Set: 2, GameData[Enemy][1][Defense]>
+<Set: 2, GameData[Enemy][1][Defense]>
+<Set: 2, GameData[Enemy][1][Defense]>
+<Set: 2, GameData[Enemy][1][Defense]>
+<Set: 2, GameData[Enemy][1][Defense]>
+<Set: 2, GameData[Enemy][1][M.Attack]>
+<Set: 2, GameData[Enemy][1][M.Attack]>
+<Set: 2, GameData[Enemy][1][M.Attack]>
+<Set: 2, GameData[Enemy][1][M.Attack]>
+<Set: 2, GameData[Enemy][1][M.Attack]>
+<Set: 2, GameData[Enemy][1][M.Defense]>
+<Set: 2, GameData[Enemy][1][M.Defense]>
+<Set: 2, GameData[Enemy][1][M.Defense]>
+<Set: 2, GameData[Enemy][1][M.Defense]>
+<Set: 2, GameData[Enemy][1][M.Defense]>
+<Set: 2, GameData[Enemy][1][Agility]>
+<Set: 2, GameData[Enemy][1][Agility]>
+<Set: 2, GameData[Enemy][1][Agility]>
+<Set: 2, GameData[Enemy][1][Agility]>
+<Set: 2, GameData[Enemy][1][Agility]>
+<Set: 2, GameData[Enemy][1][Luck]>
+<Set: 2, GameData[Enemy][1][Luck]>
+<Set: 2, GameData[Enemy][1][Luck]>
+<Set: 2, GameData[Enemy][1][Luck]>
+<Set: 2, GameData[Enemy][1][Luck]>
+<Set: 2, GameData[Character][Player][MapX]>
+<Set: 2, GameData[Character][Player][MapX]>
+<Set: 2, GameData[Character][Player][MapX]>
+<Set: 2, GameData[Character][Player][MapX]>
+<Set: 2, GameData[Character][Player][MapX]>
+<Set: 2, GameData[Character][Player][MapY]>
+<Set: 2, GameData[Character][Player][MapY]>
+<Set: 2, GameData[Character][Player][MapY]>
+<Set: 2, GameData[Character][Player][MapY]>
+<Set: 2, GameData[Character][Player][MapY]>
+<Set: 2, GameData[Character][Player][Direction]>
+<Set: 2, GameData[Character][Player][Direction]>
+<Set: 2, GameData[Character][Player][Direction]>
+<Set: 2, GameData[Character][Player][Direction]>
+<Set: 2, GameData[Character][Player][Direction]>
+<Set: 2, GameData[Character][Player][ScreenX]>
+<Set: 2, GameData[Character][Player][ScreenX]>
+<Set: 2, GameData[Character][Player][ScreenX]>
+<Set: 2, GameData[Character][Player][ScreenX]>
+<Set: 2, GameData[Character][Player][ScreenX]>
+<Set: 2, GameData[Character][Player][ScreenY]>
+<Set: 2, GameData[Character][Player][ScreenY]>
+<Set: 2, GameData[Character][Player][ScreenY]>
+<Set: 2, GameData[Character][Player][ScreenY]>
+<Set: 2, GameData[Character][Player][ScreenY]>
+<Set: 2, GameData[Character][ThisEvent][MapX]>
+<Set: 2, GameData[Character][ThisEvent][MapX]>
+<Set: 2, GameData[Character][ThisEvent][MapX]>
+<Set: 2, GameData[Character][ThisEvent][MapX]>
+<Set: 2, GameData[Character][ThisEvent][MapX]>
+<Set: 2, GameData[Character][ThisEvent][MapY]>
+<Set: 2, GameData[Character][ThisEvent][MapY]>
+<Set: 2, GameData[Character][ThisEvent][MapY]>
+<Set: 2, GameData[Character][ThisEvent][MapY]>
+<Set: 2, GameData[Character][ThisEvent][MapY]>
+<Set: 2, GameData[Character][ThisEvent][Direction]>
+<Set: 2, GameData[Character][ThisEvent][Direction]>
+<Set: 2, GameData[Character][ThisEvent][Direction]>
+<Set: 2, GameData[Character][ThisEvent][Direction]>
+<Set: 2, GameData[Character][ThisEvent][Direction]>
+<Set: 2, GameData[Character][ThisEvent][ScreenX]>
+<Set: 2, GameData[Character][ThisEvent][ScreenX]>
+<Set: 2, GameData[Character][ThisEvent][ScreenX]>
+<Set: 2, GameData[Character][ThisEvent][ScreenX]>
+<Set: 2, GameData[Character][ThisEvent][ScreenX]>
+<Set: 2, GameData[Character][ThisEvent][ScreenY]>
+<Set: 2, GameData[Character][ThisEvent][ScreenY]>
+<Set: 2, GameData[Character][ThisEvent][ScreenY]>
+<Set: 2, GameData[Character][ThisEvent][ScreenY]>
+<Set: 2, GameData[Character][ThisEvent][ScreenY]>
+<Set: 2, GameData[Character][1][MapX]>
+<Set: 2, GameData[Character][1][MapX]>
+<Set: 2, GameData[Character][1][MapX]>
+<Set: 2, GameData[Character][1][MapX]>
+<Set: 2, GameData[Character][1][MapX]>
+<Set: 2, GameData[Character][1][MapY]>
+<Set: 2, GameData[Character][1][MapY]>
+<Set: 2, GameData[Character][1][MapY]>
+<Set: 2, GameData[Character][1][MapY]>
+<Set: 2, GameData[Character][1][MapY]>
+<Set: 2, GameData[Character][1][Direction]>
+<Set: 2, GameData[Character][1][Direction]>
+<Set: 2, GameData[Character][1][Direction]>
+<Set: 2, GameData[Character][1][Direction]>
+<Set: 2, GameData[Character][1][Direction]>
+<Set: 2, GameData[Character][1][ScreenX]>
+<Set: 2, GameData[Character][1][ScreenX]>
+<Set: 2, GameData[Character][1][ScreenX]>
+<Set: 2, GameData[Character][1][ScreenX]>
+<Set: 2, GameData[Character][1][ScreenX]>
+<Set: 2, GameData[Character][1][ScreenY]>
+<Set: 2, GameData[Character][1][ScreenY]>
+<Set: 2, GameData[Character][1][ScreenY]>
+<Set: 2, GameData[Character][1][ScreenY]>
+<Set: 2, GameData[Character][1][ScreenY]>
+<Set: 2, GameData[Party][1]>
+<Set: 2, GameData[Party][1]>
+<Set: 2, GameData[Party][1]>
+<Set: 2, GameData[Party][1]>
+<Set: 2, GameData[Party][1]>
+<Set: 2, GameData[MapId]>
+<Set: 2, GameData[MapId]>
+<Set: 2, GameData[MapId]>
+<Set: 2, GameData[MapId]>
+<Set: 2, GameData[MapId]>
+<Set: 2, GameData[PartyMembers]>
+<Set: 2, GameData[PartyMembers]>
+<Set: 2, GameData[PartyMembers]>
+<Set: 2, GameData[PartyMembers]>
+<Set: 2, GameData[PartyMembers]>
+<Set: 2, GameData[gold]>
+<Set: 2, GameData[gold]>
+<Set: 2, GameData[gold]>
+<Set: 2, GameData[gold]>
+<Set: 2, GameData[gold]>
+<Set: 2, GameData[steps]>
+<Set: 2, GameData[steps]>
+<Set: 2, GameData[steps]>
+<Set: 2, GameData[steps]>
+<Set: 2, GameData[steps]>
+<Set: 2, GameData[PlayTime]>
+<Set: 2, GameData[PlayTime]>
+<Set: 2, GameData[PlayTime]>
+<Set: 2, GameData[PlayTime]>
+<Set: 2, GameData[PlayTime]>
+<Set: 2, GameData[timer]>
+<Set: 2, GameData[timer]>
+<Set: 2, GameData[timer]>
+<Set: 2, GameData[timer]>
+<Set: 2, GameData[timer]>
+<Set: 2, GameData[SaveCount]>
+<Set: 2, GameData[SaveCount]>
+<Set: 2, GameData[SaveCount]>
+<Set: 2, GameData[SaveCount]>
+<Set: 2, GameData[SaveCount]>
+<Set: 2, GameData[BattleCount]>
+<Set: 2, GameData[BattleCount]>
+<Set: 2, GameData[BattleCount]>
+<Set: 2, GameData[BattleCount]>
+<Set: 2, GameData[BattleCount]>
+<Set: 2, GameData[WinCount]>
+<Set: 2, GameData[WinCount]>
+<Set: 2, GameData[WinCount]>
+<Set: 2, GameData[WinCount]>
+<Set: 2, GameData[WinCount]>
+<Set: 2, GameData[EscapeCount]>
+<Set: 2, GameData[EscapeCount]>
+<Set: 2, GameData[EscapeCount]>
+<Set: 2, GameData[EscapeCount]>
+<Set: 2, GameData[EscapeCount]>
+
+===== Game Progression / Control variables/variable =====
+<Set: 1, Variables[10]>
+<Set: 1, Variables[10]>
+<Set: 1, Variables[10]>
+<Set: 1, Variables[10]>
+<Set: 1, Variables[10]>
+<Add: 2, Variables[20]>
+<Add: 2, Variables[20]>
+<Add: 2, Variables[20]>
+<Add: 2, Variables[20]>
+<Add: 2, Variables[20]>
+<Sub: 3, Variables[30]>
+<Sub: 3, Variables[30]>
+<Sub: 3, Variables[30]>
+<Sub: 3, Variables[30]>
+<Sub: 3, Variables[30]>
+<Mul: 4, Variables[40]>
+<Mul: 4, Variables[40]>
+<Mul: 4, Variables[40]>
+<Mul: 4, Variables[40]>
+<Mul: 4, Variables[40]>
+<Div: 5, Variables[50]>
+<Div: 5, Variables[50]>
+<Div: 5, Variables[50]>
+<Div: 5, Variables[50]>
+<Div: 5, Variables[50]>
+<Mod: 6, Variables[60]>
+<Mod: 6, Variables[60]>
+<Mod: 6, Variables[60]>
+<Mod: 6, Variables[60]>
+<Mod: 6, Variables[60]>
+<Set: 1-30, Variables[10]>
+<Set: 1-30, Variables[10]>
+<Set: 1-30, Variables[10]>
+<Set: 1-30, Variables[10]>
+<Set: 1-30, Variables[10]>
+<Add: 2-40, Variables[20]>
+<Add: 2-40, Variables[20]>
+<Add: 2-40, Variables[20]>
+<Add: 2-40, Variables[20]>
+<Add: 2-40, Variables[20]>
+<Sub: 3-50, Variables[30]>
+<Sub: 3-50, Variables[30]>
+<Sub: 3-50, Variables[30]>
+<Sub: 3-50, Variables[30]>
+<Sub: 3-50, Variables[30]>
+<Mul: 4-60, Variables[40]>
+<Mul: 4-60, Variables[40]>
+<Mul: 4-60, Variables[40]>
+<Mul: 4-60, Variables[40]>
+<Mul: 4-60, Variables[40]>
+<Div: 5-70, Variables[50]>
+<Div: 5-70, Variables[50]>
+<Div: 5-70, Variables[50]>
+<Div: 5-70, Variables[50]>
+<Div: 5-70, Variables[50]>
+<Mod: 6-80, Variables[60]>
+<Mod: 6-80, Variables[60]>
+<Mod: 6-80, Variables[60]>
+<Mod: 6-80, Variables[60]>
+<Mod: 6-80, Variables[60]>
+
+===== Game Progression / Control variables/script =====
+<Set: 1, Script["涼風" + $dataActors[1].name;]>
+<Set: 1, Script["涼風" + $dataActors[1].name;]>
+<Set: 1, Script["涼風" + $dataActors[1].name;]>
+<Set: 1, Script["涼風" + $dataActors[1].name;]>
+<Set: 1, Script["涼風" + $dataActors[1].name;]>
+<Add: 2, Script[$gameVariables.value(1);]>
+<Add: 2, Script[$gameVariables.value(1);]>
+<Add: 2, Script[$gameVariables.value(1);]>
+<Add: 2, Script[$gameVariables.value(1);]>
+<Add: 2, Script[$gameVariables.value(1);]>
+<Sub: 3, Script[$gameVariables.value(1);]>
+<Sub: 3, Script[$gameVariables.value(1);]>
+<Sub: 3, Script[$gameVariables.value(1);]>
+<Sub: 3, Script[$gameVariables.value(1);]>
+<Sub: 3, Script[$gameVariables.value(1);]>
+<Mul: 4, Script[$gameVariables.value(1);]>
+<Mul: 4, Script[$gameVariables.value(1);]>
+<Mul: 4, Script[$gameVariables.value(1);]>
+<Mul: 4, Script[$gameVariables.value(1);]>
+<Mul: 4, Script[$gameVariables.value(1);]>
+<Div: 5, Script[$gameVariables.value(1);]>
+<Div: 5, Script[$gameVariables.value(1);]>
+<Div: 5, Script[$gameVariables.value(1);]>
+<Div: 5, Script[$gameVariables.value(1);]>
+<Div: 5, Script[$gameVariables.value(1);]>
+<Mod: 6, Script[$gameVariables.value(1);]>
+<Mod: 6, Script[$gameVariables.value(1);]>
+<Mod: 6, Script[$gameVariables.value(1);]>
+<Mod: 6, Script[$gameVariables.value(1);]>
+<Mod: 6, Script[$gameVariables.value(1);]>
+<Set: 1-30, Script["涼風" + $dataActors[1].name;]>
+<Set: 1-30, Script["涼風" + $dataActors[1].name;]>
+<Set: 1-30, Script["涼風" + $dataActors[1].name;]>
+<Set: 1-30, Script["涼風" + $dataActors[1].name;]>
+<Set: 1-30, Script["涼風" + $dataActors[1].name;]>
+<Add: 2-40, Script[$gameVariables.value(1);]>
+<Add: 2-40, Script[$gameVariables.value(1);]>
+<Add: 2-40, Script[$gameVariables.value(1);]>
+<Add: 2-40, Script[$gameVariables.value(1);]>
+<Add: 2-40, Script[$gameVariables.value(1);]>
+<Sub: 3-50, Script[$gameVariables.value(1);]>
+<Sub: 3-50, Script[$gameVariables.value(1);]>
+<Sub: 3-50, Script[$gameVariables.value(1);]>
+<Sub: 3-50, Script[$gameVariables.value(1);]>
+<Sub: 3-50, Script[$gameVariables.value(1);]>
+<Mul: 4-60, Script[$gameVariables.value(1);]>
+<Mul: 4-60, Script[$gameVariables.value(1);]>
+<Mul: 4-60, Script[$gameVariables.value(1);]>
+<Mul: 4-60, Script[$gameVariables.value(1);]>
+<Mul: 4-60, Script[$gameVariables.value(1);]>
+<Div: 5-70, Script[$gameVariables.value(1);]>
+<Div: 5-70, Script[$gameVariables.value(1);]>
+<Div: 5-70, Script[$gameVariables.value(1);]>
+<Div: 5-70, Script[$gameVariables.value(1);]>
+<Div: 5-70, Script[$gameVariables.value(1);]>
+<Mod: 6-80, Script[$gameVariables.value(1);]>
+<Mod: 6-80, Script[$gameVariables.value(1);]>
+<Mod: 6-80, Script[$gameVariables.value(1);]>
+<Mod: 6-80, Script[$gameVariables.value(1);]>
+<Mod: 6-80, Script[$gameVariables.value(1);]>
+
+===== Game Progression / Control variables/misc =====
+<Set: 1, -10>
+<Add: 2, -20>
+<Sub: 3, -30>
+<Mul: 4, -40>
+<Div: 5, -50>
+<Mod: 6, -60>
+<Set: 1, random[-100][-10]>
+<Add: 2, random[-200][-20]>
+<Sub: 3, random[-300][-30]>
+<Mul: 4, random[-400][-40]>
+<Div: 5, random[-500][-50]>
+<Mod: 6, random[-600][-60]>
+<Add: 2-20, GameData[Actor][1][Level]>
+<Sub: 2, GameData[Item][1]>
+<Mul: 2-20, GameData[Character][Player][MapY]>
+<Div: 2, GameData[Enemy][1][Agility]>
+<Mod: 2-20, GameData[WinCount]>
+
+===== Game Progression / Control Variables/Last-MZ =====
+<Set: 1, GameData[Last][Last Used Skill ID]>
+<Set: 1, GameData[Last][Last Used Skill ID]>
+<Set: 1, GameData[Last][Last Used Skill ID]>
+<Set: 1, GameData[Last][Last Used Item ID]>
+<Set: 1, GameData[Last][Last Used Item ID]>
+<Set: 1, GameData[Last][Last Used Item ID]>
+<Set: 1, GameData[Last][Last Actor ID to Act]>
+<Set: 1, GameData[Last][Last Actor ID to Act]>
+<Set: 1, GameData[Last][Last Actor ID to Act]>
+<Set: 1, GameData[Last][Last Enemy Index to Act]>
+<Set: 1, GameData[Last][Last Enemy Index to Act]>
+<Set: 1, GameData[Last][Last Enemy Index to Act]>
+<Set: 1, GameData[Last][Last Target Actor ID]>
+<Set: 1, GameData[Last][Last Target Actor ID]>
+<Set: 1, GameData[Last][Last Target Actor ID]>
+<Set: 1, GameData[Last][Last Target Enemy Index]>
+<Set: 1, GameData[Last][Last Target Enemy Index]>
+<Set: 1, GameData[Last][Last Target Enemy Index]>
+
+===== Game Progression / Self switch =====
+<SelfSwitch: A, ON>
+<SelfSwitch: A, ON>
+<SelfSwitch: A, ON>
+<SelfSwitch: A, ON>
+<SelfSwitch: A, ON>
+<SelfSwitch: A, ON>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<SelfSwitch: A, OFF>
+<SelfSwitch: A, OFF>
+<SelfSwitch: A, OFF>
+<SelfSwitch: A, OFF>
+<SelfSwitch: A, OFF>
+<SelfSwitch: A, OFF>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<SelfSwitch: B, ON>
+<SelfSwitch: B, ON>
+<SelfSwitch: B, ON>
+<SelfSwitch: B, ON>
+<SelfSwitch: B, ON>
+<SelfSwitch: B, ON>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<SelfSwitch: B, OFF>
+<SelfSwitch: B, OFF>
+<SelfSwitch: B, OFF>
+<SelfSwitch: B, OFF>
+<SelfSwitch: B, OFF>
+<SelfSwitch: B, OFF>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<SelfSwitch: C, ON>
+<SelfSwitch: C, ON>
+<SelfSwitch: C, ON>
+<SelfSwitch: C, ON>
+<SelfSwitch: C, ON>
+<SelfSwitch: C, ON>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<SelfSwitch: C, OFF>
+<SelfSwitch: C, OFF>
+<SelfSwitch: C, OFF>
+<SelfSwitch: C, OFF>
+<SelfSwitch: C, OFF>
+<SelfSwitch: C, OFF>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<SelfSwitch: D, ON>
+<SelfSwitch: D, ON>
+<SelfSwitch: D, ON>
+<SelfSwitch: D, ON>
+<SelfSwitch: D, ON>
+<SelfSwitch: D, ON>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<SelfSwitch: D, OFF>
+<SelfSwitch: D, OFF>
+<SelfSwitch: D, OFF>
+<SelfSwitch: D, OFF>
+<SelfSwitch: D, OFF>
+<SelfSwitch: D, OFF>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+===== Game Progression / Timer =====
+<Timer: Start, 1, 10>
+<Timer: Start, 1, 10>
+<Timer: Start, 1, 10>
+<Timer: Start, 1, 10>
+<Timer: Start, 1, 10>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<Timer: Start, 0, 20>
+<Timer: Start, 0, 20>
+<Timer: Start, 0, 20>
+<Timer: Start, 0, 20>
+<Timer: Start, 0, 20>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<Timer: Start, 2, 0>
+<Timer: Start, 2, 0>
+<Timer: Start, 2, 0>
+<Timer: Start, 2, 0>
+<Timer: Start, 2, 0>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+<Timer: Stop>
+<Timer: Stop>
+<Timer: Stop>
+<Timer: Stop>
+<Timer: Stop>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！(و ・ㅂ・)و ̑̑
+
+===== Flow Congrol / Conditional Branch/if-else =====
+<If: Switches[1], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+私もずっと前から好きでした。
+
+<Else>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ごめんなさい。お友達でいましょう。
+
+<End>
+<If: Switches[1], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+私もずっと前から好きでした。
+
+<Else>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ごめんなさい。お友達でいましょう。
+
+<End>
+<If: Switches[1], ON>
+    <If: Switches[2], ON>
+
+        <Face: (0)><Background: Window><WindowPosition: Bottom>
+私もずっと前から好きでした。
+
+    <End>
+<Else>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+ごめんなさい。お友達でいましょう。
+
+<End>
+<If: Switches[1], ON>
+    <If: Variables[1], ==, 2>
+        <If: Actors[1], in the party>
+            <Set: 1, 2>
+
+            <Face: (0)><Background: Window><WindowPosition: Bottom>
+スイッチがON, 変数1が2, アクター1がパーティにいるの時のメッセージA
+
+            <Face: (0)><Background: Window><WindowPosition: Bottom>
+スイッチがON, 変数1が2, アクター1がパーティにいるの時のメッセージB
+
+            <Face: (0)><Background: Window><WindowPosition: Bottom>
+スイッチがON, 変数1が2, アクター1がパーティにいるの時のメッセージC
+
+        <End>
+    <Else>
+        <If: Switches[4], ON>
+            <Set: 1, 2>
+
+            <Face: (0)><Background: Window><WindowPosition: Middle>
+スイッチ1,4 がONで、変数1が2ではない時のメッセージA
+
+            <Face: (0)><Background: Dim><WindowPosition: Bottom>
+スイッチ1,4 がONで、変数1が2ではない時のメッセージB-1
+スイッチ1,4 がONで、変数1が2ではない時のメッセージB-2
+
+        <End>
+    <End>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+スイッチ1がONの時のメッセージ
+
+<Else>
+    <CommonEvent: 3>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+スイッチ1がONではないときの時のメッセージ
+
+    <If: Switches[5], ON>
+
+        <Face: (0)><Background: Window><WindowPosition: Bottom>
+スイッチ1がONではなくて、でスイッチ5がONのときのメッセージ
+
+    <End>
+<End>
+<If: Switches[1], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/Switch =====
+<If: Switches[1], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Switches[1], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Switches[1], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Switches[1], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Switches[2], OFF>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Switches[2], OFF>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Switches[2], OFF>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Switches[2], OFF>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/SelfSwitch =====
+<If: SelfSwitches[A], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[A], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[A], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[A], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[B], OFF>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[B], OFF>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[B], OFF>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[B], OFF>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[C], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[C], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[C], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[C], ON>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[D], OFF>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[D], OFF>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[D], OFF>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: SelfSwitches[D], OFF>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/Variable =====
+<If: Variables[1], ==, 10>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[1], ==, 10>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[2], >=, 20>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[2], >=, 20>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[3], <=, 30>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[3], <=, 30>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[4], >, 40>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[4], >, 40>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[5], <, 50>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[5], <, 50>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[6], !=, 60>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[6], !=, 60>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[15], ==, Variables[150]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[15], ==, Variables[150]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[25], >=, Variables[250]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[25], >=, Variables[250]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[35], <=, Variables[350]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[35], <=, Variables[350]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[45], >, Variables[450]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[45], >, Variables[450]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[55], <, Variables[550]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[55], <, Variables[550]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[65], !=, Variables[650]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Variables[65], !=, Variables[650]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/Timer =====
+<If: Timer, >=, 1, 10>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Timer, >=, 1, 10>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Timer, <=, 2, 20>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Timer, <=, 2, 20>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/Actor =====
+<If: Actors[1], in the party>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Actors[1], in the party>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Actors[2], Name, ハロルド>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Actors[2], Name, ハロルド>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Actors[3], Class, 30>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Actors[3], Class, 30>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Actors[4], Skill, 40>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Actors[4], Skill, 40>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Actors[5], Weapon, 50>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Actors[5], Weapon, 50>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Actors[6], Armor, 60>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Actors[6], Armor, 60>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Actors[7], State, 70>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Actors[7], State, 70>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/Enemy =====
+<If: Enemies[8], Appeared>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Enemies[8], Appeared>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Enemies[8], Appeared>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Enemies[3], State, 20>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Enemies[3], State, 20>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Enemies[3], State, 20>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/Character =====
+<If: Characters[Player], Down>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Characters[Player], Down>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Characters[Player], Down>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Characters[This Event], Left>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Characters[This Event], Left>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Characters[This Event], Left>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Characters[1], Right>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Characters[1], Right>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Characters[1], Right>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Characters[2], Up>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Characters[2], Up>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Characters[2], Up>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/Vehicle =====
+<If: Vehicle, Boat>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Vehicle, Boat>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Vehicle, Ship>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Vehicle, Ship>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Vehicle, Airship>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Vehicle, Airship>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/Gold =====
+<If: Gold, >=, 500>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Gold, >=, 500>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Gold, <=, 1000>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Gold, <=, 1000>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Gold, <, 1500>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Gold, <, 1500>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/Item =====
+<If: Items[1]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Items[1]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Items[2]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Items[2]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/Weapon =====
+<If: Weapons[1]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Weapons[1]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Weapons[2], Include Equipment>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Weapons[2], Include Equipment>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/Armor =====
+<If: Armors[1]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Armors[1]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Armors[2], Include Equipment>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Armors[2], Include Equipment>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/Button =====
+<If: Button, OK>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, OK>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Cancel>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Cancel>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Shift>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Shift>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Down>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Down>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Left>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Left>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Right>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Right>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Up>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Up>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Pageup>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Pageup>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Pagedown>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Pagedown>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Cancel, is being triggered>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Cancel, is being triggered>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Shift, is being repeated>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Shift, is being repeated>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/Script =====
+<If: Script, $gameParty._gold == $gameVariables.value(1)>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Script, $gameParty._gold == $gameVariables.value(1)>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Script, $gameParty._gold == $gameVariables.value(1)>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Script, [1, 2, 3][$gameVariables.value(1)]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Script, [1, 2, 3][$gameVariables.value(1)]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Script, [1, 2, 3][$gameVariables.value(1)]>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Congrol / Conditional Branch/Error =====
+<If: Switches[1], ON>
+<End>
+<If: Switches[1], ON>
+<End>
+<If: Switches[1], ON>
+<End>
+<If: Variables[1], ==, 0>
+<End>
+<If: Variables[1], ==, 0>
+<End>
+<If: Variables[1], ==, 0>
+<End>
+<If: SelfSwitches[A], ON>
+<End>
+<If: SelfSwitches[A], ON>
+<End>
+<If: SelfSwitches[A], ON>
+<End>
+<If: Timer, >=, 0, 0>
+<End>
+<If: Timer, >=, 0, 0>
+<End>
+<If: Timer, >=, 0, 0>
+<End>
+<If: Actors[1], in the party>
+<End>
+<If: Actors[1], in the party>
+<End>
+<If: Actors[1], in the party>
+<End>
+<If: Enemies[1], Appeared>
+<End>
+<If: Enemies[1], Appeared>
+<End>
+<If: Enemies[1], Appeared>
+<End>
+<If: Characters[1], Down>
+<End>
+<If: Characters[1], Down>
+<End>
+<If: Characters[Player], Down>
+<End>
+<If: Vehicle, Boat>
+<End>
+<If: Vehicle, Boat>
+<End>
+<If: Vehicle, Boat>
+<End>
+<If: Gold, >=, 0>
+<End>
+<If: Gold, >=, 0>
+<End>
+<If: Gold, >=, 0>
+<End>
+<If: Items[1]>
+<End>
+<If: Items[1]>
+<End>
+<If: Items[1]>
+<End>
+<If: Weapons[1]>
+<End>
+<If: Weapons[1]>
+<End>
+<If: Weapons[1]>
+<End>
+<If: Armors[1]>
+<End>
+<If: Armors[1]>
+<End>
+<If: Armors[1]>
+<End>
+<If: Button, OK>
+<End>
+<If: Button, OK>
+<End>
+<If: Button, OK>
+<End>
+<If: Script, >
+<End>
+<If: Script, ,,>
+<End>
+<If: Script, ,,,,>
+<End>
+
+===== Flow Control / Conditional Branch/Button-MZ =====
+<If: Button, OK>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, OK>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, OK>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<Else>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Shift, is being triggered>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Shift, is being triggered>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Shift, is being triggered>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<Else>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Pagedown, is being repeated>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Pagedown, is being repeated>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+<If: Button, Pagedown, is being repeated>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<Else>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+===== Flow Control / Loop =====
+<Loop>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<RepeatAbove>
+<Loop>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<RepeatAbove>
+<Loop>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<RepeatAbove>
+<Loop>
+    <Fadeout>
+    <Wait: 60>
+    <Fadein>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<RepeatAbove>
+
+===== Flow Control / Break Loop =====
+<BreakLoop>
+<BreakLoop>
+<BreakLoop>
+
+===== Flow Control / Exit Event Processing =====
+<ExitEventProcessing>
+<ExitEventProcessing>
+<ExitEventProcessing>
+
+===== Flow Control / Label =====
+<Label: Start>
+<Label: Start>
+<Label: End>
+<Label: End>
+
+===== Flow Control / Jump to Label =====
+<JumpToLabel: Start>
+<JumpToLabel: Start>
+<JumpToLabel: Start>
+<JumpToLabel: End>
+<JumpToLabel: End>
+<JumpToLabel: End>
+
+===== Party / Change Gold =====
+<ChangeGold: Increase, 1>
+<ChangeGold: Increase, 1>
+<ChangeGold: Increase, 1>
+<ChangeGold: Decrease, Variables[5]>
+<ChangeGold: Decrease, Variables[5]>
+<ChangeGold: Decrease, Variables[5]>
+<ChangeGold: Increase, 10>
+<ChangeGold: Increase, 999>
+<ChangeGold: Decrease, Variables[50]>
+
+===== Party / Change Items =====
+<ChangeItems: 3, Increase, 4>
+<ChangeItems: 3, Increase, 4>
+<ChangeItems: 3, Increase, 4>
+<ChangeItems: 3, Decrease, Variables[2]>
+<ChangeItems: 3, Decrease, Variables[2]>
+<ChangeItems: 3, Decrease, Variables[2]>
+<ChangeItems: 30, Increase, 40>
+<ChangeItems: 30, Decrease, Variables[20]>
+
+===== Party / Change Weapons =====
+<ChangeWeapons: 1, Increase, 2, OFF>
+<ChangeWeapons: 1, Increase, 2, OFF>
+<ChangeWeapons: 1, Increase, 2, OFF>
+<ChangeWeapons: 2, Decrease, 3, Include Equipment>
+<ChangeWeapons: 2, Decrease, 3, Include Equipment>
+<ChangeWeapons: 2, Decrease, 3, Include Equipment>
+<ChangeWeapons: 3, Decrease, Variables[4], OFF>
+<ChangeWeapons: 3, Decrease, Variables[4], OFF>
+<ChangeWeapons: 3, Decrease, Variables[4], OFF>
+<ChangeWeapons: 10, Increase, 20, OFF>
+<ChangeWeapons: 10, Increase, Variables[20], OFF>
+<ChangeWeapons: 10, Decrease, Variables[20], Include Equipment>
+<ChangeWeapons: 10, Decrease, Variables[20], Include Equipment>
+<ChangeWeapons: 10, Decrease, Variables[20], Include Equipment>
+<ChangeWeapons: 10, Decrease, Variables[20], Include Equipment>
+<ChangeWeapons: 10, Decrease, Variables[20], Include Equipment>
+<ChangeWeapons: 10, Decrease, Variables[20], Include Equipment>
+<ChangeWeapons: 10, Decrease, Variables[20], OFF>
+<ChangeWeapons: 10, Decrease, Variables[20], OFF>
+<ChangeWeapons: 10, Decrease, Variables[20], OFF>
+<ChangeWeapons: 10, Decrease, Variables[20], OFF>
+<ChangeWeapons: 10, Decrease, Variables[20], OFF>
+
+===== Party / Change Armors =====
+<ChangeArmors: 1, Increase, 2, OFF>
+<ChangeArmors: 1, Increase, 2, OFF>
+<ChangeArmors: 1, Increase, 2, OFF>
+<ChangeArmors: 2, Decrease, 3, Include Equipment>
+<ChangeArmors: 2, Decrease, 3, Include Equipment>
+<ChangeArmors: 2, Decrease, 3, Include Equipment>
+<ChangeArmors: 3, Decrease, Variables[4], OFF>
+<ChangeArmors: 3, Decrease, Variables[4], OFF>
+<ChangeArmors: 3, Decrease, Variables[4], OFF>
+<ChangeArmors: 10, Increase, 20, OFF>
+<ChangeArmors: 10, Increase, Variables[20], OFF>
+<ChangeArmors: 10, Decrease, Variables[20], Include Equipment>
+<ChangeArmors: 10, Decrease, Variables[20], Include Equipment>
+<ChangeArmors: 10, Decrease, Variables[20], Include Equipment>
+<ChangeArmors: 10, Decrease, Variables[20], Include Equipment>
+<ChangeArmors: 10, Decrease, Variables[20], Include Equipment>
+<ChangeArmors: 10, Decrease, Variables[20], Include Equipment>
+<ChangeArmors: 10, Decrease, Variables[20], OFF>
+<ChangeArmors: 10, Decrease, Variables[20], OFF>
+<ChangeArmors: 10, Decrease, Variables[20], OFF>
+<ChangeArmors: 10, Decrease, Variables[20], OFF>
+<ChangeArmors: 10, Decrease, Variables[20], OFF>
+
+===== Party / Change Party Member =====
+<ChangePartyMember: 6, Add, Initialize>
+<ChangePartyMember: 6, Add, Initialize>
+<ChangePartyMember: 6, Add, Initialize>
+<ChangePartyMember: 2, Remove, OFF>
+<ChangePartyMember: 2, Remove, OFF>
+<ChangePartyMember: 2, Remove, OFF>
+<ChangePartyMember: 10, Add, Initialize>
+<ChangePartyMember: 10, Add, Initialize>
+<ChangePartyMember: 10, Add, Initialize>
+<ChangePartyMember: 10, Add, OFF>
+<ChangePartyMember: 10, Add, OFF>
+<ChangePartyMember: 10, Add, OFF>
+<ChangePartyMember: 10, Add, OFF>
+<ChangePartyMember: 10, Add, OFF>
+
+===== Actor / Change HP =====
+<ChangeHp: 4, Increase, 2, OFF>
+<ChangeHp: 4, Increase, 2, OFF>
+<ChangeHp: 4, Increase, 2, OFF>
+<ChangeHp: Variables[5], Decrease, Variables[2], Allow Knockout>
+<ChangeHp: Variables[5], Decrease, Variables[2], Allow Knockout>
+<ChangeHp: Variables[5], Decrease, Variables[2], Allow Knockout>
+<ChangeHp: 0, Increase, 20, OFF>
+<ChangeHp: 0, Increase, 20, OFF>
+<ChangeHp: 10, Decrease, Variables[20], Allow Knockout>
+<ChangeHp: 10, Decrease, Variables[20], Allow Knockout>
+<ChangeHp: 10, Decrease, Variables[20], Allow Knockout>
+<ChangeHp: 10, Decrease, Variables[20], Allow Knockout>
+<ChangeHp: 10, Decrease, Variables[20], Allow Knockout>
+<ChangeHp: 10, Decrease, Variables[20], Allow Knockout>
+<ChangeHp: Variables[20], Decrease, 1, OFF>
+<ChangeHp: Variables[20], Decrease, 1, OFF>
+<ChangeHp: Variables[20], Decrease, 1, OFF>
+<ChangeHp: Variables[20], Decrease, 1, OFF>
+<ChangeHp: Variables[20], Decrease, 1, OFF>
+
+===== Actor / Change MP =====
+<ChangeMp: 4, Increase, 2>
+<ChangeMp: 4, Increase, 2>
+<ChangeMp: 4, Increase, 2>
+<ChangeMp: Variables[5], Decrease, Variables[2]>
+<ChangeMp: Variables[5], Decrease, Variables[2]>
+<ChangeMp: Variables[5], Decrease, Variables[2]>
+<ChangeMp: 0, Increase, Variables[10]>
+<ChangeMp: 0, Increase, Variables[10]>
+<ChangeMp: 0, Increase, Variables[10]>
+<ChangeMp: 20, Increase, 10>
+<ChangeMp: Variables[10], Increase, 20>
+
+===== Actor / Change TP =====
+<ChangeTp: 4, Increase, 2>
+<ChangeTp: 4, Increase, 2>
+<ChangeTp: 4, Increase, 2>
+<ChangeTp: Variables[5], Decrease, Variables[2]>
+<ChangeTp: Variables[5], Decrease, Variables[2]>
+<ChangeTp: Variables[5], Decrease, Variables[2]>
+<ChangeTp: 0, Increase, Variables[10]>
+<ChangeTp: 0, Increase, Variables[10]>
+<ChangeTp: 0, Increase, Variables[10]>
+<ChangeTp: 20, Increase, 10>
+<ChangeTp: Variables[10], Increase, 20>
+
+===== Actor / Change State =====
+<ChangeState: 1, Add, 4>
+<ChangeState: 1, Add, 4>
+<ChangeState: 1, Add, 4>
+<ChangeState: Variables[3], Remove, 2>
+<ChangeState: Variables[3], Remove, 2>
+<ChangeState: Variables[3], Remove, 2>
+<ChangeState: 0, Add, 4>
+<ChangeState: 0, Add, 4>
+<ChangeState: 0, Add, 4>
+<ChangeState: 10, Add, 10>
+<ChangeState: Variables[10], Add, 10>
+
+===== Actor / Recover All =====
+<RecoverAll: 1>
+<RecoverAll: 1>
+<RecoverAll: 0>
+<RecoverAll: 0>
+<RecoverAll: 0>
+<RecoverAll: 10>
+<RecoverAll: Variables[1]>
+<RecoverAll: Variables[1]>
+<RecoverAll: Variables[1]>
+<RecoverAll: Variables[10]>
+<RecoverAll: Variables[10]>
+<RecoverAll: Variables[10]>
+
+===== Actor / Change Exp =====
+<ChangeExp: 3, Increase, 1, Show Level Up>
+<ChangeExp: 3, Increase, 1, Show Level Up>
+<ChangeExp: 3, Increase, 1, Show Level Up>
+<ChangeExp: Variables[1], Decrease, Variables[3], OFF>
+<ChangeExp: Variables[1], Decrease, Variables[3], OFF>
+<ChangeExp: Variables[1], Decrease, Variables[3], OFF>
+<ChangeExp: 10, Increase, 10, Show Level Up>
+<ChangeExp: 10, Increase, 10, Show Level Up>
+<ChangeExp: 10, Increase, 10, Show Level Up>
+<ChangeExp: 10, Increase, 10, Show Level Up>
+<ChangeExp: Variables[10], Increase, Variables[20], OFF>
+<ChangeExp: Variables[10], Increase, Variables[20], OFF>
+<ChangeExp: 0, Increase, 10, Show Level Up>
+<ChangeExp: 0, Increase, 10, Show Level Up>
+<ChangeExp: 0, Increase, 10, Show Level Up>
+
+===== Actor / Change Level =====
+<ChangeLevel: 3, Increase, 1, Show Level Up>
+<ChangeLevel: 3, Increase, 1, Show Level Up>
+<ChangeLevel: 3, Increase, 1, Show Level Up>
+<ChangeLevel: Variables[1], Decrease, Variables[3], OFF>
+<ChangeLevel: Variables[1], Decrease, Variables[3], OFF>
+<ChangeLevel: Variables[1], Decrease, Variables[3], OFF>
+<ChangeLevel: 10, Increase, 10, Show Level Up>
+<ChangeLevel: 10, Increase, 10, Show Level Up>
+<ChangeLevel: 10, Increase, 10, Show Level Up>
+<ChangeLevel: 10, Increase, 10, Show Level Up>
+<ChangeLevel: Variables[10], Increase, Variables[20], OFF>
+<ChangeLevel: Variables[10], Increase, Variables[20], OFF>
+<ChangeLevel: Variables[10], Increase, Variables[20], OFF>
+<ChangeLevel: Variables[10], Increase, Variables[20], OFF>
+<ChangeLevel: 0, Increase, 10, Show Level Up>
+<ChangeLevel: 0, Increase, 10, Show Level Up>
+<ChangeLevel: 0, Increase, 10, Show Level Up>
+
+===== Actor / Change Parameter =====
+<ChangeParameter: 5, MaxHP, Increase, 10>
+<ChangeParameter: 5, MaxHP, Increase, 10>
+<ChangeParameter: 5, MaxHP, Increase, 10>
+<ChangeParameter: Variables[2], M.Attack, Decrease, Variables[4]>
+<ChangeParameter: Variables[2], M.Attack, Decrease, Variables[4]>
+<ChangeParameter: Variables[2], M.Attack, Decrease, Variables[4]>
+<ChangeParameter: 0, MaxMP, Increase, Variables[10]>
+<ChangeParameter: 0, MaxMP, Increase, Variables[10]>
+<ChangeParameter: 0, MaxMP, Increase, Variables[10]>
+<ChangeParameter: Variables[10], Attack, Increase, 2>
+<ChangeParameter: Variables[10], Attack, Increase, 2>
+<ChangeParameter: Variables[10], Attack, Increase, 2>
+<ChangeParameter: 10, Defense, Increase, 2>
+<ChangeParameter: 10, Defense, Increase, 2>
+<ChangeParameter: 10, Defense, Increase, 2>
+<ChangeParameter: 1, M.Defense, Increase, 2>
+<ChangeParameter: 1, M.Defense, Increase, 2>
+<ChangeParameter: 1, M.Defense, Increase, 2>
+<ChangeParameter: 1, Agility, Increase, 2>
+<ChangeParameter: 1, Agility, Increase, 2>
+<ChangeParameter: 1, Agility, Increase, 2>
+<ChangeParameter: 1, Luck, Increase, 2>
+<ChangeParameter: 1, Luck, Increase, 2>
+<ChangeParameter: 1, Luck, Increase, 2>
+
+===== Actor / Change Skill =====
+<ChangeSkill: 0, Learn, 1>
+<ChangeSkill: 0, Learn, 10>
+<ChangeSkill: 0, Learn, 100>
+<ChangeSkill: 1, Forget, 4>
+<ChangeSkill: 2, Forget, 10>
+<ChangeSkill: 10, Forget, 10>
+<ChangeSkill: Variables[1], Learn, 22>
+<ChangeSkill: Variables[10], Forget, 50>
+<ChangeSkill: Variables[100], Learn, 33>
+<ChangeSkill: 1, Learn, 2>
+<ChangeSkill: 1, Learn, 2>
+<ChangeSkill: Variables[4], Forget, 1>
+<ChangeSkill: Variables[4], Forget, 1>
+
+===== Actor / Change Equipment =====
+<ChangeEquipment: 1, 2, 6>
+<ChangeEquipment: 1, 2, 6>
+<ChangeEquipment: 10, 10, 10>
+<ChangeEquipment: 1, 1, 0>
+<ChangeEquipment: 1, 1, 0>
+<ChangeEquipment: 1, 1, 0>
+
+===== Actor / Change Name =====
+<ChangeName: 1, アクター1>
+<ChangeName: 1, アクター1>
+<ChangeName: 10, アクター10>
+<ChangeName: 1, actor1>
+<ChangeName: 1, >
+
+===== Actor / Change Class =====
+<ChangeClass: 3, 2, OFF>
+<ChangeClass: 3, 2, OFF>
+<ChangeClass: 3, 2, Save EXP>
+<ChangeClass: 3, 2, Save EXP>
+<ChangeClass: 1, 1, OFF>
+<ChangeClass: 1, 1, OFF>
+<ChangeClass: 1, 1, OFF>
+<ChangeClass: 1, 1, OFF>
+<ChangeClass: 1, 1, OFF>
+<ChangeClass: 10, 20, Save EXP>
+<ChangeClass: 10, 20, Save EXP>
+<ChangeClass: 10, 20, Save EXP>
+<ChangeClass: 10, 20, Save EXP>
+<ChangeClass: 10, 20, Save EXP>
+<ChangeClass: 10, 20, Save EXP>
+<ChangeClass: 10, 20, Save EXP>
+<ChangeClass: 10, 20, Save EXP>
+
+===== Actor / Change Nickname =====
+<ChangeNickname: 3, 三人目のアクター>
+<ChangeNickname: 3, 三人目のアクター>
+<ChangeNickname: 10, an actor of ten>
+<ChangeNickname: 1>
+
+===== Actor / Change Profile =====
+<ChangeProfile: 3, アクター3, 初期キャラクター>
+<ChangeProfile: 3, アクター3, 初期キャラクター>
+<ChangeProfile: 10, Actor 10, Initial character>
+<ChangeProfile: 1, アクター1>
+<ChangeProfile: 1>
+<ChangeProfile: 1, test, AbC>
+<ChangeProfile: 1, test, AbC>
+
+===== Movement / Transfer Player =====
+<TransferPlayer: Direct[1][10][20], Retain, Black>
+<TransferPlayer: Direct[1][10][20], Retain, Black>
+<TransferPlayer: WithVariables[1][2][3], Down, White>
+<TransferPlayer: WithVariables[1][2][3], Down, White>
+<TransferPlayer: Direct[10][1][2], Retain, Black>
+<TransferPlayer: WithVariables[10][20][30], Down, White>
+<TransferPlayer: Direct[1][2][3], Retain, Black>
+<TransferPlayer: Direct[1][2][3], Retain, Black>
+<TransferPlayer: Direct[1][2][3], Retain, Black>
+<TransferPlayer: Direct[1][2][3], Down, White>
+<TransferPlayer: Direct[1][2][3], Down, White>
+<TransferPlayer: Direct[1][2][3], Down, White>
+<TransferPlayer: Direct[1][2][3], Left, None>
+<TransferPlayer: Direct[1][2][3], Left, None>
+<TransferPlayer: Direct[1][2][3], Left, None>
+<TransferPlayer: Direct[1][2][3], Right, Black>
+<TransferPlayer: Direct[1][2][3], Right, Black>
+<TransferPlayer: Direct[1][2][3], Right, Black>
+<TransferPlayer: Direct[1][2][3], Up, Black>
+<TransferPlayer: Direct[1][2][3], Up, Black>
+<TransferPlayer: Direct[1][2][3], Up, Black>
+
+===== Movement / Set Vehicle Location =====
+<SetVehicleLocation: Boat, Direct[1][10][20]>
+<SetVehicleLocation: Boat, Direct[1][10][20]>
+<SetVehicleLocation: Ship, WithVariables[1][2][3]>
+<SetVehicleLocation: Ship, WithVariables[1][2][3]>
+<SetVehicleLocation: Boat, Direct[10][1][2]>
+<SetVehicleLocation: Ship, WithVariables[10][20][30]>
+<SetVehicleLocation: Airship, Direct[1][2][3]>
+<SetVehicleLocation: Airship, Direct[1][2][3]>
+<SetVehicleLocation: Airship, Direct[1][2][3]>
+
+===== Movement / Set Event Location =====
+<SetEventLocation: This Event, Direct[10][20], Retain>
+<SetEventLocation: This Event, Direct[10][20], Retain>
+<SetEventLocation: 12, WithVariables[2][3], Up>
+<SetEventLocation: 12, WithVariables[2][3], Up>
+<SetEventLocation: 12, Exchange[This Event], Up>
+<SetEventLocation: 12, Exchange[This Event], Up>
+<SetEventLocation: 12, Exchange[This Event], Up>
+<SetEventLocation: 1, Direct[2][3], Retain>
+<SetEventLocation: 1, WithVariables[10][20], Retain>
+<SetEventLocation: 1, Exchange[2], Retain>
+<SetEventLocation: 1, Exchange[10], Retain>
+<SetEventLocation: 1, Direct[0][0], Retain>
+<SetEventLocation: 1, Direct[0][0], Retain>
+<SetEventLocation: 1, Direct[0][0], Retain>
+<SetEventLocation: 1, Direct[0][0], Down>
+<SetEventLocation: 1, Direct[0][0], Down>
+<SetEventLocation: 1, Direct[0][0], Down>
+<SetEventLocation: 1, Direct[0][0], Left>
+<SetEventLocation: 1, Direct[0][0], Left>
+<SetEventLocation: 1, Direct[0][0], Left>
+<SetEventLocation: 1, Direct[0][0], Right>
+<SetEventLocation: 1, Direct[0][0], Right>
+<SetEventLocation: 1, Direct[0][0], Right>
+<SetEventLocation: 1, Direct[0][0], Up>
+<SetEventLocation: 1, Direct[0][0], Up>
+<SetEventLocation: 1, Direct[0][0], Up>
+
+===== Movement / Scroll Map =====
+<ScrollMap: Down, 3, x8 slower, OFF>
+<ScrollMap: Down, 3, x8 slower, OFF>
+<ScrollMap: Down, 3, x8 slower, OFF>
+<ScrollMap: Down, 3, x8 slower, OFF>
+<ScrollMap: Down, 3, x8 slower, OFF>
+<ScrollMap: Left, 44, x4 slower, Wait for Completion>
+<ScrollMap: Left, 44, x4 slower, Wait for Completion>
+<ScrollMap: Left, 44, x4 slower, Wait for Completion>
+<ScrollMap: Left, 44, x4 slower, Wait for Completion>
+<ScrollMap: Left, 44, x4 slower, Wait for Completion>
+<ScrollMap: Left, 44, x4 slower, Wait for Completion>
+<ScrollMap: Left, 44, x4 slower, Wait for Completion>
+<ScrollMap: Right, 100, x2 slower, OFF>
+<ScrollMap: Right, 100, x2 slower, OFF>
+<ScrollMap: Right, 100, x2 slower, OFF>
+<ScrollMap: Up, 1, Normal, OFF>
+<ScrollMap: Up, 1, Normal, OFF>
+<ScrollMap: Up, 1, Normal, OFF>
+<ScrollMap: Down, 1, x2 faster, OFF>
+<ScrollMap: Down, 1, x2 faster, OFF>
+<ScrollMap: Down, 1, x2 faster, OFF>
+<ScrollMap: Down, 1, x4 faster, OFF>
+<ScrollMap: Down, 1, x4 faster, OFF>
+<ScrollMap: Down, 1, x4 faster, OFF>
+<ScrollMap: Down, 100, Normal, OFF>
+<ScrollMap: Down, 100, Normal, OFF>
+<ScrollMap: Down, 100, Normal, OFF>
+<ScrollMap: Down, 100, Normal, OFF>
+<ScrollMap: Right, 50, x2 slower, Wait for Completion>
+<ScrollMap: Right, 50, x2 slower, Wait for Completion>
+<ScrollMap: Right, 50, x2 slower, Wait for Completion>
+<ScrollMap: Right, 50, x2 slower, Wait for Completion>
+<ScrollMap: Right, 50, x2 slower, Wait for Completion>
+<ScrollMap: Right, 50, x2 slower, Wait for Completion>
+
+===== Movement / Set Movement Route =====
+<SetMovementRoute: Player, OFF, OFF, Wait for Completion>
+<Jump: 10, 20>
+<McWait: 60>
+<SwitchOn: 1>
+<ChangeSpeed: Normal>
+<ChangeImage: Actor1, 2>
+<ChangeOpacity: 255>
+<ChangeBlendMode: Normal>
+<McPlaySe: Absorb1, 90, 100, 0>
+<McScript: console.log("今日も一日がんばるぞい！");>
+<SetMovementRoute: Player, OFF, OFF, Wait for Completion>
+<Jump: 10, 20>
+<McWait: 60>
+<SwitchOn: 1>
+<ChangeSpeed: Normal>
+<ChangeImage: Actor1, 2>
+<ChangeOpacity: 255>
+<ChangeBlendMode: Normal>
+<McPlaySe: Absorb1, 90, 100, 0>
+<McScript: console.log("今日も一日がんばるぞい！");>
+<SetMovementRoute: This Event, OFF, OFF, OFF>
+<SetMovementRoute: This Event, OFF, OFF, OFF>
+<SetMovementRoute: This Event, OFF, OFF, OFF>
+<SetMovementRoute: Player, Repeat Movements, Skip If Cannot Move, Wait for Completion>
+<SetMovementRoute: Player, Repeat Movements, Skip If Cannot Move, Wait for Completion>
+<SetMovementRoute: Player, Repeat Movements, Skip If Cannot Move, Wait for Completion>
+<SetMovementRoute: Player, Repeat Movements, Skip If Cannot Move, Wait for Completion>
+<SetMovementRoute: Player, Repeat Movements, Skip If Cannot Move, Wait for Completion>
+<SetMovementRoute: Player, Repeat Movements, Skip If Cannot Move, Wait for Completion>
+<SetMovementRoute: Player, Repeat Movements, Skip If Cannot Move, Wait for Completion>
+<SetMovementRoute: 10, OFF, OFF, OFF>
+<SetMovementRoute: 10, OFF, OFF, OFF>
+<SetMovementRoute: 10, OFF, OFF, OFF>
+<SetMovementRoute: 10, OFF, OFF, OFF>
+<SetMovementRoute: 10, OFF, OFF, OFF>
+<SetMovementRoute: 10, OFF, OFF, OFF>
+<SetMovementRoute: Player, OFF, OFF, Wait for Completion>
+<MoveDown>
+<MoveDown>
+<MoveLeft>
+<MoveLeft>
+<MoveRight>
+<MoveRight>
+<MoveUp>
+<MoveUp>
+<MoveLowerLeft>
+<MoveLowerLeft>
+<MoveLowerRight>
+<MoveLowerRight>
+<MoveUpperLeft>
+<MoveUpperLeft>
+<MoveUpperRight>
+<MoveUpperRight>
+<MoveAtRandom>
+<MoveAtRandom>
+<MoveTowardPlayer>
+<MoveTowardPlayer>
+<MoveAwayFromPlayer>
+<MoveAwayFromPlayer>
+<OneStepForward>
+<OneStepForward>
+<OneStepBackward>
+<OneStepBackward>
+<TurnDown>
+<TurnDown>
+<TurnLeft>
+<TurnLeft>
+<TurnRight>
+<TurnRight>
+<TurnUp>
+<TurnUp>
+<Turn90Right>
+<Turn90Right>
+<Turn90Left>
+<Turn90Left>
+<Turn180>
+<Turn180>
+<Turn90RightorLeft>
+<Turn90RightorLeft>
+<TurnAtRandom>
+<TurnAtRandom>
+<TurnTowardPlayer>
+<TurnTowardPlayer>
+<TurnAwayFromPlayer>
+<TurnAwayFromPlayer>
+<WalkingAnimationOn>
+<WalkingAnimationOn>
+<WalkingAnimationOff>
+<WalkingAnimationOff>
+<SteppingAnimationOn>
+<SteppingAnimationOn>
+<SteppingAnimationOff>
+<SteppingAnimationOff>
+<DirectionFixOn>
+<DirectionFixOn>
+<DirectionFixOff>
+<DirectionFixOff>
+<ThroughOn>
+<ThroughOn>
+<ThroughOff>
+<ThroughOff>
+<TransparentOn>
+<TransparentOn>
+<TransparentOff>
+<TransparentOff>
+<SetMovementRoute: Player, OFF, OFF, Wait for Completion>
+<Jump: 1, 2>
+<Jump: 10, 20>
+<Jump: -5, -50>
+<McWait: 5>
+<McWait: 60>
+<SwitchOn: 1>
+<SwitchOn: 10>
+<SwitchOff: 1>
+<SwitchOff: 10>
+<ChangeSpeed: x8 slower>
+<ChangeSpeed: x8 slower>
+<ChangeSpeed: x8 slower>
+<ChangeSpeed: x4 slower>
+<ChangeSpeed: x4 slower>
+<ChangeSpeed: x4 slower>
+<ChangeSpeed: x2 slower>
+<ChangeSpeed: x2 slower>
+<ChangeSpeed: x2 slower>
+<ChangeSpeed: Normal>
+<ChangeSpeed: Normal>
+<ChangeSpeed: Normal>
+<ChangeSpeed: x2 faster>
+<ChangeSpeed: x2 faster>
+<ChangeSpeed: x2 faster>
+<ChangeSpeed: x4 faster>
+<ChangeSpeed: x4 faster>
+<ChangeSpeed: x4 faster>
+<ChangeFrequency: Lowest>
+<ChangeFrequency: Lowest>
+<ChangeFrequency: Lowest>
+<ChangeFrequency: Lower>
+<ChangeFrequency: Lower>
+<ChangeFrequency: Lower>
+<ChangeFrequency: Normal>
+<ChangeFrequency: Normal>
+<ChangeFrequency: Normal>
+<ChangeFrequency: Higher>
+<ChangeFrequency: Higher>
+<ChangeFrequency: Higher>
+<ChangeFrequency: Highest>
+<ChangeFrequency: Highest>
+<ChangeFrequency: Highest>
+<ChangeImage: Actor1, 0>
+<ChangeImage: Actor1, 0>
+<ChangeImage: None, 0>
+<ChangeImage: None, 0>
+<ChangeOpacity: 0>
+<ChangeOpacity: 255>
+<ChangeBlendMode: Normal>
+<ChangeBlendMode: Normal>
+<ChangeBlendMode: Normal>
+<ChangeBlendMode: Additive>
+<ChangeBlendMode: Additive>
+<ChangeBlendMode: Additive>
+<ChangeBlendMode: Multiply>
+<ChangeBlendMode: Multiply>
+<ChangeBlendMode: Multiply>
+<ChangeBlendMode: Screen>
+<ChangeBlendMode: Screen>
+<ChangeBlendMode: Screen>
+<McPlaySe: Attack1, 90, 100, 0>
+<McPlaySe: Attack1, 90, 100, 0>
+<McPlaySe: Attack2, 50, 80, -30>
+<McPlaySe: Attack2, 50, 80, 0>
+<McPlaySe: Attack2, 50, 100, 0>
+<McPlaySe: None, 90, 100, 0>
+<McPlaySe: None, 90, 100, 0>
+<McScript: console.log("今日も一日がんばるぞい！");>
+<McScript: console.log("今日も一日がんばるぞい！");>
+
+===== Movement / Get on/off Vehicle =====
+<GetOnOffVehicle>
+<GetOnOffVehicle>
+
+===== character / Change Transparency =====
+<ChangeTransparency: ON>
+<ChangeTransparency: ON>
+<ChangeTransparency: ON>
+<ChangeTransparency: ON>
+<ChangeTransparency: OFF>
+<ChangeTransparency: OFF>
+<ChangeTransparency: OFF>
+<ChangeTransparency: OFF>
+
+===== character / Change Player Followers =====
+<ChangePlayerFollowers: ON>
+<ChangePlayerFollowers: ON>
+<ChangePlayerFollowers: ON>
+<ChangePlayerFollowers: ON>
+<ChangePlayerFollowers: OFF>
+<ChangePlayerFollowers: OFF>
+<ChangePlayerFollowers: OFF>
+<ChangePlayerFollowers: OFF>
+
+===== character / Gather Followers =====
+<GatherFollowers>
+<GatherFollowers>
+
+===== character / Show Animation =====
+<ShowAnimation: Player, 2, Wait for Completion>
+<ShowAnimation: Player, 2, Wait for Completion>
+<ShowAnimation: 3, 4, OFF>
+<ShowAnimation: 3, 4, OFF>
+<ShowAnimation: 10, 10, Wait for Completion>
+<ShowAnimation: Player, 1, Wait for Completion>
+<ShowAnimation: Player, 1, Wait for Completion>
+<ShowAnimation: Player, 1, Wait for Completion>
+<ShowAnimation: This Event, 1, OFF>
+<ShowAnimation: This Event, 1, OFF>
+<ShowAnimation: This Event, 1, OFF>
+<ShowAnimation: 1, 1, Wait for Completion>
+<ShowAnimation: 1, 1, Wait for Completion>
+<ShowAnimation: 1, 1, Wait for Completion>
+<ShowAnimation: 1, 1, Wait for Completion>
+<ShowAnimation: 1, 1, Wait for Completion>
+<ShowAnimation: 1, 1, Wait for Completion>
+<ShowAnimation: 1, 1, Wait for Completion>
+<ShowAnimation: 1, 1, OFF>
+<ShowAnimation: 1, 1, OFF>
+<ShowAnimation: 1, 1, OFF>
+<ShowAnimation: 1, 1, OFF>
+<ShowAnimation: 1, 1, OFF>
+
+===== character / Show Balloon Icon =====
+<ShowBalloonIcon: Player, Exclamation, OFF>
+<ShowBalloonIcon: Player, Exclamation, OFF>
+<ShowBalloonIcon: Player, Exclamation, OFF>
+<ShowBalloonIcon: Player, Exclamation, OFF>
+<ShowBalloonIcon: Player, Exclamation, OFF>
+<ShowBalloonIcon: This Event, Question, Wait for Completion>
+<ShowBalloonIcon: This Event, Question, Wait for Completion>
+<ShowBalloonIcon: This Event, Question, Wait for Completion>
+<ShowBalloonIcon: This Event, Question, Wait for Completion>
+<ShowBalloonIcon: This Event, Question, Wait for Completion>
+<ShowBalloonIcon: This Event, Question, Wait for Completion>
+<ShowBalloonIcon: This Event, Question, Wait for Completion>
+<ShowBalloonIcon: 1, Music note, OFF>
+<ShowBalloonIcon: 1, Music note, OFF>
+<ShowBalloonIcon: 1, Music note, OFF>
+<ShowBalloonIcon: 22, Heart, Wait for Completion>
+<ShowBalloonIcon: 22, Heart, Wait for Completion>
+<ShowBalloonIcon: 22, Heart, Wait for Completion>
+<ShowBalloonIcon: 100, Anger, OFF>
+<ShowBalloonIcon: 100, Anger, OFF>
+<ShowBalloonIcon: 100, Anger, OFF>
+<ShowBalloonIcon: 1, Sweat, OFF>
+<ShowBalloonIcon: 1, Sweat, OFF>
+<ShowBalloonIcon: 1, Sweat, OFF>
+<ShowBalloonIcon: 1, Flustration, OFF>
+<ShowBalloonIcon: 1, Flustration, OFF>
+<ShowBalloonIcon: 1, Flustration, OFF>
+<ShowBalloonIcon: 1, Flustration, OFF>
+<ShowBalloonIcon: 1, Silence, OFF>
+<ShowBalloonIcon: 1, Silence, OFF>
+<ShowBalloonIcon: 1, Silence, OFF>
+<ShowBalloonIcon: 1, Light bulb, OFF>
+<ShowBalloonIcon: 1, Light bulb, OFF>
+<ShowBalloonIcon: 1, Light bulb, OFF>
+<ShowBalloonIcon: 1, zzz, OFF>
+<ShowBalloonIcon: 1, zzz, OFF>
+<ShowBalloonIcon: 1, zzz, OFF>
+<ShowBalloonIcon: 1, User-defined1, OFF>
+<ShowBalloonIcon: 1, User-defined1, OFF>
+<ShowBalloonIcon: 1, User-defined1, OFF>
+<ShowBalloonIcon: 1, User-defined2, OFF>
+<ShowBalloonIcon: 1, User-defined2, OFF>
+<ShowBalloonIcon: 1, User-defined2, OFF>
+<ShowBalloonIcon: 1, User-defined3, OFF>
+<ShowBalloonIcon: 1, User-defined3, OFF>
+<ShowBalloonIcon: 1, User-defined3, OFF>
+<ShowBalloonIcon: 1, User-defined4, OFF>
+<ShowBalloonIcon: 1, User-defined4, OFF>
+<ShowBalloonIcon: 1, User-defined4, OFF>
+<ShowBalloonIcon: 1, User-defined5, OFF>
+<ShowBalloonIcon: 1, User-defined5, OFF>
+<ShowBalloonIcon: 1, User-defined5, OFF>
+
+===== character / Erase Event =====
+<EraseEvent>
+<EraseEvent>
+
+===== Picture / Show Picture =====
+<ShowPicture: 1, Book, Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal]>
+<ShowPicture: 1, Book, Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal]>
+<ShowPicture: 1, Book, Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal]>
+<ShowPicture: 2, Castle, Position[Upper Left][0][0], Scale[50][55], Blend[255][Normal]>
+<ShowPicture: 2, Castle, Position[Upper Left][0][0], Scale[50][55], Blend[255][Normal]>
+<ShowPicture: 2, Castle, Position[Upper Left][0][0], Scale[50][55], Blend[255][Normal]>
+<ShowPicture: 3, Castle, Position[Center][Variables[4]][Variables[5]], Scale[90][95], Blend[235][Screen]>
+<ShowPicture: 3, Castle, Position[Center][Variables[4]][Variables[5]], Scale[90][95], Blend[235][Screen]>
+<ShowPicture: 3, Castle, Position[Center][Variables[4]][Variables[5]], Scale[90][95], Blend[235][Screen]>
+<ShowPicture: 4, Book, Position[Upper Left][100][200], Scale[100][100], Blend[255][Normal]>
+<ShowPicture: 4, Book, Position[Upper Left][100][200], Scale[100][100], Blend[255][Normal]>
+<ShowPicture: 5, Book, Position[Upper Left][0][0], Scale[100][100], Blend[130][Normal]>
+<ShowPicture: 5, Book, Position[Upper Left][0][0], Scale[100][100], Blend[130][Normal]>
+<ShowPicture: 6, Book, Position[Upper Left][0][0], Scale[100][100], Blend[130][Additive]>
+<ShowPicture: 6, Book, Position[Upper Left][0][0], Scale[100][100], Blend[130][Additive]>
+<ShowPicture: 7, Book, Position[Upper Left][0][0], Scale[100][100], Blend[130][Multiply]>
+<ShowPicture: 7, Book, Position[Upper Left][0][0], Scale[100][100], Blend[130][Multiply]>
+<ShowPicture: 8, Book, Position[Upper Left][0][0], Scale[100][100], Blend[130][Screen]>
+<ShowPicture: 8, Book, Position[Upper Left][0][0], Scale[100][100], Blend[130][Screen]>
+<ShowPicture: 9, Book, Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal]>
+<ShowPicture: 9, Book, Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal]>
+<ShowPicture: 9, Book, Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal]>
+<ShowPicture: 1, Book, Position[Upper Left][0][0], Scale[100][100], Blend[0][Normal]>
+<ShowPicture: 1, Book, Position[Upper Left][0][0], Scale[100][100], Blend[1][Normal]>
+<ShowPicture: 1, Book, Position[Upper Left][0][0], Scale[100][100], Blend[254][Normal]>
+<ShowPicture: 1, Book, Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal]>
+<ShowPicture: 1, Book, Position[Upper Left][0][0], Scale[0][0], Blend[255][Normal]>
+<ShowPicture: 1, Book, Position[Upper Left][0][0], Scale[1][1], Blend[255][Normal]>
+<ShowPicture: 15, Book, Position[Upper Left][-1][-2], Scale[100][100], Blend[255][Normal]>
+<ShowPicture: 15, Book, Position[Center][-30][-400], Scale[100][100], Blend[255][Normal]>
+<ShowPicture: 25, Book, Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal]>
+<ShowPicture: 25, Book, Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal]>
+
+===== Picture / Move Picture =====
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 2, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[50][55], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 2, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[50][55], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 2, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[50][55], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 3, Duration[45][Wait for Completion], Position[Center][Variables[4]][Variables[5]], Scale[90][95], Blend[235][Screen], Easing[Constant speed]>
+<MovePicture: 3, Duration[45][Wait for Completion], Position[Center][Variables[4]][Variables[5]], Scale[90][95], Blend[235][Screen], Easing[Constant speed]>
+<MovePicture: 3, Duration[45][Wait for Completion], Position[Center][Variables[4]][Variables[5]], Scale[90][95], Blend[235][Screen], Easing[Constant speed]>
+<MovePicture: 4, Duration[60][Wait for Completion], Position[Upper Left][100][200], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 4, Duration[60][Wait for Completion], Position[Upper Left][100][200], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 5, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[130][Normal], Easing[Constant speed]>
+<MovePicture: 5, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[130][Normal], Easing[Constant speed]>
+<MovePicture: 6, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[130][Additive], Easing[Constant speed]>
+<MovePicture: 6, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[130][Additive], Easing[Constant speed]>
+<MovePicture: 7, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[130][Multiply], Easing[Constant speed]>
+<MovePicture: 7, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[130][Multiply], Easing[Constant speed]>
+<MovePicture: 8, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[130][Screen], Easing[Constant speed]>
+<MovePicture: 8, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[130][Screen], Easing[Constant speed]>
+<MovePicture: 9, Duration[30][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 9, Duration[30][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 9, Duration[30][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 10, Duration[120][], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 10, Duration[120][], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 10, Duration[120][], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 11, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 11, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 11, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[0][Normal], Easing[Constant speed]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[1][Normal], Easing[Constant speed]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[254][Normal], Easing[Constant speed]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[0][0], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[1][1], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 1, Duration[1][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 15, Duration[60][Wait for Completion], Position[Upper Left][-1][-2], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 15, Duration[60][Wait for Completion], Position[Center][-30][-400], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 25, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 25, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+
+===== Picture / Move Picture MZ =====
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Constant speed]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Slow start]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Slow start]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Slow start]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Slow end]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Slow end]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Slow end]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Slow start and end]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Slow start and end]>
+<MovePicture: 1, Duration[60][Wait for Completion], Position[Upper Left][0][0], Scale[100][100], Blend[255][Normal], Easing[Slow start and end]>
+<MovePicture: 3, Duration[55][], Position[Center][Variables[2]][Variables[5]], Scale[60][70], Blend[200][Additive], Easing[Slow start]>
+
+===== Picture / Rotate Picture =====
+<RotatePicture: 1, -30>
+<RotatePicture: 1, -30>
+<RotatePicture: 1, -30>
+<RotatePicture: 2, 90>
+<RotatePicture: 2, 90>
+<RotatePicture: 2, 90>
+
+===== Picture / Tint Picture =====
+<TintPicture: 1, Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintPicture: 1, Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintPicture: 1, Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintPicture: 2, Duration[60][Wait for Completion], ColorTone[0][255][255][0]>
+<TintPicture: 2, Duration[60][Wait for Completion], ColorTone[0][255][255][0]>
+<TintPicture: 2, Duration[60][Wait for Completion], ColorTone[0][255][255][0]>
+<TintPicture: 3, Duration[30][Wait for Completion], ColorTone[Dark]>
+<TintPicture: 3, Duration[30][Wait for Completion], ColorTone[Dark]>
+<TintPicture: 3, Duration[30][Wait for Completion], ColorTone[Dark]>
+<TintPicture: 4, Duration[60][Wait for Completion], ColorTone[Sepia]>
+<TintPicture: 4, Duration[60][Wait for Completion], ColorTone[Sepia]>
+<TintPicture: 4, Duration[60][Wait for Completion], ColorTone[Sepia]>
+<TintPicture: 5, Duration[30][Wait for Completion], ColorTone[Normal]>
+<TintPicture: 5, Duration[30][Wait for Completion], ColorTone[Normal]>
+<TintPicture: 5, Duration[30][Wait for Completion], ColorTone[Normal]>
+<TintPicture: 6, Duration[120][], ColorTone[Normal]>
+<TintPicture: 6, Duration[120][], ColorTone[Normal]>
+<TintPicture: 7, Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintPicture: 7, Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintPicture: 7, Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintPicture: 8, Duration[60][Wait for Completion], ColorTone[-60][120][-180][240]>
+<TintPicture: 8, Duration[60][Wait for Completion], ColorTone[-60][120][-180][240]>
+<TintPicture: 8, Duration[60][Wait for Completion], ColorTone[-60][120][-180][240]>
+<TintPicture: 9, Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintPicture: 9, Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintPicture: 9, Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintPicture: 10, Duration[60][Wait for Completion], ColorTone[Dark]>
+<TintPicture: 10, Duration[60][Wait for Completion], ColorTone[Dark]>
+<TintPicture: 10, Duration[60][Wait for Completion], ColorTone[Dark]>
+<TintPicture: 11, Duration[60][Wait for Completion], ColorTone[Sepia]>
+<TintPicture: 11, Duration[60][Wait for Completion], ColorTone[Sepia]>
+<TintPicture: 11, Duration[60][Wait for Completion], ColorTone[Sepia]>
+<TintPicture: 12, Duration[60][Wait for Completion], ColorTone[Sunset]>
+<TintPicture: 12, Duration[60][Wait for Completion], ColorTone[Sunset]>
+<TintPicture: 12, Duration[60][Wait for Completion], ColorTone[Sunset]>
+<TintPicture: 13, Duration[60][Wait for Completion], ColorTone[Night]>
+<TintPicture: 13, Duration[60][Wait for Completion], ColorTone[Night]>
+<TintPicture: 13, Duration[60][Wait for Completion], ColorTone[Night]>
+<TintPicture: 14, Duration[75][], ColorTone[30][-30][60][60]>
+<TintPicture: 14, Duration[75][], ColorTone[30][-30][60][60]>
+<TintPicture: 14, Duration[75][], ColorTone[30][-30][60][60]>
+<TintPicture: 14, Duration[75][], ColorTone[30][-30][60][60]>
+<TintPicture: 14, Duration[75][], ColorTone[30][-30][60][60]>
+<TintPicture: 14, Duration[75][], ColorTone[30][-30][60][60]>
+<TintPicture: 15, Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintPicture: 15, Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintPicture: 15, Duration[60][Wait for Completion], ColorTone[Normal]>
+
+===== Picture / Erase Picture =====
+<ErasePicture: 1>
+<ErasePicture: 1>
+<ErasePicture: 1>
+<ErasePicture: 99>
+<ErasePicture: 99>
+<ErasePicture: 99>
+
+===== Screen / Tint Screen =====
+<TintScreen: Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintScreen: Duration[30][Wait for Completion], ColorTone[Dark]>
+<TintScreen: Duration[30][Wait for Completion], ColorTone[Dark]>
+<TintScreen: Duration[45][], ColorTone[12][34][56][0]>
+<TintScreen: Duration[45][], ColorTone[12][34][56][0]>
+<TintScreen: Duration[30][Wait for Completion], ColorTone[Normal]>
+<TintScreen: Duration[30][Wait for Completion], ColorTone[Normal]>
+<TintScreen: Duration[120][], ColorTone[Normal]>
+<TintScreen: Duration[120][], ColorTone[Normal]>
+<TintScreen: Duration[120][], ColorTone[Normal]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[-60][120][-180][240]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[-60][120][-180][240]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[60][-120][180][255]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[60][-120][180][255]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[Normal]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[Dark]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[Dark]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[Sepia]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[Sepia]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[Sunset]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[Sunset]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[Night]>
+<TintScreen: Duration[60][Wait for Completion], ColorTone[Night]>
+<TintScreen: Duration[75][], ColorTone[30][-30][60][60]>
+<TintScreen: Duration[75][], ColorTone[30][-30][60][60]>
+<TintScreen: Duration[75][], ColorTone[30][-30][60][60]>
+<TintScreen: Duration[75][], ColorTone[30][-30][60][60]>
+
+===== Screen / Flash Screen =====
+<FlashScreen: 255, 255, 255, 170, 60, Wait for Completion>
+<FlashScreen: 255, 255, 255, 170, 60, Wait for Completion>
+<FlashScreen: 255, 255, 255, 170, 60, OFF>
+<FlashScreen: 255, 255, 255, 170, 60, OFF>
+<FlashScreen: 255, 255, 255, 170, 60, OFF>
+<FlashScreen: 1, 10, 100, 20, 5, Wait for Completion>
+<FlashScreen: 1, 10, 100, 20, 5, Wait for Completion>
+<FlashScreen: 1, 10, 100, 20, 5, Wait for Completion>
+<FlashScreen: 1, 10, 100, 20, 5, Wait for Completion>
+<FlashScreen: 1, 10, 100, 20, 5, Wait for Completion>
+<FlashScreen: 1, 10, 100, 20, 5, Wait for Completion>
+<FlashScreen: 1, 10, 100, 20, 5, Wait for Completion>
+<FlashScreen: 1, 10, 100, 20, 5, OFF>
+<FlashScreen: 1, 10, 100, 20, 5, OFF>
+<FlashScreen: 1, 10, 100, 20, 5, OFF>
+<FlashScreen: 1, 10, 100, 20, 5, OFF>
+<FlashScreen: 1, 10, 100, 20, 5, OFF>
+
+===== Screen / Shake Screen =====
+<ShakeScreen: 5, 8, 60, Wait for Completion>
+<ShakeScreen: 5, 8, 60, Wait for Completion>
+<ShakeScreen: 1, 1, 1, Wait for Completion>
+<ShakeScreen: 1, 1, 1, Wait for Completion>
+<ShakeScreen: 1, 1, 1, Wait for Completion>
+<ShakeScreen: 1, 1, 1, Wait for Completion>
+<ShakeScreen: 1, 1, 1, Wait for Completion>
+<ShakeScreen: 1, 1, 1, Wait for Completion>
+<ShakeScreen: 1, 1, 1, Wait for Completion>
+<ShakeScreen: 9, 9, 100, OFF>
+<ShakeScreen: 9, 9, 100, OFF>
+<ShakeScreen: 9, 9, 100, OFF>
+<ShakeScreen: 9, 9, 100, OFF>
+<ShakeScreen: 9, 9, 100, OFF>
+
+===== Screen / Set Weather Effect =====
+<SetWeatherEffect: Rain, 5, 60, Wait for Completion>
+<SetWeatherEffect: Rain, 5, 60, Wait for Completion>
+<SetWeatherEffect: None, 1, 5, Wait for Completion>
+<SetWeatherEffect: None, 1, 5, Wait for Completion>
+<SetWeatherEffect: None, 1, 5, Wait for Completion>
+<SetWeatherEffect: None, 1, 5, Wait for Completion>
+<SetWeatherEffect: None, 1, 5, Wait for Completion>
+<SetWeatherEffect: None, 1, 5, Wait for Completion>
+<SetWeatherEffect: None, 1, 5, Wait for Completion>
+<SetWeatherEffect: Storm, 9, 100, OFF>
+<SetWeatherEffect: Storm, 9, 100, OFF>
+<SetWeatherEffect: Storm, 9, 100, OFF>
+<SetWeatherEffect: Storm, 9, 100, OFF>
+<SetWeatherEffect: Storm, 9, 100, OFF>
+<SetWeatherEffect: Snow, 5, 60, Wait for Completion>
+<SetWeatherEffect: Snow, 5, 60, Wait for Completion>
+
+===== Audio & Video / Play Movie =====
+<PlayMovie: SampleMovie>
+<PlayMovie: SampleMovie>
+<PlayMovie: None>
+<PlayMovie: None>
+
+===== Scene Control / Battle Processing =====
+<BattleProcessing: 1>
+<BattleProcessing: 1>
+<BattleProcessing: Variables[5]>
+<IfWin>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+勝った！
+
+<IfEscape>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+逃げた！
+
+<IfLose>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+負けた！
+
+<End>
+
+<BattleProcessing: Variables[5]>
+<IfWin>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+勝った！
+
+<IfEscape>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+逃げた！
+
+<IfLose>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+負けた！
+
+<End>
+
+<BattleProcessing: Random>
+<IfWin>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+勝った！
+
+<IfLose>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+負けた！
+
+<End>
+
+<BattleProcessing: Random>
+<IfWin>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+勝った！
+
+<IfLose>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+負けた！
+
+<End>
+
+<BattleProcessing: 10>
+<IfWin>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+勝った時の処理(メッセージ1)
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+勝った時の処理(メッセージ2)
+
+<IfLose>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+負けた時の処理(メッセージ1)
+
+    <Set: 1, 2>
+    <CommonEvent: 3>
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+<End>
+
+<BattleProcessing: Variables[10]>
+<IfWin>
+
+<IfEscape>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+逃げた！
+
+<End>
+
+<BattleProcessing: Variables[10]>
+<IfWin>
+
+<IfLose>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+負けた！
+
+<End>
+
+<BattleProcessing: Variables[10]>
+<IfWin>
+
+<IfEscape>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+逃げた！
+
+<IfLose>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+負けた！
+
+<End>
+
+<BattleProcessing: 1>
+<IfWin>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+勝った！
+
+    <BattleProcessing: 1>
+    <IfWin>
+
+
+        <Face: (0)><Background: Window><WindowPosition: Bottom>
+勝って勝った！
+
+    <IfLose>
+
+
+        <Face: (0)><Background: Window><WindowPosition: Bottom>
+勝って負けた！
+
+        <If: Switches[1], ON>
+
+            <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+        <Else>
+
+            <Face: (0)><Background: Window><WindowPosition: Bottom>
+今日も一日がんばるぞい！
+
+        <End>
+    <End>
+
+<IfEscape>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+逃げた！
+
+    <BattleProcessing: 1>
+    <IfWin>
+
+
+        <Face: (0)><Background: Window><WindowPosition: Bottom>
+逃げたあとに勝った！
+
+    <IfLose>
+
+
+        <Face: (0)><Background: Window><WindowPosition: Bottom>
+逃げたあとに負けた！
+
+    <End>
+
+<IfLose>
+
+
+    <Face: (0)><Background: Window><WindowPosition: Bottom>
+負けた
+
+    <BattleProcessing: 1>
+    <IfWin>
+
+    <IfEscape>
+
+
+        <Face: (0)><Background: Window><WindowPosition: Bottom>
+負けたあとに逃げた
+
+    <End>
+
+<End>
+
+
+===== Scene Control / Shop Processing =====
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+例1 アイテムID1を標準価格に設定 購入のみではない
+
+<ShopProcessing: OFF>
+
+<Merchandise: Item, 1, Standard>
+<ShopProcessing: OFF>
+<Merchandise: Item, 1, Standard>
+
+<Face: (0)><Background: Window><WindowPosition: Bottom>
+例2: 複数の商品を設定 購入のみ
+武器ID4 価格500
+防具ID6 価格1200
+
+<ShopProcessing: Purchase Only>
+
+<Merchandise: Weapon, 4, 500>
+<Merchandise: Armor, 6, 1200>
+<ShopProcessing: Purchase Only>
+<Merchandise: Weapon, 4, 500>
+<Merchandise: Armor, 6, 1200>
+<ShopProcessing: Purchase Only>
+<Merchandise: Item, 10, Standard>
+<ShopProcessing: Purchase Only>
+<Merchandise: Item, 10, Standard>
+<ShopProcessing: Purchase Only>
+<Merchandise: Item, 10, Standard>
+<ShopProcessing: Purchase Only>
+<Merchandise: Item, 10, Standard>
+<ShopProcessing: Purchase Only>
+<Merchandise: Item, 10, Standard>
+<ShopProcessing: Purchase Only>
+<Merchandise: Item, 10, Standard>
+<ShopProcessing: Purchase Only>
+<Merchandise: Item, 0, Standard>
+<ShopProcessing: Purchase Only>
+<Merchandise: Item, 0, Standard>
+<ShopProcessing: Purchase Only>
+<Merchandise: Item, 0, Standard>
+<ShopProcessing: Purchase Only>
+<Merchandise: Item, 0, Standard>
+<ShopProcessing: Purchase Only>
+<Merchandise: Item, 0, Standard>
+<ShopProcessing: OFF>
+<Merchandise: Item, 100, 1000>
+<Merchandise: Weapon, 22, Standard>
+<Merchandise: Armor, 33, Standard>
+
+===== Scene Control / Name Input Processing =====
+<NameInputProcessing: 1, 8>
+<NameInputProcessing: 1, 8>
+<NameInputProcessing: 10, 14>
+
+===== Scene Control / Open Menu Screen =====
+<OpenMenuScreen>
+<OpenMenuScreen>
+
+===== Scene Control / Open Save Screen =====
+<OpenSaveScreen>
+<OpenSaveScreen>
+
+===== Scene Control / Game Over =====
+<GameOver>
+<GameOver>
+
+===== Scene Control / Return to Title Screen =====
+<ReturnToTitleScreen>
+<ReturnToTitleScreen>
+
+===== System Settings / Change Victory ME =====
+<ChangeVictoryMe: Victory1, 90, 100, 0>
+<ChangeVictoryMe: Victory1, 90, 100, 0>
+<ChangeVictoryMe: Victory1, 90, 100, 0>
+<ChangeVictoryMe: Inn, 0, 150, -100>
+<ChangeVictoryMe: Inn, 100, 50, 100>
+<ChangeVictoryMe: Inn, 100, 50, 0>
+<ChangeVictoryMe: Inn, 100, 100, 0>
+<ChangeVictoryMe: None, 90, 100, 0>
+<ChangeVictoryMe: None, 90, 100, 0>
+
+===== System Settings / Change Defeat ME =====
+<ChangeDefeatMe: Defeat1, 90, 100, 0>
+<ChangeDefeatMe: Defeat1, 90, 100, 0>
+<ChangeDefeatMe: Defeat1, 90, 100, 0>
+<ChangeDefeatMe: Inn, 0, 150, -100>
+<ChangeDefeatMe: Inn, 100, 50, 100>
+<ChangeDefeatMe: Inn, 100, 50, 0>
+<ChangeDefeatMe: Inn, 100, 100, 0>
+<ChangeDefeatMe: None, 90, 100, 0>
+<ChangeDefeatMe: None, 90, 100, 0>
+
+===== System Settings / Change Vehicle BGM =====
+<ChangeVehicleBgm: Boat, Ship1, 90, 100, 0>
+<ChangeVehicleBgm: Boat, Ship1, 90, 100, 0>
+<ChangeVehicleBgm: Boat, Ship1, 90, 100, 0>
+<ChangeVehicleBgm: Ship, Ship2, 0, 150, -100>
+<ChangeVehicleBgm: Ship, Ship2, 100, 50, 100>
+<ChangeVehicleBgm: Ship, Ship2, 100, 50, 0>
+<ChangeVehicleBgm: Airship, Ship2, 100, 100, 0>
+<ChangeVehicleBgm: Airship, None, 90, 100, 0>
+<ChangeVehicleBgm: Airship, None, 90, 100, 0>
+
+===== System Settings / Change Save Access =====
+<ChangeSaveAccess: Disable>
+<ChangeSaveAccess: Disable>
+<ChangeSaveAccess: Disable>
+<ChangeSaveAccess: Enable>
+<ChangeSaveAccess: Enable>
+<ChangeSaveAccess: Enable>
+
+===== System Settings / Change Menu Access =====
+<ChangeMenuAccess: Disable>
+<ChangeMenuAccess: Disable>
+<ChangeMenuAccess: Disable>
+<ChangeMenuAccess: Enable>
+<ChangeMenuAccess: Enable>
+<ChangeMenuAccess: Enable>
+
+===== System Settings / Change Encounter =====
+<ChangeEncounter: Disable>
+<ChangeEncounter: Disable>
+<ChangeEncounter: Disable>
+<ChangeEncounter: Enable>
+<ChangeEncounter: Enable>
+<ChangeEncounter: Enable>
+
+===== System Settings / Change Formation Access =====
+<ChangeFormationAccess: Disable>
+<ChangeFormationAccess: Disable>
+<ChangeFormationAccess: Disable>
+<ChangeFormationAccess: Enable>
+<ChangeFormationAccess: Enable>
+<ChangeFormationAccess: Enable>
+
+===== System Settings / Change Window Color =====
+<ChangeWindowColor: -255, 100, 150>
+<ChangeWindowColor: -255, 100, 150>
+<ChangeWindowColor: 255, -255, 255>
+<ChangeWindowColor: 0, 0, 0>
+
+===== System Settings / Change Actor Image =====
+<ChangeActorImages: 1, Actor1, 2, Actor2, 4, Actor1_1>
+<ChangeActorImages: 1, Actor1, 2, Actor2, 4, Actor1_1>
+<ChangeActorImages: 10, None, 0, None, 0, None>
+<ChangeActorImages: 10, None, 0, None, 0, None>
+
+===== System Settings / Change Vehicle Image =====
+<ChangeVehicleImage: Boat, Vehicle, 5>
+<ChangeVehicleImage: Boat, Vehicle, 5>
+<ChangeVehicleImage: Boat, Vehicle, 5>
+<ChangeVehicleImage: Ship, Actor1, 0>
+<ChangeVehicleImage: Ship, Actor1, 0>
+<ChangeVehicleImage: Ship, Actor1, 0>
+<ChangeVehicleImage: Airship, None, 0>
+<ChangeVehicleImage: Airship, None, 0>
+<ChangeVehicleImage: Airship, None, 0>
+
+===== Map / Change Map Name Display =====
+<ChangeMapNameDisplay: ON>
+<ChangeMapNameDisplay: ON>
+<ChangeMapNameDisplay: ON>
+<ChangeMapNameDisplay: ON>
+<ChangeMapNameDisplay: OFF>
+<ChangeMapNameDisplay: OFF>
+<ChangeMapNameDisplay: OFF>
+<ChangeMapNameDisplay: OFF>
+
+===== Map / Change Tileset =====
+<ChangeTileset: 1>
+<ChangeTileset: 1>
+<ChangeTileset: 10>
+
+===== Map / Change Battle Back =====
+<ChangeBattleBackGround: Desert, Cliff>
+<ChangeBattleBackGround: Desert, Cliff>
+<ChangeBattleBackGround: Ship, Ship>
+<ChangeBattleBackGround: None, Ship>
+<ChangeBattleBackGround: None, Ship>
+<ChangeBattleBackGround: Ship, None>
+<ChangeBattleBackGround: Ship, None>
+
+===== Map / Change Parallax =====
+<ChangeParallax: BlueSky>
+<ChangeParallax: BlueSky>
+<ChangeParallax: BlueSky, LoopHorizontally[10], LoopVertically[-25]>
+<ChangeParallax: BlueSky, LoopHorizontally[10], LoopVertically[-25]>
+<ChangeParallax: Clouds, LoopHorizontally[-32], LoopVertically[32]>
+<ChangeParallax: Clouds, LoopHorizontally[-32], LoopVertically[32]>
+<ChangeParallax: Clouds, LoopHorizontally[1]>
+<ChangeParallax: Clouds, LoopVertically[0]>
+<ChangeParallax: None>
+<ChangeParallax: None>
+
+===== Map / Get Location Info =====
+<GetLocationInfo: 1, Terrain tag, Direct[10][20]>
+<GetLocationInfo: 1, Terrain tag, Direct[10][20]>
+<GetLocationInfo: 2, Layer 1, WithVariables[4][5]>
+<GetLocationInfo: 2, Layer 1, WithVariables[4][5]>
+<GetLocationInfo: 3, Region Id, Character[0]>
+<GetLocationInfo: 3, Region Id, Character[0]>
+<GetLocationInfo: 10, Terrain tag, Direct[1][2]>
+<GetLocationInfo: 10, Terrain tag, Direct[1][2]>
+<GetLocationInfo: 10, Terrain tag, Direct[1][2]>
+<GetLocationInfo: 10, Event Id, Direct[1][2]>
+<GetLocationInfo: 10, Event Id, Direct[1][2]>
+<GetLocationInfo: 10, Event Id, Direct[1][2]>
+<GetLocationInfo: 10, Layer 1, Direct[1][2]>
+<GetLocationInfo: 10, Layer 1, Direct[1][2]>
+<GetLocationInfo: 10, Layer 1, Direct[1][2]>
+<GetLocationInfo: 10, Layer 2, Direct[1][2]>
+<GetLocationInfo: 10, Layer 2, Direct[1][2]>
+<GetLocationInfo: 10, Layer 2, Direct[1][2]>
+<GetLocationInfo: 10, Layer 3, Direct[1][2]>
+<GetLocationInfo: 10, Layer 3, Direct[1][2]>
+<GetLocationInfo: 10, Layer 3, Direct[1][2]>
+<GetLocationInfo: 10, Layer 4, Direct[1][2]>
+<GetLocationInfo: 10, Layer 4, Direct[1][2]>
+<GetLocationInfo: 10, Layer 4, Direct[1][2]>
+<GetLocationInfo: 10, Region Id, Direct[1][2]>
+<GetLocationInfo: 10, Region Id, Direct[1][2]>
+<GetLocationInfo: 10, Region Id, Direct[1][2]>
+<GetLocationInfo: 1, Terrain tag, WithVariables[40][50]>
+<GetLocationInfo: 3, Region Id, Character[-1]>
+<GetLocationInfo: 3, Region Id, Character[-1]>
+<GetLocationInfo: 3, Region Id, Character[-1]>
+<GetLocationInfo: 3, Region Id, Character[0]>
+<GetLocationInfo: 3, Region Id, Character[0]>
+<GetLocationInfo: 3, Region Id, Character[0]>
+<GetLocationInfo: 3, Region Id, Character[10]>
+
+===== Battle / Change Enemy HP =====
+<ChangeEnemyHp: 1, Increase, 10, OFF>
+<ChangeEnemyHp: 1, Increase, 10, OFF>
+<ChangeEnemyHp: 1, Increase, 10, OFF>
+<ChangeEnemyHp: Entire Troop, Decrease, Variables[20], Allow Knockout>
+<ChangeEnemyHp: Entire Troop, Decrease, Variables[20], Allow Knockout>
+<ChangeEnemyHp: Entire Troop, Decrease, Variables[20], Allow Knockout>
+<ChangeEnemyHp: 8, Decrease, Variables[1], OFF>
+<ChangeEnemyHp: 8, Decrease, Variables[1], OFF>
+<ChangeEnemyHp: 8, Decrease, Variables[1], OFF>
+<ChangeEnemyHp: 8, Decrease, Variables[1], OFF>
+<ChangeEnemyHp: 8, Decrease, Variables[1], OFF>
+<ChangeEnemyHp: 4, Decrease, 1, Allow Knockout>
+<ChangeEnemyHp: 4, Decrease, 1, Allow Knockout>
+<ChangeEnemyHp: 4, Decrease, 1, Allow Knockout>
+
+===== Battle / Change Enemy MP =====
+<ChangeEnemyMp: 1, Increase, 10>
+<ChangeEnemyMp: 1, Increase, 10>
+<ChangeEnemyMp: 1, Increase, 10>
+<ChangeEnemyMp: Entire Troop, Decrease, Variables[20]>
+<ChangeEnemyMp: Entire Troop, Decrease, Variables[20]>
+<ChangeEnemyMp: Entire Troop, Decrease, Variables[20]>
+<ChangeEnemyMp: 8, Increase, 1>
+<ChangeEnemyMp: 4, Increase, Variables[1]>
+
+===== Battle / Change Enemy TP =====
+<ChangeEnemyTp: 1, Increase, 10>
+<ChangeEnemyTp: 1, Increase, 10>
+<ChangeEnemyTp: 1, Increase, 10>
+<ChangeEnemyTp: Entire Troop, Decrease, Variables[20]>
+<ChangeEnemyTp: Entire Troop, Decrease, Variables[20]>
+<ChangeEnemyTp: Entire Troop, Decrease, Variables[20]>
+<ChangeEnemyTp: 8, Increase, 1>
+<ChangeEnemyTp: 8, Increase, Variables[1]>
+
+===== Battle / Change Enemy State =====
+<ChangeEnemyState: 1, Add, 4>
+<ChangeEnemyState: 1, Add, 4>
+<ChangeEnemyState: 1, Add, 4>
+<ChangeEnemyState: Entire Troop, Remove, 6>
+<ChangeEnemyState: Entire Troop, Remove, 6>
+<ChangeEnemyState: Entire Troop, Remove, 6>
+<ChangeEnemyState: 8, Add, 10>
+
+===== Battle / Enemy Recover All =====
+<EnemyRecoverAll: 1>
+<EnemyRecoverAll: 1>
+<EnemyRecoverAll: Entire Troop>
+<EnemyRecoverAll: Entire Troop>
+<EnemyRecoverAll: 8>
+
+===== Battle / Enemy Appear =====
+<EnemyAppear: 1>
+<EnemyAppear: 1>
+<EnemyAppear: 8>
+
+===== Battle / Enemy Transform =====
+<EnemyTransform: 1, 2>
+<EnemyTransform: 1, 2>
+<EnemyTransform: 8, 10>
+
+===== Battle / Show Battle Animation =====
+<ShowBattleAnimation: 1, 2>
+<ShowBattleAnimation: 1, 2>
+<ShowBattleAnimation: Entire Troop, 2>
+<ShowBattleAnimation: Entire Troop, 2>
+<ShowBattleAnimation: 2, 10>
+<ShowBattleAnimation: 3, 2>
+<ShowBattleAnimation: 4, 2>
+<ShowBattleAnimation: 5, 2>
+<ShowBattleAnimation: 6, 2>
+<ShowBattleAnimation: 7, 2>
+<ShowBattleAnimation: 8, 2>
+
+===== Battle / Force Action =====
+<ForceAction: 1, 2, Index 3>
+<ForceAction: 1, 2, Index 3>
+<ForceAction: Actors[4], 7, Last Target>
+<ForceAction: Actors[4], 7, Last Target>
+<ForceAction: Actors[10], 20, Random>
+<ForceAction: Actors[10], 20, Random>
+<ForceAction: 2, 10, Last Target>
+<ForceAction: 3, 10, Last Target>
+<ForceAction: 4, 10, Last Target>
+<ForceAction: 5, 10, Last Target>
+<ForceAction: 6, 10, Random>
+<ForceAction: 7, 10, Random>
+<ForceAction: 8, 10, Random>
+<ForceAction: 1, 10, Index 1>
+<ForceAction: 1, 10, Index 1>
+<ForceAction: 1, 10, Index 1>
+<ForceAction: 1, 10, Index 2>
+<ForceAction: 1, 10, Index 2>
+<ForceAction: 1, 10, Index 2>
+<ForceAction: 1, 10, Index 3>
+<ForceAction: 1, 10, Index 3>
+<ForceAction: 1, 10, Index 3>
+<ForceAction: 1, 10, Index 4>
+<ForceAction: 1, 10, Index 4>
+<ForceAction: 1, 10, Index 4>
+<ForceAction: 1, 10, Index 5>
+<ForceAction: 1, 10, Index 5>
+<ForceAction: 1, 10, Index 5>
+<ForceAction: 1, 10, Index 6>
+<ForceAction: 1, 10, Index 6>
+<ForceAction: 1, 10, Index 6>
+<ForceAction: 1, 10, Index 7>
+<ForceAction: 1, 10, Index 7>
+<ForceAction: 1, 10, Index 7>
+<ForceAction: 1, 10, Index 8>
+<ForceAction: 1, 10, Index 8>
+<ForceAction: 1, 10, Index 8>
+
+===== Battle / Abort Battle =====
+<AbortBattle>
+<AbortBattle>
+
+===== Plugin Command MZ =====
+<PluginCommandMZ: Text2Frame,IMPORT_MESSAGE_TO_EVENT,イベントにインポート,FileFolder[text][取り込み元フォルダ名],FileName[message.txt][取り込み元ファイル名],MapID[1][取り込み先マップID],EventID[2][取り込み先イベントID],PageID[3][取り込み先ページID],IsOverwrite[false][【取り扱い注意】上書きする]>
+<PluginCommandMZ: Text2Frame,IMPORT_MESSAGE_TO_EVENT,イベントにインポート,FileFolder[text][取り込み元フォルダ名],FileName[message.txt][取り込み元ファイル名],MapID[1][取り込み先マップID],EventID[2][取り込み先イベントID],PageID[3][取り込み先ページID],IsOverwrite[false][【取り扱い注意】上書きする]>
+<PluginCommandMZ: Text2Frame,IMPORT_MESSAGE_TO_EVENT,イベントにインポート,FileFolder[text][取り込み元フォルダ名],FileName[message.txt][取り込み元ファイル名],MapID[1][取り込み先マップID],EventID[2][取り込み先イベントID],PageID[3][取り込み先ページID],IsOverwrite[false][【取り扱い注意】上書きする]>
+<PluginCommandMZ: Text2Frame,IMPORT_MESSAGE_TO_CE,コモンイベントにインポート,FileFolder[text][取り込み元フォルダ名],FileName[message.txt][取り込み元ファイル名],CommonEventID[1][取り込み先コモンイベントID],IsOverwrite[false][【取り扱い注意】上書きする]>
+<PluginCommandMZ: Text2Frame,IMPORT_MESSAGE_TO_CE,コモンイベントにインポート,FileFolder[text][取り込み元フォルダ名],FileName[message.txt][取り込み元ファイル名],CommonEventID[1][取り込み先コモンイベントID],IsOverwrite[false][【取り扱い注意】上書きする]>
+<PluginCommandMZ: Text2Frame,IMPORT_MESSAGE_TO_CE,コモンイベントにインポート,FileFolder[text][取り込み元フォルダ名],FileName[message.txt][取り込み元ファイル名],CommonEventID[1][取り込み先コモンイベントID],IsOverwrite[false][【取り扱い注意】上書きする]>
+<PluginCommandMZ: Text2Frame,IMPORT_MESSAGE_TO_EVENT,イベントにインポート,FileFolder[text][FileFolder],FileName[message.txt][FileName],MapID[1][MapID],EventID[2][EventID],PageID[3][PageID],IsOverwrite[false][IsOverwrite]>
+<PluginCommandMZ: Text2Frame,IMPORT_MESSAGE_TO_EVENT,イベントにインポート,FileFolder[text][FileFolder],FileName[message.txt][FileName],MapID[1][MapID],EventID[2][EventID],PageID[3][PageID],IsOverwrite[false][IsOverwrite]>
+<PluginCommandMZ: Text2Frame,IMPORT_MESSAGE_TO_EVENT,イベントにインポート,FileFolder[text][FileFolder],FileName[message.txt][FileName],MapID[1][MapID],EventID[2][EventID],PageID[3][PageID],IsOverwrite[false][IsOverwrite]>
+<PluginCommandMZ: Text2Frame,IMPORT_MESSAGE_TO_EVENT,イベントにインポート,FileFolder[][FileFolder],FileName[][FileName],MapID[1][MapID],EventID[2][EventID],PageID[3][PageID],IsOverwrite[false][IsOverwrite]>
+<PluginCommandMZ: Text2Frame,IMPORT_MESSAGE_TO_EVENT,イベントにインポート,FileFolder[][取り込み元フォルダ名],FileName[][取り込み元ファイル名],MapID[1][取り込み先マップID],EventID[2][取り込み先イベントID],PageID[3][取り込み先ページID],IsOverwrite[false][【取り扱い注意】上書きする]>
+<PluginCommandMZ: TestCasePluginCommand,FUNC_WITH_MULTI_LINE,マルチライン文字列コマンド,multiline_string_arg[　　今日も　　\n一日\n　がんばるぞい！][マルチライン文字列0]>
+<PluginCommandMZ: TestCasePluginCommand,FUNC_WITH_OBJECT,オブジェクトコマンド,struct_arg[{"param_string":"ほげほげ","param_number":"11111","param_boolean":"true"}][オブジェクト0]>
+<PluginCommandMZ: TestCasePluginCommand,FUNC_WITH_ARRAY,配列コマンド,string_array_arg[["今日も","　一日","頑張るぞい！"]][文字列配列],number_array_arg[["1","2","3","4"]][数値配列],bool_array_arg[["true","false","true"]][ブール配列]>
+<PluginCommandMZ: TestCasePluginCommand,FUNC_WITH_SOME_ARGS,複雑なパターンのコマンド,string_arg[今日も一日がんばるぞい！][文字列0],number_arg[123456789][数値0],boolean_arg[false][ブール0],file_arg[img/battlebacks1/Clouds][ファイル名（拡張子なし）],struct_arg[{"param_string":"あいうえお","param_number":"1","param_boolean":"true","param_multiline_string":"今日も\n一日\nがんばるぞい！","param_struct":"{\"param_string\":\"かきくけこ\",\"param_number\":\"22222\",\"param_boolean\":\"true\",\"param_multiline_string\":\"あいうえお\\nかきくけこ\\nさしすせそ\\nたちつてと\",\"param_struct\":\"{\\\"param_multiline_string\\\":\\\"あいうえおかきくけこ\\\\n　　　　　さしすせそ\\\",\\\"param_number_array\\\":\\\"[\\\\\\\"111\\\\\\\",\\\\\\\"2222\\\\\\\",\\\\\\\"33333\\\\\\\"]\\\"}\"}"}][オブジェクト1]>

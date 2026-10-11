@@ -234,7 +234,7 @@ pageId: 1
 ### 保存するだけで反映する
 
 「操作」→「まとめて反映・取り出す」→「保存時に自動反映 切替」をオンにすると、テキストを保存するたびにゲームへ反映します（確かめの画面は出ません）。
-これが、[テキストとゲームの同期](https://github.com/yktsr/Text2Frame-MV#テキストとゲームを同期するsync)を VS Code から使う入口です（ターミナルの `npx t2f-sync start`、ツクールの中の START_DATA_SYNC と同じ考え方で、祖先も共通です）。
+これが、[テキストとゲームの同期](https://github.com/yktsr/Text2Frame-MV#双方向シームレス同期)を VS Code から使う入口です（ターミナルの `npx t2f-sync start`、ツクールの中の START_DATA_SYNC と同じ考え方で、祖先も共通です）。
 画面の左下の表示で、今の状態が分かります。
 
 | 表示 | 意味 |

@@ -7,7 +7,7 @@
   "license": "MIT",
   "icon": "icon.png",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.101.0"
   },
   "categories": [
     "Programming Languages",
@@ -36,6 +36,12 @@
     "workspaceContains:**/data/Map*.json"
   ],
   "contributes": {
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "text2frame.mcp",
+        "label": "Text2Frame"
+      }
+    ],
     "configurationDefaults": {
       "files.readonlyInclude": {
         "**/.t2f-base/**": true,

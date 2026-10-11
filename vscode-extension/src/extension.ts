@@ -24,6 +24,7 @@ import { registerDatabaseFeatures } from './dbFeatures';
 import { registerDatabaseView } from './dbView';
 import { registerPreview } from './preview';
 import { registerColorSwatches } from './colorSwatches';
+import { registerMcpProvider } from './mcpProvider';
 import { registerTestPlay } from './testPlay';
 import { LiveService } from './live';
 import { registerLiveView } from './liveView';
@@ -94,6 +95,8 @@ export function activate(context: vscode.ExtensionContext) {
     registerDebugger(context, database, live, running);
     // 色調・フラッシュの値の前に色見本。
     registerColorSwatches(context);
+    /* 同梱の MCP サーバを VS Code のチャットに知らせる(設定ファイルは要らない)。 */
+    registerMcpProvider(context);
     // テストプレイ(ゲームを VS Code の中のブラウザで)。
     registerTestPlay(context, database, live);
     registerLiveView(context, database, live, running);
