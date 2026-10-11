@@ -4,6 +4,15 @@ import { tr } from './db/lang';
 
 export type LiveValue = number | string | boolean;
 
+export interface ShownMessage {
+    busy: boolean;
+    choice: boolean;
+    /** いま出ている文面。 */
+    lines?: string[];
+    /** 選べるもの。 */
+    choices?: string[];
+}
+
 export interface RunFrame {
     key: string;
     index: number;
@@ -26,7 +35,7 @@ export interface LiveMessage {
     run?: RunFrame[];
     lists?: Map<string, CommandMark[]>;
     scene?: string;
-    message?: { busy: boolean; choice: boolean };
+    message?: ShownMessage;
     player?: { x: number; y: number; direction: number };
 }
 
@@ -172,11 +181,24 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
         if (typeof value !== 'string' || value.length > 64 || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value)) throw new Error('bad');
         return value;
     };
-    const readBusy = (value: unknown): { busy: boolean; choice: boolean } | undefined => {
+    const readLines = (value: unknown, most: number, longest: number): string[] | undefined => {
         if (value === undefined) return undefined;
-        const v = value as { busy?: unknown; choice?: unknown };
+        if (!Array.isArray(value) || value.length > most) throw new Error('bad');
+        return value.map((one) => {
+            if (typeof one !== 'string' || one.length > longest) throw new Error('bad');
+            return one;
+        });
+    };
+    const readBusy = (value: unknown): ShownMessage | undefined => {
+        if (value === undefined) return undefined;
+        const v = value as { busy?: unknown; choice?: unknown; lines?: unknown; choices?: unknown };
         if (!v || typeof v !== 'object' || typeof v.busy !== 'boolean' || typeof v.choice !== 'boolean') throw new Error('bad');
-        return { busy: v.busy, choice: v.choice };
+        const out: ShownMessage = { busy: v.busy, choice: v.choice };
+        const lines = readLines(v.lines, 8, 400);
+        const choices = readLines(v.choices, 20, 200);
+        if (lines) out.lines = lines;
+        if (choices) out.choices = choices;
+        return out;
     };
     const readPlayer = (value: unknown): { x: number; y: number; direction: number } | undefined => {
         if (value === undefined) return undefined;
@@ -255,7 +277,7 @@ export class LiveState {
     lastSeen = 0;
     mapId = 0;
     scene?: string;
-    message?: { busy: boolean; choice: boolean };
+    message?: ShownMessage;
     player?: { x: number; y: number; direction: number };
     /** 「このイベントから試す」の、ゲームからの返事。 */
     lastVisit?: { result: string; at: number };

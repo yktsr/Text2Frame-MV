@@ -413,7 +413,16 @@ export function monitorScript(token: string): string {
     var busy = !!(text && typeof text.isBusy === 'function' && text.isBusy());
     var choosing = !!(text && typeof text.isChoice === 'function' && text.isChoice());
     if (!scene) return null;
-    var out = { scene: scene, message: { busy: busy, choice: choosing } };
+    var shown = { busy: busy, choice: choosing };
+    if (busy && text) {
+      if (Array.isArray(text._texts)) {
+        shown.lines = text._texts.slice(0, 8).map(function (one) { return String(one).slice(0, 400); });
+      }
+      if (choosing && Array.isArray(text._choices)) {
+        shown.choices = text._choices.slice(0, 20).map(function (one) { return String(one).slice(0, 200); });
+      }
+    }
+    var out = { scene: scene, message: shown };
     var player = window.$gamePlayer;
     if (player && typeof player.x === 'number') {
       out.player = { x: Math.floor(player.x), y: Math.floor(player.y), direction: Number(player.direction && player.direction()) || 0 };

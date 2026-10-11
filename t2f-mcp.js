@@ -89,6 +89,8 @@ const INSTRUCTIONS = [
   '  出現条件は見ません。走っているイベントと開いているメッセージは捨てられます。',
   '  反映した直後は reload: true を付けてください。付けないと古いデータのまま走ります。',
   '・t2f_play_input でキーとタップを送ります。メッセージを進めるのも、タイトルで決定を押すのもこれ。',
+  '・t2f_play_status は**画面に出ている文面と選択肢**、いま走っている場所(テキストの行)まで返します。',
+  '  押したあとそれを見れば、思ったとおりの台詞が出たかを確かめられます。',
   '・t2f_play_state で値を見て、t2f_play_set で変えられます(状態を作ってから1か所だけ試せます)。',
   '・t2f_play_break はテキストの**行番号**で止めます。t2f_play_step で進めると、',
   '  止まった場所をテキストの行に戻して返します。',
@@ -1762,9 +1764,17 @@ const playStatus = function (ctx) {
     message: state.message || null,
     player: state.player || null,
     mapId: state.mapId === undefined ? null : state.mapId,
-    paused: state.paused ? { reason: state.paused.reason, at: state.paused.frames.map(function (f) { return { place: f.key, commandIndex: f.index } }) } : null,
-    frames: frames.map(function (f) { return { place: f.key, commandIndex: f.index } })
+    paused: state.paused ? { reason: state.paused.reason, at: state.paused.frames.map(function (f) { return textLineOf(ctx, f) }) } : null,
+    frames: frames.map(function (f) { return Object.assign({ place: f.key, commandIndex: f.index }, textLineOf(ctx, f)) })
   }
+}
+
+/** 「どこに居るか」の一行。拡張がハイライトするのと同じ場所を、文字で言う。 */
+const whereLine = function (f) {
+  const head = f.place + ' の ' + (f.commandIndex + 1) + ' 番目'
+  if (!f.line) return head
+  return head + '  -> ' + f.textPath + ' の ' + f.line + ' 行目' + (f.exact ? '' : '(近くの行)') +
+    (f.text ? '  ' + JSON.stringify(f.text) : '')
 }
 
 const statusLines = function (info) {
@@ -1774,16 +1784,20 @@ const statusLines = function (info) {
     'ゲームが繋がっているか: ' + (info.connected ? 'はい' : 'いいえ(ブラウザでその URL を開いてください)')
   ]
   if (info.scene) lines.push('いまの画面: ' + info.scene)
-  if (info.message) lines.push('メッセージ: ' + (info.message.busy ? (info.message.choice ? '選択肢が出ています' : '出ています') : '出ていません'))
+  if (info.message) {
+    lines.push('メッセージ: ' + (info.message.busy ? (info.message.choice ? '選択肢が出ています' : '出ています') : '出ていません'))
+    ;(info.message.lines || []).forEach(function (one) { lines.push('  | ' + one) })
+    ;(info.message.choices || []).forEach(function (one, i) { lines.push('  ' + (i + 1) + ') ' + one) })
+  }
   if (info.player) lines.push('いる場所: マップ' + info.mapId + ' (' + info.player.x + ',' + info.player.y + ')')
   else if (info.mapId !== null) lines.push('いるマップ: ' + info.mapId)
   if (info.paused) {
     lines.push('**止まっています**(' + info.paused.reason + ')。t2f_play_step で動かしてください:')
-    info.paused.at.forEach(function (f) { lines.push('  ' + f.place + ' の ' + (f.commandIndex + 1) + ' 番目') })
+    info.paused.at.forEach(function (f) { lines.push('  ' + whereLine(f)) })
   }
   if (info.frames.length) {
     lines.push('走っているもの:')
-    info.frames.forEach(function (f) { lines.push('  ' + f.place + ' の ' + (f.commandIndex + 1) + ' 番目') })
+    info.frames.forEach(function (f) { lines.push('  ' + whereLine(f)) })
   }
   return lines
 }
@@ -1844,7 +1858,9 @@ TOOLS.push({
   /* 本当に何も書かない(readOnlyHint は正直)。だが --read-only では t2f_play_start が
    * 隠れるので、見えても繋ぐ手段が無い。t2f_write_plan と同じ理由でここも隠す。 */
   partOfWriting: true,
-  description: 'ゲームが繋がっているか、いまどの画面でどこに居るか、何が走っているかを返します。',
+  description: 'ゲームが繋がっているか、いまどの画面でどこに居るか、何が走っているかを返します。' +
+    '\nメッセージが出ていれば**その文面と選択肢**も返します。走っている場所は、拡張がエディタで' +
+    '光らせるのと同じようにテキストの行へ戻して返します。',
   annotations: { readOnlyHint: true, idempotentHint: true },
   inputSchema: { type: 'object', additionalProperties: false, properties: {} },
   run: function (ctx) {
@@ -2241,7 +2257,7 @@ TOOLS.push({
 
 /** 止まったコマンド番号を、テキストの行に戻す。 */
 const textLineOf = function (ctx, frame) {
-  const out = { place: frame.key, commandIndex: frame.index, line: null, textPath: null, exact: false }
+  const out = { place: frame.key, commandIndex: frame.index, line: null, textPath: null, exact: false, text: null }
   const m = /^e:(\d+):(\d+):(\d+)$/.exec(String(frame.key || ''))
   const c = /^c:(\d+)$/.exec(String(frame.key || ''))
   if (!m && !c) return out
@@ -2255,6 +2271,12 @@ const textLineOf = function (ctx, frame) {
     out.line = span ? span.from + 1 + at.offset : null
     out.exact = !!target.exact
     out.textPath = relOf(ctx, at.textPath)
+    if (span) {
+      /* 行そのものも返す。番号だけでは、呼んだ側がもう一度ファイルを読む往復が要る。
+       * 拡張がエディタで光らせているのと同じ範囲。 */
+      const all = fs.readFileSync(at.textPath, 'utf8').split('\r\n').join('\n').split('\n')
+      out.text = all.slice(span.from + at.offset, span.to + at.offset + 1).join('\n').slice(0, 400)
+    }
   } catch (e) { /* テキストがまだ無いなどは、行が無いだけ */ }
   return out
 }

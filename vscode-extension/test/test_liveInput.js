@@ -169,6 +169,45 @@ describe('the injected script can press keys and say where it is', function () {
     expect(state.player).to.equal(undefined)
   })
 
+  /* 画面に出ている文面そのものを言う。開いているかどうかだけでは、自分が出したかった
+   * 台詞が出たのかを確かめられない。 */
+  it('reports the text the message is showing, and the choices', function () {
+    const game = fakeGame({
+      $gameMessage: {
+        isBusy: function () { return true },
+        isChoice: function () { return true },
+        _texts: ['【スーズ】', 'ねぇ…君になら'],
+        _choices: ['逃げる', '見る']
+      }
+    })
+    game.tick(2)
+    const reported = game.posted.filter(function (m) { return m.scene !== undefined })[0]
+
+    expect(reported.message.lines).to.eql(['【スーズ】', 'ねぇ…君になら'])
+    expect(reported.message.choices).to.eql(['逃げる', '見る'])
+  })
+
+  /* 開いていないときに前の文面を残さない(古い台詞を今のものと読み違える)。 */
+  it('says no text while no message is open', function () {
+    const game = fakeGame()
+    game.win.$gameMessage = { isBusy: function () { return false }, isChoice: function () { return false }, _texts: ['のこり'] }
+    game.tick(2)
+    const reported = game.posted.filter(function (m) { return m.scene !== undefined })[0]
+
+    expect(reported.message.lines).to.equal(undefined)
+  })
+
+  it('gets the shown text through the parser, and turns down what is too much', function () {
+    const parsed = parseLiveMessage({ message: { busy: true, choice: false, lines: ['あ'] } })
+    expect(parsed.message.lines).to.eql(['あ'])
+
+    const many = []
+    for (let i = 0; i < 9; i++) many.push('x')
+    expect(parseLiveMessage({ message: { busy: true, choice: false, lines: many } })).to.equal(undefined)
+    expect(parseLiveMessage({ message: { busy: true, choice: false, lines: ['x'.repeat(401)] } })).to.equal(undefined)
+    expect(parseLiveMessage({ message: { busy: true, choice: false, lines: [1] } })).to.equal(undefined)
+  })
+
   it('turns down a report that is the wrong shape', function () {
     expect(parseLiveMessage({ player: { x: -1, y: 0, direction: 0 } })).to.equal(undefined)
     expect(parseLiveMessage({ scene: 'a b c' })).to.equal(undefined)

@@ -209,6 +209,57 @@ const BODY = ['こんにちは。', '<ウェイト: 30>'].join('\n')
     expect(text(status)).to.contain('メッセージ: 出ています')
   })
 
+  /* **開いているかどうかだけでは足りない。** 何が書いてあるか分からないと、外から操る側は
+   * 自分が出したかった台詞が出たのかを確かめられない。 */
+  it('says what the message actually shows', async function () {
+    await ok('t2f_play_start')
+    await connectFakeGame()
+    await fake.post({ message: { busy: true, choice: false, lines: ['【スーズ】', 'ねぇ…君になら'] } })
+    const status = await ok('t2f_play_status')
+
+    expect(status.structuredContent.message.lines).to.eql(['【スーズ】', 'ねぇ…君になら'])
+    expect(text(status)).to.contain('| ねぇ…君になら')
+  })
+
+  /* 選択肢が出ているのに中身が分からないと、どれを選ぶか決められない。 */
+  it('lists the choices on offer', async function () {
+    await ok('t2f_play_start')
+    await connectFakeGame()
+    await fake.post({ message: { busy: true, choice: true, lines: ['どうする？'], choices: ['逃げる', '見る'] } })
+    const status = await ok('t2f_play_status')
+
+    expect(status.structuredContent.message.choices).to.eql(['逃げる', '見る'])
+    expect(text(status)).to.contain('1) 逃げる')
+    expect(text(status)).to.contain('2) 見る')
+  })
+
+  /* **拡張がエディタで光らせるのと同じ場所**を、走っている間も文字で返す。
+   * 番号だけ返すと、呼んだ側がテキストを読み直す往復が要る。 */
+  it('says where the running event is, in the text', async function () {
+    await ok('t2f_play_start')
+    await connectFakeGame()
+    await fake.post({ run: [{ key: 'e:1:1:1', index: 2 }] })
+    const status = await ok('t2f_play_status')
+
+    const at = status.structuredContent.frames[0]
+    expect(at).to.include({ place: 'e:1:1:1', commandIndex: 2, line: 8, exact: true })
+    expect(at.textPath).to.contain('map001_event001_page001.txt')
+    expect(at.text).to.equal('<ウェイト: 30>')
+    expect(text(status)).to.contain('8 行目')
+    expect(text(status)).to.contain('<ウェイト: 30>')
+  })
+
+  /* テキストをまだ取り出していないイベントでは、行は分からない。黙って落ちない。 */
+  it('still says the place when there is no text for it', async function () {
+    await ok('t2f_play_start')
+    await connectFakeGame()
+    await fake.post({ run: [{ key: 'e:9:9:1', index: 0 }] })
+    const status = await ok('t2f_play_status')
+
+    expect(status.structuredContent.frames[0]).to.include({ place: 'e:9:9:1', commandIndex: 0, line: null })
+    expect(text(status)).to.contain('e:9:9:1 の 1 番目')
+  })
+
   it('shows the values with their names', async function () {
     await ok('t2f_play_start')
     await connectFakeGame()
@@ -453,9 +504,11 @@ const BODY = ['こんにちは。', '<ウェイト: 30>'].join('\n')
     await fake.post({ paused: { reason: 'breakpoint', frames: [{ key: 'e:1:1:1', index: 2 }] } })
     const status = await ok('t2f_play_status')
 
-    expect(status.structuredContent.paused).to.eql({ reason: 'breakpoint', at: [{ place: 'e:1:1:1', commandIndex: 2 }] })
+    expect(status.structuredContent.paused.reason).to.equal('breakpoint')
+    expect(status.structuredContent.paused.at[0]).to.include({ place: 'e:1:1:1', commandIndex: 2, line: 8 })
     expect(text(status)).to.contain('止まっています')
     expect(text(status)).to.contain('t2f_play_step')
+    expect(text(status)).to.contain('8 行目')
   })
 
   it('says nothing about stopping while the game runs', async function () {
