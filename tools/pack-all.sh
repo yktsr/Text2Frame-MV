@@ -107,8 +107,8 @@ ok "tarball に cjs/es/umd が3つ入っています"
 # db/ も同じ理由で数える。files に書いてあっても、npm が一覧を作る時点で実体が無ければ
 # ディレクトリと見なされず、黙って0件で通る。無いと npm 経由だけ t2f_usages が消える。
 DB_IN_TGZ=$(tar tzf "$TGZ" | grep -cE '^package/db/[a-zA-Z]+\.js$' || true)
-[ "$DB_IN_TGZ" -eq 8 ] || fail "tarball の db/ が $DB_IN_TGZ 件です(8 件あるはず)"
-ok "tarball に db/ が8つ入っています"
+[ "$DB_IN_TGZ" -eq 13 ] || fail "tarball の db/ が $DB_IN_TGZ 件です(13 件あるはず)"
+ok "tarball に db/ が13入っています"
 
 # --- 3. VS Code 拡張 ---------------------------------------------------------
 # vsce package が vscode:prepublish 経由で lib/ にプラグイン本体を取り込む。
