@@ -988,30 +988,97 @@ const MANUAL = [
   '        RPGツクールのエディタを開いたまま、または t2f-sync の監視中は使わないでください。'
 ].join('\n')
 
+/*
+ * 引数は自前で読む。commander を使わない。
+ *
+ * このファイルは VS Code 拡張の lib/ へ同梱され、.vsix から1プロセスとして起こされる。
+ * 依存ゼロの拡張なので .vsix に node_modules は入らず、require('commander') があると
+ * そこで落ちる。Text2Frame.js / Frame2Text.js も commander を読むが、あちらは拡張から
+ * require() されるだけで CLI ブロックが走らないので無事。**サーバだけがここに当たる。**
+ *
+ * 短縮形の意味は text2frame / frame2text / t2f-sync と同じにそろえる(test_cli_usage.js が見張る)。
+ */
+const FLAGS = [
+  { name: '-V, --version', help: 'output the version number' },
+  { name: '--root <dir>', key: 'root', help: 'project root for data/, text/ and .t2f-base (default: T2F_GAME_DIR or current directory)' },
+  { name: '-t, --text-dir <dir>', key: 'textDir', fallback: 'text', help: 'text base directory' },
+  { name: '-d, --data-dir <dir>', key: 'dataDir', fallback: 'data', help: 'game data directory' },
+  { name: '-s, --strategy <merge|overwrite>', key: 'strategy', fallback: 'merge', help: 'write strategy' },
+  { name: '--scope <all|nonempty|conversation|custom>', key: 'scope', fallback: 'nonempty', help: 'which events t2f_list shows' },
+  { name: '--read-only', key: 'readOnly', help: 'offer only the reading tools' },
+  { name: '-v, --verbose', key: 'verbose', help: 'debug mode' },
+  { name: '-h, --help', help: 'display help for command' }
+]
+
+/** 使い方。option の表から組むので、足したものが必ず出る。 */
+const usage = function () {
+  const width = FLAGS.reduce(function (w, f) { return Math.max(w, f.name.length) }, 0)
+  const lines = [
+    'Usage: t2f-mcp [options]',
+    '',
+    'Text2Frame を MCP の道具として差し出すサーバ(標準入出力)',
+    '',
+    'Options:'
+  ]
+  FLAGS.forEach(function (f) {
+    const pad = new Array(width - f.name.length + 1).join(' ')
+    const tail = f.fallback === undefined ? '' : ' (default: "' + f.fallback + '")'
+    lines.push('  ' + f.name + pad + '  ' + f.help + tail)
+  })
+  return lines.join('\n') + '\n' + MANUAL + '\n'
+}
+
+/* 引数を読む。`--opt value` と `--opt=value` の両方、短縮形、真偽の旗。
+ * 知らない option は commander と同じく標準エラーへ出して 1 で終わる(黙って無視しない)。 */
+const parseArgs = function (argv) {
+  const byName = {}
+  FLAGS.forEach(function (f) {
+    const takesValue = f.name.indexOf('<') >= 0
+    f.name.split(', ').forEach(function (n) {
+      byName[n.replace(/ <.*$/, '')] = { key: f.key, takesValue }
+    })
+  })
+  const options = {}
+  FLAGS.forEach(function (f) { if (f.key && f.fallback !== undefined) options[f.key] = f.fallback })
+
+  for (let i = 0; i < argv.length; i++) {
+    const token = argv[i]
+    const cut = token.indexOf('=')
+    const name = cut > 1 && token.indexOf('--') === 0 ? token.slice(0, cut) : token
+    const flag = byName[name]
+    if (!flag) {
+      process.stderr.write("error: unknown option '" + token + "'\n")
+      process.exit(1)
+    }
+    if (name === '-h' || name === '--help') {
+      process.stdout.write(usage())
+      process.exit(0)
+    }
+    if (name === '-V' || name === '--version') {
+      process.stdout.write(version() + '\n')
+      process.exit(0)
+    }
+    if (!flag.takesValue) {
+      options[flag.key] = true
+      continue
+    }
+    const value = name === token ? argv[++i] : token.slice(cut + 1)
+    if (value === undefined) {
+      process.stderr.write("error: option '" + name + "' argument missing\n")
+      process.exit(1)
+    }
+    options[flag.key] = value
+  }
+  return options
+}
+
 if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && require.main === module) {
-  const { Command } = require('commander')
-  const program = new Command()
-  program
-    .name('t2f-mcp')
-    .version(version())
-    .usage('[options]')
-    .description('Text2Frame を MCP の道具として差し出すサーバ(標準入出力)')
-    // 短縮形は text2frame / frame2text / t2f-sync と同じ意味にそろえる。
-    .option('--root <dir>', 'project root for data/, text/ and .t2f-base (default: T2F_GAME_DIR or current directory)')
-    .option('-t, --text-dir <dir>', 'text base directory', 'text')
-    .option('-d, --data-dir <dir>', 'game data directory', 'data')
-    .option('-s, --strategy <merge|overwrite>', 'write strategy (default merge)', /^(merge|overwrite)$/i, 'merge')
-    .option('--scope <all|nonempty|conversation|custom>', 'which events t2f_list shows (default: nonempty)', /^(all|nonempty|conversation|custom)$/i, 'nonempty')
-    .option('--read-only', 'offer only the reading tools', false)
-    .option('-v, --verbose', 'debug mode', false)
-  program.addHelpText('after', MANUAL)
-  program.parse()
-  const options = program.opts()
+  const options = parseArgs(process.argv.slice(2))
 
   /* 人が端末から起こしたときは使い方を出して終わる。クライアントはパイプで繋ぐので、
    * そのときだけサーバを始める(既存3本の「引数なしで何もしない」と同じ考え方)。 */
   if (process.stdin.isTTY) {
-    program.outputHelp()
+    process.stdout.write(usage())
     process.exit(0)
   }
 
