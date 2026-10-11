@@ -6,7 +6,7 @@
 | 成果物 | 中身 | 配布先 | バージョン |
 | --- | --- | --- | --- |
 | ツクール用プラグイン | `Text2Frame.js` / `Frame2Text.js` の生ファイル | GitHub Releases | `package.json` の `version`（例 `2.3.0`）|
-| npm パッケージ | CLI（`text2frame` / `frame2text` / `t2f-sync`）とライブラリ | npm `@yktsr/text2frame-mv` | 同上 |
+| npm パッケージ | CLI（`text2frame` / `frame2text` / `t2f-sync` / `t2f-mcp`）とライブラリ | npm `@yktsr/text2frame-mv` | 同上 |
 | VS Code 拡張 | `vscode-extension/` | VS Code Marketplace | `vscode-extension/package.json` の `version`（例 `0.1.3`）|
 
 プラグインと npm パッケージは同じ `package.json` の版番号を共有します。**npm パッケージ＝
@@ -282,13 +282,14 @@ npm init -y
 npm install ../yktsr-text2frame-mv-<version>.tgz
 ```
 
-`node_modules/.bin/` に `text2frame` / `frame2text` / `t2f-sync` の3つが並べば成功です。
+`node_modules/.bin/` に `text2frame` / `frame2text` / `t2f-sync` / `t2f-mcp` の4つが並べば成功です。
 あとは `data/Map001.json` と `data/CommonEvents.json` のあるプロジェクトで:
 
 ```bash
 npx frame2text --mode batch --data-dir data --text-dir text   # 取り出し
 npx text2frame --mode batch --text-dir text                               # 反映
 npx t2f-sync --help                                                       # 双方向同期
+npx t2f-mcp --help                                                        # MCP サーバ(使い方が出るだけ。サーバは始まらない)
 ```
 
 `frame2text` / `text2frame` は結果を JSON で標準出力に出します。`"failed": 0` と、
@@ -357,9 +358,9 @@ CLI では通らない経路（NW.js、`$gameMessage` への出力、プラグ�
 
 npm:
 
-- [ ] ルートの `Text2Frame.cjs.js` / `.es.mjs` / `.umd.js` を作り直してコミット
+- [ ] `release/MANIFEST.txt` の `cjs/es/umd in tarball` が OK（`prepack` が作るので手では触らない）
 - [ ] `npm publish --dry-run` の中身を確認
-- [ ] tarball を別プロジェクトへ入れて3つの CLI を実行（D-1）
+- [ ] tarball を別プロジェクトへ入れて4つの CLI を実行（D-1）
 
 VS Code 拡張:
 

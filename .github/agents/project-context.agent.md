@@ -27,12 +27,15 @@ tools: [read, edit, search, execute]
 | `Frame2Text.js` | JSON→テキスト。`module.exports = { decompile, VERSION, baseDirForTextDir, enumerateTargets, indexTexts, outPathFor, defaultFileName, pullTargetToText, renderFrontMatter, buildPullText, writeBackToGame }`。取り出しは merge 既定(内部で `Text2Frame.applyMergePull` を lazy require) |
 | `Text2Frame.{cjs.js,es.mjs,umd.js}` | `npm run build`(rollup)生成物。**直接編集しない**。`// developer mode` 以降(CLI部)は build で除去される |
 | `t2f-sync.js` | 双方向同期コントローラ(CLI専用。ツクールのプラグインではない)。Text2Frame/Frame2Text を**公開APIとして**使い、1プロセスで push/pull を所有。自分の書き込みを内容ハッシュで無視してループを防ぐ。`module.exports = { pushFile, pullTarget, pullDataFile, syncOnce, createEchoGuard }` |
+| `t2f-mcp.js` | MCP(Model Context Protocol)サーバ(CLI専用)。Text2Frame/Frame2Text を**公開APIとして**使う4つ目の前面。`handle(要求, 文脈)` は純粋な関数で、標準入出力を持つのは殻だけ(テストはプロセス内で叩く)。**標準出力は通信路なので、本物の `process.stdout.write` を退避し、以後 `process.stdout.write` は stderr へ流す**。`console.log` は eslint の override で禁止 |
+| `t2f-help.js` | `Text2Frame.js` の `@help` を見出しごとに切り、タグ名→見出しの対応を作る。MCP の `t2f_syntax` と、拡張の `scripts/update-tag-help.js` の両方がここを呼ぶ(`files` に `tools/` が入らないのでルートに置いた) |
+| `t2f-history.js` | 書き換える直前の中身を `.t2f-history` に控える**書き手**。形式は拡張の `src/db/history.ts` が持ち、読み・巻き戻しはあちらが権威。ずれは `vscode-extension/test/test_mcp_history.js` が拡張の読み手に通して見張る |
 | `vscode-extension/` | VSCode 拡張(モノレポのサブディレクトリ)。下記「VSCode拡張」参照 |
 | `data/` | リポジトリ同梱の最小サンプル JSON(`Map001.json` は空イベント、`CommonEvents.json` は2件) |
 | `sample/` | フルのサンプルゲーム(未追跡、巨大)。`text/` はここ(`sample/data`)から生成されている |
 | `text/*.txt` | 生成済みテキスト(未追跡)。置き場所は root 直下の1階層で、`text` / `text-en` のように分けられる(祖先もこの区分ごと)。名前は `<ツリー順>_<マップ名>_<イベント名>_page<N>_map###-event###.txt`(`MapInfos.json` が読めなければ `map###_event###_page#.txt` / `common###.txt`) |
 | `.t2f-base/` | 3-way の共通祖先(未追跡)。下記「データフロー」参照 |
-| `.t2f-history/` | VSCode 拡張の編集履歴(未追跡)。拡張だけが読み書きする。`text2frame.history.keep` 件で打ち切り |
+| `.t2f-history/` | 編集履歴(未追跡)。**書くのは拡張と MCP サーバ**、読み・巻き戻しは拡張だけ。`text2frame.history.keep` 件で打ち切り |
 | `test/` | mocha テスト。`*.txt`=入力, `expected_*.json`=期待出力 |
 | `.gitattributes` | テキストソースを LF に正規化 |
 
@@ -44,6 +47,9 @@ npm test -- test/test_x.js     # 1本だけ / --serial で直列 / --jobs N で�
 npm run test_text2frame        # Text2Frame テスト(test_json_eq.js)だけ
 npm run test_frame2text        # 往復変換テスト(139件)だけ。npm test にも含まれる
 npm run lint                   # ESLint(--max-warnings=0)
+npm run update-snapshot        # 書き出しのスナップショット(test/snapshot/decompile-*.txt)を作り直す
+npm run update-mcp-snapshot    # MCP のプロトコルの筆記録(test/snapshot/mcp-protocol.txt)を作り直す
+npm run check-params           # @default と実装の食い違いを一覧(承知のうえの分は ACCEPTED に理由つき)
 npm run build                  # rollup で dist/*.cjs.js / dist/*.es.mjs / dist/*.umd.js を生成
 # ★実データ往復検証(2902件。sample/ が必要=未追跡なので CI では走らない):
 cp -r sample/data /tmp/vd && node tools/verify-roundtrip.js /tmp/vd --en=true --max=0
@@ -111,6 +117,12 @@ node Frame2Text.js -m map|common|decompile|batch [-t text] [-d data] [--root dir
 node t2f-sync.js start|once [--direction both|push|pull] [-t text] [-d data] [--root dir] [-s merge|overwrite] [-w <true/false>] [--scope ...] [--debounce ms] [--poll]
 #   start = START_DATA_SYNC と同じ(一度そろえてから見張る)。once = 一度だけ   --scope の既定は custom(見出し情報付きテキストだけ)
 #   1プロセスが両方向を持つのでループガードが確実。applyTextFile には baseRoot を渡して祖先を root 基準に揃える
+# MCP サーバ。クライアント(Claude Code / VS Code)が起こし、標準入出力で話す。手で叩くものではない
+node t2f-mcp.js [--root dir] [-t text] [-d data] [-s merge|overwrite] [--scope ...] [--read-only] [-v]
+#   端末から起こしたときは使い方を出して終わる(パイプで繋がれたときだけサーバになる)
+#   道具9つ: project_info / list / read / search / syntax / names / check / write_plan / write_apply
+#   書き込みは二段。write_plan が写しに当てて差分と札(内容のハッシュ)を返し、write_apply が札で本当に書く
+#   登録はゲームのフォルダ直下の .mcp.json(mcpServers)。Claude Code と VS Code の両方が読む
 # 短縮形は3本で同じ意味にそろえる(-t テキスト / -d データ / -s 戦略 / -w 英語タグ / -f 単発テキスト / -v 詳細)。test/test_cli_usage.js が固定
 ```
 
