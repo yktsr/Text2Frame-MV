@@ -1,0 +1,495 @@
+# MCP のプロトコルの筆記録
+# tools/snapshot-mcp.js が作る生成物。手で編集しない。
+# 作り直す: npm run update-mcp-snapshot
+
+===== server/discover =====
+--> {"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"snapshot","version":"1.0.0"}}}}
+<-- {
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "resultType": "complete",
+    "supportedVersions": [
+      "2026-07-28"
+    ],
+    "capabilities": {
+      "tools": {}
+    },
+    "instructions": "RPGツクール MV/MZ のイベントを、テキストとして読み書きします。\n\n・反映方法は merge(統合)が既定。祖先(.t2f-base)との3方向マージで、両方が同じ所を直すと\n  目印3行で両方残り、目印がある間は次の統合が止まります。どちらかを残して目印を消してください。\n・祖先が無い初回の反映だけはテキストが丸ごと勝ちます(ゲーム側の編集は残りません)。警告で知らせます。\n・タグ記法は t2f_syntax で引けます。当て推量で書かないでください。\n・スイッチや変数の番号は t2f_names で名前から引けます。\n・書き込みは2段です。t2f_write_plan で何が変わるかを見てから、返ってきた札を t2f_write_apply に渡します。\n・RPGツクールのエディタを開いたまま、または t2f-sync の監視を動かしたまま書き込まないでください。\n  どちらも data/*.json を書き戻すので、反映した内容が失われます。",
+    "_meta": {
+      "io.modelcontextprotocol/serverInfo": {
+        "name": "text2frame-mv",
+        "version": "<version>"
+      }
+    }
+  }
+}
+
+===== tools/list =====
+--> {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"snapshot","version":"1.0.0"}}}}
+<-- {
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "resultType": "complete",
+    "tools": [
+      {
+        "name": "t2f_project_info",
+        "title": "プロジェクトの状態",
+        "description": "ゲームのフォルダ、MV か MZ か、見出し情報の無いテキスト、同じ宛先を指す重複、未解決の衝突の目印を返します。書き込む前にまず読んでください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_list",
+        "title": "宛先の一覧",
+        "description": "ゲームのイベント(とコモンイベント)を一覧します。テキストが既にあればその場所、無ければこれから作られる名前を添えます。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "scope": {
+              "type": "string",
+              "enum": [
+                "all",
+                "nonempty",
+                "conversation",
+                "custom"
+              ],
+              "description": "範囲。nonempty=中身のあるもの(既定) / conversation=会話があるもの / custom=見出し情報付きテキストがあるものだけ / all=全部"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_read",
+        "title": "イベントをテキストで読む",
+        "description": "ゲームのイベント1件を Text2Frame のテキストにして返します。ファイルは書きません。translationOnly は会話だけを残しますが不可逆なので、書き戻す元には使えません。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "type": "string",
+              "description": "t2f_list が返す宛先の鍵(例 map003_event004_page1)。これだけで足ります"
+            },
+            "mapId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: マップID"
+            },
+            "eventId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: イベントID"
+            },
+            "pageId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: ページ番号(既定 1)"
+            },
+            "commonEventId": {
+              "type": "string",
+              "description": "コモンイベントを指すとき: その番号"
+            },
+            "translationOnly": {
+              "type": "boolean",
+              "description": "会話系のコマンドだけを残す(翻訳用。往復しません)"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_search",
+        "title": "テキストを横断して探す",
+        "description": "text フォルダのテキストを探し、当たった行を「どのマップのどのイベントの何ページ」に解き直して返します。セリフの推敲や語彙の統一に使えます。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "query"
+          ],
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "探す文字列"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "description": "返す行数の上限(既定 50)"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_syntax",
+        "title": "タグ記法を引く",
+        "description": "Text2Frame のタグ記法を、プラグイン本体のヘルプから引きます。引数なしで見出しの一覧、tag を渡すとそのタグの説明。テキストを書く前に必ず引いてください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tag": {
+              "type": "string",
+              "description": "タグ名(例 Switch / スイッチ / ShowChoices)。山括弧は不要"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_names",
+        "title": "データベースの名前と番号",
+        "description": "スイッチ・変数・アクターなどの名前と番号の対応を返します。<スイッチ: 12, ON> のような番号を当て推量せず、ここで引いてください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "switch",
+                "variable",
+                "actor",
+                "class",
+                "skill",
+                "item",
+                "weapon",
+                "armor",
+                "enemy",
+                "troop",
+                "state",
+                "animation",
+                "commonEvent"
+              ],
+              "description": "種類。省くと全部"
+            },
+            "query": {
+              "type": "string",
+              "description": "名前の一部で絞る"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_check",
+        "title": "テキストの文法を見る",
+        "description": "Text2Frame のテキストを読んで、コンパイラが拒む書き方を返します。ファイルもゲームも触りません。注意: 知らないタグ名はセリフとして扱われるため誤りになりません(<Nope: 1> はそのまま文章になります)。ここで捕まるのは主に値が選択肢から外れているもの(例 <位置: よこ>)です。タグ名の確認は t2f_syntax で行ってください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "text"
+          ],
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "確かめたいテキスト(見出し情報は付いていてもいなくてもよい)"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      }
+    ],
+    "_meta": {
+      "io.modelcontextprotocol/serverInfo": {
+        "name": "text2frame-mv",
+        "version": "<version>"
+      }
+    }
+  }
+}
+
+===== tools/list (--read-only) =====
+--> {"jsonrpc":"2.0","id":3,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"snapshot","version":"1.0.0"}}}}
+<-- {
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "resultType": "complete",
+    "tools": [
+      {
+        "name": "t2f_project_info",
+        "title": "プロジェクトの状態",
+        "description": "ゲームのフォルダ、MV か MZ か、見出し情報の無いテキスト、同じ宛先を指す重複、未解決の衝突の目印を返します。書き込む前にまず読んでください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_list",
+        "title": "宛先の一覧",
+        "description": "ゲームのイベント(とコモンイベント)を一覧します。テキストが既にあればその場所、無ければこれから作られる名前を添えます。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "scope": {
+              "type": "string",
+              "enum": [
+                "all",
+                "nonempty",
+                "conversation",
+                "custom"
+              ],
+              "description": "範囲。nonempty=中身のあるもの(既定) / conversation=会話があるもの / custom=見出し情報付きテキストがあるものだけ / all=全部"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_read",
+        "title": "イベントをテキストで読む",
+        "description": "ゲームのイベント1件を Text2Frame のテキストにして返します。ファイルは書きません。translationOnly は会話だけを残しますが不可逆なので、書き戻す元には使えません。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "type": "string",
+              "description": "t2f_list が返す宛先の鍵(例 map003_event004_page1)。これだけで足ります"
+            },
+            "mapId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: マップID"
+            },
+            "eventId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: イベントID"
+            },
+            "pageId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: ページ番号(既定 1)"
+            },
+            "commonEventId": {
+              "type": "string",
+              "description": "コモンイベントを指すとき: その番号"
+            },
+            "translationOnly": {
+              "type": "boolean",
+              "description": "会話系のコマンドだけを残す(翻訳用。往復しません)"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_search",
+        "title": "テキストを横断して探す",
+        "description": "text フォルダのテキストを探し、当たった行を「どのマップのどのイベントの何ページ」に解き直して返します。セリフの推敲や語彙の統一に使えます。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "query"
+          ],
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "探す文字列"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "description": "返す行数の上限(既定 50)"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_syntax",
+        "title": "タグ記法を引く",
+        "description": "Text2Frame のタグ記法を、プラグイン本体のヘルプから引きます。引数なしで見出しの一覧、tag を渡すとそのタグの説明。テキストを書く前に必ず引いてください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tag": {
+              "type": "string",
+              "description": "タグ名(例 Switch / スイッチ / ShowChoices)。山括弧は不要"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_names",
+        "title": "データベースの名前と番号",
+        "description": "スイッチ・変数・アクターなどの名前と番号の対応を返します。<スイッチ: 12, ON> のような番号を当て推量せず、ここで引いてください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "switch",
+                "variable",
+                "actor",
+                "class",
+                "skill",
+                "item",
+                "weapon",
+                "armor",
+                "enemy",
+                "troop",
+                "state",
+                "animation",
+                "commonEvent"
+              ],
+              "description": "種類。省くと全部"
+            },
+            "query": {
+              "type": "string",
+              "description": "名前の一部で絞る"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_check",
+        "title": "テキストの文法を見る",
+        "description": "Text2Frame のテキストを読んで、コンパイラが拒む書き方を返します。ファイルもゲームも触りません。注意: 知らないタグ名はセリフとして扱われるため誤りになりません(<Nope: 1> はそのまま文章になります)。ここで捕まるのは主に値が選択肢から外れているもの(例 <位置: よこ>)です。タグ名の確認は t2f_syntax で行ってください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "text"
+          ],
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "確かめたいテキスト(見出し情報は付いていてもいなくてもよい)"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      }
+    ],
+    "_meta": {
+      "io.modelcontextprotocol/serverInfo": {
+        "name": "text2frame-mv",
+        "version": "<version>"
+      }
+    }
+  }
+}
+
+===== エラー: _meta が無い =====
+--> {"jsonrpc":"2.0","id":4,"method":"tools/list","params":{}}
+<-- {
+  "jsonrpc": "2.0",
+  "id": 4,
+  "error": {
+    "code": -32602,
+    "message": "params._meta[\"io.modelcontextprotocol/protocolVersion\"] が必要です"
+  }
+}
+
+===== エラー: 知らない版 =====
+--> {"jsonrpc":"2.0","id":5,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"1900-01-01","io.modelcontextprotocol/clientCapabilities":{}}}}
+<-- {
+  "jsonrpc": "2.0",
+  "id": 5,
+  "error": {
+    "code": -32022,
+    "message": "Unsupported protocol version",
+    "data": {
+      "supported": [
+        "2026-07-28"
+      ],
+      "requested": "1900-01-01"
+    }
+  }
+}
+
+===== エラー: 知らないメソッド =====
+--> {"jsonrpc":"2.0","id":6,"method":"tools/nope","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"snapshot","version":"1.0.0"}}}}
+<-- {
+  "jsonrpc": "2.0",
+  "id": 6,
+  "error": {
+    "code": -32601,
+    "message": "知らないメソッドです: tools/nope"
+  }
+}
+
+===== エラー: 知らない道具 =====
+--> {"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"t2f_nope","arguments":{},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"snapshot","version":"1.0.0"}}}}
+<-- {
+  "jsonrpc": "2.0",
+  "id": 7,
+  "error": {
+    "code": -32602,
+    "message": "知らない道具です: t2f_nope"
+  }
+}
+
+===== エラー: 旧方式の initialize =====
+--> {"jsonrpc":"2.0","id":8,"method":"initialize","params":{}}
+<-- {
+  "jsonrpc": "2.0",
+  "id": 8,
+  "error": {
+    "code": -32601,
+    "message": "このサーバは initialize の握手を実装していません。対応する版: 2026-07-28"
+  }
+}
+
+===== 通知(応答しない) =====
+--> {"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":2}}
+<-- (応答なし)
