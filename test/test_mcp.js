@@ -275,10 +275,40 @@ describe('mcp tools', function () {
       expect(textOf(call('t2f_syntax', { tag: 'スイッチ' }))).to.equal(plain)
     })
 
-    it('suggests near names for a tag it does not know', function () {
-      const result = call('t2f_syntax', { tag: 'swi' })
+    /* 命令は日本語名・英語名・短縮形で書けるが、節を読まないとそれが分からない。 */
+    it('says the other names the same command answers to', function () {
+      const result = call('t2f_syntax', { tag: 'add' })
+
+      expect(textOf(result)).to.contain('書ける名前')
+      expect(result.structuredContent.aliases).to.include.members(['add', '加算', '+'])
+    })
+
+    /* **これが引けなかった。** 照合がタグ名だけで、見出しの題を見ていなかった。
+     * 実プロジェクトでイベントを作る試用のとき、ここで実際に手が止まった。 */
+    it('finds a command by its heading, not just by its tag name', function () {
+      // 「変数」というタグ名は1つも無く、見出しの題にだけ出る。
+      expect(textOf(call('t2f_syntax', { tag: '変数' }))).to.contain('変数の操作')
+      expect(textOf(call('t2f_syntax', { tag: '変数の操作' }))).to.contain('変数の操作')
+    })
+
+    /* 題が複数に当たるのは曖昧さが本物のとき(スイッチ / セルフスイッチ)。
+     * そのときは**引き直せるタグ名**を添える。題だけ見せて「タグ名で引き直して」は不親切。 */
+    it('lists the candidates with a tag you can look up again', function () {
+      const result = call('t2f_syntax', { tag: 'スイッチの操作' })
+      const titles = result.structuredContent.candidates.map(function (c) { return c.title })
+
+      expect(titles.join(' / ')).to.contain('セルフスイッチの操作')
+      result.structuredContent.candidates.forEach(function (c) {
+        expect(c.tag, c.title + ' に引き直せる tag がありません').to.be.a('string')
+        // 添えた tag で本当に節が引けること(鳴らない案内にしない)。
+        expect(textOf(call('t2f_syntax', { tag: c.tag }))).to.contain('○ ')
+      })
+    })
+
+    it('still says so when nothing matches at all', function () {
+      const result = call('t2f_syntax', { tag: 'そんなタグは無い' })
       expect(result.isError).to.equal(true)
-      expect(textOf(result)).to.contain('switch')
+      expect(textOf(result)).to.contain('見出しの一覧')
     })
   })
 

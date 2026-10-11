@@ -323,7 +323,16 @@ const createContext = function (options) {
     help: function () {
       if (help === null) {
         const parser = require(path.join(__dirname, 't2f-help.js'))
-        help = parser.buildTagHelp(fs.readFileSync(parser.COMPILER, 'utf8'))
+        const source = fs.readFileSync(parser.COMPILER, 'utf8')
+        help = parser.buildTagHelp(source)
+        /* 別名(同じ命令の日本語名・英語名・短縮形)。buildTagHelp は節を引くために
+         * 畳んでしまうので、組のままもう一度取る。<Add> を引いた人に「加算」「+」でも
+         * 書けると言えないと、ヘルプを読み直す往復が増える。 */
+        help.aliases = {}
+        parser.aliasGroups(source).forEach(function (names) {
+          const all = Array.from(names)
+          all.forEach(function (name) { help.aliases[name] = all })
+        })
       }
       return help
     },
@@ -685,13 +694,71 @@ TOOLS.push({
       const titles = help.sections.map(function (s, i) { return i + ': ' + s.title })
       return toolResult(titles.join('\n'), { sections: help.sections.map(function (s) { return s.title }) })
     }
-    const at = help.tags[tag]
-    if (at === undefined) {
-      const near = Object.keys(help.tags).filter(function (n) { return n.indexOf(tag) === 0 }).slice(0, 10)
-      return toolError('そのタグは見つかりません: ' + tag + (near.length ? '（近い名前: ' + near.join(', ') + '）' : '（引数なしで呼ぶと見出しの一覧が出ます）'))
+
+    /* 節を1つ返す。別名を添えるのは、同じ命令が日本語でも短縮形でも書けることを
+     * ここでしか知らせられないから。 */
+    const sectionResult = function (at, name) {
+      const section = help.sections[at]
+      /* 引いた名前を**除かない**。除くと、同じ節が引いた名前によって違う文面になり、
+       * 「どの名前で引いても同じ答え」が崩れる(test_mcp.js がその契約を見ている)。 */
+      const aliases = help.aliases[name] || []
+      const head = '○ ' + section.title + (aliases.length > 1 ? '\n書ける名前: ' + aliases.join(', ') : '')
+      return toolResult(head + '\n\n' + section.body, {
+        tag: name,
+        title: section.title,
+        aliases: help.aliases[name] || [name],
+        body: section.body
+      })
     }
-    const section = help.sections[at]
-    return toolResult('○ ' + section.title + '\n\n' + section.body, { tag, title: section.title })
+
+    // タグ名そのままが当たるのがいちばん強い。
+    if (help.tags[tag] !== undefined) return sectionResult(help.tags[tag], tag)
+
+    /* ここからが探しもの。**タグ名しか見ていなかったので「スイッチの操作」や「変数」で
+     * 引けなかった** - 前者は見出しの題、後者は 153 見出しのうち 28 の本文にしか出ない。
+     * 題と本文も部分一致で見て、当たりの強い順に並べる。 */
+    /* 候補には**引き直せるタグ名**を添える。題だけ見せて「タグ名で引き直して」と言うと、
+     * 題からタグ名を当て推量させることになる。 */
+    const nameBySection = {}
+    Object.keys(help.tags).forEach(function (name) {
+      const at = help.tags[name]
+      if (nameBySection[at] === undefined || name.length < nameBySection[at].length) nameBySection[at] = name
+    })
+    const hits = []
+    const seen = {}
+    const push = function (at, why) {
+      if (at === undefined || seen[at]) return
+      seen[at] = true
+      hits.push({ at, title: help.sections[at].title, tag: nameBySection[at], why })
+    }
+    Object.keys(help.tags).forEach(function (name) {
+      if (name.indexOf(tag) >= 0) push(help.tags[name], 'タグ名 <' + name + '>')
+    })
+    help.sections.forEach(function (section, i) {
+      if (section.title.toLowerCase().indexOf(tag) >= 0) push(i, '見出しの題')
+    })
+    const strong = hits.length
+    help.sections.forEach(function (section, i) {
+      if (section.body.toLowerCase().indexOf(tag) >= 0) push(i, '本文')
+    })
+
+    if (!hits.length) {
+      return toolError('「' + tag + '」に当たるタグも見出しもありません（引数なしで呼ぶと見出しの一覧が出ます）')
+    }
+    // 題かタグ名で1つに決まるなら、そのまま節を返す(「スイッチの操作」がこれ)。
+    if (strong === 1) return sectionResult(hits[0].at, tag)
+
+    const shown = hits.slice(0, 10)
+    const lines = ['「' + tag + '」に当たる見出し ' + hits.length + ' 件' + (hits.length > shown.length ? '（先頭 10 件）' : '') + ':', '']
+      .concat(shown.map(function (h) {
+        return '  ' + h.title + (h.tag ? '   tag: ' + h.tag : '') + '   … ' + h.why
+      }))
+      .concat(['', '上の tag で引き直すと、その節の全文が出ます。'])
+    return toolResult(lines.join('\n'), {
+      query: tag,
+      total: hits.length,
+      candidates: shown.map(function (h) { return { title: h.title, tag: h.tag || null, why: h.why } })
+    })
   }
 })
 
