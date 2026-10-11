@@ -67,6 +67,28 @@
                 "custom"
               ],
               "description": "範囲。nonempty=中身のあるもの(既定) / conversation=会話があるもの / custom=見出し情報付きテキストがあるものだけ / all=全部"
+            },
+            "mapId": {
+              "type": [
+                "integer",
+                "string"
+              ],
+              "description": "このマップだけ。**実データでは1マップ最大52件なので、絞れば必ず全件返ります。** 省くと件数の要約になります"
+            },
+            "summary": {
+              "type": "boolean",
+              "description": "マップごとの件数だけを返す"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2000,
+              "description": "行数の上限(既定 100)。明示したときだけ行を切ります"
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "何件目から返すか。並びはデータファイルの順(Map001.json → イベントの添字 → ページ)。データが変わると番号がずれるので、mapId で絞る方が確実です"
             }
           }
         },
@@ -398,6 +420,28 @@
                 "custom"
               ],
               "description": "範囲。nonempty=中身のあるもの(既定) / conversation=会話があるもの / custom=見出し情報付きテキストがあるものだけ / all=全部"
+            },
+            "mapId": {
+              "type": [
+                "integer",
+                "string"
+              ],
+              "description": "このマップだけ。**実データでは1マップ最大52件なので、絞れば必ず全件返ります。** 省くと件数の要約になります"
+            },
+            "summary": {
+              "type": "boolean",
+              "description": "マップごとの件数だけを返す"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2000,
+              "description": "行数の上限(既定 100)。明示したときだけ行を切ります"
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "何件目から返すか。並びはデータファイルの順(Map001.json → イベントの添字 → ページ)。データが変わると番号がずれるので、mapId で絞る方が確実です"
             }
           }
         },
@@ -656,6 +700,28 @@
                 "custom"
               ],
               "description": "範囲。nonempty=中身のあるもの(既定) / conversation=会話があるもの / custom=見出し情報付きテキストがあるものだけ / all=全部"
+            },
+            "mapId": {
+              "type": [
+                "integer",
+                "string"
+              ],
+              "description": "このマップだけ。**実データでは1マップ最大52件なので、絞れば必ず全件返ります。** 省くと件数の要約になります"
+            },
+            "summary": {
+              "type": "boolean",
+              "description": "マップごとの件数だけを返す"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2000,
+              "description": "行数の上限(既定 100)。明示したときだけ行を切ります"
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "何件目から返すか。並びはデータファイルの順(Map001.json → イベントの添字 → ページ)。データが変わると番号がずれるので、mapId で絞る方が確実です"
             }
           }
         },

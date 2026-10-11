@@ -130,6 +130,84 @@ describe('mcp tools', function () {
       writeText('mine.txt', frontMatter + 'やあ\n')
       expect(call('t2f_list', { scope: 'custom' }).structuredContent.targets).to.have.lengthOf(1)
     })
+
+    /* 実プロジェクトでは全件が 986,112 文字になり、クライアントが返せなかった。
+     * 切る線で分けず**構造で分ける** — 絞っていなくて多すぎるときは行を1つも返さない。
+     * 行の部分集合を返すと「その宛先は無い」と誤解する余地が残る。 */
+    describe('when the project is too big to list', function () {
+      // このマップだけ宛先を増やす(ほかのマップは beforeEach のまま)。
+      const manyEvents = function (count) {
+        const events = [null]
+        for (let i = 1; i <= count; i++) {
+          events.push({ id: i, name: 'EV' + i, pages: [{ list: msg('やあ').concat([bottom]) }] })
+        }
+        fs.writeFileSync(path.join(tmp, 'data', 'Map002.json'), JSON.stringify({ events }))
+        fs.writeFileSync(path.join(tmp, 'data', 'MapInfos.json'), JSON.stringify([
+          null, { id: 1, name: 'はじまりの村', order: 1, parentId: 0 }, { id: 2, name: '大きな町', order: 2, parentId: 0 }
+        ]))
+      }
+
+      /* 既定(100)に収まるうちは今までどおり全行返すこと(切り方を変えていない)。 */
+      it('still returns every row while it fits', function () {
+        manyEvents(8)
+        const result = call('t2f_list', { scope: 'all' })
+
+        expect(result.structuredContent.targets).to.be.an('array').with.length.at.least(8)
+        expect(result.structuredContent.truncated).to.equal(false)
+      })
+
+      /* 既定(100)を超えたら要約に倒れること。 */
+      it('falls back to the summary past the default limit', function () {
+        manyEvents(130)
+        const result = call('t2f_list', { scope: 'all' })
+
+        expect(result.structuredContent.targets, '行を返してはいけない').to.equal(null)
+        expect(result.structuredContent.summary).to.be.an('array').with.length.at.least(2)
+        expect(result.structuredContent.total).to.be.above(100)
+        expect(textOf(result)).to.contain('mapId を渡すと')
+      })
+
+      /* 絞れば全件返る。これが「切らずに済む」側の約束。 */
+      it('returns every row of one map when narrowed', function () {
+        manyEvents(130)
+        const result = call('t2f_list', { scope: 'all', mapId: 2 })
+
+        expect(result.structuredContent.targets).to.have.lengthOf(130)
+        expect(result.structuredContent.truncated).to.equal(false)
+        // マップを指すとコモンイベントは落ちる(enumerateTargets の onlyFile の約束)。
+        expect(result.structuredContent.targets.every(function (r) { return r.kind !== 'common' })).to.equal(true)
+      })
+
+      /* この道具自身が行の mapId を文字列で返すので、返った値をそのまま渡せること。 */
+      it('takes the mapId as a string too', function () {
+        manyEvents(130)
+        expect(call('t2f_list', { scope: 'all', mapId: '2' }).structuredContent.total).to.equal(130)
+        // 道具の中で起きたことは JSON-RPC エラーではなく isError の本文で返る。
+        const bad = call('t2f_list', { mapId: 'いろは' })
+        expect(bad.isError).to.equal(true)
+        expect(textOf(bad)).to.contain('mapId')
+      })
+
+      it('honours an explicit limit and offset, and reports the real total', function () {
+        manyEvents(130)
+        const result = call('t2f_list', { scope: 'all', limit: 3, offset: 10 })
+
+        expect(result.structuredContent.targets).to.have.lengthOf(3)
+        expect(result.structuredContent.offset).to.equal(10)
+        expect(result.structuredContent.truncated).to.equal(true)
+        expect(result.structuredContent.total).to.be.above(100)
+        expect(textOf(result)).to.contain('11〜13 件目')
+      })
+
+      /* 片方だけ切ると UI とモデルの見え方が食い違う。同じ1つの配列から作ること。 */
+      it('keeps the text and the structured rows in step', function () {
+        manyEvents(130)
+        const result = call('t2f_list', { scope: 'all', mapId: 2, limit: 7 })
+
+        expect(textOf(result).split('\n').filter(function (l) { return l.indexOf('map002_') === 0 }))
+          .to.have.lengthOf(result.structuredContent.targets.length)
+      })
+    })
   })
 
   describe('t2f_read', function () {

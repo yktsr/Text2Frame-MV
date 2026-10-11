@@ -357,9 +357,13 @@ const createContext = function (options) {
 
 /* ---------- 宛先の解決 ---------- */
 
-const targetsOf = function (ctx, scope) {
+/* onlyFile を渡すとそのファイルだけを読む(Frame2Text.js:3586)。マップを指すと
+ * コモンイベントは落ちる。201 ファイルを読まずに済むので、絞り込みの土台になる。 */
+const targetsOf = function (ctx, scope, onlyFile) {
   const index = ctx.f2t.indexTexts(ctx.textDir)
-  const targets = ctx.f2t.enumerateTargets(ctx.dataDir, { scope: scope || ctx.scope, index })
+  const options = { scope: scope || ctx.scope, index }
+  if (onlyFile) options.onlyFile = onlyFile
+  const targets = ctx.f2t.enumerateTargets(ctx.dataDir, options)
   return { index, targets }
 }
 
@@ -476,12 +480,31 @@ TOOLS.push({
         type: 'string',
         enum: ['all', 'nonempty', 'conversation', 'custom'],
         description: '範囲。nonempty=中身のあるもの(既定) / conversation=会話があるもの / custom=見出し情報付きテキストがあるものだけ / all=全部'
+      },
+      mapId: {
+        type: ['integer', 'string'],
+        description: 'このマップだけ。**実データでは1マップ最大52件なので、絞れば必ず全件返ります。** 省くと件数の要約になります'
+      },
+      summary: { type: 'boolean', description: 'マップごとの件数だけを返す' },
+      limit: { type: 'integer', minimum: 1, maximum: 2000, description: '行数の上限(既定 100)。明示したときだけ行を切ります' },
+      offset: {
+        type: 'integer',
+        minimum: 0,
+        description: '何件目から返すか。並びはデータファイルの順(Map001.json → イベントの添字 → ページ)。' +
+          'データが変わると番号がずれるので、mapId で絞る方が確実です'
       }
     }
   },
   run: function (ctx, args) {
     const scope = (args && args.scope) || ctx.scope
-    const found = targetsOf(ctx, scope)
+    /* mapId は文字列でも受ける。この道具自身が行の mapId を文字列で返すので、
+     * 返ってきた値をそのまま渡せないと使いにくい。 */
+    const mapId = args && args.mapId !== undefined && args.mapId !== null ? Number(args.mapId) : undefined
+    if (mapId !== undefined && !(mapId > 0)) throw new Error('mapId はマップの番号です: ' + args.mapId)
+    const limit = args && args.limit !== undefined ? Number(args.limit) : 100
+    const offset = args && args.offset !== undefined ? Math.max(Number(args.offset), 0) : 0
+    const cutAsked = !!(args && (args.limit !== undefined || args.offset !== undefined))
+    const found = targetsOf(ctx, scope, mapId === undefined ? undefined : mapFileName(mapId))
     const rows = found.targets.map(function (t) {
       const existing = found.index.paths[t.key]
       const row = {
@@ -502,12 +525,64 @@ TOOLS.push({
       if (found.index.duplicates[t.key]) row.skippedBecauseDuplicated = true
       return row
     })
-    const lines = rows.map(function (r) {
+    /* マップごとの件数。絞っていないのに多すぎるときは**これだけ**返す。
+     * 行の部分集合を返すと、エージェントが「その宛先は無い」と誤解する余地が残る。
+     * 警告文を添えるより、誤解する材料そのものを返さない方が強い。 */
+    const countByMap = function () {
+      const order = []
+      const counts = {}
+      rows.forEach(function (r) {
+        const key = r.kind === 'common' ? 'common' : String(r.mapId)
+        if (counts[key] === undefined) {
+          counts[key] = { mapId: r.kind === 'common' ? null : r.mapId, mapName: r.kind === 'common' ? 'コモンイベント' : r.mapName, count: 0 }
+          order.push(key)
+        }
+        counts[key].count++
+      })
+      return order.map(function (k) { return counts[k] })
+    }
+
+    const asSummary = function (reason) {
+      const groups = countByMap()
+      const lines = groups.map(function (g) {
+        return (g.mapId === null ? 'common' : 'map' + ('00' + g.mapId).slice(-3)) +
+          '  ' + String(g.count).padStart(4) + ' 件  ' + g.mapName
+      })
+      return toolResult([reason, '', lines.join('\n'), '',
+        '合計 ' + rows.length + ' 件 / ' + groups.length + ' 組。mapId を渡すとそのマップの宛先を全件返します。'
+      ].filter(function (l) { return l !== undefined }).join('\n'),
+      { scope, mapId: mapId === undefined ? null : mapId, total: rows.length, summary: groups, targets: null })
+    }
+
+    if (!rows.length) {
+      return toolResult('該当する宛先がありません(範囲: ' + scope + ')', { scope, total: 0, targets: [] })
+    }
+    if (args && args.summary) return asSummary('マップごとの件数です。')
+    /* 絞っていない大量の一覧は、行を1つも返さず件数だけにする。 */
+    if (mapId === undefined && !cutAsked && rows.length > limit) {
+      return asSummary('宛先が ' + rows.length + ' 件あるため、行ではなくマップごとの件数を返します。')
+    }
+
+    const shown = cutAsked ? rows.slice(offset, offset + limit) : rows
+    const lines = shown.map(function (r) {
       const where = r.textPath ? r.textPath : '(まだ無い -> ' + r.plannedTextPath + ')'
       const label = r.kind === 'common' ? 'common ' + r.commonEventId : r.mapName + ' / ' + r.name
       return r.key + '  ' + label + '  ' + where + (r.skippedBecauseDuplicated ? '  [重複のため見送り]' : '')
     })
-    return toolResult(rows.length ? lines.join('\n') : '該当する宛先がありません(範囲: ' + scope + ')', { scope, targets: rows })
+    const truncated = shown.length < rows.length
+    const tail = truncated
+      ? ['', '全 ' + rows.length + ' 件のうち ' + (offset + 1) + '〜' + (offset + shown.length) + ' 件目です。']
+      : []
+    /* 本文と structuredContent は**同じ1つの配列**から作る。片方だけ切ると、
+     * UI とモデルの見え方が食い違う。 */
+    return toolResult(lines.concat(tail).join('\n'), {
+      scope,
+      mapId: mapId === undefined ? null : mapId,
+      total: rows.length,
+      offset,
+      truncated,
+      targets: shown
+    })
   }
 })
 
