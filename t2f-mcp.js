@@ -723,7 +723,7 @@ TOOLS.push({
     const header = ctx.f2t.renderFrontMatter(found.target, found.target.kind)
     if (args && args.translationOnly) {
       const body = ctx.f2t.decompile(list, true, { pretty: true, translationOnly: true })
-      return toolResult(header + body, { key: found.target.key, translationOnly: true })
+      return toolResult(header + body, { key: found.target.key, translationOnly: true, text: header + body })
     }
     const existing = found.index.paths[found.target.key]
     let existingText = ''
@@ -736,10 +736,14 @@ TOOLS.push({
       existingText,
       fallbackHeader: header
     })
+    /* 本文は content にも structuredContent にも載せる。片方だけだと、
+     * structuredContent を見た読み手が「本文が返らない」と結論する(実際にそうなった)。
+     * 仕様も「structured を返すなら content にも」と言っていて、ここは向きが逆だった。 */
     return toolResult(built.text, {
       key: found.target.key,
       textPath: existing ? relOf(ctx, existing) : null,
-      conflicts: built.conflicts || 0
+      conflicts: built.conflicts || 0,
+      text: built.text
     })
   }
 })
@@ -872,20 +876,27 @@ TOOLS.push({
   }
 })
 
+/* 名前の出どころ。**拡張の db/database.ts の SOURCES と同じ16種類にそろえてある。**
+ * あちらを使わないのは、層が無い配り方だと道具の形(inputSchema の enum)が変わって
+ * しまうから。ずれは vscode-extension/test/test_mcp_names.js が突き合わせる。
+ * field が無いものはレコードの配列(各要素の .name)。 */
 const NAME_SOURCES = {
   switch: { file: 'System.json', field: 'switches' },
   variable: { file: 'System.json', field: 'variables' },
   actor: { file: 'Actors.json' },
   class: { file: 'Classes.json' },
-  skill: { file: 'Skills.json' },
   item: { file: 'Items.json' },
   weapon: { file: 'Weapons.json' },
   armor: { file: 'Armors.json' },
+  equipType: { file: 'System.json', field: 'equipTypes' },
+  skill: { file: 'Skills.json' },
+  state: { file: 'States.json' },
   enemy: { file: 'Enemies.json' },
   troop: { file: 'Troops.json' },
-  state: { file: 'States.json' },
   animation: { file: 'Animations.json' },
-  commonEvent: { file: 'CommonEvents.json' }
+  commonEvent: { file: 'CommonEvents.json' },
+  map: { file: 'MapInfos.json' },
+  tileset: { file: 'Tilesets.json' }
 }
 
 TOOLS.push({
@@ -920,12 +931,24 @@ TOOLS.push({
         if (query && name.indexOf(query) === -1) return
         rows.push({ id, name })
       })
+      /* 同じ名前が複数あると、名前で引いた番号を取り違える。実データでは258件の
+       * スイッチのうち12の名前が重複していた(「シャチ出てくる」が 13/121/229/237)。
+       * 絞り込みで消えないよう、**数えるのは絞る前の全体**で行う。 */
+      const sameName = {}
+      names.forEach(function (entry) {
+        if (entry === null || entry === undefined) return
+        const n = typeof entry === 'string' ? entry : String(entry.name || '')
+        if (n) sameName[n] = (sameName[n] || 0) + 1
+      })
+      rows.forEach(function (r) { if (sameName[r.name] > 1) r.sameName = sameName[r.name] })
       if (rows.length) out[kind] = rows
     })
     const lines = []
     Object.keys(out).forEach(function (kind) {
       lines.push('[' + kind + ']')
-      out[kind].forEach(function (r) { lines.push('  ' + r.id + ': ' + r.name) })
+      out[kind].forEach(function (r) {
+        lines.push('  ' + r.id + ': ' + r.name + (r.sameName ? '   ※ 同名 ×' + r.sameName : ''))
+      })
     })
     if (lines.length) return toolResult(lines.join('\n'), out)
     return toolResult(query
@@ -1921,6 +1944,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
 module.exports = {
   PROTOCOL_VERSIONS,
+  NAME_SOURCES,
   CACHE_TTL_MS,
   CACHE_SCOPE,
   startServer,

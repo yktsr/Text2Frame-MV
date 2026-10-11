@@ -230,6 +230,63 @@ describe('mcp tools', function () {
    *
    * 参照の取り方は commandRefs に任せる(新しい規則を書かない)。だから覆うのは顔と
    * 敵グループだけ。借りている層が無い配り方では黙る。 */
+  /* 別セッションが「t2f_read が本文を返さない」と報告した。**誤りだった** - 本文は
+   * content[0].text にある。だが structuredContent には無く、そこを見た注意深い読み手が
+   * 自信を持って誤った結論に達した。仕様も「structured を返すなら content にも」と
+   * 言っていて、t2f_read と t2f_syntax は向きが逆だった(本文が content だけ)。
+   *
+   * どちらの半分だけを見ても足りる形にする。 */
+  describe('both halves of a result', function () {
+    it('puts the body in the structured half too', function () {
+      writeText('mine.txt', frontMatter + 'やあ\n')
+      const result = call('t2f_read', { key: 'map001_event001_page1' })
+
+      expect(result.structuredContent.text, 'structuredContent に本文がありません').to.be.a('string')
+      expect(result.structuredContent.text).to.equal(textOf(result))
+    })
+
+    it('does the same for the translation-only form', function () {
+      const result = call('t2f_read', { key: 'map001_event001_page1', translationOnly: true })
+      expect(result.structuredContent.text).to.equal(textOf(result))
+    })
+
+    it('puts the help body in the structured half', function () {
+      const result = call('t2f_syntax', { tag: 'switch' })
+      expect(result.structuredContent.body).to.be.a('string').with.length.at.least(20)
+      expect(textOf(result)).to.contain(result.structuredContent.body)
+    })
+
+    /* 新しい道具を足したときにここが鳴る。どれか1つでも structuredContent を
+     * 空にしたら、片方しか見ないクライアントがその道具を使えない。 */
+    it('gives every tool a non-empty structured half', function () {
+      writeText('mine.txt', frontMatter + 'やあ\n')
+      const probes = {
+        t2f_project_info: {},
+        t2f_list: {},
+        t2f_read: { key: 'map001_event001_page1' },
+        t2f_search: { query: 'こんにちは' },
+        t2f_syntax: { tag: 'switch' },
+        t2f_names: { kind: 'switch' },
+        t2f_check: { text: '【誰か】\nやあ\n' },
+        t2f_name_plan: { kind: 'switch', id: 3, name: '検査' }
+      }
+      const offered = mcp.handle({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/list',
+        params: { _meta: META }
+      }, ctx).result.tools.map(function (t) { return t.name })
+
+      Object.keys(probes).forEach(function (name) {
+        expect(offered, name + ' が tools/list に出ていません').to.include(name)
+        const result = call(name, probes[name])
+        expect(result.structuredContent, name + ' の structuredContent が空です').to.be.an('object')
+        expect(Object.keys(result.structuredContent), name + ' の structuredContent に中身がありません')
+          .to.have.length.at.least(1)
+      })
+    })
+  })
+
   describe('missing assets', function () {
     const img = function (folder, name) {
       fs.mkdirSync(path.join(tmp, 'img', folder), { recursive: true })
@@ -570,6 +627,57 @@ describe('mcp tools', function () {
     it('says when a project has no names yet', function () {
       fs.writeFileSync(path.join(tmp, 'data', 'System.json'), JSON.stringify({ switches: ['', ''], variables: [''] }))
       expect(textOf(call('t2f_names', { kind: 'switch' }))).to.contain('まだ名前が付いていません')
+    })
+  })
+
+  describe('t2f_names の種類と同名', function () {
+    it('offers all sixteen kinds', function () {
+      const names = mcp.TOOLS.filter(function (t) { return t.name === 't2f_names' })[0]
+      const kinds = mcp.describeTool(names).inputSchema.properties.kind.enum
+
+      expect(kinds).to.have.lengthOf(16)
+      // 前は13種類で、この3つが無かった。
+      expect(kinds).to.include.members(['equipType', 'map', 'tileset'])
+    })
+
+    it('reads the three that were missing', function () {
+      fs.writeFileSync(path.join(tmp, 'data', 'Tilesets.json'), JSON.stringify([null, { id: 1, name: '街の外' }]))
+      const data = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'System.json'), 'utf8'))
+      data.equipTypes = ['', '武器', '盾']
+      fs.writeFileSync(path.join(tmp, 'data', 'System.json'), JSON.stringify(data))
+      ctx = mcp.createContext({ root: tmp })
+
+      expect(call('t2f_names', { kind: 'tileset' }).structuredContent.tileset[0].name).to.equal('街の外')
+      expect(call('t2f_names', { kind: 'equipType' }).structuredContent.equipType[0].name).to.equal('武器')
+      // map は MapInfos.json から。
+      expect(call('t2f_names', { kind: 'map' }).structuredContent.map[0].name).to.equal('はじまりの村')
+    })
+
+    /* 実データでは258件のスイッチのうち12の名前が重複していた。名前で探すと複数に
+     * 当たるので、番号を取り違える。 */
+    it('marks the entries that share a name', function () {
+      const data = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'System.json'), 'utf8'))
+      data.switches = ['', 'シャチ', '橋がかかった', 'シャチ']
+      fs.writeFileSync(path.join(tmp, 'data', 'System.json'), JSON.stringify(data))
+      ctx = mcp.createContext({ root: tmp })
+
+      const rows = call('t2f_names', { kind: 'switch' }).structuredContent.switch
+      const shared = rows.filter(function (r) { return r.name === 'シャチ' })
+      expect(shared).to.have.lengthOf(2)
+      shared.forEach(function (r) { expect(r.sameName).to.equal(2) })
+      expect(rows.filter(function (r) { return r.name === '橋がかかった' })[0].sameName).to.equal(undefined)
+      expect(textOf(call('t2f_names', { kind: 'switch' }))).to.contain('同名 ×2')
+    })
+
+    /* 絞り込むと重複が1件しか返らないので、**数えるのは絞る前**でなければ印が消える。 */
+    it('keeps the mark even when the query narrows it to one', function () {
+      const data = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'System.json'), 'utf8'))
+      data.switches = ['', 'シャチ', 'シャチ']
+      fs.writeFileSync(path.join(tmp, 'data', 'System.json'), JSON.stringify(data))
+      ctx = mcp.createContext({ root: tmp })
+
+      const rows = call('t2f_names', { kind: 'switch', query: 'シャチ' }).structuredContent.switch
+      rows.forEach(function (r) { expect(r.sameName, '絞り込みで印が消えています').to.equal(2) })
     })
   })
 
