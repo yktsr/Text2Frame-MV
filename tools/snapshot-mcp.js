@@ -37,6 +37,20 @@ const EXCHANGES = [
     readOnly: true,
     request: { jsonrpc: '2.0', id: 3, method: 'tools/list', params: { _meta: META } }
   },
+  /* 構造を問い合わせる道具は、拡張の純粋な層が解決できたときだけ出す。層は TypeScript の
+   * 生成物なので、配り方(拡張 / npm / 素のクローン)で在る無いが変わる。**両方の姿を記録する。**
+   * 記録しないと、筆記録が「その機械に層があるか」を読んでしまい、CI で落ちる(実際に落ちた)。 */
+  {
+    label: 'tools/list (構造の層なし)',
+    noStructure: true,
+    request: { jsonrpc: '2.0', id: 9, method: 'tools/list', params: { _meta: META } }
+  },
+  /* 出していない道具は呼ばれても「知らない道具」で返す。この半分は他に検査が無い。 */
+  {
+    label: 'エラー: 構造の層が無いときの t2f_usages',
+    noStructure: true,
+    request: { jsonrpc: '2.0', id: 10, method: 'tools/call', params: { name: 't2f_usages', arguments: { kind: 'switch', id: 1 }, _meta: META } }
+  },
   { label: 'エラー: _meta が無い', request: { jsonrpc: '2.0', id: 4, method: 'tools/list', params: {} } },
   {
     label: 'エラー: 知らない版',
@@ -61,10 +75,26 @@ const redact = function (value) {
   return JSON.parse(JSON.stringify(value).split('"' + mcp.version() + '"').join('"<version>"'))
 }
 
+/* 層の在る無いを**この機械の状態から切り離す**。ctx.structure は ctx 自身の属性で、
+ * 消費側は toolsFor の ctx.structure() と links() の this.structure() だけなので、
+ * 差し替えれば足りる(本番コードに記録用の入口を開けない)。
+ * 同じ作法の前例が test/test_mcp_snapshot.js:73 — あちらは TOOLS[0].description を
+ * 差し替えて「鳴ること」を見ている。
+ *
+ * 偽物で記録するのは嘘ではない。describeTool が出すのは name/title/description/
+ * inputSchema/annotations だけで、t2f_usages にはそこから層に依る値が1つも無い
+ * (kind は5語の literal)。だから層のある本物の install と1バイト違わない。 */
+const STRUCTURE_STUB = { database: {}, eventLinks: {}, eventPages: {} }
+const withStructure = function (ctx, present) {
+  ctx.structure = function () { return present ? STRUCTURE_STUB : undefined }
+  return ctx
+}
+
 const build = function () {
   // root はどの応答にも出てこない(discover と tools/list はプロジェクトを読まない)。
-  const normal = mcp.createContext({ root: path.join(root, 'Project1') })
-  const readOnly = mcp.createContext({ root: path.join(root, 'Project1'), readOnly: true })
+  const normal = withStructure(mcp.createContext({ root: path.join(root, 'Project1') }), true)
+  const readOnly = withStructure(mcp.createContext({ root: path.join(root, 'Project1'), readOnly: true }), true)
+  const bare = withStructure(mcp.createContext({ root: path.join(root, 'Project1') }), false)
   const lines = [
     '# MCP のプロトコルの筆記録',
     '# tools/snapshot-mcp.js が作る生成物。手で編集しない。',
@@ -72,7 +102,8 @@ const build = function () {
     ''
   ]
   EXCHANGES.forEach(function (exchange) {
-    const response = mcp.handle(exchange.request, exchange.readOnly ? readOnly : normal)
+    const ctx = exchange.noStructure ? bare : (exchange.readOnly ? readOnly : normal)
+    const response = mcp.handle(exchange.request, ctx)
     lines.push('===== ' + exchange.label + ' =====')
     lines.push('--> ' + JSON.stringify(exchange.request))
     lines.push('<-- ' + (response === null ? '(応答なし)' : JSON.stringify(redact(response), null, 2)))

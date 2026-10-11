@@ -3,17 +3,20 @@ const expect = chai.expect
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
-const mcp = require('../t2f-mcp')
+const mcp = require('../../t2f-mcp.js')
+const eventLinks = require('../out/db/eventLinks')
 
 /* 番号の逆引き。つながりを見分ける規則は1行も書いておらず、拡張の純粋な層
- * (vscode-extension/src/db/eventLinks.js の commandLinks / conditionLinks /
- * commonTriggerLinks)が持っている。ここで見るのは配線の方:
- *   - 鍵の組み立てと、結果に名前が付くこと
- *   - **条件分岐での「読み」が入っていないこと**(入っていないと知らせる約束)
- *   - 層が無い配り方では道具を出さないこと
+ * (src/db/eventLinks.ts の commandLinks / conditionLinks / commonTriggerLinks)が
+ * 持っている。ここで見るのは配線の方 — 鍵の組み立て、結果に名前が付くこと、
+ * **条件分岐での「読み」が入っていないこと**(入っていないと知らせる約束)。
  *
- * 層は TypeScript の生成物なので、拡張をコンパイルしていないと無い。そのときは
- * 飛ばす(落とすと「拡張をビルドしていない」だけで赤くなる)。 */
+ * **根のテストではなく、こちらに置いてある。** 借りている層は TypeScript の生成物で
+ * gitignore されており、拡張をコンパイルした機械にしか無い。根の suite に置くと
+ * CI の core ジョブ(拡張をコンパイルしない別ジョブ)で毎回飛ばされ、鳴らない番人になる。
+ * こちらは pretest = npm run compile の後に走るので必ず層がある。
+ * 同じ理由で同じ場所に居るのが test_mcp_history.js(あちらも根の t2f-history.js と
+ * 拡張の out/db/history を両方読む)。 */
 const META = {
   'io.modelcontextprotocol/protocolVersion': '2026-07-28',
   'io.modelcontextprotocol/clientCapabilities': {}
@@ -84,12 +87,7 @@ describe('mcp usages', function () {
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch (e) { /* ignore */ }
   })
 
-  const skipWithoutLayer = function (test) {
-    if (!ctx.structure()) test.skip()
-  }
-
   it('finds who turns a switch on, and which page it makes appear', function () {
-    skipWithoutLayer(this)
     const result = usages({ kind: 'switch', id: 5 })
 
     expect(result.isError, textOf(result)).to.equal(undefined)
@@ -104,7 +102,6 @@ describe('mcp usages', function () {
 
   /* 番号だけ返しても人には読めない。名前はデータベースから引く。 */
   it('puts the database name on the subject and the event names on the places', function () {
-    skipWithoutLayer(this)
     const text = textOf(usages({ kind: 'switch', id: 5 }))
 
     expect(text).to.contain('スイッチ5「扉が開いた」')
@@ -112,7 +109,6 @@ describe('mcp usages', function () {
   })
 
   it('finds a variable and a common event too', function () {
-    skipWithoutLayer(this)
 
     const variable = usages({ kind: 'variable', id: 7 })
     expect(variable.structuredContent.label).to.contain('話した回数')
@@ -127,7 +123,6 @@ describe('mcp usages', function () {
    * 入っていないことを知らせずに返すと、エージェントは「他で使われていない」と
    * 誤解して消しにかかる。将来 case 111 を足したらここが落ちて気づく。 */
   it('leaves conditional-branch reads out, and says so', function () {
-    skipWithoutLayer(this)
     const result = usages({ kind: 'switch', id: 5 })
 
     // 読んでいるのもイベント1の1ページだが、入るのは ON にした1本だけ。
@@ -137,7 +132,6 @@ describe('mcp usages', function () {
   })
 
   it('takes a self switch by map, event and letter', function () {
-    skipWithoutLayer(this)
     const result = usages({ kind: 'selfSwitch', mapId: 1, eventId: 1, letter: 'A' })
 
     expect(result.structuredContent.key).to.equal('ss:1:1:A')
@@ -145,7 +139,6 @@ describe('mcp usages', function () {
   })
 
   it('says what is missing instead of guessing', function () {
-    skipWithoutLayer(this)
 
     expect(textOf(usages({ kind: 'switch' }))).to.contain('id が要ります')
     expect(usages({ kind: 'switch' }).isError).to.equal(true)
@@ -153,7 +146,6 @@ describe('mcp usages', function () {
   })
 
   it('answers with nothing found rather than failing', function () {
-    skipWithoutLayer(this)
     const result = usages({ kind: 'switch', id: 999 })
 
     expect(result.isError).to.equal(undefined)
@@ -162,16 +154,24 @@ describe('mcp usages', function () {
   })
 
   it('cuts both directions at the limit but reports the real total', function () {
-    skipWithoutLayer(this)
     const result = usages({ kind: 'switch', id: 5, limit: 1 })
 
     expect(result.structuredContent.outbound).to.have.lengthOf(1)
     expect(result.structuredContent.outboundTotal).to.equal(1)
   })
 
-  /* 層は配り方によっては無い(npm の tarball には入っていない)。そのときは
-   * 動かない道具を並べず、tools/list から落とす。 */
-  it('is offered only where the pure layer is reachable', function () {
+  /* 根の loadDb が**この拡張の out/db を**掴んでいること。解決そのものに対する唯一の検査。
+   *
+   * もう1つの役目がある。loadDb の候補の先頭は根の db/ で、あれは npm 配布のために
+   * prepack が作る生成物。一度 npm pack を走らせると根に db/ が残り(gitignore なので
+   * 誰も消さない)、以後そちらが勝つ。この assert が無いと、src/db/eventLinks.ts を
+   * 直して再コンパイルしても**古い写しを黙って検査し続ける**。手元だけで静かに起きる
+   * (CI は package ジョブがテストを走らせず、extension ジョブは prepack を走らせない)。 */
+  it('resolves the layer from this extension, not a stale copy', function () {
+    expect(ctx.structure().eventLinks).to.equal(eventLinks)
+  })
+
+  it('offers the tool in tools/list', function () {
     const listed = mcp.handle({
       jsonrpc: '2.0',
       id: 1,
@@ -179,7 +179,6 @@ describe('mcp usages', function () {
       params: { _meta: META }
     }, ctx).result.tools.map(function (t) { return t.name })
 
-    if (ctx.structure()) expect(listed).to.include('t2f_usages')
-    else expect(listed).to.not.include('t2f_usages')
+    expect(listed).to.include('t2f_usages')
   })
 })

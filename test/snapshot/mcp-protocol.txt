@@ -616,6 +616,294 @@
   }
 }
 
+===== tools/list (構造の層なし) =====
+--> {"jsonrpc":"2.0","id":9,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"snapshot","version":"1.0.0"}}}}
+<-- {
+  "jsonrpc": "2.0",
+  "id": 9,
+  "result": {
+    "resultType": "complete",
+    "ttlMs": 0,
+    "cacheScope": "private",
+    "tools": [
+      {
+        "name": "t2f_project_info",
+        "title": "プロジェクトの状態",
+        "description": "ゲームのフォルダ、MV か MZ か、見出し情報の無いテキスト、同じ宛先を指す重複、未解決の衝突の目印を返します。書き込む前にまず読んでください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_list",
+        "title": "宛先の一覧",
+        "description": "ゲームのイベント(とコモンイベント)を一覧します。テキストが既にあればその場所、無ければこれから作られる名前を添えます。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "scope": {
+              "type": "string",
+              "enum": [
+                "all",
+                "nonempty",
+                "conversation",
+                "custom"
+              ],
+              "description": "範囲。nonempty=中身のあるもの(既定) / conversation=会話があるもの / custom=見出し情報付きテキストがあるものだけ / all=全部"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_read",
+        "title": "イベントをテキストで読む",
+        "description": "ゲームのイベント1件を Text2Frame のテキストにして返します。ファイルは書きません。translationOnly は会話だけを残しますが不可逆なので、書き戻す元には使えません。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "type": "string",
+              "description": "t2f_list が返す宛先の鍵(例 map003_event004_page1)。これだけで足ります"
+            },
+            "mapId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: マップID"
+            },
+            "eventId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: イベントID"
+            },
+            "pageId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: ページ番号(既定 1)"
+            },
+            "commonEventId": {
+              "type": "string",
+              "description": "コモンイベントを指すとき: その番号"
+            },
+            "translationOnly": {
+              "type": "boolean",
+              "description": "会話系のコマンドだけを残す(翻訳用。往復しません)"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_search",
+        "title": "テキストを横断して探す",
+        "description": "text フォルダのテキストを探し、当たった行を「どのマップのどのイベントの何ページ」に解き直して返します。セリフの推敲や語彙の統一に使えます。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "query"
+          ],
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "探す文字列"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "description": "返す行数の上限(既定 50)"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_syntax",
+        "title": "タグ記法を引く",
+        "description": "Text2Frame のタグ記法を、プラグイン本体のヘルプから引きます。引数なしで見出しの一覧、tag を渡すとそのタグの説明。テキストを書く前に必ず引いてください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tag": {
+              "type": "string",
+              "description": "タグ名(例 Switch / スイッチ / ShowChoices)。山括弧は不要"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_names",
+        "title": "データベースの名前と番号",
+        "description": "スイッチ・変数・アクターなどの名前と番号の対応を返します。<スイッチ: 12, ON> のような番号を当て推量せず、ここで引いてください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "switch",
+                "variable",
+                "actor",
+                "class",
+                "skill",
+                "item",
+                "weapon",
+                "armor",
+                "enemy",
+                "troop",
+                "state",
+                "animation",
+                "commonEvent"
+              ],
+              "description": "種類。省くと全部"
+            },
+            "query": {
+              "type": "string",
+              "description": "名前の一部で絞る"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_check",
+        "title": "テキストの文法を見る",
+        "description": "Text2Frame のテキストを読んで、コンパイラが拒む書き方を返します。ファイルもゲームも触りません。注意: 知らないタグ名はセリフとして扱われるため誤りになりません(<Nope: 1> はそのまま文章になります)。ここで捕まるのは主に値が選択肢から外れているもの(例 <位置: よこ>)です。タグ名の確認は t2f_syntax で行ってください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "text"
+          ],
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "確かめたいテキスト(見出し情報は付いていてもいなくてもよい)"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_write_plan",
+        "title": "下書き(何が変わるか)",
+        "description": "渡したテキストをゲームに反映したら何が変わるかを、一時的な写しの上で試して返します。本物のファイルは1バイトも書きません。返ってくる札(token)を t2f_write_apply に渡すと実際に反映します。警告と衝突の数もそのまま返すので、とくに「初回反映」の警告(祖先が無く、その回だけゲーム側の編集が残らない)は必ず読んでください。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "text"
+          ],
+          "properties": {
+            "key": {
+              "type": "string",
+              "description": "t2f_list が返す宛先の鍵(例 map003_event004_page1)。これだけで足ります"
+            },
+            "mapId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: マップID"
+            },
+            "eventId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: イベントID"
+            },
+            "pageId": {
+              "type": "string",
+              "description": "鍵の代わりに指定するとき: ページ番号(既定 1)"
+            },
+            "commonEventId": {
+              "type": "string",
+              "description": "コモンイベントを指すとき: その番号"
+            },
+            "text": {
+              "type": "string",
+              "description": "反映したいテキスト(見出し情報は付いていなくてもよい。宛先は引数で決まります)"
+            },
+            "strategy": {
+              "type": "string",
+              "enum": [
+                "merge",
+                "overwrite"
+              ],
+              "description": "merge=統合(既定。3方向マージ。衝突は目印で両方残る) / overwrite=上書き(テキストで全部置き換える。詰まった統合からの出口)"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true
+        }
+      },
+      {
+        "name": "t2f_write_apply",
+        "title": "下書きを適用する",
+        "description": "t2f_write_plan が返した札(token)を受け取り、本当にゲームとテキストへ書きます。下書きを作ったあとに人やツクールがファイルを触っていたら拒否します(もう一度 t2f_write_plan から)。書き換える直前の中身は .t2f-history に控えるので、VS Code 拡張の「編集履歴を表示する」から戻せます。",
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "token"
+          ],
+          "properties": {
+            "token": {
+              "type": "string",
+              "description": "t2f_write_plan が返した札"
+            }
+          }
+        },
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false
+        }
+      }
+    ],
+    "_meta": {
+      "io.modelcontextprotocol/serverInfo": {
+        "name": "text2frame-mv",
+        "version": "<version>"
+      }
+    }
+  }
+}
+
+===== エラー: 構造の層が無いときの t2f_usages =====
+--> {"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"t2f_usages","arguments":{"kind":"switch","id":1},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"snapshot","version":"1.0.0"}}}}
+<-- {
+  "jsonrpc": "2.0",
+  "id": 10,
+  "error": {
+    "code": -32602,
+    "message": "知らない道具です: t2f_usages"
+  }
+}
+
 ===== エラー: _meta が無い =====
 --> {"jsonrpc":"2.0","id":4,"method":"tools/list","params":{}}
 <-- {
