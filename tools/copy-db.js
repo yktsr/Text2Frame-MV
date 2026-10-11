@@ -22,7 +22,15 @@ const root = path.resolve(__dirname, '..')
 const outDir = process.env.DB_SOURCE_DIR || path.join(root, 'vscode-extension', 'out', 'db')
 const dbDir = path.join(root, 'db')
 /* t2f-mcp.js の loadDb が読むものと、それが読む兄弟。増やすときは下の閉じ検査が守る。 */
-const MODULES = ['eventLinks.js', 'eventPages.js', 'database.js', 'lang.js']
+const MODULES = [
+  'eventLinks.js', 'eventPages.js', 'database.js', 'lang.js',
+  // 素材の実在を見るのに要る。faces が originalCore と png を読むので一緒に写す
+  // (閉じ検査がそう言う)。実在の確認はファイル名の照合だけで、復号には触らない。
+  'faces.js', 'png.js', 'originalCore.js',
+  // 参照している素材を取り出すのに要る。**手で足すしかない** - eventLinks は
+  // RpgCommand を型だけ取り込むので実行時の require が無く、閉じ検査では炙り出されない。
+  'commandRefs.js'
+]
 
 const fail = function (message) {
   console.error('copy-db: ' + message)

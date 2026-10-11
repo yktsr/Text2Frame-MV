@@ -223,6 +223,94 @@ describe('mcp tools', function () {
    * pages.length-1 から逆に走るので(findProperPageIndex)既存のページが到達しなくなる。
    * findTarget が存在するページしか解決しないので**起きない**が、断り方が
    * 「その宛先はありません」だけだとエージェントは名前を間違えたと思って迷う。 */
+  /* **ゲームが実際に落ちてから分かった。** MCP で <BattleProcessing> を入れたら
+   * 「Failed to load img/enemies/Orc.png」。番号としては正しいので文法の検査も下書きも
+   * 全部通り、落ちたのはゲームを起動してから。あのゲームは戦闘を使わないので敵の画像を
+   * 全部削除していた。
+   *
+   * 参照の取り方は commandRefs に任せる(新しい規則を書かない)。だから覆うのは顔と
+   * 敵グループだけ。借りている層が無い配り方では黙る。 */
+  describe('missing assets', function () {
+    const img = function (folder, name) {
+      fs.mkdirSync(path.join(tmp, 'img', folder), { recursive: true })
+      fs.writeFileSync(path.join(tmp, 'img', folder, name + '.png'), 'PNG')
+    }
+    const hasLayer = function () { return !!(ctx.structure() && ctx.assets()) }
+
+    beforeEach(function () {
+      img('faces', 'suzu1')
+      // 敵グループ1はこうもり。画像は置かない(落ちたゲームと同じ形)。
+      fs.writeFileSync(path.join(tmp, 'data', 'Troops.json'), JSON.stringify([
+        null, { id: 1, name: 'こうもり*2', members: [{ enemyId: 1 }, { enemyId: 1 }] }
+      ]))
+      fs.writeFileSync(path.join(tmp, 'data', 'Enemies.json'), JSON.stringify([
+        null, { id: 1, name: 'こうもり', battlerName: 'Bat' }
+      ]))
+      ctx = mcp.createContext({ root: tmp })
+    })
+
+    it('says nothing when every asset is there', function () {
+      if (!hasLayer()) this.skip()
+      const result = call('t2f_check', { text: '<Face: suzu1(0)>\n【スーズ】\nやあ\n' })
+
+      expect(textOf(result)).to.not.contain('素材がありません')
+      expect(result.structuredContent.missingAssets).to.eql([])
+    })
+
+    it('catches a face that is not in img/faces', function () {
+      if (!hasLayer()) this.skip()
+      const result = call('t2f_check', { text: '<Face: いない人(0)>\n【誰か】\nやあ\n' })
+
+      expect(textOf(result)).to.contain('img/faces/いない人')
+      expect(result.structuredContent.missingAssets).to.have.lengthOf(1)
+      // 文法は通っていることも言う(片方だけ直せばよいと分かるように)。
+      expect(textOf(result)).to.contain('文法の誤りはありません')
+    })
+
+    /* 落ちた形そのもの。これが黙っていたので起動してから落ちた。 */
+    it('catches a battle whose enemy art is missing', function () {
+      if (!hasLayer()) this.skip()
+      const result = call('t2f_check', { text: '<BattleProcessing: 1>\n' })
+
+      expect(textOf(result)).to.contain('img/enemies/Bat')
+      expect(textOf(result)).to.contain('こうもり*2')
+    })
+
+    it('accepts the battle once the art is there', function () {
+      if (!hasLayer()) this.skip()
+      img('enemies', 'Bat')
+      ctx = mcp.createContext({ root: tmp })
+
+      expect(call('t2f_check', { text: '<BattleProcessing: 1>\n' }).structuredContent.missingAssets).to.eql([])
+    })
+
+    /* 横向き戦闘は sv_enemies を使う。どちらかにあれば足りる。 */
+    it('takes sv_enemies as well', function () {
+      if (!hasLayer()) this.skip()
+      img('sv_enemies', 'Bat')
+      ctx = mcp.createContext({ root: tmp })
+
+      expect(call('t2f_check', { text: '<BattleProcessing: 1>\n' }).structuredContent.missingAssets).to.eql([])
+    })
+
+    /* 最初に呼ぶ道具で分かれば、戦闘を使わない作りを最初から選べる。 */
+    it('warns in t2f_project_info when the game has no enemy art at all', function () {
+      if (!hasLayer()) this.skip()
+      const info = call('t2f_project_info')
+
+      expect(info.structuredContent.battleArt).to.equal(0)
+      expect(textOf(info)).to.contain('敵の画像が1枚もありません')
+    })
+
+    it('stops warning once the game has enemy art', function () {
+      if (!hasLayer()) this.skip()
+      img('enemies', 'Bat')
+      ctx = mcp.createContext({ root: tmp })
+
+      expect(textOf(call('t2f_project_info'))).to.not.contain('敵の画像が1枚もありません')
+    })
+  })
+
   describe('when a page does not exist', function () {
     beforeEach(function () {
       // 2ページのイベントにする(2ページ目には条件を付けておく)。

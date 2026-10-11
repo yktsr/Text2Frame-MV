@@ -66,6 +66,8 @@ const INSTRUCTIONS = [
   '  目印3行で両方残り、目印がある間は次の統合が止まります。どちらかを残して目印を消してください。',
   '・祖先が無い初回の反映だけはテキストが丸ごと勝ちます(ゲーム側の編集は残りません)。警告で知らせます。',
   '・タグ記法は t2f_syntax で引けます。当て推量で書かないでください。',
+  '・t2f_check は文法だけでなく、**参照している素材が無いこと**も言います(顔と敵グループ)。',
+  '  素材が無いとゲームは起動してから読み込みで落ちるので、書く前に通してください。',
   '・スイッチや変数の番号は t2f_names で名前から引けます。',
   '・「このスイッチはどこで操作され、どのページの出現条件か」は t2f_usages で引けます。',
   '  テキストではなくゲームのデータから引くので、まだ取り出していないイベントも入ります。',
@@ -310,6 +312,8 @@ const createContext = function (options) {
   let structure
   // つながりの索引。全マップを読むので、引かれたときに1回だけ。
   let links = null
+  // 素材の一覧。img を読むので、引かれたときに1回だけ。
+  let assets
   return {
     root,
     dataDir,
@@ -355,6 +359,29 @@ const createContext = function (options) {
       if (lang) lang.setJapanese(true)
       structure = { database, eventLinks, eventPages }
       return structure
+    },
+    /** 素材の一覧。無い配り方もあるので、引かれたときに1回だけ試す。 */
+    assets: function () {
+      if (assets !== undefined) return assets || undefined
+      const faces = loadDb('faces')
+      if (!faces) {
+        assets = false
+        return undefined
+      }
+      const imgDir = path.join(root, 'img')
+      const cache = {}
+      assets = {
+        /* そのフォルダにある画像の名前(拡張子なし)。listImageNames は .png と
+         * 暗号化済みの拡張子をまとめて見る。**名前の照合だけで、復号はしない。** */
+        names: function (folder) {
+          if (cache[folder] === undefined) cache[folder] = faces.listImageNames(imgDir, folder)
+          return cache[folder]
+        },
+        has: function (folder, name) {
+          return this.names(folder).indexOf(String(name)) >= 0
+        }
+      }
+      return assets
     },
     /** つながりの索引と名前。全マップを読むので、引かれたときに1回だけ。 */
     links: function () {
@@ -500,6 +527,14 @@ TOOLS.push({
       duplicates: index.duplicates,
       withConflictMarkers: conflicted
     }
+    /* このゲームに戦闘の素材があるか。無いゲームで <BattleProcessing> を書くと、
+     * 文法も下書きも通ったうえでゲームが読み込みで落ちる(実際にそうなった)。
+     * 先に知らせれば、最初から別の作りにできる。 */
+    const art = ctx.assets()
+    if (art) {
+      info.battleArt = art.names('enemies').length + art.names('sv_enemies').length
+      info.faceArt = art.names('faces').length
+    }
     const notes = [
       'ゲーム: ' + ctx.root + ' (' + engine + ')',
       'テキスト ' + files.length + ' 件のうち ' + Object.keys(index.paths).length + ' 件に見出し情報があります。',
@@ -511,6 +546,10 @@ TOOLS.push({
     }
     if (conflicted.length) {
       notes.push('未解決の衝突の目印が残っているテキスト: ' + conflicted.join(', ') + '（どちらかを残して目印3行を消してください）')
+    }
+    if (art && info.battleArt === 0) {
+      notes.push('このゲームには敵の画像が1枚もありません(img/enemies も img/sv_enemies も空)。' +
+        '<BattleProcessing> を書くとゲームが読み込みで落ちます。戦闘を使わない作りにしてください。')
     }
     notes.push('注意: RPGツクールのエディタを開いたまま、または t2f-sync の監視中は書き込まないでください。')
     return toolResult(notes.join('\n'), info)
@@ -988,6 +1027,68 @@ TOOLS.push({
   }
 })
 
+/*
+ * 参照している素材が本当にあるか。
+ *
+ * なぜ要るか: MCP でイベントを作って <BattleProcessing> を入れたら、ゲームが
+ * 「Failed to load img/enemies/Orc.png」で落ちた。番号としては正しいので、文法の検査も
+ * 下書きも全部通る。あのゲームは戦闘を使わないので敵の画像を全部削除していた。
+ *
+ * **参照の取り方は commandRefs に任せる**(新しい規則を書かない)。あれが名前を返すのは
+ * 顔と敵グループだけなので、覆うのもその2つ。音声(241/250)・ピクチャ(231)・キャラ画像は
+ * commandRefs が返さないので覆えない。音声のタグ表は checks.js が持っているが、あれは
+ * db/ の外(../tagBrackets)を読むので写せない。
+ *
+ * 実在はファイル名の照合だけで見る(listImageNames が暗号化済みの拡張子もまとめて見る)。
+ */
+const missingAssets = function (ctx, commands) {
+  const st = ctx.structure()
+  const art = ctx.assets()
+  if (!st || !art) return []
+  const refs = loadDb('commandRefs')
+  if (!refs) return []
+
+  const troopFile = function (name) {
+    try { return JSON.parse(fs.readFileSync(path.join(ctx.dataDir, name), 'utf8')) } catch (e) { return [] }
+  }
+  let troops = null
+  let enemies = null
+  const out = []
+  const seen = {}
+  const note = function (what, where) {
+    const key = what + '\u0000' + where
+    if (seen[key]) return
+    seen[key] = true
+    out.push({ asset: what, used: where })
+  }
+
+  ;(commands || []).forEach(function (command) {
+    refs.commandRefs(command).forEach(function (ref) {
+      if (ref.kind === 'face' && ref.faceName) {
+        if (!art.has('faces', ref.faceName)) note('img/faces/' + ref.faceName, '顔')
+        return
+      }
+      if (ref.kind !== 'troop') return
+      if (troops === null) {
+        troops = troopFile('Troops.json')
+        enemies = troopFile('Enemies.json')
+      }
+      const troop = troops[Number(ref.id)]
+      if (!troop) return
+      ;(troop.members || []).forEach(function (member) {
+        const enemy = enemies[Number(member.enemyId)]
+        const art1 = enemy && enemy.battlerName
+        if (!art1) return
+        /* 横向き戦闘のときは sv_enemies を使う。どちらかにあれば足りる。 */
+        if (!art.has('enemies', art1) && !art.has('sv_enemies', art1)) {
+          note('img/enemies/' + art1, '敵グループ' + ref.id + '「' + (troop.name || '') + '」')
+        }
+      })
+    })
+  })
+  return out
+}
+
 TOOLS.push({
   name: 't2f_check',
   title: 'テキストの文法を見る',
@@ -1006,12 +1107,21 @@ TOOLS.push({
   run: function (ctx, args) {
     const text = String((args && args.text) || '')
     const body = ctx.t2f.parseFrontMatter(text).body
+    let commands
     try {
-      const commands = ctx.t2f.compile(body)
-      return toolResult('文法の誤りはありません。イベントコマンド ' + commands.length + ' 個になります。', { ok: true, commandCount: commands.length })
+      commands = ctx.t2f.compile(body)
     } catch (e) {
       return toolError('文法の誤りがあります: ' + ((e && e.message) || String(e)))
     }
+    /* 文法が通っても、参照している素材が無ければゲームは起動してから落ちる。
+     * 実際にそれで落ちた(img/enemies が1枚も無いゲームだった)ので、ここで言う。 */
+    const missing = missingAssets(ctx, commands)
+    const head = '文法の誤りはありません。イベントコマンド ' + commands.length + ' 個になります。'
+    if (!missing.length) return toolResult(head, { ok: true, commandCount: commands.length, missingAssets: [] })
+    const lines = [head, '', '**ただし参照している素材がありません**（ゲームを起こすと読み込みで落ちます）:']
+      .concat(missing.map(function (m) { return '  ・' + m.asset + '  … ' + m.used + 'で参照' }))
+      .concat(['', '素材を入れるか、その参照を使わない作りにしてください。'])
+    return toolResult(lines.join('\n'), { ok: true, commandCount: commands.length, missingAssets: missing })
   }
 })
 
