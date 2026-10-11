@@ -13,6 +13,9 @@ export function monitorScript(token: string): string {
   var ITEM_KEY = /^([iwa]):(\\d{1,6})$/;
   var ITEM_DATA = { i: '$dataItems', w: '$dataWeapons', a: '$dataArmors' };
   var last = null;
+  var releasing = [];
+  var inputTick = 0;
+  var lastHere = '';
   var lastSent = 0;
   function switchValue(v) { return !!v; }
   function variableValue(v) {
@@ -403,13 +406,39 @@ export function monitorScript(token: string): string {
     if (banner.textContent !== text) banner.textContent = text;
     if (!banner.parentNode) document.body.appendChild(banner);
   }
+  function whereAmI() {
+    var scenes = window.SceneManager;
+    var scene = scenes && scenes._scene && scenes._scene.constructor ? String(scenes._scene.constructor.name || '') : '';
+    var text = window.$gameMessage;
+    var busy = !!(text && typeof text.isBusy === 'function' && text.isBusy());
+    var choosing = !!(text && typeof text.isChoice === 'function' && text.isChoice());
+    var out = { scene: scene, message: { busy: busy, choice: choosing } };
+    var player = window.$gamePlayer;
+    if (player && typeof player.x === 'number') {
+      out.player = { x: Math.floor(player.x), y: Math.floor(player.y), direction: Number(player.direction && player.direction()) || 0 };
+    }
+    return out;
+  }
+
   function tick() {
     hook();
+    releaseInput();
     stepVisit();
     showBanner();
+    var here = whereAmI();
+    var hereText = here ? JSON.stringify(here) : '';
+    var hereChanged = here && hereText !== lastHere;
     var switches = window.$gameSwitches;
     var variables = window.$gameVariables;
-    if (!switches || !variables || !switches._data || !variables._data) return;
+    if (!switches || !variables || !switches._data || !variables._data) {
+      if (hereChanged) {
+        lastHere = hereText;
+        var alone = { scene: here.scene, message: here.message };
+        if (here.player) alone.player = here.player;
+        send(alone);
+      }
+      return;
+    }
     var selfSwitches = window.$gameSelfSwitches;
     var selfData = selfSwitches && selfSwitches._data && typeof selfSwitches._data === 'object' ? selfSwitches._data : null;
     var party = window.$gameParty;
@@ -448,6 +477,13 @@ export function monitorScript(token: string): string {
     var parallelText = parallel ? JSON.stringify(parallel) : '';
     if (parallel && parallelText !== last.parallel) message.parallel = parallel;
     last.parallel = parallelText;
+
+    if (hereChanged) {
+      message.scene = here.scene;
+      message.message = here.message;
+      if (here.player) message.player = here.player;
+    }
+    lastHere = hereText;
     var run = running();
     if (run) {
       var runText = JSON.stringify(run.frames);
@@ -478,8 +514,42 @@ export function monitorScript(token: string): string {
       message.resumed = true;
       resumedReport = false;
     }
-    if (message.reset || message.visit || message.paused || message.resumed || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.parallel || message.run || Date.now() - lastSent >= HEARTBEAT) send(message);
+    if (message.reset || message.visit || message.paused || message.resumed || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.parallel || message.run || message.scene !== undefined || message.player || Date.now() - lastSent >= HEARTBEAT) send(message);
   }
+  function pressInput(request) {
+    var input = window.Input;
+    var held = Math.max(1, Math.min(Number(request.hold) || 2, 600));
+    var names = Array.isArray(request.keys) ? request.keys : (request.key ? [request.key] : []);
+    if (input && input._currentState && names.length) {
+      names.forEach(function (name) {
+        if (typeof name !== 'string' || !/^[a-z0-9]{1,16}$/.test(name)) return;
+        input._currentState[name] = true;
+        if (typeof input._latestButton === 'string' || input._latestButton === null) {
+          input._latestButton = name;
+          input._pressedTime = 0;
+        }
+        releasing.push({ name: name, until: inputTick + held });
+      });
+    }
+    var touch = window.TouchInput;
+    var tap = request.tap;
+    if (touch && tap && typeof tap.x === 'number' && typeof tap.y === 'number' && typeof touch._onTrigger === 'function') {
+      try { touch._onTrigger(tap.x, tap.y); } catch (e) {}
+    }
+  }
+
+  function releaseInput() {
+    inputTick++;
+    if (!releasing.length) return;
+    var input = window.Input;
+    var keep = [];
+    releasing.forEach(function (entry) {
+      if (inputTick < entry.until) { keep.push(entry); return; }
+      if (input && input._currentState) input._currentState[entry.name] = false;
+    });
+    releasing = keep;
+  }
+
   function write(command) {
     if (command.reload === true) {
       try { window.location.reload(); } catch (e) {}
@@ -488,6 +558,7 @@ export function monitorScript(token: string): string {
     if (command.visit && typeof command.visit === 'object') startVisit(command.visit);
     if (command.breakpoints && typeof command.breakpoints === 'object') setBreakpoints(command.breakpoints);
     if (typeof command.debug === 'string') debug(command.debug);
+    if (command.input && typeof command.input === 'object') pressInput(command.input);
     var switches = window.$gameSwitches;
     var variables = window.$gameVariables;
     if (!switches || !variables) return;

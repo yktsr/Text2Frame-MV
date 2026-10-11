@@ -25,6 +25,9 @@ export interface LiveMessage {
     resumed?: boolean;
     run?: RunFrame[];
     lists?: Map<string, CommandMark[]>;
+    scene?: string;
+    message?: { busy: boolean; choice: boolean };
+    player?: { x: number; y: number; direction: number };
 }
 
 const MAX_ID = 100000;
@@ -57,6 +60,7 @@ export interface LiveCommand {
     reload?: boolean;
     breakpoints?: Record<string, number[]>;
     debug?: 'continue' | 'next' | 'stepIn' | 'stepOut' | 'pause';
+    input?: { keys?: string[]; key?: string; hold?: number; tap?: { x: number; y: number } };
 }
 
 export function selfSwitchKey(mapId: number, eventId: number, letter: string): string {
@@ -163,6 +167,23 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
         if (!v || typeof v !== 'object' || !['breakpoint', 'step', 'pause'].includes(String(v.reason))) throw new Error('bad');
         return { reason: String(v.reason), frames: readRun(v.frames) || [] };
     };
+    const readScene = (value: unknown): string | undefined => {
+        if (value === undefined) return undefined;
+        if (typeof value !== 'string' || value.length > 64 || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value)) throw new Error('bad');
+        return value;
+    };
+    const readBusy = (value: unknown): { busy: boolean; choice: boolean } | undefined => {
+        if (value === undefined) return undefined;
+        const v = value as { busy?: unknown; choice?: unknown };
+        if (!v || typeof v !== 'object' || typeof v.busy !== 'boolean' || typeof v.choice !== 'boolean') throw new Error('bad');
+        return { busy: v.busy, choice: v.choice };
+    };
+    const readPlayer = (value: unknown): { x: number; y: number; direction: number } | undefined => {
+        if (value === undefined) return undefined;
+        const v = value as { x?: unknown; y?: unknown; direction?: unknown };
+        if (!v || typeof v !== 'object' || !isCount(v.x, MAX_ID) || !isCount(v.y, MAX_ID) || !isCount(v.direction, 10)) throw new Error('bad');
+        return { x: v.x as number, y: v.y as number, direction: v.direction as number };
+    };
     if (o.map !== undefined && !isCount(o.map, MAX_ID)) return undefined;
     if (o.gold !== undefined && !isCount(o.gold, MAX_COUNT)) return undefined;
     if (o.visit !== undefined && !(typeof o.visit === 'string' && /^[A-Za-z]{1,20}$/.test(o.visit))) return undefined;
@@ -186,7 +207,10 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
             paused: readPaused(o.paused),
             resumed: o.resumed === true || undefined,
             run: readRun(o.run),
-            lists: readLists(o.lists)
+            lists: readLists(o.lists),
+            scene: readScene(o.scene),
+            message: readBusy(o.message),
+            player: readPlayer(o.player)
         };
     } catch (e) {
         return undefined;
