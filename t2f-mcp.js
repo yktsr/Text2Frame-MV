@@ -24,6 +24,9 @@
  *      居ても要求どうしは交錯しない。
  *   3. パスは全部絶対にしてから渡し、baseRoot を必ず明示する(省くと基準がこのファイルの
  *      置き場所になる)。--root の外は拒否する。
+ *   4. 方式は相手が決める。無状態方式(要求ごとに版を名乗る)と握手方式(initialize で
+ *      一度だけ決める)の両方を話す。どちらで話しているかは ctx が覚える - 標準入出力
+ *      なので相手は1人で、文脈1つが接続1つに対応する。
  */
 'use strict'
 
@@ -34,8 +37,16 @@ const path = require('path')
 
 /* ---------- プロトコルの定数 ---------- */
 
-// 対応するのは無状態方式だけ。旧方式(initialize の握手)は実装しない。
+/* 話せる方式は2つ。
+ *
+ * **無状態方式**(2026-07-28)は要求ごとに params._meta で版を名乗る。握手が無い。
+ * **握手方式**(それ以前)は initialize で一度だけ版を決め、以後は名乗らない。
+ *
+ * **両方要る。** VS Code も Codex も握手方式で話しかけてくるので、無状態方式だけだと
+ * 「一覧には出るのに起こすと落ちる」状態になる(実際にそうなった)。Claude Code は
+ * 無状態方式で話す。どちらを話すかは相手が決めるので、こちらが選ぶものではない。 */
 const PROTOCOL_VERSIONS = ['2026-07-28']
+const LEGACY_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05']
 const SERVER_NAME = 'text2frame-mv'
 
 const META_VERSION = 'io.modelcontextprotocol/protocolVersion'
@@ -118,11 +129,22 @@ const jsonrpcError = function (id, code, message, data) {
 }
 
 /* 結果には resultType と serverInfo を必ず載せる(どちらも仕様の求め)。 */
-const jsonrpcResult = function (id, result) {
+/* 結果の封筒。resultType と _meta の serverInfo は**無状態方式のもの**なので、
+ * 握手方式では載せない(あちらは serverInfo を initialize で一度受け取っている)。 */
+const jsonrpcResult = function (id, result, legacy) {
+  if (legacy) return { jsonrpc: '2.0', id, result: stripNewOnly(result) }
   const body = Object.assign({ resultType: 'complete' }, result)
   body._meta = Object.assign({}, body._meta)
   body._meta[META_SERVER_INFO] = { name: SERVER_NAME, version: version() }
   return { jsonrpc: '2.0', id, result: body }
+}
+
+/** キャッシュの指定は CacheableResult(無状態方式)のもの。握手方式には無い。 */
+const stripNewOnly = function (result) {
+  const out = Object.assign({}, result)
+  delete out.ttlMs
+  delete out.cacheScope
+  return out
 }
 
 /** 一覧ものの結果に付けるキャッシュの指定。付ける先は CACHE_TTL_MS のコメントのとおり。 */
@@ -2445,34 +2467,51 @@ const handle = function (request, ctx) {
   const params = request.params && typeof request.params === 'object' ? request.params : {}
   const meta = params._meta && typeof params._meta === 'object' ? params._meta : {}
 
-  // 旧方式のクライアントには、こちらが話せる版を名前で伝える(向こうに前進する術が無いため)。
+  /* 握手方式の入口。ここを通った相手は以後 _meta で版を名乗らないので、
+   * どちらの方式で話しているかを覚えておく(標準入出力なので相手は1人)。 */
   if (method === 'initialize') {
-    return jsonrpcError(request.id, METHOD_NOT_FOUND,
-      'このサーバは initialize の握手を実装していません。対応する版: ' + PROTOCOL_VERSIONS.join(', '))
+    const asked = params.protocolVersion
+    /* 仕様: 頼まれた版を話せるならそれをそのまま返す。話せないなら、こちらが話せる版を
+     * 返す(相手が合わせられなければ相手が切る)。 */
+    const speak = LEGACY_VERSIONS.indexOf(String(asked)) >= 0 ? String(asked) : LEGACY_VERSIONS[0]
+    ctx.protocol = { legacy: true, version: speak }
+    return jsonrpcResult(request.id, {
+      protocolVersion: speak,
+      capabilities: { tools: { listChanged: false } },
+      serverInfo: { name: SERVER_NAME, version: version() },
+      instructions: INSTRUCTIONS
+    }, true)
   }
 
-  const wanted = meta[META_VERSION]
-  if (typeof wanted !== 'string' || !wanted) {
-    return jsonrpcError(request.id, INVALID_PARAMS, 'params._meta["' + META_VERSION + '"] が必要です')
+  const legacy = !!(ctx.protocol && ctx.protocol.legacy)
+
+  if (!legacy) {
+    const wanted = meta[META_VERSION]
+    if (typeof wanted !== 'string' || !wanted) {
+      return jsonrpcError(request.id, INVALID_PARAMS, 'params._meta["' + META_VERSION + '"] が必要です')
+    }
+    if (meta[META_CAPABILITIES] === undefined || meta[META_CAPABILITIES] === null) {
+      return jsonrpcError(request.id, INVALID_PARAMS, 'params._meta["' + META_CAPABILITIES + '"] が必要です')
+    }
+    if (PROTOCOL_VERSIONS.indexOf(wanted) === -1) {
+      return jsonrpcError(request.id, UNSUPPORTED_PROTOCOL_VERSION, 'Unsupported protocol version',
+        { supported: PROTOCOL_VERSIONS, requested: wanted })
+    }
   }
-  if (meta[META_CAPABILITIES] === undefined || meta[META_CAPABILITIES] === null) {
-    return jsonrpcError(request.id, INVALID_PARAMS, 'params._meta["' + META_CAPABILITIES + '"] が必要です')
-  }
-  if (PROTOCOL_VERSIONS.indexOf(wanted) === -1) {
-    return jsonrpcError(request.id, UNSUPPORTED_PROTOCOL_VERSION, 'Unsupported protocol version',
-      { supported: PROTOCOL_VERSIONS, requested: wanted })
-  }
+
+  /* 生存確認は握手方式の仕様にあるもの。無状態方式の表面は増やさないので、そちらでは答えない。 */
+  if (method === 'ping' && legacy) return jsonrpcResult(request.id, {}, true)
 
   if (method === 'server/discover') {
     return jsonrpcResult(request.id, cacheable({
       supportedVersions: PROTOCOL_VERSIONS,
       capabilities: { tools: {} },
       instructions: INSTRUCTIONS
-    }))
+    }), legacy)
   }
 
   if (method === 'tools/list') {
-    return jsonrpcResult(request.id, cacheable({ tools: toolsFor(ctx).map(describeTool) }))
+    return jsonrpcResult(request.id, cacheable({ tools: toolsFor(ctx).map(describeTool) }), legacy)
   }
 
   if (method === 'tools/call') {
@@ -2485,7 +2524,7 @@ const handle = function (request, ctx) {
     }
     const args = params.arguments && typeof params.arguments === 'object' ? params.arguments : {}
     // 道具の中で起きたことはモデルが読んで直せるよう本文で返す。
-    const failed = function (e) { return jsonrpcResult(request.id, toolError((e && e.message) || String(e))) }
+    const failed = function (e) { return jsonrpcResult(request.id, toolError((e && e.message) || String(e)), legacy) }
     let out
     try {
       out = tool.run(ctx, args)
@@ -2495,9 +2534,9 @@ const handle = function (request, ctx) {
     /* 再生の道具だけが待つ(サーバの起動、visit の答え)。**待つのはここだけ**で、
      * 書き込みの道具は同期のまま - 殻が鎖なので要求どうしは交錯しない。 */
     if (out && typeof out.then === 'function') {
-      return out.then(function (result) { return jsonrpcResult(request.id, result) }, failed)
+      return out.then(function (result) { return jsonrpcResult(request.id, result, legacy) }, failed)
     }
-    return jsonrpcResult(request.id, out)
+    return jsonrpcResult(request.id, out, legacy)
   }
 
   return jsonrpcError(request.id, METHOD_NOT_FOUND, '知らないメソッドです: ' + method)
@@ -2756,6 +2795,7 @@ const closeContext = function (ctx) {
 
 module.exports = {
   PROTOCOL_VERSIONS,
+  LEGACY_VERSIONS,
   closeContext,
   NAME_SOURCES,
   CACHE_TTL_MS,

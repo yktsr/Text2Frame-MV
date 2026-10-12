@@ -206,6 +206,86 @@ describe('mcp protocol conformance', function () {
     expect(implemented).to.eql(['server/discover', 'tools/list', 'tools/call'])
   })
 
+  /* **握手方式(initialize)も話せること。**
+   *
+   * 足したのは、無状態方式だけだと VS Code からも Codex からも繋がらなかったから。
+   * 一覧には出るのに起こすと -32601 で落ちる、という一番分かりにくい壊れ方をしていた。
+   * ここも**仕様の原文を読んで書き写した表**で、機械では守れない。
+   * (modelcontextprotocol.io の 2025-06-18 Lifecycle)
+   *
+   * 版の決め方: 頼まれた版を話せるならそれをそのまま返す。話せないなら、こちらが
+   * 話せる版を返す(相手が合わせられなければ相手が切る)。 */
+  describe('the handshake method', function () {
+    const START = { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'probe', version: '1' } }
+    const raw = function (ctxUsed, method, params) {
+      return mcp.handle({ jsonrpc: '2.0', id: 1, method, params: params || {} }, ctxUsed)
+    }
+
+    it('answers initialize with the version, the capabilities and who it is', function () {
+      const result = raw(ctx, 'initialize', START).result
+
+      expect(result.protocolVersion).to.equal('2025-06-18')
+      expect(result.capabilities.tools).to.be.an('object')
+      expect(result.serverInfo.name).to.be.a('string')
+      expect(result.serverInfo.version).to.be.a('string')
+      // モデルへの案内は、どちらの方式でも同じものを渡す。
+      expect(result.instructions).to.equal(mcp.INSTRUCTIONS)
+    })
+
+    it('offers a version it can speak when asked for one it cannot', function () {
+      const result = raw(ctx, 'initialize', { protocolVersion: '1900-01-01', capabilities: {} }).result
+
+      expect(result.protocolVersion).to.not.equal('1900-01-01')
+      expect(mcp.LEGACY_VERSIONS).to.include(result.protocolVersion)
+    })
+
+    /* 握手のあとは版を名乗らない。ここを落とすと、握手は通るのに次の要求で落ちる。 */
+    it('stops asking for the version once the handshake is done', function () {
+      expect(raw(ctx, 'tools/list').error.code, '握手の前なのに通りました').to.equal(-32602)
+
+      raw(ctx, 'initialize', START)
+      const listed = raw(ctx, 'tools/list')
+
+      expect(listed.error, JSON.stringify(listed.error)).to.equal(undefined)
+      expect(listed.result.tools.length).to.be.greaterThan(0)
+    })
+
+    /* 無状態方式だけのものを載せない。あちらの CacheableResult も resultType も、
+     * 握手方式の仕様には無い。 */
+    it('leaves the stateless-only fields off', function () {
+      raw(ctx, 'initialize', START)
+      const listed = raw(ctx, 'tools/list').result
+
+      expect(listed.ttlMs).to.equal(undefined)
+      expect(listed.cacheScope).to.equal(undefined)
+      expect(listed.resultType).to.equal(undefined)
+      expect(listed._meta).to.equal(undefined)
+    })
+
+    it('answers a ping, which only this method has', function () {
+      expect(raw(ctx, 'ping').error.code, '握手の前に答えています').to.equal(-32602)
+
+      raw(ctx, 'initialize', START)
+      expect(raw(ctx, 'ping').result).to.eql({})
+    })
+
+    /* 握手は**その相手にだけ**効く。覚える場所を間違えると、別の相手まで巻き込む。 */
+    it('does not put another connection into this method', function () {
+      raw(ctx, 'initialize', START)
+      const other = mcp.createContext({ root: tmp })
+
+      expect(raw(other, 'tools/list').error.code).to.equal(-32602)
+    })
+
+    /* 無状態方式はそのまま。握手を足して壊していないこと。 */
+    it('leaves the stateless method alone', function () {
+      const listed = send('tools/list', {})
+
+      expect(listed.result.resultType).to.equal('complete')
+      expect(listed.result.ttlMs).to.be.a('number')
+    })
+  })
+
   /* 選んだ値そのもの。変えるときは CACHE_TTL_MS のコメントの理由ごと変えること。 */
   it('caches nothing, in this process only', function () {
     expect(mcp.CACHE_TTL_MS).to.equal(0)

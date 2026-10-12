@@ -71,7 +71,37 @@ const EXCHANGES = [
     label: 'エラー: 知らない道具',
     request: { jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name: 't2f_nope', arguments: {}, _meta: META } }
   },
-  { label: 'エラー: 旧方式の initialize', request: { jsonrpc: '2.0', id: 8, method: 'initialize', params: {} } },
+  /* 握手方式。**専用の文脈で記録する** - initialize は「以後この相手とは握手方式で話す」を
+   * 文脈に覚えさせるので、共有の文脈を使うと後ろの往復まで巻き込まれる。
+   * 3つ並べるのは、握手のあと版を名乗らずに道具が引けることまで見るため。 */
+  {
+    label: '握手方式: initialize',
+    legacy: true,
+    request: {
+      jsonrpc: '2.0',
+      id: 20,
+      method: 'initialize',
+      params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'snapshot', version: '1.0.0' } }
+    }
+  },
+  {
+    label: '握手方式: tools/list(版を名乗らない)',
+    legacy: true,
+    request: { jsonrpc: '2.0', id: 21, method: 'tools/list', params: {} }
+  },
+  {
+    label: '握手方式: ping',
+    legacy: true,
+    request: { jsonrpc: '2.0', id: 22, method: 'ping', params: {} }
+  },
+  /* 知らない版を頼まれたら、こちらが話せる版を返す(仕様。相手が合わせられなければ相手が切る)。 */
+  {
+    label: '握手方式: 知らない版を頼まれたとき',
+    legacyAlone: true,
+    request: { jsonrpc: '2.0', id: 23, method: 'initialize', params: { protocolVersion: '1900-01-01', capabilities: {} } }
+  },
+  /* 握手も _meta も無い相手は、いまも断る。 */
+  { label: 'エラー: 握手も版の名乗りも無い', request: { jsonrpc: '2.0', id: 8, method: 'tools/list', params: { arguments: {} } } },
   { label: '通知(応答しない)', request: { jsonrpc: '2.0', method: 'notifications/cancelled', params: { requestId: 2 } } }
 ]
 
@@ -108,6 +138,9 @@ const build = function () {
   const normal = withStructure(mcp.createContext({ root: path.join(root, 'Project1') }), true)
   const readOnly = withStructure(mcp.createContext({ root: path.join(root, 'Project1'), readOnly: true }), true)
   const bare = withStructure(mcp.createContext({ root: path.join(root, 'Project1') }), false)
+  // 握手方式は文脈に印が残るので、共有しない。
+  const legacy = withStructure(mcp.createContext({ root: path.join(root, 'Project1') }), true)
+  const legacyAlone = withStructure(mcp.createContext({ root: path.join(root, 'Project1') }), true)
   const lines = [
     '# MCP のプロトコルの筆記録',
     '# tools/snapshot-mcp.js が作る生成物。手で編集しない。',
@@ -115,7 +148,11 @@ const build = function () {
     ''
   ]
   EXCHANGES.forEach(function (exchange) {
-    const ctx = exchange.noStructure ? bare : (exchange.readOnly ? readOnly : normal)
+    let ctx = normal
+    if (exchange.legacy) ctx = legacy
+    else if (exchange.legacyAlone) ctx = legacyAlone
+    else if (exchange.noStructure) ctx = bare
+    else if (exchange.readOnly) ctx = readOnly
     const response = mcp.handle(exchange.request, ctx)
     lines.push('===== ' + exchange.label + ' =====')
     lines.push('--> ' + JSON.stringify(exchange.request))
