@@ -32,6 +32,7 @@
 
 const crypto = require('crypto')
 const fs = require('fs')
+const http = require('http')
 const os = require('os')
 const path = require('path')
 
@@ -505,11 +506,21 @@ const createContext = function (options) {
       /* ゲームのフォルダは data/ の親。index.html があるのはそこ。 */
       const gameRoot = path.dirname(dataDir)
       const state = new live.liveState.LiveState()
-      return live.gameServer.startGameServer(gameRoot, undefined, {
-        onState: function (message) { state.apply(message, Date.now()) }
-      }).then(function (server) {
-        play = { server, state, gameRoot }
-        return play
+      const take = function (message) { state.apply(message, Date.now()) }
+
+      /* **既に配られていたら相乗りする。** 自分で配り直すと番地(ポート)が変わり、
+       * ブラウザのセーブは番地ごとに分かれるので、続きから調べられなくなる。 */
+      const usual = live.gameServer.stablePort(gameRoot)
+      return attachTo(live, gameRoot, usual, take).then(function (joined) {
+        if (joined) {
+          play = { server: joined, state, gameRoot, joined: true }
+          return play
+        }
+        return live.gameServer.startGameServer(gameRoot, undefined, { onState: take })
+          .then(function (server) {
+            play = { server, state, gameRoot, joined: false }
+            return play
+          })
       })
     },
     /** 片付ける。**冪等**にする(道具と afterEach の両方が呼ぶ)。 */
@@ -528,6 +539,117 @@ const createContext = function (options) {
       return links
     }
   }
+}
+
+/** 短い取り寄せ。繋がらなければ null(相乗りしないだけなので、失敗は失敗ではない)。 */
+const fetchText = function (url) {
+  return new Promise(function (resolve) {
+    const at = new URL(url)
+    const req = http.get({ host: at.hostname, port: at.port, path: at.pathname + at.search, timeout: 1500 }, function (res) {
+      if (res.statusCode !== 200) { res.resume(); return resolve(null) }
+      let body = ''
+      res.setEncoding('utf8')
+      res.on('data', function (c) { body += c })
+      res.on('end', function () { resolve(body) })
+    })
+    req.on('timeout', function () { req.destroy(); resolve(null) })
+    req.on('error', function () { resolve(null) })
+  })
+}
+
+/* 既に配られている同じゲームに相乗りする。相乗りできなければ undefined。
+ *
+ * 見分け方は2段。配っているのがこちらの仕掛けか(ページに合鍵が埋まっているか)、
+ * そして**同じゲームか**(data/System.json が一致するか)。番号が同じでも別のゲームなら
+ * 相乗りしてはいけない。 */
+const attachTo = function (live, gameRoot, port, take) {
+  const origin = 'http://127.0.0.1:' + port + '/'
+  return fetchText(origin).then(function (page) {
+    if (page === null) return undefined
+    const token = /var TOKEN = "([0-9a-f]{32})"/.exec(page)
+    if (!token) return undefined
+    /* **古い版には相乗りの口が無い。** 乗ってしまうと、繋がったように見えて報せが1つも
+     * 来ない(一番分かりにくい壊れ方)。口の有無を先に確かめる - 在れば POST 以外を断り、
+     * 無ければただのファイルとして見つからない。 */
+    return statusOf(origin + '__t2f/send').then(function (code) {
+      if (code !== 403) return undefined
+      return fetchText(origin + 'data/System.json').then(function (theirs) {
+        let ours = null
+        try { ours = fs.readFileSync(path.join(gameRoot, 'data', 'System.json'), 'utf8') } catch (e) { ours = null }
+        if (theirs === null || ours === null || theirs !== ours) return undefined
+        return joinGame(live, origin, port, token[1], gameRoot, take)
+      })
+    })
+  }, function () { return undefined })
+}
+
+/** 返事の番号だけ見る(中身は要らない)。繋がらなければ 0。 */
+const statusOf = function (url) {
+  return new Promise(function (resolve) {
+    const at = new URL(url)
+    const req = http.get({ host: at.hostname, port: at.port, path: at.pathname, timeout: 1500 }, function (res) {
+      res.resume()
+      resolve(res.statusCode || 0)
+    })
+    req.on('timeout', function () { req.destroy(); resolve(0) })
+    req.on('error', function () { resolve(0) })
+  })
+}
+
+/** 相乗り先を、自分で配っているときと同じ形に見せる(道具はどちらか知らなくてよい)。 */
+const joinGame = function (live, origin, port, token, gameRoot, take) {
+  return new Promise(function (resolve) {
+    const url = new URL(origin + '__t2f/events?token=' + token)
+    const req = http.get({ host: url.hostname, port: url.port, path: url.pathname + url.search }, function (res) {
+      if (res.statusCode !== 200) { res.resume(); return resolve(undefined) }
+      let buffer = ''
+      let alive = false
+      res.setEncoding('utf8')
+      res.on('data', function (chunk) {
+        buffer += chunk
+        let at = buffer.indexOf('\n\n')
+        while (at >= 0) {
+          const frame = buffer.slice(0, at)
+          buffer = buffer.slice(at + 2)
+          const body = /^event: state\ndata: (.*)$/m.exec(frame)
+          if (body) {
+            try {
+              const message = live.liveState.parseLiveMessage(JSON.parse(body[1]))
+              if (message) take(message)
+            } catch (e) { /* 読めない報せは捨てる */ }
+          }
+          at = buffer.indexOf('\n\n')
+        }
+        if (!alive) { alive = true; resolve(joined) }
+      })
+      res.on('error', function () {})
+    })
+    req.on('error', function () { resolve(undefined) })
+
+    const joined = {
+      root: gameRoot,
+      port: Number(port),
+      url: origin,
+      joined: true,
+      /* 命令は配っている側に預けて流してもらう。**待たない** - 道具の側は同期で
+       * 「聞いているか」を知りたいだけなので、報告が来ているかどうかで答える。 */
+      send: function (command) {
+        const body = Buffer.from(JSON.stringify(command), 'utf8')
+        const out = http.request({
+          host: '127.0.0.1',
+          port: Number(port),
+          path: '/__t2f/send',
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'content-length': body.length, 'x-t2f-token': token }
+        }, function (res) { res.resume() })
+        out.on('error', function (e) { process.stderr.write('t2f-mcp: 命令を渡せませんでした: ' + e.message + '\n') })
+        out.end(body)
+        return 1
+      },
+      /** 相乗りなので、**向こうのサーバは止めない**。こちらの聞き口を閉じるだけ。 */
+      close: function () { try { req.destroy() } catch (e) { /* ignore */ } return Promise.resolve() }
+    }
+  })
 }
 
 /* ---------- 宛先の解決 ---------- */
@@ -1990,7 +2112,8 @@ TOOLS.push({
   description: 'ゲームのフォルダを配るサーバを起こし、URL を返します。その URL をブラウザで開くと、' +
     'ここから状態を読んだり、スイッチを変えたり、イベントを走らせたりできます。' +
     '\n既に動いていれば同じものを使い回します。' +
-    '\n※ VS Code のテストプレイと同時には使えません(状態の受け手は1つだけなので、別のサーバ=別のゲームになります)。',
+    '\n**同じゲームが既に配られていれば(VS Code のテストプレイなど)、そちらに相乗りします。**' +
+    'だから番地が変わらず、セーブもそのまま使えます。',
   annotations: { destructiveHint: false, idempotentHint: true },
   inputSchema: { type: 'object', additionalProperties: false, properties: {} },
   run: function (ctx) {
@@ -2002,16 +2125,24 @@ TOOLS.push({
       const fossil = fs.existsSync(path.join(game.gameRoot, 'FOSSILindex.html'))
       const page = fossil ? 'FOSSILindex.html' : 'index.html'
       const open = game.server.url + page + '?test'
-      const lines = [(already ? '既に動いていました。' : 'テストプレイを始めました。'), 'ブラウザでここを開いてください: ' + open]
+      const head = game.joined
+        ? '既に配られていたゲームに相乗りしました(VS Code のテストプレイなど)。'
+        : (already ? '既に動いていました。' : 'テストプレイを始めました。')
+      const lines = [head, 'ブラウザでここを開いてください: ' + open]
       if (fossil) lines.push('(このゲームは FOSSIL を使うので index.html ではなく FOSSILindex.html を開きます)')
+      if (game.joined) {
+        lines.push('※ 配っているのは向こうなので、t2f_play_stop では**向こうは止まりません**(こちらの聞き口を閉じるだけ)。')
+      }
       const usual = ctx.live().gameServer.stablePort(game.gameRoot)
-      if (game.server.port !== usual) {
+      if (!game.joined && game.server.port !== usual) {
         lines.push('※ いつもの番号(' + usual + ')が塞がっていたので ' + game.server.port + ' で開きました。' +
-          'セーブの置き場所が番号ごとに分かれるので、前に開いたタブがあれば閉じてください' +
-          '(VS Code のテストプレイか、前のこの道具が掴んでいます)。')
+          '**セーブは番号ごとに分かれる**ので、そちらで遊んだ続きはここからは見えません。' +
+          '\n  相乗りできなかった理由は次のどれかです: 向こうが古い版(相乗りの口を持たない。' +
+          'VS Code を使っているなら窓を読み直すと新しくなります) / 別のゲームが配られている / ' +
+          'こちらの仕掛けではないものがその番号を使っている。')
       }
       return toolResult(lines.concat('', statusLines(info)).join('\n'),
-        Object.assign({ openUrl: open, page }, info))
+        Object.assign({ openUrl: open, page, joined: !!game.joined }, info))
     })
   }
 })

@@ -72,7 +72,9 @@ describe('mcp play tools', function () {
           while (at >= 0) {
             const frame = buffer.slice(0, at)
             buffer = buffer.slice(at + 2)
-            const m = /^data: (.*)$/m.exec(frame)
+            /* 名前付きの報せは拾わない。本物の EventSource.onmessage も名前の無いもの
+             * だけを拾う(相乗りしている相手への中継がここに混ざらないのはそのため)。 */
+            const m = /^event:/m.test(frame) ? null : /^data: (.*)$/m.exec(frame)
             if (m) heard.push(JSON.parse(m[1]))
             at = buffer.indexOf('\n\n')
           }
@@ -395,6 +397,82 @@ const BODY = ['こんにちは。', '<ウェイト: 30>'].join('\n')
     await fake.post({ visit: 'ran' })
 
     expect(text(await running)).to.contain('走らせました')
+  })
+
+  /* **同じゲームが既に配られていたら、自分で配り直さず相乗りする。**
+   * 配り直すと番地(ポート)が変わり、ブラウザのセーブは番地ごとに分かれるので、
+   * 続きから調べられなくなる。 */
+  describe('riding along with a server that is already there', function () {
+    const { startGameServer, stablePort } = require('../out/gameServer')
+    let owner
+
+    afterEach(async function () {
+      if (owner) await owner.close()
+      owner = null
+    })
+
+    it('joins the one that is already serving this game', async function () {
+      owner = await startGameServer(root, undefined, { onState: function () {} })
+      expect(owner.port, 'いつもの番号が取れていません').to.equal(stablePort(root))
+
+      const result = await ok('t2f_play_start')
+
+      expect(result.structuredContent.joined, '相乗りしていません').to.equal(true)
+      expect(result.structuredContent.port, '番地が変わっています').to.equal(owner.port)
+      expect(text(result)).to.contain('相乗り')
+    })
+
+    /* 相乗り先の報せが、こちらの様子にそのまま出ること。 */
+    it('sees what the game tells the other server', async function () {
+      owner = await startGameServer(root, undefined, { onState: function () {} })
+      await ok('t2f_play_start')
+      const token = /var TOKEN = "([0-9a-f]{32})"/.exec(await get(owner.port, '/index.html'))[1]
+      const body = Buffer.from(JSON.stringify({ scene: 'Scene_Map', map: 7 }), 'utf8')
+      await new Promise(function (resolve, reject) {
+        const req = http.request({
+          host: '127.0.0.1',
+          port: owner.port,
+          path: '/__t2f/state',
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'content-length': body.length, 'x-t2f-token': token }
+        }, function (res) { res.resume(); res.on('end', resolve) })
+        req.on('error', reject)
+        req.end(body)
+      })
+
+      const until = Date.now() + 3000
+      while (Date.now() < until && (await ok('t2f_play_status')).structuredContent.mapId !== 7) {
+        await new Promise(function (r) { setTimeout(r, 50) })
+      }
+      expect((await ok('t2f_play_status')).structuredContent.mapId, '相乗り先の報せが届いていません').to.equal(7)
+    })
+
+    /* 止めるのは自分の聞き口だけ。**向こうのサーバは止めない**(あちらの持ち物)。 */
+    it('leaves the other server running when it stops', async function () {
+      owner = await startGameServer(root, undefined, { onState: function () {} })
+      await ok('t2f_play_start')
+      await ok('t2f_play_stop')
+
+      expect(await get(owner.port, '/index.html')).to.contain('__t2f')
+    })
+
+    /* 相乗りの口が無い相手(古い版)には乗らない。乗ると、繋がったように見えて
+     * 報せが1つも来ない - 一番分かりにくい壊れ方になる。 */
+    it('does not join something that cannot relay', async function () {
+      const plain = http.createServer(function (req, res) {
+        if (req.url.indexOf('/__t2f/') === 0) { res.writeHead(404).end(); return }
+        res.writeHead(200, { 'Content-Type': 'text/html' }).end('<html><script>var TOKEN = "' + '0'.repeat(32) + '";</script></html>')
+      })
+      await new Promise(function (r) { plain.listen(stablePort(root), '127.0.0.1', r) })
+      try {
+        const result = await ok('t2f_play_start')
+
+        expect(result.structuredContent.joined, '古い相手に乗ってしまいました').to.equal(false)
+        expect(result.structuredContent.port).to.not.equal(stablePort(root))
+      } finally {
+        await new Promise(function (r) { plain.close(r) })
+      }
+    })
   })
 
   /* セーブから再開する。**セーブはブラウザの番地ごとに分かれる**ので、別のポートで

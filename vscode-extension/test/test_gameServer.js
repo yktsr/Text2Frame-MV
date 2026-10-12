@@ -175,6 +175,90 @@ describe('gameServer', function () {
     }
   })
 
+  /* 相乗りの口。**これが無いと、同じゲームを別のプロセスから見るには配り直すしかなく、
+   * 番地が変わってセーブが分かれる。** */
+  it('relays the state to the pages that listen, without the game seeing it', async function () {
+    const live = await startGameServer(root, 0, { onState: function () {} })
+    try {
+      const token = /var TOKEN = "([0-9a-f]{32})"/.exec((await request(live.port, '/index.html')).body.toString())[1]
+      const frames = await new Promise(function (resolve, reject) {
+        const req = http.get({ host: '127.0.0.1', port: live.port, path: '/__t2f/events?token=' + token }, function (res) {
+          let body = ''
+          let asked = false
+          res.on('data', function (c) {
+            body += c
+            if (!asked && body.includes(': connected')) {
+              asked = true
+              const payload = Buffer.from(JSON.stringify({ map: 3 }), 'utf8')
+              const post = http.request({
+                host: '127.0.0.1',
+                port: live.port,
+                path: '/__t2f/state',
+                method: 'POST',
+                headers: { 'content-type': 'application/json', 'content-length': payload.length, 'x-t2f-token': token }
+              }, function (r) { r.resume() })
+              post.end(payload)
+            }
+            if (body.includes('event: state')) { req.destroy(); resolve(body) }
+          })
+        })
+        req.on('error', reject)
+      })
+
+      expect(frames).to.contain('event: state')
+      expect(frames).to.contain('"map":3')
+    } finally {
+      await live.close()
+    }
+  })
+
+  it('takes a command from another process and passes it to the game', async function () {
+    const live = await startGameServer(root, 0, { onState: function () {} })
+    try {
+      const token = /var TOKEN = "([0-9a-f]{32})"/.exec((await request(live.port, '/index.html')).body.toString())[1]
+      const heard = await new Promise(function (resolve, reject) {
+        const req = http.get({ host: '127.0.0.1', port: live.port, path: '/__t2f/events?token=' + token }, function (res) {
+          let body = ''
+          let asked = false
+          res.on('data', function (c) {
+            body += c
+            if (!asked && body.includes(': connected')) {
+              asked = true
+              const payload = Buffer.from(JSON.stringify({ switches: { 4: true } }), 'utf8')
+              const post = http.request({
+                host: '127.0.0.1',
+                port: live.port,
+                path: '/__t2f/send',
+                method: 'POST',
+                headers: { 'content-type': 'application/json', 'content-length': payload.length, 'x-t2f-token': token }
+              }, function (r) { r.resume() })
+              post.end(payload)
+            }
+            const m = /^data: (.*)$/m.exec(body)
+            if (m) { req.destroy(); resolve(JSON.parse(m[1])) }
+          })
+        })
+        req.on('error', reject)
+      })
+
+      expect(heard).to.eql({ switches: { 4: true } })
+    } finally {
+      await live.close()
+    }
+  })
+
+  it('turns down a command without the token, and says the door is there', async function () {
+    const live = await startGameServer(root, 0, { onState: function () {} })
+    try {
+      /* 403 は**口が在る印**でもある。相乗りする側は乗る前にこれを見て、古い版
+       * (ただのファイルとして 404 を返す)と見分ける。 */
+      expect((await request(live.port, '/__t2f/send')).status).to.equal(403)
+      expect((await request(live.port, '/nothing/__t2f/send')).status).to.equal(404)
+    } finally {
+      await live.close()
+    }
+  })
+
   it('keeps the same port for the same folder, and moves when it is taken', async function () {
     expect(stablePort(root)).to.equal(stablePort(root + path.sep))
     expect(stablePort(root)).to.be.within(40000, 59999)

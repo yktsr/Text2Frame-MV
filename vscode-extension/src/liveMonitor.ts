@@ -2,6 +2,12 @@ import { tr } from './db/lang';
 export const LIVE_STATE_PATH = '/__t2f/state';
 export const LIVE_EVENTS_PATH = '/__t2f/events';
 export const LIVE_TOKEN_HEADER = 'x-t2f-token';
+/* 同じゲームを別のプロセスからも見られるようにする口。ゲーム自身は使わない。
+ * 無いと、既に配られているゲームへは相乗りできず、別のポートで配り直すことになる -
+ * 番地が変わるとセーブが分かれてしまう。 */
+export const LIVE_SEND_PATH = '/__t2f/send';
+/** 相乗りしている相手にだけ届く名前付きの報せ(ゲームの EventSource.onmessage には出ない)。 */
+export const LIVE_RELAY_EVENT = 'state';
 
 export function monitorScript(token: string): string {
     return `(function () {
