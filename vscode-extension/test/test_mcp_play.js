@@ -159,7 +159,7 @@ const BODY = ['こんにちは。', '<ウェイト: 30>'].join('\n')
   it('offers the play tools only where the live layer resolved', function () {
     const listed = mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: { _meta: META } }, ctx).result.tools
     expect(listed.map(function (t) { return t.name }).filter(function (n) { return n.indexOf('t2f_play_') === 0 }))
-      .to.have.lengthOf(9)
+      .to.have.lengthOf(10)
   })
 
   it('starts a server and says the game is not connected yet', async function () {
@@ -395,6 +395,77 @@ const BODY = ['こんにちは。', '<ウェイト: 30>'].join('\n')
     await fake.post({ visit: 'ran' })
 
     expect(text(await running)).to.contain('走らせました')
+  })
+
+  /* セーブから再開する。**セーブはブラウザの番地ごとに分かれる**ので、別のポートで
+   * 遊んだぶんは見えない。そこは道具の文面で言う。 */
+  describe('resuming from a save', function () {
+    it('lists the saves that are there', async function () {
+      await ok('t2f_play_start')
+      await connectFakeGame()
+
+      const listing = ok('t2f_play_load', { waitMs: 3000 })
+      await waitHeard('saves')
+      await fake.post({ saves: [{ slot: 1, playtime: '00:12:34' }, { slot: 3 }] })
+      const result = await listing
+
+      expect(result.structuredContent.saves).to.have.lengthOf(2)
+      expect(text(result)).to.contain('1 番')
+      expect(text(result)).to.contain('00:12:34')
+      expect(text(result)).to.contain('3 番')
+    })
+
+    /* 無いときは「無い」と言い、**なぜ見えないことがあるか**まで言う。 */
+    it('says there is none, and why that can happen', async function () {
+      await ok('t2f_play_start')
+      await connectFakeGame()
+
+      const listing = ok('t2f_play_load', { waitMs: 3000 })
+      await waitHeard('saves')
+      await fake.post({ saves: [] })
+      const result = await listing
+
+      expect(result.structuredContent.saves).to.eql([])
+      expect(text(result)).to.contain('セーブはありません')
+      expect(text(result)).to.contain('番地')
+    })
+
+    it('resumes from the slot it was given', async function () {
+      await ok('t2f_play_start')
+      await connectFakeGame()
+
+      const loading = ok('t2f_play_load', { slot: 2, waitMs: 3000 })
+      expect((await waitHeard('load')).load).to.equal(2)
+      await fake.post({ load: 'loaded', scene: 'Scene_Map', map: 4 })
+      const result = await loading
+
+      expect(result.structuredContent.ok).to.equal(true)
+      expect(result.structuredContent.slot).to.equal(2)
+      expect(text(result)).to.contain('セーブから再開しました')
+    })
+
+    /* ゲームが断ったらそのまま伝える。こちらで言い換えない。 */
+    it('passes a refusal through as it is', async function () {
+      await ok('t2f_play_start')
+      await connectFakeGame()
+
+      const loading = ok('t2f_play_load', { slot: 9, waitMs: 3000 })
+      await waitHeard('load')
+      await fake.post({ load: 'noSave' })
+      const result = await loading
+
+      expect(result.structuredContent.ok).to.equal(false)
+      expect(text(result)).to.contain('そのセーブがありません')
+    })
+
+    it('gives up with an explanation when the game never answers', async function () {
+      await ok('t2f_play_start')
+      await connectFakeGame()
+      const result = (await call('t2f_play_load', { slot: 1, waitMs: 500 })).result
+
+      expect(result.isError).to.equal(true)
+      expect(text(result)).to.contain('答えが返りませんでした')
+    })
   })
 
   /* **実機で踏んだループ。** タイトル画面から走らせるとそこで新しいゲームが始まり、

@@ -605,7 +605,7 @@ describe('liveState', function () {
     expect(m.reset).to.equal(true)
     expect(Array.from(m.switches)).to.eql([[1, true]])
     expect(Array.from(m.variables)).to.eql([[2, 5], [3, 'a']])
-    expect(parseLiveMessage({})).to.eql({ reset: undefined, switches: undefined, variables: undefined, selfSwitches: undefined, items: undefined, gold: undefined, actors: undefined, map: undefined, pages: undefined, parallel: undefined, visit: undefined, paused: undefined, resumed: undefined, run: undefined, lists: undefined, scene: undefined, message: undefined, player: undefined })
+    expect(parseLiveMessage({})).to.eql({ reset: undefined, switches: undefined, variables: undefined, selfSwitches: undefined, items: undefined, gold: undefined, actors: undefined, map: undefined, pages: undefined, parallel: undefined, visit: undefined, load: undefined, saves: undefined, paused: undefined, resumed: undefined, run: undefined, lists: undefined, scene: undefined, message: undefined, player: undefined })
     const self = parseLiveMessage({ selfSwitches: { '12,5,A': true, '1,2,B': false }, map: 12 })
     expect(Array.from(self.selfSwitches)).to.eql([['12,5,A', true], ['1,2,B', false]])
     expect(self.map).to.equal(12)

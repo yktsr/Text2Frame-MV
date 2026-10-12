@@ -956,7 +956,7 @@ describe('mcp tools', function () {
       const withLive = mcp.createContext({ root: tmp })
       withLive.live = function () { return { gameServer: {}, liveState: {} } }
 
-      expect(listed(withLive)).to.have.lengthOf(9)
+      expect(listed(withLive)).to.have.lengthOf(10)
     })
 
     it('offers none of them where it did not', function () {

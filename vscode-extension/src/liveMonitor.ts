@@ -326,6 +326,65 @@ export function monitorScript(token: string): string {
     visitResult = result;
     visiting = null;
   }
+  var savesReport = null;
+  var loadResult = null;
+  /* セーブの口は MV と MZ で名前が違う。どちらでも動くように両方見る。 */
+  function saveThere(dm, n) {
+    try {
+      if (typeof dm.savefileExists === 'function') return !!dm.savefileExists(n);
+      if (typeof dm.isThisGameFile === 'function') return !!dm.isThisGameFile(n);
+    } catch (e) { /* 読めなければ無いものとして扱う */ }
+    return false;
+  }
+  function saveInfo(dm, n) {
+    try {
+      if (typeof dm.savefileInfo === 'function') return dm.savefileInfo(n);
+      if (typeof dm.loadSavefileInfo === 'function') return dm.loadSavefileInfo(n);
+    } catch (e) { /* 見出しが読めなくても、在ることは言える */ }
+    return null;
+  }
+  function listSaves() {
+    var dm = window.DataManager;
+    var out = [];
+    if (!dm || typeof dm.maxSavefiles !== 'function') return out;
+    var most = Math.min(Number(dm.maxSavefiles()) || 0, 40);
+    for (var n = 1; n <= most; n++) {
+      if (!saveThere(dm, n)) continue;
+      var one = { slot: n };
+      {
+        var info = saveInfo(dm, n);
+        if (info) {
+          if (typeof info.playtime === 'string') one.playtime = info.playtime.slice(0, 20);
+          if (typeof info.timestamp === 'number') one.at = info.timestamp;
+          if (typeof info.title === 'string') one.title = info.title.slice(0, 80);
+        }
+      }
+      out.push(one);
+    }
+    return out;
+  }
+  function loadSave(slot) {
+    var dm = window.DataManager;
+    var n = Number(slot) || 0;
+    if (!dm || typeof dm.loadGame !== 'function' || n <= 0) { loadResult = 'failed'; return; }
+    if (!saveThere(dm, n)) { loadResult = 'noSave'; return; }
+    var done = function (ok) {
+      if (!ok) { loadResult = 'failed'; return; }
+      try {
+        if (window.$gameSystem && window.$dataSystem && window.$gameSystem.versionId() !== window.$dataSystem.versionId) {
+          window.$gamePlayer.reserveTransfer(window.$gameMap.mapId(), window.$gamePlayer.x, window.$gamePlayer.y);
+          window.$gamePlayer.requestMapReload();
+        }
+        window.SceneManager.goto(window.Scene_Map);
+        loadResult = 'loaded';
+      } catch (e) { loadResult = 'failed'; }
+    };
+    try {
+      var got = dm.loadGame(n);
+      if (got && typeof got.then === 'function') got.then(function () { done(true); }, function () { done(false); });
+      else done(got !== false);
+    } catch (e) { loadResult = 'failed'; }
+  }
   function clearRunning(map) {
     stepping = null;
     skipOnce = null;
@@ -511,6 +570,14 @@ export function monitorScript(token: string): string {
       message.visit = visitResult;
       visitResult = null;
     }
+    if (loadResult) {
+      message.load = loadResult;
+      loadResult = null;
+    }
+    if (savesReport) {
+      message.saves = savesReport;
+      savesReport = null;
+    }
     if (pausedReport) {
       message.paused = { reason: pausedReport.reason, frames: pausedReport.frames };
       pausedReport.lists.forEach(function (entry) {
@@ -524,7 +591,7 @@ export function monitorScript(token: string): string {
       message.resumed = true;
       resumedReport = false;
     }
-    if (message.reset || message.visit || message.paused || message.resumed || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.parallel || message.run || message.scene !== undefined || message.player || Date.now() - lastSent >= HEARTBEAT) send(message);
+    if (message.reset || message.visit || message.load || message.saves || message.paused || message.resumed || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.parallel || message.run || message.scene !== undefined || message.player || Date.now() - lastSent >= HEARTBEAT) send(message);
   }
   function pressInput(request) {
     var input = window.Input;
@@ -566,6 +633,8 @@ export function monitorScript(token: string): string {
       return;
     }
     if (command.visit && typeof command.visit === 'object') startVisit(command.visit);
+    if (command.saves === true) savesReport = listSaves();
+    if (command.load !== undefined) loadSave(command.load);
     if (command.breakpoints && typeof command.breakpoints === 'object') setBreakpoints(command.breakpoints);
     if (typeof command.debug === 'string') debug(command.debug);
     if (command.input && typeof command.input === 'object') pressInput(command.input);

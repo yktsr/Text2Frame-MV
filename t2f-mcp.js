@@ -107,6 +107,8 @@ const INSTRUCTIONS = [
   '・t2f_play_state で値を見て、t2f_play_set で変えられます(状態を作ってから1か所だけ試せます)。',
   '  入れた値は覚えていて、**新しいゲームが始まったら入れ直します**。タイトル画面から走らせると',
   '  そこで新しいゲームが始まるので、入れ直さないと分岐に入りません。',
+  '・t2f_play_load で、在るセーブから再開できます(slot を省くと一覧)。続きから調べたいときに。',
+  '  ※ セーブはブラウザの番地(ポート)ごとに分かれます。別のポートで遊んだぶんは見えません。',
   '・t2f_play_break はテキストの**行番号**で止めます。t2f_play_step で進めると、',
   '  止まった場所をテキストの行に戻して返します。',
   '・VS Code のテストプレイと同時には使えません(状態の受け手は1つなので、別のゲームになります)。'
@@ -2157,6 +2159,79 @@ TOOLS.push({
       return k === 'gold' ? '所持金' : k + ' ' + Object.keys(command[k]).length + ' 件'
     })
     return toolResult('送りました: ' + what.join(' / ') + '\n(ゲーム側に反映されたかは t2f_play_state で確かめてください)', { sent: command })
+  }
+})
+
+const LOAD_WORDS = {
+  loaded: 'セーブから再開しました',
+  noSave: 'そのセーブがありません',
+  failed: 'うまくいきませんでした'
+}
+
+TOOLS.push({
+  name: 't2f_play_load',
+  title: 'セーブから再開する',
+  needsLive: true,
+  description: '在るセーブを一覧し、選んだセーブから再開します。slot を省くと一覧だけ返します。' +
+    '\n**セーブはブラウザのその番地(オリジン)ごとに分かれます。** 別のポートで開いたゲームのセーブは見えません。' +
+    '\n再開したあとは、そのときの状態のまま t2f_play_goto や t2f_play_set で続けられます。',
+  annotations: { destructiveHint: true, idempotentHint: false },
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      slot: { type: 'integer', minimum: 1, maximum: 40, description: 'セーブの番号。省くと一覧だけ' },
+      waitMs: { type: 'integer', minimum: 500, maximum: 60000, description: '答えを待つ上限(既定 10000)' }
+    }
+  },
+  run: function (ctx, args) {
+    const game = ctx.game()
+    if (!game) throw new Error('ゲームを動かしていません(先に t2f_play_start)')
+    const waitMs = (args && args.waitMs) || 10000
+    const slot = args && args.slot !== undefined ? Number(args.slot) : undefined
+
+    const listing = function () {
+      const before = game.state.saves
+      sendToGame(ctx, { saves: true })
+      return waitFor(function () {
+        const now = game.state.saves
+        return now && now !== before ? now : false
+      }, waitMs)
+    }
+
+    if (slot === undefined) {
+      return listing().then(function (saves) {
+        if (!saves) return toolError('セーブの一覧が返りませんでした(' + (waitMs / 1000) + '秒)。t2f_play_status で様子を見てください。')
+        if (!saves.length) {
+          return toolResult('このゲームにセーブはありません。\n' +
+            '※ セーブはブラウザのその番地ごとに分かれるので、別のポートで遊んだぶんはここには出ません。', { saves: [] })
+        }
+        const lines = ['セーブ ' + saves.length + ' 件:'].concat(saves.map(function (one) {
+          return '  ' + one.slot + ' 番' + (one.playtime ? '  ' + one.playtime : '') +
+            (one.at ? '  ' + new Date(one.at).toISOString().slice(0, 16).replace('T', ' ') : '')
+        }))
+        lines.push('', 't2f_play_load に slot を渡すと、そこから再開します。')
+        return toolResult(lines.join('\n'), { saves })
+      })
+    }
+
+    const before = game.state.lastLoad
+    sendToGame(ctx, { load: slot })
+    return waitFor(function () {
+      const now = game.state.lastLoad
+      return now && (!before || now.at > before.at) ? now : false
+    }, waitMs).then(function (answer) {
+      if (!answer) {
+        return toolError('ゲームから答えが返りませんでした(' + (waitMs / 1000) + '秒)。' +
+          'ブラウザのタブが裏に回っていると動きません。t2f_play_status で様子を見てください。')
+      }
+      const word = String(answer.result || '')
+      const ok = word === 'loaded'
+      const info = Object.assign({ result: word, ok, slot }, playStatus(ctx))
+      const text = (LOAD_WORDS[word] || word) + '(' + word + ')'
+      if (!ok) return toolResult(text, info)
+      return toolResult(text + '\n\n' + statusLines(info).join('\n'), info)
+    })
   }
 })
 
