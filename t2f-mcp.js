@@ -514,6 +514,9 @@ const createContext = function (options) {
       return attachTo(live, gameRoot, usual, take).then(function (joined) {
         if (joined) {
           play = { server: joined, state, gameRoot, joined: true }
+          /* **途中参加なので、それまでのことを知らない。** 報せは変わったぶんだけなので、
+           * 頼まないとマップも値も空のままになる(実際にそうなった)。 */
+          joined.send({ resend: true })
           return play
         }
         return live.gameServer.startGameServer(gameRoot, undefined, { onState: take })

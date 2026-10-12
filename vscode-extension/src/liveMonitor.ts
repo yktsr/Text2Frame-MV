@@ -639,6 +639,12 @@ export function monitorScript(token: string): string {
       return;
     }
     if (command.visit && typeof command.visit === 'object') startVisit(command.visit);
+    if (command.resend === true) {
+      /* 途中から聞きはじめた相手は、それまでのことを何も知らない(報せるのは
+       * 変わったぶんだけなので)。覚えを捨てて、次の報せで全部やり直す。 */
+      last = null;
+      lastHere = '';
+    }
     if (command.saves === true) savesReport = listSaves();
     if (command.load !== undefined) loadSave(command.load);
     if (command.breakpoints && typeof command.breakpoints === 'object') setBreakpoints(command.breakpoints);

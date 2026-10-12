@@ -132,6 +132,24 @@ describe('the injected script can press keys and say where it is', function () {
     expect(reported[0].scene).to.equal('Scene_Title')
   })
 
+  /* **途中から聞きはじめた相手は、それまでのことを知らない。** 報せるのは変わったぶん
+   * だけなので、頼まれたら覚えを捨てて全部やり直す。これが無いと、相乗りした側は
+   * マップも値も空のままになる(実際にそうなった)。 */
+  it('says everything again when it is asked to', function () {
+    const game = fakeGame()
+    game.tick(2)
+    const first = game.posted.length
+    game.tick(2)
+    expect(game.posted.length, '変わっていないのに報せています').to.equal(first)
+
+    game.send({ resend: true })
+    game.tick(1)
+    const again = game.posted.slice(first)
+
+    expect(again.length, '頼んだのに報せ直していません').to.be.greaterThan(0)
+    expect(again.some(function (m) { return m.scene !== undefined }), '見え方が入っていません').to.equal(true)
+  })
+
   /* 変わらないうちは黙る。 */
   it('says it only when it changed', function () {
     const game = fakeGame()

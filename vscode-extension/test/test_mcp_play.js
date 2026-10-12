@@ -447,6 +447,66 @@ const BODY = ['こんにちは。', '<ウェイト: 30>'].join('\n')
       expect((await ok('t2f_play_status')).structuredContent.mapId, '相乗り先の報せが届いていません').to.equal(7)
     })
 
+    /* **乗る前からのことも見えること。** 報せは変わったぶんだけなので、乗った時点で
+     * 頼み直さないとマップも値も空のままになる(実際にそうなった)。 */
+    it('catches up with what happened before it joined', async function () {
+      owner = await startGameServer(root, undefined, { onState: function () {} })
+      const token = /var TOKEN = "([0-9a-f]{32})"/.exec(await get(owner.port, '/index.html'))[1]
+      const world = { reset: true, map: 7, variables: { 2: 42 }, scene: 'Scene_Map', message: { busy: false, choice: false } }
+      const tell = function (what) {
+        return new Promise(function (resolve, reject) {
+          const body = Buffer.from(JSON.stringify(what), 'utf8')
+          const req = http.request({
+            host: '127.0.0.1',
+            port: owner.port,
+            path: '/__t2f/state',
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'content-length': body.length, 'x-t2f-token': token }
+          }, function (res) { res.resume(); res.on('end', resolve) })
+          req.on('error', reject)
+          req.end(body)
+        })
+      }
+
+      // 本物の監視と同じふるまい: 頼まれたら全部を報せ直す。
+      const listening = await new Promise(function (resolve, reject) {
+        const req = http.get({ host: '127.0.0.1', port: owner.port, path: '/__t2f/events?token=' + token }, function (res) {
+          let buffer = ''
+          res.setEncoding('utf8')
+          res.on('data', function (chunk) {
+            buffer += chunk
+            let at = buffer.indexOf('\n\n')
+            while (at >= 0) {
+              const frame = buffer.slice(0, at)
+              buffer = buffer.slice(at + 2)
+              if (!/^event:/m.test(frame)) {
+                const m = /^data: (.*)$/m.exec(frame)
+                if (m && JSON.parse(m[1]).resend === true) tell(world)
+              }
+              at = buffer.indexOf('\n\n')
+            }
+            resolve(req)
+          })
+        })
+        req.on('error', reject)
+      })
+      try {
+        // 乗る**前**に起きたこと。
+        await tell(world)
+        await ok('t2f_play_start')
+
+        const until = Date.now() + 4000
+        while (Date.now() < until && (await ok('t2f_play_status')).structuredContent.mapId !== 7) {
+          await new Promise(function (r) { setTimeout(r, 50) })
+        }
+        const status = (await ok('t2f_play_status')).structuredContent
+        expect(status.mapId, '乗る前のことが見えていません').to.equal(7)
+        expect(status.scene).to.equal('Scene_Map')
+      } finally {
+        listening.destroy()
+      }
+    })
+
     /* 止めるのは自分の聞き口だけ。**向こうのサーバは止めない**(あちらの持ち物)。 */
     it('leaves the other server running when it stops', async function () {
       owner = await startGameServer(root, undefined, { onState: function () {} })

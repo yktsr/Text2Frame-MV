@@ -80,6 +80,8 @@ export interface LiveCommand {
     reload?: boolean;
     breakpoints?: Record<string, number[]>;
     debug?: 'continue' | 'next' | 'stepIn' | 'stepOut' | 'pause';
+    /** いまのことを全部もう一度報せてほしい(途中から聞きはじめた相手のため)。 */
+    resend?: boolean;
     /** 在るセーブを教えてほしい。 */
     saves?: boolean;
     /** そのセーブから再開する。 */
