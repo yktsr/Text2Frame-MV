@@ -14,7 +14,11 @@ if (!fs.existsSync(libDir)) {
 }
 
 // Text2Frame.js (deploy/import) and Frame2Text.js (export) are both required.
-for (const name of ['Text2Frame.js', 'Frame2Text.js']) {
+// t2f-mcp.js is the MCP server the editor starts for AI agents; it resolves its own
+// siblings with path.join(__dirname, ...), so t2f-help.js and t2f-history.js must sit
+// next to it. Unlike the two compilers it runs as its own process, so it must not
+// require anything outside Node builtins - the .vsix carries no node_modules.
+for (const name of ['Text2Frame.js', 'Frame2Text.js', 't2f-mcp.js', 't2f-help.js', 't2f-history.js']) {
   const source = path.join(repoRoot, name)
   if (!fs.existsSync(source)) {
     console.error('[bundle-compiler] Not found: ' + source)

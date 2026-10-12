@@ -54,6 +54,30 @@ describe('gameServer', function () {
     expect((await request(server.port, '/nothing.png')).status).to.equal(404)
   })
 
+  /* **実機で踏んだ。** FOSSIL を使うゲームは index.html だと require is not defined で
+   * 落ちる。道具は正しい URL を返していたが、ルートを開いた相手が落ちた。
+   * どこを開いても動くように、ルートは書き出し済みのページを出す。 */
+  it('serves the FOSSIL page at the root when the game has one', async function () {
+    const fossilRoot = path.join(parent, 'fossil')
+    fs.mkdirSync(path.join(fossilRoot, 'data'), { recursive: true })
+    fs.writeFileSync(path.join(fossilRoot, 'data', 'System.json'), '{}')
+    fs.writeFileSync(path.join(fossilRoot, 'index.html'), '<title>落ちる方</title>')
+    fs.writeFileSync(path.join(fossilRoot, 'FOSSILindex.html'), '<title>動く方</title>')
+    const fossil = await startGameServer(fossilRoot, 0)
+    try {
+      expect((await request(fossil.port, '/')).body.toString()).to.equal('<title>動く方</title>')
+      // 名指しで index.html を求めた人には、そのまま index.html を渡す。
+      expect((await request(fossil.port, '/index.html')).body.toString()).to.equal('<title>落ちる方</title>')
+    } finally {
+      await fossil.close()
+    }
+  })
+
+  /* 書き出されていないゲームはこれまでどおり index.html。 */
+  it('still serves index.html at the root when there is no FOSSIL page', async function () {
+    expect((await request(server.port, '/')).body.toString()).to.equal('<title>game</title>')
+  })
+
   it('never serves a file outside the game folder', async function () {
     for (const p of ['/../secret.txt', '/%2e%2e/secret.txt', '/..%2fsecret.txt', '/data/../../secret.txt', '/..\\secret.txt']) {
       const res = await request(server.port, p)
@@ -146,6 +170,90 @@ describe('gameServer', function () {
         req.on('error', reject)
       })
       expect(received).to.eql({ switches: { 1: true }, variables: { 2: 'a' }, selfSwitches: { '3,4,A': true } })
+    } finally {
+      await live.close()
+    }
+  })
+
+  /* 相乗りの口。**これが無いと、同じゲームを別のプロセスから見るには配り直すしかなく、
+   * 番地が変わってセーブが分かれる。** */
+  it('relays the state to the pages that listen, without the game seeing it', async function () {
+    const live = await startGameServer(root, 0, { onState: function () {} })
+    try {
+      const token = /var TOKEN = "([0-9a-f]{32})"/.exec((await request(live.port, '/index.html')).body.toString())[1]
+      const frames = await new Promise(function (resolve, reject) {
+        const req = http.get({ host: '127.0.0.1', port: live.port, path: '/__t2f/events?token=' + token }, function (res) {
+          let body = ''
+          let asked = false
+          res.on('data', function (c) {
+            body += c
+            if (!asked && body.includes(': connected')) {
+              asked = true
+              const payload = Buffer.from(JSON.stringify({ map: 3 }), 'utf8')
+              const post = http.request({
+                host: '127.0.0.1',
+                port: live.port,
+                path: '/__t2f/state',
+                method: 'POST',
+                headers: { 'content-type': 'application/json', 'content-length': payload.length, 'x-t2f-token': token }
+              }, function (r) { r.resume() })
+              post.end(payload)
+            }
+            if (body.includes('event: state')) { req.destroy(); resolve(body) }
+          })
+        })
+        req.on('error', reject)
+      })
+
+      expect(frames).to.contain('event: state')
+      expect(frames).to.contain('"map":3')
+    } finally {
+      await live.close()
+    }
+  })
+
+  it('takes a command from another process and passes it to the game', async function () {
+    const live = await startGameServer(root, 0, { onState: function () {} })
+    try {
+      const token = /var TOKEN = "([0-9a-f]{32})"/.exec((await request(live.port, '/index.html')).body.toString())[1]
+      const heard = await new Promise(function (resolve, reject) {
+        const req = http.get({ host: '127.0.0.1', port: live.port, path: '/__t2f/events?token=' + token }, function (res) {
+          let body = ''
+          let asked = false
+          res.on('data', function (c) {
+            body += c
+            if (!asked && body.includes(': connected')) {
+              asked = true
+              const payload = Buffer.from(JSON.stringify({ switches: { 4: true } }), 'utf8')
+              const post = http.request({
+                host: '127.0.0.1',
+                port: live.port,
+                path: '/__t2f/send',
+                method: 'POST',
+                headers: { 'content-type': 'application/json', 'content-length': payload.length, 'x-t2f-token': token }
+              }, function (r) { r.resume() })
+              post.end(payload)
+            }
+            const m = /^data: (.*)$/m.exec(body)
+            if (m) { req.destroy(); resolve(JSON.parse(m[1])) }
+          })
+        })
+        req.on('error', reject)
+      })
+
+      expect(heard).to.eql({ switches: { 4: true } })
+    } finally {
+      await live.close()
+    }
+  })
+
+  it('turns down a command without the token, and says the door is there', async function () {
+    const live = await startGameServer(root, 0, { onState: function () {} })
+    try {
+      /* 403 は**口が在る印**でもある。相乗りする側は乗る前にこれを見て、古い版
+       * (ただのファイルとして 404 を返す)と見分ける。 */
+      expect((await request(live.port, '/__t2f/send')).status).to.equal(403)
+      expect((await request(live.port, '/nothing/__t2f/send')).status).to.equal(404)
     } finally {
       await live.close()
     }

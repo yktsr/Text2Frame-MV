@@ -2,7 +2,7 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { injectMonitor, LIVE_EVENTS_PATH, LIVE_STATE_PATH, LIVE_TOKEN_HEADER } from './liveMonitor';
+import { injectMonitor, LIVE_EVENTS_PATH, LIVE_RELAY_EVENT, LIVE_SEND_PATH, LIVE_STATE_PATH, LIVE_TOKEN_HEADER } from './liveMonitor';
 import { LiveCommand, LiveMessage, parseLiveMessage } from './liveState';
 
 /**
@@ -121,6 +121,51 @@ function receiveState(live: Live, req: http.IncomingMessage, res: http.ServerRes
         }
         res.writeHead(204).end();
         live.onState(message);
+        /* 相乗りしている相手にも同じものを回す。名前付きで出すので、ゲームの
+         * EventSource.onmessage には出ない(あちらは命令だけを聞いている)。 */
+        relay(live, chunks);
+    });
+}
+
+function relay(live: Live, chunks: Buffer[]): void {
+    if (!live.listeners.size) return;
+    const data = 'event: ' + LIVE_RELAY_EVENT + '\ndata: ' + Buffer.concat(chunks).toString('utf8').replace(/[\r\n]+/g, ' ') + '\n\n';
+    live.listeners.forEach((res) => res.write(data));
+}
+
+/** 相乗りしている相手からの命令を、ゲームへ流す。 */
+function receiveSend(live: Live, req: http.IncomingMessage, res: http.ServerResponse): void {
+    if (req.method !== 'POST' || !sameToken(live, req.headers[LIVE_TOKEN_HEADER])) {
+        res.writeHead(403).end();
+        return;
+    }
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on('data', (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > MAX_STATE_BYTES) {
+            res.writeHead(413).end();
+            req.destroy();
+            return;
+        }
+        chunks.push(chunk);
+    });
+    req.on('end', () => {
+        if (res.writableEnded) return;
+        let command: unknown;
+        try {
+            command = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+        } catch (e) {
+            command = undefined;
+        }
+        if (!command || typeof command !== 'object' || Array.isArray(command)) {
+            res.writeHead(400).end();
+            return;
+        }
+        const data = `data: ${JSON.stringify(command)}\n\n`;
+        live.listeners.forEach((one) => one.write(data));
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            .end(JSON.stringify({ listeners: live.listeners.size }));
     });
 }
 
@@ -150,6 +195,10 @@ function handle(root: string, req: http.IncomingMessage, res: http.ServerRespons
         openEvents(live, req, res);
         return;
     }
+    if (live && urlPath === LIVE_SEND_PATH) {
+        receiveSend(live, req, res);
+        return;
+    }
     if (req.method !== 'GET' && req.method !== 'HEAD') {
         res.writeHead(405, { Allow: 'GET, HEAD' }).end();
         return;
@@ -163,7 +212,10 @@ function handle(root: string, req: http.IncomingMessage, res: http.ServerRespons
     try {
         stat = fs.statSync(file);
         if (stat.isDirectory()) {
-            file = path.join(file, 'index.html');
+            /* FOSSIL を使うゲームは index.html だと require is not defined で落ちる。
+             * 書き出し済みならそちらを出す(testPlay.ts の pageFor と同じ理由)。 */
+            const fossil = path.join(file, 'FOSSILindex.html');
+            file = fs.existsSync(fossil) ? fossil : path.join(file, 'index.html');
             stat = fs.statSync(file);
         }
     } catch (e) {

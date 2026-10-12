@@ -2,6 +2,12 @@ import { tr } from './db/lang';
 export const LIVE_STATE_PATH = '/__t2f/state';
 export const LIVE_EVENTS_PATH = '/__t2f/events';
 export const LIVE_TOKEN_HEADER = 'x-t2f-token';
+/* 同じゲームを別のプロセスからも見られるようにする口。ゲーム自身は使わない。
+ * 無いと、既に配られているゲームへは相乗りできず、別のポートで配り直すことになる -
+ * 番地が変わるとセーブが分かれてしまう。 */
+export const LIVE_SEND_PATH = '/__t2f/send';
+/** 相乗りしている相手にだけ届く名前付きの報せ(ゲームの EventSource.onmessage には出ない)。 */
+export const LIVE_RELAY_EVENT = 'state';
 
 export function monitorScript(token: string): string {
     return `(function () {
@@ -13,6 +19,9 @@ export function monitorScript(token: string): string {
   var ITEM_KEY = /^([iwa]):(\\d{1,6})$/;
   var ITEM_DATA = { i: '$dataItems', w: '$dataWeapons', a: '$dataArmors' };
   var last = null;
+  var releasing = [];
+  var inputTick = 0;
+  var lastHere = '';
   var lastSent = 0;
   function switchValue(v) { return !!v; }
   function variableValue(v) {
@@ -323,6 +332,65 @@ export function monitorScript(token: string): string {
     visitResult = result;
     visiting = null;
   }
+  var savesReport = null;
+  var loadResult = null;
+  /* セーブの口は MV と MZ で名前が違う。どちらでも動くように両方見る。 */
+  function saveThere(dm, n) {
+    try {
+      if (typeof dm.savefileExists === 'function') return !!dm.savefileExists(n);
+      if (typeof dm.isThisGameFile === 'function') return !!dm.isThisGameFile(n);
+    } catch (e) { /* 読めなければ無いものとして扱う */ }
+    return false;
+  }
+  function saveInfo(dm, n) {
+    try {
+      if (typeof dm.savefileInfo === 'function') return dm.savefileInfo(n);
+      if (typeof dm.loadSavefileInfo === 'function') return dm.loadSavefileInfo(n);
+    } catch (e) { /* 見出しが読めなくても、在ることは言える */ }
+    return null;
+  }
+  function listSaves() {
+    var dm = window.DataManager;
+    var out = [];
+    if (!dm || typeof dm.maxSavefiles !== 'function') return out;
+    var most = Math.min(Number(dm.maxSavefiles()) || 0, 40);
+    for (var n = 1; n <= most; n++) {
+      if (!saveThere(dm, n)) continue;
+      var one = { slot: n };
+      {
+        var info = saveInfo(dm, n);
+        if (info) {
+          if (typeof info.playtime === 'string') one.playtime = info.playtime.slice(0, 20);
+          if (typeof info.timestamp === 'number') one.at = info.timestamp;
+          if (typeof info.title === 'string') one.title = info.title.slice(0, 80);
+        }
+      }
+      out.push(one);
+    }
+    return out;
+  }
+  function loadSave(slot) {
+    var dm = window.DataManager;
+    var n = Number(slot) || 0;
+    if (!dm || typeof dm.loadGame !== 'function' || n <= 0) { loadResult = 'failed'; return; }
+    if (!saveThere(dm, n)) { loadResult = 'noSave'; return; }
+    var done = function (ok) {
+      if (!ok) { loadResult = 'failed'; return; }
+      try {
+        if (window.$gameSystem && window.$dataSystem && window.$gameSystem.versionId() !== window.$dataSystem.versionId) {
+          window.$gamePlayer.reserveTransfer(window.$gameMap.mapId(), window.$gamePlayer.x, window.$gamePlayer.y);
+          window.$gamePlayer.requestMapReload();
+        }
+        window.SceneManager.goto(window.Scene_Map);
+        loadResult = 'loaded';
+      } catch (e) { loadResult = 'failed'; }
+    };
+    try {
+      var got = dm.loadGame(n);
+      if (got && typeof got.then === 'function') got.then(function () { done(true); }, function () { done(false); });
+      else done(got !== false);
+    } catch (e) { loadResult = 'failed'; }
+  }
   function clearRunning(map) {
     stepping = null;
     skipOnce = null;
@@ -403,13 +471,49 @@ export function monitorScript(token: string): string {
     if (banner.textContent !== text) banner.textContent = text;
     if (!banner.parentNode) document.body.appendChild(banner);
   }
+  function whereAmI() {
+    var scenes = window.SceneManager;
+    var scene = scenes && scenes._scene && scenes._scene.constructor ? String(scenes._scene.constructor.name || '') : '';
+    var text = window.$gameMessage;
+    var busy = !!(text && typeof text.isBusy === 'function' && text.isBusy());
+    var choosing = !!(text && typeof text.isChoice === 'function' && text.isChoice());
+    if (!scene) return null;
+    var shown = { busy: busy, choice: choosing };
+    if (busy && text) {
+      if (Array.isArray(text._texts)) {
+        shown.lines = text._texts.slice(0, 8).map(function (one) { return String(one).slice(0, 400); });
+      }
+      if (choosing && Array.isArray(text._choices)) {
+        shown.choices = text._choices.slice(0, 20).map(function (one) { return String(one).slice(0, 200); });
+      }
+    }
+    var out = { scene: scene, message: shown };
+    var player = window.$gamePlayer;
+    if (player && typeof player.x === 'number') {
+      out.player = { x: Math.floor(player.x), y: Math.floor(player.y), direction: Number(player.direction && player.direction()) || 0 };
+    }
+    return out;
+  }
+
   function tick() {
     hook();
+    releaseInput();
     stepVisit();
     showBanner();
+    var here = whereAmI();
+    var hereText = here ? JSON.stringify(here) : '';
+    var hereChanged = here && hereText !== lastHere;
     var switches = window.$gameSwitches;
     var variables = window.$gameVariables;
-    if (!switches || !variables || !switches._data || !variables._data) return;
+    if (!switches || !variables || !switches._data || !variables._data) {
+      if (hereChanged) {
+        lastHere = hereText;
+        var alone = { scene: here.scene, message: here.message };
+        if (here.player) alone.player = here.player;
+        send(alone);
+      }
+      return;
+    }
     var selfSwitches = window.$gameSelfSwitches;
     var selfData = selfSwitches && selfSwitches._data && typeof selfSwitches._data === 'object' ? selfSwitches._data : null;
     var party = window.$gameParty;
@@ -448,6 +552,13 @@ export function monitorScript(token: string): string {
     var parallelText = parallel ? JSON.stringify(parallel) : '';
     if (parallel && parallelText !== last.parallel) message.parallel = parallel;
     last.parallel = parallelText;
+
+    if (hereChanged) {
+      message.scene = here.scene;
+      message.message = here.message;
+      if (here.player) message.player = here.player;
+      lastHere = hereText;
+    }
     var run = running();
     if (run) {
       var runText = JSON.stringify(run.frames);
@@ -465,6 +576,14 @@ export function monitorScript(token: string): string {
       message.visit = visitResult;
       visitResult = null;
     }
+    if (loadResult) {
+      message.load = loadResult;
+      loadResult = null;
+    }
+    if (savesReport) {
+      message.saves = savesReport;
+      savesReport = null;
+    }
     if (pausedReport) {
       message.paused = { reason: pausedReport.reason, frames: pausedReport.frames };
       pausedReport.lists.forEach(function (entry) {
@@ -478,16 +597,59 @@ export function monitorScript(token: string): string {
       message.resumed = true;
       resumedReport = false;
     }
-    if (message.reset || message.visit || message.paused || message.resumed || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.parallel || message.run || Date.now() - lastSent >= HEARTBEAT) send(message);
+    if (message.reset || message.visit || message.load || message.saves || message.paused || message.resumed || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.parallel || message.run || message.scene !== undefined || message.player || Date.now() - lastSent >= HEARTBEAT) send(message);
   }
+  function pressInput(request) {
+    var input = window.Input;
+    var held = Math.max(1, Math.min(Number(request.hold) || 2, 600));
+    var names = Array.isArray(request.keys) ? request.keys : (request.key ? [request.key] : []);
+    if (input && input._currentState && names.length) {
+      names.forEach(function (name) {
+        if (typeof name !== 'string' || !/^[a-z0-9]{1,16}$/.test(name)) return;
+        input._currentState[name] = true;
+        if (typeof input._latestButton === 'string' || input._latestButton === null) {
+          input._latestButton = name;
+          input._pressedTime = 0;
+        }
+        releasing.push({ name: name, until: inputTick + held });
+      });
+    }
+    var touch = window.TouchInput;
+    var tap = request.tap;
+    if (touch && tap && typeof tap.x === 'number' && typeof tap.y === 'number' && typeof touch._onTrigger === 'function') {
+      try { touch._onTrigger(tap.x, tap.y); } catch (e) {}
+    }
+  }
+
+  function releaseInput() {
+    inputTick++;
+    if (!releasing.length) return;
+    var input = window.Input;
+    var keep = [];
+    releasing.forEach(function (entry) {
+      if (inputTick < entry.until) { keep.push(entry); return; }
+      if (input && input._currentState) input._currentState[entry.name] = false;
+    });
+    releasing = keep;
+  }
+
   function write(command) {
     if (command.reload === true) {
       try { window.location.reload(); } catch (e) {}
       return;
     }
     if (command.visit && typeof command.visit === 'object') startVisit(command.visit);
+    if (command.resend === true) {
+      /* 途中から聞きはじめた相手は、それまでのことを何も知らない(報せるのは
+       * 変わったぶんだけなので)。覚えを捨てて、次の報せで全部やり直す。 */
+      last = null;
+      lastHere = '';
+    }
+    if (command.saves === true) savesReport = listSaves();
+    if (command.load !== undefined) loadSave(command.load);
     if (command.breakpoints && typeof command.breakpoints === 'object') setBreakpoints(command.breakpoints);
     if (typeof command.debug === 'string') debug(command.debug);
+    if (command.input && typeof command.input === 'object') pressInput(command.input);
     var switches = window.$gameSwitches;
     var variables = window.$gameVariables;
     if (!switches || !variables) return;

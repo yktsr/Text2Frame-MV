@@ -99,6 +99,18 @@ describe('omitting message tags that match the defaults', function () {
     expectRoundTrip(list, { omitDefaults: false })
   })
 
+  /* 入/切は文字列でも届く(プラグインコマンドの引数・CLI のオプション・手で書いた
+   * settings.json)。'false' は truthy なので、真偽値だけを見ていると「残して」が
+   * 「省く」に化ける。畳み方は Frame2Text の toFlag 1か所に寄せてある。 */
+  it('takes the strings as well as the booleans', function () {
+    const list = msg('', 0, 0, 2, '', 'こんにちは')
+
+    expect(out(list, { omitDefaults: 'false' })).to.equal(out(list, { omitDefaults: false }))
+    expect(out(list, { omitDefaults: 'true' })).to.equal(out(list, { omitDefaults: true }))
+    // 空は未指定と同じ扱い(この入口の既定は「省く」)。
+    expect(out(list, { omitDefaults: '' })).to.equal(out(list, { omitDefaults: true }))
+  })
+
   /* buildPullText の統合(merge)は Text2Frame.applyMergePull を経由して本文を作る。
    * 上書きの経路だけに option を通すと、VS Code の「ゲームから取り出す」(既定=統合)で
    * 設定が効かないという分かりにくい壊れ方をする。両方の経路で効くことを確かめる。 */

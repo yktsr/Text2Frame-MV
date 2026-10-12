@@ -27,6 +27,12 @@ vscode-extension/out/
 vscode-extension/lib/
 *.vsix
 
+# 公開用のバンドル。rollup の生成物で、publish のたびに prepack が作り直す。
+# files には残してあるので tarball には入る(コミットしないだけ)。
+Text2Frame.cjs.js
+Text2Frame.es.mjs
+Text2Frame.umd.js
+
 # Packaging outputs. dist/ is rollup's target; release/ is what tools/pack-all.sh collects.
 # 公開される cjs/es/umd バンドルはリポジトリ直下のコミット済みコピーのほう (RELEASE.md B-1)。
 dist/

@@ -18,7 +18,15 @@ const fakeGame = function (extra) {
     Date: { now: function () { return clock } },
     setInterval: function (fn) { tick = fn },
     fetch: function (url, init) {
-      sent.push({ url, headers: init.headers, body: JSON.parse(init.body) })
+      // 見え方は値とは別の関心なので分けて置く(混ぜると全部の期待値が揺れる)。
+      const whole = JSON.parse(init.body)
+      const view = {}
+      const body = {}
+      Object.keys(whole).forEach(function (k) {
+        if (k === 'scene' || k === 'message' || k === 'player') view[k] = whole[k]
+        else body[k] = whole[k]
+      })
+      sent.push({ url, headers: init.headers, body, view, valuesOnly: Object.keys(body).length > 0 })
       return Promise.resolve()
     },
     JSON,
@@ -39,14 +47,16 @@ describe('liveMonitor', function () {
   it('reports the values once the game is ready', function () {
     const g = fakeGame()
     g.step()
-    expect(g.sent).to.eql([])
+    // セーブデータが無いうちは値を1つも送らない。
+    expect(g.sent.filter(function (m) { return m.valuesOnly })).to.eql([])
     g.window.$gameSwitches = { _data: [null, true, false, undefined, true] }
     g.window.$gameVariables = { _data: [null, 5, undefined, 'abc'] }
     g.step()
-    expect(g.sent).to.have.length(1)
-    expect(g.sent[0].url).to.equal(LIVE_STATE_PATH)
-    expect(g.sent[0].headers[LIVE_TOKEN_HEADER]).to.equal('abc123')
-    expect(g.sent[0].body).to.eql({
+    const values = g.sent.filter(function (m) { return m.valuesOnly })
+    expect(values).to.have.length(1)
+    expect(values[0].url).to.equal(LIVE_STATE_PATH)
+    expect(values[0].headers[LIVE_TOKEN_HEADER]).to.equal('abc123')
+    expect(values[0].body).to.eql({
       reset: true,
       switches: { 1: true, 4: true },
       variables: { 1: 5, 3: 'abc' },
@@ -595,7 +605,7 @@ describe('liveState', function () {
     expect(m.reset).to.equal(true)
     expect(Array.from(m.switches)).to.eql([[1, true]])
     expect(Array.from(m.variables)).to.eql([[2, 5], [3, 'a']])
-    expect(parseLiveMessage({})).to.eql({ reset: undefined, switches: undefined, variables: undefined, selfSwitches: undefined, items: undefined, gold: undefined, actors: undefined, map: undefined, pages: undefined, parallel: undefined, visit: undefined, paused: undefined, resumed: undefined, run: undefined, lists: undefined })
+    expect(parseLiveMessage({})).to.eql({ reset: undefined, switches: undefined, variables: undefined, selfSwitches: undefined, items: undefined, gold: undefined, actors: undefined, map: undefined, pages: undefined, parallel: undefined, visit: undefined, load: undefined, saves: undefined, paused: undefined, resumed: undefined, run: undefined, lists: undefined, scene: undefined, message: undefined, player: undefined })
     const self = parseLiveMessage({ selfSwitches: { '12,5,A': true, '1,2,B': false }, map: 12 })
     expect(Array.from(self.selfSwitches)).to.eql([['12,5,A', true], ['1,2,B', false]])
     expect(self.map).to.equal(12)
