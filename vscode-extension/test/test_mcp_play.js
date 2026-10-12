@@ -397,6 +397,90 @@ const BODY = ['こんにちは。', '<ウェイト: 30>'].join('\n')
     expect(text(await running)).to.contain('走らせました')
   })
 
+  /* **実機で踏んだループ。** タイトル画面から走らせるとそこで新しいゲームが始まり、
+   * 直前に入れたスイッチが消えて分岐に入らない。外から操る側にはそれが見えないので
+   * 「立てる→走らせる→入らない→立て直す」で回り続けた。 */
+  describe('the values survive a new game', function () {
+    /* visit に答える係。タイトルからだと、先に立たせる1回ぶんが増えて2回来る。 */
+    const answer = async function (times, word) {
+      for (let i = 0; i < times; i++) {
+        const seen = fake.heard.filter(function (c) { return c.visit }).length
+        const until = Date.now() + 3000
+        while (Date.now() < until && fake.heard.filter(function (c) { return c.visit }).length <= seen) {
+          await new Promise(function (r) { setTimeout(r, 20) })
+        }
+        await fake.post({ visit: word || 'ran' })
+      }
+    }
+
+    const onTitle = async function () {
+      await ok('t2f_play_start')
+      await connectFakeGame()
+      await fake.post({ scene: 'Scene_Title', message: { busy: false, choice: false } })
+    }
+
+    it('puts the values back when the run starts a new game', async function () {
+      await onTitle()
+      await ok('t2f_play_set', { switches: { 5: true }, variables: { 2: 4 } })
+
+      const running = ok('t2f_play_goto', { mapId: 1, eventId: 1, waitMs: 5000 })
+      await answer(2)
+      const result = await running
+
+      // 立たせる1回と走らせる1回で、visit は2回。
+      expect(fake.heard.filter(function (c) { return c.visit }), 'visit の回数').to.have.lengthOf(2)
+      expect(fake.heard.filter(function (c) { return c.visit })[0].visit.run, '1回目は立つだけ').to.equal(false)
+      expect(fake.heard.filter(function (c) { return c.visit })[1].visit.run, '2回目が本番').to.equal(true)
+      // 入れ直しは、立たせたあと・走らせる前。
+      const put = fake.heard.filter(function (c) { return c.switches })
+      expect(put, '値を入れ直していません').to.have.lengthOf(2)
+      expect(put[1]).to.include.keys('switches', 'variables')
+      expect(put[1].switches).to.eql({ 5: true })
+      expect(put[1].variables).to.eql({ 2: 4 })
+      // 黙ってやらない。
+      expect(text(result)).to.contain('入れ直しました')
+    })
+
+    it('puts the breakpoints back too', async function () {
+      await onTitle()
+      await ok('t2f_play_break', { mapId: 1, eventId: 1, lines: [8] })
+      await fake.post({ scene: 'Scene_Title', message: { busy: false, choice: false } })
+
+      const running = ok('t2f_play_goto', { mapId: 1, eventId: 1, waitMs: 5000 })
+      await answer(2)
+      await running
+
+      expect(fake.heard.filter(function (c) { return c.breakpoints }), '置き直していません').to.have.lengthOf(2)
+    })
+
+    /* 入れたものが無ければ、余計な往復はしない。 */
+    it('does not take the long way round when nothing was set', async function () {
+      await onTitle()
+
+      const running = ok('t2f_play_goto', { mapId: 1, eventId: 1, waitMs: 5000 })
+      await answer(1)
+      const result = await running
+
+      expect(fake.heard.filter(function (c) { return c.visit })).to.have.lengthOf(1)
+      expect(text(result)).to.not.contain('入れ直しました')
+    })
+
+    /* タイトルでなければ新しいゲームは始まらないので、そのまま走らせる。 */
+    it('runs straight away when the game is already going', async function () {
+      await ok('t2f_play_start')
+      await connectFakeGame()
+      await fake.post({ scene: 'Scene_Map' })
+      await ok('t2f_play_set', { switches: { 5: true } })
+
+      const running = ok('t2f_play_goto', { mapId: 1, eventId: 1, waitMs: 5000 })
+      await answer(1)
+      const result = await running
+
+      expect(fake.heard.filter(function (c) { return c.visit })).to.have.lengthOf(1)
+      expect(text(result)).to.not.contain('入れ直しました')
+    })
+  })
+
   /* ゲームが「無い」と答えたらそのまま伝える。こちらで言い換えない。 */
   it('passes a refusal from the game through as it is', async function () {
     await ok('t2f_play_start')

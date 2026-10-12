@@ -105,6 +105,8 @@ const INSTRUCTIONS = [
   '・t2f_play_status は**画面に出ている文面と選択肢**、いま走っている場所(テキストの行)まで返します。',
   '  押したあとそれを見れば、思ったとおりの台詞が出たかを確かめられます。',
   '・t2f_play_state で値を見て、t2f_play_set で変えられます(状態を作ってから1か所だけ試せます)。',
+  '  入れた値は覚えていて、**新しいゲームが始まったら入れ直します**。タイトル画面から走らせると',
+  '  そこで新しいゲームが始まるので、入れ直さないと分岐に入りません。',
   '・t2f_play_break はテキストの**行番号**で止めます。t2f_play_step で進めると、',
   '  止まった場所をテキストの行に戻して返します。',
   '・VS Code のテストプレイと同時には使えません(状態の受け手は1つなので、別のゲームになります)。'
@@ -1874,6 +1876,45 @@ const waitFor = function (check, deadlineMs) {
   })
 }
 
+/* 入れた値を覚えておく。
+ *
+ * **新しいゲームが始まると、入れた値は全部消える。** タイトル画面から t2f_play_goto を
+ * 呼ぶとそこで新しいゲームが始まるので、直前に入れたスイッチが消えて分岐に入らない。
+ * 外から操る側にはそれが見えないので「立てる→走らせる→入らない→立て直す」で回り続ける
+ * (実際にそうなった)。だから、こちらが覚えていて入れ直す。 */
+const remember = function (ctx, command) {
+  const kept = ctx.wanted || (ctx.wanted = {})
+  ;['switches', 'variables', 'selfSwitches', 'items'].forEach(function (k) {
+    if (!command[k]) return
+    kept[k] = Object.assign({}, kept[k], command[k])
+  })
+  if (command.gold !== undefined) kept.gold = command.gold
+}
+
+/** 覚えている値を入れ直す。入れ直したものを言葉で返す(黙ってやらない)。 */
+const restoreWanted = function (ctx) {
+  const kept = ctx.wanted || {}
+  const command = {}
+  const said = []
+  ;['switches', 'variables', 'selfSwitches', 'items'].forEach(function (k) {
+    const rows = kept[k]
+    if (!rows || !Object.keys(rows).length) return
+    command[k] = rows
+    said.push(k + ' ' + Object.keys(rows).length + ' 件')
+  })
+  if (kept.gold !== undefined) { command.gold = kept.gold; said.push('所持金') }
+  if (ctx.breakpoints && Object.keys(ctx.breakpoints).length) command.breakpoints = ctx.breakpoints
+  if (!Object.keys(command).length) return null
+  sendToGame(ctx, command)
+  return said.length ? said.join(' / ') : null
+}
+
+/** いまタイトル画面か。ここから走らせると新しいゲームが始まる。 */
+const onTitle = function (ctx) {
+  const game = ctx.game()
+  return !!(game && game.state.scene && String(game.state.scene).indexOf('Scene_Title') === 0)
+}
+
 /** 命令を送る。聞いているゲームが無ければすぐ失敗する(待っても来ない)。 */
 const sendToGame = function (ctx, command) {
   const game = ctx.game()
@@ -2075,7 +2116,9 @@ TOOLS.push({
   needsLive: true,
   title: '値を変える',
   description: '動いているゲームのスイッチ・変数・セルフスイッチ・持ち物・所持金を変えます。' +
-    'セルフスイッチの鍵は「マップ,イベント,文字」(例 1,8,A)、持ち物は i:/w:/a: に番号。',
+    'セルフスイッチの鍵は「マップ,イベント,文字」(例 1,8,A)、持ち物は i:/w:/a: に番号。' +
+    '\n入れた値は覚えていて、**新しいゲームが始まったら入れ直します**' +
+    '(タイトル画面から t2f_play_goto すると新しいゲームが始まり、入れた値は消えるため)。',
   annotations: { destructiveHint: true, idempotentHint: true },
   inputSchema: {
     type: 'object',
@@ -2109,6 +2152,7 @@ TOOLS.push({
     if (args && typeof args.gold === 'number') command.gold = args.gold
     if (!Object.keys(command).length) throw new Error('変えるものがありません')
     sendToGame(ctx, command)
+    remember(ctx, command)
     const what = Object.keys(command).map(function (k) {
       return k === 'gold' ? '所持金' : k + ' ' + Object.keys(command[k]).length + ' 件'
     })
@@ -2171,6 +2215,30 @@ TOOLS.push({
       }
     }
 
+    /* タイトル画面から走らせると、そこで新しいゲームが始まって**入れた値が全部消える**。
+     * 消えたあとに入れ直しても、イベントはもう分岐を過ぎている。だから先に新しいゲームを
+     * 始めて(立つだけ)、値を入れ直してから、改めて走らせる。 */
+    const settle = function () {
+      if (!onTitle(ctx)) return Promise.resolve(null)
+      const nothing = !(ctx.wanted && Object.keys(ctx.wanted).length) &&
+        !(ctx.breakpoints && Object.keys(ctx.breakpoints).length)
+      if (nothing) return Promise.resolve(null)
+      const start = Object.assign({}, visit, { run: false })
+      return runVisit(ctx, game, start, 'stand', waitMs).then(function () { return restoreWanted(ctx) })
+    }
+
+    const go = function () {
+      return settle().then(function (restored) {
+        return runVisit(ctx, game, visit, mode, waitMs).then(function (result) {
+          if (!restored) return result
+          const note = '(新しいゲームが始まったので、入れてあった値を入れ直しました: ' + restored + ')'
+          return Object.assign({}, result, {
+            content: [{ type: 'text', text: note + '\n\n' + result.content[0].text }]
+          })
+        })
+      })
+    }
+
     if (args && args.reload) {
       sendToGame(ctx, { reload: true })
       // 読み直したページが繋がり直すのを待つ。
@@ -2178,12 +2246,10 @@ TOOLS.push({
       return waitFor(function () { return gameIsLive(ctx) && game.state.lastSeen > at }, waitMs)
         .then(function (back) {
           if (!back) throw new Error('読み直したゲームが戻ってきませんでした')
-          /* 読み直すとゲーム側のブレークポイントは消えるので、覚えている分を送り直す。 */
-          if (ctx.breakpoints && Object.keys(ctx.breakpoints).length) sendToGame(ctx, { breakpoints: ctx.breakpoints })
-          return runVisit(ctx, game, visit, mode, waitMs)
+          return go()
         })
     }
-    return runVisit(ctx, game, visit, mode, waitMs)
+    return go()
   }
 })
 
