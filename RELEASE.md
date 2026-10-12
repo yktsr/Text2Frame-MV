@@ -236,9 +236,10 @@ VS Code の慣例で **奇数マイナーが pre-release、偶数マイナーが
 
 ### C-2. パッケージング
 
-`vsce package` が `vscode:prepublish`（`npm run compile` + `npm run bundle-compiler`）を
-自動で回し、**そのときのルートの `Text2Frame.js` / `Frame2Text.js` を `lib/` に取り込みます**。
-拡張はこの同梱コピーで動くので、**プラグイン本体を直したら拡張も出し直す必要があります**。
+`vsce package` が `vscode:prepublish`（`npm run compile`）を自動で回し、**そのときのルートの
+`Text2Frame.js` / `Frame2Text.js` / `t2f-mcp.js` ほかを `lib/` に取り込みます**（`compile` が
+`bundle-compiler` まで含みます）。拡張はこの同梱コピーで動くので、**プラグイン本体を直したら
+拡張も出し直す必要があります**。
 
 ```bash
 npx @vscode/vsce package --pre-release --baseImagesUrl https://github.com/yktsr/Text2Frame-MV/raw/HEAD/vscode-extension

@@ -837,19 +837,19 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile && npm run bundle-compiler",
-    "compile": "tsc -p ./",
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./ && npm run bundle-compiler",
     "bundle-compiler": "node ./scripts/bundle-compiler.js",
     "update-grammar": "node ./scripts/update-grammar.js",
     "update-tag-help": "node ./scripts/update-tag-help.js",
-    "watch": "tsc -watch -p ./",
+    "watch": "npm run bundle-compiler && tsc -watch -p ./",
     "pretest": "npm run compile",
     "test": "mocha --forbid-only test",
     "lint": "eslint src test --ext ts,js"
   },
   "devDependencies": {
     "@types/node": "^20.x",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "^1.101.0",
     "@typescript-eslint/eslint-plugin": "^6.x",
     "@typescript-eslint/parser": "^6.x",
     "chai": "^4.5.0",
