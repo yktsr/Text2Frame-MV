@@ -163,7 +163,10 @@ function handle(root: string, req: http.IncomingMessage, res: http.ServerRespons
     try {
         stat = fs.statSync(file);
         if (stat.isDirectory()) {
-            file = path.join(file, 'index.html');
+            /* FOSSIL を使うゲームは index.html だと require is not defined で落ちる。
+             * 書き出し済みならそちらを出す(testPlay.ts の pageFor と同じ理由)。 */
+            const fossil = path.join(file, 'FOSSILindex.html');
+            file = fs.existsSync(fossil) ? fossil : path.join(file, 'index.html');
             stat = fs.statSync(file);
         }
     } catch (e) {

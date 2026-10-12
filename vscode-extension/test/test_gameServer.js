@@ -54,6 +54,30 @@ describe('gameServer', function () {
     expect((await request(server.port, '/nothing.png')).status).to.equal(404)
   })
 
+  /* **実機で踏んだ。** FOSSIL を使うゲームは index.html だと require is not defined で
+   * 落ちる。道具は正しい URL を返していたが、ルートを開いた相手が落ちた。
+   * どこを開いても動くように、ルートは書き出し済みのページを出す。 */
+  it('serves the FOSSIL page at the root when the game has one', async function () {
+    const fossilRoot = path.join(parent, 'fossil')
+    fs.mkdirSync(path.join(fossilRoot, 'data'), { recursive: true })
+    fs.writeFileSync(path.join(fossilRoot, 'data', 'System.json'), '{}')
+    fs.writeFileSync(path.join(fossilRoot, 'index.html'), '<title>落ちる方</title>')
+    fs.writeFileSync(path.join(fossilRoot, 'FOSSILindex.html'), '<title>動く方</title>')
+    const fossil = await startGameServer(fossilRoot, 0)
+    try {
+      expect((await request(fossil.port, '/')).body.toString()).to.equal('<title>動く方</title>')
+      // 名指しで index.html を求めた人には、そのまま index.html を渡す。
+      expect((await request(fossil.port, '/index.html')).body.toString()).to.equal('<title>落ちる方</title>')
+    } finally {
+      await fossil.close()
+    }
+  })
+
+  /* 書き出されていないゲームはこれまでどおり index.html。 */
+  it('still serves index.html at the root when there is no FOSSIL page', async function () {
+    expect((await request(server.port, '/')).body.toString()).to.equal('<title>game</title>')
+  })
+
   it('never serves a file outside the game folder', async function () {
     for (const p of ['/../secret.txt', '/%2e%2e/secret.txt', '/..%2fsecret.txt', '/data/../../secret.txt', '/..\\secret.txt']) {
       const res = await request(server.port, p)
