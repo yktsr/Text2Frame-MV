@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { onDidChangePauseAtMarks, pauseAtMarks } from './debugSession';
 import { tr } from './db/lang';
-import { allSettingsQuery, settingLinks, settingQuery } from './settingsLinks';
+import { allSettingsQuery } from './settingsLinks';
 
 /**
  * Activity Bar "Commands" panel — a static, grouped, clickable list of the extension's
@@ -16,8 +16,6 @@ interface CommandSpec {
     tooltip: string;
     /** コマンドに渡すもの(設定を名指しで開くときの検索語など)。 */
     args?: unknown[];
-    /** 名前の横に薄く出す言葉(その設定がどの分類か、など)。 */
-    note?: string;
     /** 名前の横に出す今の状態(オン・オフなど)。 */
     describe?: () => string;
 }
@@ -32,7 +30,7 @@ interface CommandGroup {
 }
 
 /* 設定は VS Code の設定画面にあり、そこへ辿り着くのが分かりにくい。
- * ここから名指しで開ける。どれを出すかと合い言葉の作り方は、vscode に依存しない
+ * ここから一息で開ける。合い言葉の作り方は、vscode に依存しない
  * src/settingsLinks.ts が持っている。 */
 function settingsGroup(): CommandGroup {
     return {
@@ -45,15 +43,8 @@ function settingsGroup(): CommandGroup {
                 icon: 'settings-gear',
                 label: tr('すべての設定', 'All settings'),
                 tooltip: tr('この拡張の設定をまとめて開きます。', 'Opens every setting of this extension.')
-            } as CommandSpec
-        ].concat(settingLinks().map((one) => ({
-            command: 'workbench.action.openSettings',
-            args: [settingQuery(one.key)],
-            icon: 'gear',
-            label: one.label,
-            note: one.note,
-            tooltip: tr('この設定を開きます。', 'Opens this setting.')
-        })))
+            }
+        ]
     };
 }
 
@@ -252,11 +243,10 @@ class CommandsTreeProvider implements vscode.TreeDataProvider<CmdNode> {
         if (element.kind === 'group') {
             return element.children.map((spec) => {
                 const node = new CmdNode('command', spec.label, vscode.TreeItemCollapsibleState.None);
-                // 設定はどれも同じコマンドなので、名前には渡すものまで含める。
+                // 同じコマンドを渡すものだけ変えて出せるので、名前には渡すものまで含める。
                 node.id = 'command:' + spec.command + (spec.args ? ':' + String(spec.args[0]) : '');
                 node.iconPath = new vscode.ThemeIcon(spec.icon);
                 node.tooltip = spec.tooltip;
-                if (spec.note) node.description = spec.note;
                 if (spec.describe) node.description = spec.describe();
                 node.command = { command: spec.command, title: spec.label, arguments: spec.args };
                 return node;
