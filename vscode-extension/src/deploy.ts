@@ -512,13 +512,24 @@ export function showCompiledJson(context: vscode.ExtensionContext): void {
 }
 
 /** Wire up commands, status bar, and deploy-on-save. Called from activate(). */
+/* 保存時の自動反映。画面左下にしか無いと見つけにくいので、「操作」パネルからも
+ * 今どちらか引けるようにしてある(debugSession の pauseAtMarks と同じ形)。 */
+const SAVE_KEY = 'text2frame.deployOnSave';
+let saveStore: vscode.Memento | undefined;
+const saveEmitter = new vscode.EventEmitter<boolean>();
+export const onDidChangeDeployOnSave = saveEmitter.event;
+export function deployOnSave(): boolean {
+    return !!saveStore && saveStore.get<boolean>(SAVE_KEY, false) === true;
+}
+
 export function registerDeployFeature(context: vscode.ExtensionContext): void {
     const deployDiagnostics = vscode.languages.createDiagnosticCollection('text2frame-deploy');
 
     const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
     statusBar.command = 'text2frame.toggleDeployOnSave';
 
-    const stateKey = 'text2frame.deployOnSave';
+    saveStore = context.workspaceState;
+    const stateKey = SAVE_KEY;
     const isOn = (): boolean => context.workspaceState.get<boolean>(stateKey, false);
 
     let revertTimer: NodeJS.Timeout | undefined;
@@ -616,9 +627,11 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
         /* 「テキストの内容で上書き」。設定を変えずにこの1回だけ上書きで反映する。
          * 設定に隠れていると、ボタンが自分の仕事を言えない。 */
         vscode.commands.registerCommand('text2frame.deployCurrentFileOverwrite', () => applyCurrentFile('overwrite')),
+        saveEmitter,
         vscode.commands.registerCommand('text2frame.toggleDeployOnSave', () => {
             const next = !isOn();
             context.workspaceState.update(stateKey, next);
+            saveEmitter.fire(next);
             renderBase();
             vscode.window.showInformationMessage(tr('Text2Frame: 保存時の自動反映を ', 'Text2Frame: Turned apply on save ') + (next ? 'ON' : 'OFF') + tr(' にしました。', '.'));
         }),

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { deployOnSave, onDidChangeDeployOnSave } from './deploy';
 import { onDidChangePauseAtMarks, pauseAtMarks } from './debugSession';
 import { strategySetting } from './compiler';
 import { tr } from './db/lang';
@@ -77,6 +78,12 @@ function groups(): CommandGroup[] {
                     label: tr('ゲームから取り出す(このファイル)', 'Pull this file'),
                     tooltip: tr('今のファイルにゲームの内容を取り込みます(あなたの編集は残し、ゲーム側の変更を反映)。', 'Brings the game\'s contents into this file (your edits stay; changes made in the game come in).'),
                     describe: () => tr('統合', 'Merge')
+                },
+                {
+                    command: 'text2frame.toggleDeployOnSave', icon: 'sync',
+                    label: tr('保存時に自動反映', 'Apply on save'),
+                    tooltip: tr('保存したら自動でゲームに反映するかを切り替えます。今どちらかは横に出ています(画面左下にも出ます)。', 'Switches whether saving applies to the game. Which it is now shows beside it, and at the bottom left of the window.'),
+                    describe: () => (deployOnSave() ? tr('オン', 'On') : tr('オフ', 'Off'))
                 },
                 {
                     command: 'text2frame.deployCurrentFileOverwrite', icon: 'arrow-up',
@@ -198,11 +205,6 @@ function groups(): CommandGroup[] {
                     label: tr('会話のみ書き出し', 'Pull conversation only'),
                     tooltip: tr('会話部分だけを *.conversation.txt に書き出します。', 'Writes only the conversation to *.conversation.txt.')
                 },
-                {
-                    command: 'text2frame.toggleDeployOnSave', icon: 'sync',
-                    label: tr('保存時に自動反映 切替', 'Toggle apply-on-save'),
-                    tooltip: tr('保存したら自動でゲームに反映する設定を ON / OFF します。', 'Turns applying to the game on every save on or off.')
-                }
             ]
         },
         {
@@ -289,6 +291,7 @@ export function registerCommandsView(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.window.createTreeView('text2frameCommands', { treeDataProvider: provider }),
         onDidChangePauseAtMarks(() => provider.refresh()),
+        onDidChangeDeployOnSave(() => provider.refresh()),
         /* ボタンの横に出している今の状態(反映のしかた)は、設定が変わったら描き直す。
          * 聞いていないと、設定を直してもボタンが古いことを言い続ける。 */
         vscode.workspace.onDidChangeConfiguration((e) => {
