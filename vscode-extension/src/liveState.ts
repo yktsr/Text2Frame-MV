@@ -41,6 +41,8 @@ export interface LiveMessage {
     load?: string;
     /** 在るセーブ。 */
     saves?: SaveSlot[];
+    /** 取り込みの結果。 */
+    imported?: { done: number; failed: number };
     paused?: { reason: string; frames: RunFrame[] };
     resumed?: boolean;
     run?: RunFrame[];
@@ -86,6 +88,8 @@ export interface LiveCommand {
     saves?: boolean;
     /** そのセーブから再開する。 */
     load?: number;
+    /** ファイルで持っているセーブを入れる。 */
+    importSaves?: Array<{ name: string; data: string }>;
     input?: { keys?: string[]; key?: string; hold?: number; tap?: { x: number; y: number } };
 }
 
@@ -193,6 +197,12 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
         if (!v || typeof v !== 'object' || !['breakpoint', 'step', 'pause'].includes(String(v.reason))) throw new Error('bad');
         return { reason: String(v.reason), frames: readRun(v.frames) || [] };
     };
+    const readImported = (value: unknown): { done: number; failed: number } | undefined => {
+        if (value === undefined) return undefined;
+        const v = value as { done?: unknown; failed?: unknown };
+        if (!v || typeof v !== 'object' || !isCount(v.done, 100) || !isCount(v.failed, 100)) throw new Error('bad');
+        return { done: v.done as number, failed: v.failed as number };
+    };
     const readSaves = (value: unknown): SaveSlot[] | undefined => {
         if (value === undefined) return undefined;
         if (!Array.isArray(value) || value.length > 40) throw new Error('bad');
@@ -268,6 +278,7 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
             visit: o.visit as string | undefined,
             load: o.load as string | undefined,
             saves: readSaves(o.saves),
+            imported: readImported(o.imported),
             paused: readPaused(o.paused),
             resumed: o.resumed === true || undefined,
             run: readRun(o.run),
@@ -327,6 +338,8 @@ export class LiveState {
     lastLoad?: { result: string; at: number };
     /** 在るセーブ。 */
     saves?: SaveSlot[];
+    /** 取り込みの結果。 */
+    lastImport?: { done: number; failed: number; at: number };
     resets = 0;
     paused?: { reason: string; frames: RunFrame[]; at: number };
 
@@ -335,6 +348,7 @@ export class LiveState {
         if (message.visit) this.lastVisit = { result: message.visit, at: now };
         if (message.load) this.lastLoad = { result: message.load, at: now };
         if (message.saves) this.saves = message.saves;
+        if (message.imported) this.lastImport = { done: message.imported.done, failed: message.imported.failed, at: now };
         let debug = false;
         if (message.reset) this.resets++;
         if ((message.reset || message.resumed) && this.paused) {

@@ -110,6 +110,7 @@ const INSTRUCTIONS = [
   '  そこで新しいゲームが始まるので、入れ直さないと分岐に入りません。',
   '・t2f_play_load で、在るセーブから再開できます(slot を省くと一覧)。続きから調べたいときに。',
   '  ※ セーブはブラウザの番地(ポート)ごとに分かれます。別のポートで遊んだぶんは見えません。',
+  '  ツクール本体のテストプレイで作ったセーブは save/ にあります。fromDisk: true で取り込めます。',
   '・t2f_play_break はテキストの**行番号**で止めます。t2f_play_step で進めると、',
   '  止まった場所をテキストの行に戻して返します。',
   '・VS Code のテストプレイと同時には使えません(状態の受け手は1つなので、別のゲームになります)。'
@@ -2319,6 +2320,28 @@ TOOLS.push({
   }
 })
 
+/* ファイルで持っているセーブ。ツクール本体のテストプレイはここへ書き、ブラウザは
+ * 別の置き場所を使うので、そのままでは続きから調べられない。中身はどちらも同じものなので、
+ * 読んで渡すだけでよい(形式には触らない)。 */
+const SAVE_MAX_BYTES = 4 * 1024 * 1024
+const savesOnDisk = function (gameRoot) {
+  const dir = path.join(gameRoot, 'save')
+  let names = []
+  try { names = fs.readdirSync(dir) } catch (e) { return [] }
+  const out = []
+  names.sort().forEach(function (name) {
+    const m = /^(.+)\.(rmmzsave|rpgsave)$/.exec(name)
+    if (!m || m[1] === 'config') return
+    const file = path.join(dir, name)
+    let size = 0
+    try { size = fs.statSync(file).size } catch (e) { return }
+    if (size > SAVE_MAX_BYTES) { out.push({ name: m[1], tooBig: true, bytes: size }); return }
+    /* 読み書きはゲーム自身が utf8 で行う。同じ読み方をすれば中身は変わらない。 */
+    try { out.push({ name: m[1], data: fs.readFileSync(file, 'utf8'), bytes: size }) } catch (e) { /* 読めないものは出さない */ }
+  })
+  return out
+}
+
 const LOAD_WORDS = {
   loaded: 'セーブから再開しました',
   noSave: 'そのセーブがありません',
@@ -2331,6 +2354,8 @@ TOOLS.push({
   needsLive: true,
   description: '在るセーブを一覧し、選んだセーブから再開します。slot を省くと一覧だけ返します。' +
     '\n**セーブはブラウザのその番地(オリジン)ごとに分かれます。** 別のポートで開いたゲームのセーブは見えません。' +
+    '\nツクール本体のテストプレイで作ったセーブはゲームの save/ にあります。fromDisk: true を渡すと、' +
+    'それをブラウザ側へ取り込んでから一覧します(中身はどちらも同じものなので、入れ直すだけです)。' +
     '\n再開したあとは、そのときの状態のまま t2f_play_goto や t2f_play_set で続けられます。',
   annotations: { destructiveHint: true, idempotentHint: false },
   inputSchema: {
@@ -2338,6 +2363,7 @@ TOOLS.push({
     additionalProperties: false,
     properties: {
       slot: { type: 'integer', minimum: 1, maximum: 40, description: 'セーブの番号。省くと一覧だけ' },
+      fromDisk: { type: 'boolean', description: 'ゲームの save/ にあるセーブを先に取り込む(ツクール本体のテストプレイぶん)' },
       waitMs: { type: 'integer', minimum: 500, maximum: 60000, description: '答えを待つ上限(既定 10000)' }
     }
   },
@@ -2346,6 +2372,23 @@ TOOLS.push({
     if (!game) throw new Error('ゲームを動かしていません(先に t2f_play_start)')
     const waitMs = (args && args.waitMs) || 10000
     const slot = args && args.slot !== undefined ? Number(args.slot) : undefined
+
+    /* ファイルのぶんを先に入れる。入れてから一覧を取らないと、入れたものが出ない。 */
+    const bringIn = function () {
+      if (!(args && args.fromDisk)) return Promise.resolve(null)
+      const rows = savesOnDisk(game.gameRoot)
+      const big = rows.filter(function (one) { return one.tooBig })
+      const ready = rows.filter(function (one) { return !one.tooBig })
+      if (!ready.length) return Promise.resolve({ done: 0, failed: 0, big, none: true })
+      const before = game.state.lastImport
+      sendToGame(ctx, { importSaves: ready.map(function (one) { return { name: one.name, data: one.data } }) })
+      return waitFor(function () {
+        const now = game.state.lastImport
+        return now && (!before || now.at > before.at) ? now : false
+      }, waitMs).then(function (answer) {
+        return Object.assign({ big, asked: ready.length }, answer || { timeout: true })
+      })
+    }
 
     const listing = function () {
       const before = game.state.saves
@@ -2356,28 +2399,49 @@ TOOLS.push({
       }, waitMs)
     }
 
+    const told = function (brought) {
+      if (!brought) return []
+      const lines = []
+      if (brought.none) lines.push('ゲームの save/ に取り込めるファイルはありませんでした。')
+      else if (brought.timeout) lines.push('取り込みの返事が来ませんでした(' + brought.asked + ' 件を渡しました)。')
+      else lines.push('ファイルから取り込みました: ' + brought.done + ' 件' + (brought.failed ? '(' + brought.failed + ' 件は入れられませんでした)' : ''))
+      brought.big.forEach(function (one) { lines.push('  ' + one.name + ' は大きすぎるので飛ばしました(' + one.bytes + ' バイト)') })
+      return lines.concat('')
+    }
+
     if (slot === undefined) {
-      return listing().then(function (saves) {
+      return bringIn().then(function (brought) {
+        return listing().then(function (saves) { return { brought, saves } })
+      }).then(function (both) {
+        const brought = both.brought
+        const saves = both.saves
         if (!saves) return toolError('セーブの一覧が返りませんでした(' + (waitMs / 1000) + '秒)。t2f_play_status で様子を見てください。')
         if (!saves.length) {
-          return toolResult('このゲームにセーブはありません。\n' +
-            '※ セーブはブラウザのその番地ごとに分かれるので、別のポートで遊んだぶんはここには出ません。', { saves: [] })
+          return toolResult(told(brought).concat([
+            'このゲームにセーブはありません。',
+            '※ セーブはブラウザのその番地ごとに分かれるので、別のポートで遊んだぶんはここには出ません。',
+            'ツクール本体のテストプレイで作ったものは save/ にあるので、fromDisk: true で取り込めます。'
+          ]).join('\n'), { saves: [], imported: brought || null })
         }
-        const lines = ['セーブ ' + saves.length + ' 件:'].concat(saves.map(function (one) {
+        const lines = told(brought).concat(['セーブ ' + saves.length + ' 件:']).concat(saves.map(function (one) {
           return '  ' + one.slot + ' 番' + (one.playtime ? '  ' + one.playtime : '') +
             (one.at ? '  ' + new Date(one.at).toISOString().slice(0, 16).replace('T', ' ') : '')
         }))
         lines.push('', 't2f_play_load に slot を渡すと、そこから再開します。')
-        return toolResult(lines.join('\n'), { saves })
+        return toolResult(lines.join('\n'), { saves, imported: brought || null })
       })
     }
 
-    const before = game.state.lastLoad
-    sendToGame(ctx, { load: slot })
-    return waitFor(function () {
-      const now = game.state.lastLoad
-      return now && (!before || now.at > before.at) ? now : false
-    }, waitMs).then(function (answer) {
+    /* ファイルのぶんを先に入れてから読み込む。入れる前に読み込むと、取り込んだはずの
+     * セーブがまだ無い。 */
+    return bringIn().then(function () {
+      const before = game.state.lastLoad
+      sendToGame(ctx, { load: slot })
+      return waitFor(function () {
+        const now = game.state.lastLoad
+        return now && (!before || now.at > before.at) ? now : false
+      }, waitMs)
+    }).then(function (answer) {
       if (!answer) {
         return toolError('ゲームから答えが返りませんでした(' + (waitMs / 1000) + '秒)。' +
           'ブラウザのタブが裏に回っていると動きません。t2f_play_status で様子を見てください。')

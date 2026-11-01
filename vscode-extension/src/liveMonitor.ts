@@ -334,6 +334,7 @@ export function monitorScript(token: string): string {
   }
   var savesReport = null;
   var loadResult = null;
+  var importResult = null;
   /* セーブの口は MV と MZ で名前が違う。どちらでも動くように両方見る。 */
   function saveThere(dm, n) {
     try {
@@ -368,6 +369,50 @@ export function monitorScript(token: string): string {
       out.push(one);
     }
     return out;
+  }
+  /* ファイルで持っているセーブを、ブラウザ側の置き場所へ入れる。
+   * **変換はしない。** 中身はどちらの置き場所でも同じものなので、鍵の作り方だけ
+   * ゲーム自身のものを使う(MV と MZ で置き場所も鍵も違う)。 */
+  function importSaves(rows) {
+    var sm = window.StorageManager;
+    if (!sm || !Array.isArray(rows)) { importResult = { done: 0, failed: 0 }; return; }
+    var done = 0;
+    var failed = 0;
+    var waiting = [];
+    rows.forEach(function (one) {
+      var name = one && typeof one.name === 'string' ? one.name : '';
+      var data = one && typeof one.data === 'string' ? one.data : null;
+      if (!name || data === null) { failed++; return; }
+      try {
+        if (window.localforage && typeof sm.forageKey === 'function') {
+          waiting.push(window.localforage.setItem(sm.forageKey(name), data));
+          done++;
+        } else if (typeof sm.webStorageKey === 'function') {
+          var m = /^file(\\d+)$/.exec(name);
+          var id = m ? Number(m[1]) : (name === 'global' ? 0 : -1);
+          window.localStorage.setItem(sm.webStorageKey(id), data);
+          done++;
+        } else {
+          failed++;
+        }
+      } catch (e) { failed++; }
+    });
+    var settle = function () {
+      /* 入れただけでは「在る」と見なされない(鍵の控えを見て判断するため)。 */
+      if (typeof sm.updateForageKeys === 'function') {
+        try {
+          var got = sm.updateForageKeys();
+          if (got && typeof got.then === 'function') {
+            got.then(function () { importResult = { done: done, failed: failed }; },
+              function () { importResult = { done: done, failed: failed }; });
+            return;
+          }
+        } catch (e) { /* 控えが作れなくても、入れたことは言う */ }
+      }
+      importResult = { done: done, failed: failed };
+    };
+    if (waiting.length && window.Promise) window.Promise.all(waiting).then(settle, settle);
+    else settle();
   }
   function loadSave(slot) {
     var dm = window.DataManager;
@@ -584,6 +629,10 @@ export function monitorScript(token: string): string {
       message.saves = savesReport;
       savesReport = null;
     }
+    if (importResult) {
+      message.imported = importResult;
+      importResult = null;
+    }
     if (pausedReport) {
       message.paused = { reason: pausedReport.reason, frames: pausedReport.frames };
       pausedReport.lists.forEach(function (entry) {
@@ -597,7 +646,7 @@ export function monitorScript(token: string): string {
       message.resumed = true;
       resumedReport = false;
     }
-    if (message.reset || message.visit || message.load || message.saves || message.paused || message.resumed || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.parallel || message.run || message.scene !== undefined || message.player || Date.now() - lastSent >= HEARTBEAT) send(message);
+    if (message.reset || message.visit || message.load || message.saves || message.imported || message.paused || message.resumed || s || v || ss || items || message.gold !== undefined || message.actors || message.map !== undefined || message.pages || message.parallel || message.run || message.scene !== undefined || message.player || Date.now() - lastSent >= HEARTBEAT) send(message);
   }
   function pressInput(request) {
     var input = window.Input;
@@ -646,6 +695,7 @@ export function monitorScript(token: string): string {
       lastHere = '';
     }
     if (command.saves === true) savesReport = listSaves();
+    if (Array.isArray(command.importSaves)) importSaves(command.importSaves);
     if (command.load !== undefined) loadSave(command.load);
     if (command.breakpoints && typeof command.breakpoints === 'object') setBreakpoints(command.breakpoints);
     if (typeof command.debug === 'string') debug(command.debug);

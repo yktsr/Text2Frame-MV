@@ -597,6 +597,57 @@ const BODY = ['こんにちは。', '<ウェイト: 30>'].join('\n')
       expect(text(result)).to.contain('番地')
     })
 
+    /* ツクール本体のテストプレイはファイルに書き、ブラウザは別の置き場所を使う。
+     * 中身は同じものなので、読んで渡すだけでよい(形式には触らない)。 */
+    it('brings in the saves that are in the game folder', async function () {
+      fs.mkdirSync(path.join(root, 'save'), { recursive: true })
+      fs.writeFileSync(path.join(root, 'save', 'file2.rmmzsave'), 'ふぁいる2', 'utf8')
+      fs.writeFileSync(path.join(root, 'save', 'config.rmmzsave'), 'せってい', 'utf8')
+      await ok('t2f_play_start')
+      await connectFakeGame()
+
+      const listing = ok('t2f_play_load', { fromDisk: true, waitMs: 3000 })
+      const sent = await waitHeard('importSaves')
+      await fake.post({ imported: { done: 1, failed: 0 } })
+      await waitHeard('saves')
+      await fake.post({ saves: [{ slot: 2 }] })
+      const result = await listing
+
+      // 設定は渡さない(セーブではない)。
+      expect(sent.importSaves).to.eql([{ name: 'file2', data: 'ふぁいる2' }])
+      expect(text(result)).to.contain('ファイルから取り込みました: 1 件')
+      expect(text(result)).to.contain('2 番')
+    })
+
+    it('says so when the game folder has nothing to bring in', async function () {
+      await ok('t2f_play_start')
+      await connectFakeGame()
+
+      const listing = ok('t2f_play_load', { fromDisk: true, waitMs: 3000 })
+      await waitHeard('saves')
+      await fake.post({ saves: [] })
+      const result = await listing
+
+      expect(text(result)).to.contain('取り込めるファイルはありませんでした')
+      expect(fake.heard.filter(function (c) { return c.importSaves })).to.have.lengthOf(0)
+    })
+
+    /* 大きすぎるものは渡さない。通路に流すものに上限を置く。 */
+    it('skips a file that is too big, and says which', async function () {
+      fs.mkdirSync(path.join(root, 'save'), { recursive: true })
+      fs.writeFileSync(path.join(root, 'save', 'file5.rmmzsave'), 'x'.repeat(5 * 1024 * 1024), 'utf8')
+      await ok('t2f_play_start')
+      await connectFakeGame()
+
+      const listing = ok('t2f_play_load', { fromDisk: true, waitMs: 3000 })
+      await waitHeard('saves')
+      await fake.post({ saves: [] })
+      const result = await listing
+
+      expect(fake.heard.filter(function (c) { return c.importSaves })).to.have.lengthOf(0)
+      expect(text(result)).to.contain('file5 は大きすぎる')
+    })
+
     it('resumes from the slot it was given', async function () {
       await ok('t2f_play_start')
       await connectFakeGame()
