@@ -977,7 +977,7 @@ TOOLS.push({
     const list = listOf(ctx, found.target)
     const header = ctx.f2t.renderFrontMatter(found.target, found.target.kind)
     if (args && args.translationOnly) {
-      const body = ctx.f2t.decompile(list, true, { pretty: true, translationOnly: true })
+      const body = ctx.f2t.decompile(list, true, { pretty: true, translationOnly: true, gameRoot: ctx.root })
       return toolResult(header + body, { key: found.target.key, translationOnly: true, text: header + body })
     }
     const existing = found.index.paths[found.target.key]
@@ -986,6 +986,7 @@ TOOLS.push({
     /* 読むだけなので「ゲームの今」をそのまま出す(overwrite)。統合は書き込みの話で、
      * t2f_write_plan が扱う。見出しは既にあるテキストのものを引き継ぐ。 */
     const built = ctx.f2t.buildPullText({
+      gameRoot: ctx.root,
       list,
       strategy: 'overwrite',
       existingText,
@@ -1262,7 +1263,7 @@ const guardsAt = function (ctx, list, index) {
     if (!one) continue
     if (one.kind === 'if' && one.cmd) {
       let said = ''
-      try { said = String(ctx.f2t.decompile([one.cmd], true, { pretty: true })).trim() } catch (e) { said = '' }
+      try { said = String(ctx.f2t.decompile([one.cmd], true, { pretty: true, gameRoot: ctx.root })).trim() } catch (e) { said = '' }
       if (said) out.push({ kind: 'if', negated: !!one.negated, text: said })
     } else if (one.kind === 'choice') {
       out.push({ kind: 'choice', negated: false, text: '選択肢「' + String((one.cmd.parameters || [])[1] || '') + '」を選んだとき' })
@@ -1567,7 +1568,7 @@ TOOLS.push({
     const body = ctx.t2f.parseFrontMatter(text).body
     let commands
     try {
-      commands = ctx.t2f.compile(body)
+      commands = ctx.t2f.compile(body, { gameRoot: ctx.root })
     } catch (e) {
       return toolError('文法の誤りがあります: ' + ((e && e.message) || String(e)))
     }
@@ -1707,7 +1708,7 @@ TOOLS.push({
       if (!result.ok) return toolError('反映できません: ' + (result.error || '原因不明') + (result.errorLine ? '（' + result.errorLine + ' 行目: ' + (result.errorLineText || '') + '）' : ''))
 
       const render = function (list) {
-        return list ? ctx.f2t.decompile(list, true, { pretty: true }) : '(ページがありません)'
+        return list ? ctx.f2t.decompile(list, true, { pretty: true, gameRoot: ctx.root }) : '(ページがありません)'
       }
       const token = sha1([target.key, strategy, text, fingerprintOf(dataPath), fingerprintOf(textPath)].join('\u0000'))
       forgetOldPlans(Date.now())
@@ -2646,7 +2647,7 @@ const alignFor = function (ctx, target) {
    * 無いときは body が元の text そのままなので 0 になる)。 */
   const flat = text.split('\r\n').join('\n')
   const offset = flat.length > body.length ? flat.slice(0, flat.length - body.length).split('\n').length - 1 : 0
-  const built = ctx.t2f.compile(body, { lineMap: true })
+  const built = ctx.t2f.compile(body, { lineMap: true, gameRoot: ctx.root })
   const game = listOf(ctx, found.target)
   const alignment = lines.alignCommands(game.map(lines.commandMark), built.commands.map(lines.commandMark))
   return { found, built, alignment, offset, lines, textPath: existing }

@@ -115,6 +115,7 @@ function pullTarget (target, opts) {
   const id = T2F.baseIdForTarget(textPath, root, target)
   const entryStrategy = String(strategy).toLowerCase() === 'overwrite' ? 'overwrite' : 'merge'
   const built = F2T.buildPullText({
+    gameRoot: root,
     list,
     englishTag,
     strategy: entryStrategy,

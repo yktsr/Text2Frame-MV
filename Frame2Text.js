@@ -717,6 +717,19 @@
     return null
   }
 
+  /* ゲーム自身の設定(js/plugins.js の Text2Frame のパラメータ)を、その呼び出しの間だけ使う。
+   * 省くかどうかの基準は「タグが無いとき compile が補う値」でなければならないので、
+   * 補う側と同じ設定を見る必要がある。
+   * 戻す関数を返す。ルートが分からないときも関数を返すので、呼び側は分岐しない。
+   * ゲームの中では内部窓そのものが無い(あちらは PluginManager から読めている)。 */
+  function useGameSettings (gameRoot) {
+    const noop = function () {}
+    if (!gameRoot) return noop
+    const api = resolveText2Frame()
+    const use = api && api._internal && api._internal.useProjectParameters
+    return use ? use(gameRoot) : noop
+  }
+
   /* 入/切の指定を1か所で畳む(英語タグ・既定タグの省略の両方で使う)。ツクールのパラメータ・
    * プラグインコマンドの引数・CLI のオプションはどれも文字列で届き、'false' は truthy なので、
    * ここを通さないと指定が黙って無視される。
@@ -3226,9 +3239,11 @@
     const decompile = function (map_events, englishTag, options) {
       const previousEnglishTag = EnglishTag
       if (englishTag !== undefined) EnglishTag = toFlag(englishTag, true)
+      const restoreGame = useGameSettings(options && options.gameRoot)
       try {
         return decompileCore(map_events, options)
       } finally {
+        restoreGame()
         EnglishTag = previousEnglishTag
       }
     }
@@ -3450,8 +3465,7 @@
     //  ・ゲームへ書くものが無いとき: 書き換えなかった側=ゲームを入れる。ここに merge 結果を入れると、
     //    ゲームが一度も到達していない状態が祖先になり、次の反映で 3-way が「ゲームが消した」と
     //    誤読して、取り出し前にテキストへ書いた分が黙って消える。
-    const buildPullText = function (opts) {
-      opts = opts || {}
+    const buildPullTextCore = function (opts) {
       const list = opts.list || []
       const englishTag = toFlag(opts.englishTag, true)
       const existingText = opts.existingText || ''
@@ -3528,6 +3542,19 @@
         approximate: restored.approximate,
         // applyMergePull の警告はこれまで捨てられていた(祖先が無いときの上書き警告など)。
         warnings: r.warnings || []
+      }
+    }
+
+    /* opts.gameRoot をもらったら、そのゲームの設定で省く・補うを決める。
+     * ここで窓を開けるのは、中の decompile だけでなく applyMergePull も効くようにするため
+     * (あれは Text2Frame の compile を呼ぶので、補う側もこの設定で動く必要がある)。 */
+    const buildPullText = function (opts) {
+      opts = opts || {}
+      const restoreGame = useGameSettings(opts.gameRoot)
+      try {
+        return buildPullTextCore(opts)
+      } finally {
+        restoreGame()
       }
     }
 
@@ -3689,6 +3716,8 @@
         }
         const built = buildPullText({
           list,
+          // ゲームのルートは data の親。そのゲームの設定で省く・補うを決める。
+          gameRoot: _path.dirname(opts.dataDir),
           englishTag: opts.englishTag,
           omitDefaults: opts.omitDefaults,
           strategy: entryStrategy,

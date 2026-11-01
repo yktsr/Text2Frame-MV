@@ -5361,6 +5361,11 @@
         /* 反映のしかたは Strategy 1つで決まる。上書きかどうかはここで導く。
          * 呼ぶ側が両方渡す形だと、食い違ったときにどちらが効くのか分からない。 */
         Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite'
+        /* そのゲームの設定で補う。ここは applyTextFile を通らない CLI の
+         * --mode map / --mode common のための口で、あちらは1プロセス1操作で終わるので
+         * 戻さない。applyTextFile 経由のときは、あちらの復元がこれを畳む。
+         * 上の Object.assign より後に置くのは、同じ鍵が払い落とされないため。 */
+        useProjectParameters(Laurus.Text2Frame.GameRoot || Laurus.Text2Frame.BaseRoot)
         break
       case 'LIBRARY_EXPORT' :
         break
@@ -10788,7 +10793,7 @@
     /* opts.lineMap を立てると { commands, lineMap } を返す。lineMap[k] は commands[k] が出てきた
      * テキストの行番号(0始まり)。エディタ拡張のプレビューが、コマンドとテキストの行を結ぶのに使う。
      * 立てなければ従来どおりコマンドの配列だけを返し、出力は変わらない。 */
-    const compile = function (text, opts) {
+    const compileCore = function (text, opts) {
       const wantLineMap = !!(opts && opts.lineMap)
       let scenario_text = uniformNewLineCode(text)
       // % 行の除去とブロックの畳み込みで行がずれるので、元の行番号を追いかける。
@@ -10851,6 +10856,17 @@
       }
       event_command_list = autoIndent(event_command_list)
       return line_map ? { commands: event_command_list, lineMap: line_map } : event_command_list
+    }
+
+    /* opts.gameRoot をもらったら、そのゲームの設定(js/plugins.js)で補う。
+     * その呼び出しの間だけ入れ替えて戻す。渡されなければ今までどおり。 */
+    const compile = function (text, opts) {
+      const restore = useProjectParameters(opts && opts.gameRoot)
+      try {
+        return compileCore(text, opts)
+      } finally {
+        restore()
+      }
     }
 
     /* 反映方法は add(末尾に追記) / merge(構造保持の賢い反映) / overwrite(上書き) の3つ。
@@ -11144,6 +11160,11 @@
       }
       const strategy = _resolvedStrategy.strategy
 
+      /* そのゲームの設定で補う。gameRoot を渡さなければ baseRoot を使う
+       * (既存の呼び手は4つとも baseRoot を渡している)。別の関心なので、
+       * 下の走り書きの退避とは別に控える。 */
+      const restoreProject = useProjectParameters(opts.gameRoot || opts.baseRoot)
+
       const prevWarnings = Laurus.Text2Frame._warnings
       const prevQuiet = Laurus.Text2Frame._quiet
       const prevConflicts = Laurus.Text2Frame._conflicts
@@ -11239,6 +11260,7 @@
         Laurus.Text2Frame._quiet = prevQuiet
         Laurus.Text2Frame._conflicts = prevConflicts
         Laurus.Text2Frame._writeBack = prevWriteBack
+        restoreProject()
       }
     }
 
