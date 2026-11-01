@@ -2327,26 +2327,11 @@ TOOLS.push({
   }
 })
 
-/* ファイルで持っているセーブ。ツクール本体のテストプレイはここへ書き、ブラウザは
- * 別の置き場所を使うので、そのままでは続きから調べられない。中身はどちらも同じものなので、
- * 読んで渡すだけでよい(形式には触らない)。 */
-const SAVE_MAX_BYTES = 4 * 1024 * 1024
+/* ファイルで持っているセーブ。拡張の画面からも同じものを読むので、見分け方は
+ * 借りている層(db/saves)に1つだけ置いてある。 */
 const savesOnDisk = function (gameRoot) {
-  const dir = path.join(gameRoot, 'save')
-  let names = []
-  try { names = fs.readdirSync(dir) } catch (e) { return [] }
-  const out = []
-  names.sort().forEach(function (name) {
-    const m = /^(.+)\.(rmmzsave|rpgsave)$/.exec(name)
-    if (!m || m[1] === 'config') return
-    const file = path.join(dir, name)
-    let size = 0
-    try { size = fs.statSync(file).size } catch (e) { return }
-    if (size > SAVE_MAX_BYTES) { out.push({ name: m[1], tooBig: true, bytes: size }); return }
-    /* 読み書きはゲーム自身が utf8 で行う。同じ読み方をすれば中身は変わらない。 */
-    try { out.push({ name: m[1], data: fs.readFileSync(file, 'utf8'), bytes: size }) } catch (e) { /* 読めないものは出さない */ }
-  })
-  return out
+  const layer = loadDb('saves')
+  return layer ? layer.savesOnDisk(gameRoot) : []
 }
 
 const LOAD_WORDS = {

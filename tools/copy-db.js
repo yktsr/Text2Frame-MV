@@ -34,7 +34,9 @@ const MODULES = [
   // RpgCommand を型だけ取り込むので実行時の require が無く、閉じ検査では炙り出されない。
   'commandRefs.js',
   // 行とコマンド番号の対応(ブレークポイント)。runLines は依存ゼロ、breakpoints は ./runLines。
-  'runLines.js', 'breakpoints.js'
+  'runLines.js', 'breakpoints.js',
+  // ゲームのフォルダにあるセーブの見分け方。拡張と MCP の両方が使う。
+  'saves.js'
 ]
 
 /* src/ 直下にある、vscode に依存しない層。**db/ の中へ平らに入れる。**
