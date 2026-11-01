@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { commentCharFor } from './compiler';
 import { DatabaseService, DbContext } from './dbService';
 import { KINDS, DbKind, padId } from './db/database';
 import { scanLines } from './db/tagRefs';
@@ -134,7 +135,7 @@ async function findUsages(node: Node, service: DatabaseService): Promise<void> {
         let text: string;
         try { text = fs.readFileSync(uri.fsPath, 'utf8'); } catch (e) { continue; }
         const lines = text.replace(/\r\n/g, '\n').split('\n');
-        for (const ref of scanLines(lines)) {
+        for (const ref of scanLines(lines, commentCharFor(root))) {
             if (ref.kind !== node.kind || node.id < ref.id || node.id > (ref.endId ?? ref.id)) continue;
             picks.push({
                 label: `${path.relative(root, uri.fsPath)}:${ref.line + 1}`,

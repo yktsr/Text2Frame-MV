@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DatabaseService, DbContext } from './dbService';
 import { RunTracker } from './runHighlight';
-import { parseFrontMatter, workspaceRootFor } from './compiler';
+import { commentCharFor, parseFrontMatter, workspaceRootFor } from './compiler';
 import { readJsonFile } from './db/files';
 import { renderCommands } from './exportText';
 import { placeFromKey, placeFromMeta, placeKey, placeLabel } from './placeLabel';
@@ -328,11 +328,12 @@ export function registerEventLinks(context: vscode.ExtensionContext, service: Da
             r.line === position.line && r.start <= position.character && position.character <= r.end;
         const place = placeFromMeta(parseFrontMatter(document.getText()).meta);
         const own = place && placeKey(place);
-        const self = scanSelfSwitchLines(lines).find(within);
+        const commentChar = commentCharFor(workspaceRootFor(document));
+        const self = scanSelfSwitchLines(lines, commentChar).find(within);
         if (self && place && place.kind === 'event' && place.eventId !== undefined) {
             return nodeKey({ kind: 'selfSwitch', mapId: place.mapId, eventId: place.eventId, letter: self.letter });
         }
-        const ref = scanLines(lines).find(within);
+        const ref = scanLines(lines, commentChar).find(within);
         if (ref) {
             if (ref.kind === 'commonEvent') return nodeKey({ kind: 'common', id: ref.id });
             if (ref.kind === 'switch') return nodeKey({ kind: 'switch', id: ref.id });

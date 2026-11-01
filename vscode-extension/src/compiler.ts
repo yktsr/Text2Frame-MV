@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { snapshotKeyForTarget } from './db/baseKey';
 import * as fs from 'fs';
+import { commentOutCharIn } from './db/projectParams';
 import { isHistoryCopy, noteWrite } from './db/history';
 import { tr } from './db/lang';
 
@@ -235,6 +236,37 @@ export function dataDirFor(workspaceRoot: string): string {
 /** テキストのフォルダ(設定 text2frame.textBaseDir、既定は text)。 */
 export function textBaseDirFor(workspaceRoot: string): string {
     return path.resolve(workspaceRoot, settingFor(workspaceRoot, 'textBaseDir', 'text'));
+}
+
+/* js/plugins.js を読んだ結果を mtime で覚える。色分けと指摘は打つたびに走るので、
+ * 毎回ファイルを読まない。autoWrapIn(messageCheck.ts)と同じ作法。 */
+const commentCharCache = new Map<string, { mtime: number; char: string }>();
+
+/**
+ * このゲームの Text2Frame が使うコメント文字。既定は `%`。
+ *
+ * `%` 以外にしている人の画面では、知らないと**コメント行が本文として色分けされ、
+ * 本文がコメントとして消える**。反映の側は本体が同じ設定を読んで補うので、画面も揃える。
+ */
+export function commentCharFor(workspaceRoot: string | undefined): string {
+    if (!workspaceRoot) return '%';
+    const file = path.join(gameRootFor(workspaceRoot) as string, 'js', 'plugins.js');
+    let mtime: number;
+    try {
+        mtime = fs.statSync(file).mtimeMs;
+    } catch (e) {
+        return '%';
+    }
+    const hit = commentCharCache.get(file);
+    if (hit && hit.mtime === mtime) return hit.char;
+    let char = '%';
+    try {
+        char = commentOutCharIn(fs.readFileSync(file, 'utf8')) || '%';
+    } catch (e) {
+        char = '%';
+    }
+    commentCharCache.set(file, { mtime, char });
+    return char;
 }
 
 /**

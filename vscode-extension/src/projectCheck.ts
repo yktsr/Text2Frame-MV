@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DatabaseService, DbContext } from './dbService';
-import { frontMatterBody, parseFrontMatter, workspaceRootFor } from './compiler';
+import { commentCharFor, frontMatterBody, parseFrontMatter, workspaceRootFor } from './compiler';
 import { isSidecarText } from './db/files';
 import { loadCompiler, unappliedFilesSlowly } from './deploy';
 import { projectTextFiles } from './usagesView';
@@ -102,6 +102,8 @@ export function registerProjectCheck(context: vscode.ExtensionContext, service: 
             const fit = messageFitFor(ctx);
             const known = new Set(knownTagNames().map((n) => n.toLowerCase()));
             const audio = audioNames(ctx);
+            // このプロジェクトのコメント文字。コメント行を本文として指摘しないため。
+            const commentChar = commentCharFor(ctx.root);
             const results = new Map<string, vscode.Diagnostic[]>();
             for (let i = 0; i < files.length; i++) {
                 if (token.isCancellationRequested) return;
@@ -120,14 +122,14 @@ export function registerProjectCheck(context: vscode.ExtensionContext, service: 
                 const lines = text.split(/\r?\n/);
                 const { meta, hasFrontMatter } = parseFrontMatter(text);
                 const list: vscode.Diagnostic[] = [];
-                for (const p of basicProblems(lines)) list.push(diagnostic(p.line, p.start, p.end, p.message, p.severity, p.code));
+                for (const p of basicProblems(lines, commentChar)) list.push(diagnostic(p.line, p.start, p.end, p.message, p.severity, p.code));
                 const mapId = meta.kind === 'common' ? undefined : parseInt(meta.mapId, 10);
                 const lookups = lookupsFor(service, ctx, Number.isInteger(mapId) ? mapId : undefined);
-                for (const ref of scanLines(lines)) {
+                for (const ref of scanLines(lines, commentChar)) {
                     const problem = describeRef(ctx.db, ref, lookups).problem;
                     if (problem) list.push(diagnostic(ref.line, ref.start, ref.end, problem.message, problem.severity === 'warning' ? 'warning' : 'info', 'db-problem'));
                 }
-                lineKinds(lines).forEach((kind, line) => {
+                lineKinds(lines, commentChar).forEach((kind, line) => {
                     if (kind !== 'tag') return;
                     for (const a of audioRefs(lines[line])) {
                         if (!audio.get(a.folder)?.has(a.name)) list.push(diagnostic(line, a.start, a.end, `audio/${a.folder}/${a.name} が見つかりません。`, 'warning', 'audio-missing'));

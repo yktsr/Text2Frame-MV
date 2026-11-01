@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { commentCharFor } from './compiler';
 import { DatabaseService, DbContext } from './dbService';
 import { messageMetrics, messageProblems, autoWrapPlugin, capacity, lineWidth, MessageMetrics, WidthLookups } from './db/messageFit';
 import { tr } from './db/lang';
@@ -17,6 +18,8 @@ export interface MessageFit {
     metrics: MessageMetrics;
     lookups: WidthLookups;
     lineLength?: number;
+    /** このプロジェクトのコメント文字。コメント行は幅を調べない。 */
+    commentOutChar: string;
 }
 
 const pluginCache = new Map<string, { mtime: number; name?: string }>();
@@ -56,14 +59,15 @@ export function messageFitFor(ctx: DbContext): MessageFit | undefined {
             },
             currencyUnit: ctx.db.system.currencyUnit
         },
-        lineLength
+        lineLength,
+        commentOutChar: commentCharFor(ctx.root)
     };
 }
 
 const round = (n: number): string => (Math.round(n * 2) / 2).toString();
 
 export function messageDiagnostics(lines: string[], fit: MessageFit): vscode.Diagnostic[] {
-    return messageProblems(lines, fit.metrics, { lookups: fit.lookups, lineLength: fit.lineLength }).map((p) => {
+    return messageProblems(lines, fit.metrics, { lookups: fit.lookups, lineLength: fit.lineLength, commentOutChar: fit.commentOutChar }).map((p) => {
         const d = new vscode.Diagnostic(
             new vscode.Range(p.line, p.start, p.line, lines[p.line].length),
             tr(`ウィンドウの幅を超えています(約 ${round(p.width as number)} 文字ぶん。入るのは約 ${Math.floor(p.capacity as number)} 文字)。はみ出した分は表示されません。`, `Wider than the window (about ${round(p.width as number)} characters; about ${Math.floor(p.capacity as number)} fit). The part that sticks out is not shown.`)

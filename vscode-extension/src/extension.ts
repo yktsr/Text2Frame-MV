@@ -18,7 +18,7 @@ import { exportCurrentFile, exportConversationOnly } from './exportText';
 import { deployAll, exportAll, repullAllOverwrite } from './batch';
 import { registerTreeView } from './tree';
 import { registerCommandsView } from './commandsView';
-import { parseFrontMatter } from './compiler';
+import { commentCharFor, parseFrontMatter, workspaceRootFor } from './compiler';
 import { DatabaseService } from './dbService';
 import { registerDatabaseFeatures } from './dbFeatures';
 import { registerDatabaseView } from './dbView';
@@ -180,7 +180,7 @@ function updateDiagnostics(document: vscode.TextDocument, collection: vscode.Dia
 
     const lines: string[] = [];
     for (let i = 0; i < document.lineCount; i++) lines.push(document.lineAt(i).text);
-    const diagnostics = basicProblems(lines).map((p) => {
+    const diagnostics = basicProblems(lines, commentCharFor(workspaceRootFor(document))).map((p) => {
         const d = new vscode.Diagnostic(
             new vscode.Range(p.line, p.start, p.line, p.end),
             p.message,
