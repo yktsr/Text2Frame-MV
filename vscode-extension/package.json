@@ -156,6 +156,16 @@
         "icon": "$(window)"
       },
       {
+        "command": "text2frame.tree.textsOnly",
+        "title": "%command.text2frame.tree.textsOnly.title%",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "text2frame.tree.showAll",
+        "title": "%command.text2frame.tree.showAll.title%",
+        "icon": "$(filter-filled)"
+      },
+      {
         "command": "text2frame.deployCurrentFileOverwrite",
         "title": "%command.text2frame.deployCurrentFileOverwrite.title%",
         "icon": "$(arrow-up)"
@@ -501,6 +511,16 @@
           "group": "navigation"
         },
         {
+          "command": "text2frame.tree.textsOnly",
+          "when": "view == text2frameExplorer && !text2frame.treeTextsOnly",
+          "group": "navigation@0"
+        },
+        {
+          "command": "text2frame.tree.showAll",
+          "when": "view == text2frameExplorer && text2frame.treeTextsOnly",
+          "group": "navigation@0"
+        },
+        {
           "command": "text2frame.tree.refresh",
           "when": "view == text2frameExplorer",
           "group": "navigation"
@@ -572,6 +592,14 @@
         },
         {
           "command": "text2frame.tree.refresh",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.textsOnly",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.showAll",
           "when": "false"
         },
         {

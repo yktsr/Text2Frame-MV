@@ -9,6 +9,8 @@
   "command.text2frame.stopTestPlay.title": "Text2Frame: Stop the test play server",
   "command.text2frame.showLiveValues.title": "Text2Frame: Show switches & variables while test playing",
   "command.text2frame.openLiveValuesTab.title": "Text2Frame: Show the debug menu",
+  "command.text2frame.tree.textsOnly.title": "Text2Frame: Show only what has a text",
+  "command.text2frame.tree.showAll.title": "Text2Frame: Show everything",
   "command.text2frame.deployCurrentFileOverwrite.title": "Text2Frame: Overwrite the game with this text",
   "command.text2frame.exportCurrentFileOverwrite.title": "Text2Frame: Overwrite this text from the game",
   "command.text2frame.importSaves.title": "Text2Frame: Bring in the RPG Maker saves",
