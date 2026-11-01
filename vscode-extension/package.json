@@ -156,6 +156,16 @@
         "icon": "$(window)"
       },
       {
+        "command": "text2frame.deployCurrentFileOverwrite",
+        "title": "%command.text2frame.deployCurrentFileOverwrite.title%",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "text2frame.exportCurrentFileOverwrite",
+        "title": "%command.text2frame.exportCurrentFileOverwrite.title%",
+        "icon": "$(arrow-down)"
+      },
+      {
         "command": "text2frame.importSaves",
         "title": "%command.text2frame.importSaves.title%",
         "icon": "$(cloud-download)"
@@ -472,6 +482,16 @@
           "command": "text2frame.showPreview",
           "when": "resourceLangId == text2frame",
           "group": "navigation@3"
+        },
+        {
+          "command": "text2frame.deployCurrentFileOverwrite",
+          "when": "resourceScheme == file && (resourceLangId == text2frame || resourceExtname == .txt)",
+          "group": "9_text2frame@1"
+        },
+        {
+          "command": "text2frame.exportCurrentFileOverwrite",
+          "when": "resourceScheme == file && (resourceLangId == text2frame || resourceExtname == .txt)",
+          "group": "9_text2frame@2"
         }
       ],
       "view/title": [

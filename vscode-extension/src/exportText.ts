@@ -6,6 +6,7 @@ import { relLabel } from './db/files';
 import { noteWrite, withHistory } from './db/history';
 import { loadCompiler } from './deploy';
 import { placeFromMeta, placeKey } from './placeLabel';
+import { reviewEnabled } from './review';
 import { reviewPull } from './reviewApply';
 import { tr } from './db/lang';
 import { targetKeyFromMeta } from './db/baseKey';
@@ -548,7 +549,7 @@ function targetFromDocument(document: vscode.TextDocument): ExportTarget {
  * Command: pull this file's content from the game, merging (keeps your edits, brings in
  * game-side changes). Use "全部取り直す" (overwrite) when you want to discard and re-pull.
  */
-export async function exportCurrentFile(context: vscode.ExtensionContext): Promise<void> {
+export async function exportCurrentFile(context: vscode.ExtensionContext, mode: 'merge' | 'overwrite' = 'merge'): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         vscode.window.showWarningMessage(tr('Text2Frame: アクティブなエディタがありません。', 'Text2Frame: No active editor.'));
@@ -566,7 +567,21 @@ export async function exportCurrentFile(context: vscode.ExtensionContext): Promi
         vscode.window.showErrorMessage('Text2Frame: ' + (e instanceof Error ? e.message : String(e)));
         return;
     }
-    const reviewed = await reviewPull(workspaceRoot, () => [planPull(context, workspaceRoot, target, 'merge')], tr('このファイルの取り出し', 'Pull this file'));
+    if (mode === 'overwrite') {
+        if (fs.existsSync(target.textPath)) target.frontMatterSource = fs.readFileSync(target.textPath, 'utf8');
+        /* 差分を見せない設定のときは、ここで止めて聞く。見せる設定なら差分の画面が
+         * 確認そのものなので、二重に聞かない(batch.ts の全部取り直しと同じ考え)。 */
+        if (!reviewEnabled()) {
+            const go = tr('ゲームの内容で上書きする', 'Overwrite from the game');
+            const answer = await vscode.window.showWarningMessage(tr(
+                `Text2Frame: ${path.basename(target.textPath)} をゲームの内容で上書きします。このテキストの編集は失われます。`,
+                `Text2Frame: Overwriting ${path.basename(target.textPath)} with the game's contents. Your edits to this text are lost.`),
+            { modal: true }, go);
+            if (answer !== go) return;
+        }
+    }
+    const scope = mode === 'overwrite' ? tr('このファイルの取り直し', 'Re-pull this file') : tr('このファイルの取り出し', 'Pull this file');
+    const reviewed = await reviewPull(workspaceRoot, () => [planPull(context, workspaceRoot, target, mode)], scope);
     if (!reviewed) {
         vscode.window.setStatusBarMessage(tr('Text2Frame: 取り出しをやめました。', 'Text2Frame: Stopped pulling.'), 4000);
         return;

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { baseSnapshotPath, dataDirFor, gameRootFor, hasBaseSnapshot, historyKeep, loadModule, parseFrontMatter, resolveTarget, snapshotKeyForTarget, textBaseDirFor, workspaceRootFor } from './compiler';
+import { baseSnapshotPath, dataDirFor, gameRootFor, hasBaseSnapshot, strategySetting, historyKeep, loadModule, parseFrontMatter, resolveTarget, snapshotKeyForTarget, textBaseDirFor, workspaceRootFor } from './compiler';
 import { isSidecarText } from './db/files';
 import { withHistory } from './db/history';
 import { commitPull, planPull, pullTargetsFor, ExportTarget, PullPlan } from './exportText';
@@ -33,10 +33,6 @@ function getOutput(): vscode.OutputChannel {
 /** 取り出す範囲。既定は中身のあるものだけ。 */
 export function exportScopeSetting(): string {
     return vscode.workspace.getConfiguration('text2frame').get<string>('exportScope', 'nonempty');
-}
-
-function strategySetting(): string {
-    return vscode.workspace.getConfiguration('text2frame').get<string>('strategy', 'merge');
 }
 
 /** Recursively collect *.txt files under a directory. */

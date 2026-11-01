@@ -222,6 +222,11 @@ export function workspaceRootFor(document?: vscode.TextDocument): string | undef
  * 2つのゲームを1つのウィンドウで開いている人のところで両方が同じ値になり、
  * 片方のゲームのデータを見失う。 */
 
+/** 反映のしかた(設定 text2frame.strategy、既定は統合)。 */
+export function strategySetting(): string {
+    return vscode.workspace.getConfiguration('text2frame').get<string>('strategy') || 'merge';
+}
+
 /** そのフォルダでのフォルダ名の設定。空文字は未設定と同じに扱う。 */
 export function settingFor(workspaceRoot: string, key: string, fallback: string): string {
     const config = vscode.workspace.getConfiguration('text2frame', vscode.Uri.file(workspaceRoot));

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { onDidChangePauseAtMarks, pauseAtMarks } from './debugSession';
+import { strategySetting } from './compiler';
 import { tr } from './db/lang';
 import { allSettingsQuery } from './settingsLinks';
 
@@ -28,6 +29,10 @@ interface CommandGroup {
     open?: boolean;
     items: CommandSpec[];
 }
+
+/** 今の反映のしかた。ボタンの横に出して、押す前に分かるようにする。 */
+const applyHow = (): string =>
+    (strategySetting() === 'overwrite' ? tr('上書き', 'Overwrite') : tr('統合', 'Merge'));
 
 /* 設定は VS Code の設定画面にあり、そこへ辿り着くのが分かりにくい。
  * ここから一息で開ける。合い言葉の作り方は、vscode に依存しない
@@ -64,12 +69,24 @@ function groups(): CommandGroup[] {
                 {
                     command: 'text2frame.deployCurrentFile', icon: 'rocket',
                     label: tr('ゲームに反映(このファイル)', 'Apply this file'),
-                    tooltip: tr('今開いているテキストをゲームに反映します。', 'Applies the open text to the game.')
+                    tooltip: tr('今開いているテキストをゲームに反映します。しかたは設定「反映のしかた」で決まり、横に出ています。', 'Applies the open text to the game. How it does that comes from the setting "How to apply", shown beside it.'),
+                    describe: () => applyHow()
                 },
                 {
                     command: 'text2frame.exportCurrentFile', icon: 'cloud-download',
                     label: tr('ゲームから取り出す(このファイル)', 'Pull this file'),
-                    tooltip: tr('今のファイルにゲームの内容を取り込みます(あなたの編集は残し、ゲーム側の変更を反映)。', 'Brings the game\'s contents into this file (your edits stay; changes made in the game come in).')
+                    tooltip: tr('今のファイルにゲームの内容を取り込みます(あなたの編集は残し、ゲーム側の変更を反映)。', 'Brings the game\'s contents into this file (your edits stay; changes made in the game come in).'),
+                    describe: () => tr('統合', 'Merge')
+                },
+                {
+                    command: 'text2frame.deployCurrentFileOverwrite', icon: 'arrow-up',
+                    label: tr('テキストの内容でゲームを上書き', 'Overwrite the game with this text'),
+                    tooltip: tr('設定を変えずに、この1回だけ上書きで反映します。ツクール側でこのページに加えた変更は失われます(確認が出ます)。', 'Applies with overwrite just this once, without changing the setting. Changes made to that page in RPG Maker are lost; it asks first.')
+                },
+                {
+                    command: 'text2frame.exportCurrentFileOverwrite', icon: 'arrow-down',
+                    label: tr('ゲームの内容でテキストを上書き', 'Overwrite this text from the game'),
+                    tooltip: tr('このテキストをゲームの内容で作り直します。テキストの編集は失われます(確認が出ます)。', 'Rebuilds this text from the game\'s contents. Your edits to the text are lost; it asks first.')
                 }
             ]
         },
@@ -271,6 +288,11 @@ export function registerCommandsView(context: vscode.ExtensionContext): void {
     const provider = new CommandsTreeProvider();
     context.subscriptions.push(
         vscode.window.createTreeView('text2frameCommands', { treeDataProvider: provider }),
-        onDidChangePauseAtMarks(() => provider.refresh())
+        onDidChangePauseAtMarks(() => provider.refresh()),
+        /* ボタンの横に出している今の状態(反映のしかた)は、設定が変わったら描き直す。
+         * 聞いていないと、設定を直してもボタンが古いことを言い続ける。 */
+        vscode.workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration('text2frame.strategy')) provider.refresh();
+        })
     );
 }

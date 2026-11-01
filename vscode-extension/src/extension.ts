@@ -113,6 +113,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Export / batch / preview commands.
     context.subscriptions.push(
         vscode.commands.registerCommand('text2frame.exportCurrentFile', () => exportCurrentFile(context)),
+        vscode.commands.registerCommand('text2frame.exportCurrentFileOverwrite', () => exportCurrentFile(context, 'overwrite')),
         vscode.commands.registerCommand('text2frame.exportConversationOnly', () => exportConversationOnly(context)),
         vscode.commands.registerCommand('text2frame.showCompiledJson', () => showCompiledJson(context)),
         vscode.commands.registerCommand('text2frame.deployAll', () => deployAll(context)),
