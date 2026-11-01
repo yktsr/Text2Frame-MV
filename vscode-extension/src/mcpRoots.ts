@@ -13,14 +13,17 @@ import * as path from 'path';
  * **フォルダごとに1つ**差し出すためにここは配列を返す。1つにまとめてはいけない:
  * 祖先(.t2f-base)の鍵はテキストの置き場所で分かれるので、別のプロジェクトを
  * 1つのサーバに任せると鍵を取り合う。
+ *
+ * data フォルダの名前もフォルダごとに決められる(設定 text2frame.dataDir は
+ * scope: resource)。だから1つの値ではなく、フォルダから引く関数を受け取る。
  */
-export function mcpRoots(folders: string[], dataDir: string): string[] {
+export function mcpRoots(folders: string[], dataDirOf: (folder: string) => string): string[] {
     const out: string[] = [];
     for (const folder of folders) {
         if (!folder || out.indexOf(folder) >= 0) {
             continue;
         }
-        if (fs.existsSync(path.resolve(folder, dataDir, 'System.json'))) {
+        if (fs.existsSync(path.resolve(folder, dataDirOf(folder), 'System.json'))) {
             out.push(folder);
         }
     }

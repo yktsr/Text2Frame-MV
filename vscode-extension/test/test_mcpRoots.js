@@ -13,6 +13,11 @@ const { mcpRoots, mcpArgs, mcpLabel } = require('../out/mcpRoots');
 describe('mcp server roots', function () {
     let tmp;
 
+    /** どのフォルダでも同じ data フォルダ名(設定を変えていない人のところ)。 */
+    const always = function (dataDir) {
+        return function () { return dataDir; };
+    };
+
     const project = function (name, dataDir) {
         const root = path.join(tmp, name);
         fs.mkdirSync(path.join(root, dataDir || 'data'), { recursive: true });
@@ -31,7 +36,7 @@ describe('mcp server roots', function () {
         const a = project('aquarium');
         const b = project('another');
 
-        expect(mcpRoots([a, b], 'data')).to.eql([a, b]);
+        expect(mcpRoots([a, b], always('data'))).to.eql([a, b]);
     });
 
     /* ツクールのプロジェクトでないフォルダは出さない(道具が何も答えられないため)。 */
@@ -40,25 +45,39 @@ describe('mcp server roots', function () {
         const plain = path.join(tmp, 'notes');
         fs.mkdirSync(plain);
 
-        expect(mcpRoots([plain, good], 'data')).to.eql([good]);
+        expect(mcpRoots([plain, good], always('data'))).to.eql([good]);
     });
 
     it('follows the configured data folder', function () {
         const root = project('game', 'ゲームデータ');
 
-        expect(mcpRoots([root], 'data')).to.eql([]);
-        expect(mcpRoots([root], 'ゲームデータ')).to.eql([root]);
+        expect(mcpRoots([root], always('data'))).to.eql([]);
+        expect(mcpRoots([root], always('ゲームデータ'))).to.eql([root]);
+    });
+
+    /* data フォルダの名前はフォルダごとに決められる(設定は scope: resource)。
+     * 1つの値で選んでいた頃は、2つのゲームを1つのウィンドウで開いている人のところで
+     * 片方が黙って落ちていた。 */
+    it('follows a different data folder in each folder', function () {
+        const plain = project('plain');
+        const renamed = project('renamed', 'ゲームデータ');
+        const dataDirOf = function (folder) {
+            return folder === renamed ? 'ゲームデータ' : 'data';
+        };
+
+        expect(mcpRoots([plain, renamed], dataDirOf)).to.eql([plain, renamed]);
+        expect(mcpRoots([plain, renamed], always('data'))).to.eql([plain]);
     });
 
     it('says nothing when there is no folder at all', function () {
-        expect(mcpRoots([], 'data')).to.eql([]);
-        expect(mcpRoots([''], 'data')).to.eql([]);
+        expect(mcpRoots([], always('data'))).to.eql([]);
+        expect(mcpRoots([''], always('data'))).to.eql([]);
     });
 
     it('does not offer the same folder twice', function () {
         const root = project('game');
 
-        expect(mcpRoots([root, root], 'data')).to.eql([root]);
+        expect(mcpRoots([root, root], always('data'))).to.eql([root]);
     });
 
     /* 設定を変えている人のところでエディタと MCP が別のフォルダを見ると、祖先の鍵が

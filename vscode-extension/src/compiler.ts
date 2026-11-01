@@ -217,16 +217,24 @@ export function workspaceRootFor(document?: vscode.TextDocument): string | undef
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 }
 
+/* 下の2つはフォルダごとに決められる(scope: resource)。フォルダを渡さずに読むと、
+ * 2つのゲームを1つのウィンドウで開いている人のところで両方が同じ値になり、
+ * 片方のゲームのデータを見失う。 */
+
+/** そのフォルダでのフォルダ名の設定。空文字は未設定と同じに扱う。 */
+export function settingFor(workspaceRoot: string, key: string, fallback: string): string {
+    const config = vscode.workspace.getConfiguration('text2frame', vscode.Uri.file(workspaceRoot));
+    return config.get<string>(key, fallback) || fallback;
+}
+
 /** Absolute data directory for a workspace (configurable via text2frame.dataDir, default "data"). */
 export function dataDirFor(workspaceRoot: string): string {
-    const configured = vscode.workspace.getConfiguration('text2frame').get<string>('dataDir', 'data') || 'data';
-    return path.resolve(workspaceRoot, configured);
+    return path.resolve(workspaceRoot, settingFor(workspaceRoot, 'dataDir', 'data'));
 }
 
 /** テキストのフォルダ(設定 text2frame.textBaseDir、既定は text)。 */
 export function textBaseDirFor(workspaceRoot: string): string {
-    const configured = vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text') || 'text';
-    return path.resolve(workspaceRoot, configured);
+    return path.resolve(workspaceRoot, settingFor(workspaceRoot, 'textBaseDir', 'text'));
 }
 
 /** 作業フォルダ。無いときは理由を出して undefined を返す(呼び側はそこで止める)。 */

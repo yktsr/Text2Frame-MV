@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { settingFor } from './compiler';
 import { mcpArgs, mcpLabel, mcpRoots } from './mcpRoots';
 
 /*
@@ -26,10 +27,7 @@ export function registerMcpProvider(context: vscode.ExtensionContext): void {
 
     const provide = (): vscode.McpStdioServerDefinition[] => {
         const folders = (vscode.workspace.workspaceFolders || []).map((f) => f.uri.fsPath);
-        const config = vscode.workspace.getConfiguration('text2frame');
-        const dataDir = config.get<string>('dataDir', 'data') || 'data';
-        const textDir = config.get<string>('textBaseDir', 'text') || 'text';
-        const roots = mcpRoots(folders, dataDir);
+        const roots = mcpRoots(folders, (folder) => settingFor(folder, 'dataDir', 'data'));
         /* 版を渡すと、拡張が更新されたときに VS Code が道具を読み直す。 */
         const version = String((context.extension.packageJSON || {}).version || '');
 
@@ -37,7 +35,12 @@ export function registerMcpProvider(context: vscode.ExtensionContext): void {
             const server = new vscode.McpStdioServerDefinition(
                 mcpLabel(root, roots.length),
                 process.execPath,
-                mcpArgs(context.asAbsolutePath(SERVER), root, dataDir, textDir),
+                mcpArgs(
+                    context.asAbsolutePath(SERVER),
+                    root,
+                    settingFor(root, 'dataDir', 'data'),
+                    settingFor(root, 'textBaseDir', 'text')
+                ),
                 { ELECTRON_RUN_AS_NODE: '1' },
                 version
             );
@@ -50,6 +53,11 @@ export function registerMcpProvider(context: vscode.ExtensionContext): void {
         changed,
         // フォルダが増減したら差し出す一覧も変わる。
         vscode.workspace.onDidChangeWorkspaceFolders(() => changed.fire()),
+        /* フォルダ名の設定が変わると、どのフォルダが対象かも渡す引数も変わる。
+         * 聞いていないと、設定を直してもサーバは古いフォルダを見たままになる。 */
+        vscode.workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration('text2frame.dataDir') || e.affectsConfiguration('text2frame.textBaseDir')) changed.fire();
+        }),
         vscode.lm.registerMcpServerDefinitionProvider(PROVIDER_ID, {
             onDidChangeMcpServerDefinitions: changed.event,
             provideMcpServerDefinitions: provide

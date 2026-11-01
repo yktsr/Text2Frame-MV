@@ -744,11 +744,13 @@
           },
           "text2frame.textBaseDir": {
             "type": "string",
+            "scope": "resource",
             "default": "text",
             "description": "%config.text2frame.textBaseDir.description%"
           },
           "text2frame.dataDir": {
             "type": "string",
+            "scope": "resource",
             "default": "data",
             "description": "%config.text2frame.dataDir.description%"
           }
