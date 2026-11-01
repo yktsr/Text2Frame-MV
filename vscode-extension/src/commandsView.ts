@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { onDidChangePauseAtMarks, pauseAtMarks } from './debugSession';
 import { tr } from './db/lang';
+import { allSettingsQuery, settingLinks, settingQuery } from './settingsLinks';
 
 /**
  * Activity Bar "Commands" panel — a static, grouped, clickable list of the extension's
@@ -13,6 +14,10 @@ interface CommandSpec {
     label: string;
     icon: string;
     tooltip: string;
+    /** コマンドに渡すもの(設定を名指しで開くときの検索語など)。 */
+    args?: unknown[];
+    /** 名前の横に薄く出す言葉(その設定がどの分類か、など)。 */
+    note?: string;
     /** 名前の横に出す今の状態(オン・オフなど)。 */
     describe?: () => string;
 }
@@ -24,6 +29,32 @@ interface CommandGroup {
     /** 最初から開いておくか。 */
     open?: boolean;
     items: CommandSpec[];
+}
+
+/* 設定は VS Code の設定画面にあり、そこへ辿り着くのが分かりにくい。
+ * ここから名指しで開ける。どれを出すかと合い言葉の作り方は、vscode に依存しない
+ * src/settingsLinks.ts が持っている。 */
+function settingsGroup(): CommandGroup {
+    return {
+        id: 'settings',
+        label: tr('設定', 'Settings'),
+        items: [
+            {
+                command: 'workbench.action.openSettings',
+                args: [allSettingsQuery()],
+                icon: 'settings-gear',
+                label: tr('すべての設定', 'All settings'),
+                tooltip: tr('この拡張の設定をまとめて開きます。', 'Opens every setting of this extension.')
+            } as CommandSpec
+        ].concat(settingLinks().map((one) => ({
+            command: 'workbench.action.openSettings',
+            args: [settingQuery(one.key)],
+            icon: 'gear',
+            label: one.label,
+            note: one.note,
+            tooltip: tr('この設定を開きます。', 'Opens this setting.')
+        })))
+    };
 }
 
 /** 名前と吹き出しは、ツリーを作るときに今の言語で選ぶ。 */
@@ -177,7 +208,8 @@ function groups(): CommandGroup[] {
                     tooltip: tr('テキストのフォルダ(設定 text2frame.textBaseDir)をゲームの内容で全部上書きします(編集は失われます)。', 'Overwrites the whole text folder (setting text2frame.textBaseDir) with the game\'s contents (your edits are lost).')
                 }
             ]
-        }
+        },
+        settingsGroup()
     ];
 }
 
@@ -220,11 +252,13 @@ class CommandsTreeProvider implements vscode.TreeDataProvider<CmdNode> {
         if (element.kind === 'group') {
             return element.children.map((spec) => {
                 const node = new CmdNode('command', spec.label, vscode.TreeItemCollapsibleState.None);
-                node.id = 'command:' + spec.command;
+                // 設定はどれも同じコマンドなので、名前には渡すものまで含める。
+                node.id = 'command:' + spec.command + (spec.args ? ':' + String(spec.args[0]) : '');
                 node.iconPath = new vscode.ThemeIcon(spec.icon);
                 node.tooltip = spec.tooltip;
+                if (spec.note) node.description = spec.note;
                 if (spec.describe) node.description = spec.describe();
-                node.command = { command: spec.command, title: spec.label };
+                node.command = { command: spec.command, title: spec.label, arguments: spec.args };
                 return node;
             });
         }
