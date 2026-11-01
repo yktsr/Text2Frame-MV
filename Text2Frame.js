@@ -4771,6 +4771,95 @@
     return out.sort()
   }
 
+  /* ゲーム自身の設定を使う。
+   *
+   * タグを省いて書かれたテキストを反映するとき、何を補うかはプラグインパラメータが決める。
+   * ツクールの中ではそれが読めているが、外(CLI / VS Code 拡張 / t2f-sync / MCP)では
+   * 出荷時の既定で固定していた。既定を変えているプロジェクトは、ツクールの Frame2Text が
+   * 省いたタグを外から反映した時点で別の値に倒れる。
+   *
+   * 3つで1組にしてある。1つだけ効くと、反映と取り出しが別のプロジェクトに居ることになる。 */
+  const PROJECT_FIELDS = {
+    Background: 'Default Background',
+    WindowPosition: 'Default Window Position',
+    CommentOutChar: 'Comment Out Char'
+  }
+  /* 読んだ内容を mtime で覚える。一括反映は1つのルートで数千ファイルを回す。 */
+  const projectParamCache = new Map()
+  const noRestore = function () {}
+
+  const projectParametersOf = function (gameRoot) {
+    // ツクールの中では何もしない。あちらには生きた値があり、ディスクの plugins.js は
+    // エディタで編集中の未保存のパラメータより古いことがある。
+    if (typeof PluginManager !== 'undefined') return null
+    // ルートが分からなければ推測しない。当て推量で別のプロジェクトの設定を拾うのは、
+    // ここで直している壊れ方と同じ。
+    if (!gameRoot || typeof require === 'undefined') return null
+    const fs = require('fs')
+    const path = require('path')
+    const file = path.join(String(gameRoot), 'js', 'plugins.js')
+    let mtime
+    try { mtime = fs.statSync(file).mtimeMs } catch (e) { return null }
+    const hit = projectParamCache.get(file)
+    if (hit && hit.mtime === mtime) return hit.params
+    let params = null
+    try {
+      // $plugins の切り方は拡張の autoWrapPlugin(src/db/messageFit.ts)と同じ形。
+      const found = fs.readFileSync(file, 'utf8').match(/\$plugins\s*=\s*(\[[\s\S]*\])\s*;?/)
+      const list = found ? JSON.parse(found[1]) : []
+      const mine = list.filter(function (one) {
+        return one && one.status && one.name === 'Text2Frame'
+      })[0]
+      if (mine && mine.parameters) {
+        const read = {}
+        Object.keys(PROJECT_FIELDS).forEach(function (field) {
+          const value = mine.parameters[PROJECT_FIELDS[field]]
+          if (typeof value === 'string' && value !== '') read[field] = value
+        })
+        // 1つでも欠けていれば組として使わない(古い版の plugins.js など)。
+        if (Object.keys(read).length === Object.keys(PROJECT_FIELDS).length) params = read
+      }
+    } catch (e) { params = null }
+    projectParamCache.set(file, { mtime, params })
+    return params
+  }
+
+  /* 入れた値が読める値かどうかを、表を写さずに確かめる。getBackground / getWindowPosition は
+   * pluginCommandText2Frame の中に居てここから呼べないので、名前空間を都度読む
+   * getMessageDefaults を叩いて試す。コメント文字はエスケープせず正規表現に入るので、
+   * それも組んでみる。 */
+  const projectParametersUsable = function () {
+    try {
+      const api = Laurus.Text2Frame.export
+      if (api && api.getMessageDefaults) api.getMessageDefaults()
+      new RegExp('^ *' + Laurus.Text2Frame.CommentOutChar) // eslint-disable-line no-new
+      return true
+    } catch (e) {
+      return false
+    }
+  }
+
+  /* そのゲームの設定に入れ替え、元に戻す関数を返す。何もしなかったときも関数を返すので、
+   * 呼び側は分岐しない。戻すのは、1つのプロセスが複数のゲームを扱うため
+   * (拡張は複数のフォルダを同時に開ける)。入れたままにすると、plugins.js を持たない
+   * ゲームが直前のゲームの設定を引き継ぐ。 */
+  const useProjectParameters = function (gameRoot) {
+    const params = projectParametersOf(gameRoot)
+    if (!params) return noRestore
+    const fields = Object.keys(PROJECT_FIELDS)
+    const previous = {}
+    fields.forEach(function (field) { previous[field] = Laurus.Text2Frame[field] })
+    const restore = function () {
+      fields.forEach(function (field) { Laurus.Text2Frame[field] = previous[field] })
+    }
+    fields.forEach(function (field) { Laurus.Text2Frame[field] = params[field] })
+    if (!projectParametersUsable()) {
+      restore()
+      return noRestore
+    }
+    return restore
+  }
+
   Game_Interpreter.prototype.pluginCommandText2Frame = function (command, args) {
     // 反映後の案内。一括反映では最後に 1 回だけ出す(個々の反映は _quiet で抑制)。
     const RESTART_NOTICE = 'Please restart RPG Maker MV(Editor) WITHOUT save. \n' +
@@ -11987,7 +12076,7 @@
      * トップレベルに置くと、プラグインとして入れたときに他のプラグインと名前を取り合う
      * (同名の宣言があると読み込みごと失敗する)。内部用の窓口ごしに渡す。
      * 列挙しないので、公開 API の一覧(Object.keys)には出ない。 */
-    Object.defineProperty(module.exports, '_internal', { value: { collectTextFiles } })
+    Object.defineProperty(module.exports, '_internal', { value: { collectTextFiles, useProjectParameters } })
   }
 })()
 
