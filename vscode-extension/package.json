@@ -156,6 +156,16 @@
         "icon": "$(window)"
       },
       {
+        "command": "text2frame.importSaves",
+        "title": "%command.text2frame.importSaves.title%",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "text2frame.loadSave",
+        "title": "%command.text2frame.loadSave.title%",
+        "icon": "$(debug-restart)"
+      },
+      {
         "command": "text2frame.checkProject",
         "title": "%command.text2frame.checkProject.title%",
         "icon": "$(checklist)"

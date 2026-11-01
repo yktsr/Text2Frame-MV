@@ -9,6 +9,8 @@
   "command.text2frame.stopTestPlay.title": "Text2Frame: テストプレイのサーバーを止める",
   "command.text2frame.showLiveValues.title": "Text2Frame: スイッチと変数を見る(テストプレイ中)",
   "command.text2frame.openLiveValuesTab.title": "Text2Frame: デバッグメニューを表示",
+  "command.text2frame.importSaves.title": "Text2Frame: ツクールのセーブを取り込む",
+  "command.text2frame.loadSave.title": "Text2Frame: セーブから再開する",
   "command.text2frame.checkProject.title": "Text2Frame: プロジェクト全体を検査",
   "command.text2frame.pickFace.title": "Text2Frame: 画像を選ぶ(顔・キャラ・ピクチャ)",
   "command.text2frame.pickCharacter.title": "Text2Frame: キャラ画像を選ぶ",

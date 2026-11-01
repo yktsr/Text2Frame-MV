@@ -94,6 +94,16 @@ function groups(): CommandGroup[] {
                     tooltip: tr('ゲームを VS Code の中のブラウザでテストプレイします(テストモード)。反映した内容は、ブラウザの再読み込みで効きます。プレイ中のスイッチと変数の値は、データベースの一覧とホバーに出ます。', 'Test plays the game in a browser inside VS Code (test mode). Applied changes take effect when the browser reloads. Switch and variable values show in the database list and in hovers while playing.')
                 },
                 {
+                    command: 'text2frame.importSaves', icon: 'cloud-download',
+                    label: tr('ツクールのセーブを取り込む', 'Bring in the RPG Maker saves'),
+                    tooltip: tr('ツクールでテストプレイして作ったセーブ(ゲームのフォルダの save/)を、VS Code のテストプレイでも使えるようにします。置き場所が別なので、取り込まないと見えません。', 'Makes the saves you made while test playing in RPG Maker (save/ in the game folder) usable in the VS Code test play too. They are kept in a different place, so they are not visible until you bring them in.')
+                },
+                {
+                    command: 'text2frame.loadSave', icon: 'debug-restart',
+                    label: tr('セーブから再開する', 'Resume from a save'),
+                    tooltip: tr('テストプレイのセーブを選んで、そこから続けます。発生条件を整えたセーブを作っておくと、そのイベントをそのまま試せます。', 'Pick a save of the test play and continue from it. If you keep a save with the conditions already set up, you can try that event as it is.')
+                },
+                {
                     command: 'text2frame.openLiveValuesTab', icon: 'debug',
                     label: tr('デバッグメニューを表示', 'Show debug menu'),
                     tooltip: tr('テストプレイ中のスイッチ・変数・セルフスイッチ・アイテム・所持金をエディタのタブに並べて見せます。値を書き換えることもできます。', 'Lists the switches, variables, self switches, items and gold of the running test play in an editor tab. You can change the values too.')

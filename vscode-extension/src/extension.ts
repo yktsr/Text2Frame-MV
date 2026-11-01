@@ -26,6 +26,7 @@ import { registerPreview } from './preview';
 import { registerColorSwatches } from './colorSwatches';
 import { registerMcpProvider } from './mcpProvider';
 import { registerTestPlay } from './testPlay';
+import { registerSaveFiles } from './saveFiles';
 import { LiveService } from './live';
 import { registerLiveView } from './liveView';
 import { registerRunHighlight } from './runHighlight';
@@ -99,6 +100,7 @@ export function activate(context: vscode.ExtensionContext) {
     registerMcpProvider(context);
     // テストプレイ(ゲームを VS Code の中のブラウザで)。
     registerTestPlay(context, database, live);
+    registerSaveFiles(context, live);
     registerLiveView(context, database, live, running);
 
     // Auto-assign the text2frame language to front-matter .txt files (open now + later).
