@@ -516,6 +516,35 @@ const BODY = ['こんにちは。', '<ウェイト: 30>'].join('\n')
       expect(await get(owner.port, '/index.html')).to.contain('__t2f')
     })
 
+    /* **いつものポートを握っているのが誰かは分からない。** 流し続ける相手に当たったとき、
+     * 下見が際限なく読むと文字列の上限まで膨らんでプロセスごと落ちる(落ちた)。
+     * 読むものには上限と締め切りを置く。 */
+    it('does not drown when something floods the usual port', async function () {
+      const chunk = 'x'.repeat(64 * 1024)
+      const flood = http.createServer(function (req, res) {
+        res.writeHead(200, { 'Content-Type': 'text/html' })
+        const push = function () {
+          if (res.writableEnded || res.destroyed) return
+          res.write(chunk)
+          setTimeout(push, 1)
+        }
+        push()
+      })
+      await new Promise(function (r) { flood.listen(stablePort(root), '127.0.0.1', r) })
+      try {
+        const before = process.memoryUsage().rss
+        const result = await ok('t2f_play_start')
+        const grew = (process.memoryUsage().rss - before) / 1048576
+
+        expect(result.structuredContent.joined, 'あふれている相手に乗ってしまいました').to.equal(false)
+        expect(result.structuredContent.port).to.not.equal(stablePort(root))
+        expect(grew, '読みすぎています(' + Math.round(grew) + 'MB)').to.be.lessThan(200)
+      } finally {
+        flood.closeAllConnections()
+        await new Promise(function (r) { flood.close(r) })
+      }
+    })
+
     /* 相乗りの口が無い相手(古い版)には乗らない。乗ると、繋がったように見えて
      * 報せが1つも来ない - 一番分かりにくい壊れ方になる。 */
     it('does not join something that cannot relay', async function () {

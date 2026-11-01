@@ -544,19 +544,40 @@ const createContext = function (options) {
   }
 }
 
-/** 短い取り寄せ。繋がらなければ null(相乗りしないだけなので、失敗は失敗ではない)。 */
+/* いつものポートを握っているのが誰かは分からない。**こちらの仕掛けとは限らない。**
+ * 下見で読むものには必ず上限と締め切りを置く - 置かないと、流し続ける相手に当たった
+ * ときに文字列の上限まで膨らんで**プロセスごと落ちる**(落ちた)。
+ * 下見に要るのはページの頭だけなので、小さく切って構わない。 */
+const PROBE_MAX_BYTES = 512 * 1024
+const PROBE_MS = 2000
+
+/** 短い取り寄せ。読めなければ null(相乗りしないだけなので、失敗は失敗ではない)。 */
 const fetchText = function (url) {
   return new Promise(function (resolve) {
     const at = new URL(url)
-    const req = http.get({ host: at.hostname, port: at.port, path: at.pathname + at.search, timeout: 1500 }, function (res) {
-      if (res.statusCode !== 200) { res.resume(); return resolve(null) }
+    let req = null
+    let done = false
+    const finish = function (value) {
+      if (done) return
+      done = true
+      clearTimeout(bell)
+      try { if (req) req.destroy() } catch (e) { /* もう閉じている */ }
+      resolve(value)
+    }
+    const bell = setTimeout(function () { finish(null) }, PROBE_MS)
+    req = http.get({ host: at.hostname, port: at.port, path: at.pathname + at.search, timeout: PROBE_MS }, function (res) {
+      if (res.statusCode !== 200) { res.resume(); return finish(null) }
       let body = ''
       res.setEncoding('utf8')
-      res.on('data', function (c) { body += c })
-      res.on('end', function () { resolve(body) })
+      res.on('data', function (c) {
+        body += c
+        if (body.length > PROBE_MAX_BYTES) finish(null)
+      })
+      res.on('end', function () { finish(body) })
+      res.on('error', function () { finish(null) })
     })
-    req.on('timeout', function () { req.destroy(); resolve(null) })
-    req.on('error', function () { resolve(null) })
+    req.on('timeout', function () { finish(null) })
+    req.on('error', function () { finish(null) })
   })
 }
 
@@ -610,6 +631,8 @@ const joinGame = function (live, origin, port, token, gameRoot, take) {
       res.setEncoding('utf8')
       res.on('data', function (chunk) {
         buffer += chunk
+        /* 区切りの来ない流れに当たったら捨てる。ためこむと際限が無い。 */
+        if (buffer.length > PROBE_MAX_BYTES) buffer = ''
         let at = buffer.indexOf('\n\n')
         while (at >= 0) {
           const frame = buffer.slice(0, at)
