@@ -8,6 +8,7 @@ import { padId } from './db/database';
 import { mapLabel } from './db/mapTree';
 import { eventId as eventLabelId } from './db/describe';
 import { MapLink, mapLinks, nodeFromKey } from './db/eventLinks';
+import { canFollow, placeDetail, PlaceRow } from './mapLinkRows';
 import { tr } from './db/lang';
 
 /**
@@ -155,7 +156,16 @@ export class MapLinksProvider implements vscode.TreeDataProvider<LinkNode> {
                 );
                 node.description = ['#' + padId(other), links.length > 1 ? tr(`${links.length}か所`, `${links.length} places`) : '', seen ? tr('(上と同じ)', '(same as above)') : ''].filter((s) => s).join(tr('・', ' · '));
                 node.iconPath = new vscode.ThemeIcon('map');
-                node.tooltip = seen ? tr('このマップは、上でもう出ています。', 'This map is already listed above.') : undefined;
+                /* マップの行を押したら、その先に切り替える。押しても開き閉じするだけだと、
+                 * 下に並ぶ行が「そのマップのページ」に見えてしまう。 */
+                if (canFollow(other, this.mapId)) {
+                    node.command = { command: 'text2frame.mapLinks.show', title: tr('このマップを見る', 'Show this map'), arguments: [other] };
+                    node.tooltip = seen
+                        ? tr('このマップは、上でもう出ています。押すとこのマップのつながりに切り替わります。', 'This map is already listed above. Click to switch to its links.')
+                        : tr('押すと、このマップのつながりに切り替わります。', 'Click to switch to this map\'s links.');
+                } else {
+                    node.tooltip = seen ? tr('このマップは、上でもう出ています。', 'This map is already listed above.') : undefined;
+                }
                 out.push(node);
                 for (const link of links) out.push(this.placeNode(ctx, dir, link, path));
             });
@@ -172,24 +182,26 @@ export class MapLinksProvider implements vscode.TreeDataProvider<LinkNode> {
         return out;
     }
 
-    /** 移動しているイベントの行。 */
+    /** 移動しているイベントの行。どちらのマップにあるコマンドなのかを必ず出す。 */
     private placeNode(ctx: DbContext, dir: 'out' | 'in', link: MapLink, path: number[]): LinkNode {
         const node = nodeFromKey(link.at);
         let label = link.at;
-        let detail = '';
+        const row: PlaceRow = { kind: 'other', onThisMap: false, vehicle: link.how === 'vehicle' };
         if (node && node.kind === 'page') {
             const event = this.service.mapEvents(ctx, node.mapId)?.[node.eventId];
             label = tr(`${eventLabelId(node.eventId)}${event && event.name ? ' ' + event.name : ''} / ${node.pageId}ページ`, `${eventLabelId(node.eventId)}${event && event.name ? ' ' + event.name : ''} / page ${node.pageId}`);
-            detail = this.name(ctx, node.mapId);
+            row.kind = 'page';
+            row.onThisMap = node.mapId === this.mapId;
+            row.mapName = this.name(ctx, node.mapId);
         } else if (node && node.kind === 'common') {
             const hit = ctx.db.lookup('commonEvent', node.id);
             label = tr(`コモンイベント ${padId(node.id)}${hit.status === 'named' ? ' ' + hit.name : ''}`, `Common event ${padId(node.id)}${hit.status === 'named' ? ' ' + hit.name : ''}`);
-            detail = tr('どのマップからかは決まりません', 'Which map it runs on is not fixed');
+            row.kind = 'common';
         }
         const item = new LinkNode('place', label, vscode.TreeItemCollapsibleState.None, {
             dir, path, at: link.at, index: link.index, mapId: dir === 'out' ? link.toMap : link.fromMap
         });
-        item.description = [detail, link.how === 'vehicle' ? tr('乗り物', 'vehicle') : ''].filter((s) => s).join(tr('・', ' · '));
+        item.description = placeDetail(row);
         item.iconPath = new vscode.ThemeIcon('arrow-small-right');
         return this.withOpen(ctx, item, link);
     }
