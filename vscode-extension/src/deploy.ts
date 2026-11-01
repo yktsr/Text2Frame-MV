@@ -232,7 +232,7 @@ async function deployDocumentNow(
 
     // Default to 3-way merge: attach the BASE snapshot (common ancestor) when present so a
     // merge deploy reconciles writer text edits with external JSON edits, instead of overlaying.
-    const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
+    const mergeLike = !isOverwriteLike(strategy);
     const snapKey = snapshotIdFor(workspaceRoot, document.uri.fsPath, meta);
     const applyOpts: { [key: string]: unknown } = {
         textPath: document.uri.fsPath,
@@ -345,7 +345,7 @@ function prepareFile(context: vscode.ExtensionContext, workspaceRoot: string, fi
     }
     const strategy = vscode.workspace.getConfiguration('text2frame').get<string>('strategy') || 'merge';
     // Default to 3-way merge: attach the BASE snapshot (common ancestor) when present.
-    const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
+    const mergeLike = strategy !== 'overwrite';
     const snapKey = snapshotIdFor(workspaceRoot, filePath, meta);
     const applyOpts: { [key: string]: unknown } = {
         textPath: filePath,

@@ -103,7 +103,7 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
     let fail = 0;
     let warn = 0;
     const strategy = strategySetting();
-    const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
+    const mergeLike = strategy !== 'overwrite';
     // 少しずつ反映して、そのたびに手を離す。やめても、済んだ分はそのまま(履歴から戻せる)。
     const finished = await busy(tr('Text2Frame: ゲームに反映しています…', 'Text2Frame: Applying to the game…'), (slowly: SlowlyOptions) =>
         withHistory(root, 'applyAll', tr('ゲームに反映(すべて)', 'Apply to game (all)'), { keep: historyKeep() }, async (recorder) => {
