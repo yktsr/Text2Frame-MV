@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { baseSnapshotPath, commonEventsPathFor, historyKeep, loadModule, mapPathFor, parseFrontMatter, recordDataState, saveBaseSnapshot, snapshotKeyForTarget, workspaceRootFor } from './compiler';
+import { baseSnapshotPath, commonEventsPathFor, gameRootFor, historyKeep, loadModule, mapPathFor, parseFrontMatter, recordDataState, saveBaseSnapshot, snapshotKeyForTarget, workspaceRootFor } from './compiler';
 import { relLabel } from './db/files';
 import { noteWrite, withHistory } from './db/history';
 import { loadCompiler } from './deploy';
@@ -16,7 +16,7 @@ import { targetKeyFromMeta } from './db/baseKey';
  */
 
 interface Frame2TextModule {
-    decompile: (list: unknown[], englishTag: boolean, options?: { pretty?: boolean; translationOnly?: boolean; omitDefaults?: boolean }) => string;
+    decompile: (list: unknown[], englishTag: boolean, options?: { pretty?: boolean; translationOnly?: boolean; omitDefaults?: boolean; gameRoot?: string }) => string;
     /**
      * The one place that turns "a target's commands" into "the text to write" — shared with the
      * plugin, the CLI and t2f-sync so all four behave identically. Handles the 3-way merge, the
@@ -26,6 +26,8 @@ interface Frame2TextModule {
      */
     buildPullText: (opts: {
         list: unknown[];
+        /** ゲームのフォルダ。省く・補う値をそのゲームの設定から決める。 */
+        gameRoot?: string;
         englishTag?: boolean;
         omitDefaults?: boolean;
         strategy?: string;
@@ -346,6 +348,7 @@ export function planPull(
         const built = mode === 'merge'
             ? mod.buildPullText({
                 list,
+                gameRoot: gameRootFor(workspaceRoot),
                 englishTag: englishTagSetting(),
                 omitDefaults: omitDefaultTagsSetting(),
                 strategy: 'merge',
@@ -355,6 +358,7 @@ export function planPull(
             })
             : mod.buildPullText({
                 list,
+                gameRoot: gameRootFor(workspaceRoot),
                 englishTag: englishTagSetting(),
                 omitDefaults: omitDefaultTagsSetting(),
                 strategy: 'overwrite',
@@ -449,7 +453,8 @@ export function exportConversationOnlyText(
         const body = mod.decompile(readEventList(workspaceRoot, target), englishTagSetting(), {
             pretty: true,
             translationOnly: true,
-            omitDefaults: omitDefaultTagsSetting()
+            omitDefaults: omitDefaultTagsSetting(),
+            gameRoot: gameRootFor(workspaceRoot)
         });
         writeTextFile(target.textPath, renderFrontMatter(target, mod.VERSION) + '\n' + body + '\n');
         return { ok: true, textPath: target.textPath };
@@ -461,7 +466,15 @@ export function exportConversationOnlyText(
 /** ゲームのコマンドを、取り出しと同じ設定でテキストにする(差分の確認で使う)。 */
 export function renderCommands(context: vscode.ExtensionContext, workspaceRoot: string, list: unknown[] | undefined): string {
     const mod = list ? loadFrame2Text(context, workspaceRoot).mod : undefined;
-    return mod && list ? mod.decompile(list, englishTagSetting(), { pretty: true, omitDefaults: omitDefaultTagsSetting() }) : '';
+    // 省くかどうかは Text2Frame が補う値で決まるので、こちらも読んでおく(planPull と同じ理由)。
+    if (mod) loadText2Frame(context, workspaceRoot);
+    return mod && list
+        ? mod.decompile(list, englishTagSetting(), {
+            pretty: true,
+            omitDefaults: omitDefaultTagsSetting(),
+            gameRoot: gameRootFor(workspaceRoot)
+        })
+        : '';
 }
 
 /**

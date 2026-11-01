@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { DbContext } from './dbService';
-import { parseFrontMatter } from './compiler';
+import { gameRootFor, parseFrontMatter } from './compiler';
 import { isSidecarText } from './db/files';
 import { loadCompiler } from './deploy';
 import { compileWithLines } from './compileLines';
@@ -63,7 +63,7 @@ export class RunSources {
         let result: RunSource | { error: string };
         try {
             if (!mod) throw new Error(tr('コンパイラ (Text2Frame.js) が見つかりません。', 'The compiler (Text2Frame.js) was not found.'));
-            const { commands, lines } = compileWithLines(mod, text);
+            const { commands, lines } = compileWithLines(mod, text, gameRootFor(ctx.root));
             result = lines
                 ? { uri: vscode.Uri.file(fsPath), commands, lines, marks: commands.map(commandMark) }
                 : { error: tr('コンパイラが古いため、行を出せません。', 'The compiler is too old to give lines.') };

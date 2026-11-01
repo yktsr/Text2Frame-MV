@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { baseSnapshotPath, dataDirFor, hasBaseSnapshot, historyKeep, loadModule, parseFrontMatter, resolveTarget, snapshotKeyForTarget, textBaseDirFor, workspaceRootFor } from './compiler';
+import { baseSnapshotPath, dataDirFor, gameRootFor, hasBaseSnapshot, historyKeep, loadModule, parseFrontMatter, resolveTarget, snapshotKeyForTarget, textBaseDirFor, workspaceRootFor } from './compiler';
 import { isSidecarText } from './db/files';
 import { withHistory } from './db/history';
 import { commitPull, planPull, pullTargetsFor, ExportTarget, PullPlan } from './exportText';
@@ -114,7 +114,7 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
                     const { opts, label } = resolveTarget(meta, root);
                     const key = snapshotKeyForTarget(root, file, meta);
                     // baseRoot は祖先(.t2f-base)の置き場所。渡さないと拡張ホストの cwd(/)に落ちる。
-                    const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, baseRoot: root };
+                    const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, baseRoot: root, gameRoot: gameRootFor(root) };
                     if (mergeLike && hasBaseSnapshot(root, key)) {
                         applyOpts.basePath = baseSnapshotPath(root, key);
                     }

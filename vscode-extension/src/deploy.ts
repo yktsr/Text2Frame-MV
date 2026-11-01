@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { ancestorCopyMessage, baseSnapshotPath, dataChangedExternally, frontMatterBody, hasBaseSnapshot, historyKeep, isAncestorCopy, isDeployable, loadModule, parseFrontMatter, recordDataState, resolveTarget, saveBaseSnapshot, snapshotKeyForTarget, workspaceRootFor } from './compiler';
+import { ancestorCopyMessage, baseSnapshotPath, dataChangedExternally, frontMatterBody, gameRootFor, hasBaseSnapshot, historyKeep, isAncestorCopy, isDeployable, loadModule, parseFrontMatter, recordDataState, resolveTarget, saveBaseSnapshot, snapshotKeyForTarget, workspaceRootFor } from './compiler';
 import { relLabel } from './db/files';
 import { noteWrite, withHistory } from './db/history';
 import { placeFromMeta, placeKey } from './placeLabel';
@@ -55,7 +55,7 @@ export interface T2FModule {
     /** コマンド列を、そのままゲームのデータへ書く(取り出しの書き戻しで使う)。 */
     applyCommandsToData?: (opts: { [key: string]: unknown }) => { ok: boolean; dataPath?: string; error?: string };
     /** opts.lineMap を渡すと { commands, lineMap } を返す(古いコンパイラは無視して配列を返す)。 */
-    compile?: (text: string, opts?: { lineMap?: boolean }) => unknown;
+    compile?: (text: string, opts?: { lineMap?: boolean; gameRoot?: string }) => unknown;
 }
 
 let outputChannel: vscode.OutputChannel | undefined;
@@ -240,7 +240,9 @@ async function deployDocumentNow(
         strategy,
         // 祖先(.t2f-base)の置き場所。渡さないとコンパイラは process.cwd() を使い、拡張ホストでは
         // それが / なので保存できない。拡張の祖先(baseSnapshotPath)と同じ場所・同じ鍵になる。
-        baseRoot: workspaceRoot
+        baseRoot: workspaceRoot,
+        // タグを省いた所に何を補うかは、このゲームの設定が決める(祖先とは別の話)。
+        gameRoot: gameRootFor(workspaceRoot)
     };
     if (mergeLike && hasBaseSnapshot(workspaceRoot, snapKey)) {
         applyOpts.basePath = baseSnapshotPath(workspaceRoot, snapKey);
@@ -351,7 +353,8 @@ function prepareFile(context: vscode.ExtensionContext, workspaceRoot: string, fi
         textPath: filePath,
         ...resolved.opts,
         strategy,
-        baseRoot: workspaceRoot // 祖先の置き場所(上の deployDocument と同じ)
+        baseRoot: workspaceRoot, // 祖先の置き場所(上の deployDocument と同じ)
+        gameRoot: gameRootFor(workspaceRoot)
     };
     if (mergeLike && hasBaseSnapshot(workspaceRoot, snapKey)) {
         applyOpts.basePath = baseSnapshotPath(workspaceRoot, snapKey);
@@ -490,7 +493,7 @@ export function showCompiledJson(context: vscode.ExtensionContext): void {
         return;
     }
     try {
-        const commands = mod.compile(frontMatterBody(editor.document.getText()));
+        const commands = mod.compile(frontMatterBody(editor.document.getText()), { gameRoot: gameRootFor(workspaceRoot) });
         const json = JSON.stringify(commands, null, 2);
         vscode.workspace.openTextDocument({ language: 'json', content: json })
             .then((doc) => vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Beside }));

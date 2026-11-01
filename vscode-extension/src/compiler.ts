@@ -237,6 +237,17 @@ export function textBaseDirFor(workspaceRoot: string): string {
     return path.resolve(workspaceRoot, settingFor(workspaceRoot, 'textBaseDir', 'text'));
 }
 
+/**
+ * ゲームのフォルダ。data/ の親で、js/plugins.js があるのはそこ。
+ * タグを省いて書かれたテキストに何を補うかは、そのゲームの Text2Frame の設定が決めるので、
+ * 反映・取り出し・プレビューはどれもこれを渡す。ワークスペースのフォルダと同じとは限らない
+ * (設定 text2frame.dataDir で data のフォルダを動かせる)。
+ */
+export function gameRootFor(workspaceRoot: string | undefined): string | undefined {
+    // フォルダが分からなければ undefined。本体は渡されなければ今までどおり補う(推測しない)。
+    return workspaceRoot ? path.dirname(dataDirFor(workspaceRoot)) : undefined;
+}
+
 /** 作業フォルダ。無いときは理由を出して undefined を返す(呼び側はそこで止める)。 */
 export function workspaceRootOrWarn(): string | undefined {
     const root = workspaceRootFor();
