@@ -119,11 +119,114 @@ const checkSource = function (file, source) {
   }).filter(function (x) { return x })
 }
 
+/* --- プラグイン側が読む鍵は、2つの箱のどちらかに入っていること ---
+ *
+ * 事故の形: ツクール側で「既定の背景」を透明にしているプロジェクトのテキストを、
+ * ツクールの外から反映すると全部ウィンドウに倒れた。鍵は両側にちゃんと在って、
+ * **ライブラリ側の値の意味が「検体」と「プロジェクトの設定」に分かれていた**のが正体。
+ * 鍵の数を比べる検査では鳴らない(数は合っている)。
+ *
+ * だから意味で分ける。新しいパラメータはどちらの箱にも無いので、ここが落ちて気づける。
+ *   HONOURED            … ゲームの js/plugins.js から読む(ライブラリ側も同じ値になる)
+ *   ACCEPTED_DIVERGENCE … ライブラリ側は検体値のまま。**なぜ困らないか**を書く
+ */
+const HONOURED = {
+  'Text2Frame.js': ['WindowPosition', 'Background', 'CommentOutChar'],
+  'Frame2Text.js': []
+}
+
+const ACCEPTED_DIVERGENCE = {
+  'Text2Frame.js': {
+    FileFolder: '検体値。反映元のテキストは呼び出しごとに textPath で渡る',
+    FileName: '検体値。FileFolder と同じ',
+    DefaultFileFolder: '検体値。一括反映もフォルダを引数で受ける',
+    CommonEventID: '宛先は見出し情報か引数が毎回決める',
+    MapID: '宛先は見出し情報か引数が毎回決める',
+    EventID: '宛先は見出し情報か引数が毎回決める',
+    PageID: '宛先は見出し情報か引数が毎回決める',
+    IsOverwrite: '反映のしかたは Strategy 1つで決まり、呼び出しごとに渡る',
+    DefaultStrategy: '引数を省いたときの既定。ライブラリは必ず渡す',
+    IsDebug: 'ログの量。出力には効かない',
+    DisplayMsg: 'ゲーム内の $gameMessage 表示。ライブラリでは出さない',
+    DisplayWarning: 'ゲーム内の $gameMessage 表示。ライブラリでは戻り値の warnings で返す'
+  },
+  'Frame2Text.js': {
+    FileFolder: '検体値。書き先は呼び出しごとに渡る',
+    FileName: '検体値。FileFolder と同じ',
+    TextBase: '検体値。FileFolder と同じ',
+    CommonEventID: '取り出す対象は引数が毎回決める',
+    MapID: '取り出す対象は引数が毎回決める',
+    EventID: '取り出す対象は引数が毎回決める',
+    PageID: '取り出す対象は引数が毎回決める',
+    IsDebug: 'ログの量。出力には効かない',
+    DisplayMsg: 'ゲーム内の $gameMessage 表示。ライブラリでは出さない',
+    DisplayWarning: 'ゲーム内の $gameMessage 表示。ライブラリでは出さない',
+    EnglishTag: 'ライブラリ側は英語で固定。取り出しの4経路とも呼び出しごとに渡す',
+    /* これは正直に言う: t2f-sync と MCP は omitDefaults を渡しておらず、
+     * ライブラリ側の固定値(省く)に落ちている。拡張だけが設定を渡す。
+     * 省く・省かないは往復しても失わないので急がないが、揃えるのは別の回。 */
+    OmitDefaultTags: 'ライブラリ側は省くで固定。拡張は設定を渡すが、t2f-sync と MCP は渡していない(別途揃える)'
+  }
+}
+
+/** プラグイン側が Parameters から読んでいる鍵。 */
+const pluginKeys = function (source) {
+  const out = []
+  const re = /Laurus\.\w+\.(\w+)\s*=\s*[^\n]*Parameters(?:\.|\[')/g
+  let m
+  while ((m = re.exec(source)) !== null) {
+    if (out.indexOf(m[1]) === -1) out.push(m[1])
+  }
+  return out
+}
+
+/** 読み口が実際に見ている鍵(PROJECT_FIELDS の中身)。宣言と実装がずれたら鳴らせる。 */
+const honouredInCode = function (source) {
+  const block = source.match(/const PROJECT_FIELDS = \{([\s\S]*?)\}/)
+  if (!block) return []
+  return (block[1].match(/^\s*(\w+):/gm) || []).map(function (line) {
+    return line.replace(/[^\w]/g, '')
+  })
+}
+
+/** 箱に入っていない鍵、どちらにも二重で入っている鍵、宣言と実装のずれ。 */
+const unsortedKeys = function (file, source) {
+  const honoured = HONOURED[file] || []
+  const accepted = ACCEPTED_DIVERGENCE[file] || {}
+  const out = []
+  pluginKeys(source).forEach(function (key) {
+    const inHonoured = honoured.indexOf(key) !== -1
+    const inAccepted = Object.prototype.hasOwnProperty.call(accepted, key)
+    if (inHonoured && inAccepted) {
+      out.push({ file, param: key, kind: 'sorted-twice', detail: '2つの箱の両方に入っています' })
+    } else if (!inHonoured && !inAccepted) {
+      out.push({ file, param: key, kind: 'unsorted', detail: 'ゲームの設定から読むのか、検体値のままでよいのか決めてください(HONOURED か ACCEPTED_DIVERGENCE へ)' })
+    }
+  })
+  honoured.forEach(function (key) {
+    if (pluginKeys(source).indexOf(key) === -1) {
+      out.push({ file, param: key, kind: 'honoured-unread', detail: 'HONOURED に入っていますが、プラグイン側が読んでいません' })
+    }
+  })
+  if (file === 'Text2Frame.js') {
+    const inCode = honouredInCode(source)
+    honoured.concat(inCode).forEach(function (key) {
+      if (honoured.indexOf(key) === -1 || inCode.indexOf(key) === -1) {
+        out.push({ file, param: key, kind: 'honoured-mismatch', detail: 'HONOURED の一覧と読み口(PROJECT_FIELDS)が食い違っています' })
+      }
+    })
+  }
+  return out
+}
+
 const FILES = ['Text2Frame.js', 'Frame2Text.js']
 
 /** 全部の食い違い。accepted が付いているものは「そうしておくと決めたもの」。 */
 const findings = function () {
-  return FILES.reduce(function (all, file) { return all.concat(checkFile(file)) }, [])
+  return FILES.reduce(function (all, file) {
+    const source = fs.readFileSync(path.join(root, file), 'utf8')
+    return all.concat(checkFile(file)).concat(unsortedKeys(file, source))
+  }, [])
 }
 
 /** 知らせるべきもの(理由つきで受け入れていないもの)だけ。 */
@@ -131,7 +234,7 @@ const unexpected = function () {
   return findings().filter(function (f) { return !f.accepted })
 }
 
-module.exports = { findings, unexpected, checkSource, declaredBooleans, readerOf, unwrap, FILES, ACCEPTED }
+module.exports = { findings, unexpected, checkSource, declaredBooleans, readerOf, unwrap, FILES, ACCEPTED, HONOURED, ACCEPTED_DIVERGENCE, pluginKeys, honouredInCode, unsortedKeys }
 
 if (require.main === module) {
   const all = findings()
