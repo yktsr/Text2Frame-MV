@@ -169,8 +169,9 @@ export class MapLinksProvider implements vscode.TreeDataProvider<LinkNode> {
                 `Common event ${padId(node.id)}${hit.status === 'named' ? ' ' + hit.name : ''}`
             );
         }
-        // 着地点。見ているマップに着くときは、そのマップ名を言わない(座標だけで足りる)。
-        if (link.toMap !== undefined && link.toMap !== this.mapId) row.toMap = this.name(ctx, link.toMap);
+        /* 着地点。**見ているマップに着くときも名前を言う。** 来る側では全行が同じ文字に
+         * なるが、2つの列が同じ形(マップ名と座標)に読めることを採った。 */
+        if (link.toMap !== undefined) row.toMap = this.name(ctx, link.toMap);
         row.toX = link.toX;
         row.toY = link.toY;
         const item = new LinkNode('place', rowLabel(row), vscode.TreeItemCollapsibleState.None, { dir, at: link.at, index: link.index });

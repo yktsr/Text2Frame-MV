@@ -9,8 +9,9 @@ const path = require('path')
  * ページで、見た目が同じまま意味が入れ替わっていた。
  *
  * まとめをやめて並べるだけにしたので、ここで守るのは書き方の規則2つ。
- *   - **いま見ているマップは名前で呼ばない**(だからマップ名が出ていれば他のマップ)
- *   - **座標は必ず「着く場所」**(出る側は相手のマップの、来る側はこのマップの着地点) */
+ *   - **着地点はどちらの向きも「マップ名 (x,y)」**(来る側でも名前を省かない)
+ *   - **コマンドのあるマップは、見ているマップなら呼ばない**(だからマップ名が付いて
+ *     いれば他のマップのイベント) */
 const { rowLabel, rowDetail } = require('../out/mapLinkRows')
 const { setJapanese } = require('../out/db/lang')
 
@@ -32,10 +33,11 @@ describe('a row of the map links', function () {
     expect(rowDetail({ event: 'EV002 / 1ページ', toMap: 'みなと', toX: 12, toY: 7 })).to.equal('→ みなと (12,7) に着く')
   })
 
-  /* 来る側の着地点は**このマップ**なので、座標だけ。
-   * 「このマップのどこに人が降りてくるか」が、今までどこにも出ていなかったもの。 */
-  it('gives just the tile when it arrives on the map you are looking at', function () {
-    expect(rowDetail({ event: 'みなと EV006 / 2ページ', toX: 24, toY: 11 })).to.equal('→ (24,11) に着く')
+  /* 来る側の着地点は**このマップ**だが、それでも名前を言う。出る側と同じ形に読めること
+   * を採ったので、ここを省くと2つの列がまた別の形になる。 */
+  it('names the map it arrives at even when you are looking at that map', function () {
+    expect(rowDetail({ event: 'みなと EV006 / 2ページ', toMap: '水族館6', toX: 24, toY: 11 }))
+      .to.equal('→ 水族館6 (24,11) に着く')
   })
 
   /* 乗り物(202)は人が降りるのではない。同じ言葉で言うと嘘になる。 */
