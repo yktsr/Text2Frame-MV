@@ -207,6 +207,16 @@ describe('mcp usages', function () {
     })
 
     /* **今回の肝。** 条件が出ないと「どこへでも行ける」と読まれる(実際に誤読された)。 */
+    /* 着地点も返す。相手のマップのどこに降りるかはここにしか無く、**着地点にイベントが
+     * 居るとは限らない**ので相手側のテキストは指せない(だから座標で言う)。 */
+    it('says where the exit lands', function () {
+      const one = forEvent(2, 1)
+
+      expect(one.toX).to.be.a('number')
+      expect(one.toY).to.be.a('number')
+      expect(textOf(usages({ kind: 'map', id: 2 }))).to.contain('(' + one.toX + ',' + one.toY + ')')
+    })
+
     it('says what blocks the exit', function () {
       const gated = forEvent(2, 2)
 

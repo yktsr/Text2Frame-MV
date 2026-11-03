@@ -8,33 +8,35 @@ import { padId } from './db/database';
 import { mapLabel } from './db/mapTree';
 import { eventId as eventLabelId } from './db/describe';
 import { MapLink, mapLinks, nodeFromKey } from './db/eventLinks';
-import { canFollow, placeDetail, PlaceRow } from './mapLinkRows';
+import { LinkRow, rowDetail, rowLabel } from './mapLinkRows';
 import { tr } from './db/lang';
 
 /**
- * 「マップのつながり」の欄。場所移動(TransferPlayer)で、
- * このマップから行けるマップと、このマップへ来られるマップを並べ、何段でもたどれるようにする。
+ * 「マップのつながり」の欄。場所移動(TransferPlayer)を2つに**並べるだけ**にしてある ──
+ * このマップから出ていくものと、このマップへ来るもの。
  * 見るマップは、テストプレイ中はゲームが今いるマップ、そうでなければ開いているテキストのマップ。
+ *
+ * **マップでまとめて何段でもたどる形はやめた。** マップの行の下に並ぶ行が「そのマップの
+ * ページ」に見えるのに、行き先の側では見ているマップのページだったので、押すと関係ない
+ * テキストが開いたように感じる(報告のとおり)。並べるだけにすると行は1種類になり、
+ * どれも「押せばその移動コマンドのテキストが開く」で済む。
+ * マップをまたいで俯瞰するのは「マップの地図」(mapGraph)の仕事。
  */
 
-type NodeType = 'group' | 'map' | 'place' | 'unknown';
+type NodeType = 'group' | 'place';
 
 interface NodeData {
     dir: 'out' | 'in';
-    /** たどってきたマップの道すじ(輪を止めるため)。 */
-    path: number[];
-    mapId?: number;
     /** 移動しているページ・コモンイベント。 */
     at?: string;
     index?: number;
-    variableId?: number;
 }
 
 class LinkNode extends vscode.TreeItem {
     constructor(public readonly nodeType: NodeType, label: string, collapsible: vscode.TreeItemCollapsibleState, public readonly data: NodeData) {
         super(label, collapsible);
         this.contextValue = 'text2frame.mapLink.' + nodeType;
-        this.id = [nodeType, data.dir, data.path.join('>'), data.mapId ?? '', data.at ?? '', data.index ?? '', data.variableId ?? ''].join('|');
+        this.id = [nodeType, data.dir, data.at ?? '', data.index ?? ''].join('|');
     }
 }
 
@@ -94,16 +96,8 @@ export class MapLinksProvider implements vscode.TreeDataProvider<LinkNode> {
     getChildren(element?: LinkNode): LinkNode[] {
         const ctx = this.context();
         if (!ctx || !this.mapId) return [];
-        if (!element) {
-            return [
-                this.group('out', [this.mapId]),
-                this.group('in', [this.mapId])
-            ];
-        }
-        if (element.nodeType === 'group' || element.nodeType === 'map') {
-            const from = element.nodeType === 'group' ? element.data.path[element.data.path.length - 1] : (element.data.mapId as number);
-            return this.stepNodes(ctx, element.data.dir, from, element.data.path);
-        }
+        if (!element) return [this.group(ctx, 'out'), this.group(ctx, 'in')];
+        if (element.nodeType === 'group') return this.hits(ctx, element.data.dir).map((link) => this.row(ctx, element.data.dir, link));
         return [];
     }
 
@@ -117,92 +111,74 @@ export class MapLinksProvider implements vscode.TreeDataProvider<LinkNode> {
         return mapLabel({ id: mapId, name: hit.status === 'named' ? hit.name : '' });
     }
 
-    private group(dir: 'out' | 'in', path: number[]): LinkNode {
-        const node = new LinkNode('group', dir === 'out' ? tr('行き先のマップ', 'Maps it goes to') : tr('ここへ来るマップ', 'Maps that come here'), vscode.TreeItemCollapsibleState.Expanded, { dir, path });
+    private group(ctx: DbContext, dir: 'out' | 'in'): LinkNode {
+        const count = this.hits(ctx, dir).length;
+        const node = new LinkNode(
+            'group',
+            dir === 'out' ? tr('ここから出る移動', 'Transfers out of here') : tr('ここへ来る移動', 'Transfers into here'),
+            vscode.TreeItemCollapsibleState.Expanded,
+            { dir }
+        );
+        node.description = tr(`${count}か所`, `${count} places`);
         node.iconPath = new vscode.ThemeIcon(dir === 'out' ? 'arrow-right' : 'arrow-left');
         return node;
     }
 
-    private transfers(ctx: DbContext): MapLink[] {
-        return mapLinks(this.links.index(ctx).all());
+    /**
+     * その向きの移動を、相手のマップの名前で並べたもの。
+     * **どちらの向きも「相手」で並べる**ので、見た目のまとまりはまとめていたときと同じで、
+     * 段だけが無くなる。行き先が変数で決まるものは相手が分からないので最後に置く。
+     */
+    private hits(ctx: DbContext, dir: 'out' | 'in'): MapLink[] {
+        const mine = mapLinks(this.links.index(ctx).all())
+            .filter((link) => (dir === 'out' ? link.fromMap === this.mapId : link.toMap === this.mapId));
+        return mine.sort((a, b) => {
+            const x = this.order(ctx, a, dir);
+            const y = this.order(ctx, b, dir);
+            return String(x[0]).localeCompare(String(y[0]), 'ja') || Number(x[1]) - Number(y[1]) ||
+                Number(x[2]) - Number(y[2]) || Number(x[3]) - Number(y[3]);
+        });
     }
 
-    /** そのマップの、行き先(または来る元)の1段分。 */
-    private stepNodes(ctx: DbContext, dir: 'out' | 'in', mapId: number, path: number[]): LinkNode[] {
-        const all = this.transfers(ctx);
-        const hits = all.filter((link) => (dir === 'out' ? link.fromMap === mapId : link.toMap === mapId));
-        const byMap = new Map<number, MapLink[]>();
-        const unknown: MapLink[] = [];
-        for (const link of hits) {
-            const other = dir === 'out' ? link.toMap : link.fromMap;
-            if (other === undefined) {
-                unknown.push(link);
-                continue;
-            }
-            const list = byMap.get(other) || [];
-            list.push(link);
-            byMap.set(other, list);
-        }
-        const out: LinkNode[] = [];
-        Array.from(byMap.entries())
-            .sort((a, b) => this.name(ctx, a[0]).localeCompare(this.name(ctx, b[0]), 'ja') || a[0] - b[0])
-            .forEach(([other, links]) => {
-                const seen = path.includes(other);
-                const node = new LinkNode(
-                    'map',
-                    this.name(ctx, other),
-                    seen ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed,
-                    { dir, path: path.concat([other]), mapId: other }
-                );
-                node.description = ['#' + padId(other), links.length > 1 ? tr(`${links.length}か所`, `${links.length} places`) : '', seen ? tr('(上と同じ)', '(same as above)') : ''].filter((s) => s).join(tr('・', ' · '));
-                node.iconPath = new vscode.ThemeIcon('map');
-                /* マップの行を押したら、その先に切り替える。押しても開き閉じするだけだと、
-                 * 下に並ぶ行が「そのマップのページ」に見えてしまう。 */
-                if (canFollow(other, this.mapId)) {
-                    node.command = { command: 'text2frame.mapLinks.show', title: tr('このマップを見る', 'Show this map'), arguments: [other] };
-                    node.tooltip = seen
-                        ? tr('このマップは、上でもう出ています。押すとこのマップのつながりに切り替わります。', 'This map is already listed above. Click to switch to its links.')
-                        : tr('押すと、このマップのつながりに切り替わります。', 'Click to switch to this map\'s links.');
-                } else {
-                    node.tooltip = seen ? tr('このマップは、上でもう出ています。', 'This map is already listed above.') : undefined;
-                }
-                out.push(node);
-                for (const link of links) out.push(this.placeNode(ctx, dir, link, path));
-            });
-        for (const link of unknown) {
-            const node = new LinkNode('unknown', tr('変数で決まる行き先', 'Destination set by variables'), vscode.TreeItemCollapsibleState.None, {
-                dir, path, at: link.at, index: link.index, variableId: link.variableId
-            });
-            const named = link.variableId ? ctx.db.lookup('variable', link.variableId) : undefined;
-            node.description = link.variableId ? `V${padId(link.variableId)}${named && named.status === 'named' ? ' ' + named.name : ''}` : '';
-            node.iconPath = new vscode.ThemeIcon('question');
-            node.tooltip = tr('行き先を変数で決めているので、どのマップへ行くかはここでは分かりません。', 'The destination is set by variables, so which map it goes to is not known here.');
-            out.push(this.withOpen(ctx, node, link));
-        }
-        return out;
-    }
-
-    /** 移動しているイベントの行。どちらのマップにあるコマンドなのかを必ず出す。 */
-    private placeNode(ctx: DbContext, dir: 'out' | 'in', link: MapLink, path: number[]): LinkNode {
+    private order(ctx: DbContext, link: MapLink, dir: 'out' | 'in'): [string, number, number, number] {
+        const other = dir === 'out' ? link.toMap : link.fromMap;
+        // 相手が分からないものを最後に回すための番人。
+        const name = other === undefined ? '\uffff' : this.name(ctx, other);
         const node = nodeFromKey(link.at);
-        let label = link.at;
-        const row: PlaceRow = { kind: 'other', onThisMap: false, vehicle: link.how === 'vehicle' };
+        if (node && node.kind === 'page') return [name, node.eventId, node.pageId, link.index || 0];
+        if (node && node.kind === 'common') return [name, node.id, 0, link.index || 0];
+        return [name, 0, 0, link.index || 0];
+    }
+
+    /** 移動コマンド1つの行。押すと、そのコマンドが書いてあるテキストが開く。 */
+    private row(ctx: DbContext, dir: 'out' | 'in', link: MapLink): LinkNode {
+        const node = nodeFromKey(link.at);
+        const row: LinkRow = { event: link.at, vehicle: link.how === 'vehicle', byVariable: link.variableId };
         if (node && node.kind === 'page') {
             const event = this.service.mapEvents(ctx, node.mapId)?.[node.eventId];
-            label = tr(`${eventLabelId(node.eventId)}${event && event.name ? ' ' + event.name : ''} / ${node.pageId}ページ`, `${eventLabelId(node.eventId)}${event && event.name ? ' ' + event.name : ''} / page ${node.pageId}`);
-            row.kind = 'page';
-            row.onThisMap = node.mapId === this.mapId;
-            row.mapName = this.name(ctx, node.mapId);
+            row.event = tr(
+                `${eventLabelId(node.eventId)}${event && event.name ? ' ' + event.name : ''} / ${node.pageId}ページ`,
+                `${eventLabelId(node.eventId)}${event && event.name ? ' ' + event.name : ''} / page ${node.pageId}`
+            );
+            // いま見ているマップは名前で呼ばない。他のマップのイベントだけ名前を付ける。
+            if (node.mapId !== this.mapId) row.onMap = this.name(ctx, node.mapId);
         } else if (node && node.kind === 'common') {
             const hit = ctx.db.lookup('commonEvent', node.id);
-            label = tr(`コモンイベント ${padId(node.id)}${hit.status === 'named' ? ' ' + hit.name : ''}`, `Common event ${padId(node.id)}${hit.status === 'named' ? ' ' + hit.name : ''}`);
-            row.kind = 'common';
+            row.event = tr(
+                `コモンイベント ${padId(node.id)}${hit.status === 'named' ? ' ' + hit.name : ''}`,
+                `Common event ${padId(node.id)}${hit.status === 'named' ? ' ' + hit.name : ''}`
+            );
         }
-        const item = new LinkNode('place', label, vscode.TreeItemCollapsibleState.None, {
-            dir, path, at: link.at, index: link.index, mapId: dir === 'out' ? link.toMap : link.fromMap
-        });
-        item.description = placeDetail(row);
-        item.iconPath = new vscode.ThemeIcon('arrow-small-right');
+        // 着地点。見ているマップに着くときは、そのマップ名を言わない(座標だけで足りる)。
+        if (link.toMap !== undefined && link.toMap !== this.mapId) row.toMap = this.name(ctx, link.toMap);
+        row.toX = link.toX;
+        row.toY = link.toY;
+        const item = new LinkNode('place', rowLabel(row), vscode.TreeItemCollapsibleState.None, { dir, at: link.at, index: link.index });
+        item.description = rowDetail(row);
+        item.iconPath = new vscode.ThemeIcon(row.byVariable ? 'question' : dir === 'out' ? 'arrow-small-right' : 'arrow-small-left');
+        item.tooltip = row.byVariable
+            ? tr('行き先を変数で決めているので、どのマップへ行くかはここでは分かりません。押すと、この移動コマンドのテキストが開きます。', 'The destination is set by variables, so which map it goes to is not known here. Click to open the text of this transfer command.')
+            : tr('押すと、この移動コマンドが書いてあるテキストが開きます。着地点にイベントが居るとは限らないので、相手側のテキストは開けません。', 'Click to open the text that holds this transfer command. The landing tile need not hold an event, so the far side has no text to open.');
         return this.withOpen(ctx, item, link);
     }
 

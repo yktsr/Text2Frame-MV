@@ -1396,6 +1396,8 @@ TOOLS.push({
           how: one.how,
           toMap: one.toMap === undefined ? null : one.toMap,
           toLabel: one.toMap === undefined ? null : links.label('map', { id: one.toMap }),
+          toX: one.toX === undefined ? null : one.toX,
+          toY: one.toY === undefined ? null : one.toY,
           byVariable: one.variableId === undefined ? null : one.variableId,
           guards: list ? guardsAt(ctx, list, one.index) : []
         }
@@ -1404,7 +1406,12 @@ TOOLS.push({
       lines.push('ここから出ていく (' + exits.length + ' 件' + (exits.length > limit ? '、先頭 ' + limit + ' 件' : '') + ')')
       if (!exits.length) lines.push('  なし')
       exits.slice(0, limit).forEach(function (one) {
-        const where = one.toLabel || (one.byVariable ? '行き先は変数' + one.byVariable + 'で決まる' : '行き先が分かりません')
+        /* 着地点も言う。相手のマップのどこに降りるかはここにしか無く、しかも**着地点に
+         * イベントが居るとは限らない**ので、相手側のテキストは指せない。 */
+        const at = one.toX === null || one.toY === null ? '' : ' (' + one.toX + ',' + one.toY + ')'
+        const where = one.toLabel
+          ? one.toLabel + at
+          : (one.byVariable ? '行き先は変数' + one.byVariable + 'で決まる' : '行き先が分かりません')
         lines.push('  ' + one.label + (one.commandIndex === undefined ? '' : ' の ' + (one.commandIndex + 1) + ' 番目') +
           '  -> ' + where + (one.how === 'vehicle' ? '(乗り物)' : ''))
         if (!one.guards.length) lines.push('      条件なし')
