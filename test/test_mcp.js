@@ -942,7 +942,7 @@ describe('mcp tools', function () {
   })
 
   /* 再生の層(gameServer / liveState)は TypeScript の生成物なので、配り方によっては無い。
-   * **この機械に層があるかで検査が変わらないよう、ctx.live を差し替えて両方を見る**
+   * **この機械に層があるかで検査が変わらないよう、層を差し替えて両方を見る**
    * (tools/snapshot-mcp.js が筆記録で同じことをしている)。往復そのものは拡張の側の
    * test_mcp_play.js が本物の層で見る。 */
   describe('the live layer', function () {
@@ -952,11 +952,18 @@ describe('mcp tools', function () {
         .filter(function (n) { return n.indexOf('t2f_play_') === 0 })
     }
 
-    it('offers the nine play tools where it resolved', function () {
-      const withLive = mcp.createContext({ root: tmp })
-      withLive.live = function () { return { gameServer: {}, liveState: {} } }
+    /* **2つとも差し替える。** 再生の道具のうち t2f_play_break は構造の層も要るので、
+     * ctx.live だけ差し替えると、拡張をコンパイルしていない機械(CI の core ジョブ)でだけ
+     * 1つ足りなくなる。実際にそれで落ちた。 */
+    const both = function () {
+      const ctx = mcp.createContext({ root: tmp })
+      ctx.live = function () { return { gameServer: {}, liveState: {}, liveMonitor: {} } }
+      ctx.structure = function () { return { database: {}, eventLinks: {}, eventPages: {} } }
+      return ctx
+    }
 
-      expect(listed(withLive)).to.have.lengthOf(10)
+    it('offers the ten play tools where it resolved', function () {
+      expect(listed(both())).to.have.lengthOf(10)
     })
 
     it('offers none of them where it did not', function () {
