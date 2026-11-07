@@ -2449,9 +2449,13 @@ TOOLS.push({
       const ok = word === 'loaded'
       const info = Object.assign({ result: word, ok, slot, why: answer.why || null }, playStatus(ctx))
       /* 読めなかった理由はゲームしか知らない。言わないと、セーブが壊れているのか
-       * プラグインを入れ替えたのかが分からないまま終わる。 */
+       * プラグインを入れ替えたのかが分からないまま終わる。ブラウザには無い機能が理由
+       * なら、ツクール本体の中でだけ動く作りのプラグインが関わっている。 */
       const text = (LOAD_WORDS[word] || word) + '(' + word + ')' +
-        (answer.why ? '\n理由: ' + answer.why : '')
+        (answer.why ? '\n理由: ' + answer.why : '') +
+        (answer.why && /require is not defined/i.test(answer.why)
+          ? '\nブラウザには無い機能を使っているので、ツクール本体の中でだけ動くプラグインが読み込みに関わっているようです(拡張の設定で、テストプレイのときだけ切れます)。'
+          : '')
       if (!ok) return toolResult(text, info)
       return toolResult(text + '\n\n' + statusLines(info).join('\n'), info)
     })

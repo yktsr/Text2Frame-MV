@@ -24,16 +24,33 @@ export function loadWording(): Record<LoadResult, { ok: boolean; text: string }>
 }
 
 /**
+ * ブラウザには無い機能(Node の `require`)。これが理由なら、ツクール本体の中でだけ動く
+ * 作りのプラグインが、読み込みに割り込んでいる。
+ */
+const ONLY_IN_RPG_MAKER = /require is not defined/i;
+
+/**
  * 知らせる1行。**読めなかったときは、ゲームが言った理由を添える。**
  * 「読めませんでした」だけでは、セーブが壊れているのか、プラグインを入れ替えて古い
  * セーブが使えなくなったのかが分からない。知らない答えは、そのまま見せる。
+ *
+ * ツクール本体(nw.js)の中でだけ動く作りのプラグインがあると、ブラウザで動かすこちらでは
+ * そこで止まる。**どのプラグインとは言わない** ── プラグインが悪いのではなく、動かす場所が
+ * 違うだけで、どれを切るかは利用者が一覧から選ぶ(「テストプレイで切るプラグインを選ぶ」)。
  */
 export function loadMessage(result: string, why?: string): { ok: boolean; text: string } {
     const told = loadWording()[result as LoadResult];
     const ok = told ? told.ok : false;
-    const text = told ? told.text : result;
-    if (ok || !why) return { ok, text };
-    return { ok, text: text + tr(`ゲームが言った理由: ${why}`, ` The game said: ${why}`) };
+    let text = told ? told.text : result;
+    if (ok) return { ok, text };
+    if (why) text += tr(`ゲームが言った理由: ${why}`, ` The game said: ${why}`);
+    if (!why || !ONLY_IN_RPG_MAKER.test(why)) return { ok, text };
+    return {
+        ok,
+        text: text + tr(
+            'ブラウザには無い機能を使っているので、ツクール本体の中でだけ動くプラグインが読み込みに関わっているようです。「テストプレイで切るプラグインを選ぶ」から外して試せます。',
+            ' Something a browser does not have was used, so a plugin that only runs inside RPG Maker itself seems to be involved in reading the save. You can leave it out from "Choose the plugins to turn off for test play".')
+    };
 }
 
 export interface SlotLine {

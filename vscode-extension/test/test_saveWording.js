@@ -91,6 +91,24 @@ describe('what the save list and the answers say', function () {
             expect(loadMessage('somethingNew').text).to.equal('somethingNew')
         })
 
+        /* ブラウザには無い機能が理由なら、動かす場所が違うだけなので、そう言って
+         * 選び方を案内する。**どのプラグインとは言わない** ── プラグインは悪くない。 */
+        it('points at the chooser when a browser cannot run what the game used', function () {
+            const told = loadMessage('failed', 'require is not defined')
+
+            expect(told.ok).to.equal(false)
+            expect(told.text).to.contain('ツクール本体の中でだけ動くプラグイン')
+            expect(told.text, '選び方を案内してください').to.contain('テストプレイで切るプラグインを選ぶ')
+        })
+
+        /* 別の理由のときに「ブラウザでは動きません」と言うと嘘になる。 */
+        it('says nothing about plugins when the reason is something else', function () {
+            const told = loadMessage('failed', 'セーブが壊れています')
+
+            expect(told.text).to.contain('セーブが壊れています')
+            expect(told.text).to.not.contain('プラグイン')
+        })
+
         it('adds the reason in English too', function () {
             setJapanese(false)
 
