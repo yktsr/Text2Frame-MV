@@ -5,6 +5,7 @@ import { parseFrontMatter, workspaceRootFor } from './compiler';
 import { Place, placeFromMeta } from './placeLabel';
 import { deployFile, reviewFiles, unappliedFiles } from './deploy';
 import { whenPausable } from './debugSession';
+import { lensesFor } from './tryLenses';
 import { tr } from './db/lang';
 
 /**
@@ -44,16 +45,18 @@ async function until<T>(check: () => T | undefined, ms: number): Promise<T | und
 }
 
 export function registerTryEvent(context: vscode.ExtensionContext, service: DatabaseService, live: LiveService): void {
+    /* どれを出すかは vscode に依存しない src/tryLenses.ts が持っている(テストから引けるように)。 */
     const lenses: vscode.CodeLensProvider = {
         provideCodeLenses(document) {
             const { meta, hasFrontMatter } = parseFrontMatter(document.getText());
             if (!hasFrontMatter) return [];
             const range = new vscode.Range(0, 0, 0, 0);
-            const lens = (title: string, mode: Mode): vscode.CodeLens =>
-                new vscode.CodeLens(range, { title, command: 'text2frame.tryEvent', arguments: [document.uri, mode], tooltip: tr('テストプレイで試す', 'Try it in the test play') });
-            if (meta.kind === 'common') return meta.commonEventId ? [lens(tr('▶ すぐ実行', '▶ Run now'), 'common')] : [];
-            if (!meta.mapId || !meta.eventId) return [];
-            return [lens(tr('▶ イベントの前に立つ', '▶ Stand in front of the event'), 'stand'), lens(tr('▶ このページをすぐ実行', '▶ Run this page now'), 'run')];
+            return lensesFor(meta).map((spec) => new vscode.CodeLens(range, {
+                title: spec.title,
+                command: spec.command,
+                arguments: spec.mode ? [document.uri, spec.mode] : undefined,
+                tooltip: tr('テストプレイで試す', 'Try it in the test play')
+            }));
         }
     };
 

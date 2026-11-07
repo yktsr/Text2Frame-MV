@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { workspaceRootFor } from './compiler';
+import { commentCharFor, workspaceRootFor } from './compiler';
 import { loadCompiler } from './deploy';
 import { lineKinds } from './db/tagRefs';
 import { findConflicts, resolveConflict, tagLikeName, similarTagNames, replaceTagName, compilesAsText } from './db/fixes';
@@ -51,7 +51,7 @@ export function registerQuickFixes(context: vscode.ExtensionContext): void {
         const list: vscode.Diagnostic[] = [];
         const compile = compilerFor(document);
         if (compile) {
-            lineKinds(lines).forEach((kind, line) => {
+            lineKinds(lines, commentCharFor(workspaceRootFor(document))).forEach((kind, line) => {
                 if (kind !== 'tag') return;
                 const name = tagLikeName(lines[line]);
                 if (!name || !becomesText(compile, lines[line])) return;

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { DatabaseService } from './dbService';
 import { loadCompiler } from './deploy';
-import { workspaceRootFor, parseFrontMatter } from './compiler';
+import { gameRootFor, workspaceRootFor, parseFrontMatter } from './compiler';
 import { compileWithLines } from './compileLines';
 import { renderCommands, PreviewRow } from './db/commandView';
 import { RpgCommand } from './db/commandRefs';
@@ -67,7 +67,7 @@ export function registerPreview(context: vscode.ExtensionContext, service: Datab
         let lines: number[] | undefined;
         try {
             // lineMap を知らない古いコンパイラでは lines が無い。表示はできるが、カーソルとは結べない。
-            ({ commands, lines } = compileWithLines(mod, document.getText()));
+            ({ commands, lines } = compileWithLines(mod, document.getText(), gameRootFor(root)));
         } catch (e) {
             const error = e instanceof Error ? e.message.split('\n').slice(0, 2).join(' ') : String(e);
             // 最後に通った結果は残す(打っている途中で毎回真っ白にならないように)。ただし行の対応は外す。

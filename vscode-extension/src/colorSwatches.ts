@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { commentCharFor, workspaceRootFor } from './compiler';
 import { tagLines } from './db/tagRefs';
 import { findColors, cssColor, describeColor } from './db/colors';
 
@@ -31,7 +32,7 @@ export function registerColorSwatches(context: vscode.ExtensionContext): void {
         const lines: string[] = [];
         for (let i = 0; i < document.lineCount; i++) lines.push(document.lineAt(i).text);
         const decorations: vscode.DecorationOptions[] = [];
-        for (const line of tagLines(lines)) {
+        for (const line of tagLines(lines, commentCharFor(workspaceRootFor(document)))) {
             for (const c of findColors(lines[line])) {
                 decorations.push({
                     range: new vscode.Range(line, c.start, line, c.end),

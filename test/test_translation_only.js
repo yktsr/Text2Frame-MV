@@ -82,12 +82,15 @@ describe('Frame2Text translationOnly Test', function () {
     expect(out).to.contain('Scrolling line.')
   })
 
-  it('outputs Japanese tags when EnglishTag is false', function () {
+  /* タグと値の言語そのものは test_english_tag.js で見る。ここでは、日本語で書き出しても
+   * 会話以外が落ちることだけを確かめる。 */
+  it('drops non-conversation events with Japanese tags too', function () {
     const out = decompile(mixedEvents, false, { translationOnly: true })
     expect(out).to.contain('<顔: Actor1(0)>')
-    expect(out).to.contain('<位置: Bottom>')
     expect(out).to.contain('<名前: Alice>')
-    expect(out).to.not.contain('<スイッチ:')
+    expect(out).to.contain('Hello there!')
+    expect(out).to.not.contain('<スイッチ')
+    expect(out).to.not.contain('<代入')
   })
 
   it('is a no-op relative to normal output when only conversation events exist', function () {

@@ -2,7 +2,8 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { injectMonitor, LIVE_EVENTS_PATH, LIVE_STATE_PATH, LIVE_TOKEN_HEADER } from './liveMonitor';
+import { injectMonitor, LIVE_EVENTS_PATH, LIVE_RELAY_EVENT, LIVE_SEND_PATH, LIVE_STATE_PATH, LIVE_TOKEN_HEADER } from './liveMonitor';
+import { pluginsOff } from './db/pluginsOff';
 import { LiveCommand, LiveMessage, parseLiveMessage } from './liveState';
 
 /**
@@ -43,6 +44,12 @@ const MIME: Record<string, string> = {
 
 export interface GameServerOptions {
     onState?: (message: LiveMessage) => void;
+    /**
+     * テストプレイのときだけ切るプラグインの名前を**配るたびに聞く**。ゲームのフォルダは
+     * 書き換えず、配る `js/plugins.js` の中身だけ差し替える(ツクール本体の中でだけ動く
+     * 作りのプラグイン用)。聞くたびに読むので、選び直したら読み込み直すだけで効く。
+     */
+    disablePlugins?: () => string[];
 }
 
 interface Live {
@@ -121,6 +128,51 @@ function receiveState(live: Live, req: http.IncomingMessage, res: http.ServerRes
         }
         res.writeHead(204).end();
         live.onState(message);
+        /* 相乗りしている相手にも同じものを回す。名前付きで出すので、ゲームの
+         * EventSource.onmessage には出ない(あちらは命令だけを聞いている)。 */
+        relay(live, chunks);
+    });
+}
+
+function relay(live: Live, chunks: Buffer[]): void {
+    if (!live.listeners.size) return;
+    const data = 'event: ' + LIVE_RELAY_EVENT + '\ndata: ' + Buffer.concat(chunks).toString('utf8').replace(/[\r\n]+/g, ' ') + '\n\n';
+    live.listeners.forEach((res) => res.write(data));
+}
+
+/** 相乗りしている相手からの命令を、ゲームへ流す。 */
+function receiveSend(live: Live, req: http.IncomingMessage, res: http.ServerResponse): void {
+    if (req.method !== 'POST' || !sameToken(live, req.headers[LIVE_TOKEN_HEADER])) {
+        res.writeHead(403).end();
+        return;
+    }
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on('data', (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > MAX_STATE_BYTES) {
+            res.writeHead(413).end();
+            req.destroy();
+            return;
+        }
+        chunks.push(chunk);
+    });
+    req.on('end', () => {
+        if (res.writableEnded) return;
+        let command: unknown;
+        try {
+            command = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+        } catch (e) {
+            command = undefined;
+        }
+        if (!command || typeof command !== 'object' || Array.isArray(command)) {
+            res.writeHead(400).end();
+            return;
+        }
+        const data = `data: ${JSON.stringify(command)}\n\n`;
+        live.listeners.forEach((one) => one.write(data));
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            .end(JSON.stringify({ listeners: live.listeners.size }));
     });
 }
 
@@ -140,7 +192,7 @@ function openEvents(live: Live, req: http.IncomingMessage, res: http.ServerRespo
     });
 }
 
-function handle(root: string, req: http.IncomingMessage, res: http.ServerResponse, live: Live | undefined): void {
+function handle(root: string, req: http.IncomingMessage, res: http.ServerResponse, live: Live | undefined, off: () => string[]): void {
     const urlPath = (req.url || '').split('?')[0];
     if (live && urlPath === LIVE_STATE_PATH) {
         receiveState(live, req, res);
@@ -148,6 +200,10 @@ function handle(root: string, req: http.IncomingMessage, res: http.ServerRespons
     }
     if (live && urlPath === LIVE_EVENTS_PATH) {
         openEvents(live, req, res);
+        return;
+    }
+    if (live && urlPath === LIVE_SEND_PATH) {
+        receiveSend(live, req, res);
         return;
     }
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -163,7 +219,10 @@ function handle(root: string, req: http.IncomingMessage, res: http.ServerRespons
     try {
         stat = fs.statSync(file);
         if (stat.isDirectory()) {
-            file = path.join(file, 'index.html');
+            /* FOSSIL を使うゲームは index.html だと require is not defined で落ちる。
+             * 書き出し済みならそちらを出す(testPlay.ts の pageFor と同じ理由)。 */
+            const fossil = path.join(file, 'FOSSILindex.html');
+            file = fs.existsSync(fossil) ? fossil : path.join(file, 'index.html');
             stat = fs.statSync(file);
         }
     } catch (e) {
@@ -171,6 +230,19 @@ function handle(root: string, req: http.IncomingMessage, res: http.ServerRespons
         return;
     }
     const ext = path.extname(file).toLowerCase();
+    /* ツクール本体の中でだけ動くプラグインを、配るときだけ切る。フォルダは触らない。 */
+    if (path.relative(root, file) === path.join('js', 'plugins.js') && off().length) {
+        let js: Buffer;
+        try {
+            js = Buffer.from(pluginsOff(fs.readFileSync(file, 'utf8'), off()), 'utf8');
+        } catch (e) {
+            res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Not found');
+            return;
+        }
+        res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/javascript', 'Cache-Control': 'no-store', 'Content-Length': js.length });
+        res.end(req.method === 'HEAD' ? undefined : js);
+        return;
+    }
     if (live && ext === '.html') {
         let html: Buffer;
         try {
@@ -236,7 +308,9 @@ export async function startGameServer(root: string, preferredPort = stablePort(r
     const live: Live | undefined = options.onState
         ? { token: crypto.randomBytes(16).toString('hex'), onState: options.onState, listeners: new Set() }
         : undefined;
-    const server = http.createServer((req, res) => handle(base, req, res, live));
+    const ask = options.disablePlugins;
+    const off = (): string[] => (ask ? ask() : []).filter((one) => typeof one === 'string' && one.trim());
+    const server = http.createServer((req, res) => handle(base, req, res, live, off));
     let port: number;
     try {
         port = await listen(server, preferredPort);

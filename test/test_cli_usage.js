@@ -29,18 +29,30 @@ describe('command line usage', function () {
     })
   })
 
-  /* 3つのコマンドで同じ短縮形が別のものを指していると、打ち間違いが事故になる。
+  /* 4つのコマンドで同じ短縮形が別のものを指していると、打ち間違いが事故になる。
    * -t はテキストのフォルダ、-w は英語タグ、単発のテキストは -f にそろえる。 */
   describe('the same short flag means the same thing everywhere', function () {
     const help = function (name) {
       return cp.spawnSync('node', [bin(name), '--help'], { cwd: tmp, encoding: 'utf8' }).stdout
     }
+    const rootHelp = function (file, args) {
+      return cp.spawnSync('node', [path.resolve(__dirname, '..', file)].concat(args || ['--help']),
+        { cwd: tmp, encoding: 'utf8' }).stdout
+    }
 
-    it('-t is the text folder in all three', function () {
+    it('-t is the text folder in all four', function () {
       expect(help('text2frame')).to.contain('-t, --text-dir')
       expect(help('frame2text')).to.contain('-t, --text-dir')
-      expect(cp.spawnSync('node', [SYNC_CLI, 'once', '--help'], { cwd: tmp, encoding: 'utf8' }).stdout)
-        .to.contain('-t, --text-dir')
+      expect(rootHelp('t2f-sync.js', ['once', '--help'])).to.contain('-t, --text-dir')
+      expect(rootHelp('t2f-mcp.js')).to.contain('-t, --text-dir')
+    })
+
+    it('-d is the data folder and -s the strategy in all four', function () {
+      const helps = [help('text2frame'), help('frame2text'), rootHelp('t2f-sync.js', ['once', '--help']), rootHelp('t2f-mcp.js')]
+      helps.forEach(function (text) {
+        expect(text).to.contain('-d, --data-dir')
+        expect(text).to.contain('-s, --strategy')
+      })
     })
 
     it('-w is the english tag, and text2frame does not use it for something else', function () {

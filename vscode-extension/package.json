@@ -7,7 +7,7 @@
   "license": "MIT",
   "icon": "icon.png",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.101.0"
   },
   "categories": [
     "Programming Languages",
@@ -36,6 +36,12 @@
     "workspaceContains:**/data/Map*.json"
   ],
   "contributes": {
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "text2frame.mcp",
+        "label": "Text2Frame"
+      }
+    ],
     "configurationDefaults": {
       "files.readonlyInclude": {
         "**/.t2f-base/**": true,
@@ -148,6 +154,41 @@
         "command": "text2frame.openLiveValuesTab",
         "title": "%command.text2frame.openLiveValuesTab.title%",
         "icon": "$(window)"
+      },
+      {
+        "command": "text2frame.tree.textsOnly",
+        "title": "%command.text2frame.tree.textsOnly.title%",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "text2frame.tree.showAll",
+        "title": "%command.text2frame.tree.showAll.title%",
+        "icon": "$(filter-filled)"
+      },
+      {
+        "command": "text2frame.deployCurrentFileOverwrite",
+        "title": "%command.text2frame.deployCurrentFileOverwrite.title%",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "text2frame.exportCurrentFileOverwrite",
+        "title": "%command.text2frame.exportCurrentFileOverwrite.title%",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "text2frame.importSaves",
+        "title": "%command.text2frame.importSaves.title%",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "text2frame.loadSave",
+        "title": "%command.text2frame.loadSave.title%",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "text2frame.pickTestPlayPlugins",
+        "title": "%command.text2frame.pickTestPlayPlugins.title%",
+        "icon": "$(checklist)"
       },
       {
         "command": "text2frame.checkProject",
@@ -456,6 +497,16 @@
           "command": "text2frame.showPreview",
           "when": "resourceLangId == text2frame",
           "group": "navigation@3"
+        },
+        {
+          "command": "text2frame.deployCurrentFileOverwrite",
+          "when": "resourceScheme == file && (resourceLangId == text2frame || resourceExtname == .txt)",
+          "group": "9_text2frame@1"
+        },
+        {
+          "command": "text2frame.exportCurrentFileOverwrite",
+          "when": "resourceScheme == file && (resourceLangId == text2frame || resourceExtname == .txt)",
+          "group": "9_text2frame@2"
         }
       ],
       "view/title": [
@@ -463,6 +514,16 @@
           "command": "text2frame.openLiveValuesTab",
           "when": "view == text2frame.liveValues",
           "group": "navigation"
+        },
+        {
+          "command": "text2frame.tree.textsOnly",
+          "when": "view == text2frameExplorer && !text2frame.treeTextsOnly",
+          "group": "navigation@0"
+        },
+        {
+          "command": "text2frame.tree.showAll",
+          "when": "view == text2frameExplorer && text2frame.treeTextsOnly",
+          "group": "navigation@0"
         },
         {
           "command": "text2frame.tree.refresh",
@@ -536,6 +597,14 @@
         },
         {
           "command": "text2frame.tree.refresh",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.textsOnly",
+          "when": "false"
+        },
+        {
+          "command": "text2frame.tree.showAll",
           "when": "false"
         },
         {
@@ -738,11 +807,13 @@
           },
           "text2frame.textBaseDir": {
             "type": "string",
+            "scope": "resource",
             "default": "text",
             "description": "%config.text2frame.textBaseDir.description%"
           },
           "text2frame.dataDir": {
             "type": "string",
+            "scope": "resource",
             "default": "data",
             "description": "%config.text2frame.dataDir.description%"
           }
@@ -808,7 +879,16 @@
             "default": true,
             "description": "%config.text2frame.openRunningText.description%"
           },
-          "text2frame.tryEvent.clearPlayerTransparency": {
+          "text2frame.testPlayDisablePlugins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "resource",
+          "description": "%config.text2frame.testPlayDisablePlugins.description%"
+        },
+        "text2frame.tryEvent.clearPlayerTransparency": {
             "type": "boolean",
             "default": true,
             "scope": "resource",
@@ -831,19 +911,19 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile && npm run bundle-compiler",
-    "compile": "tsc -p ./",
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./ && npm run bundle-compiler",
     "bundle-compiler": "node ./scripts/bundle-compiler.js",
     "update-grammar": "node ./scripts/update-grammar.js",
     "update-tag-help": "node ./scripts/update-tag-help.js",
-    "watch": "tsc -watch -p ./",
+    "watch": "npm run bundle-compiler && tsc -watch -p ./",
     "pretest": "npm run compile",
     "test": "mocha --forbid-only test",
     "lint": "eslint src test --ext ts,js"
   },
   "devDependencies": {
     "@types/node": "^20.x",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "^1.101.0",
     "@typescript-eslint/eslint-plugin": "^6.x",
     "@typescript-eslint/parser": "^6.x",
     "chai": "^4.5.0",

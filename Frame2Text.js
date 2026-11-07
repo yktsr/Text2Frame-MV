@@ -717,6 +717,35 @@
     return null
   }
 
+  /* ゲーム自身の設定(js/plugins.js の Text2Frame のパラメータ)を、その呼び出しの間だけ使う。
+   * 省くかどうかの基準は「タグが無いとき compile が補う値」でなければならないので、
+   * 補う側と同じ設定を見る必要がある。
+   * 戻す関数を返す。ルートが分からないときも関数を返すので、呼び側は分岐しない。
+   * ゲームの中では内部窓そのものが無い(あちらは PluginManager から読めている)。 */
+  function useGameSettings (gameRoot) {
+    const noop = function () {}
+    if (!gameRoot) return noop
+    const api = resolveText2Frame()
+    const use = api && api._internal && api._internal.useProjectParameters
+    return use ? use(gameRoot) : noop
+  }
+
+  /* 入/切の指定を1か所で畳む(英語タグ・既定タグの省略の両方で使う)。ツクールのパラメータ・
+   * プラグインコマンドの引数・CLI のオプションはどれも文字列で届き、'false' は truthy なので、
+   * ここを通さないと指定が黙って無視される。
+   * 未設定のときどちらに寄せるかだけ入口ごとに違うので、第2引数で渡す。 */
+  const toFlag = function (value, whenUnset) {
+    if (value === undefined || value === null || value === '') return !!whenUnset
+    return String(value) !== 'false'
+  }
+
+  /* CLI の -v から IsDebug を立てるための口。CLI は IIFE の外にあり Laurus を直接
+   * 触れないため、ここを通す。モード4つのうち map/common だけが COMMAND_LINE を
+   * 通るので、payload に混ぜると batch と decompile で効かなくなる。 */
+  const setDebug = function (value) {
+    Laurus.Frame2Text.IsDebug = toFlag(value, false)
+  }
+
   if (typeof PluginManager === 'undefined') {
     Laurus.Frame2Text.FileFolder = 'test'
     Laurus.Frame2Text.FileName = 'basic.txt'
@@ -724,7 +753,7 @@
     Laurus.Frame2Text.MapID = '1'
     Laurus.Frame2Text.EventID = '1'
     Laurus.Frame2Text.PageID = '1'
-    Laurus.Frame2Text.IsDebug = true
+    Laurus.Frame2Text.IsDebug = false
     Laurus.Frame2Text.DisplayMsg = true
     Laurus.Frame2Text.DisplayWarning = true
     Laurus.Frame2Text.EnglishTag = true
@@ -755,9 +784,10 @@
     Laurus.Frame2Text.DisplayMsg = String(Laurus.Frame2Text.Parameters.DisplayMsg) === 'true'
     // 未設定(この設定が無かった頃のまま)なら出す。既定を true にしているため。
     Laurus.Frame2Text.DisplayWarning = String(Laurus.Frame2Text.Parameters.DisplayWarning) !== 'false'
-    Laurus.Frame2Text.EnglishTag = String(Laurus.Frame2Text.Parameters.EnglishTag) === 'true'
+    // 未設定(この設定が無かった頃のまま)なら日本語。@default は true だが、ここだけ昔の扱いを残している。
+    Laurus.Frame2Text.EnglishTag = toFlag(Laurus.Frame2Text.Parameters.EnglishTag, false)
     // 未設定(古いプラグイン設定のまま)なら省略する。既定を true にしているため。
-    Laurus.Frame2Text.OmitDefaultTags = String(Laurus.Frame2Text.Parameters.OmitDefaultTags) !== 'false'
+    Laurus.Frame2Text.OmitDefaultTags = toFlag(Laurus.Frame2Text.Parameters.OmitDefaultTags, true)
     // 単発取り出しのしかた。コマンドの引数解決で毎回決め直す。
     Laurus.Frame2Text.Strategy = 'overwrite'
     let PATH_SEP = '/'
@@ -1143,7 +1173,9 @@
     const newLine = '\n'
     // カンマ
     const comma = ', '
-    const EnglishTag = Laurus.Frame2Text.EnglishTag
+    /* タグと値(パラメータ)の言語。下のヘルパ群と decompile の本体が両方これを見る。
+     * decompile は、その呼び出しの間だけここを差し替える(下の decompile を参照)。 */
+    let EnglishTag = toFlag(Laurus.Frame2Text.EnglishTag, true)
     // 関数
     const getOnOffRadioButtonValue = (checkBoxValue) => {
       if (checkBoxValue === 0) return EnglishTag ? 'ON' : 'オン'
@@ -1556,7 +1588,6 @@
     }
 
     // 出力するテキスト変数
-    // Laurus.Frame2Text.EnglishTagの値を別変数に代入
     // 整形(pretty)時にインデントを付与しないコード。
     // 複数行の本文を持つもの(メッセージ本文/スクロール文/注釈/スクリプト)は
     // 行頭の空白がそのまま本文として取り込まれ往復変換が壊れるため列0のままにする。
@@ -1568,15 +1599,15 @@
     // 101/401: 文章の表示(顔・名前・位置・背景タグを含む), 102/402/403/404: 選択肢,
     // 105/405: 文章のスクロール表示。これ以外(スイッチ・変数・移動等)は出力しない。
     const CONVERSATION_CODES = [101, 401, 102, 402, 403, 404, 105, 405]
-    const decompile = function (map_events, EnglishTag, options) {
+    const decompileCore = function (map_events, options) {
       // イベントコード毎にループ
       const pretty = !!(options && options.pretty)
       const translationOnly = !!(options && options.translationOnly)
       /* 既定と同じ顔・背景・位置のタグを書かない。3つとも既定ならタグ行ごと消える。
        * 実プロジェクトでは「文章の表示」の 43.8% がこれに当たり、タグ行が雑音になっている。 */
       const omitDefaults = (options && options.omitDefaults !== undefined)
-        ? !!options.omitDefaults
-        : String(Laurus.Frame2Text.OmitDefaultTags) !== 'false'
+        ? toFlag(options.omitDefaults, true)
+        : toFlag(Laurus.Frame2Text.OmitDefaultTags, true)
       /* 省略してよいのは「タグが無いとき compile が補う値」と同じときだけ。出荷時の既定
        * (ウインドウ/下)を基準にすると、プラグインパラメータを変えているプロジェクトで壊れる。
        * Text2Frame が居ないと何を補われるか分からないので、そのときは背景・位置を省略しない。 */
@@ -3201,6 +3232,22 @@
       return text
     }
 
+    /* 言語は引数で決める。値を組み立てるヘルパ群は上の EnglishTag を見ているので、
+     * 引数で来た言語をこの呼び出しの間だけそこへ入れ、終わったら戻す。decompile は
+     * 同期で入れ子にならないので、この退避・復元で足りる。
+     * 引数を省いた呼び出しは今の値のまま(プラグインパラメータ or CLI の -w)。 */
+    const decompile = function (map_events, englishTag, options) {
+      const previousEnglishTag = EnglishTag
+      if (englishTag !== undefined) EnglishTag = toFlag(englishTag, true)
+      const restoreGame = useGameSettings(options && options.gameRoot)
+      try {
+        return decompileCore(map_events, options)
+      } finally {
+        restoreGame()
+        EnglishTag = previousEnglishTag
+      }
+    }
+
     // 書き出し主体のバージョン(リリース時に package.json と揃えて更新する)。
     // 書き出したテキストのフロントマターに generator: text2frame-mv@<VERSION> として埋める。
     const VERSION = '2.3.0'
@@ -3418,10 +3465,9 @@
     //  ・ゲームへ書くものが無いとき: 書き換えなかった側=ゲームを入れる。ここに merge 結果を入れると、
     //    ゲームが一度も到達していない状態が祖先になり、次の反映で 3-way が「ゲームが消した」と
     //    誤読して、取り出し前にテキストへ書いた分が黙って消える。
-    const buildPullText = function (opts) {
-      opts = opts || {}
+    const buildPullTextCore = function (opts) {
       const list = opts.list || []
-      const englishTag = opts.englishTag !== false
+      const englishTag = toFlag(opts.englishTag, true)
       const existingText = opts.existingText || ''
       const merge = String(opts.strategy || 'overwrite').toLowerCase() === 'merge'
       // 目印入りのゲームを統合すると、目印ごと再マージされて二重・三重に増える。統合だけ見送る。
@@ -3496,6 +3542,19 @@
         approximate: restored.approximate,
         // applyMergePull の警告はこれまで捨てられていた(祖先が無いときの上書き警告など)。
         warnings: r.warnings || []
+      }
+    }
+
+    /* opts.gameRoot をもらったら、そのゲームの設定で省く・補うを決める。
+     * ここで窓を開けるのは、中の decompile だけでなく applyMergePull も効くようにするため
+     * (あれは Text2Frame の compile を呼ぶので、補う側もこの設定で動く必要がある)。 */
+    const buildPullText = function (opts) {
+      opts = opts || {}
+      const restoreGame = useGameSettings(opts.gameRoot)
+      try {
+        return buildPullTextCore(opts)
+      } finally {
+        restoreGame()
       }
     }
 
@@ -3657,6 +3716,8 @@
         }
         const built = buildPullText({
           list,
+          // ゲームのルートは data の親。そのゲームの設定で省く・補うを決める。
+          gameRoot: _path.dirname(opts.dataDir),
           englishTag: opts.englishTag,
           omitDefaults: opts.omitDefaults,
           strategy: entryStrategy,
@@ -3753,7 +3814,7 @@
       return { baseDir, results, baseSaveError }
     }
 
-    internalForCli = { runBatchPull }
+    internalForCli = { runBatchPull, toFlag, setDebug }
     Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, indexTexts, outPathFor, defaultFileName, pullTargetToText, renderFrontMatter, buildPullText, writeBackToGame }
     // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
     // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
@@ -3779,7 +3840,7 @@
       const _path = require('path')
       const dataDir = _path.resolve(BASE_PATH, 'data')
       const textBase = Laurus.Frame2Text.TextBase
-      const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
+      const englishTag = toFlag(Laurus.Frame2Text.EnglishTag, true)
       const batchStrategy = Laurus.Frame2Text.BatchStrategy || 'overwrite'
       let okCount = 0
       let errCount = 0
@@ -3853,7 +3914,7 @@
         index: _index,
         strategy: batchStrategy,
         englishTag,
-        omitDefaults: Laurus.Frame2Text.OmitDefaultTags
+        omitDefaults: toFlag(Laurus.Frame2Text.OmitDefaultTags, true)
       }, function (r) {
         if (!r.ok) {
           errCount++
@@ -4145,6 +4206,10 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
   program.addHelpText('after', help_text)
   const options = program.opts()
+  // 入/切の畳み方はプラグイン側と同じものを使う(規則を2つに割らない)。
+  const { toFlag, setDebug } = module.exports._internal
+  // -v はここで1回だけ渡す。モードごとに配線すると batch と decompile で抜ける。
+  setDebug(options.verbose)
 
   if (!['map', 'common', 'decompile', 'test', 'batch'].includes(options.mode)) {
     program.help()
@@ -4198,7 +4263,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     process.stdin.on('end', () => {
       JSON.parse(data).events.filter(event => event !== null).forEach(function (event) {
         event.pages.forEach(function (p) {
-          console.log(module.exports.decompile(p.list))
+          console.log(module.exports.decompile(p.list, toFlag(options.english_tag, true)))
         })
       })
     })
@@ -4211,9 +4276,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       throw new Error('Data directory not found: ' + dataDir)
     }
     const textDir = path.resolve(cliRoot, options.textDir)
-    const englishTag = String(options.english_tag) === 'true'
+    const englishTag = toFlag(options.english_tag, true)
     // 既定と同じタグの省略。プラグインパラメータと同じ既定(省略する)。
-    const omitDefaults = String(options.omitDefaultTags) !== 'false'
+    const omitDefaults = toFlag(options.omitDefaultTags, true)
     // map/common モードと同じく -s を尊重する(既定 merge)。既存テキストが無ければ結果は全上書きと同じ。
     const batchStrategy = _pullOverwrite ? 'overwrite' : 'merge'
     /* 既にあるテキストは、その名前・その場所のまま書き続ける(索引は front matter で引く)。

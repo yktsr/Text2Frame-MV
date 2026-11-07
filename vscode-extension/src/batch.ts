@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { baseSnapshotPath, dataDirFor, hasBaseSnapshot, historyKeep, loadModule, parseFrontMatter, resolveTarget, snapshotKeyForTarget, textBaseDirFor, workspaceRootFor } from './compiler';
+import { baseSnapshotPath, dataDirFor, gameRootFor, hasBaseSnapshot, strategySetting, historyKeep, loadModule, parseFrontMatter, resolveTarget, snapshotKeyForTarget, textBaseDirFor, workspaceRootFor } from './compiler';
 import { isSidecarText } from './db/files';
 import { withHistory } from './db/history';
 import { commitPull, planPull, pullTargetsFor, ExportTarget, PullPlan } from './exportText';
@@ -33,10 +33,6 @@ function getOutput(): vscode.OutputChannel {
 /** 取り出す範囲。既定は中身のあるものだけ。 */
 export function exportScopeSetting(): string {
     return vscode.workspace.getConfiguration('text2frame').get<string>('exportScope', 'nonempty');
-}
-
-function strategySetting(): string {
-    return vscode.workspace.getConfiguration('text2frame').get<string>('strategy', 'merge');
 }
 
 /** Recursively collect *.txt files under a directory. */
@@ -103,7 +99,7 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
     let fail = 0;
     let warn = 0;
     const strategy = strategySetting();
-    const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
+    const mergeLike = strategy !== 'overwrite';
     // 少しずつ反映して、そのたびに手を離す。やめても、済んだ分はそのまま(履歴から戻せる)。
     const finished = await busy(tr('Text2Frame: ゲームに反映しています…', 'Text2Frame: Applying to the game…'), (slowly: SlowlyOptions) =>
         withHistory(root, 'applyAll', tr('ゲームに反映(すべて)', 'Apply to game (all)'), { keep: historyKeep() }, async (recorder) => {
@@ -114,7 +110,7 @@ export async function deployAll(context: vscode.ExtensionContext): Promise<void>
                     const { opts, label } = resolveTarget(meta, root);
                     const key = snapshotKeyForTarget(root, file, meta);
                     // baseRoot は祖先(.t2f-base)の置き場所。渡さないと拡張ホストの cwd(/)に落ちる。
-                    const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, baseRoot: root };
+                    const applyOpts: { [k: string]: unknown } = { textPath: file, ...opts, strategy, baseRoot: root, gameRoot: gameRootFor(root) };
                     if (mergeLike && hasBaseSnapshot(root, key)) {
                         applyOpts.basePath = baseSnapshotPath(root, key);
                     }

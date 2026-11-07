@@ -171,6 +171,8 @@ declare namespace Frame2TextMV {
     commonEventId?: string;
     /** 行き先の名前。祖先(.t2f-base)の鍵にも使う / The target's name; also the ancestor key */
     key: string;
+    /** ツクールのマップツリーの並び順(3桁ゼロ埋め) / The map's order in the editor tree, zero-padded to 3 */
+    mapOrder?: string;
     /** ツクールで付けたマップ名 / The map name from the editor */
     mapName?: string;
     /** ツクールで付けたイベント名・コモンイベント名 / The event or common event name */

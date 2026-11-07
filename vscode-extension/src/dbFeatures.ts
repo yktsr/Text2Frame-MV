@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { DatabaseService, DbContext } from './dbService';
 import { scanLines, expectedAt, LineRef } from './db/tagRefs';
 import { describeRef, EventLookup, Lookups, eventId, eventLabel } from './db/describe';
-import { parseFrontMatter } from './compiler';
+import { commentCharFor, parseFrontMatter, workspaceRootFor } from './compiler';
 import { DbKind, padId } from './db/database';
 import { FACE_COLUMNS, FACE_ROWS } from './db/faces';
 import { LiveService } from './live';
@@ -57,10 +57,11 @@ class ScanCache {
         const meta = parseFrontMatter(document.getText()).meta;
         const mapId = meta.kind === 'common' ? undefined : parseInt(meta.mapId, 10);
         const eventId = meta.kind === 'common' ? undefined : parseInt(meta.eventId, 10);
+        const commentChar = commentCharFor(workspaceRootFor(document));
         const entry: Scan = {
             version: document.version,
-            refs: scanLines(lines),
-            selfSwitches: scanSelfSwitchLines(lines),
+            refs: scanLines(lines, commentChar),
+            selfSwitches: scanSelfSwitchLines(lines, commentChar),
             mapId: Number.isInteger(mapId) ? mapId : undefined,
             eventId: Number.isInteger(eventId) ? eventId : undefined
         };

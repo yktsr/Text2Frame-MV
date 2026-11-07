@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { snapshotKeyForTarget } from './db/baseKey';
 import * as fs from 'fs';
+import { commentOutCharIn } from './db/projectParams';
 import { isHistoryCopy, noteWrite } from './db/history';
 import { tr } from './db/lang';
 
@@ -217,16 +218,71 @@ export function workspaceRootFor(document?: vscode.TextDocument): string | undef
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 }
 
+/* 下の2つはフォルダごとに決められる(scope: resource)。フォルダを渡さずに読むと、
+ * 2つのゲームを1つのウィンドウで開いている人のところで両方が同じ値になり、
+ * 片方のゲームのデータを見失う。 */
+
+/** 反映のしかた(設定 text2frame.strategy、既定は統合)。 */
+export function strategySetting(): string {
+    return vscode.workspace.getConfiguration('text2frame').get<string>('strategy') || 'merge';
+}
+
+/** そのフォルダでのフォルダ名の設定。空文字は未設定と同じに扱う。 */
+export function settingFor(workspaceRoot: string, key: string, fallback: string): string {
+    const config = vscode.workspace.getConfiguration('text2frame', vscode.Uri.file(workspaceRoot));
+    return config.get<string>(key, fallback) || fallback;
+}
+
 /** Absolute data directory for a workspace (configurable via text2frame.dataDir, default "data"). */
 export function dataDirFor(workspaceRoot: string): string {
-    const configured = vscode.workspace.getConfiguration('text2frame').get<string>('dataDir', 'data') || 'data';
-    return path.resolve(workspaceRoot, configured);
+    return path.resolve(workspaceRoot, settingFor(workspaceRoot, 'dataDir', 'data'));
 }
 
 /** テキストのフォルダ(設定 text2frame.textBaseDir、既定は text)。 */
 export function textBaseDirFor(workspaceRoot: string): string {
-    const configured = vscode.workspace.getConfiguration('text2frame').get<string>('textBaseDir', 'text') || 'text';
-    return path.resolve(workspaceRoot, configured);
+    return path.resolve(workspaceRoot, settingFor(workspaceRoot, 'textBaseDir', 'text'));
+}
+
+/* js/plugins.js を読んだ結果を mtime で覚える。色分けと指摘は打つたびに走るので、
+ * 毎回ファイルを読まない。autoWrapIn(messageCheck.ts)と同じ作法。 */
+const commentCharCache = new Map<string, { mtime: number; char: string }>();
+
+/**
+ * このゲームの Text2Frame が使うコメント文字。既定は `%`。
+ *
+ * `%` 以外にしている人の画面では、知らないと**コメント行が本文として色分けされ、
+ * 本文がコメントとして消える**。反映の側は本体が同じ設定を読んで補うので、画面も揃える。
+ */
+export function commentCharFor(workspaceRoot: string | undefined): string {
+    if (!workspaceRoot) return '%';
+    const file = path.join(gameRootFor(workspaceRoot) as string, 'js', 'plugins.js');
+    let mtime: number;
+    try {
+        mtime = fs.statSync(file).mtimeMs;
+    } catch (e) {
+        return '%';
+    }
+    const hit = commentCharCache.get(file);
+    if (hit && hit.mtime === mtime) return hit.char;
+    let char = '%';
+    try {
+        char = commentOutCharIn(fs.readFileSync(file, 'utf8')) || '%';
+    } catch (e) {
+        char = '%';
+    }
+    commentCharCache.set(file, { mtime, char });
+    return char;
+}
+
+/**
+ * ゲームのフォルダ。data/ の親で、js/plugins.js があるのはそこ。
+ * タグを省いて書かれたテキストに何を補うかは、そのゲームの Text2Frame の設定が決めるので、
+ * 反映・取り出し・プレビューはどれもこれを渡す。ワークスペースのフォルダと同じとは限らない
+ * (設定 text2frame.dataDir で data のフォルダを動かせる)。
+ */
+export function gameRootFor(workspaceRoot: string | undefined): string | undefined {
+    // フォルダが分からなければ undefined。本体は渡されなければ今までどおり補う(推測しない)。
+    return workspaceRoot ? path.dirname(dataDirFor(workspaceRoot)) : undefined;
 }
 
 /** 作業フォルダ。無いときは理由を出して undefined を返す(呼び側はそこで止める)。 */

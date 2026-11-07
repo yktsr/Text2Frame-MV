@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { DatabaseService, DbContext } from './dbService';
 import { RunTracker } from './runHighlight';
-import { parseFrontMatter, workspaceRootFor } from './compiler';
+import { commentCharFor, parseFrontMatter, workspaceRootFor } from './compiler';
 import { isSidecarText } from './db/files';
 import { projectTextFiles } from './usagesView';
 import { placeFromKey, placeLabel } from './placeLabel';
@@ -31,11 +31,13 @@ interface FileScan {
 class ProjectScans {
     private readonly cache = new Map<string, FileScan>();
 
-    scan(fsPath: string): FileScan | undefined {
+    /* コメント文字は版の鍵にも入れる。ツクールで変えたとき、ファイルが変わっていなくても
+     * 読み直す必要があるため(コメント行かどうかで拾う行が変わる)。 */
+    scan(fsPath: string, commentOutChar = '%'): FileScan | undefined {
         const open = vscode.workspace.textDocuments.find((d) => d.uri.fsPath === fsPath);
         let version: string;
         try {
-            version = open ? `doc:${open.version}` : `disk:${fs.statSync(fsPath).mtimeMs}`;
+            version = (open ? `doc:${open.version}` : `disk:${fs.statSync(fsPath).mtimeMs}`) + '/' + commentOutChar;
         } catch (e) {
             return undefined;
         }
@@ -48,16 +50,17 @@ class ProjectScans {
             return undefined;
         }
         const lines = text.split(/\r?\n/);
-        const entry = { version, lines, refs: scanLines(lines), selfSwitches: scanSelfSwitchLines(lines) };
+        const entry = { version, lines, refs: scanLines(lines, commentOutChar), selfSwitches: scanSelfSwitchLines(lines, commentOutChar) };
         this.cache.set(fsPath, entry);
         return entry;
     }
 
     async all(ctx: DbContext): Promise<Array<{ uri: vscode.Uri; scan: FileScan }>> {
         const out: Array<{ uri: vscode.Uri; scan: FileScan }> = [];
+        const commentChar = commentCharFor(ctx.root);
         for (const uri of await projectTextFiles(ctx)) {
             if (isSidecarText(uri.fsPath)) continue;
-            const scan = this.scan(uri.fsPath);
+            const scan = this.scan(uri.fsPath, commentChar);
             if (scan) out.push({ uri, scan });
         }
         return out;
@@ -117,8 +120,9 @@ export function registerNavigation(context: vscode.ExtensionContext, service: Da
     /** カーソルの下にあるもの(番号・セルフスイッチ・ラベルジャンプ)。 */
     const targetAt = (document: vscode.TextDocument, position: vscode.Position) => {
         const lines = docLines(document);
-        const ref = scanLines(lines).find((r) => within(position.line, position.character, r));
-        const self = scanSelfSwitchLines(lines).find((r) => within(position.line, position.character, r));
+        const commentChar = commentCharFor(workspaceRootFor(document));
+        const ref = scanLines(lines, commentChar).find((r) => within(position.line, position.character, r));
+        const self = scanSelfSwitchLines(lines, commentChar).find((r) => within(position.line, position.character, r));
         const named = lines[position.line].match(JUMP_TO_LABEL) || lines[position.line].match(LABEL);
         let label: string | undefined;
         if (named && named.index !== undefined) {
@@ -141,7 +145,7 @@ export function registerNavigation(context: vscode.ExtensionContext, service: Da
         async provideDefinition(document, position) {
             const { lines, ref, self, label } = targetAt(document, position);
             if (label) {
-                const line = labelLine(lines, label);
+                const line = labelLine(lines, label, commentCharFor(workspaceRootFor(document)));
                 return line >= 0 ? new vscode.Location(document.uri, new vscode.Position(line, 0)) : undefined;
             }
             const ctx = contextFor(document);
@@ -149,7 +153,7 @@ export function registerNavigation(context: vscode.ExtensionContext, service: Da
             if (self) {
                 const out: vscode.Location[] = [];
                 for (const file of await eventFiles(ctx, document)) {
-                    const scan = scans.scan(file);
+                    const scan = scans.scan(file, commentCharFor(ctx.root));
                     for (const r of scan ? scan.selfSwitches : []) if (r.write && r.letter === self.letter) out.push(location(vscode.Uri.file(file), r));
                 }
                 return out;
@@ -158,7 +162,7 @@ export function registerNavigation(context: vscode.ExtensionContext, service: Da
             if (ref.kind === 'commonEvent') {
                 const file = await tracker.textFor(ctx, `c:${ref.id}`);
                 if (!file) return undefined;
-                const scan = scans.scan(file);
+                const scan = scans.scan(file, commentCharFor(ctx.root));
                 return new vscode.Location(vscode.Uri.file(file), new vscode.Position(scan ? bodyStart(scan.lines) : 0, 0));
             }
             if (ref.kind === 'map') {
@@ -198,7 +202,7 @@ export function registerNavigation(context: vscode.ExtensionContext, service: Da
             if (self) {
                 const out: vscode.Location[] = [];
                 for (const file of await eventFiles(ctx, document)) {
-                    const scan = scans.scan(file);
+                    const scan = scans.scan(file, commentCharFor(ctx.root));
                     for (const r of scan ? scan.selfSwitches : []) if (r.letter === self.letter) out.push(location(vscode.Uri.file(file), r));
                 }
                 return out;
@@ -262,13 +266,13 @@ export function registerNavigation(context: vscode.ExtensionContext, service: Da
                 symbol.children = n.children.map(toSymbol);
                 return symbol;
             };
-            return readStructure(docLines(document)).map(toSymbol);
+            return readStructure(docLines(document), commentCharFor(workspaceRootFor(document))).map(toSymbol);
         }
     };
 
     const folding: vscode.FoldingRangeProvider = {
         provideFoldingRanges(document) {
-            return foldingRanges(readStructure(docLines(document))).map((r) =>
+            return foldingRanges(readStructure(docLines(document), commentCharFor(workspaceRootFor(document)))).map((r) =>
                 new vscode.FoldingRange(r.start, r.end, r.comment ? vscode.FoldingRangeKind.Comment : vscode.FoldingRangeKind.Region));
         }
     };

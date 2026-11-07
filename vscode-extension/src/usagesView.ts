@@ -4,7 +4,7 @@ import * as path from 'path';
 import { DatabaseService, DbContext } from './dbService';
 import { DbKind, padId } from './db/database';
 import { bodyStart, usageBlocks, usageHits, conditionHits, ConditionEvent, ConditionHit } from './db/usages';
-import { parseFrontMatter, textBaseDirFor } from './compiler';
+import { commentCharFor, parseFrontMatter, textBaseDirFor } from './compiler';
 import { placeFromMeta, placeKey, placeLabel } from './placeLabel';
 import { readMapInfos } from './db/mapTree';
 import { confirmNoText, readOnlyUri } from './eventLinks';
@@ -106,7 +106,7 @@ async function collect(service: DatabaseService, ctx: DbContext, target: UsageTa
         const key = place && placeKey(place);
         if (key) textOf.set(key, uri);
         const lines = text.replace(/\r\n/g, '\n').split('\n');
-        const hits = usageHits(lines, target.kind, target.id);
+        const hits = usageHits(lines, target.kind, target.id, commentCharFor(ctx.root));
         if (!hits.length) continue;
         results.push({
             uri,

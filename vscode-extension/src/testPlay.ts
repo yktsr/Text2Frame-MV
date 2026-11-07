@@ -5,6 +5,7 @@ import { DatabaseService, DbContext } from './dbService';
 import { workspaceRootFor } from './compiler';
 import { GameServer, startGameServer } from './gameServer';
 import { LiveService } from './live';
+import { pluginNames } from './db/pluginsOff';
 import { tr } from './db/lang';
 
 /**
@@ -32,6 +33,24 @@ export function registerTestPlay(context: vscode.ExtensionContext, service: Data
         return root ? service.forRoot(root) : undefined;
     };
 
+    /**
+     * テストプレイのときだけ切るプラグイン。**配るたびに読む**ので、選び直したら
+     * ブラウザを読み込み直すだけで効く。
+     */
+    const offNow = (): string[] => {
+        const off = vscode.workspace.getConfiguration('text2frame').get<string[]>('testPlayDisablePlugins', []) || [];
+        return off.filter((one) => typeof one === 'string' && one.trim());
+    };
+
+    /** そのゲームの plugins.js に並んでいる名前。読めなければ空。 */
+    const pluginsIn = (gameRoot: string): string[] => {
+        try {
+            return pluginNames(fs.readFileSync(path.join(gameRoot, 'js', 'plugins.js'), 'utf8'));
+        } catch (e) {
+            return [];
+        }
+    };
+
     const pageFor = (gameRoot: string): string => {
         const configured = vscode.workspace.getConfiguration('text2frame').get<string>('testPlayPage', '') || '';
         if (configured) return configured.replace(/^\/+/, '');
@@ -54,7 +73,10 @@ export function registerTestPlay(context: vscode.ExtensionContext, service: Data
         }
         let server = servers.get(gameRoot);
         if (!server) {
-            const started = await startGameServer(gameRoot, undefined, { onState: (message) => live.apply(gameRoot, message) });
+            const started = await startGameServer(gameRoot, undefined, {
+                onState: (message) => live.apply(gameRoot, message),
+                disablePlugins: offNow
+            });
             servers.set(gameRoot, started);
             live.start(gameRoot, ctx.root, (command) => started.send(command));
             server = started;
@@ -106,7 +128,49 @@ export function registerTestPlay(context: vscode.ExtensionContext, service: Data
         vscode.window.showInformationMessage(count ? tr('Text2Frame: テストプレイのサーバーを止めました。', 'Text2Frame: Stopped the test play server.') : tr('Text2Frame: 動いているテストプレイのサーバーはありません。', 'Text2Frame: No test play server is running.'));
     };
 
+    /**
+     * 切るプラグインを**一覧から選ばせる**。名前を書かせない ── ゲームごとに違うので、
+     * そのゲームの plugins.js に並んでいるものだけを出して印を付けてもらう。
+     */
+    const pickPlugins = async (): Promise<void> => {
+        const ctx = projectFor();
+        if (!ctx) {
+            vscode.window.showErrorMessage(tr('Text2Frame: ツクールのプロジェクト(data/System.json)が見つかりません。プロジェクトのテキストを開いてから実行してください。', 'Text2Frame: No RPG Maker project (data/System.json) was found. Open a text of the project first.'));
+            return;
+        }
+        const gameRoot = path.dirname(ctx.dataDir);
+        const listed = pluginsIn(gameRoot);
+        if (!listed.length) {
+            vscode.window.showInformationMessage(tr(
+                `Text2Frame: ${path.join(gameRoot, 'js', 'plugins.js')} のプラグインの一覧が読めませんでした。`,
+                `Text2Frame: Could not read the plugin list in ${path.join(gameRoot, 'js', 'plugins.js')}.`));
+            return;
+        }
+        const off = offNow().map((one) => one.trim().replace(/\.js$/i, '').toLowerCase());
+        const picked = await vscode.window.showQuickPick(
+            listed.map((name) => ({ label: name, picked: off.indexOf(name.toLowerCase()) >= 0 })),
+            {
+                canPickMany: true,
+                placeHolder: tr('テストプレイのときだけ切るプラグインに印を付けてください', 'Check the plugins to turn off for test play only')
+            });
+        if (!picked) return;
+        const names = picked.map((one) => one.label);
+        const where = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length
+            ? vscode.ConfigurationTarget.Workspace
+            : vscode.ConfigurationTarget.Global;
+        await vscode.workspace.getConfiguration('text2frame').update('testPlayDisablePlugins', names, where);
+        /* 配るたびに読むので、読み込み直せばすぐ効く。開いていれば、ここから直せる。 */
+        const session = live.current();
+        const again = tr('テストプレイを読み込み直す', 'Reload the test play');
+        const told = names.length
+            ? tr(`Text2Frame: テストプレイでは ${names.length} 件を切ります(ゲームのフォルダはそのままです)。`, `Text2Frame: ${names.length} plugins will be off in the test play (the game folder is unchanged).`)
+            : tr('Text2Frame: テストプレイで切るプラグインはありません。', 'Text2Frame: No plugins will be off in the test play.');
+        const answer = await vscode.window.showInformationMessage(told, ...(session ? [again] : []));
+        if (answer === again && session) session.send({ reload: true });
+    };
+
     context.subscriptions.push(
+        vscode.commands.registerCommand('text2frame.pickTestPlayPlugins', pickPlugins),
         vscode.commands.registerCommand('text2frame.testPlay', playInside),
         vscode.commands.registerCommand('text2frame.testPlayExternal', playOutside),
         vscode.commands.registerCommand('text2frame.stopTestPlay', stop),

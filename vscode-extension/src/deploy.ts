@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { ancestorCopyMessage, baseSnapshotPath, dataChangedExternally, frontMatterBody, hasBaseSnapshot, historyKeep, isAncestorCopy, isDeployable, loadModule, parseFrontMatter, recordDataState, resolveTarget, saveBaseSnapshot, snapshotKeyForTarget, workspaceRootFor } from './compiler';
+import { ancestorCopyMessage, baseSnapshotPath, dataChangedExternally, frontMatterBody, gameRootFor, hasBaseSnapshot, strategySetting, historyKeep, isAncestorCopy, isDeployable, loadModule, parseFrontMatter, recordDataState, resolveTarget, saveBaseSnapshot, snapshotKeyForTarget, workspaceRootFor } from './compiler';
 import { relLabel } from './db/files';
 import { noteWrite, withHistory } from './db/history';
 import { placeFromMeta, placeKey } from './placeLabel';
@@ -55,7 +55,7 @@ export interface T2FModule {
     /** コマンド列を、そのままゲームのデータへ書く(取り出しの書き戻しで使う)。 */
     applyCommandsToData?: (opts: { [key: string]: unknown }) => { ok: boolean; dataPath?: string; error?: string };
     /** opts.lineMap を渡すと { commands, lineMap } を返す(古いコンパイラは無視して配列を返す)。 */
-    compile?: (text: string, opts?: { lineMap?: boolean }) => unknown;
+    compile?: (text: string, opts?: { lineMap?: boolean; gameRoot?: string }) => unknown;
 }
 
 let outputChannel: vscode.OutputChannel | undefined;
@@ -123,15 +123,23 @@ export function noteApply(workspaceRoot: string, textPath: string, dataPath: str
     noteWrite(baseSnapshotPath(workspaceRoot, snapshotKeyForTarget(workspaceRoot, textPath, meta)), 'base');
 }
 
+export interface DeployOptions {
+    review?: boolean;
+    onSave?: boolean;
+    /** この1回だけ反映のしかたを決める。渡さなければ設定 text2frame.strategy。 */
+    strategy?: 'merge' | 'overwrite';
+}
+
 export function deployDocument(
     document: vscode.TextDocument,
     context: vscode.ExtensionContext,
     deployDiagnostics: vscode.DiagnosticCollection,
-    options: { review?: boolean; onSave?: boolean } = {}
+    options: DeployOptions = {}
 ): Promise<ApplyResult | undefined> {
     const root = workspaceRootFor(document);
     const file = document.uri.fsPath;
-    const label = (options.onSave ? tr('保存時の反映 ', 'Apply on save ') : tr('ゲームに反映 ', 'Apply to game ')) + (root ? relLabel(root, file) : path.basename(file));
+    const how = options.strategy === 'overwrite' ? tr('ゲームを上書き ', 'Overwrite the game ') : tr('ゲームに反映 ', 'Apply to game ');
+    const label = (options.onSave ? tr('保存時の反映 ', 'Apply on save ') : how) + (root ? relLabel(root, file) : path.basename(file));
     // 保存時の反映は、同じテキストで5分以内に続いたら1つにまとめる(保存のたびに履歴が並ばないように)。
     const history = { keep: historyKeep(), mergeKey: options.onSave ? 'save:' + file : undefined };
     return withHistory(root, options.onSave ? 'applyOnSave' : 'apply', label, history,
@@ -142,7 +150,7 @@ async function deployDocumentNow(
     document: vscode.TextDocument,
     context: vscode.ExtensionContext,
     deployDiagnostics: vscode.DiagnosticCollection,
-    options: { review?: boolean; onSave?: boolean }
+    options: DeployOptions
 ): Promise<ApplyResult | undefined> {
     if (isAncestorCopy(document.uri.fsPath)) {
         vscode.window.showWarningMessage(ancestorCopyMessage());
@@ -179,8 +187,8 @@ async function deployDocumentNow(
         return { ok: false, textPath: document.uri.fsPath, warnings: [], error: msg };
     }
 
-    const config = vscode.workspace.getConfiguration('text2frame');
-    let strategy = config.get<string>('strategy') || 'merge';
+    /* この1回だけの指定(「テキストで上書き」)が勝つ。無ければ設定。 */
+    let strategy = options.strategy || strategySetting();
     // overwrite replaces the JSON wholesale; merge preserves external JSON edits.
     const isOverwriteLike = (s: string): boolean => s === 'overwrite';
     const dataPath = (resolved.opts.mapPath || resolved.opts.commonEventPath) as string;
@@ -232,7 +240,7 @@ async function deployDocumentNow(
 
     // Default to 3-way merge: attach the BASE snapshot (common ancestor) when present so a
     // merge deploy reconciles writer text edits with external JSON edits, instead of overlaying.
-    const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
+    const mergeLike = !isOverwriteLike(strategy);
     const snapKey = snapshotIdFor(workspaceRoot, document.uri.fsPath, meta);
     const applyOpts: { [key: string]: unknown } = {
         textPath: document.uri.fsPath,
@@ -240,7 +248,9 @@ async function deployDocumentNow(
         strategy,
         // 祖先(.t2f-base)の置き場所。渡さないとコンパイラは process.cwd() を使い、拡張ホストでは
         // それが / なので保存できない。拡張の祖先(baseSnapshotPath)と同じ場所・同じ鍵になる。
-        baseRoot: workspaceRoot
+        baseRoot: workspaceRoot,
+        // タグを省いた所に何を補うかは、このゲームの設定が決める(祖先とは別の話)。
+        gameRoot: gameRootFor(workspaceRoot)
     };
     if (mergeLike && hasBaseSnapshot(workspaceRoot, snapKey)) {
         applyOpts.basePath = baseSnapshotPath(workspaceRoot, snapKey);
@@ -343,15 +353,16 @@ function prepareFile(context: vscode.ExtensionContext, workspaceRoot: string, fi
     } catch (e) {
         return { ok: false, textPath: filePath, warnings: [], error: e instanceof Error ? e.message : String(e) };
     }
-    const strategy = vscode.workspace.getConfiguration('text2frame').get<string>('strategy') || 'merge';
+    const strategy = strategySetting();
     // Default to 3-way merge: attach the BASE snapshot (common ancestor) when present.
-    const mergeLike = strategy !== 'overwrite' && strategy !== 'import';
+    const mergeLike = strategy !== 'overwrite';
     const snapKey = snapshotIdFor(workspaceRoot, filePath, meta);
     const applyOpts: { [key: string]: unknown } = {
         textPath: filePath,
         ...resolved.opts,
         strategy,
-        baseRoot: workspaceRoot // 祖先の置き場所(上の deployDocument と同じ)
+        baseRoot: workspaceRoot, // 祖先の置き場所(上の deployDocument と同じ)
+        gameRoot: gameRootFor(workspaceRoot)
     };
     if (mergeLike && hasBaseSnapshot(workspaceRoot, snapKey)) {
         applyOpts.basePath = baseSnapshotPath(workspaceRoot, snapKey);
@@ -490,7 +501,7 @@ export function showCompiledJson(context: vscode.ExtensionContext): void {
         return;
     }
     try {
-        const commands = mod.compile(frontMatterBody(editor.document.getText()));
+        const commands = mod.compile(frontMatterBody(editor.document.getText()), { gameRoot: gameRootFor(workspaceRoot) });
         const json = JSON.stringify(commands, null, 2);
         vscode.workspace.openTextDocument({ language: 'json', content: json })
             .then((doc) => vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Beside }));
@@ -501,13 +512,24 @@ export function showCompiledJson(context: vscode.ExtensionContext): void {
 }
 
 /** Wire up commands, status bar, and deploy-on-save. Called from activate(). */
+/* 保存時の自動反映。画面左下にしか無いと見つけにくいので、「操作」パネルからも
+ * 今どちらか引けるようにしてある(debugSession の pauseAtMarks と同じ形)。 */
+const SAVE_KEY = 'text2frame.deployOnSave';
+let saveStore: vscode.Memento | undefined;
+const saveEmitter = new vscode.EventEmitter<boolean>();
+export const onDidChangeDeployOnSave = saveEmitter.event;
+export function deployOnSave(): boolean {
+    return !!saveStore && saveStore.get<boolean>(SAVE_KEY, false) === true;
+}
+
 export function registerDeployFeature(context: vscode.ExtensionContext): void {
     const deployDiagnostics = vscode.languages.createDiagnosticCollection('text2frame-deploy');
 
     const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
     statusBar.command = 'text2frame.toggleDeployOnSave';
 
-    const stateKey = 'text2frame.deployOnSave';
+    saveStore = context.workspaceState;
+    const stateKey = SAVE_KEY;
     const isOn = (): boolean => context.workspaceState.get<boolean>(stateKey, false);
 
     let revertTimer: NodeJS.Timeout | undefined;
@@ -559,32 +581,57 @@ export function registerDeployFeature(context: vscode.ExtensionContext): void {
         }, 250));
     };
 
+    /**
+     * 開いているテキストをゲームへ。`overwrite` のときは、設定にかかわらずこの1回だけ上書き。
+     * 上書きは、差分を見せない設定のときだけ手前で聞く(見せる設定なら差分が確認そのもの)。
+     */
+    const applyCurrentFile = async (strategy?: 'overwrite'): Promise<void> => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showWarningMessage(tr('Text2Frame: アクティブなエディタがありません。', 'Text2Frame: No active editor.'));
+            return;
+        }
+        const review = reviewEnabled();
+        if (strategy === 'overwrite' && !review) {
+            const go = tr('ゲームを上書きする', 'Overwrite the game');
+            const answer = await vscode.window.showWarningMessage(tr(
+                `Text2Frame: このテキストの内容で、ゲームのこのページを全部上書きします。ツクール側でこのページに加えた変更は失われます。`,
+                `Text2Frame: Overwriting this page of the game with this text. Changes made to that page in RPG Maker are lost.`),
+            { modal: true }, go);
+            if (answer !== go) return;
+        }
+        const key = editor.document.uri.toString();
+        if (review) manualSaves.add(key);
+        try {
+            await editor.document.save();
+        } catch (e) {
+            manualSaves.delete(key);
+            return;
+        }
+        try {
+            const result = await deployDocument(editor.document, context, deployDiagnostics, { review, strategy });
+            flashResult(result);
+            // 押したときは、何も起きなかったことも言う(保存時の自動反映は黙っている)。
+            if (result && result.ok && result.warnings.length === 0) {
+                vscode.window.showInformationMessage(result.unchanged ? tr('Text2Frame: ゲームは変わりませんでした。', 'Text2Frame: The game did not change.') : tr('Text2Frame: ゲームに反映しました。', 'Text2Frame: Applied to the game.'));
+            }
+        } finally {
+            manualSaves.delete(key);
+        }
+    };
+
     context.subscriptions.push(
         statusBar,
         deployDiagnostics,
-        vscode.commands.registerCommand('text2frame.deployCurrentFile', () => {
-            const editor = vscode.window.activeTextEditor;
-            if (!editor) {
-                vscode.window.showWarningMessage(tr('Text2Frame: アクティブなエディタがありません。', 'Text2Frame: No active editor.'));
-                return;
-            }
-            const review = reviewEnabled();
-            const key = editor.document.uri.toString();
-            if (review) manualSaves.add(key);
-            editor.document.save().then(() => {
-                deployDocument(editor.document, context, deployDiagnostics, { review }).then((result) => {
-                    flashResult(result);
-                    // Explicit command: confirm a clean success with a toast (deployDocument
-                    // already toasts on warnings/errors; deploy-on-save stays quiet).
-                    if (result && result.ok && result.warnings.length === 0) {
-                        vscode.window.showInformationMessage(result.unchanged ? tr('Text2Frame: ゲームは変わりませんでした。', 'Text2Frame: The game did not change.') : tr('Text2Frame: ゲームに反映しました。', 'Text2Frame: Applied to the game.'));
-                    }
-                }).finally(() => manualSaves.delete(key));
-            }, () => manualSaves.delete(key));
-        }),
+        vscode.commands.registerCommand('text2frame.deployCurrentFile', () => applyCurrentFile()),
+        /* 「テキストの内容で上書き」。設定を変えずにこの1回だけ上書きで反映する。
+         * 設定に隠れていると、ボタンが自分の仕事を言えない。 */
+        vscode.commands.registerCommand('text2frame.deployCurrentFileOverwrite', () => applyCurrentFile('overwrite')),
+        saveEmitter,
         vscode.commands.registerCommand('text2frame.toggleDeployOnSave', () => {
             const next = !isOn();
             context.workspaceState.update(stateKey, next);
+            saveEmitter.fire(next);
             renderBase();
             vscode.window.showInformationMessage(tr('Text2Frame: 保存時の自動反映を ', 'Text2Frame: Turned apply on save ') + (next ? 'ON' : 'OFF') + tr(' にしました。', '.'));
         }),
