@@ -3,7 +3,7 @@ import * as path from 'path';
 import { LiveService, LiveSession } from './live';
 import { SaveSlot } from './liveState';
 import { savesOnDisk } from './db/saves';
-import { LoadResult, loadWording, slotLine } from './saveWording';
+import { loadMessage, slotLine } from './saveWording';
 import { tr } from './db/lang';
 
 /**
@@ -163,14 +163,9 @@ export function registerSaveFiles(context: vscode.ExtensionContext, live: LiveSe
             vscode.window.showWarningMessage(tr('Text2Frame: 再開の返事が来ませんでした。', 'Text2Frame: The game did not answer about resuming.'));
             return;
         }
-        const told = loadWording()[answer.result as LoadResult];
-        if (!told) {
-            vscode.window.showWarningMessage('Text2Frame: ' + answer.result);
-        } else if (told.ok) {
-            vscode.window.setStatusBarMessage('Text2Frame: ' + told.text, 4000);
-        } else {
-            vscode.window.showWarningMessage('Text2Frame: ' + told.text);
-        }
+        const told = loadMessage(answer.result, answer.why);
+        if (told.ok) vscode.window.setStatusBarMessage('Text2Frame: ' + told.text, 4000);
+        else vscode.window.showWarningMessage('Text2Frame: ' + told.text);
     };
 
     context.subscriptions.push(

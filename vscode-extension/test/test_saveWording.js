@@ -10,7 +10,7 @@ const path = require('path')
  *
  * 画面を作る側(saveFiles.ts)は vscode を読み込むのでテストから呼べないが、こちらは呼べる
  * (settingsLinks / mcpRoots と同じ分け方)。 */
-const { LOAD_RESULTS, loadWording, slotLine } = require('../out/saveWording')
+const { LOAD_RESULTS, loadWording, loadMessage, slotLine } = require('../out/saveWording')
 const { setJapanese } = require('../out/db/lang')
 
 /** ゲームが答えとして入れうる名前。注入するスクリプトから拾う。 */
@@ -60,6 +60,42 @@ describe('what the save list and the answers say', function () {
         setJapanese(false)
 
         expect(loadWording().loaded.text).to.equal('Resumed from the save.')
+    })
+
+    /* **読めなかった理由は、ゲームしか知らない。** 添えないと「読めませんでした」だけが
+     * 残り、セーブが壊れているのか、プラグインを入れ替えて古いセーブが使えなくなったのかが
+     * 分からない。 */
+    describe('what it says when a save will not load', function () {
+        it('adds the reason the game gave', function () {
+            const told = loadMessage('failed', 'クラス Window_Hoge がありません')
+
+            expect(told.ok).to.equal(false)
+            expect(told.text).to.contain('セーブを読めませんでした。')
+            expect(told.text).to.contain('クラス Window_Hoge がありません')
+        })
+
+        it('says only the answer when the game gave no reason', function () {
+            expect(loadMessage('failed').text).to.equal('セーブを読めませんでした。')
+        })
+
+        /* うまくいったときに理由を添えると、読んだ人は失敗したと思う。 */
+        it('never adds a reason to an answer that worked', function () {
+            const told = loadMessage('loaded', 'なにか')
+
+            expect(told.ok).to.equal(true)
+            expect(told.text).to.equal('セーブから再開しました。')
+        })
+
+        /* 知らない答えは、黙って捨てずにそのまま見せる(次に足した答えが消えない)。 */
+        it('shows an answer it does not know as it came', function () {
+            expect(loadMessage('somethingNew').text).to.equal('somethingNew')
+        })
+
+        it('adds the reason in English too', function () {
+            setJapanese(false)
+
+            expect(loadMessage('failed', 'broken').text).to.equal('Could not read the save. The game said: broken')
+        })
     })
 
     describe('a line of the list', function () {

@@ -2447,8 +2447,11 @@ TOOLS.push({
       }
       const word = String(answer.result || '')
       const ok = word === 'loaded'
-      const info = Object.assign({ result: word, ok, slot }, playStatus(ctx))
-      const text = (LOAD_WORDS[word] || word) + '(' + word + ')'
+      const info = Object.assign({ result: word, ok, slot, why: answer.why || null }, playStatus(ctx))
+      /* 読めなかった理由はゲームしか知らない。言わないと、セーブが壊れているのか
+       * プラグインを入れ替えたのかが分からないまま終わる。 */
+      const text = (LOAD_WORDS[word] || word) + '(' + word + ')' +
+        (answer.why ? '\n理由: ' + answer.why : '')
       if (!ok) return toolResult(text, info)
       return toolResult(text + '\n\n' + statusLines(info).join('\n'), info)
     })

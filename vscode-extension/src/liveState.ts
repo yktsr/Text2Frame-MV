@@ -39,6 +39,8 @@ export interface LiveMessage {
     visit?: string;
     /** セーブからの再開の返事。 */
     load?: string;
+    /** 読めなかったときの、ゲームが言った理由。 */
+    loadError?: string;
     /** 在るセーブ。 */
     saves?: SaveSlot[];
     /** 取り込みの結果。 */
@@ -259,6 +261,8 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
     if (o.gold !== undefined && !isCount(o.gold, MAX_COUNT)) return undefined;
     if (o.visit !== undefined && !(typeof o.visit === 'string' && /^[A-Za-z]{1,20}$/.test(o.visit))) return undefined;
     if (o.load !== undefined && !(typeof o.load === 'string' && /^[A-Za-z]{1,20}$/.test(o.load))) return undefined;
+    /* 理由はゲームの言葉そのままなので、形では縛れない。長さだけ切る。 */
+    if (o.loadError !== undefined && !(typeof o.loadError === 'string' && o.loadError.length <= 200)) return undefined;
     const ids = (v: unknown): v is number[] => Array.isArray(v) && v.length <= MAX_PARALLEL && v.every((a) => isCount(a, MAX_ID) && a > 0);
     const parallel = o.parallel as { events?: unknown; commons?: unknown } | undefined;
     if (parallel !== undefined && !(parallel && typeof parallel === 'object' && ids(parallel.events) && ids(parallel.commons))) return undefined;
@@ -277,6 +281,7 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
             parallel: parallel ? { events: parallel.events as number[], commons: parallel.commons as number[] } : undefined,
             visit: o.visit as string | undefined,
             load: o.load as string | undefined,
+            loadError: o.loadError as string | undefined,
             saves: readSaves(o.saves),
             imported: readImported(o.imported),
             paused: readPaused(o.paused),
@@ -335,7 +340,7 @@ export class LiveState {
     /** 「このイベントから試す」の、ゲームからの返事。 */
     lastVisit?: { result: string; at: number };
     /** 「セーブから再開する」の、ゲームからの返事。 */
-    lastLoad?: { result: string; at: number };
+    lastLoad?: { result: string; why?: string; at: number };
     /** 在るセーブ。 */
     saves?: SaveSlot[];
     /** 取り込みの結果。 */
@@ -346,7 +351,7 @@ export class LiveState {
     apply(message: LiveMessage, now: number): { values: boolean; run: boolean; debug: boolean } {
         this.lastSeen = now;
         if (message.visit) this.lastVisit = { result: message.visit, at: now };
-        if (message.load) this.lastLoad = { result: message.load, at: now };
+        if (message.load) this.lastLoad = { result: message.load, why: message.loadError, at: now };
         if (message.saves) this.saves = message.saves;
         if (message.imported) this.lastImport = { done: message.imported.done, failed: message.imported.failed, at: now };
         let debug = false;

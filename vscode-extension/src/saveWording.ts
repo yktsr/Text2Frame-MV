@@ -23,6 +23,19 @@ export function loadWording(): Record<LoadResult, { ok: boolean; text: string }>
     };
 }
 
+/**
+ * 知らせる1行。**読めなかったときは、ゲームが言った理由を添える。**
+ * 「読めませんでした」だけでは、セーブが壊れているのか、プラグインを入れ替えて古い
+ * セーブが使えなくなったのかが分からない。知らない答えは、そのまま見せる。
+ */
+export function loadMessage(result: string, why?: string): { ok: boolean; text: string } {
+    const told = loadWording()[result as LoadResult];
+    const ok = told ? told.ok : false;
+    const text = told ? told.text : result;
+    if (ok || !why) return { ok, text };
+    return { ok, text: text + tr(`ゲームが言った理由: ${why}`, ` The game said: ${why}`) };
+}
+
 export interface SlotLine {
     slot: number;
     label: string;
