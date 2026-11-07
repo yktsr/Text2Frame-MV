@@ -57,6 +57,15 @@ describe('the saves in the game folder', function () {
     expect(namesOf(savesOnDisk(root))).to.eql(['file1'])
   })
 
+  /* **プラグインが自分のデータを同じ拡張子で隣に置くことがある**(実物のゲームで
+   * SoundTest.rpgsave を見た)。番号でも global でもない名前は、入れる側が置き場所を
+   * 決められない ── MV では番号なしが設定の鍵なので、設定を上書きしてしまう。 */
+  it('leaves out a file a plugin keeps next to the saves', function () {
+    const root = game({ 'file1.rpgsave': 'ひとつめ', 'SoundTest.rpgsave': 'ぷらぐいんのもの' })
+
+    expect(namesOf(savesOnDisk(root))).to.eql(['file1'])
+  })
+
   it('leaves out anything that is not a save', function () {
     const root = game({ 'file1.rmmzsave': 'ひとつめ', 'メモ.txt': 'ただのメモ', 'file9': 'かくしなし' })
 

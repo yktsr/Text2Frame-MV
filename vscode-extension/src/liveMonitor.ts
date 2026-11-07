@@ -334,6 +334,7 @@ export function monitorScript(token: string): string {
   }
   var savesReport = null;
   var loadResult = null;
+  var loadError = null;
   var importResult = null;
   /* セーブの口は MV と MZ で名前が違う。どちらでも動くように両方見る。 */
   function saveThere(dm, n) {
@@ -383,13 +384,16 @@ export function monitorScript(token: string): string {
       var name = one && typeof one.name === 'string' ? one.name : '';
       var data = one && typeof one.data === 'string' ? one.data : null;
       if (!name || data === null) { failed++; return; }
+      /* 置き場所を決められる名前だけ入れる。番号でも global でもないものを通すと、
+       * MV では番号なしが設定の鍵になるので、ゲームの設定を上書きしてしまう。 */
+      var m = /^file(\\d+)$/.exec(name);
+      var id = m ? Number(m[1]) : (name === 'global' ? 0 : null);
+      if (id === null) { failed++; return; }
       try {
         if (window.localforage && typeof sm.forageKey === 'function') {
           waiting.push(window.localforage.setItem(sm.forageKey(name), data));
           done++;
         } else if (typeof sm.webStorageKey === 'function') {
-          var m = /^file(\\d+)$/.exec(name);
-          var id = m ? Number(m[1]) : (name === 'global' ? 0 : -1);
           window.localStorage.setItem(sm.webStorageKey(id), data);
           done++;
         } else {
@@ -419,6 +423,14 @@ export function monitorScript(token: string): string {
     var n = Number(slot) || 0;
     if (!dm || typeof dm.loadGame !== 'function' || n <= 0) { loadResult = 'failed'; return; }
     if (!saveThere(dm, n)) { loadResult = 'noSave'; return; }
+    /* **読めなかった理由も言う。** 「読めませんでした」だけでは、セーブが壊れて
+     * いるのか、プラグインを入れ替えて古いセーブが使えなくなったのかが分からない。
+     * MV の loadGame は理由を自分で飲んでしまうので、投げる方(loadGameWithoutRescue)が
+     * あればそちらを呼ぶ。MZ は約束(Promise)で返すので、断られた方で受ける。 */
+    var sorry = function (e) {
+      if (e) loadError = String((e && e.message) || e).slice(0, 200);
+      loadResult = 'failed';
+    };
     var done = function (ok) {
       if (!ok) { loadResult = 'failed'; return; }
       try {
@@ -427,14 +439,20 @@ export function monitorScript(token: string): string {
           window.$gamePlayer.requestMapReload();
         }
         window.SceneManager.goto(window.Scene_Map);
+        /* **読み込んだあとの後始末を、ゲーム自身にさせる。** これを呼ばないと遊んだ時間が
+         * 0 に戻り、セーブ時の BGM と BGS が鳴らない。プラグインがここに相乗りしている
+         * ことも多く(実物のゲームで2つ見た)、呼ばないとその分も元に戻らない。
+         * ツクール本体は読み込みの画面を閉じるときに呼んでいて、外から読み込むプラグインは
+         * どれも Scene_Map へ移ったあとに呼んでいる。同じ順にする。 */
+        if (window.$gameSystem && typeof window.$gameSystem.onAfterLoad === 'function') window.$gameSystem.onAfterLoad();
         loadResult = 'loaded';
-      } catch (e) { loadResult = 'failed'; }
+      } catch (e) { sorry(e); }
     };
     try {
-      var got = dm.loadGame(n);
-      if (got && typeof got.then === 'function') got.then(function () { done(true); }, function () { done(false); });
+      var got = typeof dm.loadGameWithoutRescue === 'function' ? dm.loadGameWithoutRescue(n) : dm.loadGame(n);
+      if (got && typeof got.then === 'function') got.then(function () { done(true); }, sorry);
       else done(got !== false);
-    } catch (e) { loadResult = 'failed'; }
+    } catch (e) { sorry(e); }
   }
   function clearRunning(map) {
     stepping = null;
@@ -548,13 +566,40 @@ export function monitorScript(token: string): string {
     var here = whereAmI();
     var hereText = here ? JSON.stringify(here) : '';
     var hereChanged = here && hereText !== lastHere;
+    /* **頼まれたことへの返事は、ここで先に取り出す。** 下の番人(ゲームが始まって
+     * いなければ帰る)より後ろに置くと、タイトル画面で頼んだぶんの返事が永久に返らず、
+     * 頼んだ側は「返事が来ませんでした」としか言えなくなる。 */
+    var answers = {};
+    if (visitResult) {
+      answers.visit = visitResult;
+      visitResult = null;
+    }
+    if (loadResult) {
+      answers.load = loadResult;
+      if (loadError) answers.loadError = loadError;
+      loadResult = null;
+      loadError = null;
+    }
+    if (savesReport) {
+      answers.saves = savesReport;
+      savesReport = null;
+    }
+    if (importResult) {
+      answers.imported = importResult;
+      importResult = null;
+    }
+    var answerKeys = Object.keys(answers);
     var switches = window.$gameSwitches;
     var variables = window.$gameVariables;
     if (!switches || !variables || !switches._data || !variables._data) {
-      if (hereChanged) {
-        lastHere = hereText;
-        var alone = { scene: here.scene, message: here.message };
-        if (here.player) alone.player = here.player;
+      if (hereChanged || answerKeys.length) {
+        var alone = answers;
+        if (here) {
+          alone.scene = here.scene;
+          alone.message = here.message;
+          if (here.player) alone.player = here.player;
+        }
+        if (hereChanged) lastHere = hereText;
         send(alone);
       }
       return;
@@ -617,22 +662,7 @@ export function monitorScript(token: string): string {
         });
       }
     }
-    if (visitResult) {
-      message.visit = visitResult;
-      visitResult = null;
-    }
-    if (loadResult) {
-      message.load = loadResult;
-      loadResult = null;
-    }
-    if (savesReport) {
-      message.saves = savesReport;
-      savesReport = null;
-    }
-    if (importResult) {
-      message.imported = importResult;
-      importResult = null;
-    }
+    answerKeys.forEach(function (key) { message[key] = answers[key]; });
     if (pausedReport) {
       message.paused = { reason: pausedReport.reason, frames: pausedReport.frames };
       pausedReport.lists.forEach(function (entry) {

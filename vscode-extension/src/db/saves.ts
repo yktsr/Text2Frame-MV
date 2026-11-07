@@ -27,8 +27,15 @@ export interface SaveOnDisk {
  */
 export const SAVE_MAX_BYTES = 4 * 1024 * 1024;
 
-/** `config` は設定(音量など)で、セーブではない。 */
-const NOT_A_SAVE = ['config'];
+/**
+ * セーブの名前。番号付きの `file1` … と、見出しをまとめた `global` だけ。
+ *
+ * `config` は設定(音量など)でセーブではない。そのうえ **プラグインが自分のデータを
+ * 同じ拡張子で隣に置くことがある**(実物のゲームで `SoundTest.rpgsave` を見た)。
+ * 番号でも `global` でもない名前は、入れる側が置き場所を決められない ── MV では
+ * 番号なしが設定の鍵になるので、**ゲームの設定の上に書いてしまう**。だから名前で絞る。
+ */
+const SAVE_NAME = /^(global|file\d+)$/;
 
 /**
  * `<gameRoot>/save` にあるセーブ。名前順。フォルダが無ければ空。
@@ -46,7 +53,7 @@ export function savesOnDisk(gameRoot: string): SaveOnDisk[] {
     const out: SaveOnDisk[] = [];
     for (const name of names.sort()) {
         const m = /^(.+)\.(rmmzsave|rpgsave)$/.exec(name);
-        if (!m || NOT_A_SAVE.indexOf(m[1]) >= 0) continue;
+        if (!m || !SAVE_NAME.test(m[1])) continue;
         const file = path.join(dir, name);
         let bytes = 0;
         try {
