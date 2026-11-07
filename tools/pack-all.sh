@@ -90,8 +90,12 @@ ok "ルートのバンドル3つを作り直しました"
 # npm の tarball には写さないと入らない。--skip-tests のときは上の検査を飛ばしていて
 # 拡張がコンパイルされていないので、ここで作る(裸の copy-db は out/db が無くて落ちる)。
 npm run build:db >/dev/null || fail "拡張をコンパイルできませんでした(cd vscode-extension && npm ci)"
-node tools/copy-db.js >/dev/null || fail "ルートの db/ を作り直せませんでした"
-ok "ルートの db/ に純粋な層を写しました"
+# 写した数はここで数えない。**約束を知っているのは copy-db.js だけ**にしておく
+# (ここに数を書くと、層を1つ足した日にこの行だけが古くなって落ちる。実際にそうなった)。
+DB_COPIED=$(node tools/copy-db.js | sed -n 's/^copy-db: \([0-9]\{1,\}\)つを.*/\1/p') \
+  || fail "ルートの db/ を作り直せませんでした"
+[ -n "$DB_COPIED" ] || fail "copy-db.js が写した数を言いませんでした"
+ok "ルートの db/ に純粋な層を${DB_COPIED}つ写しました"
 # scripts は止めない。ここで prepack(= build:dist)が二度走るが数秒で、
 # 「publish の前に必ず作り直す」仕掛けが本当に効くことをこの経路で確かめられる。
 npm pack --pack-destination "$OUT" >/dev/null
@@ -107,8 +111,8 @@ ok "tarball に cjs/es/umd が3つ入っています"
 # db/ も同じ理由で数える。files に書いてあっても、npm が一覧を作る時点で実体が無ければ
 # ディレクトリと見なされず、黙って0件で通る。無いと npm 経由だけ t2f_usages が消える。
 DB_IN_TGZ=$(tar tzf "$TGZ" | grep -cE '^package/db/[a-zA-Z]+\.js$' || true)
-[ "$DB_IN_TGZ" -eq 13 ] || fail "tarball の db/ が $DB_IN_TGZ 件です(13 件あるはず)"
-ok "tarball に db/ が13入っています"
+[ "$DB_IN_TGZ" -eq "$DB_COPIED" ] || fail "tarball の db/ が $DB_IN_TGZ 件です(写したのは $DB_COPIED 件)"
+ok "tarball に db/ が${DB_IN_TGZ}入っています"
 
 # --- 3. VS Code 拡張 ---------------------------------------------------------
 # vsce package が vscode:prepublish 経由で lib/ にプラグイン本体を取り込む。

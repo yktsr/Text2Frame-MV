@@ -170,7 +170,7 @@ cjs/es/umd バンドルには入れていません。npm 経由でしか渡ら�
 ```
 checks
   cjs/es/umd in tarball         : OK (3 files, built this run)
-  db/ in tarball                : OK (13 files, built this run)
+  db/ in tarball                : OK (14 files, built this run)
 ```
 
 `main` は生の `Text2Frame.js` なので `require('@yktsr/text2frame-mv')` はこの3つに依りません。
@@ -187,7 +187,8 @@ checks
 cd vscode-extension && npm ci
 ```
 
-これを忘れると `prepack` の `build:db` が止まり、同じ指示を出します。写すのは13ファイルで、`tools/copy-db.js` が
+これを忘れると `prepack` の `build:db` が止まり、同じ指示を出します。何ファイル写すかを知っているのは
+`tools/copy-db.js` だけで（`pack:all` はそれが言った数と tarball を突き合わせます）、あちらは
 **`db/` の外を読む require が無いこと**も機械で確かめます。これが無いと、拡張側で import を
 1つ足した日に、リポジトリも `.vsix` も緑のまま npm の利用者だけが道具を1つ失います。
 
@@ -197,7 +198,7 @@ cd vscode-extension && npm ci
 npm publish --dry-run
 ```
 
-28ファイル・約2.9MB が出れば想定どおりです（db/ の13を含みます）。`files` に無いものは入りません
+29ファイル・約2.9MB が出れば想定どおりです（db/ の14を含みます）。`files` に無いものは入りません
 （`test/`、`tools/`、`vscode-extension/`、`dist/` は対象外）。
 
 ### B-3. 公開
