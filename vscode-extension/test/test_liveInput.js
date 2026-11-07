@@ -31,7 +31,7 @@ describe('the injected script can press keys and say where it is', function () {
     Object.keys(extra || {}).forEach(function (k) { win[k] = extra[k] })
     win.window = win
     const context = vm.createContext(win)
-    vm.runInContext(monitorScript(TOKEN).replace(/^<script>|<\/script>$/g, ''), context)
+    vm.runInContext(monitorScript(TOKEN), context)
     return {
       win,
       posted,
