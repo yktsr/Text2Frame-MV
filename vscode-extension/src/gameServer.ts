@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { injectMonitor, LIVE_EVENTS_PATH, LIVE_RELAY_EVENT, LIVE_SEND_PATH, LIVE_STATE_PATH, LIVE_TOKEN_HEADER } from './liveMonitor';
+import { pluginsOff } from './db/pluginsOff';
 import { LiveCommand, LiveMessage, parseLiveMessage } from './liveState';
 
 /**
@@ -43,6 +44,12 @@ const MIME: Record<string, string> = {
 
 export interface GameServerOptions {
     onState?: (message: LiveMessage) => void;
+    /**
+     * テストプレイのときだけ切るプラグインの名前を**配るたびに聞く**。ゲームのフォルダは
+     * 書き換えず、配る `js/plugins.js` の中身だけ差し替える(ツクール本体の中でだけ動く
+     * 作りのプラグイン用)。聞くたびに読むので、選び直したら読み込み直すだけで効く。
+     */
+    disablePlugins?: () => string[];
 }
 
 interface Live {
@@ -185,7 +192,7 @@ function openEvents(live: Live, req: http.IncomingMessage, res: http.ServerRespo
     });
 }
 
-function handle(root: string, req: http.IncomingMessage, res: http.ServerResponse, live: Live | undefined): void {
+function handle(root: string, req: http.IncomingMessage, res: http.ServerResponse, live: Live | undefined, off: () => string[]): void {
     const urlPath = (req.url || '').split('?')[0];
     if (live && urlPath === LIVE_STATE_PATH) {
         receiveState(live, req, res);
@@ -223,6 +230,19 @@ function handle(root: string, req: http.IncomingMessage, res: http.ServerRespons
         return;
     }
     const ext = path.extname(file).toLowerCase();
+    /* ツクール本体の中でだけ動くプラグインを、配るときだけ切る。フォルダは触らない。 */
+    if (path.relative(root, file) === path.join('js', 'plugins.js') && off().length) {
+        let js: Buffer;
+        try {
+            js = Buffer.from(pluginsOff(fs.readFileSync(file, 'utf8'), off()), 'utf8');
+        } catch (e) {
+            res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Not found');
+            return;
+        }
+        res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/javascript', 'Cache-Control': 'no-store', 'Content-Length': js.length });
+        res.end(req.method === 'HEAD' ? undefined : js);
+        return;
+    }
     if (live && ext === '.html') {
         let html: Buffer;
         try {
@@ -288,7 +308,9 @@ export async function startGameServer(root: string, preferredPort = stablePort(r
     const live: Live | undefined = options.onState
         ? { token: crypto.randomBytes(16).toString('hex'), onState: options.onState, listeners: new Set() }
         : undefined;
-    const server = http.createServer((req, res) => handle(base, req, res, live));
+    const ask = options.disablePlugins;
+    const off = (): string[] => (ask ? ask() : []).filter((one) => typeof one === 'string' && one.trim());
+    const server = http.createServer((req, res) => handle(base, req, res, live, off));
     let port: number;
     try {
         port = await listen(server, preferredPort);

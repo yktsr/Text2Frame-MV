@@ -54,6 +54,48 @@ describe('gameServer', function () {
     expect((await request(server.port, '/nothing.png')).status).to.equal(404)
   })
 
+  /* **実機で踏んだ。** ツクール本体(nw.js)の中でだけ動く作りのプラグインがセーブの
+   * 読み込みに関わっていて、ブラウザのテストプレイが `require is not defined` で止まった。
+   * 選ばれたぶんだけ、配るときに切る(ゲームのフォルダは書き換えない)。 */
+  it('turns off the plugins it was told to, without touching the game folder', async function () {
+    const game = path.join(parent, 'game2')
+    fs.mkdirSync(path.join(game, 'js'), { recursive: true })
+    const source = 'var $plugins =\n' + JSON.stringify([
+      { name: 'PluginOne', status: true, description: '', parameters: {} },
+      { name: 'PluginTwo', status: true, description: '', parameters: {} }
+    ]) + ';\n'
+    fs.writeFileSync(path.join(game, 'js', 'plugins.js'), source)
+    fs.writeFileSync(path.join(game, 'index.html'), '<title>g2</title>')
+    const quiet = await startGameServer(game, 0, { disablePlugins: () => ['PluginOne'] })
+
+    try {
+      const served = (await request(quiet.port, '/js/plugins.js')).body.toString()
+      const list = JSON.parse(/\$plugins\s*=\s*(\[[\s\S]*\])\s*;/.exec(served)[1])
+
+      expect(list.map(function (one) { return [one.name, one.status] }))
+        .to.eql([['PluginOne', false], ['PluginTwo', true]])
+      expect(fs.readFileSync(path.join(game, 'js', 'plugins.js'), 'utf8'), 'ゲームのフォルダを書き換えています')
+        .to.equal(source)
+    } finally {
+      await quiet.close()
+    }
+  })
+
+  it('serves plugins.js as it is when it was told nothing', async function () {
+    const game = path.join(parent, 'game3')
+    fs.mkdirSync(path.join(game, 'js'), { recursive: true })
+    const source = 'var $plugins =\n[{"name":"PluginTwo","status":true,"description":"","parameters":{}}];\n'
+    fs.writeFileSync(path.join(game, 'js', 'plugins.js'), source)
+    fs.writeFileSync(path.join(game, 'index.html'), '<title>g3</title>')
+    const plain = await startGameServer(game, 0)
+
+    try {
+      expect((await request(plain.port, '/js/plugins.js')).body.toString()).to.equal(source)
+    } finally {
+      await plain.close()
+    }
+  })
+
   /* **実機で踏んだ。** FOSSIL を使うゲームは index.html だと require is not defined で
    * 落ちる。道具は正しい URL を返していたが、ルートを開いた相手が落ちた。
    * どこを開いても動くように、ルートは書き出し済みのページを出す。 */

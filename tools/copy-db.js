@@ -36,7 +36,9 @@ const MODULES = [
   // 行とコマンド番号の対応(ブレークポイント)。runLines は依存ゼロ、breakpoints は ./runLines。
   'runLines.js', 'breakpoints.js',
   // ゲームのフォルダにあるセーブの見分け方。拡張と MCP の両方が使う。
-  'saves.js'
+  'saves.js',
+  // 配るときだけプラグインを切る(ツクール本体でしか動かないものがある)。
+  'pluginsOff.js'
 ]
 
 /* src/ 直下にある、vscode に依存しない層。**db/ の中へ平らに入れる。**

@@ -128,6 +128,11 @@ function groups(): CommandGroup[] {
                     tooltip: tr('テストプレイのセーブを選んで、そこから続けます。発生条件を整えたセーブを作っておくと、そのイベントをそのまま試せます。', 'Pick a save of the test play and continue from it. If you keep a save with the conditions already set up, you can try that event as it is.')
                 },
                 {
+                    command: 'text2frame.pickTestPlayPlugins', icon: 'checklist',
+                    label: tr('テストプレイで切るプラグインを選ぶ', 'Choose the plugins to turn off for test play'),
+                    tooltip: tr('ツクール本体の中でだけ動く作りのプラグインは、ブラウザで動かすテストプレイを止めてしまうことがあります。そのゲームのプラグインの一覧から、テストプレイのときだけ切るものに印を付けられます。ゲームのフォルダは書き換えません。', 'A plugin that only runs inside RPG Maker itself can stop a browser test play. Check the ones to turn off for test play only, from the game\'s own plugin list. The game folder is not changed.')
+                },
+                {
                     command: 'text2frame.openLiveValuesTab', icon: 'debug',
                     label: tr('デバッグメニューを表示', 'Show debug menu'),
                     tooltip: tr('テストプレイ中のスイッチ・変数・セルフスイッチ・アイテム・所持金をエディタのタブに並べて見せます。値を書き換えることもできます。', 'Lists the switches, variables, self switches, items and gold of the running test play in an editor tab. You can change the values too.')
