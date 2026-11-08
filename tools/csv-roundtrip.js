@@ -103,7 +103,7 @@ const run = function (target, opts) {
     report.rowsAll += all.length
     report.rowsFew += few.length
 
-    const back = csv.rowsToLines(through(all)).join('\n')
+    const back = csv.rowsToLines(through(all), { gameRoot }).join('\n')
     if (same(compiled(back), want)) report.command++
     else if (report.failures.length < 10) report.failures.push(one.key + ' (コマンド)')
     if (back === one.text.replace(/\r\n/g, '\n')) report.byte++

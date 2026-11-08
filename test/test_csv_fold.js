@@ -11,6 +11,31 @@ const csv = T2F._csv
  * 1つの文章の窓かは compile 自身(lineMap と blockSpans)に聞く ── ここで正規表現から
  * 決め直すと、コンパイラと食い違った瞬間に黙ってシナリオが壊れる。 */
 describe('folding a text into CSV rows', function () {
+  const tmp = []
+  after(function () { tmp.forEach(function (d) { fs.rmSync(d, { recursive: true, force: true }) }) })
+
+  const project = function (char) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-csv-'))
+    tmp.push(root)
+    fs.mkdirSync(path.join(root, 'js'))
+    /* 3つそろって初めて組として使う(1つでも欠けたら出荷時の既定のまま)。
+     * だから検体も3つ書く。背景と位置は出荷時と同じ値にして、効くのを文字だけにする。 */
+    fs.writeFileSync(path.join(root, 'js', 'plugins.js'),
+      'var $plugins =\n' + JSON.stringify([
+        {
+          name: 'Text2Frame',
+          status: true,
+          description: '',
+          parameters: {
+            'Default Background': 'ウインドウ',
+            'Default Window Position': '下',
+            'Comment Out Char': char
+          }
+        }
+      ], null, 1) + ';\n')
+    return root
+  }
+
   const fold = function (text, opts) { return csv.foldToRows(text, 'map001_event001_page1', opts) }
   const shape = function (text, opts) {
     return fold(text, opts).map(function (r) { return [r.種別, r.見た目, r.本文] })
@@ -133,9 +158,6 @@ describe('folding a text into CSV rows', function () {
    * ゲームの設定で変えている人のところで出荷時の '%' のまま畳むと、行がずれて畳み方が
    * 丸ごと間違う ── issue 143 で直したのと同じ壊れ方なので、ここで固める。 */
   describe('with the game\'s own comment-out character', function () {
-    const tmp = []
-    after(function () { tmp.forEach(function (d) { fs.rmSync(d, { recursive: true, force: true }) }) })
-
     before(function () {
       /* ここで見るのはライブラリとして動くときの道。同じプロセスに偽のツクール
        * (test/helpers の installEngine)が居ると、ゲームの設定を読む口は何もしない
@@ -147,50 +169,101 @@ describe('folding a text into CSV rows', function () {
         .to.equal('undefined')
     })
 
-    const project = function (char) {
-      const root = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-csv-'))
-      tmp.push(root)
-      fs.mkdirSync(path.join(root, 'js'))
-      /* 3つそろって初めて組として使う(1つでも欠けたら出荷時の既定のまま)。
-       * だから検体も3つ書く。背景と位置は出荷時と同じ値にして、効くのを文字だけにする。 */
-      fs.writeFileSync(path.join(root, 'js', 'plugins.js'),
-        'var $plugins =\n' + JSON.stringify([
-          {
-            name: 'Text2Frame',
-            status: true,
-            description: '',
-            parameters: {
-              'Default Background': 'ウインドウ',
-              'Default Window Position': '下',
-              'Comment Out Char': char
-            }
-          }
-        ], null, 1) + ';\n')
-      return root
-    }
-
     // 1行目が '#' のコメント、2行目が '%' で始まる本文。どちらが落ちるかで判定が分かる。
     const text = '# これはメモ\n%% 本文のつもり\nこんにちは'
 
     it('treats the project\'s character as the comment, not the shipped one', function () {
       const rows = csv.foldToRows(text, 'k', { gameRoot: project('#') })
-      // '#' の行はどのコマンドにもならないので自動、'%%' の行は本文としてセリフに入る。
-      expect(rows[0].種別).to.equal('自動')
-      expect(rows[0].本文).to.equal('# これはメモ')
-      expect(rows[1].種別).to.equal('セリフ')
-      expect(rows[1].本文).to.equal('%% 本文のつもり\nこんにちは')
+      // '#' の行はメモ、'%%' の行は本文としてセリフに入る。
+      expect(rows).to.have.lengthOf(1)
+      expect(rows[0].種別).to.equal('セリフ')
+      expect(rows[0].メモ).to.equal('これはメモ')
+      expect(rows[0].本文).to.equal('%% 本文のつもり\nこんにちは')
     })
 
     it('falls back to the shipped character when no root is given', function () {
-      // 渡し忘れたらここが鳴る。'%%' の行が消えて '#' の行が本文になる。
+      // 渡し忘れたらここが鳴る。'%%' の行がメモになり、'#' の行が本文になる。
       const rows = csv.foldToRows(text, 'k')
       expect(rows[0].種別).to.equal('セリフ')
+      expect(rows[0].メモ).to.equal('')
       expect(rows[0].本文).to.equal('# これはメモ')
+      expect(rows[1].メモ).to.equal('% 本文のつもり')
     })
 
     it('puts the settings back after it is done', function () {
       csv.foldToRows(text, 'k', { gameRoot: project('#') })
       expect(csv.foldToRows(text, 'k')[0].本文).to.equal('# これはメモ')
+    })
+  })
+
+  /* メモの置き場所はコメントアウト行(既定は %)。compile が落とすのでゲームには入らず、
+   * テキストには残るので、取り出し直しても消えない。しまう先を別に作らない。 */
+  describe('the memo column', function () {
+    it('lifts a comment line into the memo of the row it sits before', function () {
+      const rows = fold('% イラスト担当さんへ: 笑顔で\n<Face: suzu(0)>\nこんにちは')
+      expect(rows).to.have.lengthOf(1)
+      expect(rows[0].メモ).to.equal('イラスト担当さんへ: 笑顔で')
+      expect(rows[0].見た目).to.equal('<Face: suzu(0)>')
+      expect(rows[0].本文).to.equal('こんにちは')
+    })
+
+    it('shows the memo without the comment character', function () {
+      // 「メモ」という列で % を見せない。実データのコメント行は両方のゲームで0件なので、
+      // 守るべき既存の綴りが無い。
+      expect(fold('%メモ\nこんにちは')[0].メモ).to.equal('メモ')
+      expect(fold('%\nこんにちは')[0].メモ).to.equal('')
+    })
+
+    it('keeps a run of comment lines together', function () {
+      const rows = fold('% ひとつ\n% ふたつ\nこんにちは')
+      expect(rows[0].メモ).to.equal('ひとつ\nふたつ')
+    })
+
+    it('gives a trailing comment line a row of its own', function () {
+      const rows = fold('こんにちは\n% あとがき')
+      expect(rows).to.have.lengthOf(2)
+      expect(rows[1].種別).to.equal('メモ')
+      expect(rows[1].メモ).to.equal('あとがき')
+      expect(rows[1].本文).to.equal('')
+    })
+
+    it('writes the memo back as a comment line, in the same place', function () {
+      const text = '% 笑顔で\n<Face: suzu(0)>\nこんにちは\n\n% 静かに\nさようなら\n% あとがき'
+      expect(csv.rowsToLines(fold(text)).join('\n')).to.equal(text)
+    })
+
+    it('keeps the memo out of the game', function () {
+      const text = '% イラスト担当さんへ\nこんにちは'
+      const back = csv.rowsToLines(fold(text)).join('\n')
+      expect(JSON.stringify(T2F.compile(back))).to.not.contain('イラスト担当')
+      expect(T2F.compile(back)).to.eql(T2F.compile(text))
+    })
+
+    it('turns a memo someone typed in the sheet into a comment line', function () {
+      const rows = fold('こんにちは')
+      rows[0].メモ = 'シートで書いたメモ'
+      const back = csv.rowsToLines(rows).join('\n')
+      expect(back).to.equal('% シートで書いたメモ\nこんにちは')
+      expect(T2F.compile(back)).to.eql(T2F.compile('こんにちは'))
+    })
+
+    it('does not add the comment character twice', function () {
+      const rows = fold('こんにちは')
+      rows[0].メモ = '% もう付けてある'
+      expect(csv.rowsToLines(rows).join('\n')).to.equal('% もう付けてある\nこんにちは')
+    })
+
+    it('keeps the memo of a line the dialogue-only sheet shows', function () {
+      const rows = csv.foldToRows('% 笑顔で\nこんにちは', 'k', { rows: 'dialogue' })
+      expect(rows[0].メモ).to.equal('笑顔で')
+    })
+
+    it('uses the comment character the project set', function () {
+      const root = project('#')
+      expect(csv.foldToRows('# メモ\nこんにちは', 'k', { gameRoot: root })[0].メモ).to.equal('メモ')
+      const rows = csv.foldToRows('こんにちは', 'k', { gameRoot: root })
+      rows[0].メモ = 'シートで書いた'
+      expect(csv.rowsToLines(rows, { gameRoot: root }).join('\n')).to.equal('# シートで書いた\nこんにちは')
     })
   })
 

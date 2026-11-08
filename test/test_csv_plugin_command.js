@@ -205,6 +205,27 @@ describe('the batch plugin commands with a format argument', function () {
       expect(message_of('一括取り出し')).to.have.length.above(0)
     })
 
+    /* メモの列はゲームに入らず、テキストには残る。だから取り出し直しても消えない。 */
+    it('keeps a memo out of the game and in the text, so a re-export still has it', function () {
+      const list = rows()
+      const at = list.findIndex(function (r) { return r.本文 === 'やあ' })
+      list[at].メモ = 'イラスト担当さんへ: 笑顔で'
+      put(list)
+      push([path.join(tmp, 'text'), 'merge', 'csv'])
+
+      const file = path.join(tmp, 'text', 'map001_event001_page1.txt')
+      expect(fs.readFileSync(file, 'utf8')).to.contain('% イラスト担当さんへ')
+      expect(JSON.stringify(JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8'))))
+        .to.not.contain('イラスト担当')
+
+      // 取り出し直すと、メモの列に戻ってくる。
+      pull([path.join(tmp, 'text'), 'merge', 'conversation', 'csv'])
+      const again = rows().filter(function (r) { return r.メモ })
+      expect(again).to.have.lengthOf(1)
+      expect(again[0].メモ).to.equal('イラスト担当さんへ: 笑顔で')
+      expect(again[0].本文).to.equal('やあ')
+    })
+
     /* CSV から戻すときに、CSV に出ていない宛先まで一括反映しない。「シートを戻した」
      * つもりの操作がテキスト全体の反映になると、別の宛先の編集が巻き込まれる。 */
     it('leaves the targets the sheet does not mention alone', function () {

@@ -12139,14 +12139,37 @@
           (e && e.t2fLine !== undefined ? '(' + (e.t2fLine + 1) + '行目)' : '')
       }
 
+      /* コメントアウト行(既定は %)。compile が落とすのでゲームには入らないが、
+       * テキストには残る ── だから「ゲームに入らないメモ」の置き場所にちょうど合う。
+       * しまう先を別に作らない。
+       *
+       * セルには**コメントの文字を外した素の文**を入れる。実データのコメント行は
+       * アクアリウムも kindworld も**0件**だったので、綴りを守る相手が居ない。
+       * 「メモ」という列で % を見せないほうが、書く人にとって素直。
+       * (`  %字下げ` のような変わった書き方は、戻すと `% 字下げ` になる ──
+       *  コマンドは変わらないので、バイトの差として報告する。) */
+      const commentChar = Laurus.Text2Frame.CommentOutChar || '%'
+      const commentLine = new RegExp('^ *' + commentChar)
+      const stripComment = function (line) {
+        return String(line).replace(commentLine, '').replace(/^ /, '')
+      }
+      const memoRun = function (i) {
+        let j = i
+        while (j < lines.length && !inBlock[j] && commentLine.test(lines[j])) j++
+        return j
+      }
+
       const rows = []
+      let pendingMemo = []
       const push = function (kind, cells, look, note) {
         const row = csvBlankRow()
         row.種別 = kind
         row.宛先 = key || ''
         row.見た目 = (look || []).join('\n')
         row.本文 = cells.join('\n')
+        row.メモ = pendingMemo.join('\n')
         row.エラー = note || ''
+        pendingMemo = []
         rows.push(row)
       }
       // i から続く見た目タグの行を数える。そのあとが本文なら畳める。
@@ -12159,6 +12182,14 @@
       let i = 0
       while (i < lines.length) {
         if (failure) { push('自動', [lines[i]], null, i === 0 ? failure : ''); i++; continue }
+        /* メモは次の行へ**前向き**に寄せる。行を分けると、読む人には「中身の無い行」が
+         * 挟まって見えるし、書く人はどの台詞への注意なのか分からなくなる。 */
+        const afterMemo = memoRun(i)
+        if (afterMemo > i) {
+          lines.slice(i, afterMemo).forEach(function (one) { pendingMemo.push(stripComment(one)) })
+          i = afterMemo
+          continue
+        }
         if (opensAt[i] !== undefined) {
           const to = opensAt[i]
           push('自動', lines.slice(i, to + 1))
@@ -12188,6 +12219,8 @@
         push(choice[i] ? '選択肢' : '自動', [lines[i]])
         i++
       }
+      // 最後のメモは寄せる先が無いので、メモだけの行にする。
+      if (pendingMemo.length) push('メモ', [''])
 
       const stamp = csvStamp(whole)
       rows.forEach(function (r, n) {
@@ -12203,16 +12236,37 @@
     /* 行をテキストに戻す。権威は要らない ── セルの中身が行になるだけで、窓かどうかは
      * できたテキストを compile がもう一度決める。だからコンパイラの間違いが取り込みを
      * 壊す経路は、取り出しと同じ1本だけ。 */
-    const csvRowsToLines = function (rows) {
-      const out = []
-      rows.forEach(function (r) {
-        // 見た目 -> 本文 の順。並べ直すだけで、綴りは作り直さない。
-        const look = r.見た目 === undefined || r.見た目 === null ? '' : String(r.見た目)
-        if (look !== '') look.split('\n').forEach(function (one) { out.push(one) })
-        const text = r.本文 === undefined || r.本文 === null ? '' : String(r.本文)
-        text.split('\n').forEach(function (one) { out.push(one) })
-      })
-      return out
+    const csvRowsToLines = function (rows, opts) {
+      const o = opts || {}
+      const restore = useProjectParameters(o.gameRoot)
+      try {
+        const commentChar = Laurus.Text2Frame.CommentOutChar || '%'
+        const already = new RegExp('^ *' + commentChar)
+        const out = []
+        rows.forEach(function (r) {
+          /* メモ -> 見た目 -> 本文 の順。
+           * メモはコメントアウト行として書く。compile が落とすのでゲームには入らず、
+           * テキストには残るので、取り出し直しても消えない。
+           * 既にコメントの文字で始まっている行はそのまま(二重に付けない)。 */
+          const memo = r.メモ === undefined || r.メモ === null ? '' : String(r.メモ)
+          if (memo !== '') {
+            memo.split('\n').forEach(function (one) {
+              out.push(already.test(one) ? one : commentChar + ' ' + one)
+            })
+          }
+          // 見た目と本文は並べ直すだけ。綴りは作り直さない。
+          const look = r.見た目 === undefined || r.見た目 === null ? '' : String(r.見た目)
+          if (look !== '') look.split('\n').forEach(function (one) { out.push(one) })
+          const text = r.本文 === undefined || r.本文 === null ? '' : String(r.本文)
+          // メモだけの行は、メモを書いたらそれで終わり(空行を1つ増やさない)。
+          if (text !== '' || memo === '' || String(r.種別 || '') !== 'メモ') {
+            text.split('\n').forEach(function (one) { out.push(one) })
+          }
+        })
+        return out
+      } finally {
+        restore()
+      }
     }
 
     /* CSV の行を、いまのテキストに当てる。**CSV からテキストを作らない。**
@@ -12349,7 +12403,7 @@
       return {
         ok: !fatal,
         // 断るものがあったら、いまのテキストをそのまま返す(途中まで当てた形を作らない)。
-        text: fatal ? whole : csvRowsToLines(out).join('\n'),
+        text: fatal ? whole : csvRowsToLines(out, { gameRoot: o.gameRoot }).join('\n'),
         stamp,
         problems,
         missing,
@@ -12971,6 +13025,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           テキストに当ててから、ふつうの反映と同じ道でゲームへ書きます。
           例1：$ npx text2frame --mode csv
           例2：$ npx text2frame --mode csv -f 台本.csv --root /path/to/project
+
+          「メモ」の列はゲームに入りません。コメントアウト行（既定は %）としてテキストに
+          残るので、取り出し直してもメモの列に戻ってきます。
 
           **CSV からテキストを作り直すのではありません。** いまのテキストをもう一度畳んで、
           「ID」が合う行だけ差し替えます。だから --rows dialogue で出した短い表でも、
