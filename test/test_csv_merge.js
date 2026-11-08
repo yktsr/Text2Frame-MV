@@ -173,6 +173,33 @@ describe('applying CSV rows to the text that is there now', function () {
     })
   })
 
+  /* 取り出した CSV には、人が読むための見出しの行が宛先ごとに1つ入る。あれは
+   * テキストの行に対応しないので、取り込みでは中身として扱わない。 */
+  it('ignores the heading row the export puts in for the reader', function () {
+    const head = {}
+    csv.COLUMNS.forEach(function (c) { head[c] = '' })
+    head.種別 = '見出し'
+    head.宛先 = KEY
+    head.本文 = KEY + '  EV001'
+    const r = apply([head].concat(fold()))
+    expect(r.ok).to.equal(true)
+    expect(r.text).to.equal(TEXT)
+  })
+
+  it('ignores a row the sheet left completely empty', function () {
+    const r = apply(fold().concat([{}]))
+    expect(r.ok).to.equal(true)
+    expect(r.text).to.equal(TEXT)
+  })
+
+  it('still puts an added line in when the row has something in it', function () {
+    // 空の行だけを外す。本文を書いた行は足された行として入る。
+    const rows = fold().concat([{ 種別: 'セリフ', 宛先: KEY, ID: '', 本文: 'おまけ' }])
+    const r = apply(rows)
+    expect(r.ok).to.equal(true)
+    expect(r.text).to.equal(TEXT + '\nおまけ')
+  })
+
   it('does not mind a sheet that dropped the columns it does not need', function () {
     const slim = csv.parseCsv(csv.formatCsv(fold(), ['ID', '本文', '見た目', '版', '種別'])).rows
     const r = csv.mergeRows(TEXT, slim, { key: KEY })

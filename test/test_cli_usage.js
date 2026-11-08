@@ -29,6 +29,39 @@ describe('command line usage', function () {
     })
   })
 
+  /* --mode は2か所で検められている ── commander に渡した正規表現と、そのあとの配列。
+   * 配列だけ直すと正規表現が弾いて options.mode が未設定になり、「知らないモード」で
+   * 落ちる(自分の配線を疑って時間を使う形になる)。だから揃っていることを固定する。
+   * test だけは配列にしか無い ── 開発用で、使い方にも載せていない(上の検査がそれを守る)。 */
+  describe('the two lists of modes agree', function () {
+    const DEV_ONLY = ['test']
+    ;[['Text2Frame.js', 'text2frame'], ['Frame2Text.js', 'frame2text']].forEach(function (pair) {
+      it(pair[1] + ' declares the same modes in the regexp and in the array', function () {
+        const src = fs.readFileSync(path.resolve(__dirname, '..', pair[0]), 'utf8')
+        const declared = src.match(/--mode <([^>]+)>', 'output mode', \/\^\(([^)]+)\)\$\/i\)/)
+        expect(declared, 'the --mode option is not where this test looks').to.not.equal(null)
+        const inPlaceholder = declared[1].split('|')
+        const inRegexp = declared[2].split('|')
+        const arrayLine = src.match(/if \(!\[([^\]]+)\]\.includes\(options\.mode\)\)/)
+        expect(arrayLine, 'the array of modes is not where this test looks').to.not.equal(null)
+        const inArray = arrayLine[1].split(',').map(function (one) { return one.trim().replace(/'/g, '') })
+
+        // 正規表現と <...> の見出しが同じことも見る(片方だけ直すと使い方が嘘になる)。
+        expect(inPlaceholder).to.eql(inRegexp)
+        expect(inArray.filter(function (m) { return DEV_ONLY.indexOf(m) < 0 })).to.eql(inRegexp)
+        DEV_ONLY.forEach(function (m) { expect(inRegexp).to.not.include(m) })
+      })
+    })
+
+    /* CSV の口を持っているのはどちらか。取り出しが frame2text、取り込みが text2frame。 */
+    ;[['Frame2Text.js', 'frame2text']].forEach(function (pair) {
+      it(pair[1] + ' accepts csv as a mode', function () {
+        const src = fs.readFileSync(path.resolve(__dirname, '..', pair[0]), 'utf8')
+        expect(src.match(/--mode <([^>]+)>/)[1].split('|')).to.include('csv')
+      })
+    })
+  })
+
   /* 4つのコマンドで同じ短縮形が別のものを指していると、打ち間違いが事故になる。
    * -t はテキストのフォルダ、-w は英語タグ、単発のテキストは -f にそろえる。 */
   describe('the same short flag means the same thing everywhere', function () {

@@ -3814,7 +3814,7 @@
       return { baseDir, results, baseSaveError }
     }
 
-    internalForCli = { runBatchPull, toFlag, setDebug }
+    internalForCli = { runBatchPull, toFlag, setDebug, resolveText2Frame }
     Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, indexTexts, outPathFor, defaultFileName, pullTargetToText, renderFrontMatter, buildPullText, writeBackToGame }
     // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
     // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
@@ -4124,7 +4124,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .name('frame2text')
     .version('2.3.0')
     .usage('[options]')
-    .option('-m, --mode <map|common|decompile|batch>', 'output mode', /^(map|common|decompile|batch)$/i)
+    .option('-m, --mode <map|common|decompile|batch|csv>', 'output mode', /^(map|common|decompile|batch|csv)$/i)
     .option('-i, --input_path <name>', 'input map data path')
     .option('-o, --output_path <name>', 'output file path')
     .option('-e, --event_id <name>', 'event file id')
@@ -4138,6 +4138,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('--omit-default-tags <true/false>', 'omit face/background/position tags that match the defaults', 'true')
     .option('-s, --strategy <merge|overwrite>', 'pull strategy (default merge: keep translations; overwrite: replace)', /^(merge|overwrite)$/i, 'merge')
     .option('--scope <all|nonempty|conversation|custom>', 'batch mode: which events to write (default: conversation)', /^(all|nonempty|conversation|custom)$/i, 'conversation')
+    .option('--rows <all|dialogue>', 'csv mode: which rows to write (default: all)', /^(all|dialogue)$/i, 'all')
     .option('-b, --base <path>', 'ancestor text path for merge (optional; auto .t2f-base when omitted)')
     .parse()
 
@@ -4149,6 +4150,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         npx frame2text --mode batch
         npx frame2text --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
         npx frame2text --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
+        npx frame2text --mode csv
         npx frame2text --mode decompile
     DESCRIPTION
         npx frame2text --mode batch
@@ -4181,6 +4183,30 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           例5: $ npx frame2text --mode batch --text-dir text-en
                $ npx text2frame --mode batch --text-dir text-en
 
+        npx frame2text --mode csv
+          テキストを1枚の CSV に畳む、スプレッドシート用の書き出しモードです。
+          text フォルダのテキストを読み、ルートに scenario.csv を書きます。
+          タグを知らない人にシナリオを書いてもらい、戻してもらうための形です。
+          例1：$ npx frame2text --mode csv
+          例2：$ npx frame2text --mode csv --root /path/to/project -o 台本.csv
+
+          1行が1つの読み手の単位になります(文章の窓まるごと1行、顔や背景のタグは
+          その窓の「見た目」の列へ)。行は「宛先」と「ID」で引くので、シートを
+          並べ替えたり列を入れ替えたりしても戻せます。「メモ」の列はゲームに入りません。
+
+          --rows で出す行を選べます。（既定は all ）
+            all      … タグの行も空行も全部出します。
+            dialogue … セリフと選択肢の行だけ出します。読む人向けに短くなりますが、
+                       出していない行は取り込みのときにそのまま残ります
+                       (取り込みは CSV からテキストを作らず、今のテキストに当てます)。
+          例3: $ npx frame2text --mode csv --rows dialogue
+
+          **このモードはテキストを書き直しません。** ゲームの最新を映したいときは、
+          先に --mode batch で取り出してください。テキストの無い宛先は CSV に入れず、
+          何件あったかを報告します。
+          書いてもらった CSV をゲームへ戻すのは text2frame のほうです。
+          例4: $ npx text2frame --mode csv
+
         npx frame2text --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
           マップイベントのテキスト出力モードです。
           読み込むマップファイル、出力テキストファイル、イベントID、ページIDを指定します。
@@ -4211,7 +4237,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   // -v はここで1回だけ渡す。モードごとに配線すると batch と decompile で抜ける。
   setDebug(options.verbose)
 
-  if (!['map', 'common', 'decompile', 'test', 'batch'].includes(options.mode)) {
+  if (!['map', 'common', 'decompile', 'test', 'batch', 'csv'].includes(options.mode)) {
     program.help()
     process.exit(0)
   }
@@ -4267,6 +4293,77 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         })
       })
     })
+  } else if (options.mode === 'csv') {
+    /* text/*.txt を1枚の CSV に畳む。**ゲームのデータは読むだけ**(どの宛先がどの順で
+     * 並ぶかを決めるのに使う)。テキストを書き直すことはしないので、取り出しが要るなら
+     * 先に --mode batch を流す。無いテキストは作らず、無いと報告する。
+     * 前置きは --mode batch と同じ形(ルート・データ・テキスト・索引・範囲)。 */
+    const cliRoot = options.root ? path.resolve(options.root) : process.cwd()
+    const dataDir = path.resolve(cliRoot, options.dataDir)
+    if (!fs.existsSync(dataDir)) {
+      throw new Error('Data directory not found: ' + dataDir)
+    }
+    const textDir = path.resolve(cliRoot, options.textDir)
+    const index = module.exports.indexTexts(textDir)
+    const duplicated = Object.keys(index.duplicates)
+    const scope = String(options.scope || 'conversation').toLowerCase()
+    const which = String(options.rows || 'all').toLowerCase()
+    const targets = module.exports.enumerateTargets(dataDir, { scope, index })
+    /* 畳むのは本体の口。規則を2つに割らない(ツクールのプラグインコマンドも同じ所を使う)。 */
+    const api = module.exports._internal.resolveText2Frame()
+    if (!api || !api._csv) {
+      throw new Error('Text2Frame が見つかりません(CSV は Text2Frame.js の畳み方を使います)')
+    }
+    const csv = api._csv
+    const rows = []
+    const missing = []
+    const broken = []
+    targets.forEach(function (t) {
+      const textPath = index.paths[t.key]
+      if (!textPath) { missing.push(t.key); return }
+      const whole = fs.readFileSync(textPath, 'utf8')
+      const body = api.parseFrontMatter(whole).body
+      /* 見出しの行。どのマップのどのイベントかを人が読むために置く。取り込みでは見ない
+       * (宛先は行ごとに持っている)。 */
+      const head = {}
+      csv.COLUMNS.forEach(function (c) { head[c] = '' })
+      head.種別 = '見出し'
+      head.宛先 = t.key
+      head.本文 = t.name ? t.key + '  ' + t.name : t.key
+      rows.push(head)
+      const folded = csv.foldToRows(body, t.key, { gameRoot: cliRoot, rows: which })
+      folded.forEach(function (r) { rows.push(r) })
+      if (folded.length && folded[0].エラー) broken.push(t.key)
+    })
+    /* 既定はルートの scenario.csv。text/ の中には置かない ── 祖先(.t2f-base)の鍵は
+     * テキストの置き場所の第1階層で決まるので、そこへ物を増やさない。 */
+    const csvPath = options.output_path
+      ? path.resolve(cliRoot, options.output_path)
+      : path.join(cliRoot, 'scenario.csv')
+    fs.writeFileSync(csvPath, csv.formatCsv(rows), 'utf8')
+    console.log(JSON.stringify({
+      csvPath,
+      rows: rows.length,
+      targets: targets.length,
+      written: targets.length - missing.length,
+      noText: missing.length,
+      brokenSyntax: broken.length,
+      scope,
+      mode: which
+    }, null, 2))
+    if (missing.length > 0) {
+      console.warn('[csv] ' + missing.length + ' 件の宛先にはまだテキストがありません(CSV には入れていません). ' +
+        '先に取り出してください: npx frame2text --mode batch — ' + missing.slice(0, 10).join(', ') +
+        (missing.length > 10 ? ' 他' + (missing.length - 10) + '件' : ''))
+    }
+    if (broken.length > 0) {
+      console.warn('[csv] ' + broken.length + ' 件のテキストは文法が通らないので、1行1行そのまま出しました' +
+        '(エラーの列に理由があります): ' + broken.slice(0, 10).join(', '))
+    }
+    if (duplicated.length > 0) {
+      console.warn('[csv] ' + duplicated.length + ' 件の宛先にテキストが2つ以上あります(最初のものを使いました): ' +
+        duplicated.slice(0, 10).join(', '))
+    }
   } else if (options.mode === 'batch') {
     /* データ・テキスト・祖先(.t2f-base)は、すべて --root を基準に決まる(text2frame と同じ)。
      * 既定は実行したフォルダなので、プロジェクトの中で流す使い方は今までと同じ。 */
