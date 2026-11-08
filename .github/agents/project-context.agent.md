@@ -29,7 +29,7 @@ tools: [read, edit, search, execute]
 | `t2f-sync.js` | 双方向同期コントローラ(CLI専用。ツクールのプラグインではない)。Text2Frame/Frame2Text を**公開APIとして**使い、1プロセスで push/pull を所有。自分の書き込みを内容ハッシュで無視してループを防ぐ。`module.exports = { pushFile, pullTarget, pullDataFile, syncOnce, createEchoGuard }` |
 | `t2f-mcp.js` | MCP(Model Context Protocol)サーバ(CLI専用)。Text2Frame/Frame2Text を**公開APIとして**使う4つ目の前面。`handle(要求, 文脈)` は純粋な関数で、標準入出力を持つのは殻だけ(テストはプロセス内で叩く)。**標準出力は通信路なので、本物の `process.stdout.write` を退避し、以後 `process.stdout.write` は stderr へ流す**。`console.log` は eslint の override で禁止 |
 | `t2f-help.js` | `Text2Frame.js` の `@help` を見出しごとに切り、タグ名→見出しの対応を作る。MCP の `t2f_syntax` と、拡張の `scripts/update-tag-help.js` の両方がここを呼ぶ(`files` に `tools/` が入らないのでルートに置いた) |
-| `db/` | **生成物(コミットしない)。** 拡張の `vscode-extension/out/db/` から `tools/copy-db.js` が写す4ファイル。`t2f-mcp.js` の逆引き `t2f_usages` が借りている純粋な層で、`.vsix` には `out/db/` として既に入っているが npm の tarball には写さないと入らない。`prepack` が `build:db`(拡張のコンパイル) → `copy-db` の順で作る。`lint` の列挙には**足さない**(tsc が target ES2020 で `??` を出し、根は `ecmaVersion: 2018`) |
+| `db/` | **生成物(コミットしない)。** 拡張の `vscode-extension/out/db/` から `tools/copy-db.js` が写す15ファイル(うち3つは `src/` 級)。**一括コピーではなく名指しの一覧**で、写した各ファイルが `db/` の外を `require` していないことを機械で検める(そこが閉じていないと、拡張と `.vsix` は緑のまま npm の利用者だけが静かに機能を失う)。`t2f-mcp.js` の逆引き `t2f_usages` が借りている純粋な層で、`.vsix` には `out/db/` として既に入っているが npm の tarball には写さないと入らない。`prepack` が `build:db`(拡張のコンパイル) → `copy-db` の順で作る。`lint` の列挙には**足さない**(tsc が target ES2020 で `??` を出し、根は `ecmaVersion: 2018`) |
 | `t2f-history.js` | 書き換える直前の中身を `.t2f-history` に控える**書き手**。形式は拡張の `src/db/history.ts` が持ち、読み・巻き戻しはあちらが権威。ずれは `vscode-extension/test/test_mcp_history.js` が拡張の読み手に通して見張る |
 | `vscode-extension/` | VSCode 拡張(モノレポのサブディレクトリ)。下記「VSCode拡張」参照 |
 | `data/` | リポジトリ同梱の最小サンプル JSON(`Map001.json` は空イベント、`CommonEvents.json` は2件) |
@@ -53,7 +53,10 @@ npm run update-mcp-snapshot    # MCP のプロトコルの筆記録(test/snapsho
 npm run check-params           # @default と実装の食い違いを一覧(承知のうえの分は ACCEPTED に理由つき)
 npm run build                  # rollup で dist/*.cjs.js / dist/*.es.mjs / dist/*.umd.js を生成
 # ★実データ往復検証(2902件。sample/ が必要=未追跡なので CI では走らない):
-cp -r sample/data /tmp/vd && node tools/verify-roundtrip.js /tmp/vd --en=true --max=0
+#   **テキストの落とし先も必ず渡す。** `--text` の既定は `text` で、しかもリポジトリの根を
+#   基準に解くので、データを /tmp に置いても**テキストと .t2f-base はリポジトリに生まれる**
+#   (実際に未追跡の2,903件を作った)。絶対パスを渡せば逃げられる:
+cp -r sample/data /tmp/vd && node tools/verify-roundtrip.js /tmp/vd --text=/tmp/vd-text --en=true --max=0
 npm run build:dist             # build + stamp(Version/build id バナー付与)
 # VSCode 拡張(vscode-extension/ で):
 npm run compile                # tsc → out/
@@ -61,7 +64,7 @@ npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ �
 T2F_GAME_DIR=/path/to/game npm test   # 実プロジェクトが要る2件も走らせる(未設定なら skip。実データはコピーに対して)
 ```
 
-**CI(`.github/workflows/nodejs.yml`)**: push[master]/PR で 3 ジョブ。core = `npm ci → build → audit → lint → npm test`、extension = `npm ci → compile → lint → npm test`、package = 配布物3種を作って公開モードの読み込みまで見る。2902 往復は `sample/` が未追跡のため CI 対象外(自己完結の検体139件でガード)。全体は 32 suites / 578 件。
+**CI(`.github/workflows/nodejs.yml`)**: push[master]/PR で 3 ジョブ。core = `npm ci → build → audit → lint → npm test`、extension = `npm ci → compile → lint → npm test`、package = 配布物3種を作って公開モードの読み込みまで見る。2902 往復は `sample/` が未追跡のため CI 対象外(自己完結の検体139件でガード)。全体は 48 suites / 895 件(**手で書いた数なので古くなる**)。
 
 ## データフロー
 
@@ -80,12 +83,42 @@ T2F_GAME_DIR=/path/to/game npm test   # 実プロジェクトが要る2件も走
 2. デプロイ(テキスト→データ): `compile(body)` でコマンド配列に変換 → 対象 JSON の `events[eventId].pages[pageId-1].list`(または `CommonEvents[id].list`)へ反映。**戦略は `merge`(既定)/ `overwrite` / `add` の3つ**(`resolveStrategy` で検証。未知値は null)。ただし走査で回る一括・取り出し・同期の入口は `merge`/`overwrite` だけ受ける(`add` は走査のたびに内容が二重になるため)。`merge` は祖先(BASE)があれば 3-way、無ければ現在のゲーム状態を祖先として記録した上でテキストを反映(TOFU。初回=全反映、以後 3-way)、空なら overwrite を自動選択。
 3. 書き出し(データ→テキスト): `decompile(list, englishTag, {pretty, translationOnly})`。**取り出しも既定は merge**(翻訳を残しつつゲーム変更を取り込む。`Text2Frame.applyMergePull` 経由)。生の上書きは `overwrite`。
 4. **祖先スナップショット(3-way 用)**: `<root>/.t2f-base/<key>.txt`(gitignore 済)。`key` は `<テキストの置き場所>/<宛先の鍵>` で、置き場所=root 直下の1階層(`text` / `text-en`。多言語で祖先を分けるため)、宛先の鍵=`map###_event###_page<N>` または `common###`(`baseIdForTarget`)。**front matter に `locale` キーは無い。** 宛先から決めるので、テキストの名前を変えても同じ置き場所の中で移しても同じ祖先を使う。反映/取り出しの成功時に自動保存され、次回から自動 3-way。`baseRoot` を渡さないと `process.cwd()` に落ちる。明示 `--base`/`BasePath` 指定時はそれを優先。VSCode 拡張・CLI・プラグインで同じ規約=相互運用可。同じ箇所を両方変更した競合は両方残し、平易マーカー(`=== テキストの変更 / from text ===` 等)で表示。マーカーが残っている間は祖先を進めず、統合は投げる(反映)か見送る(取り出し)。**上書きはマーカーを通す**(詰まった統合からの出口なので塞いでいない。`test/test_batch_import_warnings.js` が固定)。
+5. **CSV の往復(スプレッドシートで書いてもらう)**: `ゲーム → 取り出し → text/*.txt → 畳む → scenario.csv`
+   と、その逆。入口は CLI(`--mode csv`)とツクールの一括プラグインコマンド(`形式` の引数)。
+   **CSV はテキストの射影で、ゲームのデータの写しではない** — 書くのは `text/*.txt` までで、
+   そこから先は今の反映がそのまま動く(3方向マージ・祖先・衝突の目印・`.t2f-history` が全部ただで付く)。
+   - 畳み方の権威は **`compile` 自身**(`lineMap` と `blockSpans`)。自前の正規表現で窓を決めない
+   - **取り込みは CSV からテキストを作らない。** いまのテキストを同じ畳み方でもう一度畳み、
+     `ID` が合う行だけ差し替え、**CSV に無い行はそのまま残す**。だから `--rows dialogue` で
+     セリフだけ出した表を戻しても、出していない行(タグ・空行・スイッチ操作)が消えない。
+     「セルを並べてテキストにする」形だと実測で 377/957 しか一致しない
+   - 行の宛先は**札**(`宛先` と `ID`)。順番は「足された行(`ID` が空)の置き場所」だけに使う。
+     `版`(畳んだテキストの8桁ハッシュ)が合わなければ、その対象だけ断る
+   - `メモ` の列はコメントアウト行(`%`)に往復する。`compile` が落とすのでゲームには入らない
+     (**その文字はプロジェクトの設定なので `gameRoot` 越しに読む**)
 
 ## 公開 API
 
+**`gameRoot` を渡し忘れると静かに壊れる(いちばん踏む穴)。** `compile` / `decompile` / `buildPullText` /
+`applyTextFile` は `opts.gameRoot` をもらったときだけ、そのゲームの `js/plugins.js` にある
+Text2Frame のプラグインパラメータ(`Default Background` / `Default Window Position` /
+`Comment Out Char`)に入れ替えて、その呼び出しの間だけ使い、`finally` で戻す
+(`_internal.useProjectParameters`)。渡さなければ**出荷時の既定**のまま。だから:
+
+- 既定を「透明」にしているプロジェクトのテキストを反映すると、**全部「ウィンドウ」に倒れる**
+- `Comment Out Char` を `%` 以外にしているプロジェクトでは、**コメント行が本文として反映される**。
+  行が消える位置が変わるので、`lineMap` に依る処理は**丸ごと間違う**
+
+渡し忘れの方向が「今までどおりの既定に落ちる」なので、テストも往復検査も気づかない。
+**行や既定を読む新しい処理を足すときは、まず `gameRoot` を受けること。** 先例は
+`test/test_message_tags_custom_defaults.js` と `test/test_csv_fold.js`(渡し忘れると鳴る)。
+`enumerateTargets` と `applyCommandsToData` は既定を読まないので要らない。
+**まだ渡していない穴**: CLI の `--mode map` / `--mode common`(`Frame2Text.js` 側)、
+`t2f-sync.js` と `t2f-mcp.js` の `omitDefaults`。
+
 **Text2Frame.js**
-- `compile(text, { lineMap })` → イベントコマンド配列(本文のみ。フロントマターは呼び出し側で除去。終端の `code:0` は付けない)。`lineMap: true` なら `{ commands, lineMap }` で、各コマンドが元テキストの何行目から来たかも返す
-- `applyTextFile(opts)` → 単一テキストを単一データ JSON へデプロイ。`opts={ textPath, strategy, kind, mapId, eventId, pageId, mapPath, commonEventId, commonEventPath, baseRoot, basePath, isDebug }`(`overwrite` は**読まない**。`baseRoot` 未指定時は `process.cwd()`。cwd と別のプロジェクトを扱う組み込み側は必ず渡す)。戻り値 `{ ok, textPath, kind, target, dataPath, warnings, conflicts, writtenBack, writeBackPath, writeBackText, error, errorLine, errorLineText }`。throw せず結果を返す
+- `compile(text, { lineMap, gameRoot })` → イベントコマンド配列(本文のみ。フロントマターは呼び出し側で除去。終端の `code:0` は付けない)。`lineMap: true` なら `{ commands, lineMap, blockSpans }` で、各コマンドが元テキストの何行目から来たか(`lineMap`)と、畳んだブロックが元テキストで占めていた範囲(`blockSpans: [{from, to}]`)も返す
+- `applyTextFile(opts)` → 単一テキストを単一データ JSON へデプロイ。`opts={ textPath, strategy, kind, mapId, eventId, pageId, mapPath, commonEventId, commonEventPath, baseRoot, basePath, gameRoot, isDebug }`(`gameRoot` の既定は `baseRoot`。意味は別物で、`baseRoot` は祖先の置き場所、`gameRoot` は設定の出どころ)(`overwrite` は**読まない**。`baseRoot` 未指定時は `process.cwd()`。cwd と別のプロジェクトを扱う組み込み側は必ず渡す)。戻り値 `{ ok, textPath, kind, target, dataPath, warnings, conflicts, writtenBack, writeBackPath, writeBackText, error, errorLine, errorLineText }`。throw せず結果を返す
 - フォルダ一括反映は front matter 走査で行う: 各 `.txt` を `applyTextFile({ textPath, strategy })` で反映(CLI は `--mode batch --text-dir <dir>`、プラグインは `BATCH_IMPORT_MESSAGES_FROM_FOLDER`)
 - `applyThreeWayMerge(base, ours, theirs, { keepOurs, keepTheirs })` → 3-way マージ(`{ commands, commandsOurs, commandsTheirs, conflicts, warnings }`)。`keepOurs`/`keepTheirs` を立てると、マーカーを入れない片側だけの結果も一緒に返る(反映はこれをゲームへ、テキストにはマーカー入りを書く)。祖先が無い場合は呼び出し側が現在のゲーム状態を祖先として渡す(TOFU)
 - `applyMergePull({ gameCommands, textBody, baseBody, englishTag, omitDefaults })` → `{ text, gameCommands, conflicts, warnings }`。取り出し(ゲーム→テキスト)の 3-way 本体。push と対称(出力先がテキストなだけ)。内部で `Frame2Text.decompile` を lazy require
@@ -93,25 +126,34 @@ T2F_GAME_DIR=/path/to/game npm test   # 実プロジェクトが要る2件も走
 - 祖先ヘルパ: `baseIdForTarget(textPath, root, target)`→`{ key }`(宛先から決める。こちらが主)、`deriveBaseId(textPath, root)`→`{ key }`(宛先が分からないときの代替)、`baseDirForTextDir(root, textDir)`、`readBaseText(root, key)`/`saveBaseText(root, key, text)`。置き場所を解く `baseSnapshotPathCore` は非公開
 
 **Frame2Text.js**
-- `decompile(list, englishTag, { pretty, translationOnly, omitDefaults })` → テキスト。`translationOnly` は会話系コード(101/401, 102/402/403/404, 105/405)のみ出力(不可逆。往復しない)。`omitDefaults` は既定値どおりの顔・背景・位置タグを省く
+- `decompile(list, englishTag, { pretty, translationOnly, omitDefaults, gameRoot })` → テキスト。`translationOnly` は会話系コード(101/401, 102/402/403/404, 105/405)のみ出力(不可逆。往復しない)。`omitDefaults` は既定値どおりの顔・背景・位置タグを省く
 - `enumerateTargets(dataDir, { onlyFile, scope, index })` → data を走査し `{ kind, mapId/eventId/pageId | commonEventId, key, mapOrder, mapName, name }[]` を返す(一括取り出しの列挙)。`scope` は `all|nonempty|conversation|custom`(**省略時 `conversation`、未知値は例外**)。`custom` は `index` に載っている宛先だけを選ぶので `index` が必須
 - `indexTexts(textDir)` → `{ paths, duplicates }`。各テキストの**先頭2048バイト**だけを読んで front matter で索引する(`*.translation.txt` / `*.conversation.txt` は除く)。同じ宛先を指すテキストが複数あると `duplicates` に入り、一括・同期はその宛先を**見送る**
 - `outPathFor(textBase, index, target)` / `defaultFileName(target)` → 書き先の決定。既にテキストがあればその名前・その場所のまま。無ければ `defaultFileName`(`mapOrder` と階層つき `mapName` が要る。無ければ ID だけの名前に落ちる)
-- `buildPullText(opts)` → `{ text, baseText, writeBack, conflicts, markers, skipped }`。**ファイルを書かずに**取り出すテキストを組み立てる1か所。プラグイン・CLI・同期・VSCode 拡張が全部ここを通るので4つの振る舞いが揃う
+- `buildPullText(opts)` → `{ text, baseText, writeBack, conflicts, markers, skipped }`(`opts.gameRoot` を受ける)。**ファイルを書かずに**取り出すテキストを組み立てる1か所。プラグイン・CLI・同期・VSCode 拡張が全部ここを通るので4つの振る舞いが揃う
 - `pullTargetToText(opts)` → 1件をテキストへ取り出す(テキストと祖先を書く)。`writeBackToGame(writeBack, target, paths)` は `buildPullText` の書き戻しをゲームへ当てる
 - `renderFrontMatter(entry, kind)` → 書き出しテキスト先頭の front matter ブロック文字列
 - `VERSION` → 書き出しフロントマターの `generator:` に埋める版番号
+
+**列挙しない窓(公開 API を増やさずに貸すところ)。** `Object.keys` に出ないので
+`test/test_examples.js` の一覧・`examples/` の2枚・`esm.d.ts` は動かない。
+
+| 窓 | 中身 | なぜここ |
+|---|---|---|
+| `Text2Frame._internal` | `collectTextFiles` `useProjectParameters` `hasConflictMarkerInText` `missingPageReason` | `typeof module !== 'undefined'` の中なので**ゲームの中には無い**。CLI・MCP・拡張が借りる |
+| `Text2Frame._csv` | `foldToRows` `mergeRows` `importCsv` `rowsToLines` `formatCsv` `parseCsv` `COLUMNS` | **ツクールの中でも要る**(プラグインコマンドが使う)ので `_internal` の囲いに入れない。置くのは関数の参照だけで、`require` は関数の中で読む(ブラウザに `require` は無い)。`test/test_browser_load.js` が、`require` を置かない `vm` の中で起動することを毎回測る |
+| `Frame2Text._internal` | `runBatchPull` `toFlag` `setDebug` `resolveText2Frame` `buildCsvRows` | 同上。CSV の取り出しは CLI とプラグインコマンドが同じ `buildCsvRows` を通る |
 
 ## CLI モード
 
 ```bash
 # npm から入れた人が打つのは npx text2frame / npx frame2text / npx t2f-sync(bin は bin/*.js のラッパ)
 # Text2Frame(取り込み/反映)。push は既定 merge
-node Text2Frame.js -m map|common|compile|batch [-f <text>] [-t text] [-d data] [--root dir] [-s merge|overwrite] [-b <base>] [--watch] [--poll] [--debounce ms]
+node Text2Frame.js -m map|common|compile|batch|csv [-f <text>] [-t text] [-d data] [--root dir] [-s merge|overwrite] [-b <base>] [--watch] [--poll] [--debounce ms]
 #   -s: 既定 merge(3-way 自動)。overwrite で全置換。legacy の --overwrite <true/false> だけが add に繋がる
 #   -b <base>: 明示祖先(任意)。未指定なら .t2f-base を自動参照/保存   --watch でファイル監視→再デプロイ(chokidar)
 # Frame2Text(書き出し/取り出し)。pull も既定 merge(翻訳を残す)
-node Frame2Text.js -m map|common|decompile|batch [-t text] [-d data] [--root dir] [-s merge|overwrite] [-w <true/false>] [--scope all|nonempty|conversation|custom] [--omit-default-tags <true/false>] [-b <base>]
+node Frame2Text.js -m map|common|decompile|batch|csv [-t text] [-d data] [--root dir] [-s merge|overwrite] [-w <true/false>] [--scope all|nonempty|conversation|custom] [--omit-default-tags <true/false>] [-b <base>]
 #   -s: 既定 merge(翻訳保持+ゲーム変更流入)。overwrite で生の全取り直し
 #   --scope: 既定 conversation   -w: 英語タグ(既定 true)   翻訳用(会話のみ)は CLI には無く decompile の translationOnly / 拡張の exportConversationOnly
 # 双方向同期コントローラ(npm run sync = start / sync_once = once)。引数なしは使い方を出すだけ
@@ -121,10 +163,21 @@ node t2f-sync.js start|once [--direction both|push|pull] [-t text] [-d data] [--
 # MCP サーバ。クライアント(Claude Code / VS Code)が起こし、標準入出力で話す。手で叩くものではない
 node t2f-mcp.js [--root dir] [-t text] [-d data] [-s merge|overwrite] [--scope ...] [--read-only] [-v]
 #   端末から起こしたときは使い方を出して終わる(パイプで繋がれたときだけサーバになる)
-#   道具9つ: project_info / list / read / search / syntax / names / check / write_plan / write_apply
+#   道具22個。読み取り: project_info / list / read / search / syntax / names / check / usages(逆引き)
+#   書き込み(二段): write_plan → write_apply、name_plan → name_apply(スイッチと変数の名前だけ)
+#   再生: play_start / stop / status / state / set / goto / input / break / step / load
+#   usages(構造の層)と play_*(再生の層)は**拡張のビルド結果を借りる**ので、層が無い配り方では
+#   tools/list から落ちる(`needsStructure` / `needsLive`)。筆記録は層あり/なしの両方を記録している
 #   書き込みは二段。write_plan が写しに当てて差分と札(内容のハッシュ)を返し、write_apply が札で本当に書く
 #   登録はゲームのフォルダ直下の .mcp.json(mcpServers)。Claude Code と VS Code の両方が読む
 # 短縮形は3本で同じ意味にそろえる(-t テキスト / -d データ / -s 戦略 / -w 英語タグ / -f 単発テキスト / -v 詳細)。test/test_cli_usage.js が固定
+#
+# ★モードを1つ足すときは**1ファイルの3か所**を直す(1か所では動かない):
+#     (1) commander の正規表現  (2) 配列の検め  (3) 使い方の文面
+#   正規表現だけ漏らすと `options.mode` が未設定になり、配列の検めが「知らないモード」で
+#   落ちるので、自分の配線を疑って時間を使うことになる。
+#   **2つの一覧はわざと食い違っている**: `test` は配列だけにある(開発用。使い方には載せない)。
+#   test/test_cli_usage.js が「`test` を除いて両方の一覧が一致する」ことを見張る。
 ```
 
 ## VSCode 拡張(`vscode-extension/`)
@@ -134,8 +187,8 @@ node t2f-mcp.js [--root dir] [-t text] [-d data] [-s merge|overwrite] [--scope .
 - **`src/db/*` は vscode に依存しない純粋な層**(ゲームDBの読み・マップツリー・タグ参照・コマンド表示・編集履歴 `history.ts`・巻き戻しの見積り `restorePlan.ts`・ja/en の `lang.ts` など)。テストは `out/db/*.js` を素の node で読んで回す。vscode の API を使う層とここを混ぜない。
 - 反映・取り出しの流れは **読む → 下書き(`planPull` / `dryRun.tryApply`) → 確かめる(`review`) → 当てる(`commitPull` / `applyTextFile`)** で、全体が `withHistory` に包まれて `.t2f-history` に前像が残る。
 - **コンパイラの読込**: 生 `Text2Frame.js`/`Frame2Text.js` を `require`(ブラウザ向け `*.cjs.js` は Node builtin を解決できないため使わない)。解決順: 設定 `text2frame.modulePath` → 同梱 `lib/` → モノレポ兄弟 `../` → ワークスペース。フロントマターから解決した**絶対パス**を `applyTextFile` に渡す(拡張ホストでは `process.mainModule` が無いため、本体側も cwd フォールバック済み)。
-- コマンドは52個(`contributes.commands`。ラベルは `package.nls.json` / `package.nls.ja.json` で ja/en 両対応)。中心は方向×範囲: `deployCurrentFile`「ゲームに反映(このファイル)」/ `deployAll`「(すべて)」/ `exportCurrentFile`「ゲームから取り出す(このファイル)」/ `exportAll`「(すべて)」/ `repullOverwrite`「全部取り直す(上書き)」/ `exportConversationOnly`「会話のみ書き出し」/ `showCompiledJson` / `toggleDeployOnSave`。ほかに `history.*`(編集履歴の表示・差分・巻き戻し)、`testPlay`/`debug`/`showLiveValues`(テストプレイとデバッグ)、`db.*`(データベースの名前と使用箇所)、`tree.*`/`mapLinks.*`/`showMapGraph`(ツリーとマップのつながり)、`pick*`(素材選び)、`snippet.*`。反映・取り出しとも既定は merge(3-way 自動)。言語を選ぶ `seedLocale`/`locale` は**撤廃**(初回取り出し=空テキストへの全取り込みが seed を兼ね、言語はテキストの置き場所で分ける)。
-- 設定(`text2frame.*`): `exportScope`(既定 `nonempty`) / `strategy`(既定 `merge`) / `reviewBeforeApply`(既定 true) / `englishTag` / `omitDefaultTags` / `history.keep`(既定 100) / `textBaseDir`(`text`) / `dataDir`(`data`) / `messageCheck` / `messageLineLength` / `showDatabaseNames` / `usageContextLines` / `testPlayPage` / `openRunningText` / `tryEvent.clearPlayerTransparency` / `modulePath`。`locale` / `sourceLocale` / `targetLocale` は**無い**。
+- コマンドは59個(`contributes.commands`。ラベルは `package.nls.json` / `package.nls.ja.json` で ja/en 両対応)。中心は方向×範囲: `deployCurrentFile`「ゲームに反映(このファイル)」/ `deployAll`「(すべて)」/ `exportCurrentFile`「ゲームから取り出す(このファイル)」/ `exportAll`「(すべて)」/ `repullOverwrite`「全部取り直す(上書き)」/ `exportConversationOnly`「会話のみ書き出し」/ `showCompiledJson` / `toggleDeployOnSave`。ほかに `history.*`(編集履歴の表示・差分・巻き戻し)、`testPlay`/`debug`/`showLiveValues`(テストプレイとデバッグ)、`db.*`(データベースの名前と使用箇所)、`tree.*`/`mapLinks.*`/`showMapGraph`(ツリーとマップのつながり)、`pick*`(素材選び)、`snippet.*`。反映・取り出しとも既定は merge(3-way 自動)。言語を選ぶ `seedLocale`/`locale` は**撤廃**(初回取り出し=空テキストへの全取り込みが seed を兼ね、言語はテキストの置き場所で分ける)。
+- 設定(`text2frame.*`): `exportScope`(既定 `nonempty`) / `strategy`(既定 `merge`) / `reviewBeforeApply`(既定 true) / `englishTag` / `omitDefaultTags` / `history.keep`(既定 100) / `textBaseDir`(`text`) / `dataDir`(`data`) / `messageCheck` / `messageLineLength` / `showDatabaseNames` / `usageContextLines` / `testPlayPage` / `openRunningText` / `testPlayDisablePlugins` / `tryEvent.clearPlayerTransparency` / `modulePath`。`locale` / `sourceLocale` / `targetLocale` は**無い**。
 - コンパイラは動的 `require`(拡張は TS、コアは JS。この境界のため `compiler.ts` の祖先ヘルパはコア `deriveBaseId` 等と同規約の別実装=意図的重複)。
 - フロントマター付き `.txt` は開くと自動で `text2frame` 言語に切替(ハイライト/補完/診断が有効化)。
 
@@ -159,10 +212,18 @@ node t2f-mcp.js [--root dir] [-t text] [-d data] [-s merge|overwrite] [--scope .
 - **不変条件をガードで明示する**: `<When>` では「最上位が 102 かつ `parameters[0]` が配列」を確認してから push する(`Array.isArray(parameters)` だけでは常に真で無意味)。
 - **`<End>` の曖昧さ**: 選択肢/分岐/ループ等で同じ `<End>` を使うため、判別ロジックが壊れやすい。選択肢・分岐まわりは小さく AST 化(node が子と範囲を持つ)して曖昧さを構造的に解消する方針。
 - 方針は **A(現状維持＋ピンポイント堅牢化)を基本に、選択肢/分岐だけ B(浅い AST)** へ寄せる。フルリライトはしない。
+- **既定やコメント文字を読む処理は `gameRoot` を受ける**(上の「公開 API」の冒頭)。渡し忘れは
+  出荷時の既定に落ちるだけなので、テストも往復検査も気づかない。いちばん踏む穴。
+- **`trim()` は全角空白(U+3000)も食べる。** 「この行は空か」を空白で判断すると、
+  `　　　　←男湯　　　女湯→` のようなレイアウトの行を空行と取り違えて幅を捨てる
+  (実物の kindworld で1件落ちた)。本文かどうかは `compile` に聞く。
+- **ページ・イベント・コモンイベントを新しく作らない。** `pages.push(getDefaultPage())` は
+  **条件の無いページ**を足し、ツクールは最後のページから逆に探すので**既存のページが到達しなくなる**。
+  断り方は `_internal.missingPageReason` が1か所で決める(CLI と MCP が共有)。
 
 ## ハード制約
 
-- **往復変換の維持は絶対**: 変更後は `npm test`(test/test_*.js を全部。往復139件を含む)と `npm run lint` が全緑であること。加えて Frame2Text の出力を変えたら**実データ往復 2902/2902** も確認する(`sample/data` を `/tmp` にコピーして `node tools/verify-roundtrip.js ... --max=0`。sample/ が未追跡のため CI では不可、ローカル必須)。Frame2Text の本文系コード(101本文401/スクロール405/コメント408/スクリプト355,655/プラグインコマンド357,657)は**列0**のまま出力する(Text2Frame が行頭空白を本文として取り込むため)。
+- **往復変換の維持は絶対**: 変更後は `npm test`(test/test_*.js を全部。往復139件を含む)と `npm run lint` が全緑であること。加えて Frame2Text の出力を変えたら**実データ往復 2902/2902** も確認する(`sample/data` を `/tmp` にコピーして `node tools/verify-roundtrip.js ... --text=<リポジトリの外> --max=0`。**`--text` を渡さないと出力がリポジトリに落ちる** — 上の「開発コマンド」参照。sample/ が未追跡のため CI では不可、ローカル必須)。Frame2Text の本文系コード(101本文401/スクロール405/コメント408/スクリプト355,655/プラグインコマンド357,657)は**列0**のまま出力する(Text2Frame が行頭空白を本文として取り込むため)。
 - ビルド成果物は直接編集しない(`npm run build` で再生成)。
 - ESLint 警告 0 件(`--max-warnings=0`)。
 - テキストソースは LF(`.gitattributes` で強制)。
@@ -176,6 +237,37 @@ node t2f-mcp.js [--root dir] [-t text] [-d data] [-s merge|overwrite] [--scope .
 - 入力 `.txt` と期待 `expected_*.json` をセットで `test/` に追加し、`test/test_cases.js` に登録。
 - 取り込み系の振る舞いは `test_json_eq.js`、往復は `test_frame2text.js`、`applyTextFile` 系は `test_apply_text_file.js`。
 - 実データ起因のバグは、最小再現の `.txt` をテスト化して回帰ガードにする。
+
+## 文書が古くなる所(ここを疑ってから計画を立てる)
+
+**この文書は検査に守られていない。** 実際に起きたこと: CSV の回の計画を立てるとき、
+上の「公開 API」の options の一覧が古いまま(`gameRoot` が1度も出てこない)だったので、
+**直したばかりの静かな壊れ方を計画に書き戻しかけた**。利用者が
+「過去の対応内容について再度よく確認して」と言って初めて気づいた ── つまり文書の役を人が手でやった。
+
+機械が守っている所と、人が手で書いている所はこう分かれる。
+
+| 守られている(ずれたら鳴る) | 誰が鳴らすか |
+|---|---|
+| 公開している関数の**名前**の一覧 | `test/test_examples.js`(一覧＋`examples/` 2枚が全部使うこと) |
+| `@param` の `@default` と実装 | `npm run check-params` |
+| 書き出しの見た目 | `tools/snapshot-text.js --check` |
+| MCP の道具の説明文と形 | `tools/snapshot-mcp.js --check`(層あり/なしの両方) |
+| CSV の表の形 | `tools/snapshot-csv.js --check`(全部版とセリフだけ版) |
+| CLI の短縮形・モードの2つの一覧 | `test/test_cli_usage.js` |
+| ゲームの中で起動すること | `test/test_browser_load.js`(`require` の無い `vm`。`dist/` も) |
+| 拡張のラベルの ja/en | `vscode-extension/test/test_l10n.js` |
+
+| 守られていない(手で書いた。必ず疑う) | 直す場所 |
+|---|---|
+| 件数(suites・テスト・道具・`db/`・拡張のコマンド) | この文書だけ。**数が知りたければ数えるより、数を知っている1か所を名指しする** |
+| **関数の options の一覧**(`gameRoot` など) | この文書だけ。関数の**名前**は守られているが**引数は守られていない**。最近の修正はほぼ全部ここに入った |
+| CLI のモードの一覧・拡張の設定の一覧 | この文書だけ |
+| ファイル構成の表 | この文書だけ |
+
+**だから、オプションを1つ足したら(とくに既定の出どころ・パス・行の数え方に関わるものは)、
+この文書の該当行も同じコミットで直す。** 守る検査が無いので、直し忘れは次に計画を立てる人の
+時間で払うことになる ── 今回は3つの穴のうち2つがそれだった。
 
 ## 対応バージョン
 
