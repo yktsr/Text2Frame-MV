@@ -15,11 +15,15 @@ declare namespace Text2FrameMV {
    * Converts strings written in Text2Frame syntax into RPG Maker MV/MZ event command lists.
    * The return value only includes the event command list and does not contain the Map definition. Therefore, integration into the Map should be done individually.
    * @param text Text2Frameの文法に従って書かれた文字列
-   * @param opts lineMap を true にすると、各コマンドが出てきたテキストの行番号(0始まり)も返します。
+   * @param opts lineMap を true にすると、各コマンドが出てきたテキストの行番号(0始まり)と、
+   *             畳んだブロック(注釈・スクリプト・文章のスクロール表示)が元のテキストで
+   *             占めていた範囲(行の順)も返します。
    */
+  export interface BlockSpan { from: number; to: number }
+  export interface CompiledWithLines { commands: EventCommand[]; lineMap: number[]; blockSpans: BlockSpan[] }
   export function compile(text: string): EventCommand[];
-  export function compile(text: string, opts: { lineMap: true }): { commands: EventCommand[]; lineMap: number[] };
-  export function compile(text: string, opts?: { lineMap?: boolean }): EventCommand[] | { commands: EventCommand[]; lineMap: number[] };
+  export function compile(text: string, opts: { lineMap: true }): CompiledWithLines;
+  export function compile(text: string, opts?: { lineMap?: boolean }): EventCommand[] | CompiledWithLines;
 
   /**
    * テキストの先頭の見出し(--- で囲んだ部分)と本文を分けます。見出しが無ければ meta は空です。

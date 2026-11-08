@@ -5488,13 +5488,16 @@
      *   開始タグより前の断片 / プレースホルダ / 終了タグより後ろの断片
      * になる。畳んだあとの各行が元の何行目かを、置き換えた範囲の改行数(replaced)から戻す。
      * 断片とプレースホルダは開始タグの行、後ろの断片は終了タグの行に対応させる。 */
-    const followBlockReplacements = function (lines, origins, replaced) {
+    const followBlockReplacements = function (lines, origins, replaced, spans) {
+      const at = function (i) { return origins[Math.min(i, origins.length - 1)] }
       const out = []
       let o = 0
       for (let n = 0; n < lines.length; n++) {
-        out.push(origins[Math.min(o, origins.length - 1)])
+        out.push(at(o))
         const newlines = replaced[lines[n]]
         if (newlines !== undefined) {
+          // 畳んだ範囲の開始タグの行と終了タグの行。どちらも元のテキストの行番号。
+          if (spans) spans.push({ from: at(o), to: at(o + newlines) })
           o += newlines // 次の行(後ろの断片)は終了タグの行
           continue
         }
@@ -10790,11 +10793,15 @@
       return out_events
     }
 
-    /* opts.lineMap を立てると { commands, lineMap } を返す。lineMap[k] は commands[k] が出てきた
-     * テキストの行番号(0始まり)。エディタ拡張のプレビューが、コマンドとテキストの行を結ぶのに使う。
+    /* opts.lineMap を立てると { commands, lineMap, blockSpans } を返す。lineMap[k] は commands[k] が
+     * 出てきたテキストの行番号(0始まり)。エディタ拡張のプレビューが、コマンドとテキストの行を結ぶのに使う。
+     * blockSpans は畳んだブロックが元のテキストで占めていた範囲 [{from, to}](行の順)。ブロックの
+     * 中身と閉じ行は開き行のコマンドに化けるので、行を数える側はこれが無いと中身を取り違える。
      * 立てなければ従来どおりコマンドの配列だけを返し、出力は変わらない。 */
     const compileCore = function (text, opts) {
       const wantLineMap = !!(opts && opts.lineMap)
+      // ブロック(注釈・スクリプト・文章のスクロール表示)が元のテキストで占めていた行の範囲。
+      const block_spans = wantLineMap ? [] : null
       let scenario_text = uniformNewLineCode(text)
       // % 行の除去とブロックの畳み込みで行がずれるので、元の行番号を追いかける。
       let origins = wantLineMap ? keptLineOrigins(scenario_text, Laurus.Text2Frame.CommentOutChar) : null
@@ -10807,7 +10814,7 @@
           ? function (match_block, placeholder) { replaced[placeholder] = match_block.split('\n').length - 1 }
           : undefined
         const t = getBlockStatement(scenario_text, block_name, onReplace)
-        if (wantLineMap) origins = followBlockReplacements(t.scenario_text.split('\n'), origins, replaced)
+        if (wantLineMap) origins = followBlockReplacements(t.scenario_text.split('\n'), origins, replaced, block_spans)
         scenario_text = t.scenario_text
         block_map = Object.assign(block_map, t.block_map)
       })
@@ -10855,7 +10862,10 @@
         while (line_map.length < event_command_list.length) line_map.push(last)
       }
       event_command_list = autoIndent(event_command_list)
-      return line_map ? { commands: event_command_list, lineMap: line_map } : event_command_list
+      if (!line_map) return event_command_list
+      // 3回に分けて畳むので、出てくる順はブロックの種類の順になる。行の順に揃える。
+      block_spans.sort(function (a, b) { return a.from - b.from || a.to - b.to })
+      return { commands: event_command_list, lineMap: line_map, blockSpans: block_spans }
     }
 
     /* opts.gameRoot をもらったら、そのゲームの設定(js/plugins.js)で補う。
