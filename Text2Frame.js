@@ -4860,6 +4860,40 @@
     return restore
   }
 
+  const CONFLICT_MARKERS = [
+    '=== テキストの変更 / from text ===',
+    '=== ゲームの変更 / from game ===',
+    '=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='
+  ]
+  /* テキスト側は compile せず素の文字列で見る(目印は注釈としてそのまま行に現れる)。
+   * 畳む前に見るのが肝 ── 目印は <注釈> ブロックになるので、畳んでしまうと
+   * 衝突しているテキストがちょうど一番ばらばらの9行になる。 */
+  const hasConflictMarkerInText = function (text) {
+    const s = String(text || '')
+    return CONFLICT_MARKERS.some(function (m) { return s.indexOf(m) !== -1 })
+  }
+
+  /* ページ・イベント・コモンイベントを新しく作らない理由を、人に言える形で返す。
+   * ページを作ると pages.push(getDefaultPage()) が**条件の無いページ**を足し、
+   * ツクールは最後のページから逆に探すので、**既存のページが到達しなくなる**。
+   * だから増やさないのが正しい。
+   *
+   * ただし「その宛先はありません」とだけ言うと、名前を間違えたと思って一覧を引き直し、
+   * 見つからずに迷う。理由を言えば、ツクールで先に作ればよいと分かる。
+   * MCP の findTarget と CLI の CSV 取り込みが同じ文面を使う(規則を2つに割らない)。 */
+  const missingPageReason = function (targets, wanted) {
+    if (!wanted || wanted.kind !== 'event' || !(Number(wanted.pageId) > 0)) return ''
+    const pages = (targets || []).filter(function (t) {
+      return t.kind !== 'common' && String(t.mapId) === String(wanted.mapId) && String(t.eventId) === String(wanted.eventId)
+    })
+    if (!pages.length) return ''
+    const most = pages.reduce(function (n, t) { return Math.max(n, Number(t.pageId) || 1) }, 0)
+    if (Number(wanted.pageId) <= most) return ''
+    return 'このイベントは ' + most + ' ページまでです。**テキストからページを増やすことはできません**' +
+      '（出現条件がテキストに書けないため、条件の無いページが既存のページを隠してしまいます）。' +
+      '先に RPGツクールでページを作ってから、もう一度どうぞ。'
+  }
+
   Game_Interpreter.prototype.pluginCommandText2Frame = function (command, args) {
     // 反映後の案内。一括反映では最後に 1 回だけ出す(個々の反映は _quiet で抑制)。
     const RESTART_NOTICE = 'Please restart RPG Maker MV(Editor) WITHOUT save. \n' +
@@ -10926,11 +10960,6 @@
     /* 衝突を両方残したときに挟む目印。検出側とズレないよう、出す側もこの定数を使う。
      * 未解決のまま再度マージすると目印ごと再マージされて二重・三重に増えるため、
      * 反映・取り出しの前にこれで検出して対象から外す。 */
-    const CONFLICT_MARKERS = [
-      '=== テキストの変更 / from text ===',
-      '=== ゲームの変更 / from game ===',
-      '=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='
-    ]
     const hasConflictMarker = function (commands) {
       return (commands || []).some(function (c) {
         if (!c || (c.code !== 108 && c.code !== 408)) return false
@@ -12151,12 +12180,21 @@
       })
 
       const out = []
+      const cell = function (r, name) { return r[name] === undefined || r[name] === null ? '' : String(r[name]) }
+      let changed = 0
+      let removed = 0
       base.forEach(function (r) {
         const got = edited[r.ID]
         // 消すのは、CSV に出した種別の行が無くなっていて、かつ頼まれたときだけ。
         const drop = !got && o.allowDelete && !!exported[r.種別]
-        if (got) out.push(got)
-        else if (!drop) out.push(r)
+        if (got) {
+          if (cell(got, '本文') !== cell(r, '本文') || cell(got, '見た目') !== cell(r, '見た目')) changed++
+          out.push(got)
+        } else if (!drop) {
+          out.push(r)
+        } else {
+          removed++
+        }
         const after = inserts[r.ID]
         if (after) after.forEach(function (one) { out.push(one) })
       })
@@ -12169,7 +12207,12 @@
         stamp,
         problems,
         missing,
-        inserted
+        inserted,
+        // 書き換えた行・足した行・消した行の数と、元の行数。多すぎる書き換えを断るのに使う。
+        changed,
+        added: inserted.reduce(function (n, one) { return n + one.count }, 0),
+        removed,
+        total: base.length
       }
     }
 
@@ -12464,7 +12507,7 @@
      * トップレベルに置くと、プラグインとして入れたときに他のプラグインと名前を取り合う
      * (同名の宣言があると読み込みごと失敗する)。内部用の窓口ごしに渡す。
      * 列挙しないので、公開 API の一覧(Object.keys)には出ない。 */
-    Object.defineProperty(module.exports, '_internal', { value: { collectTextFiles, useProjectParameters } })
+    Object.defineProperty(module.exports, '_internal', { value: { collectTextFiles, useProjectParameters, hasConflictMarkerInText, missingPageReason } })
   }
 })()
 
@@ -12487,7 +12530,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .name('text2frame')
     .version('2.3.0')
     .usage('[options]')
-    .option('-m, --mode <map|common|compile|batch>', 'output mode', /^(map|common|compile|batch)$/i)
+    .option('-m, --mode <map|common|compile|batch|csv>', 'output mode', /^(map|common|compile|batch|csv)$/i)
     .option('-f, --text-file <name>', 'single-file mode (map/common): input text file')
     .option('--text_path <name>', 'single-file mode: same as --text-file')
     .option('-t, --text-dir <dir>', 'batch mode: text base directory', 'text')
@@ -12504,6 +12547,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('--watch', 'watch text files and redeploy on change (batch mode)', false)
     .option('--debounce <ms>', 'debounce window for --watch', '250')
     .option('--poll', 'force polling for --watch (recommended on network/WSL paths)', false)
+    .option('--allow-delete', 'csv mode: let rows missing from the sheet delete their lines', false)
+    .option('--force', 'csv mode: apply even when most of a target changed', false)
+    .option('--max-change <percent>', 'csv mode: refuse a target when more than this share of its rows changed', '50')
     .parse()
 
   const help_text = `
@@ -12514,6 +12560,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         npx text2frame --mode batch
         npx text2frame --verbose --mode map --text-file <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --strategy <merge|overwrite|add>
         npx text2frame --verbose --mode common --text-file <text file path> --common_event_id <common event id> --strategy <merge|overwrite|add>
+        npx text2frame --mode csv
         npx text2frame --mode compile
     DESCRIPTION
         npx text2frame --mode batch
@@ -12555,6 +12602,30 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           例1：$ npx text2frame --mode common --text-file test/basic.txt --output_path data/CommonEvents.json --common_event_id 1 --strategy overwrite
           例2：$ npx text2frame -m common -f test/basic.txt -o data/CommonEvents.json -c 1 -s overwrite
 
+        npx text2frame --mode csv
+          スプレッドシートで書いてもらった CSV をゲームへ戻すモードです。
+          ルートの scenario.csv を読み（-f で別の名前も指定できます）、text フォルダの
+          テキストに当ててから、ふつうの反映と同じ道でゲームへ書きます。
+          例1：$ npx text2frame --mode csv
+          例2：$ npx text2frame --mode csv -f 台本.csv --root /path/to/project
+
+          **CSV からテキストを作り直すのではありません。** いまのテキストをもう一度畳んで、
+          「ID」が合う行だけ差し替えます。だから --rows dialogue で出した短い表でも、
+          出していないタグの行や空行はそのまま残ります。「ID」が空の行は
+          「足された行」として、その直前の行のうしろに入ります。
+
+          止めるのはこんなときです。どの行かを必ず言います。
+            ・1行目の見出しが無い／宛先の列が空（セルを結合した）
+            ・シートを並べ替えた／ID が重複している／知らない ID がある
+            ・CSV を配ったあとにテキストを取り出し直した（「版」の列が合わない）
+            ・テキストに衝突の目印が残っている
+            ・シートから行が消えている → 消すつもりなら --allow-delete
+            ・1つの宛先の 50% を超える行が変わった → 意図した書き換えなら --force
+              （割合は --max-change <percent> で変えられます）
+
+          CSV を作るのは frame2text のほうです。
+          例3: $ npx frame2text --mode csv
+
         npx text2frame --mode compile
           コンパイルモードです。
           変換したいテキストファイルをパイプで与えると、対応したイベントに変換されたJSONを、標準出力に出力します。
@@ -12566,7 +12637,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 `
   program.addHelpText('after', help_text)
   const options = program.opts()
-  if (!['map', 'common', 'compile', 'test', 'batch'].includes(options.mode)) {
+  if (!['map', 'common', 'compile', 'test', 'batch', 'csv'].includes(options.mode)) {
     program.help()
     process.exit(0)
   }
@@ -12688,6 +12759,196 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     process.stdin.on('end', () => {
       console.log(JSON.stringify(module.exports.compile(readFrontMatter(data).body), null, 2))
     })
+  } else if (options.mode === 'csv') {
+    /* スプレッドシートで書いてもらった CSV を、ゲームへ戻す。
+     *
+     * **CSV からテキストを作らない。** いまの text/*.txt をもう一度同じやり方で畳んで、
+     * ID が合う行だけ差し替える。そこから先は既存の反映(applyTextFile)がそのまま動くので、
+     * 3方向マージ・祖先(.t2f-base)・衝突の目印・履歴の巻き戻しが全部ただで付く。
+     * CSV から直接データへ書く形にすると、あれを全部もう一度書くことになる。
+     *
+     * 断るものは全部「どの行か」を言う。言わないと、シートのどこを直せばいいか分からない。 */
+    const F2T = require('./Frame2Text.js')
+    const csv = module.exports._csv
+    const { hasConflictMarkerInText, missingPageReason } = module.exports._internal
+    const csvPath = fromRoot(singleTextPath) || path.join(cliRoot, 'scenario.csv')
+    const dataDir = path.resolve(cliRoot, options.dataDir)
+    const textDir = path.resolve(cliRoot, options.textDir || 'text')
+    noteOutsideRoot('csv', csvPath)
+    noteOutsideRoot('text', textDir)
+    noteOutsideRoot('data', dataDir)
+    reportOutsideRoot()
+    if (!fs.existsSync(csvPath)) {
+      throw new Error('CSV がありません: ' + csvPath +
+        ' / 先に書き出してください: npx frame2text --mode csv')
+    }
+    if (!fs.existsSync(dataDir)) {
+      throw new Error('Data directory not found: ' + dataDir)
+    }
+
+    const table = csv.parseCsv(fs.readFileSync(csvPath, 'utf8'))
+    /* 見出しの行が無ければ断る。**列の数からは推測しない** ── 推測すると、1行目を
+     * 消したシートを「1件目のデータ」として読み、見出しの文字をシナリオに書き込む。 */
+    const needed = ['宛先', 'ID', '本文']
+    const absent = needed.filter(function (c) { return table.columns.indexOf(c) < 0 })
+    if (absent.length) {
+      throw new Error('CSV の1行目が列の見出しになっていません(足りない列: ' + absent.join(', ') + ')。' +
+        '列の数からは推測しません。書き出した CSV の1行目をそのまま残してください。')
+    }
+
+    /* 宛先ごとにまとめる。出てきた順を保つ ── 足された行(ID が空)の置き場所は
+     * 「直前の行の後ろ」なので、順が宛先の一部になっている。 */
+    const groups = []
+    const byKey = {}
+    const rowProblems = []
+    table.rows.forEach(function (r, n) {
+      const at = n + 2
+      const kind = String(r.種別 || '')
+      const key = String(r.宛先 || '').trim()
+      if (kind === '見出し') return
+      const empty = csv.COLUMNS.every(function (c) { return !r[c] })
+      if (empty) return
+      if (!key) {
+        /* 宛先が空で中身がある行。セルを結合すると、下の行の宛先がこうなる。 */
+        rowProblems.push('CSV の ' + at + '行目: 宛先の列が空です(セルを結合していませんか)。' +
+          '書き出した CSV は全部の行に宛先を書いています。')
+        return
+      }
+      if (!byKey[key]) { byKey[key] = { key, rows: [], firstLine: at }; groups.push(byKey[key]) }
+      byKey[key].rows.push(r)
+    })
+
+    const index = F2T.indexTexts(textDir)
+    const targets = F2T.enumerateTargets(dataDir, { scope: 'all', index })
+    const known = {}
+    targets.forEach(function (t) { known[t.key] = t })
+    const keyParts = function (key) {
+      const m = /^map(\d+)_event(\d+)_page(\d+)$/.exec(String(key || ''))
+      if (!m) return undefined
+      return { kind: 'event', mapId: String(Number(m[1])), eventId: String(Number(m[2])), pageId: String(Number(m[3])) }
+    }
+
+    const allowDelete = !!options.allowDelete
+    const force = !!options.force
+    const limit = Number(options.maxChange)
+    const results = []
+    groups.forEach(function (group) {
+      const say = function (reason) {
+        results.push({ ok: false, key: group.key, csvLine: group.firstLine, reason })
+      }
+      const target = known[group.key]
+      if (!target) {
+        // ページは増やせない。文面は MCP の findTarget と同じものを使う。
+        const why = missingPageReason(targets, keyParts(group.key))
+        say('その宛先はありません' + (why ? '。' + why : '（書き出した CSV の宛先をそのまま使ってください）'))
+        return
+      }
+      const textPath = index.paths[group.key]
+      if (!textPath) {
+        say('この宛先のテキストがまだありません。先に取り出してください: npx frame2text --mode batch')
+        return
+      }
+      const whole = fs.readFileSync(textPath, { encoding: 'utf8' })
+      /* 目印は**畳む前**に見る。畳んでしまうと、衝突しているテキストがちょうど
+       * 一番ばらばらの9行(<注釈> ブロック)になる。 */
+      if (hasConflictMarkerInText(whole)) {
+        say('テキストに衝突の目印が残っています。どちらかを残して目印3行を消してから、もう一度どうぞ: ' + textPath)
+        return
+      }
+      const parsed = module.exports.parseFrontMatter(whole)
+      const merged = csv.mergeRows(parsed.body, group.rows, {
+        key: group.key,
+        gameRoot: cliRoot,
+        allowDelete
+      })
+      if (!merged.ok) {
+        results.push({ ok: false, key: group.key, csvLine: group.firstLine, reason: '断りました', problems: merged.problems })
+        return
+      }
+      const gone = merged.missing.filter(function (m) { return m.消された })
+      if (gone.length && !allowDelete) {
+        say('シートから ' + gone.length + ' 行が消えています(' +
+          gone.slice(0, 5).map(function (m) { return m.ID }).join(', ') +
+          (gone.length > 5 ? ' 他' : '') + ')。消すつもりなら --allow-delete を付けてください。' +
+          '消すつもりでなければ、その行を書き出した CSV から戻してください。')
+        return
+      }
+      /* 書き換えが多すぎるときは止める。シートの事故(全体を貼り替えた、1列ずれた)は
+       * たいていこの形で出る。--force があれば通す。 */
+      const touched = merged.changed + merged.added + merged.removed
+      const share = merged.total ? Math.round(touched / merged.total * 100) : 0
+      if (!force && merged.total > 0 && share > limit) {
+        say('この宛先の ' + share + '% の行が変わっています(' + touched + ' / ' + merged.total +
+          '、上限 ' + limit + '%)。意図した書き換えなら --force を付けてください。' +
+          '意図していなければ、シートが1列ずれていないか確かめてください。')
+        return
+      }
+
+      fs.writeFileSync(textPath, parsed.header + merged.text, 'utf8')
+      const applyOpts = {
+        textPath,
+        strategy: cliStrategy,
+        basePath: cliBase,
+        baseRoot: cliRoot,
+        gameRoot: cliRoot,
+        isDebug: options.verbose
+      }
+      if (target.kind === 'common') {
+        applyOpts.commonEventPath = path.join(dataDir, 'CommonEvents.json')
+      } else {
+        applyOpts.mapPath = path.join(dataDir, mapFileName(target.mapId))
+      }
+      const res = module.exports.applyTextFile(applyOpts)
+      results.push({
+        ok: !!res.ok,
+        key: group.key,
+        csvLine: group.firstLine,
+        textPath,
+        error: res.error,
+        warnings: res.warnings,
+        conflicts: res.conflicts,
+        changed: merged.changed,
+        added: merged.added,
+        removed: merged.removed,
+        rows: merged.total,
+        hiddenBetween: merged.inserted.filter(function (one) { return one.hidden > 0 }),
+        kept: merged.missing.filter(function (m) { return !m.消された }).length
+      })
+    })
+
+    const failed = results.filter(function (r) { return !r.ok })
+    const conflicted = results.filter(function (r) { return r.ok && r.conflicts })
+    console.log(JSON.stringify({
+      csvPath,
+      targets: groups.length,
+      applied: results.length - failed.length,
+      failed: failed.length,
+      conflicts: conflicted.length,
+      rowProblems: rowProblems.length,
+      strategy: cliStrategy,
+      results
+    }, null, 2))
+    rowProblems.forEach(function (one) { console.warn('[csv] ' + one) })
+    failed.forEach(function (r) {
+      console.warn('[csv] ' + r.key + ': ' + r.reason)
+      ;(r.problems || []).forEach(function (p) { console.warn('       ' + p.detail) })
+    })
+    /* 足した行が、見えている2行の間に隠れた行をまたいだとき。置き場所は
+     * 「直前の行の後ろ」の一本に決めてあるので、またいだことは必ず言う。 */
+    results.forEach(function (r) {
+      (r.hiddenBetween || []).forEach(function (one) {
+        console.warn('[csv] ' + r.key + ': 足した ' + one.count + '行を ' + one.after +
+          ' の直後に入れました。' + one.after + ' と次に見えている行の間には、' +
+          'CSV に出していない行が ' + one.hidden + '行あります。')
+      })
+    })
+    if (conflicted.length > 0) {
+      console.warn('[csv] ' + conflicted.length +
+        ' 件で衝突しました。ゲームに両方の版を目印付きで書いてあります。ツクールで決めて目印3行を消してから、もう一度取り出してください。')
+    }
+    if (failed.length > 0 || rowProblems.length > 0) {
+      process.exitCode = 1
+    }
   } else if (options.mode === 'batch') {
     // Front matter is the sole source of routing/metadata: scan the text directory for
     // front-matter .txt files and deploy each by its own header.

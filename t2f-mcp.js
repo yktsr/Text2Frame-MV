@@ -720,16 +720,8 @@ const listOf = function (ctx, target) {
  * t2f_list を引き直し、見つからずに迷う。理由を言えば、ツクールで先に作ればよいと分かる。
  */
 const missReason = function (targets, wanted) {
-  if (!wanted || wanted.kind !== 'event' || !(Number(wanted.pageId) > 0)) return ''
-  const pages = targets.filter(function (t) {
-    return t.kind !== 'common' && String(t.mapId) === String(wanted.mapId) && String(t.eventId) === String(wanted.eventId)
-  })
-  if (!pages.length) return ''
-  const most = pages.reduce(function (n, t) { return Math.max(n, Number(t.pageId) || 1) }, 0)
-  if (Number(wanted.pageId) <= most) return ''
-  return 'このイベントは ' + most + ' ページまでです。**テキストからページを増やすことはできません**' +
-    '（出現条件がテキストに書けないため、条件の無いページが既存のページを隠してしまいます）。' +
-    '先に RPGツクールでページを作ってから、もう一度どうぞ。'
+  // 文面は本体が持っている(CLI の CSV 取り込みも同じものを出す)。require は覚えられる。
+  return require(path.join(__dirname, 'Text2Frame.js'))._internal.missingPageReason(targets, wanted)
 }
 
 const keyParts = function (key) {

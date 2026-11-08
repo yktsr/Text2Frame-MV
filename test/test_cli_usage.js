@@ -53,8 +53,8 @@ describe('command line usage', function () {
       })
     })
 
-    /* CSV の口を持っているのはどちらか。取り出しが frame2text、取り込みが text2frame。 */
-    ;[['Frame2Text.js', 'frame2text']].forEach(function (pair) {
+    /* CSV の口は両方が持つ。取り出しが frame2text、取り込みが text2frame。 */
+    ;[['Frame2Text.js', 'frame2text'], ['Text2Frame.js', 'text2frame']].forEach(function (pair) {
       it(pair[1] + ' accepts csv as a mode', function () {
         const src = fs.readFileSync(path.resolve(__dirname, '..', pair[0]), 'utf8')
         expect(src.match(/--mode <([^>]+)>/)[1].split('|')).to.include('csv')
