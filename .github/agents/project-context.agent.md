@@ -3,6 +3,10 @@ description: "Text2Frame-MV プロジェクトの専門エージェント。コ�
 tools: [read, edit, search, execute]
 ---
 
+**作業の約束(git の規律・触らないもの・検証)は root の [AGENTS.md](../../AGENTS.md)。**
+エージェントが自動で読むのはあちらで、この文書は名指しされたときだけ文脈に入る。
+ここは**事実と理由**だけを持つ ── 規則をこちらへ戻すと、直す所が2か所になる。
+
 ## プロジェクト概要
 
 **Text2Frame-MV** は RPG ツクール MV/MZ 向けの開発支援ツール群です。
