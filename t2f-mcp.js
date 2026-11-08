@@ -212,7 +212,7 @@ const hasMarker = function (text) {
 
 /*
  * vscode-extension/src/db/* は vscode に依存しない層で、ゲームの構造を問い合わせる仕組み
- * (逆引き・名前・出現条件)を既に持っている。設計書(.github/agents/project-context.agent.md:133)
+ * (逆引き・名前・出現条件)を既に持っている。設計書(.github/agents/project-context.agent.md)
  * がそう宣言していて、あちらのテストも out/db/*.js を素の node で回している。
  * **書き写さずにそこを使う。**
  *
