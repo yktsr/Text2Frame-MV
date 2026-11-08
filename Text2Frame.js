@@ -12289,13 +12289,221 @@
       return { columns: head, rows }
     }
 
+    /* CSV の行を、テキストに当ててゲームへ反映する。**CLI とツクールのプラグインコマンドが
+     * 同じここを使う**(規則を2つに割らない)。ファイルの場所を探すのは呼ぶ側の仕事なので、
+     * 宛先の一覧(targets)とテキストの索引(index)は渡してもらう。
+     *
+     * 返すのは、報告に要るものだけ:
+     *   { ok, columns, report, results, rowProblems, applied, failed, conflicts }
+     * report は読んだ表と同じ形・同じ順で、「判定」と「エラー」だけ埋めたもの。 */
+    const importCsv = function (opts) {
+      const o = opts || {}
+      const _fs = require('fs')
+      const _path = require('path')
+      /* 「どうすればいいか」の言い方だけは入口ごとに違う(CLI は引数、ツクールは選択肢)。
+       * 断る理由そのものはここが決めて、押す場所の名前だけ呼ぶ側からもらう。 */
+      const hints = Object.assign({
+        allowDelete: '「消えた行を消す」を選ぶ',
+        force: '「多すぎる書き換えも通す」を選ぶ',
+        pull: '一括取り出しを実行する'
+      }, o.hints || {})
+      const table = parseCsv(o.csvText)
+      const needed = ['宛先', 'ID', '本文']
+      const absent = needed.filter(function (c) { return table.columns.indexOf(c) < 0 })
+      /* 見出しの行が無ければ断る。**列の数からは推測しない** ── 推測すると、1行目を
+       * 消したシートを「1件目のデータ」として読み、見出しの文字をシナリオに書き込む。 */
+      if (absent.length) {
+        return {
+          ok: false,
+          fatal: 'CSV の1行目が列の見出しになっていません(足りない列: ' + absent.join(', ') + ')。' +
+            '列の数からは推測しません。書き出した CSV の1行目をそのまま残してください。',
+          columns: table.columns,
+          report: [],
+          results: [],
+          rowProblems: [],
+          applied: 0,
+          failed: 0,
+          conflicts: 0
+        }
+      }
+
+      /* 行ごとの判定。取り込んだあと同じ形の表に書き戻す ── シートを書いた人が
+       * 自分の行がどうなったかを見られるように。 */
+      const verdicts = table.rows.map(function () { return { 判定: '', エラー: '' } })
+      const rowProblems = []
+      /* 宛先ごとにまとめる。出てきた順を保つ ── 足された行(ID が空)の置き場所は
+       * 「直前の行の後ろ」なので、順が宛先の一部になっている。 */
+      const groups = []
+      const byKey = {}
+      table.rows.forEach(function (r, n) {
+        const at = n + 2 // CSV の行番号(1行目は列の見出し)
+        const key = String(r.宛先 || '').trim()
+        if (String(r.種別 || '') === '見出し') { verdicts[n].判定 = '見出し'; return }
+        if (CSV_COLUMNS.every(function (c) { return !r[c] })) return
+        if (!key) {
+          // 宛先が空で中身がある行。セルを結合すると、下の行の宛先がこうなる。
+          rowProblems.push('CSV の ' + at + '行目: 宛先の列が空です(セルを結合していませんか)。' +
+            '書き出した CSV は全部の行に宛先を書いています。')
+          verdicts[n].判定 = '×'
+          verdicts[n].エラー = '宛先の列が空です(セルを結合していませんか)'
+          return
+        }
+        if (!byKey[key]) { byKey[key] = { key, rows: [], at: [], firstLine: at }; groups.push(byKey[key]) }
+        byKey[key].rows.push(r)
+        // 表のどの行だったか。報告で「判定」「エラー」を書き戻すのに使う。
+        byKey[key].at.push(n)
+      })
+
+      const targets = o.targets || []
+      const index = o.index || { paths: {} }
+      const known = {}
+      targets.forEach(function (t) { known[t.key] = t })
+      const keyParts = function (key) {
+        const m = /^map(\d+)_event(\d+)_page(\d+)$/.exec(String(key || ''))
+        if (!m) return undefined
+        return { kind: 'event', mapId: String(Number(m[1])), eventId: String(Number(m[2])), pageId: String(Number(m[3])) }
+      }
+      const allowDelete = !!o.allowDelete
+      const force = !!o.force
+      const limit = Number(o.maxChange)
+      const share = isNaN(limit) ? 50 : limit
+      const results = []
+
+      groups.forEach(function (group) {
+        /* 宛先ごと見送ったときは、その宛先の全部の行に同じ理由を書く ── 1行だけに書くと
+         * シートを見た人が「自分の行は通った」と読んでしまう。**先に付いた「そのまま」も
+         * 上書きする**(その行も入っていないので)。「×」の行は理由が具体的なので残す。 */
+        const skipAll = function (reason) {
+          group.at.forEach(function (n) {
+            if (verdicts[n].判定 === '×' || verdicts[n].判定 === '見出し') return
+            verdicts[n].判定 = '見送り'
+            verdicts[n].エラー = reason
+          })
+        }
+        const say = function (reason) {
+          results.push({ ok: false, key: group.key, csvLine: group.firstLine, reason })
+          skipAll(reason)
+        }
+        const target = known[group.key]
+        if (!target) {
+          // ページは増やせない。文面は MCP の findTarget と同じものを使う。
+          const why = missingPageReason(targets, keyParts(group.key))
+          say('その宛先はありません' + (why ? '。' + why : '（書き出した CSV の宛先をそのまま使ってください）'))
+          return
+        }
+        const textPath = index.paths[group.key]
+        if (!textPath) {
+          say('この宛先のテキストがまだありません。先に取り出してください: ' + hints.pull)
+          return
+        }
+        const whole = _fs.readFileSync(textPath, { encoding: 'utf8' })
+        /* 目印は**畳む前**に見る。畳んでしまうと、衝突しているテキストがちょうど
+         * 一番ばらばらの9行(<注釈> ブロック)になる。 */
+        if (hasConflictMarkerInText(whole)) {
+          say('テキストに衝突の目印が残っています。どちらかを残して目印3行を消してから、もう一度どうぞ: ' + textPath)
+          return
+        }
+        const parsed = parseFrontMatter(whole)
+        const merged = mergeRows(parsed.body, group.rows, {
+          key: group.key,
+          gameRoot: o.gameRoot,
+          allowDelete
+        })
+        // 行ごとの判定を、表の位置へ戻す。
+        merged.verdicts.forEach(function (v, k) {
+          const n = group.at[k]
+          if (n === undefined || !v.判定) return
+          verdicts[n].判定 = v.判定
+          verdicts[n].エラー = v.エラー
+        })
+        if (!merged.ok) {
+          results.push({ ok: false, key: group.key, csvLine: group.firstLine, reason: '断りました', problems: merged.problems })
+          skipAll('この宛先は入れていません(同じ表の × の行に理由があります)')
+          return
+        }
+        const gone = merged.missing.filter(function (m) { return m.消された })
+        if (gone.length && !allowDelete) {
+          say('シートから ' + gone.length + ' 行が消えています(' +
+            gone.slice(0, 5).map(function (m) { return m.ID }).join(', ') +
+            (gone.length > 5 ? ' 他' : '') + ')。消すつもりなら' + hints.allowDelete + 'でください。' +
+            '消すつもりでなければ、その行を書き出した CSV から戻してください。')
+          return
+        }
+        /* 書き換えが多すぎるときは止める。シートの事故(全体を貼り替えた、1列ずれた)は
+         * たいていこの形で出る。頼まれていれば通す。 */
+        const touched = merged.changed + merged.added + merged.removed
+        const percent = merged.total ? Math.round(touched / merged.total * 100) : 0
+        if (!force && merged.total > 0 && percent > share) {
+          say('この宛先の ' + percent + '% の行が変わっています(' + touched + ' / ' + merged.total +
+            '、上限 ' + share + '%)。意図した書き換えなら' + hints.force + 'でください。' +
+            '意図していなければ、シートが1列ずれていないか確かめてください。')
+          return
+        }
+
+        _fs.writeFileSync(textPath, parsed.header + merged.text, 'utf8')
+        const applyOpts = {
+          textPath,
+          strategy: o.strategy || 'merge',
+          basePath: o.basePath,
+          baseRoot: o.gameRoot,
+          gameRoot: o.gameRoot,
+          isDebug: !!o.isDebug
+        }
+        if (target.kind === 'common') {
+          applyOpts.commonEventPath = _path.join(o.dataDir, 'CommonEvents.json')
+        } else {
+          applyOpts.mapPath = _path.join(o.dataDir, mapFileName(target.mapId))
+        }
+        const res = applyTextFile(applyOpts)
+        results.push({
+          ok: !!res.ok,
+          key: group.key,
+          csvLine: group.firstLine,
+          textPath,
+          error: res.error,
+          warnings: res.warnings,
+          conflicts: res.conflicts,
+          changed: merged.changed,
+          added: merged.added,
+          removed: merged.removed,
+          rows: merged.total,
+          hiddenBetween: merged.inserted.filter(function (one) { return one.hidden > 0 }),
+          kept: merged.missing.filter(function (m) { return !m.消された }).length
+        })
+      })
+
+      /* 読んだ表と同じ形に「判定」と「エラー」だけ書き足す。列も順も変えない
+       * (シートの隣に並べて見比べるため)。 */
+      const columns = table.columns.slice()
+      ;['判定', 'エラー'].forEach(function (c) { if (columns.indexOf(c) < 0) columns.push(c) })
+      const report = table.rows.map(function (r, n) {
+        const copy = {}
+        table.columns.forEach(function (c) { copy[c] = r[c] })
+        copy.判定 = verdicts[n].判定
+        copy.エラー = verdicts[n].エラー
+        return copy
+      })
+      const failed = results.filter(function (r) { return !r.ok })
+      return {
+        ok: failed.length === 0 && rowProblems.length === 0,
+        columns,
+        report,
+        results,
+        rowProblems,
+        targets: groups.length,
+        applied: results.length - failed.length,
+        failed: failed.length,
+        conflicts: results.filter(function (r) { return r.ok && r.conflicts }).length
+      }
+    }
+
     Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, applyCommandsToData, commandsEqual, resolveStrategy, readBaseText, saveBaseText, deriveBaseId, baseIdForTarget, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter }
     /* CSV の口。ゲームの中にも要る(プラグインコマンドが使う)ので _internal の囲いには
      * 入れない。ここに置くのは関数の参照だけで、require は関数の中で読む(ブラウザには
      * 無い)。列挙しないので、公開 API の一覧(Object.keys)には出ない。
      * test/test_browser_load.js が、ゲームと同じ入れ物で読み込めることを測っている。 */
     Object.defineProperty(Laurus.Text2Frame.export, '_csv', {
-      value: { foldToRows, mergeRows, rowsToLines: csvRowsToLines, formatCsv, parseCsv, COLUMNS: CSV_COLUMNS }
+      value: { foldToRows, mergeRows, importCsv, rowsToLines: csvRowsToLines, formatCsv, parseCsv, COLUMNS: CSV_COLUMNS }
     })
     // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
     // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
@@ -12783,16 +12991,10 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     })
   } else if (options.mode === 'csv') {
     /* スプレッドシートで書いてもらった CSV を、ゲームへ戻す。
-     *
-     * **CSV からテキストを作らない。** いまの text/*.txt をもう一度同じやり方で畳んで、
-     * ID が合う行だけ差し替える。そこから先は既存の反映(applyTextFile)がそのまま動くので、
-     * 3方向マージ・祖先(.t2f-base)・衝突の目印・履歴の巻き戻しが全部ただで付く。
-     * CSV から直接データへ書く形にすると、あれを全部もう一度書くことになる。
-     *
-     * 断るものは全部「どの行か」を言う。言わないと、シートのどこを直せばいいか分からない。 */
+     * 当てるのは本体の口(_csv.importCsv)で、ツクールのプラグインコマンドと同じもの。
+     * ここがするのは、ファイルの場所を決めて、結果を印字して、報告の CSV を書くことだけ。 */
     const F2T = require('./Frame2Text.js')
     const csv = module.exports._csv
-    const { hasConflictMarkerInText, missingPageReason } = module.exports._internal
     const csvPath = fromRoot(singleTextPath) || path.join(cliRoot, 'scenario.csv')
     const dataDir = path.resolve(cliRoot, options.dataDir)
     const textDir = path.resolve(cliRoot, options.textDir || 'text')
@@ -12808,215 +13010,70 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       throw new Error('Data directory not found: ' + dataDir)
     }
 
-    const table = csv.parseCsv(fs.readFileSync(csvPath, 'utf8'))
-    /* 見出しの行が無ければ断る。**列の数からは推測しない** ── 推測すると、1行目を
-     * 消したシートを「1件目のデータ」として読み、見出しの文字をシナリオに書き込む。 */
-    const needed = ['宛先', 'ID', '本文']
-    const absent = needed.filter(function (c) { return table.columns.indexOf(c) < 0 })
-    if (absent.length) {
-      throw new Error('CSV の1行目が列の見出しになっていません(足りない列: ' + absent.join(', ') + ')。' +
-        '列の数からは推測しません。書き出した CSV の1行目をそのまま残してください。')
-    }
-
-    /* 宛先ごとにまとめる。出てきた順を保つ ── 足された行(ID が空)の置き場所は
-     * 「直前の行の後ろ」なので、順が宛先の一部になっている。 */
-    const groups = []
-    const byKey = {}
-    const rowProblems = []
-    /* 行ごとの判定。取り込んだあと scenario.result.csv に書き戻す ── シートを書いた人が
-     * 自分の行がどうなったかを、同じ形の表で見られるように。 */
-    const verdicts = table.rows.map(function () { return { 判定: '', エラー: '' } })
-    table.rows.forEach(function (r, n) {
-      const at = n + 2
-      const kind = String(r.種別 || '')
-      const key = String(r.宛先 || '').trim()
-      if (kind === '見出し') { verdicts[n].判定 = '見出し'; return }
-      const empty = csv.COLUMNS.every(function (c) { return !r[c] })
-      if (empty) return
-      if (!key) {
-        /* 宛先が空で中身がある行。セルを結合すると、下の行の宛先がこうなる。 */
-        rowProblems.push('CSV の ' + at + '行目: 宛先の列が空です(セルを結合していませんか)。' +
-          '書き出した CSV は全部の行に宛先を書いています。')
-        verdicts[n].判定 = '×'
-        verdicts[n].エラー = '宛先の列が空です(セルを結合していませんか)'
-        return
-      }
-      if (!byKey[key]) { byKey[key] = { key, rows: [], at: [], firstLine: at }; groups.push(byKey[key]) }
-      byKey[key].rows.push(r)
-      // 表のどの行だったか。報告で「判定」「エラー」を書き戻すのに使う。
-      byKey[key].at.push(n)
-    })
-
     const index = F2T.indexTexts(textDir)
-    const targets = F2T.enumerateTargets(dataDir, { scope: 'all', index })
-    const known = {}
-    targets.forEach(function (t) { known[t.key] = t })
-    const keyParts = function (key) {
-      const m = /^map(\d+)_event(\d+)_page(\d+)$/.exec(String(key || ''))
-      if (!m) return undefined
-      return { kind: 'event', mapId: String(Number(m[1])), eventId: String(Number(m[2])), pageId: String(Number(m[3])) }
+    const outcome = csv.importCsv({
+      csvText: fs.readFileSync(csvPath, 'utf8'),
+      targets: F2T.enumerateTargets(dataDir, { scope: 'all', index }),
+      index,
+      gameRoot: cliRoot,
+      dataDir,
+      strategy: cliStrategy,
+      basePath: cliBase,
+      allowDelete: !!options.allowDelete,
+      force: !!options.force,
+      maxChange: options.maxChange,
+      isDebug: options.verbose,
+      hints: {
+        allowDelete: '--allow-delete を付ける',
+        force: '--force を付ける',
+        pull: 'npx frame2text --mode batch'
+      }
+    })
+    if (outcome.fatal) {
+      throw new Error(outcome.fatal)
     }
 
-    const allowDelete = !!options.allowDelete
-    const force = !!options.force
-    const limit = Number(options.maxChange)
-    const results = []
-    groups.forEach(function (group) {
-      /* 宛先ごと見送ったときは、その宛先の全部の行に同じ理由を書く ── 1行だけに書くと
-       * シートを見た人が「自分の行は通った」と読んでしまう。**先に付いた「そのまま」も
-       * 上書きする**(その行も入っていないので)。「×」の行は理由のほうが具体的なので残す。 */
-      const skipAll = function (reason) {
-        group.at.forEach(function (n) {
-          if (verdicts[n].判定 === '×' || verdicts[n].判定 === '見出し') return
-          verdicts[n].判定 = '見送り'
-          verdicts[n].エラー = reason
-        })
-      }
-      const say = function (reason) {
-        results.push({ ok: false, key: group.key, csvLine: group.firstLine, reason })
-        skipAll(reason)
-      }
-      const target = known[group.key]
-      if (!target) {
-        // ページは増やせない。文面は MCP の findTarget と同じものを使う。
-        const why = missingPageReason(targets, keyParts(group.key))
-        say('その宛先はありません' + (why ? '。' + why : '（書き出した CSV の宛先をそのまま使ってください）'))
-        return
-      }
-      const textPath = index.paths[group.key]
-      if (!textPath) {
-        say('この宛先のテキストがまだありません。先に取り出してください: npx frame2text --mode batch')
-        return
-      }
-      const whole = fs.readFileSync(textPath, { encoding: 'utf8' })
-      /* 目印は**畳む前**に見る。畳んでしまうと、衝突しているテキストがちょうど
-       * 一番ばらばらの9行(<注釈> ブロック)になる。 */
-      if (hasConflictMarkerInText(whole)) {
-        say('テキストに衝突の目印が残っています。どちらかを残して目印3行を消してから、もう一度どうぞ: ' + textPath)
-        return
-      }
-      const parsed = module.exports.parseFrontMatter(whole)
-      const merged = csv.mergeRows(parsed.body, group.rows, {
-        key: group.key,
-        gameRoot: cliRoot,
-        allowDelete
-      })
-      // 行ごとの判定を、表の位置へ戻す。
-      merged.verdicts.forEach(function (v, k) {
-        const n = group.at[k]
-        if (n === undefined || !v.判定) return
-        verdicts[n].判定 = v.判定
-        verdicts[n].エラー = v.エラー
-      })
-      if (!merged.ok) {
-        results.push({ ok: false, key: group.key, csvLine: group.firstLine, reason: '断りました', problems: merged.problems })
-        skipAll('この宛先は入れていません(同じ表の × の行に理由があります)')
-        return
-      }
-      const gone = merged.missing.filter(function (m) { return m.消された })
-      if (gone.length && !allowDelete) {
-        say('シートから ' + gone.length + ' 行が消えています(' +
-          gone.slice(0, 5).map(function (m) { return m.ID }).join(', ') +
-          (gone.length > 5 ? ' 他' : '') + ')。消すつもりなら --allow-delete を付けてください。' +
-          '消すつもりでなければ、その行を書き出した CSV から戻してください。')
-        return
-      }
-      /* 書き換えが多すぎるときは止める。シートの事故(全体を貼り替えた、1列ずれた)は
-       * たいていこの形で出る。--force があれば通す。 */
-      const touched = merged.changed + merged.added + merged.removed
-      const share = merged.total ? Math.round(touched / merged.total * 100) : 0
-      if (!force && merged.total > 0 && share > limit) {
-        say('この宛先の ' + share + '% の行が変わっています(' + touched + ' / ' + merged.total +
-          '、上限 ' + limit + '%)。意図した書き換えなら --force を付けてください。' +
-          '意図していなければ、シートが1列ずれていないか確かめてください。')
-        return
-      }
-
-      fs.writeFileSync(textPath, parsed.header + merged.text, 'utf8')
-      const applyOpts = {
-        textPath,
-        strategy: cliStrategy,
-        basePath: cliBase,
-        baseRoot: cliRoot,
-        gameRoot: cliRoot,
-        isDebug: options.verbose
-      }
-      if (target.kind === 'common') {
-        applyOpts.commonEventPath = path.join(dataDir, 'CommonEvents.json')
-      } else {
-        applyOpts.mapPath = path.join(dataDir, mapFileName(target.mapId))
-      }
-      const res = module.exports.applyTextFile(applyOpts)
-      results.push({
-        ok: !!res.ok,
-        key: group.key,
-        csvLine: group.firstLine,
-        textPath,
-        error: res.error,
-        warnings: res.warnings,
-        conflicts: res.conflicts,
-        changed: merged.changed,
-        added: merged.added,
-        removed: merged.removed,
-        rows: merged.total,
-        hiddenBetween: merged.inserted.filter(function (one) { return one.hidden > 0 }),
-        kept: merged.missing.filter(function (m) { return !m.消された }).length
-      })
-    })
-
-    /* 同じ形の表に「判定」と「エラー」だけ書き足して返す。シートの隣に置いて
-     * 見比べられるようにするため、列も順も変えない。書けなくても取り込みは失敗にしない。 */
+    /* 同じ形の表に「判定」と「エラー」だけ書き足して返す。書けなくても取り込みは
+     * 失敗にしない(ゲームにはもう入っているため)。 */
     const resultPath = csvPath.replace(/(\.csv)?$/i, '') + '.result.csv'
     let reportError = ''
     try {
-      const out = table.rows.map(function (r, n) {
-        const copy = {}
-        table.columns.forEach(function (c) { copy[c] = r[c] })
-        copy.判定 = verdicts[n].判定
-        copy.エラー = verdicts[n].エラー
-        return copy
-      })
-      // 列は読んだときのまま。「判定」「エラー」が無いシートだったときだけ足す。
-      const columns = table.columns.slice()
-      ;['判定', 'エラー'].forEach(function (c) { if (columns.indexOf(c) < 0) columns.push(c) })
-      fs.writeFileSync(resultPath, csv.formatCsv(out, columns), 'utf8')
+      fs.writeFileSync(resultPath, csv.formatCsv(outcome.report, outcome.columns), 'utf8')
     } catch (e) {
       reportError = String((e && e.message) || e)
     }
 
-    const failed = results.filter(function (r) { return !r.ok })
-    const conflicted = results.filter(function (r) { return r.ok && r.conflicts })
     console.log(JSON.stringify({
       csvPath,
       resultPath: reportError ? '' : resultPath,
       reportError,
-      targets: groups.length,
-      applied: results.length - failed.length,
-      failed: failed.length,
-      conflicts: conflicted.length,
-      rowProblems: rowProblems.length,
+      targets: outcome.targets,
+      applied: outcome.applied,
+      failed: outcome.failed,
+      conflicts: outcome.conflicts,
+      rowProblems: outcome.rowProblems.length,
       strategy: cliStrategy,
-      results
+      results: outcome.results
     }, null, 2))
-    rowProblems.forEach(function (one) { console.warn('[csv] ' + one) })
-    failed.forEach(function (r) {
+    outcome.rowProblems.forEach(function (one) { console.warn('[csv] ' + one) })
+    outcome.results.filter(function (r) { return !r.ok }).forEach(function (r) {
       console.warn('[csv] ' + r.key + ': ' + r.reason)
       ;(r.problems || []).forEach(function (p) { console.warn('       ' + p.detail) })
     })
     /* 足した行が、見えている2行の間に隠れた行をまたいだとき。置き場所は
      * 「直前の行の後ろ」の一本に決めてあるので、またいだことは必ず言う。 */
-    results.forEach(function (r) {
+    outcome.results.forEach(function (r) {
       (r.hiddenBetween || []).forEach(function (one) {
         console.warn('[csv] ' + r.key + ': 足した ' + one.count + '行を ' + one.after +
           ' の直後に入れました。' + one.after + ' と次に見えている行の間には、' +
           'CSV に出していない行が ' + one.hidden + '行あります。')
       })
     })
-    if (conflicted.length > 0) {
-      console.warn('[csv] ' + conflicted.length +
+    if (outcome.conflicts > 0) {
+      console.warn('[csv] ' + outcome.conflicts +
         ' 件で衝突しました。ゲームに両方の版を目印付きで書いてあります。ツクールで決めて目印3行を消してから、もう一度取り出してください。')
     }
-    if (failed.length > 0 || rowProblems.length > 0) {
+    if (!outcome.ok) {
       process.exitCode = 1
     }
   } else if (options.mode === 'batch') {
