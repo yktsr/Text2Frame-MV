@@ -42,6 +42,7 @@
     "verify-roundtrip": "node tools/verify-roundtrip.js",
     "update-snapshot": "node tools/snapshot-text.js",
     "update-mcp-snapshot": "node tools/snapshot-mcp.js",
+    "update-csv-snapshot": "node tools/snapshot-csv.js",
     "check-params": "node tools/check-params.js",
     "debug": "node Text2Frame.js",
     "build": "rollup -c",

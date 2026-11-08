@@ -136,6 +136,17 @@ describe('folding a text into CSV rows', function () {
     const tmp = []
     after(function () { tmp.forEach(function (d) { fs.rmSync(d, { recursive: true, force: true }) }) })
 
+    before(function () {
+      /* ここで見るのはライブラリとして動くときの道。同じプロセスに偽のツクール
+       * (test/helpers の installEngine)が居ると、ゲームの設定を読む口は何もしない
+       * ── あちらには生きた値があり、ディスクの plugins.js のほうが古いことがあるため。
+       * npm test はファイルごとに別のプロセスで回すので普通は当たらない。当たったときは
+       * 黙って飛ばさずに理由を言う(飛ばす検査は番人にならない)。 */
+      expect(typeof PluginManager,
+        'この検査はライブラリ側の道を見るので、同じプロセスに偽のツクールが居ると測れません')
+        .to.equal('undefined')
+    })
+
     const project = function (char) {
       const root = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-csv-'))
       tmp.push(root)
