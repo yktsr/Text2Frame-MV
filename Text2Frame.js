@@ -11879,7 +11879,354 @@
       return { ok, fail, root }
     }
 
+    /* ---------------- CSV(スプレッドシートで往復する) ----------------
+     * CSV は text/*.txt の射影であって、ゲームのデータの写しではない。書くのはテキストまでで、
+     * そこから先は今の反映がそのまま動く(3方向マージ・祖先・衝突の目印・履歴の巻き戻し)。
+     *
+     *   text/*.txt ──foldToRows──▶ 行 ──formatCsv──▶ scenario.csv
+     *   text/*.txt ◀──mergeRows─── 行 ◀──parseCsv───
+     *
+     * 戻すときに CSV からテキストを作らないのが肝。いまのテキストをもう一度畳んで、
+     * ID が合う行だけ差し替える。だから「シナリオだけ出す」で出していない行が、
+     * 戻すときに消えない。
+     *
+     * 畳み方を決めるのは compile 自身(lineMap と blockSpans)。どこからどこまでが1つの
+     * 文章の窓かを、ここで正規表現から決め直すことはしない。戻す側はコマンドのことを
+     * 何も知らない ── セルの中身を並べ直すだけで、窓かどうかは compile がもう一度決める。
+     */
+    const CSV_COLUMNS = ['判定', '種別', '宛先', 'ID', '見た目', '本文', '版', 'メモ', 'エラー']
+    const CSV_BODY_CODES = { 401: true, 405: true }
+    const CSV_CHOICE_CODES = { 402: true }
+    /* 見た目だけを決めるタグの行(顔・名前・背景・位置)。この行は自分のコマンドを持たず、
+     * 101 は本文の行に記録される ── compile から見ても窓の一部なので、次のセリフの行に
+     * 畳んで「見た目」の列にする。綴りは元の行のまま持つ(2つ以上タグが並ぶ行があるので、
+     * 値から組み立て直す規則を作らない)。 */
+    const CSV_SETTING_LINE =
+      /^\s*(?:<(?:face|fc|顔|name|nm|名前|windowposition|wp|位置|background|bg|背景)\s*:[^>]*>\s*)+$/i
+    // 「シナリオだけ」で出す種別。
+    const CSV_DIALOGUE_KINDS = { セリフ: true, 選択肢: true }
+
+    /* 対象ごとの指紋。CSV を配ったあとにテキストが取り出し直されていたら、畳み直した
+     * 結果が変わって ID が宛先として使えなくなる。それを見分けるためだけに使う。 */
+    const csvStamp = function (text) {
+      try {
+        return require('crypto').createHash('sha1').update(String(text), 'utf8').digest('hex').slice(0, 8)
+      } catch (e) {
+        /* ブラウザには crypto が無い。食い違いを見分けるだけなので FNV-1a で足りる。 */
+        const s = String(text)
+        let n = 0x811c9dc5
+        for (let i = 0; i < s.length; i++) {
+          n = (n ^ s.charCodeAt(i)) >>> 0
+          n = (n + (n << 1) + (n << 4) + (n << 7) + (n << 8) + (n << 24)) >>> 0
+        }
+        return ('0000000' + n.toString(16)).slice(-8)
+      }
+    }
+
+    /* 行の札。数に見せない ── r001 にしないと、スプレッドシートが 001 を 1 に書き換える。 */
+    const csvRowId = function (n) {
+      const s = String(n + 1)
+      return 'r' + (s.length >= 3 ? s : ('00' + s).slice(-3))
+    }
+
+    const csvBlankRow = function () {
+      const row = {}
+      CSV_COLUMNS.forEach(function (c) { row[c] = '' })
+      return row
+    }
+
+    /* 畳む。opts.gameRoot をもらったら、そのゲームの設定で畳む(下の理由)。
+     * opts.rows に 'dialogue' を渡すと、セリフと選択肢の行だけ返す。札は畳んだ全体に
+     * 振ってから絞るので、絞った表の ID は飛び飛びになる(そのほうが戻せる)。 */
+    const foldToRows = function (text, key, opts) {
+      const o = opts || {}
+      /* CommentOutChar を見る所が2つある(どの行がコメントかの判定と、メモの行の書き方)。
+       * ゲームの設定で '#' にしている人のところで '%' のまま畳むと、'#' の行を中身と数え
+       * '%' の行を落とすので、行がずれて畳み方が丸ごと間違う。compile と同じ形で
+       * その呼び出しの間だけ入れ替える。 */
+      const restore = useProjectParameters(o.gameRoot)
+      try {
+        return foldToRowsCore(text, key, o)
+      } finally {
+        restore()
+      }
+    }
+
+    const foldToRowsCore = function (text, key, o) {
+      const whole = uniformNewLineCode(String(text))
+      const lines = whole.split('\n')
+      const body = {}
+      const choice = {}
+      const inBlock = {}
+      const opensAt = {}
+      let failure = ''
+      try {
+        /* 入れ替えの中に居るので compileCore を直に呼ぶ(compile だともう一度入れ替える)。 */
+        const r = compileCore(whole, { lineMap: true })
+        r.blockSpans.forEach(function (s) {
+          opensAt[s.from] = s.to
+          for (let i = s.from; i <= s.to; i++) inBlock[i] = true
+        })
+        r.commands.forEach(function (cmd, k) {
+          const at = r.lineMap[k]
+          // ブロックの中身と閉じ行は開き行のコマンドに化けるので、本文として数えない。
+          if (inBlock[at]) return
+          if (CSV_BODY_CODES[cmd.code]) body[at] = true
+          if (CSV_CHOICE_CODES[cmd.code]) choice[at] = true
+        })
+      } catch (e) {
+        /* 文法が通らないテキストを落とさない。1行1行そのまま出して、理由をエラーの列に書く。
+         * compile は行番号も付けてくれる(e.t2fLine)。 */
+        failure = String((e && e.message) || e).split('\n')[0] +
+          (e && e.t2fLine !== undefined ? '(' + (e.t2fLine + 1) + '行目)' : '')
+      }
+
+      const rows = []
+      const push = function (kind, cells, look, note) {
+        const row = csvBlankRow()
+        row.種別 = kind
+        row.宛先 = key || ''
+        row.見た目 = (look || []).join('\n')
+        row.本文 = cells.join('\n')
+        row.エラー = note || ''
+        rows.push(row)
+      }
+      // i から続く見た目タグの行を数える。そのあとが本文なら畳める。
+      const settingRun = function (i) {
+        let j = i
+        while (j < lines.length && !inBlock[j] && CSV_SETTING_LINE.test(lines[j])) j++
+        return j > i && j < lines.length && body[j] ? j : i
+      }
+
+      let i = 0
+      while (i < lines.length) {
+        if (failure) { push('自動', [lines[i]], null, i === 0 ? failure : ''); i++; continue }
+        if (opensAt[i] !== undefined) {
+          const to = opensAt[i]
+          push('自動', lines.slice(i, to + 1))
+          i = to + 1
+          continue
+        }
+        const afterSetting = settingRun(i)
+        if (afterSetting > i) {
+          let j = afterSetting
+          while (j < lines.length && body[j]) j++
+          push('セリフ', lines.slice(afterSetting, j), lines.slice(i, afterSetting))
+          i = j
+          continue
+        }
+        if (body[i]) {
+          let j = i
+          while (j < lines.length && body[j]) j++
+          push('セリフ', lines.slice(i, j))
+          i = j
+          continue
+        }
+        /* 「空行かどうか」も空白では決めない。trim() は全角空白(U+3000)も食べるので、
+         * 全角空白をならべてレイアウトした飾りの行を空行と取り違える(実物で1件落ちた)。
+         * 本文として数えられた行は上で先に出ているので、ここに来るのは本当にどのコマンドにも
+         * ならない行だけ。中身はそのまま持つ(幅を捨てない)。 */
+        if (lines[i].trim() === '') { push('空行', [lines[i]]); i++; continue }
+        push(choice[i] ? '選択肢' : '自動', [lines[i]])
+        i++
+      }
+
+      const stamp = csvStamp(whole)
+      rows.forEach(function (r, n) {
+        r.ID = csvRowId(n)
+        r.版 = stamp
+      })
+      if (String(o.rows || 'all').toLowerCase() === 'dialogue') {
+        return rows.filter(function (r) { return !!CSV_DIALOGUE_KINDS[r.種別] })
+      }
+      return rows
+    }
+
+    /* 行をテキストに戻す。権威は要らない ── セルの中身が行になるだけで、窓かどうかは
+     * できたテキストを compile がもう一度決める。だからコンパイラの間違いが取り込みを
+     * 壊す経路は、取り出しと同じ1本だけ。 */
+    const csvRowsToLines = function (rows) {
+      const out = []
+      rows.forEach(function (r) {
+        // 見た目 -> 本文 の順。並べ直すだけで、綴りは作り直さない。
+        const look = r.見た目 === undefined || r.見た目 === null ? '' : String(r.見た目)
+        if (look !== '') look.split('\n').forEach(function (one) { out.push(one) })
+        const text = r.本文 === undefined || r.本文 === null ? '' : String(r.本文)
+        text.split('\n').forEach(function (one) { out.push(one) })
+      })
+      return out
+    }
+
+    /* CSV の行を、いまのテキストに当てる。**CSV からテキストを作らない。**
+     *   1. いまのテキストを同じ畳み方でもう一度畳む(同じ行・同じ ID が出る)
+     *   2. ID が合う行だけセルの中身を差し替える
+     *   3. ID が空の行は、その直前の行の後ろに入れる
+     *   4. CSV に無い行はそのまま残す
+     * 返すのは { ok, text, stamp, problems, missing, inserted }。何を断るかは呼ぶ側が決める
+     * (入口ごとに「断る」「警告にする」が違うので、ここでは見つけたものを並べるだけ)。 */
+    const mergeRows = function (text, csvRows, opts) {
+      const o = opts || {}
+      const base = foldToRows(text, o.key, { gameRoot: o.gameRoot })
+      const whole = uniformNewLineCode(String(text))
+      const stamp = base.length ? base[0].版 : csvStamp(whole)
+      const problems = []
+      const say = function (kind, detail, id) { problems.push({ kind, detail, id: id || '' }) }
+
+      const order = {}
+      base.forEach(function (r, n) { order[r.ID] = n })
+      /* CSV に出ている種別。足りない行が「消された」のか「出していない」のかは、これで分ける
+       * ── 絞って出した CSV では、出していない種別の行が無いのは当たり前。 */
+      const exported = {}
+      csvRows.forEach(function (r) { if (r.種別) exported[String(r.種別)] = true })
+
+      const edited = {}
+      const inserts = {}
+      const sequence = []
+      let last = ''
+      let previous = -1
+      csvRows.forEach(function (r, n) {
+        const at = n + 2 // CSV の行番号(1行目は見出し)
+        const id = r.ID === undefined || r.ID === null ? '' : String(r.ID).trim()
+        if (r.版 && String(r.版) !== stamp) {
+          say('版', 'CSV の ' + at + '行目: 版が合いません(' + r.版 + ' ではなく ' + stamp +
+            ')。この宛先のテキストは CSV を出したあとに取り出し直されています。もう一度出してください。', id)
+          return
+        }
+        if (id === '') {
+          if (!last) {
+            say('置き場所なし', 'CSV の ' + at + '行目: 足された行ですが、その前に ID のある行がありません。' +
+              '見えている最初の行の後ろに置いてください。')
+            return
+          }
+          if (!inserts[last]) inserts[last] = []
+          inserts[last].push(r)
+          return
+        }
+        if (order[id] === undefined) {
+          say('知らない ID', 'CSV の ' + at + '行目: ID ' + id + ' はこの宛先にありません。', id)
+          return
+        }
+        if (edited[id]) {
+          say('ID の重複', 'CSV の ' + at + '行目: ID ' + id + ' が2回出ています。', id)
+          return
+        }
+        if (order[id] <= previous) {
+          say('並べ替え', 'CSV の ' + at + '行目: ID ' + id + ' が元の順より前に出ています。' +
+            'シートを並べ替えたまま取り込むことはできません。', id)
+          return
+        }
+        edited[id] = r
+        sequence.push(id)
+        previous = order[id]
+        last = id
+      })
+
+      /* CSV に無かった行。出した種別のものは「消された」、出していない種別のものは
+       * 「絞って出した」。混ぜると、絞った表を取り込むたびにタグ行が消える。 */
+      const missing = []
+      base.forEach(function (r) {
+        if (edited[r.ID]) return
+        missing.push({ ID: r.ID, 種別: r.種別, 消された: !!exported[r.種別] })
+      })
+
+      /* 足された行が、見えている次の行との間に隠れた行をまたぐかどうか。
+       * 置き場所は「直前の行の後ろ」の一本に決めてあるので、またぐときは報告で言う。 */
+      const inserted = []
+      sequence.forEach(function (id, k) {
+        const rows = inserts[id]
+        if (!rows) return
+        const next = k + 1 < sequence.length ? order[sequence[k + 1]] : base.length
+        let hidden = 0
+        for (let n = order[id] + 1; n < next; n++) if (!edited[base[n].ID]) hidden++
+        inserted.push({ after: id, count: rows.length, hidden })
+      })
+
+      const out = []
+      base.forEach(function (r) {
+        const got = edited[r.ID]
+        // 消すのは、CSV に出した種別の行が無くなっていて、かつ頼まれたときだけ。
+        const drop = !got && o.allowDelete && !!exported[r.種別]
+        if (got) out.push(got)
+        else if (!drop) out.push(r)
+        const after = inserts[r.ID]
+        if (after) after.forEach(function (one) { out.push(one) })
+      })
+
+      const fatal = problems.length > 0
+      return {
+        ok: !fatal,
+        // 断るものがあったら、いまのテキストをそのまま返す(途中まで当てた形を作らない)。
+        text: fatal ? whole : csvRowsToLines(out).join('\n'),
+        stamp,
+        problems,
+        missing,
+        inserted
+      }
+    }
+
+    /* CSV の読み書き(RFC 4180)。依存は増やさない。 */
+    const csvCell = function (v) {
+      const s = v === undefined || v === null ? '' : String(v)
+      return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+    }
+
+    const formatCsv = function (rows, columns) {
+      const cols = columns || CSV_COLUMNS
+      const out = [cols.join(',')]
+      rows.forEach(function (r) {
+        out.push(cols.map(function (c) { return csvCell(r[c]) }).join(','))
+      })
+      // BOM が無いと Excel が化ける。改行は CRLF(RFC 4180)。
+      return '\uFEFF' + out.join('\r\n') + '\r\n'
+    }
+
+    const parseCsv = function (text) {
+      const src = String(text).replace(/^\uFEFF/, '')
+      const table = []
+      let row = []
+      let field = ''
+      let quoted = false
+      let i = 0
+      while (i < src.length) {
+        const ch = src[i]
+        if (quoted) {
+          if (ch === '"') {
+            if (src[i + 1] === '"') { field += '"'; i += 2; continue }
+            quoted = false
+            i++
+            continue
+          }
+          field += ch
+          i++
+          continue
+        }
+        if (ch === '"') { quoted = true; i++; continue }
+        if (ch === ',') { row.push(field); field = ''; i++; continue }
+        if (ch === '\r' && src[i + 1] === '\n') { row.push(field); table.push(row); row = []; field = ''; i += 2; continue }
+        if (ch === '\n' || ch === '\r') { row.push(field); table.push(row); row = []; field = ''; i++; continue }
+        field += ch
+        i++
+      }
+      if (field !== '' || row.length) { row.push(field); table.push(row) }
+      if (!table.length) return { columns: [], rows: [] }
+      /* 列は名前で読む。番号では読まない ── シートで列を入れ替えられても動くように。 */
+      const head = table[0].map(function (h) { return String(h).trim() })
+      const rows = table.slice(1).map(function (cells) {
+        const r = {}
+        head.forEach(function (name, n) { r[name] = cells[n] === undefined ? '' : cells[n] })
+        return r
+      })
+      return { columns: head, rows }
+    }
+
     Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, applyCommandsToData, commandsEqual, resolveStrategy, readBaseText, saveBaseText, deriveBaseId, baseIdForTarget, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter }
+    /* CSV の口。ゲームの中にも要る(プラグインコマンドが使う)ので _internal の囲いには
+     * 入れない。ここに置くのは関数の参照だけで、require は関数の中で読む(ブラウザには
+     * 無い)。列挙しないので、公開 API の一覧(Object.keys)には出ない。
+     * test/test_browser_load.js が、ゲームと同じ入れ物で読み込めることを測っている。 */
+    Object.defineProperty(Laurus.Text2Frame.export, '_csv', {
+      value: { foldToRows, mergeRows, rowsToLines: csvRowsToLines, formatCsv, parseCsv, COLUMNS: CSV_COLUMNS }
+    })
     // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
     // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
     // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。
