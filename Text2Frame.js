@@ -216,6 +216,32 @@
  * @value overwrite
  * @default add
  *
+ * @arg Format
+ * @text 形式
+ * @desc CSVを選ぶと、ゲームのフォルダのscenario.csvをテキストに当ててから反映します。スプレッドシートで書いてもらった表を戻すときに使います。
+ * @type select
+ * @option テキストだけ / text
+ * @value text
+ * @option CSVから / csv
+ * @value csv
+ * @default text
+ *
+ * @arg AllowDelete
+ * @text 消えた行を消す
+ * @desc 形式がCSVのときだけ使います。シートから消えた行を、テキストからも消します。既定では消さずに止まります。
+ * @type boolean
+ * @on 消す
+ * @off 消さない(止まる)
+ * @default false
+ *
+ * @arg Force
+ * @text 多すぎる書き換えも通す
+ * @desc 形式がCSVのときだけ使います。1つの宛先の半分を超える行が変わっていても通します。既定では止まります(列ずれの事故を拾うため)。
+ * @type boolean
+ * @on 通す
+ * @off 止まる
+ * @default false
+ *
  *
  * @command START_DATA_SYNC
  * @text テキストとゲームの同期を開始
@@ -4559,7 +4585,7 @@
       // 引数順は @arg の並びと合わせる。単体の取り込みと同じく取り込み元が先。
       // 取り込み元 -> 反映方法。
       this.pluginCommand('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-        [args.TextFolder, args.Strategy])
+        [args.TextFolder, args.Strategy, args.Format || 'text', args.AllowDelete, args.Force])
     })
     PluginManager.registerCommand('Text2Frame', 'START_DATA_SYNC', function (args) {
       // 引数順は @arg の並びと合わせる。
@@ -4625,6 +4651,14 @@
 
   // マップのデータファイル名。ID は3桁に揃える(ツクールの決まり)。
   const mapFileName = function (mapId) { return 'Map' + ('000' + String(mapId)).slice(-3) + '.json' }
+
+  /* 入/切の畳み方。「文字列の 'false' と真偽値の false は切、それ以外は入」。
+   * Frame2Text の toFlag と同じ規則 ── 同じ名前・同じ中身にしてある。
+   * 本体は Frame2Text に依存できない(向きが逆になる)ので、ここにも置く。 */
+  const toFlag = function (value, whenUnset) {
+    if (value === undefined || value === null || value === '') return !!whenUnset
+    return String(value) !== 'false'
+  }
 
   if (typeof PluginManager === 'undefined') {
     // for test, command line
@@ -5363,6 +5397,11 @@
          * IMPORT_* が実行のたびに書き換えるので、読み込み時に控えたほうを見る。 */
         Laurus.Text2Frame.ImportFolder = args[0] || Laurus.Text2Frame.DefaultFileFolder || 'text'
         Laurus.Text2Frame.BatchStrategy = resolveImportStrategy(args[1])
+        /* 形式と、CSV のときだけ効く2つ。**末尾に足す**ので、今までの2つだけの
+         * 書き方も動き続ける。入/切の畳み方は他と同じ toFlag(既定は切)。 */
+        Laurus.Text2Frame.BatchFormat = String(args[2] || 'text').toLowerCase() === 'csv' ? 'csv' : 'text'
+        Laurus.Text2Frame.BatchAllowDelete = toFlag(args[3], false)
+        Laurus.Text2Frame.BatchForce = toFlag(args[4], false)
         Laurus.Text2Frame.ExecMode = 'BATCH_IMPORT_MESSAGES_FROM_FOLDER'
         break
       }
@@ -11796,6 +11835,96 @@
       return true
     }
 
+    /* ツクールの画面からの CSV 取り込み。当てるのは CLI と同じ口(importCsv)で、
+     * ここがするのは、ファイルの場所を決めて、結果を $gameMessage とコンソールに出して、
+     * 報告の CSV を書くことだけ。宛先の一覧と索引は Frame2Text から借りる
+     * (あちらが持っている仕組みをもう一度書かない)。 */
+    const runCsvImport = function () {
+      if (typeof require === 'undefined') {
+        addWarning('[csv] Node.js environment not available')
+        return
+      }
+      const _fs = require('fs')
+      const _path = require('path')
+      // ゲームのフォルダ。runBatchImport と同じ出し方(推測で cwd に落とさない)。
+      const { BASE_PATH } = getDirParams()
+      const f2t = (function () {
+        try {
+          const glob = (typeof globalThis !== 'undefined')
+            ? globalThis
+            : (typeof window !== 'undefined') ? window : null
+          return (glob && glob.$LaurusFrame2Text) || null
+        } catch (e) { return null }
+      })()
+      if (!f2t || !f2t.indexTexts || !f2t.enumerateTargets) {
+        addWarning('[csv] CSV の取り込みには Frame2Text プラグインが必要です。同じプロジェクトに導入してください。')
+        console.error('[csv] CSV import requires the Frame2Text plugin')
+        return
+      }
+      const csvPath = _path.resolve(BASE_PATH, 'scenario.csv')
+      if (!_fs.existsSync(csvPath)) {
+        addWarning('[csv] CSV がありません: ' + csvPath)
+        addWarning('[csv] 先に「フォルダへ一括取り出し」を形式=CSV で実行してください。')
+        return
+      }
+      const dataDir = _path.resolve(BASE_PATH, 'data')
+      const textDir = _path.resolve(BASE_PATH, Laurus.Text2Frame.ImportFolder || 'text')
+      const index = f2t.indexTexts(textDir)
+      const outcome = importCsv({
+        csvText: _fs.readFileSync(csvPath, 'utf8'),
+        targets: f2t.enumerateTargets(dataDir, { scope: 'all', index }),
+        index,
+        gameRoot: BASE_PATH,
+        dataDir,
+        // CSV は「シートで直したものを戻す」操作なので、既定は統合(add は内容が二重になる)。
+        strategy: Laurus.Text2Frame.BatchStrategy === 'overwrite' ? 'overwrite' : 'merge',
+        allowDelete: toFlag(Laurus.Text2Frame.BatchAllowDelete, false),
+        force: toFlag(Laurus.Text2Frame.BatchForce, false),
+        isDebug: Laurus.Text2Frame.IsDebug
+      })
+      if (outcome.fatal) {
+        addWarning('[csv] ' + outcome.fatal)
+        console.error('[csv] ' + outcome.fatal)
+        return
+      }
+      addMessage('[csv] 取り込み完了: 成功 ' + outcome.applied + '件、失敗 ' + outcome.failed + '件' +
+        (outcome.conflicts > 0 ? '、衝突 ' + outcome.conflicts + '件' : ''))
+      const resultPath = csvPath.replace(/(\.csv)?$/i, '') + '.result.csv'
+      try {
+        _fs.writeFileSync(resultPath, formatCsv(outcome.report, outcome.columns), 'utf8')
+        addMessage('[csv] 行ごとの結果: ' + resultPath)
+      } catch (e) {
+        addWarning('[csv] 結果の表を書けませんでした: ' + String((e && e.message) || e))
+      }
+      const LINES = 5
+      outcome.rowProblems.slice(0, LINES).forEach(function (one) { addWarning('[csv] ' + one) })
+      outcome.rowProblems.forEach(function (one) { console.warn('[csv] ' + one) })
+      const failures = outcome.results.filter(function (r) { return !r.ok })
+      failures.slice(0, LINES).forEach(function (r) { addWarning('[csv] ' + r.key + ': ' + r.reason) })
+      failures.forEach(function (r) {
+        console.warn('[csv] ' + r.key + ': ' + r.reason)
+        ;(r.problems || []).forEach(function (pr) { console.warn('       ' + pr.detail) })
+      })
+      /* 足した行が、見えている2行の間に隠れた行をまたいだとき。置き場所は
+       * 「直前の行の後ろ」の一本に決めてあるので、またいだことは必ず言う。 */
+      outcome.results.forEach(function (r) {
+        (r.hiddenBetween || []).forEach(function (one) {
+          console.warn('[csv] ' + r.key + ': 足した ' + one.count + '行を ' + one.after +
+            ' の直後に入れました。' + one.after + ' と次に見えている行の間には、' +
+            'CSV に出していない行が ' + one.hidden + '行あります。')
+        })
+      })
+      if (outcome.conflicts > 0) {
+        addWarning('[csv] 衝突しました。ゲームに両方の版を目印付きで書いてあります。')
+        addWarning('[csv] ツクールで残す方を決めて目印3行を消したあと、もう一度取り出してください。')
+      }
+      if (outcome.applied > 0) {
+        addMessage('\n')
+        addMessage(RESTART_NOTICE)
+        console.log(RESTART_NOTICE)
+      }
+    }
+
     /* 一括反映の本体。BATCH_IMPORT_MESSAGES_FROM_FOLDER と、START_DATA_SYNC の初回同期の
      * 両方から呼ぶ。o: { importFolder, strategy }
      * 戻り値: { ok, fail, root } */
@@ -12303,9 +12432,9 @@
       /* 「どうすればいいか」の言い方だけは入口ごとに違う(CLI は引数、ツクールは選択肢)。
        * 断る理由そのものはここが決めて、押す場所の名前だけ呼ぶ側からもらう。 */
       const hints = Object.assign({
-        allowDelete: '「消えた行を消す」を選ぶ',
-        force: '「多すぎる書き換えも通す」を選ぶ',
-        pull: '一括取り出しを実行する'
+        allowDelete: '「消えた行を消す」を選んでください',
+        force: '「多すぎる書き換えも通す」を選んでください',
+        pull: '「フォルダへ一括取り出し」を実行してください'
       }, o.hints || {})
       const table = parseCsv(o.csvText)
       const needed = ['宛先', 'ID', '本文']
@@ -12393,7 +12522,7 @@
         }
         const textPath = index.paths[group.key]
         if (!textPath) {
-          say('この宛先のテキストがまだありません。先に取り出してください: ' + hints.pull)
+          say('この宛先のテキストがまだありません。先に' + hints.pull)
           return
         }
         const whole = _fs.readFileSync(textPath, { encoding: 'utf8' })
@@ -12425,7 +12554,7 @@
         if (gone.length && !allowDelete) {
           say('シートから ' + gone.length + ' 行が消えています(' +
             gone.slice(0, 5).map(function (m) { return m.ID }).join(', ') +
-            (gone.length > 5 ? ' 他' : '') + ')。消すつもりなら' + hints.allowDelete + 'でください。' +
+            (gone.length > 5 ? ' 他' : '') + ')。消すつもりなら' + hints.allowDelete + '。' +
             '消すつもりでなければ、その行を書き出した CSV から戻してください。')
           return
         }
@@ -12435,7 +12564,7 @@
         const percent = merged.total ? Math.round(touched / merged.total * 100) : 0
         if (!force && merged.total > 0 && percent > share) {
           say('この宛先の ' + percent + '% の行が変わっています(' + touched + ' / ' + merged.total +
-            '、上限 ' + share + '%)。意図した書き換えなら' + hints.force + 'でください。' +
+            '、上限 ' + share + '%)。意図した書き換えなら' + hints.force + '。' +
             '意図していなければ、シートが1列ずれていないか確かめてください。')
           return
         }
@@ -12574,6 +12703,14 @@
     }
 
     if (Laurus.Text2Frame.ExecMode === 'BATCH_IMPORT_MESSAGES_FROM_FOLDER') {
+      /* 形式が CSV なら、まずゲームのフォルダの scenario.csv をテキストに当てて
+       * ゲームへ反映する。当てるのは CLI と同じ口(importCsv)。
+       * **そのあと一括反映は走らせない** ── CSV が触っていない宛先まで反映すると、
+       * 「CSV を戻した」つもりの操作が、テキスト全体の反映になってしまう。 */
+      if (String(Laurus.Text2Frame.BatchFormat || 'text').toLowerCase() === 'csv') {
+        runCsvImport()
+        return
+      }
       runBatchImport({
         importFolder: Laurus.Text2Frame.ImportFolder,
         strategy: Laurus.Text2Frame.BatchStrategy || 'add'
@@ -13024,9 +13161,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       maxChange: options.maxChange,
       isDebug: options.verbose,
       hints: {
-        allowDelete: '--allow-delete を付ける',
-        force: '--force を付ける',
-        pull: 'npx frame2text --mode batch'
+        allowDelete: '--allow-delete を付けてください',
+        force: '--force を付けてください',
+        pull: '取り出してください: npx frame2text --mode batch'
       }
     })
     if (outcome.fatal) {

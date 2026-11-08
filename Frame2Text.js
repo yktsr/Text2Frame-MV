@@ -140,6 +140,26 @@
  * @value all
  * @default conversation
  *
+ * @arg Format
+ * @text 形式
+ * @desc テキストのほかにCSVも書くかを選びます。CSVはスプレッドシートで書いてもらうための1枚の表です。
+ * @type select
+ * @option テキストだけ / text
+ * @value text
+ * @option テキストとCSV / csv
+ * @value csv
+ * @default text
+ *
+ * @arg Rows
+ * @text CSVに出す行
+ * @desc 形式がCSVのときだけ使います。シナリオだけにすると、タグの行と空行を出しません(戻すときは残ります)。
+ * @type select
+ * @option 全部 / all
+ * @value all
+ * @option シナリオだけ / dialogue
+ * @value dialogue
+ * @default all
+ *
  * @param Default Scenario Folder
  * @text 出力フォルダ名
  * @desc シナリオファイルを出力するフォルダ名を設定します。デフォルトはtextです。(MZでは無視されます)
@@ -831,7 +851,8 @@
       // 引数順は @arg の並びと合わせる。単体の取り出し・一括反映と同じく
       // 出力先 -> 取り出し方法。TextBase は改名前に保存されたコマンドのため。
       this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-        [args.TextFolder || args.TextBase, args.Strategy, args.Scope || 'conversation'])
+        [args.TextFolder || args.TextBase, args.Strategy, args.Scope || 'conversation',
+          args.Format || 'text', args.Rows || 'all'])
     })
   }
 
@@ -1070,6 +1091,9 @@
         // FileFolder は単発の取り出しが引数で書き換えるので、パラメータを直接読む。
         Laurus.Frame2Text.TextBase = args[0] || String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters['Default Scenario Folder']) || '') || 'text'
         Laurus.Frame2Text.BatchStrategy = batchStrategy
+        /* 形式と、CSV に出す行。**末尾に足す**ので、今までの3つだけの書き方も動き続ける。 */
+        Laurus.Frame2Text.BatchFormat = String(args[3] || 'text').toLowerCase() === 'csv' ? 'csv' : 'text'
+        Laurus.Frame2Text.BatchRows = String(args[4] || 'all').toLowerCase() === 'dialogue' ? 'dialogue' : 'all'
         Laurus.Frame2Text.ExecMode = 'BATCH_EXPORT_MESSAGES_TO_FOLDER'
         break
       }
@@ -3333,6 +3357,37 @@
       if (!meta.mapId || !meta.eventId) return ''
       return 'map' + pad3(meta.mapId) + '_event' + pad3(meta.eventId) + '_page' + (meta.pageId || '1')
     }
+    /* 取り出したテキストを1枚の CSV の行にする。**CLI の --mode csv とツクールの
+     * 「形式: CSV」が同じここを使う**(規則を2つに割らない)。ファイルは書かない。
+     * 畳むのは Text2Frame の口。宛先の順はゲームのデータの順(人が読むときに追いやすい)。 */
+    const buildCsvRows = function (opts) {
+      const api = resolveText2Frame()
+      if (!api || !api._csv) return null
+      const _fs = require('fs')
+      const csv = api._csv
+      const rows = []
+      const missing = []
+      const broken = []
+      const index = opts.index || { paths: {} }
+      ;(opts.targets || []).forEach(function (t) {
+        const textPath = index.paths[t.key]
+        if (!textPath) { missing.push(t.key); return }
+        const body = api.parseFrontMatter(_fs.readFileSync(textPath, 'utf8')).body
+        /* 見出しの行。どのマップのどのイベントかを人が読むために置く。取り込みでは
+         * 中身として扱わない(宛先は行ごとに持っている)。 */
+        const head = {}
+        csv.COLUMNS.forEach(function (c) { head[c] = '' })
+        head.種別 = '見出し'
+        head.宛先 = t.key
+        head.本文 = t.name ? t.key + '  ' + t.name : t.key
+        rows.push(head)
+        const folded = csv.foldToRows(body, t.key, { gameRoot: opts.gameRoot, rows: opts.rows })
+        folded.forEach(function (r) { rows.push(r) })
+        if (folded.length && folded[0].エラー) broken.push(t.key)
+      })
+      return { rows, missing, broken, text: csv.formatCsv(rows) }
+    }
+
     const indexTexts = function (textDir) {
       const _fs = require('fs')
       const _path = require('path')
@@ -3814,7 +3869,7 @@
       return { baseDir, results, baseSaveError }
     }
 
-    internalForCli = { runBatchPull, toFlag, setDebug, resolveText2Frame }
+    internalForCli = { runBatchPull, toFlag, setDebug, resolveText2Frame, buildCsvRows }
     Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, indexTexts, outPathFor, defaultFileName, pullTargetToText, renderFrontMatter, buildPullText, writeBackToGame }
     // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
     // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
@@ -3945,6 +4000,37 @@
         (conflictSkipped.length > 0 ? '、衝突未解決で除外 ' + conflictSkipped.length + '件' : '') +
         (markerCarried.length > 0 ? '、目印ごと取り出し ' + markerCarried.length + '件' : ''))
       addMessage('[batch] 出力先: ' + outDir + '(取り出す範囲: ' + _scope + ')')
+      /* 形式が CSV なら、いま書いたテキストを1枚の表にもする。CLI の --mode csv と
+       * 同じ口を使うので、出てくる表は同じ。書き先はゲームのフォルダの scenario.csv
+       * (text/ の中には置かない ── 祖先の鍵がテキストの置き場所で決まるため)。 */
+      if (String(Laurus.Frame2Text.BatchFormat || 'text').toLowerCase() === 'csv') {
+        const csvPath = _path.resolve(BASE_PATH, 'scenario.csv')
+        // 書いたあとの名前で引き直す(新しく作ったテキストを拾うため)。
+        const built = buildCsvRows({
+          targets,
+          index: indexTexts(outDir),
+          gameRoot: BASE_PATH,
+          rows: Laurus.Frame2Text.BatchRows || 'all'
+        })
+        if (!built) {
+          addWarning('[batch] CSV を書くには Text2Frame プラグインが必要です。同じプロジェクトに導入してください。')
+          console.error('[batch] CSV export requires the Text2Frame plugin')
+        } else {
+          try {
+            require('fs').writeFileSync(csvPath, built.text, 'utf8')
+            addMessage('[batch] CSV: ' + csvPath + ' (' + built.rows.length + '行' +
+              (String(Laurus.Frame2Text.BatchRows) === 'dialogue' ? '、シナリオだけ' : '') + ')')
+          } catch (e) {
+            addWarning('[batch] CSV を書けませんでした: ' + String((e && e.message) || e))
+            console.error('[batch] cannot write ' + csvPath + ': ' + String((e && e.message) || e))
+          }
+          if (built.broken.length > 0) {
+            addWarning('[batch] 文法が通らないテキスト ' + built.broken.length +
+              '件は、1行1行そのまま CSV に出しました(エラーの列に理由があります)。')
+            console.warn('[batch] csv kept as raw lines: ' + built.broken.join(', '))
+          }
+        }
+      }
       if (_duplicated.length > 0) {
         addWarning('[batch] 同じ行き先のテキストが複数あるため ' + _duplicated.length + '件を見送りました。どれか1つにしてください。')
         _duplicated.forEach(function (key) {
@@ -4309,38 +4395,25 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const scope = String(options.scope || 'conversation').toLowerCase()
     const which = String(options.rows || 'all').toLowerCase()
     const targets = module.exports.enumerateTargets(dataDir, { scope, index })
-    /* 畳むのは本体の口。規則を2つに割らない(ツクールのプラグインコマンドも同じ所を使う)。 */
-    const api = module.exports._internal.resolveText2Frame()
-    if (!api || !api._csv) {
+    /* 畳むのは本体の口。ツクールの「形式: CSV」と同じ所を使う(規則を2つに割らない)。 */
+    const built = module.exports._internal.buildCsvRows({
+      targets,
+      index,
+      gameRoot: cliRoot,
+      rows: which
+    })
+    if (!built) {
       throw new Error('Text2Frame が見つかりません(CSV は Text2Frame.js の畳み方を使います)')
     }
-    const csv = api._csv
-    const rows = []
-    const missing = []
-    const broken = []
-    targets.forEach(function (t) {
-      const textPath = index.paths[t.key]
-      if (!textPath) { missing.push(t.key); return }
-      const whole = fs.readFileSync(textPath, 'utf8')
-      const body = api.parseFrontMatter(whole).body
-      /* 見出しの行。どのマップのどのイベントかを人が読むために置く。取り込みでは見ない
-       * (宛先は行ごとに持っている)。 */
-      const head = {}
-      csv.COLUMNS.forEach(function (c) { head[c] = '' })
-      head.種別 = '見出し'
-      head.宛先 = t.key
-      head.本文 = t.name ? t.key + '  ' + t.name : t.key
-      rows.push(head)
-      const folded = csv.foldToRows(body, t.key, { gameRoot: cliRoot, rows: which })
-      folded.forEach(function (r) { rows.push(r) })
-      if (folded.length && folded[0].エラー) broken.push(t.key)
-    })
+    const rows = built.rows
+    const missing = built.missing
+    const broken = built.broken
     /* 既定はルートの scenario.csv。text/ の中には置かない ── 祖先(.t2f-base)の鍵は
      * テキストの置き場所の第1階層で決まるので、そこへ物を増やさない。 */
     const csvPath = options.output_path
       ? path.resolve(cliRoot, options.output_path)
       : path.join(cliRoot, 'scenario.csv')
-    fs.writeFileSync(csvPath, csv.formatCsv(rows), 'utf8')
+    fs.writeFileSync(csvPath, built.text, 'utf8')
     console.log(JSON.stringify({
       csvPath,
       rows: rows.length,
