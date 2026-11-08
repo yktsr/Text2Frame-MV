@@ -12111,6 +12111,14 @@
       const edited = {}
       const inserts = {}
       const sequence = []
+      /* 行ごとの判定。**渡された行と同じ長さ・同じ順**で返す ── 取り込みの報告が
+       * 「判定」「エラー」の列をそのまま書き戻せるように。 */
+      const verdicts = csvRows.map(function () { return { 判定: '', エラー: '' } })
+      const verdict = function (n, mark, why) {
+        verdicts[n].判定 = mark
+        verdicts[n].エラー = why || ''
+      }
+      const where = {}
       let last = ''
       let previous = -1
       csvRows.forEach(function (r, n) {
@@ -12123,37 +12131,44 @@
          *   - 全部の列が空の行: シートの末尾に残りがち。外さないと空行が1つ増える
          * ここが唯一 種別 を見る所。見ているのは「中身かどうか」だけで、**どんな中身かは
          * 見ない** ── 自動 を セリフ に書き換えられてタグ行が本文に化ける道は作らない。 */
-        if (String(r.種別 || '') === '見出し') return
+        if (String(r.種別 || '') === '見出し') { verdict(n, '見出し'); return }
         if (id === '' && CSV_COLUMNS.every(function (c) { return !r[c] })) return
         if (r.版 && String(r.版) !== stamp) {
           say('版', 'CSV の ' + at + '行目: 版が合いません(' + r.版 + ' ではなく ' + stamp +
             ')。この宛先のテキストは CSV を出したあとに取り出し直されています。もう一度出してください。', id)
+          verdict(n, '×', '版が合いません(テキストが取り出し直されています)')
           return
         }
         if (id === '') {
           if (!last) {
             say('置き場所なし', 'CSV の ' + at + '行目: 足された行ですが、その前に ID のある行がありません。' +
               '見えている最初の行の後ろに置いてください。')
+            verdict(n, '×', '置き場所が決まりません(見えている最初の行の後ろに置いてください)')
             return
           }
           if (!inserts[last]) inserts[last] = []
           inserts[last].push(r)
+          verdict(n, '足した')
           return
         }
         if (order[id] === undefined) {
           say('知らない ID', 'CSV の ' + at + '行目: ID ' + id + ' はこの宛先にありません。', id)
+          verdict(n, '×', 'ID ' + id + ' はこの宛先にありません')
           return
         }
         if (edited[id]) {
           say('ID の重複', 'CSV の ' + at + '行目: ID ' + id + ' が2回出ています。', id)
+          verdict(n, '×', 'ID ' + id + ' が2回出ています')
           return
         }
         if (order[id] <= previous) {
           say('並べ替え', 'CSV の ' + at + '行目: ID ' + id + ' が元の順より前に出ています。' +
             'シートを並べ替えたまま取り込むことはできません。', id)
+          verdict(n, '×', '元の順より前に出ています(並べ替えたまま取り込めません)')
           return
         }
         edited[id] = r
+        where[id] = n
         sequence.push(id)
         previous = order[id]
         last = id
@@ -12188,7 +12203,9 @@
         // 消すのは、CSV に出した種別の行が無くなっていて、かつ頼まれたときだけ。
         const drop = !got && o.allowDelete && !!exported[r.種別]
         if (got) {
-          if (cell(got, '本文') !== cell(r, '本文') || cell(got, '見た目') !== cell(r, '見た目')) changed++
+          const moved = cell(got, '本文') !== cell(r, '本文') || cell(got, '見た目') !== cell(r, '見た目')
+          if (moved) changed++
+          if (where[r.ID] !== undefined) verdict(where[r.ID], moved ? '直した' : 'そのまま')
           out.push(got)
         } else if (!drop) {
           out.push(r)
@@ -12208,6 +12225,7 @@
         problems,
         missing,
         inserted,
+        verdicts,
         // 書き換えた行・足した行・消した行の数と、元の行数。多すぎる書き換えを断るのに使う。
         changed,
         added: inserted.reduce(function (n, one) { return n + one.count }, 0),
@@ -12623,6 +12641,10 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
             ・1つの宛先の 50% を超える行が変わった → 意図した書き換えなら --force
               （割合は --max-change <percent> で変えられます）
 
+          取り込んだあと、読んだ CSV の隣に scenario.result.csv を書きます。
+          同じ形の表に「判定」と「エラー」だけ書き足したものなので、シートを書いた人が
+          自分の行がどうなったか（直した／足した／そのまま／見送り／×）を見られます。
+
           CSV を作るのは frame2text のほうです。
           例3: $ npx frame2text --mode csv
 
@@ -12801,21 +12823,28 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const groups = []
     const byKey = {}
     const rowProblems = []
+    /* 行ごとの判定。取り込んだあと scenario.result.csv に書き戻す ── シートを書いた人が
+     * 自分の行がどうなったかを、同じ形の表で見られるように。 */
+    const verdicts = table.rows.map(function () { return { 判定: '', エラー: '' } })
     table.rows.forEach(function (r, n) {
       const at = n + 2
       const kind = String(r.種別 || '')
       const key = String(r.宛先 || '').trim()
-      if (kind === '見出し') return
+      if (kind === '見出し') { verdicts[n].判定 = '見出し'; return }
       const empty = csv.COLUMNS.every(function (c) { return !r[c] })
       if (empty) return
       if (!key) {
         /* 宛先が空で中身がある行。セルを結合すると、下の行の宛先がこうなる。 */
         rowProblems.push('CSV の ' + at + '行目: 宛先の列が空です(セルを結合していませんか)。' +
           '書き出した CSV は全部の行に宛先を書いています。')
+        verdicts[n].判定 = '×'
+        verdicts[n].エラー = '宛先の列が空です(セルを結合していませんか)'
         return
       }
-      if (!byKey[key]) { byKey[key] = { key, rows: [], firstLine: at }; groups.push(byKey[key]) }
+      if (!byKey[key]) { byKey[key] = { key, rows: [], at: [], firstLine: at }; groups.push(byKey[key]) }
       byKey[key].rows.push(r)
+      // 表のどの行だったか。報告で「判定」「エラー」を書き戻すのに使う。
+      byKey[key].at.push(n)
     })
 
     const index = F2T.indexTexts(textDir)
@@ -12833,8 +12862,19 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     const limit = Number(options.maxChange)
     const results = []
     groups.forEach(function (group) {
+      /* 宛先ごと見送ったときは、その宛先の全部の行に同じ理由を書く ── 1行だけに書くと
+       * シートを見た人が「自分の行は通った」と読んでしまう。**先に付いた「そのまま」も
+       * 上書きする**(その行も入っていないので)。「×」の行は理由のほうが具体的なので残す。 */
+      const skipAll = function (reason) {
+        group.at.forEach(function (n) {
+          if (verdicts[n].判定 === '×' || verdicts[n].判定 === '見出し') return
+          verdicts[n].判定 = '見送り'
+          verdicts[n].エラー = reason
+        })
+      }
       const say = function (reason) {
         results.push({ ok: false, key: group.key, csvLine: group.firstLine, reason })
+        skipAll(reason)
       }
       const target = known[group.key]
       if (!target) {
@@ -12861,8 +12901,16 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         gameRoot: cliRoot,
         allowDelete
       })
+      // 行ごとの判定を、表の位置へ戻す。
+      merged.verdicts.forEach(function (v, k) {
+        const n = group.at[k]
+        if (n === undefined || !v.判定) return
+        verdicts[n].判定 = v.判定
+        verdicts[n].エラー = v.エラー
+      })
       if (!merged.ok) {
         results.push({ ok: false, key: group.key, csvLine: group.firstLine, reason: '断りました', problems: merged.problems })
+        skipAll('この宛先は入れていません(同じ表の × の行に理由があります)')
         return
       }
       const gone = merged.missing.filter(function (m) { return m.消された })
@@ -12916,10 +12964,32 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       })
     })
 
+    /* 同じ形の表に「判定」と「エラー」だけ書き足して返す。シートの隣に置いて
+     * 見比べられるようにするため、列も順も変えない。書けなくても取り込みは失敗にしない。 */
+    const resultPath = csvPath.replace(/(\.csv)?$/i, '') + '.result.csv'
+    let reportError = ''
+    try {
+      const out = table.rows.map(function (r, n) {
+        const copy = {}
+        table.columns.forEach(function (c) { copy[c] = r[c] })
+        copy.判定 = verdicts[n].判定
+        copy.エラー = verdicts[n].エラー
+        return copy
+      })
+      // 列は読んだときのまま。「判定」「エラー」が無いシートだったときだけ足す。
+      const columns = table.columns.slice()
+      ;['判定', 'エラー'].forEach(function (c) { if (columns.indexOf(c) < 0) columns.push(c) })
+      fs.writeFileSync(resultPath, csv.formatCsv(out, columns), 'utf8')
+    } catch (e) {
+      reportError = String((e && e.message) || e)
+    }
+
     const failed = results.filter(function (r) { return !r.ok })
     const conflicted = results.filter(function (r) { return r.ok && r.conflicts })
     console.log(JSON.stringify({
       csvPath,
+      resultPath: reportError ? '' : resultPath,
+      reportError,
       targets: groups.length,
       applied: results.length - failed.length,
       failed: failed.length,

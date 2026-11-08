@@ -243,6 +243,87 @@ describe('text2frame --mode csv refuses what it cannot trust', function () {
     expect(r.stderr).to.contain('frame2text --mode csv')
   })
 
+  /* シートを書いた人が自分の行の結末を見られるように、同じ形の表に「判定」と
+   * 「エラー」だけ書き足して返す。列も順も変えない(隣に並べて見比べるため)。 */
+  describe('the report it writes back', function () {
+    const result = function () {
+      const out = JSON.parse(run.apply(null, arguments).stdout.split('[csv]')[0])
+      return { out, table: csv.parseCsv(fs.readFileSync(out.resultPath, 'utf8')) }
+    }
+
+    it('writes it next to the sheet it read', function () {
+      const r = result()
+      expect(r.out.resultPath).to.equal(path.join(root, 'scenario.result.csv'))
+      expect(r.out.reportError).to.equal('')
+    })
+
+    it('keeps the columns and the order of the sheet it read', function () {
+      const before = csv.parseCsv(fs.readFileSync(csvPath, 'utf8'))
+      const r = result()
+      expect(r.table.columns).to.eql(before.columns)
+      expect(r.table.rows.map(function (x) { return x.ID })).to.eql(before.rows.map(function (x) { return x.ID }))
+      expect(r.table.rows.map(function (x) { return x.本文 })).to.eql(before.rows.map(function (x) { return x.本文 }))
+    })
+
+    it('marks what it changed, what it added and what it left alone', function () {
+      const list = rows()
+      const at = list.findIndex(function (x) { return x.本文 === 'さようなら' })
+      list[at].本文 = 'またね'
+      list.splice(at + 1, 0, { 種別: 'セリフ', 宛先: list[at].宛先, ID: '', 本文: 'ではまた', 版: list[at].版 })
+      put(list)
+      const r = result()
+      const marks = r.table.rows.map(function (x) { return x.判定 })
+      expect(marks).to.include('直した')
+      expect(marks).to.include('足した')
+      expect(marks).to.include('そのまま')
+      const added = r.table.rows.filter(function (x) { return x.判定 === '足した' })
+      expect(added).to.have.lengthOf(1)
+      expect(added[0].本文).to.equal('ではまた')
+    })
+
+    it('writes the reason on the row that caused it', function () {
+      const list = rows()
+      const at = list.findIndex(function (x) { return x.種別 === 'セリフ' })
+      list[at].ID = 'r099'
+      put(list)
+      const r = result()
+      const bad = r.table.rows.filter(function (x) { return x.判定 === '×' })
+      expect(bad).to.have.lengthOf(1)
+      expect(bad[0].ID).to.equal('r099')
+      expect(bad[0].エラー).to.contain('この宛先にありません')
+    })
+
+    it('does not tell the other rows of a refused target that they went in', function () {
+      /* 1行だけ × にして宛先ごと見送ったとき、残りが「そのまま」と出ると
+       * 「自分の行は通った」と読んでしまう。入っていないので見送りと言う。 */
+      const list = rows()
+      const at = list.findIndex(function (x) { return x.種別 === 'セリフ' })
+      list[at].版 = 'deadbeef'
+      put(list)
+      const r = result()
+      const mine = r.table.rows.filter(function (x) {
+        return x.宛先 === list[at].宛先 && x.ID && x.判定 !== '×'
+      })
+      expect(mine).to.have.length.above(0)
+      mine.forEach(function (x) { expect(x.判定).to.equal('見送り') })
+      expect(r.table.rows.filter(function (x) { return x.判定 === 'そのまま' && x.宛先 === list[at].宛先 }))
+        .to.have.lengthOf(0)
+    })
+
+    it('leaves the heading rows marked as headings', function () {
+      const r = result()
+      const heads = r.table.rows.filter(function (x) { return x.種別 === '見出し' })
+      expect(heads).to.have.length.above(0)
+      heads.forEach(function (x) { expect(x.判定).to.equal('見出し') })
+    })
+
+    it('adds the two columns when the sheet did not keep them', function () {
+      put(rows(), ['種別', '宛先', 'ID', '見た目', '本文', '版'])
+      const r = result()
+      expect(r.table.columns).to.eql(['種別', '宛先', 'ID', '見た目', '本文', '版', '判定', 'エラー'])
+    })
+  })
+
   it('keeps going for the other targets when one is refused', function () {
     // 1件だけ壊す。残りは通ること(1件のせいで全部止めない)。
     const list = rows().map(function (x) {
