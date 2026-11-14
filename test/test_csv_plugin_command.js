@@ -140,6 +140,16 @@ describe('the batch plugin commands with a format argument', function () {
         .to.eql(new Set(['map001_event001_page1', 'map001_event002_page1', 'map001_event003_page1']))
     })
 
+    it('writes on each heading row which rows the sheet was given', function () {
+      pull([path.join(tmp, 'text'), 'overwrite', 'conversation', 'csv', 'dialogue'])
+      const heads = rows().filter(function (r) { return r.種別 === '見出し' })
+      expect(heads).to.have.length.above(0)
+      heads.forEach(function (h) { expect(h.見た目).to.equal('rows=dialogue') })
+      pull([path.join(tmp, 'text'), 'overwrite', 'conversation', 'csv'])
+      rows().filter(function (r) { return r.種別 === '見出し' })
+        .forEach(function (h) { expect(h.見た目).to.equal('rows=all') })
+    })
+
     it('leaves out the tag rows when it is told dialogue only', function () {
       pull([path.join(tmp, 'text'), 'overwrite', 'conversation', 'csv', 'dialogue'])
       const kinds = rows().map(function (r) { return r.種別 })

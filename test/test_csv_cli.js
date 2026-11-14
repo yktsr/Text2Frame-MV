@@ -97,6 +97,26 @@ describe('frame2text --mode csv', function () {
     expect(new Set(kinds)).to.eql(new Set(['見出し', 'セリフ']))
   })
 
+  it('writes on each heading row which rows the sheet was given, and the stamp', function () {
+    /* 取り込みがこれを読む ── 持たせないと「シートに無い行は消されたのか、出していない
+     * だけなのか」を残っている行から推測するしかない。 */
+    pull()
+    run(['--rows', 'dialogue', '-o', 'few.csv'])
+    const rows = csv.parseCsv(fs.readFileSync(path.join(root, 'few.csv'), 'utf8')).rows
+    const heads = rows.filter(function (r) { return r.種別 === '見出し' })
+    expect(heads).to.have.length.above(0)
+    heads.forEach(function (h) {
+      expect(h.見た目).to.equal('rows=dialogue')
+      // 指紋は、その宛先の行と同じもの。
+      const first = rows.filter(function (r) { return r.宛先 === h.宛先 && r.ID })[0]
+      if (first) expect(h.版).to.equal(first.版)
+      else expect(h.版).to.have.length.above(0)
+    })
+    run([])
+    expect(csv.parseCsv(fs.readFileSync(path.join(root, 'scenario.csv'), 'utf8')).rows
+      .filter(function (r) { return r.種別 === '見出し' })[0].見た目).to.equal('rows=all')
+  })
+
   it('does not write or change one text file', function () {
     pull()
     const before = fs.readdirSync(path.join(root, 'text')).map(function (name) {

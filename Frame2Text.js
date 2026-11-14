@@ -3373,15 +3373,15 @@
         const textPath = index.paths[t.key]
         if (!textPath) { missing.push(t.key); return }
         const body = api.parseFrontMatter(_fs.readFileSync(textPath, 'utf8')).body
-        /* 見出しの行。どのマップのどのイベントかを人が読むために置く。取り込みでは
-         * 中身として扱わない(宛先は行ごとに持っている)。 */
-        const head = {}
-        csv.COLUMNS.forEach(function (c) { head[c] = '' })
-        head.種別 = '見出し'
-        head.宛先 = t.key
-        head.本文 = t.name ? t.key + '  ' + t.name : t.key
-        rows.push(head)
         const folded = csv.foldToRows(body, t.key, { gameRoot: opts.gameRoot, rows: opts.rows })
+        /* 見出しの行。作るのは Text2Frame の口(出した行の範囲と指紋をあちらが書く)。
+         * 指紋は畳んだ行と同じものを使う ── 別に数えると、行と見出しで食い違う。 */
+        rows.push(csv.headRow({
+          key: t.key,
+          label: t.name ? t.key + '  ' + t.name : t.key,
+          rows: opts.rows,
+          stamp: folded.length ? folded[0].版 : csv.stampOf(body)
+        }))
         folded.forEach(function (r) { rows.push(r) })
         if (folded.length && folded[0].エラー) broken.push(t.key)
       })

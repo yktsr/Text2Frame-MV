@@ -12152,6 +12152,33 @@
       return row
     }
 
+    /* 宛先ごとの見出しの行。どのマップのどのイベントかを人に見せるために置く(取り込みでは
+     * 中身として扱わない。`ID` が無い)。
+     *
+     * **出した行の範囲と、その宛先の指紋をこの行が持つ。** 持たせないと、取り込みは
+     * 「シートに無い行は消されたのか、出していないだけなのか」を**残っている行から推測**
+     * するしかない ── その種別の行を全部消されると推測が外れ、黙って何もしないことになる。
+     * 置き場所が `見た目` なのは、見出しの行では**両方向で意味を持たない唯一の列**だから
+     * (`メモ` は中身の行でコメント行に往復するし人が書く、`判定`/`エラー` は報告の列、
+     * `本文` は人が読む見出し)。しかも**見える**ので「この行を消すな」が伝わる。
+     *
+     * 作る所を1つにしておく ── 取り出しと筆記録が別々に組むと、印の書き方が食い違う。 */
+    const csvHeadRow = function (opts) {
+      const o = opts || {}
+      const row = csvBlankRow()
+      row.種別 = '見出し'
+      row.宛先 = o.key || ''
+      row.本文 = o.label || o.key || ''
+      row.見た目 = 'rows=' + csvMode(o.rows)
+      row.版 = o.stamp || ''
+      return row
+    }
+    /* 見出しの行の印を読む。読めなければ空(呼ぶ側が「推測した」と言える)。 */
+    const csvModeOfMark = function (mark) {
+      const m = /^rows=(all|dialogue)$/.exec(csvBare(mark))
+      return m ? m[1] : ''
+    }
+
     /* 畳む。opts.gameRoot をもらったら、そのゲームの設定で畳む(下の理由)。
      * opts.rows に 'dialogue' を渡すと、セリフと選択肢の行だけ返す。札は畳んだ全体に
      * 振ってから絞るので、絞った表の ID は飛び飛びになる(そのほうが戻せる)。 */
@@ -12879,7 +12906,19 @@
      * 無い)。列挙しないので、公開 API の一覧(Object.keys)には出ない。
      * test/test_browser_load.js が、ゲームと同じ入れ物で読み込めることを測っている。 */
     Object.defineProperty(Laurus.Text2Frame.export, '_csv', {
-      value: { foldToRows, mergeRows, importCsv, rowsToLines: csvRowsToLines, formatCsv, parseCsv, COLUMNS: CSV_COLUMNS }
+      value: {
+        foldToRows,
+        mergeRows,
+        importCsv,
+        rowsToLines: csvRowsToLines,
+        formatCsv,
+        parseCsv,
+        COLUMNS: CSV_COLUMNS,
+        headRow: csvHeadRow,
+        modeOfMark: csvModeOfMark,
+        kindsOfMode: csvKindsOfMode,
+        stampOf: csvStamp
+      }
     })
     // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
     // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。

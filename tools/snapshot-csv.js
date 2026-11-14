@@ -55,14 +55,16 @@ const build = function (variant) {
   const rows = []
   tests.forEach(function (testCase, n) {
     const text = frame2text.decompile(listOf(testCase), false, { pretty: true, omitDefaults: false })
-    // 題を見出しの行として置く。読むときにどの検体か分かるように。
-    const head = {}
-    csv.COLUMNS.forEach(function (c) { head[c] = '' })
-    head.種別 = '見出し'
-    head.宛先 = keyOf(n)
-    head.本文 = testCase.title
-    rows.push(head)
-    csv.foldToRows(text, keyOf(n), { rows: variant.rows }).forEach(function (r) { rows.push(r) })
+    const folded = csv.foldToRows(text, keyOf(n), { rows: variant.rows })
+    /* 題を見出しの行として置く(読むときにどの検体か分かるように)。**組むのは取り出しと
+     * 同じ口**を通す ── 自分で組むと、印の書き方が本物とずれても筆記録が気づかない。 */
+    rows.push(csv.headRow({
+      key: keyOf(n),
+      label: testCase.title,
+      rows: variant.rows,
+      stamp: folded.length ? folded[0].版 : csv.stampOf(text)
+    }))
+    folded.forEach(function (r) { rows.push(r) })
   })
   return csv.formatCsv(rows)
 }
