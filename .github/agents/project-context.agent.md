@@ -68,7 +68,7 @@ npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ �
 T2F_GAME_DIR=/path/to/game npm test   # 実プロジェクトが要る2件も走らせる(未設定なら skip。実データはコピーに対して)
 ```
 
-**CI(`.github/workflows/nodejs.yml`)**: push[master]/PR で 3 ジョブ。core = `npm ci → build → audit → lint → npm test`、extension = `npm ci → compile → lint → npm test`、package = 配布物3種を作って公開モードの読み込みまで見る。2902 往復は `sample/` が未追跡のため CI 対象外(自己完結の検体139件でガード)。全体は 48 suites / 895 件(**手で書いた数なので古くなる**)。
+**CI(`.github/workflows/nodejs.yml`)**: push[master]/PR で 3 ジョブ。core = `npm ci → build → audit → lint → npm test`、extension = `npm ci → compile → lint → npm test`、package = 配布物3種を作って公開モードの読み込みまで見る。2902 往復は `sample/` が未追跡のため CI 対象外(自己完結の検体139件でガード)。全体は 49 suites / 941 件(**手で書いた数なので古くなる**)。
 
 ## データフロー
 
