@@ -11905,14 +11905,9 @@
         console.warn('[csv] ' + r.key + ': ' + r.reason)
         ;(r.problems || []).forEach(function (pr) { console.warn('       ' + pr.detail) })
       })
-      /* 足した行が、見えている2行の間に隠れた行をまたいだとき。置き場所は
-       * 「直前の行の後ろ」の一本に決めてあるので、またいだことは必ず言う。 */
+      // 文面は importCsv が決める。ここは宛先を添えて並べるだけ。
       outcome.results.forEach(function (r) {
-        (r.hiddenBetween || []).forEach(function (one) {
-          console.warn('[csv] ' + r.key + ': 足した ' + one.count + '行を ' + one.after +
-            ' の直後に入れました。' + one.after + ' と次に見えている行の間には、' +
-            'CSV に出していない行が ' + one.hidden + '行あります。')
-        })
+        (r.notes || []).forEach(function (one) { console.warn('[csv] ' + r.key + ': ' + one) })
       })
       if (outcome.conflicts > 0) {
         addWarning('[csv] 衝突しました。ゲームに両方の版を目印付きで書いてあります。')
@@ -12552,6 +12547,20 @@
       const share = isNaN(limit) ? 50 : limit
       const results = []
 
+      /* 報告の文はここで作る。入口は並べるだけ ── 入口ごとに書くと、片方だけ直したときに
+       * 食い違う(実際に「隠れた行をまたいだ」の文が CLI とプラグインに写してあった)。 */
+      const noticesFor = function (merged) {
+        const notes = []
+        /* 足した行が、見えている2行の間に隠れた行をまたいだとき。置き場所は
+         * 「直前の行の後ろ」の一本に決めてあるので、またいだことは必ず言う。 */
+        merged.inserted.forEach(function (one) {
+          if (!one.hidden) return
+          notes.push('足した ' + one.count + '行を ' + one.after + ' の直後に入れました。' +
+            one.after + ' と次に見えている行の間には、CSV に出していない行が ' + one.hidden + '行あります。')
+        })
+        return notes
+      }
+
       groups.forEach(function (group) {
         /* 宛先ごと見送ったときは、その宛先の全部の行に同じ理由を書く ── 1行だけに書くと
          * シートを見た人が「自分の行は通った」と読んでしまう。**先に付いた「そのまま」も
@@ -12651,7 +12660,8 @@
           removed: merged.removed,
           rows: merged.total,
           hiddenBetween: merged.inserted.filter(function (one) { return one.hidden > 0 }),
-          kept: merged.missing.filter(function (m) { return !m.消された }).length
+          kept: merged.missing.filter(function (m) { return !m.消された }).length,
+          notes: noticesFor(merged)
         })
       })
 
@@ -13254,14 +13264,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       console.warn('[csv] ' + r.key + ': ' + r.reason)
       ;(r.problems || []).forEach(function (p) { console.warn('       ' + p.detail) })
     })
-    /* 足した行が、見えている2行の間に隠れた行をまたいだとき。置き場所は
-     * 「直前の行の後ろ」の一本に決めてあるので、またいだことは必ず言う。 */
+    // 文面は importCsv が決める。ここは宛先を添えて並べるだけ。
     outcome.results.forEach(function (r) {
-      (r.hiddenBetween || []).forEach(function (one) {
-        console.warn('[csv] ' + r.key + ': 足した ' + one.count + '行を ' + one.after +
-          ' の直後に入れました。' + one.after + ' と次に見えている行の間には、' +
-          'CSV に出していない行が ' + one.hidden + '行あります。')
-      })
+      (r.notes || []).forEach(function (one) { console.warn('[csv] ' + r.key + ': ' + one) })
     })
     if (outcome.conflicts > 0) {
       console.warn('[csv] ' + outcome.conflicts +
