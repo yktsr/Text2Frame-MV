@@ -11900,7 +11900,13 @@
       outcome.rowProblems.slice(0, LINES).forEach(function (one) { addWarning('[csv] ' + one) })
       outcome.rowProblems.forEach(function (one) { console.warn('[csv] ' + one) })
       const failures = outcome.results.filter(function (r) { return !r.ok })
-      failures.slice(0, LINES).forEach(function (r) { addWarning('[csv] ' + r.key + ': ' + r.reason) })
+      failures.slice(0, LINES).forEach(function (r) {
+        addWarning('[csv] ' + r.key + ': ' + r.reason)
+        /* 理由が「断りました」だけだと、ツクールの画面には何も伝わらない ── 詳しい理由は
+         * 行ごとに付いていて、コンソールは遊んでいる人には見えない。先頭の1つは画面に出す。 */
+        const first = (r.problems || [])[0]
+        if (first) addWarning('       ' + first.detail)
+      })
       failures.forEach(function (r) {
         console.warn('[csv] ' + r.key + ': ' + r.reason)
         ;(r.problems || []).forEach(function (pr) { console.warn('       ' + pr.detail) })
@@ -12065,6 +12071,16 @@
       force: '「多すぎる書き換えも通す」を選んでください',
       pull: '「フォルダへ一括取り出し」を実行してください',
       rowsAll: '「フォルダへ一括取り出し」を 形式=CSV・CSVに出す行=全部 で出し直してください'
+    }
+    /* 選択肢の行を消せない理由。番人と、消えた行の案内の**両方**が読む。 */
+    const CSV_WHY_CHOICE = '選択肢の行を1つだけ消すと、分岐の中身は残るので分岐の外に出ます' +
+      '(選択肢ウィンドウを出した直後に走ります)。ウィンドウの取り消し先も居なくなります。' +
+      'この選択肢をなくすなら、窓ごと(<ShowChoices> の行・<When> の行・<End> の行)' +
+      'テキストで消してください。'
+    /* 消えた行の並べ方。多いときは5件で切る(全部並べても読めない)。 */
+    const csvIdList = function (list) {
+      return list.slice(0, 5).map(function (m) { return m.ID }).join(', ') +
+        (list.length > 5 ? ' 他' : '')
     }
     /* どのモードがどの種別を見せるか。畳むときの絞り込みと、取り込みが
      * 「出した行」を知る所が、**同じここを読む**。null は全部。 */
@@ -12288,6 +12304,7 @@
      * (入口ごとに「断る」「警告にする」が違うので、ここでは見つけたものを並べるだけ)。 */
     const mergeRows = function (text, csvRows, opts) {
       const o = opts || {}
+      const hints = Object.assign({}, CSV_HINTS, o.hints || {})
       const base = foldToRows(text, o.key, { gameRoot: o.gameRoot })
       const whole = uniformNewLineCode(String(text))
       const stamp = base.length ? base[0].版 : csvStamp(whole)
@@ -12376,7 +12393,13 @@
       const missing = []
       base.forEach(function (r) {
         if (edited[r.ID]) return
-        missing.push({ ID: r.ID, 種別: r.種別, 消された: !!exported[r.種別] })
+        missing.push({
+          ID: r.ID,
+          種別: r.種別,
+          消された: !!exported[r.種別],
+          // 種別が決める性質なので、頼まれたかどうかに依らない。
+          消せない: r.種別 === '選択肢'
+        })
       })
 
       /* 足された行が、見えている次の行との間に隠れた行をまたぐかどうか。
@@ -12389,6 +12412,22 @@
         let hidden = 0
         for (let n = order[id] + 1; n < next; n++) if (!edited[base[n].ID]) hidden++
         inserted.push({ after: id, count: rows.length, hidden })
+      })
+
+      /* セルを並べ直すだけでは済まない行を、ここで1回だけ見る。
+       *
+       * 選択肢の行の中身は**タグ＝構造**で、しかも分岐の中身(隠れている 自動 の行)は
+       * 残る。だから <When> の行だけ消すと、中身が分岐の外に出る ── compile は通るので
+       * 検査も往復も気づかない。**消すのは断る**(--force も届かない。mergeRows は force を
+       * 受け取らないので、うっかり通す道が構造的に作れない)。
+       *
+       * 見るのは**畳み直した基の行の種別**で、シートの 種別 のセルではない。
+       * あちらは書き換えられる。 */
+      base.forEach(function (r) {
+        if (r.種別 !== '選択肢' || !dropped(r)) return
+        say('選択肢は消せません',
+          'ID ' + r.ID + ' (' + r.本文 + ') は選択肢の行なので消せません。' + CSV_WHY_CHOICE +
+          '表で消す行を選び直すなら、' + hints.rowsAll + '。', r.ID)
       })
 
       const out = []
@@ -12612,7 +12651,8 @@
         const merged = mergeRows(parsed.body, group.rows, {
           key: group.key,
           gameRoot: o.gameRoot,
-          allowDelete
+          allowDelete,
+          hints
         })
         // 行ごとの判定を、表の位置へ戻す。
         merged.verdicts.forEach(function (v, k) {
@@ -12628,9 +12668,16 @@
         }
         const gone = merged.missing.filter(function (m) { return m.消された })
         if (gone.length && !allowDelete) {
-          say('シートから ' + gone.length + ' 行が消えています(' +
-            gone.slice(0, 5).map(function (m) { return m.ID }).join(', ') +
-            (gone.length > 5 ? ' 他' : '') + ')。消すつもりなら' + hints.allowDelete + '。' +
+          /* 「消すなら旗を付けて」と案内した先で選択肢の行だけ断られると、案内が嘘になる。
+           * 混じっていることは**ここで**言う。理由は mergeRows の番人と同じ文面。 */
+          const stuck = gone.filter(function (m) { return m.消せない })
+          let also = ''
+          if (stuck.length) {
+            also = 'うち ' + stuck.length + ' 行は選択肢の行で、' + hints.allowDelete +
+              'も通りません(' + csvIdList(stuck) + ')。' + CSV_WHY_CHOICE
+          }
+          say('シートから ' + gone.length + ' 行が消えています(' + csvIdList(gone) + ')。' + also +
+            '消すつもりなら' + hints.allowDelete + '。' +
             '消すつもりでなければ、その行を書き出した CSV から戻してください。')
           return
         }

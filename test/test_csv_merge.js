@@ -106,7 +106,8 @@ describe('applying CSV rows to the text that is there now', function () {
     it('calls a missing dialogue row deleted, and still keeps it unless told otherwise', function () {
       const rows = fold().filter(function (r) { return r.ID !== 'r005' })
       const r = apply(rows)
-      expect(r.missing).to.eql([{ ID: 'r005', 種別: 'セリフ', 消された: true }])
+      // 消せない は種別が決める(選択肢の行だけ true)。番人と案内の両方がこれを読む。
+      expect(r.missing).to.eql([{ ID: 'r005', 種別: 'セリフ', 消された: true, 消せない: false }])
       // 黙って消さない。消すのは頼まれたときだけ。
       expect(r.text).to.equal(TEXT)
     })

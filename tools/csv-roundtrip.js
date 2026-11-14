@@ -1,15 +1,19 @@
 /*
  * CSV の往復を実データで測る。**読み取りだけ。1バイトも書かない。**
  *
- *   node tools/csv-roundtrip.js <テキストのフォルダ または ゲームのフォルダ> [--rows dialogue]
+ *   node tools/csv-roundtrip.js <テキストのフォルダ または ゲームのフォルダ>
  *
- * 見るのは4つ。いちばん大事なのは1つ目。
+ * 絞った表(シナリオだけ)は毎回両方を測るので、モードを選ぶ引数は無い。
+ *
+ * 見るのは5つ。いちばん大事なのは1つ目。
  *
  *   1. コマンドの一致   compile(戻したテキスト) が compile(元のテキスト) と等しい
  *   2. バイトの一致     参考。**これだけでは何も測れない** ── 行を分けてまた繋げば、
- *                       分割の規則が正しかろうが間違っていようず必ず一致する
+ *                       分割の規則が正しかろうが間違っていようが必ず一致する
  *   3. 絞っても同じ     シナリオだけの表を何も直さず当てて、テキストが動かない
  *   4. 直しが同じ       同じ1か所を全部版と絞った版で直して、結果が一致する
+ *   5. 選択肢は消せない 選択肢の行をシートから消して当てると、**断られる**
+ *                       (消えると分岐の中身が分岐の外に出るので、断るのが正しい)
  *
  * 3 と 4 が要るのは、絞った表の取り込みが「CSV からテキストを作る」形だと
  * 出していない行がそこで消えるから。実物で 957 対象のうち 377 しか一致しなかった。
@@ -94,7 +98,19 @@ const edited = function (rows, id) {
 const run = function (target, opts) {
   const sources = fs.existsSync(path.join(target, 'data')) ? fromGame(target) : fromTextDir(target)
   const gameRoot = fs.existsSync(path.join(target, 'data')) ? target : undefined
-  const report = { targets: 0, rowsAll: 0, rowsFew: 0, command: 0, byte: 0, narrowed: 0, edit: 0, editable: 0, failures: [] }
+  const report = {
+    targets: 0,
+    rowsAll: 0,
+    rowsFew: 0,
+    command: 0,
+    byte: 0,
+    narrowed: 0,
+    edit: 0,
+    editable: 0,
+    choiceDelete: 0,
+    choices: 0,
+    failures: []
+  }
   sources.forEach(function (one) {
     report.targets++
     const want = compiled(one.text)
@@ -111,6 +127,17 @@ const run = function (target, opts) {
     const idle = csv.mergeRows(one.text, through(few), { key: one.key, gameRoot })
     if (idle.ok && same(compiled(idle.text), want)) report.narrowed++
     else if (report.failures.length < 10) report.failures.push(one.key + ' (絞った表を当てる)')
+
+    /* 選択肢の行をシートから消したら断られること。これが通ってしまうと、分岐の中身が
+     * 選択肢ウィンドウの直後に出て、compile は通るので誰も気づかない。 */
+    const choice = few.filter(function (r) { return r.種別 === '選択肢' })[0]
+    if (choice) {
+      report.choices++
+      const cut = few.filter(function (r) { return r.ID !== choice.ID })
+      const gone = csv.mergeRows(one.text, through(cut), { key: one.key, gameRoot, allowDelete: true })
+      if (!gone.ok && gone.text === one.text.replace(/\r\n/g, '\n')) report.choiceDelete++
+      else if (report.failures.length < 10) report.failures.push(one.key + ' (選択肢の行が消せてしまう)')
+    }
 
     const first = all.filter(function (r) { return r.種別 === 'セリフ' })[0]
     if (!first) return
@@ -129,6 +156,7 @@ const run = function (target, opts) {
   console.log('  コマンドの一致            : ' + report.command + ' / ' + report.targets)
   console.log('  絞った表を当てても同じ    : ' + report.narrowed + ' / ' + report.targets)
   console.log('  同じ直しが同じ結果        : ' + report.edit + ' / ' + report.editable)
+  console.log('  選択肢の行は消せない      : ' + report.choiceDelete + ' / ' + report.choices)
   console.log('  (参考)バイトも一致       : ' + report.byte + ' / ' + report.targets)
   report.failures.forEach(function (f) { console.log('  × ' + f) })
   return report
@@ -145,7 +173,8 @@ if (require.main === module) {
   let bad = 0
   args.forEach(function (one) {
     const report = run(path.resolve(one))
-    if (report.command !== report.targets || report.narrowed !== report.targets || report.edit !== report.editable) bad++
+    if (report.command !== report.targets || report.narrowed !== report.targets ||
+      report.edit !== report.editable || report.choiceDelete !== report.choices) bad++
   })
   if (bad) {
     console.error('\n一致しないものがあります。')

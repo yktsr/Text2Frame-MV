@@ -51,6 +51,23 @@ describe('the batch plugin commands with a format argument', function () {
   beforeEach(function () {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-csv-plugin-'))
     fs.mkdirSync(path.join(tmp, 'data'))
+    /* 選択肢の窓。dialogue の表に 選択肢 の行が出ること、そしてその行を消せないことを
+     * ツクール側の入口でも測るために置く。取り消し先は2番目。 */
+    const choice = [
+      { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
+      { code: 401, indent: 0, parameters: ['質問です'] },
+      { code: 102, indent: 0, parameters: [['はい', 'いいえ'], 1, 0, 2, 0] },
+      { code: 402, indent: 0, parameters: [0, 'はい'] },
+      { code: 101, indent: 1, parameters: ['', 0, 0, 2, ''] },
+      { code: 401, indent: 1, parameters: ['はいと答えた'] },
+      { code: 0, indent: 1, parameters: [] },
+      { code: 402, indent: 0, parameters: [1, 'いいえ'] },
+      { code: 101, indent: 1, parameters: ['', 0, 0, 2, ''] },
+      { code: 401, indent: 1, parameters: ['いいえと答えた'] },
+      { code: 0, indent: 1, parameters: [] },
+      { code: 404, indent: 0, parameters: [] },
+      bottom
+    ]
     const second = [
       { code: 101, indent: 0, parameters: ['', 0, 0, 2, ''] },
       { code: 401, indent: 0, parameters: ['こちらは2つ目'] },
@@ -60,7 +77,8 @@ describe('the batch plugin commands with a format argument', function () {
       events: [
         null,
         { id: 1, name: 'EV001', pages: [{ conditions: {}, list: message }] },
-        { id: 2, name: 'EV002', pages: [{ conditions: {}, list: second }] }
+        { id: 2, name: 'EV002', pages: [{ conditions: {}, list: second }] },
+        { id: 3, name: 'EV003', pages: [{ conditions: {}, list: choice }] }
       ]
     }), 'utf8')
     fs.writeFileSync(path.join(tmp, 'data', 'CommonEvents.json'), JSON.stringify([null]), 'utf8')
@@ -117,15 +135,16 @@ describe('the batch plugin commands with a format argument', function () {
       expect(list[0].種別).to.equal('見出し')
       expect(list[0].本文).to.contain('EV001')
       expect(list.map(function (r) { return r.本文 })).to.include('やあ')
-      // 宛先はイベントごと。2つ目のイベントも同じ1枚に入る。
+      // 宛先はイベントごと。ほかのイベントも同じ1枚に入る。
       expect(new Set(list.map(function (r) { return r.宛先 })))
-        .to.eql(new Set(['map001_event001_page1', 'map001_event002_page1']))
+        .to.eql(new Set(['map001_event001_page1', 'map001_event002_page1', 'map001_event003_page1']))
     })
 
     it('leaves out the tag rows when it is told dialogue only', function () {
       pull([path.join(tmp, 'text'), 'overwrite', 'conversation', 'csv', 'dialogue'])
       const kinds = rows().map(function (r) { return r.種別 })
-      expect(new Set(kinds)).to.eql(new Set(['見出し', 'セリフ']))
+      // 選択肢は残る(読む人が直す行)。タグの行と空行だけが落ちる。
+      expect(new Set(kinds)).to.eql(new Set(['見出し', 'セリフ', '選択肢']))
     })
   })
 
@@ -179,6 +198,18 @@ describe('the batch plugin commands with a format argument', function () {
       put(rows().filter(function (r) { return r.本文 !== 'またね' }))
       push([path.join(tmp, 'text'), 'merge', 'csv', 'true'])
       expect(said()).to.not.include('またね')
+    })
+
+    it('refuses deleting a choice row, in its own words, and keeps the window', function () {
+      /* 理由は1か所が決め、押す所の名前だけが入口ごとに違う。 */
+      put(rows().filter(function (r) { return String(r.本文).indexOf('<When: いいえ>') < 0 }))
+      push([path.join(tmp, 'text'), 'merge', 'csv', 'true'])
+      expect(message_of('分岐の外に出ます')).to.have.length.above(0)
+      expect(message_of('--allow-delete')).to.have.lengthOf(0)
+      // 窓はそのまま(選択肢が2つある)。
+      const list = JSON.parse(fs.readFileSync(path.join(tmp, 'data', 'Map001.json'), 'utf8'))
+        .events[3].pages[0].list
+      expect(list.filter(function (c) { return c.code === 402 })).to.have.lengthOf(2)
     })
 
     it('refuses a sheet that was pasted over, and names the other switch', function () {
