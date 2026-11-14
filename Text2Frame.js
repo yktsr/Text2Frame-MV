@@ -12077,6 +12077,28 @@
       '(選択肢ウィンドウを出した直後に走ります)。ウィンドウの取り消し先も居なくなります。' +
       'この選択肢をなくすなら、窓ごと(<ShowChoices> の行・<When> の行・<End> の行)' +
       'テキストで消してください。'
+    /* 「この1行は選択肢の行か」「その文言はどこか」を決めるのは **compile**。
+     * 綴りの規則をここに書かない ── 日本語の別名(`<選択肢: …>`)も、大文字小文字も、
+     * 空白の入れ方も、あちらが知っている。窓の形をもう1か所で決めると、そこが腐る。
+     * ちょうど「窓・枝1つ・空・閉じ」の4つになったときだけ、その枝の文言を返す。 */
+    const csvChoiceLabelOf = function (line, gameRoot) {
+      if (String(line).indexOf('\n') >= 0) return null
+      let cmds
+      try {
+        cmds = compile('<ShowChoices>\n' + line + '\n<End>', { gameRoot })
+      } catch (e) {
+        return null
+      }
+      if (cmds.length !== 4) return null
+      if (cmds[0].code !== 102 || cmds[1].code !== 402) return null
+      if (cmds[2].code !== 0 || cmds[3].code !== 404) return null
+      return String(cmds[1].parameters[1])
+    }
+    /* 比べるときに落とすのは **ASCII の空白とタブだけ**。`trim()` は全角空白(U+3000)も
+     * 食べるので、飾りに使っている人のところで文言が変わってしまう。 */
+    const csvBare = function (v) {
+      return String(v === undefined || v === null ? '' : v).replace(/^[ \t]+|[ \t]+$/g, '')
+    }
     /* 消えた行の並べ方。多いときは5件で切る(全部並べても読めない)。 */
     const csvIdList = function (list) {
       return list.slice(0, 5).map(function (m) { return m.ID }).join(', ') +
@@ -12423,11 +12445,73 @@
        *
        * 見るのは**畳み直した基の行の種別**で、シートの 種別 のセルではない。
        * あちらは書き換えられる。 */
+      /* 書き換えた選択肢の行に、付け直したことを書き戻すための控え。 */
+      const notes = {}
+      const CHOICE_SHAPES = '通るのは2つの形だけです: 文言だけ書く' +
+        '(タグは元の綴りで付け直します)か、`<When: …>` の形のまま書く。'
       base.forEach(function (r) {
-        if (r.種別 !== '選択肢' || !dropped(r)) return
-        say('選択肢は消せません',
-          'ID ' + r.ID + ' (' + r.本文 + ') は選択肢の行なので消せません。' + CSV_WHY_CHOICE +
-          '表で消す行を選び直すなら、' + hints.rowsAll + '。', r.ID)
+        if (r.種別 !== '選択肢') return
+        if (dropped(r)) {
+          say('選択肢は消せません',
+            'ID ' + r.ID + ' (' + r.本文 + ') は選択肢の行なので消せません。' + CSV_WHY_CHOICE +
+            '表で消す行を選び直すなら、' + hints.rowsAll + '。', r.ID)
+          return
+        }
+        const got = edited[r.ID]
+        if (!got) return
+        /* (1) 見た目の列は使えない。並べ直すと選択肢の**手前の行**になるので、
+         *     前の枝にタグが紛れる。基の選択肢の行では必ず空。 */
+        if (csvBare(got.見た目)) {
+          say('選択肢の形', 'ID ' + r.ID + ' は選択肢の行なので、見た目の列は使えません(' +
+            got.見た目 + ')。そのセルを空にしてください。', r.ID)
+          return
+        }
+        const typed = got.本文 === undefined || got.本文 === null ? '' : String(got.本文)
+        // (2) 変わっていないなら何もしない。
+        if (typed === r.本文) return
+        // (3) タグの形のまま直した人。そのまま通す。**(5) より先に見る**
+        //     ── でないと <When: x> が <When: <When: x>> に組み立て直される。
+        if (csvChoiceLabelOf(typed, o.gameRoot) !== null) return
+        // (4) 空にしたのは「消したつもり」の事故。いちばん多い形なので、別に言う。
+        if (!csvBare(typed)) {
+          say('選択肢の形', 'ID ' + r.ID + ' (' + r.本文 + ') の本文が空です。' +
+            '選択肢の文言を書いてください。選択肢そのものをなくすことはできません。' +
+            CSV_WHY_CHOICE, r.ID)
+          return
+        }
+        if (typed.indexOf('\n') >= 0) {
+          say('選択肢の形', 'ID ' + r.ID + ' の本文に改行が入っています(選択肢は1行です)。' +
+            CHOICE_SHAPES, r.ID)
+          return
+        }
+        /* (5) 文言だけ書いた人。**基の行の文字から**組み立て直すので、字下げも綴りも
+         *     空白の癖もそのまま残る。できた行は compile に読ませて、同意したときだけ通す。 */
+        const label = csvChoiceLabelOf(r.本文, o.gameRoot)
+        const at = label === null ? -1 : r.本文.lastIndexOf(label)
+        /* 文言に `<` か `>` が混じっているのは「タグを書こうとして失敗した」形
+         * (`<When: やめる` のように閉じ忘れた、別のタグを貼った)。実データの選択肢432行は
+         * どれも `<>` を含まない。組み立て直すと `<When: <When: やめる>` が選択肢の文言として
+         * 通ってしまうので、(6) に落として断る。 */
+        if (at >= 0 && !/[<>]/.test(typed)) {
+          const rebuilt = r.本文.slice(0, at) + typed + r.本文.slice(at + label.length)
+          const check = csvChoiceLabelOf(rebuilt, o.gameRoot)
+          if (check === typed) {
+            edited[r.ID] = Object.assign({}, got, { 本文: rebuilt })
+            notes[r.ID] = '選択肢のタグを元の綴りで付け直しました: ' + rebuilt
+            return
+          }
+          /* 文言の前に空白を置くと、タグを読むときに落ちる(`<When:` の後ろの空白は
+           * 区切りなので、全角空白も区切りとして食べられる)。黙って落とさずに言う ──
+           * 飾りに空白を使う人は実際に居る(風呂屋の看板で1件落ちたことがある)。 */
+          if (check !== null) {
+            say('選択肢の形', 'ID ' + r.ID + ' の文言の前にある空白は、選択肢には残せません' +
+              '(タグを読むときに落ちます)。「' + check + '」でよければ、そう書いてください。', r.ID)
+            return
+          }
+        }
+        // (6) それ以外。半端なタグ・別のタグ・基の行から文言を見つけられないとき。
+        say('選択肢の形', 'ID ' + r.ID + ' の本文を選択肢として読めません(' + typed + ')。' +
+          '基の行は ' + r.本文 + ' です。' + CHOICE_SHAPES, r.ID)
       })
 
       const out = []
@@ -12441,7 +12525,7 @@
         if (got) {
           const moved = cell(got, '本文') !== cell(r, '本文') || cell(got, '見た目') !== cell(r, '見た目')
           if (moved) changed++
-          if (where[r.ID] !== undefined) verdict(where[r.ID], moved ? '直した' : 'そのまま')
+          if (where[r.ID] !== undefined) verdict(where[r.ID], moved ? '直した' : 'そのまま', notes[r.ID])
           out.push(got)
         } else if (!drop) {
           out.push(r)

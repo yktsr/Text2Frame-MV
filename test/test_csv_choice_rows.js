@@ -86,6 +86,131 @@ describe('the choice rows of a sheet', function () {
     })
   })
 
+  /* シートを書く人は「はい」「いいえ」という**文字**を直しに来る。タグの中を触らせるのは
+   * この表の目的に反するので、文言だけ書かれたら元の綴りで付け直す ── ただし
+   * 「タグを書こうとして失敗した形」は通さない(選択肢の文言が <When: …> になってしまう)。 */
+  describe('a choice row someone rewrote', function () {
+    const sheet = function (id, body, look) {
+      return fold({ rows: 'dialogue' }).map(function (r) {
+        if (r.ID !== id) return r
+        return Object.assign({}, r, look === undefined ? { 本文: body } : { 本文: body, 見た目: look })
+      })
+    }
+    const labels = function (text) {
+      return T2F.compile(text).filter(function (c) { return c.code === 102 })[0].parameters[0]
+    }
+    // 選択肢の文言だけを隠した形。ここが一致すれば、ほかは1つも動いていない。
+    const skeleton = function (text) {
+      return T2F.compile(text).map(function (c) {
+        return c.indent + ':' + c.code + ':' + (c.code === 102 ? JSON.stringify(c.parameters.slice(1)) : '')
+      }).join(' ')
+    }
+
+    it('puts the tag back, keeping the spelling of the line it came from', function () {
+      const r = apply(sheet('r006', 'やめる'))
+      expect(r.ok).to.equal(true)
+      expect(r.text.split('\n')[5]).to.equal('<When: やめる>')
+    })
+
+    it('changes that one choice and nothing else', function () {
+      const r = apply(sheet('r006', 'やめる'))
+      expect(labels(r.text)).to.eql(['はい', 'やめる'])
+      // 枝の字下げも、窓の取り消し先も動かない。
+      expect(skeleton(r.text)).to.equal(skeleton(TEXT))
+    })
+
+    it('tells the writer on their own row that the tag was put back', function () {
+      const r = apply(sheet('r006', 'やめる'))
+      const said = r.verdicts.filter(function (v) { return v.エラー })
+      expect(said).to.have.lengthOf(1)
+      expect(said[0].判定).to.equal('直した')
+      expect(said[0].エラー).to.contain('<When: やめる>')
+    })
+
+    it('leaves a row alone that was edited inside the tag', function () {
+      const r = apply(sheet('r006', '<When: やめる>'))
+      expect(labels(r.text)).to.eql(['はい', 'やめる'])
+      // 付け直していないので、知らせることも無い。
+      expect(r.verdicts.filter(function (v) { return v.エラー })).to.have.lengthOf(0)
+    })
+
+    it('keeps a full-width space after the words, which trim() would have eaten', function () {
+      const r = apply(sheet('r006', 'やめる　'))
+      expect(r.ok, detail(r)).to.equal(true)
+      expect(labels(r.text)).to.eql(['はい', 'やめる　'])
+    })
+
+    it('refuses a space before the words instead of dropping it quietly', function () {
+      /* `<When:` の後ろの空白は区切りなので、全角空白も食べられる ── 通すと
+       * 書いた人の空白が黙って消える。何になるかを言って断る。 */
+      const r = apply(sheet('r006', '　やめる'))
+      expect(r.ok).to.equal(false)
+      expect(detail(r)).to.contain('文言の前にある空白')
+      expect(detail(r)).to.contain('「やめる」')
+      expect(r.text).to.equal(TEXT)
+    })
+
+    const refused = {
+      'an emptied cell': ['', '本文が空です'],
+      'a cell with a line break in it': ['はい\nいいえ', '改行が入っています'],
+      'a tag that was never closed': ['<When: やめる', '読めません'],
+      'some other tag': ['<Face: suzu(0)>', '読めません'],
+      'words with an angle bracket in them': ['やめる>', '読めません']
+    }
+    Object.keys(refused).forEach(function (name) {
+      it('refuses ' + name, function () {
+        const r = apply(sheet('r006', refused[name][0]))
+        expect(r.ok).to.equal(false)
+        expect(detail(r)).to.contain('r006')
+        expect(detail(r)).to.contain(refused[name][1])
+        expect(r.text).to.equal(TEXT)
+      })
+    })
+
+    it('refuses a look of its own, which would land before the choice', function () {
+      const r = apply(sheet('r006', '<When: いいえ>', '<Face: suzu(0)>'))
+      expect(r.ok).to.equal(false)
+      expect(detail(r)).to.contain('見た目の列は使えません')
+    })
+
+    describe('a nested choice, where the line is indented', function () {
+      const NESTED = [
+        '覗きますか？', //              r001
+        '<ShowChoices>', //            r002
+        '<When: はい>', //             r003
+        '    <ShowChoices>', //        r004
+        '    <When: はい>', //         r005
+        '    やった', //               r006
+        '    <When: いいえ>', //       r007
+        '    <End>', //               r008
+        '<When: いいえ>', //           r009
+        '<End>' //                    r010
+      ].join('\n')
+
+      it('keeps the indentation of the line it rewrote', function () {
+        const rows = csv.foldToRows(NESTED, KEY, { rows: 'dialogue' }).map(function (r) {
+          return r.ID === 'r007' ? Object.assign({}, r, { 本文: 'やめる' }) : r
+        })
+        const r = csv.mergeRows(NESTED, through(rows), { key: KEY })
+        expect(r.ok).to.equal(true)
+        expect(r.text.split('\n')[6]).to.equal('    <When: やめる>')
+      })
+    })
+
+    describe('a choice written with the Japanese alias', function () {
+      const ALIAS = ['<選択肢の表示>', '<選択肢: はい>', '<選択肢: いいえ>', '<分岐終了>'].join('\n')
+
+      it('keeps the alias the line was written with', function () {
+        const rows = csv.foldToRows(ALIAS, KEY, { rows: 'dialogue' }).map(function (r) {
+          return r.ID === 'r003' ? Object.assign({}, r, { 本文: 'やめる' }) : r
+        })
+        const r = csv.mergeRows(ALIAS, through(rows), { key: KEY })
+        expect(r.ok, detail(r)).to.equal(true)
+        expect(r.text.split('\n')[2]).to.equal('<選択肢: やめる>')
+      })
+    })
+  })
+
   /* 入口が2つあるので、断る理由が1か所から出ていることを本物のコマンドで確かめる。
    * ツクール側は test/test_csv_plugin_command.js が同じ文面を見ている。 */
   describe('through the command line', function () {

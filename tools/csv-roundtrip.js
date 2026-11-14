@@ -14,6 +14,8 @@
  *   4. 直しが同じ       同じ1か所を全部版と絞った版で直して、結果が一致する
  *   5. 選択肢は消せない 選択肢の行をシートから消して当てると、**断られる**
  *                       (消えると分岐の中身が分岐の外に出るので、断るのが正しい)
+ *   6. 文言だけ直せる   選択肢の文言だけをタグなしで書き換えると、タグが付け直されて
+ *                       **その1つの文言以外は1つも動かない**(枝の字下げも取り消し先も)
  *
  * 3 と 4 が要るのは、絞った表の取り込みが「CSV からテキストを作る」形だと
  * 出していない行がそこで消えるから。実物で 957 対象のうち 377 しか一致しなかった。
@@ -85,6 +87,20 @@ const compiled = function (text) {
 }
 const through = function (rows) { return csv.parseCsv(csv.formatCsv(rows)).rows }
 
+/** 選択肢の**文言だけ**を隠した形。ここが一致すれば、ほかは1つも動いていない。 */
+const skeleton = function (list) {
+  if (!Array.isArray(list)) return list
+  return list.map(function (c) {
+    if (c.code === 102) return c.indent + ':102:' + JSON.stringify(c.parameters.slice(1))
+    if (c.code === 402) return c.indent + ':402:' + c.parameters[0]
+    return c.indent + ':' + c.code + ':' + JSON.stringify(c.parameters)
+  })
+}
+const labelsOf = function (list) {
+  if (!Array.isArray(list)) return []
+  return list.filter(function (c) { return c.code === 402 }).map(function (c) { return c.parameters[1] })
+}
+
 /** 同じ1か所を直した表を作る。最初のセリフを書き換え、そのうしろに1行足す。 */
 const edited = function (rows, id) {
   const out = rows.map(function (r) { return Object.assign({}, r) })
@@ -108,6 +124,7 @@ const run = function (target, opts) {
     edit: 0,
     editable: 0,
     choiceDelete: 0,
+    choiceEdit: 0,
     choices: 0,
     failures: []
   }
@@ -137,6 +154,18 @@ const run = function (target, opts) {
       const gone = csv.mergeRows(one.text, through(cut), { key: one.key, gameRoot, allowDelete: true })
       if (!gone.ok && gone.text === one.text.replace(/\r\n/g, '\n')) report.choiceDelete++
       else if (report.failures.length < 10) report.failures.push(one.key + ' (選択肢の行が消せてしまう)')
+
+      /* タグを知らない人は文言だけ書き換える。タグが付け直され、**それ以外は動かない**こと。 */
+      const label = '検査で書き換えた選択肢'
+      const rewritten = few.map(function (x) {
+        return x.ID === choice.ID ? Object.assign({}, x, { 本文: label }) : x
+      })
+      const put = csv.mergeRows(one.text, through(rewritten), { key: one.key, gameRoot })
+      const after = compiled(put.text)
+      const changedLabels = labelsOf(after).filter(function (x, i) { return x !== labelsOf(want)[i] })
+      if (put.ok && !after.error && same(skeleton(after), skeleton(want)) &&
+        changedLabels.length === 1 && changedLabels[0] === label) report.choiceEdit++
+      else if (report.failures.length < 10) report.failures.push(one.key + ' (選択肢の文言だけが直らない)')
     }
 
     const first = all.filter(function (r) { return r.種別 === 'セリフ' })[0]
@@ -157,6 +186,7 @@ const run = function (target, opts) {
   console.log('  絞った表を当てても同じ    : ' + report.narrowed + ' / ' + report.targets)
   console.log('  同じ直しが同じ結果        : ' + report.edit + ' / ' + report.editable)
   console.log('  選択肢の行は消せない      : ' + report.choiceDelete + ' / ' + report.choices)
+  console.log('  選択肢は文言だけ直せる    : ' + report.choiceEdit + ' / ' + report.choices)
   console.log('  (参考)バイトも一致       : ' + report.byte + ' / ' + report.targets)
   report.failures.forEach(function (f) { console.log('  × ' + f) })
   return report
@@ -174,7 +204,8 @@ if (require.main === module) {
   args.forEach(function (one) {
     const report = run(path.resolve(one))
     if (report.command !== report.targets || report.narrowed !== report.targets ||
-      report.edit !== report.editable || report.choiceDelete !== report.choices) bad++
+      report.edit !== report.editable || report.choiceDelete !== report.choices ||
+      report.choiceEdit !== report.choices) bad++
   })
   if (bad) {
     console.error('\n一致しないものがあります。')
