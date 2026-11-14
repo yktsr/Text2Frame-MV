@@ -11888,6 +11888,7 @@
         return
       }
       addMessage('[csv] 取り込み完了: 成功 ' + outcome.applied + '件、失敗 ' + outcome.failed + '件' +
+        (outcome.untouched > 0 ? '、中身の行が無かった宛先 ' + outcome.untouched + '件' : '') +
         (outcome.conflicts > 0 ? '、衝突 ' + outcome.conflicts + '件' : ''))
       const resultPath = csvPath.replace(/(\.csv)?$/i, '') + '.result.csv'
       try {
@@ -12377,12 +12378,31 @@
       const problems = []
       const say = function (kind, detail, id) { problems.push({ kind, detail, id: id || '' }) }
 
+      /* 見出しの行の指紋。中身の行が1つも無い宛先では行ごとの検めが走らないので、
+       * ここで見ないと「配ったあと取り出し直したテキスト」に当ててしまう。 */
+      if (o.headStamp && String(o.headStamp) !== stamp) {
+        say('版', 'この宛先の見出しの行の版が合いません(' + o.headStamp + ' ではなく ' + stamp +
+          ')。CSV を出したあとにテキストが取り出し直されています。もう一度出してください。')
+      }
+
       const order = {}
       base.forEach(function (r, n) { order[r.ID] = n })
-      /* CSV に出ている種別。足りない行が「消された」のか「出していない」のかは、これで分ける
-       * ── 絞って出した CSV では、出していない種別の行が無いのは当たり前。 */
+      /* 足りない行が「消された」のか「出していないだけ」なのかを分ける。
+       *
+       * **出した範囲は見出しの行が持っている**(`見た目` の `rows=…`)。それを教わるのが本筋で、
+       * 教わらないとき(古い CSV)だけ、シートに残っている種別から推測する ── 推測は
+       * **その種別の行を全部消されると外れる**(消したのに黙って何もしない)ので、
+       * 推測したことは報告に出す。シートの 種別 のセルは書き換えられるので、
+       * 教わったときはそちらを見ない。 */
+      const told = o.exportedMode === 'all' || o.exportedMode === 'dialogue' ? o.exportedMode : ''
+      const inferred = !told
+      const shownKinds = told ? csvKindsOfMode(told) : null
       const exported = {}
-      csvRows.forEach(function (r) { if (r.種別) exported[String(r.種別)] = true })
+      if (inferred) csvRows.forEach(function (r) { if (r.種別) exported[String(r.種別)] = true })
+      const wasShown = function (kind) {
+        if (inferred) return !!exported[kind]
+        return shownKinds === null ? true : !!shownKinds[kind]
+      }
 
       const edited = {}
       const inserts = {}
@@ -12454,7 +12474,7 @@
        * 「絞って出した」。混ぜると、絞った表を取り込むたびにタグ行が消える。 */
       /* 消すかどうかの判断は**1か所**。番人と、実際に落とす所が食い違えないようにする。 */
       const dropped = function (r) {
-        return !edited[r.ID] && !!o.allowDelete && !!exported[r.種別]
+        return !edited[r.ID] && !!o.allowDelete && wasShown(r.種別)
       }
       const missing = []
       base.forEach(function (r) {
@@ -12462,7 +12482,7 @@
         missing.push({
           ID: r.ID,
           種別: r.種別,
-          消された: !!exported[r.種別],
+          消された: wasShown(r.種別),
           // 種別が決める性質なので、頼まれたかどうかに依らない。
           消せない: r.種別 === '選択肢'
         })
@@ -12616,7 +12636,9 @@
         changed,
         added: inserted.reduce(function (n, one) { return n + one.count }, 0),
         removed,
-        total: base.length
+        total: base.length,
+        // 出した範囲を教わらなかった(古い CSV)。報告に出す。
+        inferredExport: inferred
       }
     }
 
@@ -12718,7 +12740,18 @@
       table.rows.forEach(function (r, n) {
         const at = n + 2 // CSV の行番号(1行目は列の見出し)
         const key = String(r.宛先 || '').trim()
-        if (String(r.種別 || '') === '見出し') { verdicts[n].判定 = '見出し'; return }
+        if (String(r.種別 || '') === '見出し') {
+          /* 見出しの行は中身ではないが、**出した行の範囲と指紋を持っている**ので捨てない。
+           * 中身の行が1つも無い宛先でも群を作る ── でないと「シートから全部消された」が
+           * 群ごと消えて、何も言えなくなる。 */
+          verdicts[n].判定 = '見出し'
+          if (!key) return
+          if (!byKey[key]) { byKey[key] = { key, rows: [], at: [], firstLine: at }; groups.push(byKey[key]) }
+          byKey[key].mark = r.見た目
+          byKey[key].headStamp = r.版
+          byKey[key].headAt = n
+          return
+        }
         if (CSV_COLUMNS.every(function (c) { return !r[c] })) return
         if (!key) {
           // 宛先が空で中身がある行。セルを結合すると、下の行の宛先がこうなる。
@@ -12753,6 +12786,10 @@
        * 食い違う(実際に「隠れた行をまたいだ」の文が CLI とプラグインに写してあった)。 */
       const noticesFor = function (merged) {
         const notes = []
+        if (merged.inferredExport) {
+          notes.push('見出しの行に「出した行の範囲」がありません(古い CSV です)。範囲はシートから' +
+            '推測したので、**消えている行は消していません**。出し直すと、次からは推測しません。')
+        }
         /* 足した行が、見えている2行の間に隠れた行をまたいだとき。置き場所は
          * 「直前の行の後ろ」の一本に決めてあるので、またいだことは必ず言う。 */
         merged.inserted.forEach(function (one) {
@@ -12802,7 +12839,9 @@
           key: group.key,
           gameRoot: o.gameRoot,
           allowDelete,
-          hints
+          hints,
+          exportedMode: csvModeOfMark(group.mark),
+          headStamp: group.headStamp
         })
         // 行ごとの判定を、表の位置へ戻す。
         merged.verdicts.forEach(function (v, k) {
@@ -12842,6 +12881,14 @@
           return
         }
 
+        /* 中身の行が1つも無く、何も変わっていない宛先は**書かない**。絞って出すと
+         * 「セリフの無い宛先」は見出しの行だけになる(手元の筆記録では130のうち87)ので、
+         * 書くと取り込みが一括反映に化けて、誰も触っていないイベントまで書き直す。 */
+        if (!group.rows.length && merged.changed + merged.added + merged.removed === 0) {
+          results.push({ ok: true, key: group.key, csvLine: group.firstLine, untouched: true })
+          return
+        }
+
         _fs.writeFileSync(textPath, parsed.header + merged.text, 'utf8')
         const applyOpts = {
           textPath,
@@ -12875,6 +12922,28 @@
         })
       })
 
+      /* 見出しの行にも結果を書く。**中身の行が1つも無い宛先では、シートに残っているのが
+       * この行だけ**なので、ここに書かないと書いた人に何も伝わらない。
+       * 「判定」は `見出し` のまま(既存の検査がそれを見ている)。 */
+      results.forEach(function (r) {
+        const group = byKey[r.key]
+        if (!group || group.headAt === undefined) return
+        if (!r.ok) {
+          const first = (r.problems || [])[0]
+          verdicts[group.headAt].エラー = first ? first.detail : r.reason
+          return
+        }
+        if (r.untouched) {
+          verdicts[group.headAt].エラー = 'シートに中身の行がありません(この宛先は触っていません)'
+          return
+        }
+        const parts = []
+        if (r.changed) parts.push('直した ' + r.changed + '行')
+        if (r.added) parts.push('足した ' + r.added + '行')
+        if (r.removed) parts.push('消した ' + r.removed + '行')
+        verdicts[group.headAt].エラー = parts.length ? parts.join(' / ') : 'そのまま'
+      })
+
       /* 読んだ表と同じ形に「判定」と「エラー」だけ書き足す。列も順も変えない
        * (シートの隣に並べて見比べるため)。 */
       const columns = table.columns.slice()
@@ -12887,6 +12956,7 @@
         return copy
       })
       const failed = results.filter(function (r) { return !r.ok })
+      const untouched = results.filter(function (r) { return r.ok && r.untouched })
       return {
         ok: failed.length === 0 && rowProblems.length === 0,
         columns,
@@ -12894,7 +12964,9 @@
         results,
         rowProblems,
         targets: groups.length,
-        applied: results.length - failed.length,
+        applied: results.length - failed.length - untouched.length,
+        // シートに中身の行が無かった宛先(書いていない)。
+        untouched: untouched.length,
         failed: failed.length,
         conflicts: results.filter(function (r) { return r.ok && r.conflicts }).length
       }
@@ -13476,6 +13548,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       reportError,
       targets: outcome.targets,
       applied: outcome.applied,
+      untouched: outcome.untouched,
       failed: outcome.failed,
       conflicts: outcome.conflicts,
       rowProblems: outcome.rowProblems.length,
