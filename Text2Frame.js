@@ -12056,6 +12056,12 @@
     const CSV_COLUMNS = ['判定', '種別', '宛先', 'ID', '見た目', '本文', '版', 'メモ', 'エラー']
     const CSV_BODY_CODES = { 401: true, 405: true }
     const CSV_CHOICE_CODES = { 402: true }
+    /* 選択肢の窓の枠(窓を開く・取り消しの枝・閉じる)。dialogue にも出す ── 出さないと
+     * 「はい」と「いいえ」が隣に並ぶだけで、**1つの質問の2択なのかが読めない**。
+     * `<End>` は条件分岐(412)と同じ字面なので、字面ではなく **compile の code** で分ける。 */
+    const CSV_FRAME_CODES = { 102: true, 403: true, 404: true }
+    // 文章のスクロール表示。ブロックまるごと1行に畳まれる(中身は読む人が直す文章)。
+    const CSV_SCROLL_CODE = 105
     /* 見た目だけを決めるタグの行(顔・名前・背景・位置)。この行は自分のコマンドを持たず、
      * 101 は本文の行に記録される ── compile から見ても窓の一部なので、次のセリフの行に
      * 畳んで「見た目」の列にする。綴りは元の行のまま持つ(2つ以上タグが並ぶ行があるので、
@@ -12063,7 +12069,7 @@
     const CSV_SETTING_LINE =
       /^\s*(?:<(?:face|fc|顔|name|nm|名前|windowposition|wp|位置|background|bg|背景)\s*:[^>]*>\s*)+$/i
     // 「シナリオだけ」で出す種別。
-    const CSV_DIALOGUE_KINDS = { セリフ: true, 選択肢: true }
+    const CSV_DIALOGUE_KINDS = { セリフ: true, 選択肢: true, 選択肢枠: true, スクロール: true }
     /* 「どうすればいいか」の言い方だけが入口ごとに違う(CLI は引数、ツクールは選択肢)。
      * **断る理由そのものは1か所が決める。** 呼ぶ側は押す場所の名前だけ差し替える。 */
     const CSV_HINTS = {
@@ -12077,6 +12083,10 @@
       '(選択肢ウィンドウを出した直後に走ります)。ウィンドウの取り消し先も居なくなります。' +
       'この選択肢をなくすなら、窓ごと(<ShowChoices> の行・<When> の行・<End> の行)' +
       'テキストで消してください。'
+    /* 選択肢の窓の枠を触れない理由。窓を開く行・閉じる行は、枝の居場所そのもの。 */
+    const CSV_WHY_FRAME = '選択肢の窓の枠(窓を開く行・取り消しの枝・閉じる行)は、' +
+      '枝がどこからどこまでかを決めている行です。消したり書き換えたりすると、' +
+      '枝が宛て先を失うか、あとの行まで枝の中に入ります。窓を作り直すならテキストで。'
     /* 「この1行は選択肢の行か」「その文言はどこか」を決めるのは **compile**。
      * 綴りの規則をここに書かない ── 日本語の別名(`<選択肢: …>`)も、大文字小文字も、
      * 空白の入れ方も、あちらが知っている。窓の形をもう1か所で決めると、そこが腐る。
@@ -12164,6 +12174,10 @@
       const lines = whole.split('\n')
       const body = {}
       const choice = {}
+      const frame = {}
+      /* その行から出た最初のコマンドの code。**ブロックの中かどうかに関わらず**拾う ──
+       * ブロックの開き行の code(スクロール表示かどうか)は、これでしか分からない。 */
+      const firstCode = {}
       const inBlock = {}
       const opensAt = {}
       let failure = ''
@@ -12176,10 +12190,12 @@
         })
         r.commands.forEach(function (cmd, k) {
           const at = r.lineMap[k]
+          if (firstCode[at] === undefined) firstCode[at] = cmd.code
           // ブロックの中身と閉じ行は開き行のコマンドに化けるので、本文として数えない。
           if (inBlock[at]) return
           if (CSV_BODY_CODES[cmd.code]) body[at] = true
           if (CSV_CHOICE_CODES[cmd.code]) choice[at] = true
+          if (CSV_FRAME_CODES[cmd.code]) frame[at] = true
         })
       } catch (e) {
         /* 文法が通らないテキストを落とさない。1行1行そのまま出して、理由をエラーの列に書く。
@@ -12241,7 +12257,8 @@
         }
         if (opensAt[i] !== undefined) {
           const to = opensAt[i]
-          push('自動', lines.slice(i, to + 1))
+          // 流れる文章は読む人が直すもの。注釈やスクリプトのブロックとは分ける。
+          push(firstCode[i] === CSV_SCROLL_CODE ? 'スクロール' : '自動', lines.slice(i, to + 1))
           i = to + 1
           continue
         }
@@ -12265,7 +12282,7 @@
          * 本文として数えられた行は上で先に出ているので、ここに来るのは本当にどのコマンドにも
          * ならない行だけ。中身はそのまま持つ(幅を捨てない)。 */
         if (lines[i].trim() === '') { push('空行', [lines[i]]); i++; continue }
-        push(choice[i] ? '選択肢' : '自動', [lines[i]])
+        push(choice[i] ? '選択肢' : frame[i] ? '選択肢枠' : '自動', [lines[i]])
         i++
       }
       // 最後のメモは寄せる先が無いので、メモだけの行にする。
@@ -12450,7 +12467,29 @@
       const CHOICE_SHAPES = '通るのは2つの形だけです: 文言だけ書く' +
         '(タグは元の綴りで付け直します)か、`<When: …>` の形のまま書く。'
       base.forEach(function (r) {
-        if (r.種別 !== '選択肢') return
+        if (r.種別 !== '選択肢' && r.種別 !== '選択肢枠' && r.種別 !== 'スクロール') return
+        if (r.種別 === '選択肢枠') {
+          /* 枠は**見せるが触らせない**。消せば枝が宛て先を失い、書き換えれば枝の範囲が
+           * 変わる。dialogue に出しているのは「ここが1つの質問」と読めるようにするため。 */
+          const here = edited[r.ID]
+          if (!dropped(r) && (!here || String(here.本文) === r.本文)) return
+          say('選択肢の枠', 'ID ' + r.ID + ' (' + r.本文 + ') は' +
+            (dropped(r) ? '消せません' : '書き換えられません') + '。' + CSV_WHY_FRAME, r.ID)
+          return
+        }
+        if (r.種別 === 'スクロール') {
+          /* 流れる文章は中身を直してよい。ただし最初と最後の行は枠なので、崩れたら断る
+           * (消すのは枠ごと1行なので、ふつうの行と同じに扱える)。 */
+          const here = edited[r.ID]
+          if (!here) return
+          const was = r.本文.split('\n')
+          const now = String(here.本文).split('\n')
+          if (now.length >= 2 && now[0] === was[0] && now[now.length - 1] === was[was.length - 1]) return
+          say('スクロールの枠', 'ID ' + r.ID + ' は流れる文章です。' +
+            '最初の行(' + was[0] + ')と最後の行(' + was[was.length - 1] + ')は枠なので、' +
+            'そのまま残してください。間の文章は自由に直せます。', r.ID)
+          return
+        }
         if (dropped(r)) {
           say('選択肢は消せません',
             'ID ' + r.ID + ' (' + r.本文 + ') は選択肢の行なので消せません。' + CSV_WHY_CHOICE +

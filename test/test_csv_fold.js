@@ -79,11 +79,26 @@ describe('folding a text into CSV rows', function () {
     ])
   })
 
-  it('tells a choice from a plain tag line', function () {
-    const kinds = fold('<ShowChoices: はい, いいえ>\n<When: はい>\n<Switch: 1, ON>\n<EndChoices>')
+  it('tells a choice, its frame and a plain tag line apart', function () {
+    // 閉じるタグは <End>。<EndChoices> は**タグではない**(本文として通ってしまう)。
+    const kinds = fold('<ShowChoices: はい, いいえ>\n<When: はい>\n<Switch: 1, ON>\n<End>')
       .map(function (r) { return r.種別 })
-    expect(kinds[0]).to.equal('自動')
-    expect(kinds).to.include('選択肢')
+    // 窓を開く行と閉じる行は枠。枝は選択肢。枝の中身は自動。
+    expect(kinds).to.eql(['選択肢枠', '選択肢', '自動', '選択肢枠'])
+  })
+
+  it('leaves the End of a conditional branch a plain tag line', function () {
+    // <End> は条件分岐(412)と選択肢(404)で同じ字面。字面ではなく compile の code で分ける。
+    const kinds = fold('<If: Switches[1], ON>\n<Switch: 2, ON>\n<End>')
+      .map(function (r) { return r.種別 })
+    expect(kinds).to.eql(['自動', '自動', '自動'])
+  })
+
+  it('tells the text that scrolls by from the other blocks', function () {
+    expect(fold('<ShowScrollingText: 2, OFF>\n流れる文\n</ShowScrollingText>')
+      .map(function (r) { return r.種別 })).to.eql(['スクロール'])
+    expect(fold('<comment>\nメモ\n</comment>')
+      .map(function (r) { return r.種別 })).to.eql(['自動'])
   })
 
   it('gives every blank line a row of its own', function () {

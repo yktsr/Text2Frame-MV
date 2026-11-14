@@ -38,10 +38,10 @@ describe('the choice rows of a sheet', function () {
     return r.problems.map(function (p) { return p.detail }).join('\n')
   }
 
-  it('shows both branches of a choice, and hides the frame and the branch bodies', function () {
+  it('shows where the choice begins and ends, and hides the branch bodies', function () {
     expect(fold({ rows: 'dialogue' }).map(function (r) { return [r.種別, r.ID] })).to.eql([
-      ['セリフ', 'r001'], ['選択肢', 'r003'], ['セリフ', 'r005'],
-      ['選択肢', 'r006'], ['セリフ', 'r007']
+      ['セリフ', 'r001'], ['選択肢枠', 'r002'], ['選択肢', 'r003'], ['セリフ', 'r005'],
+      ['選択肢', 'r006'], ['セリフ', 'r007'], ['選択肢枠', 'r008']
     ])
   })
 
@@ -208,6 +208,83 @@ describe('the choice rows of a sheet', function () {
         expect(r.ok, detail(r)).to.equal(true)
         expect(r.text.split('\n')[2]).to.equal('<選択肢: やめる>')
       })
+    })
+  })
+
+  /* 枠は**見せるが触らせない**。見せるのは「ここが1つの質問」と読めるようにするためで、
+   * 触らせると枝の範囲が変わる ── 見せるだけ見せて守らないと、壊れる道を増やすだけになる。 */
+  describe('the frame of a choice', function () {
+    const sheet = function (mut) { return mut(fold({ rows: 'dialogue' })) }
+    const drop = function (id) {
+      return function (rows) { return rows.filter(function (r) { return r.ID !== id }) }
+    }
+    const set = function (id, body) {
+      return function (rows) {
+        return rows.map(function (r) { return r.ID === id ? Object.assign({}, r, { 本文: body }) : r })
+      }
+    }
+
+    it('cannot be deleted, at either end', function () {
+      const ends = ['r002', 'r008']
+      ends.forEach(function (id) {
+        const r = apply(sheet(drop(id)), { allowDelete: true })
+        expect(r.ok, id).to.equal(false)
+        expect(detail(r)).to.contain('消せません')
+        expect(r.text).to.equal(TEXT)
+      })
+    })
+
+    it('cannot be rewritten into something else', function () {
+      const r = apply(sheet(set('r008', '<Else>')))
+      expect(r.ok).to.equal(false)
+      expect(detail(r)).to.contain('書き換えられません')
+      expect(r.text).to.equal(TEXT)
+    })
+
+    it('is left alone when it comes back as it went out', function () {
+      expect(apply(fold({ rows: 'dialogue' })).text).to.equal(TEXT)
+    })
+  })
+
+  /* 流れる文章(エンドロール)は、ブロックまるごと1行に畳まれる。中の文章は読む人のもの、
+   * 最初と最後の行は枠。実物のアクアリウムではこれが**唯一 dialogue に出なかった宛先**だった。 */
+  describe('the text that scrolls by', function () {
+    const SCROLL = ['<ShowScrollingText: 2, OFF>', '流れる文', 'もう1行', '</ShowScrollingText>'].join('\n')
+    const rows = function () { return csv.foldToRows(SCROLL, KEY, { rows: 'dialogue' }) }
+    const put = function (body) {
+      return csv.mergeRows(SCROLL, through(rows().map(function (r) {
+        return Object.assign({}, r, { 本文: body })
+      })), { key: KEY })
+    }
+
+    it('is shown as one row of its own kind', function () {
+      expect(rows().map(function (r) { return r.種別 })).to.eql(['スクロール'])
+    })
+
+    it('takes a change to the words inside it', function () {
+      const r = put(['<ShowScrollingText: 2, OFF>', '直した文', '</ShowScrollingText>'].join('\n'))
+      expect(r.ok, JSON.stringify(r.problems)).to.equal(true)
+      expect(r.text).to.contain('直した文')
+      expect(r.text).to.contain('</ShowScrollingText>')
+    })
+
+    it('refuses a change that takes its frame away', function () {
+      const r = put('直した文')
+      expect(r.ok).to.equal(false)
+      expect(r.problems[0].detail).to.contain('枠')
+      expect(r.text).to.equal(SCROLL)
+    })
+
+    it('can be deleted, because the whole command goes with it', function () {
+      /* 枠ごと1行なので、消しても宛て先を失うものが無い ── 選択肢の行とはそこが違う。
+       * (2つ並べているのは、1行だけの表では「消した」と「出していない」が見分けられない
+       *  いまの作りのため。そこは別の回で直す。) */
+      const twice = SCROLL + '\n' + SCROLL
+      const rows = csv.foldToRows(twice, KEY, { rows: 'dialogue' })
+      expect(rows).to.have.lengthOf(2)
+      const r = csv.mergeRows(twice, through(rows.slice(0, 1)), { key: KEY, allowDelete: true })
+      expect(r.ok).to.equal(true)
+      expect(r.text).to.equal(SCROLL)
     })
   })
 

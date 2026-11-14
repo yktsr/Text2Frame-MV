@@ -143,8 +143,8 @@ describe('the batch plugin commands with a format argument', function () {
     it('leaves out the tag rows when it is told dialogue only', function () {
       pull([path.join(tmp, 'text'), 'overwrite', 'conversation', 'csv', 'dialogue'])
       const kinds = rows().map(function (r) { return r.種別 })
-      // 選択肢は残る(読む人が直す行)。タグの行と空行だけが落ちる。
-      expect(new Set(kinds)).to.eql(new Set(['見出し', 'セリフ', '選択肢']))
+      // 選択肢とその枠は残る(読む人が直す行・質問の範囲が読める)。ほかのタグと空行は落ちる。
+      expect(new Set(kinds)).to.eql(new Set(['見出し', 'セリフ', '選択肢', '選択肢枠']))
     })
   })
 
