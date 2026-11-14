@@ -12058,6 +12058,22 @@
       /^\s*(?:<(?:face|fc|顔|name|nm|名前|windowposition|wp|位置|background|bg|背景)\s*:[^>]*>\s*)+$/i
     // 「シナリオだけ」で出す種別。
     const CSV_DIALOGUE_KINDS = { セリフ: true, 選択肢: true }
+    /* 「どうすればいいか」の言い方だけが入口ごとに違う(CLI は引数、ツクールは選択肢)。
+     * **断る理由そのものは1か所が決める。** 呼ぶ側は押す場所の名前だけ差し替える。 */
+    const CSV_HINTS = {
+      allowDelete: '「消えた行を消す」を選んでください',
+      force: '「多すぎる書き換えも通す」を選んでください',
+      pull: '「フォルダへ一括取り出し」を実行してください',
+      rowsAll: '「フォルダへ一括取り出し」を 形式=CSV・CSVに出す行=全部 で出し直してください'
+    }
+    /* どのモードがどの種別を見せるか。畳むときの絞り込みと、取り込みが
+     * 「出した行」を知る所が、**同じここを読む**。null は全部。 */
+    const csvMode = function (v) {
+      return String(v || 'all').toLowerCase() === 'dialogue' ? 'dialogue' : 'all'
+    }
+    const csvKindsOfMode = function (mode) {
+      return csvMode(mode) === 'dialogue' ? CSV_DIALOGUE_KINDS : null
+    }
 
     /* 対象ごとの指紋。CSV を配ったあとにテキストが取り出し直されていたら、畳み直した
      * 結果が変わって ID が宛先として使えなくなる。それを見分けるためだけに使う。 */
@@ -12222,9 +12238,8 @@
         r.ID = csvRowId(n)
         r.版 = stamp
       })
-      if (String(o.rows || 'all').toLowerCase() === 'dialogue') {
-        return rows.filter(function (r) { return !!CSV_DIALOGUE_KINDS[r.種別] })
-      }
+      const shown = csvKindsOfMode(o.rows)
+      if (shown) return rows.filter(function (r) { return !!shown[r.種別] })
       return rows
     }
 
@@ -12354,6 +12369,10 @@
 
       /* CSV に無かった行。出した種別のものは「消された」、出していない種別のものは
        * 「絞って出した」。混ぜると、絞った表を取り込むたびにタグ行が消える。 */
+      /* 消すかどうかの判断は**1か所**。番人と、実際に落とす所が食い違えないようにする。 */
+      const dropped = function (r) {
+        return !edited[r.ID] && !!o.allowDelete && !!exported[r.種別]
+      }
       const missing = []
       base.forEach(function (r) {
         if (edited[r.ID]) return
@@ -12379,7 +12398,7 @@
       base.forEach(function (r) {
         const got = edited[r.ID]
         // 消すのは、CSV に出した種別の行が無くなっていて、かつ頼まれたときだけ。
-        const drop = !got && o.allowDelete && !!exported[r.種別]
+        const drop = dropped(r)
         if (got) {
           const moved = cell(got, '本文') !== cell(r, '本文') || cell(got, '見た目') !== cell(r, '見た目')
           if (moved) changed++
@@ -12478,13 +12497,7 @@
       const o = opts || {}
       const _fs = require('fs')
       const _path = require('path')
-      /* 「どうすればいいか」の言い方だけは入口ごとに違う(CLI は引数、ツクールは選択肢)。
-       * 断る理由そのものはここが決めて、押す場所の名前だけ呼ぶ側からもらう。 */
-      const hints = Object.assign({
-        allowDelete: '「消えた行を消す」を選んでください',
-        force: '「多すぎる書き換えも通す」を選んでください',
-        pull: '「フォルダへ一括取り出し」を実行してください'
-      }, o.hints || {})
+      const hints = Object.assign({}, CSV_HINTS, o.hints || {})
       const table = parseCsv(o.csvText)
       const needed = ['宛先', 'ID', '本文']
       const absent = needed.filter(function (c) { return table.columns.indexOf(c) < 0 })
@@ -13230,7 +13243,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       hints: {
         allowDelete: '--allow-delete を付けてください',
         force: '--force を付けてください',
-        pull: '取り出してください: npx frame2text --mode batch'
+        pull: '取り出してください: npx frame2text --mode batch',
+        rowsAll: '全部の行で出し直してください: npx frame2text --mode csv --rows all'
       }
     })
     if (outcome.fatal) {
