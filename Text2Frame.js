@@ -4892,23 +4892,67 @@
     }
   }
 
-  /* そのゲームの設定に入れ替え、元に戻す関数を返す。何もしなかったときも関数を返すので、
+  /* 呼び出しごとに言い直せる3つ。options の名前と、名前空間の鍵の対応。
+   * CLI の COMMAND_LINE は名前空間の鍵のまま渡してくる(Object.assign で入る鍵と同じ)ので、
+   * 両方の綴りを見る。空文字は未指定と同じに扱う ── 拡張の設定は「未設定」を空文字で表す
+   * (vscode-extension/src/compiler.ts の settingFor が既にその規約)。 */
+  const EXPLICIT_FIELDS = {
+    Background: 'background',
+    WindowPosition: 'windowPosition',
+    CommentOutChar: 'commentOutChar'
+  }
+  const explicitParametersOf = function (opts) {
+    if (!opts) return null
+    const out = {}
+    Object.keys(EXPLICIT_FIELDS).forEach(function (field) {
+      const given = opts[EXPLICIT_FIELDS[field]] !== undefined ? opts[EXPLICIT_FIELDS[field]] : opts[field]
+      if (given !== undefined && given !== null && given !== '') out[field] = String(given)
+    })
+    return Object.keys(out).length ? out : null
+  }
+
+  /* 優先順位をここ1か所で決める。
+   *
+   *   明示したオプション  >  ゲームの plugins.js  >  出荷時の既定
+   *
+   * そのゲームの設定に入れ替え、元に戻す関数を返す。何もしなかったときも関数を返すので、
    * 呼び側は分岐しない。戻すのは、1つのプロセスが複数のゲームを扱うため
    * (拡張は複数のフォルダを同時に開ける)。入れたままにすると、plugins.js を持たない
-   * ゲームが直前のゲームの設定を引き継ぐ。 */
-  const useProjectParameters = function (gameRoot) {
+   * ゲームが直前のゲームの設定を引き継ぐ。
+   *
+   * 読めない値の扱いは2つで違う。ゲームの設定は黙って出荷時の既定に戻す(設定のささいな
+   * 間違いが「このプロジェクトは反映できない」になるのを避ける)。**明示された値は投げる** ──
+   * 利用者が打ったものを黙って落とすと、効いているつもりで別の値が入る。 */
+  const useProjectParameters = function (gameRoot, opts) {
     const params = projectParametersOf(gameRoot)
-    if (!params) return noRestore
+    const explicit = explicitParametersOf(opts)
+    if (!params && !explicit) return noRestore
     const fields = Object.keys(PROJECT_FIELDS)
     const previous = {}
     fields.forEach(function (field) { previous[field] = Laurus.Text2Frame[field] })
     const restore = function () {
       fields.forEach(function (field) { Laurus.Text2Frame[field] = previous[field] })
     }
-    fields.forEach(function (field) { Laurus.Text2Frame[field] = params[field] })
-    if (!projectParametersUsable()) {
-      restore()
-      return noRestore
+    if (params) {
+      fields.forEach(function (field) { Laurus.Text2Frame[field] = params[field] })
+      // 組として読めなければ、その3つだけ出荷時の既定に戻す(明示はこのあと重ねる)。
+      if (!projectParametersUsable()) restore()
+    }
+    if (explicit) {
+      /* 1つずつ入れて確かめるのは、どの指定が読めなかったかを言えるようにするため。 */
+      const names = Object.keys(explicit)
+      for (let i = 0; i < names.length; i++) {
+        const field = names[i]
+        const before = Laurus.Text2Frame[field]
+        Laurus.Text2Frame[field] = explicit[field]
+        if (!projectParametersUsable()) {
+          Laurus.Text2Frame[field] = before
+          restore()
+          throw new Error('指定された値が読めません: ' + EXPLICIT_FIELDS[field] + ' = ' +
+            JSON.stringify(explicit[field]) +
+            ' / ツクールのプラグインパラメータと同じ書き方で指定してください。')
+        }
+      }
     }
     return restore
   }
@@ -5456,8 +5500,9 @@
         /* そのゲームの設定で補う。ここは applyTextFile を通らない CLI の
          * --mode map / --mode common のための口で、あちらは1プロセス1操作で終わるので
          * 戻さない。applyTextFile 経由のときは、あちらの復元がこれを畳む。
-         * 上の Object.assign より後に置くのは、同じ鍵が払い落とされないため。 */
-        useProjectParameters(Laurus.Text2Frame.GameRoot || Laurus.Text2Frame.BaseRoot)
+         * args[0] をそのまま渡すのは、**呼び手が明示した値をゲームの設定に勝たせる**ため。
+         * 上の Object.assign だけだと、ゲームの設定があとから同じ鍵を踏む。 */
+        useProjectParameters(Laurus.Text2Frame.GameRoot || Laurus.Text2Frame.BaseRoot, args[0])
         break
       case 'LIBRARY_EXPORT' :
         break
@@ -10963,7 +11008,7 @@
     /* opts.gameRoot をもらったら、そのゲームの設定(js/plugins.js)で補う。
      * その呼び出しの間だけ入れ替えて戻す。渡されなければ今までどおり。 */
     const compile = function (text, opts) {
-      const restore = useProjectParameters(opts && opts.gameRoot)
+      const restore = useProjectParameters(opts && opts.gameRoot, opts)
       try {
         return compileCore(text, opts)
       } finally {
@@ -11260,7 +11305,7 @@
       /* そのゲームの設定で補う。gameRoot を渡さなければ baseRoot を使う
        * (既存の呼び手は4つとも baseRoot を渡している)。別の関心なので、
        * 下の走り書きの退避とは別に控える。 */
-      const restoreProject = useProjectParameters(opts.gameRoot || opts.baseRoot)
+      const restoreProject = useProjectParameters(opts.gameRoot || opts.baseRoot, opts)
 
       const prevWarnings = Laurus.Text2Frame._warnings
       const prevQuiet = Laurus.Text2Frame._quiet
@@ -12208,7 +12253,7 @@
        * ゲームの設定で '#' にしている人のところで '%' のまま畳むと、'#' の行を中身と数え
        * '%' の行を落とすので、行がずれて畳み方が丸ごと間違う。compile と同じ形で
        * その呼び出しの間だけ入れ替える。 */
-      const restore = useProjectParameters(o.gameRoot)
+      const restore = useProjectParameters(o.gameRoot, o)
       try {
         return foldToRowsCore(text, key, o)
       } finally {
@@ -12350,7 +12395,7 @@
      * 壊す経路は、取り出しと同じ1本だけ。 */
     const csvRowsToLines = function (rows, opts) {
       const o = opts || {}
-      const restore = useProjectParameters(o.gameRoot)
+      const restore = useProjectParameters(o.gameRoot, o)
       try {
         const commentChar = Laurus.Text2Frame.CommentOutChar || '%'
         const already = new RegExp('^ *' + commentChar)

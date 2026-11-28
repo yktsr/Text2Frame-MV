@@ -115,6 +115,100 @@ describe('the game\'s own Text2Frame settings', function () {
     expect(out).to.not.contain('WindowPosition')
   })
 
+  /* 呼び手が言い直した値は、ゲームの設定より強い。
+   *
+   *   明示したオプション > ゲームの plugins.js > 出荷時の既定
+   *
+   * 入口(CLI の旗・拡張の設定)はこの上に乗るだけなので、順番はここで固める。 */
+  describe('a value the caller spells out', function () {
+    it('wins over what the game says', function () {
+      const root = project(pluginsJs(changedParameters))
+
+      const head = text2frame.compile('こんにちは', {
+        gameRoot: root,
+        background: 'ウインドウ',
+        windowPosition: '下'
+      })[0].parameters
+
+      expect(head[2], '背景').to.equal(SHIPPED.background)
+      expect(head[3], '位置').to.equal(SHIPPED.position)
+    })
+
+    it('wins one field at a time, leaving the game to say the rest', function () {
+      const root = project(pluginsJs(changedParameters))
+
+      const head = text2frame.compile('こんにちは', { gameRoot: root, background: 'ウインドウ' })[0].parameters
+
+      expect(head[2], '明示した背景').to.equal(SHIPPED.background)
+      expect(head[3], 'ゲームの位置').to.equal(CHANGED.position)
+    })
+
+    it('says which comment character to use, over the game and the shipped one', function () {
+      const root = project(pluginsJs(changedParameters))
+
+      // ゲームは # と言っているが、呼び手が % と言ったので消えるのは % の行。
+      expect(text2frame.compile('%パーセントの行\n#シャープの行', { gameRoot: root, commentOutChar: '%' })
+        .filter(function (c) { return c.code === 401 })
+        .map(function (c) { return c.parameters[0] })).to.eql(['#シャープの行'])
+    })
+
+    /* プラグインを入れていないゲーム(本物のアクアリウム)でも、入口から言えば効く。 */
+    it('works on a game that has no Text2Frame at all', function () {
+      const head = text2frame.compile('こんにちは', { background: '透明', windowPosition: '上' })[0].parameters
+
+      expect(head[2]).to.equal(CHANGED.background)
+      expect(head[3]).to.equal(CHANGED.position)
+    })
+
+    /* 空文字は「未設定」。拡張の設定が未設定を空文字で表すので、そのまま渡せるようにする。 */
+    it('treats an empty string as nothing said', function () {
+      const root = project(pluginsJs(changedParameters))
+
+      const head = text2frame.compile('こんにちは', { gameRoot: root, background: '' })[0].parameters
+
+      expect(head[2]).to.equal(CHANGED.background)
+    })
+
+    /* ゲームの設定は黙って既定に戻すが、利用者が打ったものは黙って落とさない。 */
+    it('refuses a value it cannot read, instead of quietly using another one', function () {
+      expect(function () {
+        text2frame.compile('こんにちは', { background: 'ウィンドウ' })
+      }).to.throw(/background/)
+    })
+
+    it('leaves nothing behind after it refuses', function () {
+      try {
+        text2frame.compile('こんにちは', { background: 'ウィンドウ' })
+      } catch (e) { /* 断られるのが正しい */ }
+
+      const head = headOf(undefined)
+
+      expect(head[2]).to.equal(SHIPPED.background)
+      expect(head[3]).to.equal(SHIPPED.position)
+    })
+
+    /* 取り出す側にも同じ順番で効かないと、省く基準と補う基準が食い違う。 */
+    it('decides what the pull omits, the same way', function () {
+      const root = project(pluginsJs(changedParameters))
+      const list = [
+        { code: 101, indent: 0, parameters: ['', 0, SHIPPED.background, SHIPPED.position, ''] },
+        { code: 401, indent: 0, parameters: ['こんにちは'] },
+        { code: 0, indent: 0, parameters: [] }
+      ]
+
+      // ゲームは透明/上と言うが、呼び手がウインドウ/下と言ったので、その2つは省かれる。
+      const out = frame2text.decompile(list, true, {
+        pretty: true,
+        gameRoot: root,
+        background: 'ウインドウ',
+        windowPosition: '下'
+      })
+
+      expect(out).to.not.contain('Background')
+      expect(out).to.not.contain('WindowPosition')
+    })
+  })
+
   /* 以下は「今の挙動のまま」を固定する。どれかが動いたら、読み口が要らない所まで出ている。 */
 
   it('keeps the shipped defaults when no game folder is given', function () {

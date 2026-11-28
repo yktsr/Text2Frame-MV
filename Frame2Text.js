@@ -742,12 +742,13 @@
    * 補う側と同じ設定を見る必要がある。
    * 戻す関数を返す。ルートが分からないときも関数を返すので、呼び側は分岐しない。
    * ゲームの中では内部窓そのものが無い(あちらは PluginManager から読めている)。 */
-  function useGameSettings (gameRoot) {
+  function useGameSettings (gameRoot, opts) {
     const noop = function () {}
-    if (!gameRoot) return noop
     const api = resolveText2Frame()
     const use = api && api._internal && api._internal.useProjectParameters
-    return use ? use(gameRoot) : noop
+    if (!use) return noop
+    /* ルートが無くても、呼び手が明示した値はそのまま効かせる(優先順位の判断はあちら1か所)。 */
+    return use(gameRoot, opts)
   }
 
   /* 入/切の指定を1か所で畳む(英語タグ・既定タグの省略の両方で使う)。ツクールのパラメータ・
@@ -3259,11 +3260,15 @@
     /* 言語は引数で決める。値を組み立てるヘルパ群は上の EnglishTag を見ているので、
      * 引数で来た言語をこの呼び出しの間だけそこへ入れ、終わったら戻す。decompile は
      * 同期で入れ子にならないので、この退避・復元で足りる。
-     * 引数を省いた呼び出しは今の値のまま(プラグインパラメータ or CLI の -w)。 */
+     * 引数を省いた呼び出しは今の値のまま(ゲームの設定 or プラグインパラメータ or CLI の -w)。
+     *
+     * 順番が肝。ゲームの設定を先に入れ、そのうえに引数を重ねる ── 逆にすると、
+     * 引数で言い直した言語をゲームの設定が踏む。 */
     const decompile = function (map_events, englishTag, options) {
+      // 控えるのは窓を開ける前。あとで戻すのは「この呼び出しの前の値」でなければならない。
       const previousEnglishTag = EnglishTag
+      const restoreGame = useGameSettings(options && options.gameRoot, options)
       if (englishTag !== undefined) EnglishTag = toFlag(englishTag, true)
-      const restoreGame = useGameSettings(options && options.gameRoot)
       try {
         return decompileCore(map_events, options)
       } finally {
@@ -3605,7 +3610,7 @@
      * (あれは Text2Frame の compile を呼ぶので、補う側もこの設定で動く必要がある)。 */
     const buildPullText = function (opts) {
       opts = opts || {}
-      const restoreGame = useGameSettings(opts.gameRoot)
+      const restoreGame = useGameSettings(opts.gameRoot, opts)
       try {
         return buildPullTextCore(opts)
       } finally {
