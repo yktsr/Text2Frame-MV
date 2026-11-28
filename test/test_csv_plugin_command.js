@@ -44,8 +44,12 @@ describe('the batch plugin commands with a format argument', function () {
   const sheet = function () { return path.join(tmp, 'scenario.csv') }
   const rows = function () { return csv.parseCsv(fs.readFileSync(sheet(), 'utf8')).rows }
   const put = function (list) { fs.writeFileSync(sheet(), csv.formatCsv(list)) }
+  /* 画面幅(半角55)を超える文は addMessage が折り返すので、行ごとに探すと
+   * 当たり外れが一時フォルダの長さで変わる(手元の /var/folders と CI の /tmp で
+   * 折り返しの位置が違い、ファイル名が2行に割れた)。折り返しは改行を挟むだけで
+   * 文字は落とさないので、繋いでから数える。test_batch_import_warnings.js と同じ型。 */
   const message_of = function (word) {
-    return shown.filter(function (line) { return String(line).indexOf(word) !== -1 })
+    return shown.join('').split(word).slice(1)
   }
 
   beforeEach(function () {
