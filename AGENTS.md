@@ -25,14 +25,29 @@ RPGツクール MV/MZ のイベントとテキストを相互変換するプラ�
 
 ## いちばん踏む穴: `gameRoot`
 
-`compile` / `decompile` / `buildPullText` / `applyTextFile` は `opts.gameRoot` をもらったときだけ、
-そのゲームの `js/plugins.js` にある設定(`Default Background` / `Default Window Position` /
-`Comment Out Char`)に入れ替えて、その呼び出しの間だけ使い、`finally` で戻す。
+補う値の優先順位は**1か所**(`_internal.useProjectParameters`)で決まる:
+
+```
+明示したオプション  >  そのゲームの js/plugins.js  >  出荷時の既定
+```
+
+真ん中を読むのは、`compile` / `decompile` / `buildPullText` / `applyTextFile` が
+`opts.gameRoot` をもらったときだけ。しかも**そのプラグインが実際に入っているときだけ**
+(`plugins.js` の有効な項目＋`js/plugins/<名前>.js` の実在)。読む鍵は
+`Text2Frame` の3つ(`Default Background` / `Default Window Position` / `Comment Out Char`、
+**3つで1組**)と `Frame2Text` の2つ(`EnglishTag` / `OmitDefaultTags`、**鍵ごと**)。
+
 **渡さなければ出荷時の既定のまま** ── 既定を「透明」にしているプロジェクトは**全部「ウィンドウ」に倒れ**、
 `Comment Out Char` を変えているプロジェクトでは**コメント行が本文として反映される**。
 
 渡し忘れの方向が「今までどおりの既定に落ちる」なので、**テストも往復検査も気づかない。**
 **行や既定を読む新しい処理を足すときは、まず `gameRoot` を受ける。**
+
+**明示は `undefined`(と空文字)が「指定なし」。** 入口が既定値を畳んで渡すと、そのゲームの設定に
+従う道が消える ── CLI の `-w` / `--omit-default-tags` と拡張の `englishTag` / `omitDefaultTags` は、
+そのために**既定を宣言していない**。足すときも宣言しない。
+`applyTextFile` は中でもう一度 `COMMAND_LINE` を通るので、明示した値をその束へ受け渡す
+(`carryExplicitParameters`)── **渡さないと内側の窓が外側の明示を踏む。**
 
 ## ゲームの中でも走る
 

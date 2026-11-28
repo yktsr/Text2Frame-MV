@@ -68,7 +68,7 @@ npm run bundle-compiler        # 親の Text2Frame.js / Frame2Text.js を lib/ �
 T2F_GAME_DIR=/path/to/game npm test   # 実プロジェクトが要る2件も走らせる(未設定なら skip。実データはコピーに対して)
 ```
 
-**CI(`.github/workflows/nodejs.yml`)**: push[master]/PR で 3 ジョブ。core = `npm ci → build → audit → lint → npm test`、extension = `npm ci → compile → lint → npm test`、package = 配布物3種を作って公開モードの読み込みまで見る。2902 往復は `sample/` が未追跡のため CI 対象外(自己完結の検体139件でガード)。全体は 49 suites / 941 件(**手で書いた数なので古くなる**)。
+**CI(`.github/workflows/nodejs.yml`)**: push[master]/PR で 3 ジョブ。core = `npm ci → build → audit → lint → npm test`、extension = `npm ci → compile → lint → npm test`、package = 配布物3種を作って公開モードの読み込みまで見る。2902 往復は `sample/` が未追跡のため CI 対象外(自己完結の検体139件でガード)。全体は 50 suites / 984 件(**手で書いた数なので古くなる**)。
 
 ## データフロー
 
@@ -144,11 +144,24 @@ T2F_GAME_DIR=/path/to/game npm test   # 実プロジェクトが要る2件も走
 
 ## 公開 API
 
-**`gameRoot` を渡し忘れると静かに壊れる(いちばん踏む穴)。** `compile` / `decompile` / `buildPullText` /
-`applyTextFile` は `opts.gameRoot` をもらったときだけ、そのゲームの `js/plugins.js` にある
-Text2Frame のプラグインパラメータ(`Default Background` / `Default Window Position` /
-`Comment Out Char`)に入れ替えて、その呼び出しの間だけ使い、`finally` で戻す
-(`_internal.useProjectParameters`)。渡さなければ**出荷時の既定**のまま。だから:
+**補う値の優先順位は1か所で決まる**(`_internal.useProjectParameters`):
+
+```
+明示したオプション  >  そのゲームの js/plugins.js  >  出荷時の既定
+```
+
+真ん中を読むのは**そのプラグインが実際に入っているときだけ** ── `plugins.js` に `status` が真の
+項目があり、**かつ** `js/plugins/<名前>.js` が実在すること。項目だけ残して消したゲームでは、
+その設定はゲームの中で何も動かしていない。読む鍵は2組:
+
+| プラグイン | 鍵 | 組の扱い | options の名前 |
+| --- | --- | --- | --- |
+| `Text2Frame` | `Default Background` / `Default Window Position` / `Comment Out Char` | **3つで1組**(1つ欠けたら組ごと使わない) | `background` / `windowPosition` / `commentOutChar` |
+| `Frame2Text` | `EnglishTag` / `OmitDefaultTags` | **鍵ごと**(片方しか無い `plugins.js` が実在する) | `englishTag` / `omitDefaults` |
+
+**`gameRoot` を渡し忘れると静かに壊れる(いちばん踏む穴)。** `compile` / `decompile` /
+`buildPullText` / `applyTextFile` は `opts.gameRoot` をもらったときだけ上の真ん中を読み、
+その呼び出しの間だけ使って `finally` で戻す。渡さなければ**出荷時の既定**のまま。だから:
 
 - 既定を「透明」にしているプロジェクトのテキストを反映すると、**全部「ウィンドウ」に倒れる**
 - `Comment Out Char` を `%` 以外にしているプロジェクトでは、**コメント行が本文として反映される**。
@@ -158,12 +171,25 @@ Text2Frame のプラグインパラメータ(`Default Background` / `Default Win
 **行や既定を読む新しい処理を足すときは、まず `gameRoot` を受けること。** 先例は
 `test/test_message_tags_custom_defaults.js` と `test/test_csv_fold.js`(渡し忘れると鳴る)。
 `enumerateTargets` と `applyCommandsToData` は既定を読まないので要らない。
-**まだ渡していない穴**: CLI の `--mode map` / `--mode common`(`Frame2Text.js` 側)、
-`t2f-sync.js` と `t2f-mcp.js` の `omitDefaults`。
+
+**明示は「未指定」と区別できる形で渡す。** `undefined`(と空文字)が「指定なし」。入口が既定値を
+畳んで渡すと、そのゲームの設定に従う道が消える ── CLI の `-w` と `--omit-default-tags`、拡張の
+`englishTag` / `omitDefaultTags` は、そのために**既定を宣言していない**。
+読めない値を明示したときは**投げる**(ゲームの設定の間違いは、黙って出荷時の既定に戻す)。
+`applyTextFile` は中でもう一度 `COMMAND_LINE` を通るので、明示した値を
+`carryExplicitParameters` でその束へ受け渡す ── **渡さないと内側の窓が外側の明示を踏む。**
+
+**まだ渡していない穴**: CLI の `--mode map` / `--mode common`(`Frame2Text.js` 側)はルートを
+受け取っていない。
+
+**どの値で動いたかは報告に出る**(`_internal.resolveProjectParameters` と
+`Frame2Text._internal.resolvePullParameters`、文面は `_internal.describeProjectParameters`)。
+CLI は `-v`、MCP は `t2f_project_info`、拡張は「プロジェクト全体を検査」。
+**設定だけ残してプラグインを消した形**と**明示がゲームの設定と違う形**の2つは、`-v` なしでも言う。
 
 **Text2Frame.js**
-- `compile(text, { lineMap, gameRoot })` → イベントコマンド配列(本文のみ。フロントマターは呼び出し側で除去。終端の `code:0` は付けない)。`lineMap: true` なら `{ commands, lineMap, blockSpans }` で、各コマンドが元テキストの何行目から来たか(`lineMap`)と、畳んだブロックが元テキストで占めていた範囲(`blockSpans: [{from, to}]`)も返す
-- `applyTextFile(opts)` → 単一テキストを単一データ JSON へデプロイ。`opts={ textPath, strategy, kind, mapId, eventId, pageId, mapPath, commonEventId, commonEventPath, baseRoot, basePath, gameRoot, isDebug }`(`gameRoot` の既定は `baseRoot`。意味は別物で、`baseRoot` は祖先の置き場所、`gameRoot` は設定の出どころ)(`overwrite` は**読まない**。`baseRoot` 未指定時は `process.cwd()`。cwd と別のプロジェクトを扱う組み込み側は必ず渡す)。戻り値 `{ ok, textPath, kind, target, dataPath, warnings, conflicts, writtenBack, writeBackPath, writeBackText, error, errorLine, errorLineText }`。throw せず結果を返す
+- `compile(text, { lineMap, gameRoot, background, windowPosition, commentOutChar })` → イベントコマンド配列(本文のみ。フロントマターは呼び出し側で除去。終端の `code:0` は付けない)。`lineMap: true` なら `{ commands, lineMap, blockSpans }` で、各コマンドが元テキストの何行目から来たか(`lineMap`)と、畳んだブロックが元テキストで占めていた範囲(`blockSpans: [{from, to}]`)も返す
+- `applyTextFile(opts)` → 単一テキストを単一データ JSON へデプロイ。`opts={ textPath, strategy, kind, mapId, eventId, pageId, mapPath, commonEventId, commonEventPath, baseRoot, basePath, gameRoot, background, windowPosition, commentOutChar, isDebug }`(`gameRoot` の既定は `baseRoot`。意味は別物で、`baseRoot` は祖先の置き場所、`gameRoot` は設定の出どころ)(`overwrite` は**読まない**。`baseRoot` 未指定時は `process.cwd()`。cwd と別のプロジェクトを扱う組み込み側は必ず渡す)。戻り値 `{ ok, textPath, kind, target, dataPath, warnings, conflicts, writtenBack, writeBackPath, writeBackText, error, errorLine, errorLineText }`。throw せず結果を返す
 - フォルダ一括反映は front matter 走査で行う: 各 `.txt` を `applyTextFile({ textPath, strategy })` で反映(CLI は `--mode batch --text-dir <dir>`、プラグインは `BATCH_IMPORT_MESSAGES_FROM_FOLDER`)
 - `applyThreeWayMerge(base, ours, theirs, { keepOurs, keepTheirs })` → 3-way マージ(`{ commands, commandsOurs, commandsTheirs, conflicts, warnings }`)。`keepOurs`/`keepTheirs` を立てると、マーカーを入れない片側だけの結果も一緒に返る(反映はこれをゲームへ、テキストにはマーカー入りを書く)。祖先が無い場合は呼び出し側が現在のゲーム状態を祖先として渡す(TOFU)
 - `applyMergePull({ gameCommands, textBody, baseBody, englishTag, omitDefaults })` → `{ text, gameCommands, conflicts, warnings }`。取り出し(ゲーム→テキスト)の 3-way 本体。push と対称(出力先がテキストなだけ)。内部で `Frame2Text.decompile` を lazy require
@@ -171,11 +197,11 @@ Text2Frame のプラグインパラメータ(`Default Background` / `Default Win
 - 祖先ヘルパ: `baseIdForTarget(textPath, root, target)`→`{ key }`(宛先から決める。こちらが主)、`deriveBaseId(textPath, root)`→`{ key }`(宛先が分からないときの代替)、`baseDirForTextDir(root, textDir)`、`readBaseText(root, key)`/`saveBaseText(root, key, text)`。置き場所を解く `baseSnapshotPathCore` は非公開
 
 **Frame2Text.js**
-- `decompile(list, englishTag, { pretty, translationOnly, omitDefaults, gameRoot })` → テキスト。`translationOnly` は会話系コード(101/401, 102/402/403/404, 105/405)のみ出力(不可逆。往復しない)。`omitDefaults` は既定値どおりの顔・背景・位置タグを省く
+- `decompile(list, englishTag, { pretty, translationOnly, omitDefaults, gameRoot, background, windowPosition, commentOutChar })` → テキスト。`englishTag` と `omitDefaults` は `undefined` が「指定なし」(そのゲームの `Frame2Text` の設定に従う)。`translationOnly` は会話系コード(101/401, 102/402/403/404, 105/405)のみ出力(不可逆。往復しない)。`omitDefaults` は既定値どおりの顔・背景・位置タグを省く
 - `enumerateTargets(dataDir, { onlyFile, scope, index })` → data を走査し `{ kind, mapId/eventId/pageId | commonEventId, key, mapOrder, mapName, name }[]` を返す(一括取り出しの列挙)。`scope` は `all|nonempty|conversation|custom`(**省略時 `conversation`、未知値は例外**)。`custom` は `index` に載っている宛先だけを選ぶので `index` が必須
 - `indexTexts(textDir)` → `{ paths, duplicates }`。各テキストの**先頭2048バイト**だけを読んで front matter で索引する(`*.translation.txt` / `*.conversation.txt` は除く)。同じ宛先を指すテキストが複数あると `duplicates` に入り、一括・同期はその宛先を**見送る**
 - `outPathFor(textBase, index, target)` / `defaultFileName(target)` → 書き先の決定。既にテキストがあればその名前・その場所のまま。無ければ `defaultFileName`(`mapOrder` と階層つき `mapName` が要る。無ければ ID だけの名前に落ちる)
-- `buildPullText(opts)` → `{ text, baseText, writeBack, conflicts, markers, skipped }`(`opts.gameRoot` を受ける)。**ファイルを書かずに**取り出すテキストを組み立てる1か所。プラグイン・CLI・同期・VSCode 拡張が全部ここを通るので4つの振る舞いが揃う
+- `buildPullText(opts)` → `{ text, baseText, writeBack, conflicts, markers, skipped }`(`opts.gameRoot` と `background` / `windowPosition` / `commentOutChar` / `englishTag` / `omitDefaults` を受ける。後ろ2つは `undefined` が「指定なし」)。**ファイルを書かずに**取り出すテキストを組み立てる1か所。プラグイン・CLI・同期・VSCode 拡張が全部ここを通るので4つの振る舞いが揃う
 - `pullTargetToText(opts)` → 1件をテキストへ取り出す(テキストと祖先を書く)。`writeBackToGame(writeBack, target, paths)` は `buildPullText` の書き戻しをゲームへ当てる
 - `renderFrontMatter(entry, kind)` → 書き出しテキスト先頭の front matter ブロック文字列
 - `VERSION` → 書き出しフロントマターの `generator:` に埋める版番号
@@ -185,24 +211,29 @@ Text2Frame のプラグインパラメータ(`Default Background` / `Default Win
 
 | 窓 | 中身 | なぜここ |
 |---|---|---|
-| `Text2Frame._internal` | `collectTextFiles` `useProjectParameters` `hasConflictMarkerInText` `missingPageReason` | `typeof module !== 'undefined'` の中なので**ゲームの中には無い**。CLI・MCP・拡張が借りる |
+| `Text2Frame._internal` | `collectTextFiles` `useProjectParameters` `pluginParametersOf` `pluginReadOf` `resolveProjectParameters` `describeProjectParameters` `hasConflictMarkerInText` `missingPageReason` | `typeof module !== 'undefined'` の中なので**ゲームの中には無い**。CLI・MCP・拡張が借りる |
 | `Text2Frame._csv` | `foldToRows` `mergeRows` `importCsv` `rowsToLines` `formatCsv` `parseCsv` `COLUMNS` | **ツクールの中でも要る**(プラグインコマンドが使う)ので `_internal` の囲いに入れない。置くのは関数の参照だけで、`require` は関数の中で読む(ブラウザに `require` は無い)。`test/test_browser_load.js` が、`require` を置かない `vm` の中で起動することを毎回測る |
-| `Frame2Text._internal` | `runBatchPull` `toFlag` `setDebug` `resolveText2Frame` `buildCsvRows` | 同上。CSV の取り出しは CLI とプラグインコマンドが同じ `buildCsvRows` を通る |
+| `Frame2Text._internal` | `runBatchPull` `toFlag` `setDebug` `resolveText2Frame` `buildCsvRows` `resolvePullParameters` | 同上。CSV の取り出しは CLI とプラグインコマンドが同じ `buildCsvRows` を通る |
 
 ## CLI モード
 
 ```bash
 # npm から入れた人が打つのは npx text2frame / npx frame2text / npx t2f-sync(bin は bin/*.js のラッパ)
 # Text2Frame(取り込み/反映)。push は既定 merge
-node Text2Frame.js -m map|common|compile|batch|csv [-f <text>] [-t text] [-d data] [--root dir] [-s merge|overwrite] [-b <base>] [--watch] [--poll] [--debounce ms]
+node Text2Frame.js -m map|common|compile|batch|csv [-f <text>] [-t text] [-d data] [--root dir] [-s merge|overwrite] [-b <base>] [--watch] [--poll] [--debounce ms] [--background <名前>] [--window-position <名前>] [--comment-out-char <文字>]
 #   -s: 既定 merge(3-way 自動)。overwrite で全置換。legacy の --overwrite <true/false> だけが add に繋がる
 #   -b <base>: 明示祖先(任意)。未指定なら .t2f-base を自動参照/保存   --watch でファイル監視→再デプロイ(chokidar)
+#   --background / --window-position / --comment-out-char: 補う値を言い直す(既定なし=そのゲームの設定)。
+#     短縮形は与えない。取り出し側(frame2text)にも同じ名前があり、**両方に同じ値を渡さないと往復がずれる**
 # Frame2Text(書き出し/取り出し)。pull も既定 merge(翻訳を残す)
-node Frame2Text.js -m map|common|decompile|batch|csv [-t text] [-d data] [--root dir] [-s merge|overwrite] [-w <true/false>] [--scope all|nonempty|conversation|custom] [--omit-default-tags <true/false>] [-b <base>]
+node Frame2Text.js -m map|common|decompile|batch|csv [-t text] [-d data] [--root dir] [-s merge|overwrite] [-w <true/false>] [--scope all|nonempty|conversation|custom] [--rows all|dialogue] [--omit-default-tags <true/false>] [-b <base>] [--background <名前>] [--window-position <名前>] [--comment-out-char <文字>]
 #   -s: 既定 merge(翻訳保持+ゲーム変更流入)。overwrite で生の全取り直し
-#   --scope: 既定 conversation   -w: 英語タグ(既定 true)   翻訳用(会話のみ)は CLI には無く decompile の translationOnly / 拡張の exportConversationOnly
+#   --scope: 既定 conversation   --rows: csv モードで出す行(既定 all)
+#   -w と --omit-default-tags は**既定を宣言していない** ── 付けなければそのゲームの Frame2Text の設定に従う
+#   翻訳用(会話のみ)は CLI には無く decompile の translationOnly / 拡張の exportConversationOnly
 # 双方向同期コントローラ(npm run sync = start / sync_once = once)。引数なしは使い方を出すだけ
 node t2f-sync.js start|once [--direction both|push|pull] [-t text] [-d data] [--root dir] [-s merge|overwrite] [-w <true/false>] [--scope ...] [--debounce ms] [--poll]
+#   -w も既定を宣言していない(付けなければそのゲームの設定に従う)
 #   start = START_DATA_SYNC と同じ(一度そろえてから見張る)。once = 一度だけ   --scope の既定は custom(見出し情報付きテキストだけ)
 #   1プロセスが両方向を持つのでループガードが確実。applyTextFile には baseRoot を渡して祖先を root 基準に揃える
 # MCP サーバ。クライアント(Claude Code / VS Code)が起こし、標準入出力で話す。手で叩くものではない
@@ -233,7 +264,7 @@ node t2f-mcp.js [--root dir] [-t text] [-d data] [-s merge|overwrite] [--scope .
 - 反映・取り出しの流れは **読む → 下書き(`planPull` / `dryRun.tryApply`) → 確かめる(`review`) → 当てる(`commitPull` / `applyTextFile`)** で、全体が `withHistory` に包まれて `.t2f-history` に前像が残る。
 - **コンパイラの読込**: 生 `Text2Frame.js`/`Frame2Text.js` を `require`(ブラウザ向け `*.cjs.js` は Node builtin を解決できないため使わない)。解決順: 設定 `text2frame.modulePath` → 同梱 `lib/` → モノレポ兄弟 `../` → ワークスペース。フロントマターから解決した**絶対パス**を `applyTextFile` に渡す(拡張ホストでは `process.mainModule` が無いため、本体側も cwd フォールバック済み)。
 - コマンドは59個(`contributes.commands`。ラベルは `package.nls.json` / `package.nls.ja.json` で ja/en 両対応)。中心は方向×範囲: `deployCurrentFile`「ゲームに反映(このファイル)」/ `deployAll`「(すべて)」/ `exportCurrentFile`「ゲームから取り出す(このファイル)」/ `exportAll`「(すべて)」/ `repullOverwrite`「全部取り直す(上書き)」/ `exportConversationOnly`「会話のみ書き出し」/ `showCompiledJson` / `toggleDeployOnSave`。ほかに `history.*`(編集履歴の表示・差分・巻き戻し)、`testPlay`/`debug`/`showLiveValues`(テストプレイとデバッグ)、`db.*`(データベースの名前と使用箇所)、`tree.*`/`mapLinks.*`/`showMapGraph`(ツリーとマップのつながり)、`pick*`(素材選び)、`snippet.*`。反映・取り出しとも既定は merge(3-way 自動)。言語を選ぶ `seedLocale`/`locale` は**撤廃**(初回取り出し=空テキストへの全取り込みが seed を兼ね、言語はテキストの置き場所で分ける)。
-- 設定(`text2frame.*`): `exportScope`(既定 `nonempty`) / `strategy`(既定 `merge`) / `reviewBeforeApply`(既定 true) / `englishTag` / `omitDefaultTags` / `history.keep`(既定 100) / `textBaseDir`(`text`) / `dataDir`(`data`) / `messageCheck` / `messageLineLength` / `showDatabaseNames` / `usageContextLines` / `testPlayPage` / `openRunningText` / `testPlayDisablePlugins` / `tryEvent.clearPlayerTransparency` / `modulePath`。`locale` / `sourceLocale` / `targetLocale` は**無い**。
+- 設定(`text2frame.*`): `exportScope`(既定 `nonempty`) / `strategy`(既定 `merge`) / `reviewBeforeApply`(既定 true) / `englishTag` / `omitDefaultTags`(**どちらも既定を宣言していない** ── 未設定はそのゲームの `Frame2Text` の設定に従う) / `defaultBackground` / `defaultWindowPosition` / `commentOutChar`(空は未設定。`fillParamsFor` が反映・取り出し・プレビューへ渡す) / `history.keep`(既定 100) / `textBaseDir`(`text`) / `dataDir`(`data`) / `messageCheck` / `messageLineLength` / `showDatabaseNames` / `usageContextLines` / `testPlayPage` / `openRunningText` / `testPlayDisablePlugins` / `tryEvent.clearPlayerTransparency` / `modulePath`。`locale` / `sourceLocale` / `targetLocale` は**無い**。
 - コンパイラは動的 `require`(拡張は TS、コアは JS。この境界のため `compiler.ts` の祖先ヘルパはコア `deriveBaseId` 等と同規約の別実装=意図的重複)。
 - フロントマター付き `.txt` は開くと自動で `text2frame` 言語に切替(ハイライト/補完/診断が有効化)。
 
