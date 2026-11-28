@@ -63,6 +63,15 @@ describe('the game\'s own Text2Frame settings', function () {
     'Comment Out Char': '#'
   }
 
+  /** Frame2Text の項目を含む plugins.js。取り出しの見せ方はこちらの設定が決める。 */
+  const pullPluginsJs = function (parameters) {
+    const list = [
+      { name: 'Community_Basic', status: true, description: '', parameters: { cacheLimit: '10' } },
+      { name: 'Frame2Text', status: true, description: '', parameters }
+    ]
+    return 'var $plugins =\n' + JSON.stringify(list, null, 1) + ';\n'
+  }
+
   const headOf = function (root) {
     const opts = root === undefined ? undefined : { gameRoot: root }
     return text2frame.compile('こんにちは', opts)[0].parameters
@@ -206,6 +215,81 @@ describe('the game\'s own Text2Frame settings', function () {
 
       expect(out).to.not.contain('Background')
       expect(out).to.not.contain('WindowPosition')
+    })
+  })
+
+  /* 取り出しの見せ方は、ゲームの Frame2Text の設定にも従う。
+   * ここは誰も読んでいなかった ── 拡張だけが設定を渡し、CLI は旗の既定を、
+   * t2f-sync と MCP は何も渡さずライブラリの固定値に落ちていた。 */
+  describe('the game\'s own Frame2Text settings', function () {
+    /* 背景が既定と違う(暗くする)ので、タグは必ず書かれる。言語だけが変わる。 */
+    const darkWindow = [
+      { code: 101, indent: 0, parameters: ['', 0, 1, SHIPPED.position, ''] },
+      { code: 401, indent: 0, parameters: ['こんにちは'] },
+      { code: 0, indent: 0, parameters: [] }
+    ]
+    /* 背景も位置も出荷時の既定と同じ。省くかどうかでタグの有無が変わる。 */
+    const plainWindow = [
+      { code: 101, indent: 0, parameters: ['', 0, SHIPPED.background, SHIPPED.position, ''] },
+      { code: 401, indent: 0, parameters: ['こんにちは'] },
+      { code: 0, indent: 0, parameters: [] }
+    ]
+    const pullFrom = function (root, list, englishTag) {
+      return frame2text.decompile(list, englishTag, { pretty: true, gameRoot: root })
+    }
+
+    it('takes the tag language from the game when nobody says', function () {
+      const root = project(pullPluginsJs({ EnglishTag: 'false' }), { install: ['Frame2Text'] })
+
+      expect(pullFrom(root, darkWindow, undefined)).to.contain('背景')
+    })
+
+    it('still lets the caller say otherwise', function () {
+      const root = project(pullPluginsJs({ EnglishTag: 'false' }), { install: ['Frame2Text'] })
+
+      expect(pullFrom(root, darkWindow, true)).to.contain('Background')
+    })
+
+    it('takes "write the tags even when they match" from the game', function () {
+      const root = project(pullPluginsJs({ EnglishTag: 'true', OmitDefaultTags: 'false' }),
+        { install: ['Frame2Text'] })
+
+      expect(pullFrom(root, plainWindow, undefined)).to.contain('Background')
+    })
+
+    it('still lets the caller say otherwise about omitting', function () {
+      const root = project(pullPluginsJs({ EnglishTag: 'true', OmitDefaultTags: 'false' }),
+        { install: ['Frame2Text'] })
+
+      const out = frame2text.decompile(plainWindow, undefined, { pretty: true, gameRoot: root, omitDefaults: true })
+
+      expect(out).to.not.contain('Background')
+    })
+
+    /* 項目はあるが鍵が書かれていない形(Project1 の plugins.js がこれ)。
+     * 組にすると、ここで言語まで読めなくなる。 */
+    it('leaves a key the game does not write alone', function () {
+      const root = project(pullPluginsJs({ EnglishTag: 'false' }), { install: ['Frame2Text'] })
+
+      // 言語は読む(日本語)。省略は書かれていないので今までどおり省く。
+      expect(pullFrom(root, plainWindow, undefined)).to.not.contain('背景')
+      expect(pullFrom(root, darkWindow, undefined)).to.contain('背景')
+    })
+
+    /* 本物の kindworld がこれ(Text2Frame は入っているが Frame2Text は入っていない)。 */
+    it('keeps the shipped behaviour when Frame2Text is not installed there', function () {
+      const root = project(pluginsJs(changedParameters))
+
+      expect(pullFrom(root, darkWindow, undefined)).to.contain('Background')
+    })
+
+    it('does not carry one game\'s settings into another', function () {
+      const japanese = project(pullPluginsJs({ EnglishTag: 'false' }), { install: ['Frame2Text'] })
+      const plain = project()
+
+      pullFrom(japanese, darkWindow, undefined)
+
+      expect(pullFrom(plain, darkWindow, undefined)).to.contain('Background')
     })
   })
 

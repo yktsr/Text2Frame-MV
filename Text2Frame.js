@@ -11517,7 +11517,9 @@
       const gameCommands = opts.gameCommands || []
       const theirs = opts.textBody ? compile(opts.textBody) : []
       const base = opts.baseBody ? compile(opts.baseBody) : []
-      const englishTag = opts.englishTag !== false
+      /* 「指定なし」をそのまま下へ渡す。true に畳むと、下の decompile に明示で入ってしまい、
+       * そのゲームの設定に従わせられない。 */
+      const englishTag = opts.englishTag === undefined ? undefined : opts.englishTag !== false
       let merged
       /* 取り出しの処理元はゲーム。衝突した所は目印つきの両方をゲームへ書き(mergedForGame)、
        * テキストにはテキスト側の版だけを残す(merged)。衝突しなければ両方同じ。 */

@@ -132,7 +132,7 @@ const checkSource = function (file, source) {
  */
 const HONOURED = {
   'Text2Frame.js': ['WindowPosition', 'Background', 'CommentOutChar'],
-  'Frame2Text.js': []
+  'Frame2Text.js': ['EnglishTag', 'OmitDefaultTags']
 }
 
 const ACCEPTED_DIVERGENCE = {
@@ -160,12 +160,7 @@ const ACCEPTED_DIVERGENCE = {
     PageID: '取り出す対象は引数が毎回決める',
     IsDebug: 'ログの量。出力には効かない',
     DisplayMsg: 'ゲーム内の $gameMessage 表示。ライブラリでは出さない',
-    DisplayWarning: 'ゲーム内の $gameMessage 表示。ライブラリでは出さない',
-    EnglishTag: 'ライブラリ側は英語で固定。取り出しの4経路とも呼び出しごとに渡す',
-    /* これは正直に言う: t2f-sync と MCP は omitDefaults を渡しておらず、
-     * ライブラリ側の固定値(省く)に落ちている。拡張だけが設定を渡す。
-     * 省く・省かないは往復しても失わないので急がないが、揃えるのは別の回。 */
-    OmitDefaultTags: 'ライブラリ側は省くで固定。拡張は設定を渡すが、t2f-sync と MCP は渡していない(別途揃える)'
+    DisplayWarning: 'ゲーム内の $gameMessage 表示。ライブラリでは出さない'
   }
 }
 
@@ -208,7 +203,9 @@ const unsortedKeys = function (file, source) {
       out.push({ file, param: key, kind: 'honoured-unread', detail: 'HONOURED に入っていますが、プラグイン側が読んでいません' })
     }
   })
-  if (file === 'Text2Frame.js') {
+  {
+    /* 宣言(HONOURED)と読み口(そのファイルの PROJECT_FIELDS)のずれ。両方のファイルで見る ──
+     * 片方だけ見ていると、もう片方が読む鍵を増やした日に番人が居ない。 */
     const inCode = honouredInCode(source)
     honoured.concat(inCode).forEach(function (key) {
       if (honoured.indexOf(key) === -1 || inCode.indexOf(key) === -1) {

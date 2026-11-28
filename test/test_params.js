@@ -89,11 +89,26 @@ describe('plugin parameters', function () {
     })
 
     /* 仕分けの一覧が、読み口(PROJECT_FIELDS)と同じ鍵であること。
-     * 一覧だけ直して読み口を直し忘れたら、設定を読んだつもりで読んでいない。 */
+     * 一覧だけ直して読み口を直し忘れたら、設定を読んだつもりで読んでいない。
+     * 2枚とも見る ── 片方だけだと、もう片方が読む鍵を増やした日に番人が居ない。 */
     it('honours exactly what the reader reads', function () {
-      const source = fs.readFileSync(path.join(__dirname, '..', 'Text2Frame.js'), 'utf8')
+      FILES.forEach(function (file) {
+        const source = fs.readFileSync(path.join(__dirname, '..', file), 'utf8')
 
-      expect(honouredInCode(source).slice().sort()).to.eql(HONOURED['Text2Frame.js'].slice().sort())
+        expect(honouredInCode(source).slice().sort(), file).to.eql((HONOURED[file] || []).slice().sort())
+      })
+    })
+
+    /* 読み口から鍵を1つ落としたら鳴ること(上の検査が空振りしていないこと)。 */
+    it('fires when the reader stops reading something it honours', function () {
+      const file = 'Frame2Text.js'
+      const source = fs.readFileSync(path.join(__dirname, '..', file), 'utf8')
+      const dropped = source.replace(/^\s*OmitDefaultTags: 'OmitDefaultTags'\n/m, '')
+      expect(dropped, '検体が作れている').to.not.equal(source)
+
+      const out = unsortedKeys(file, dropped)
+
+      expect(out.map(function (f) { return f.kind })).to.include('honoured-mismatch')
     })
 
     it('gives a reason for every parameter left as a fixture value', function () {

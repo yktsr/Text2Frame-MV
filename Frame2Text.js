@@ -742,6 +742,32 @@
    * 補う側と同じ設定を見る必要がある。
    * 戻す関数を返す。ルートが分からないときも関数を返すので、呼び側は分岐しない。
    * ゲームの中では内部窓そのものが無い(あちらは PluginManager から読めている)。 */
+  /* 取り出しの見せ方を決める2つ。ゲームの Frame2Text の設定を、指定が無いときだけ使う。
+   *
+   * 組にしないのは、互いに関係の無い入/切だから ── 片方の鍵しか無い plugins.js が実際にある
+   * (Project1 の項目には OmitDefaultTags が無い)。組にすると、そこで両方とも読めなくなる。
+   * 書かれていない鍵は「指定なし」として今の値を残す。そうしないと、項目はあるが鍵が無い
+   * ゲームで、ツクールの中と外で言語が食い違う。 */
+  const PROJECT_FIELDS = {
+    EnglishTag: 'EnglishTag',
+    OmitDefaultTags: 'OmitDefaultTags'
+  }
+
+  function gamePullParameters (gameRoot) {
+    if (!gameRoot) return null
+    const api = resolveText2Frame()
+    const read = api && api._internal && api._internal.pluginParametersOf
+    const params = read ? read(gameRoot, 'Frame2Text') : null
+    if (!params) return null
+    const out = {}
+    Object.keys(PROJECT_FIELDS).forEach(function (field) {
+      const value = params[PROJECT_FIELDS[field]]
+      // 鍵が書かれているときだけ渡すので、toFlag の寄せ先は効かない。
+      if (value !== undefined && value !== null && value !== '') out[field] = toFlag(value, false)
+    })
+    return Object.keys(out).length ? out : null
+  }
+
   function useGameSettings (gameRoot, opts) {
     const noop = function () {}
     const api = resolveText2Frame()
@@ -3264,14 +3290,34 @@
      *
      * 順番が肝。ゲームの設定を先に入れ、そのうえに引数を重ねる ── 逆にすると、
      * 引数で言い直した言語をゲームの設定が踏む。 */
+    /* 言語と「既定と同じタグを省く」を、そのゲームの Frame2Text の設定にする。
+     * EnglishTag はこの囲いの中の変数なので、外(Text2Frame の読み口)からは触れない。
+     * 入れ替えるのは**指定が無いとき**だけ効かせるためで、優先順位そのものの判断は
+     * 呼び手の引数を先に見る所(decompileCore の omitDefaults、decompile の englishTag)にある。 */
+    const useGamePullSettings = function (gameRoot) {
+      const noop = function () {}
+      const params = gamePullParameters(gameRoot)
+      if (!params) return noop
+      const previousEnglishTag = EnglishTag
+      const previousOmit = Laurus.Frame2Text.OmitDefaultTags
+      if (params.EnglishTag !== undefined) EnglishTag = params.EnglishTag
+      if (params.OmitDefaultTags !== undefined) Laurus.Frame2Text.OmitDefaultTags = params.OmitDefaultTags
+      return function () {
+        EnglishTag = previousEnglishTag
+        Laurus.Frame2Text.OmitDefaultTags = previousOmit
+      }
+    }
+
     const decompile = function (map_events, englishTag, options) {
       // 控えるのは窓を開ける前。あとで戻すのは「この呼び出しの前の値」でなければならない。
       const previousEnglishTag = EnglishTag
       const restoreGame = useGameSettings(options && options.gameRoot, options)
+      const restorePull = useGamePullSettings(options && options.gameRoot)
       if (englishTag !== undefined) EnglishTag = toFlag(englishTag, true)
       try {
         return decompileCore(map_events, options)
       } finally {
+        restorePull()
         restoreGame()
         EnglishTag = previousEnglishTag
       }
@@ -3527,7 +3573,10 @@
     //    誤読して、取り出し前にテキストへ書いた分が黙って消える。
     const buildPullTextCore = function (opts) {
       const list = opts.list || []
-      const englishTag = toFlag(opts.englishTag, true)
+      /* 「指定なし」をそのまま下へ渡す。true に畳むと、言語をゲームの設定に従わせられない。 */
+      const englishTag = (opts.englishTag === undefined || opts.englishTag === null || opts.englishTag === '')
+        ? undefined
+        : toFlag(opts.englishTag, true)
       const existingText = opts.existingText || ''
       const merge = String(opts.strategy || 'overwrite').toLowerCase() === 'merge'
       // 目印入りのゲームを統合すると、目印ごと再マージされて二重・三重に増える。統合だけ見送る。
@@ -3607,13 +3656,17 @@
 
     /* opts.gameRoot をもらったら、そのゲームの設定で省く・補うを決める。
      * ここで窓を開けるのは、中の decompile だけでなく applyMergePull も効くようにするため
-     * (あれは Text2Frame の compile を呼ぶので、補う側もこの設定で動く必要がある)。 */
+     * (あれは Text2Frame の compile を呼ぶので、補う側もこの設定で動く必要がある)。
+     * 取り出しの2つも同じ理由でここに要る ── applyMergePull が中で呼ぶ decompile には
+     * ゲームのフォルダが渡らないので、あちらの窓だけでは届かない。 */
     const buildPullText = function (opts) {
       opts = opts || {}
       const restoreGame = useGameSettings(opts.gameRoot, opts)
+      const restorePull = useGamePullSettings(opts.gameRoot)
       try {
         return buildPullTextCore(opts)
       } finally {
+        restorePull()
         restoreGame()
       }
     }
