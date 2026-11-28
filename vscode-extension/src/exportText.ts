@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { baseSnapshotPath, commonEventsPathFor, gameRootFor, historyKeep, loadModule, mapPathFor, parseFrontMatter, recordDataState, saveBaseSnapshot, snapshotKeyForTarget, workspaceRootFor } from './compiler';
+import { baseSnapshotPath, commonEventsPathFor, fillParamsFor, gameRootFor, historyKeep, loadModule, mapPathFor, parseFrontMatter, recordDataState, saveBaseSnapshot, snapshotKeyForTarget, workspaceRootFor } from './compiler';
 import { relLabel } from './db/files';
 import { noteWrite, withHistory } from './db/history';
 import { loadCompiler } from './deploy';
@@ -17,7 +17,7 @@ import { targetKeyFromMeta } from './db/baseKey';
  */
 
 interface Frame2TextModule {
-    decompile: (list: unknown[], englishTag: boolean, options?: { pretty?: boolean; translationOnly?: boolean; omitDefaults?: boolean; gameRoot?: string }) => string;
+    decompile: (list: unknown[], englishTag: boolean | undefined, options?: { pretty?: boolean; translationOnly?: boolean; omitDefaults?: boolean; gameRoot?: string }) => string;
     /**
      * The one place that turns "a target's commands" into "the text to write" — shared with the
      * plugin, the CLI and t2f-sync so all four behave identically. Handles the 3-way merge, the
@@ -121,8 +121,10 @@ function loadText2Frame(context: vscode.ExtensionContext, workspaceRoot: string 
     );
 }
 
-function englishTagSetting(): boolean {
-    return vscode.workspace.getConfiguration('text2frame').get<boolean>('englishTag', true);
+/* 未設定を undefined で返す。true に寄せると「指定なし」が消えて、そのゲームの
+ * Frame2Text の設定に従う道が消える(本体の優先順位は 明示 > ゲーム > 出荷時)。 */
+function englishTagSetting(): boolean | undefined {
+    return vscode.workspace.getConfiguration('text2frame').get<boolean>('englishTag');
 }
 
 /**
@@ -130,8 +132,8 @@ function englishTagSetting(): boolean {
  * Purely cosmetic: the compiler supplies the same values when the tags are absent, so the
  * game is unchanged either way. Off means every message carries its full tag line.
  */
-function omitDefaultTagsSetting(): boolean {
-    return vscode.workspace.getConfiguration('text2frame').get<boolean>('omitDefaultTags', true);
+function omitDefaultTagsSetting(): boolean | undefined {
+    return vscode.workspace.getConfiguration('text2frame').get<boolean>('omitDefaultTags');
 }
 
 /** Build a minimal front matter header from a target. */
@@ -350,6 +352,7 @@ export function planPull(
             ? mod.buildPullText({
                 list,
                 gameRoot: gameRootFor(workspaceRoot),
+                ...fillParamsFor(workspaceRoot),
                 englishTag: englishTagSetting(),
                 omitDefaults: omitDefaultTagsSetting(),
                 strategy: 'merge',
@@ -360,6 +363,7 @@ export function planPull(
             : mod.buildPullText({
                 list,
                 gameRoot: gameRootFor(workspaceRoot),
+                ...fillParamsFor(workspaceRoot),
                 englishTag: englishTagSetting(),
                 omitDefaults: omitDefaultTagsSetting(),
                 strategy: 'overwrite',
@@ -455,7 +459,8 @@ export function exportConversationOnlyText(
             pretty: true,
             translationOnly: true,
             omitDefaults: omitDefaultTagsSetting(),
-            gameRoot: gameRootFor(workspaceRoot)
+            gameRoot: gameRootFor(workspaceRoot),
+            ...fillParamsFor(workspaceRoot)
         });
         writeTextFile(target.textPath, renderFrontMatter(target, mod.VERSION) + '\n' + body + '\n');
         return { ok: true, textPath: target.textPath };
@@ -473,7 +478,8 @@ export function renderCommands(context: vscode.ExtensionContext, workspaceRoot: 
         ? mod.decompile(list, englishTagSetting(), {
             pretty: true,
             omitDefaults: omitDefaultTagsSetting(),
-            gameRoot: gameRootFor(workspaceRoot)
+            gameRoot: gameRootFor(workspaceRoot),
+            ...fillParamsFor(workspaceRoot)
         })
         : '';
 }

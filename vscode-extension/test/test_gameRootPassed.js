@@ -36,8 +36,9 @@ const files = function () {
     return out
 }
 
-/** gameRoot を渡していない呼び出し。見つけた場所を人が読める形で返す。 */
-const missing = function (patterns) {
+/** その塊に渡っていない呼び出し。見つけた場所を人が読める形で返す。 */
+const missing = function (patterns, needle) {
+    const want = needle || /gameRoot/;
     const bad = []
     files().forEach(function (file) {
         const lines = fs.readFileSync(file, 'utf8').split('\n')
@@ -47,7 +48,7 @@ const missing = function (patterns) {
             if (/^\s*(\/\/|\*|\/\*)/.test(line)) return
             if (/=>\s*(string|unknown|void)/.test(line)) return
             const block = lines.slice(index, index + WINDOW).join('\n')
-            if (block.indexOf('gameRoot') === -1) {
+            if (!want.test(block)) {
                 bad.push(path.relative(srcDir, file) + ':' + (index + 1) + '  ' + line.trim())
             }
         })
@@ -67,6 +68,18 @@ describe('telling the compiler which game it is', function () {
 
         expect(bad, 'gameRoot を渡していません:\n  ' + bad.join('\n  ')).to.eql([])
     })
+
+    /* 設定で言い直した値も、同じ呼び出しに渡していること。
+     *
+     * 優先順位は 明示(設定) > そのゲームの plugins.js > 出荷時の既定。渡し忘れると
+     * その経路だけがゲームの設定で動き、**ほかの経路と違う値を補う**。渡し忘れても
+     * 例外は出ないので、gameRoot と同じやり方で数える。 */
+    it('passes the settings that override those defaults, everywhere it passes the game folder', function () {
+        /* 呼び出しそのものか、呼び手から受け取って素通しする所(compileWithLines の params)。 */
+        const bad = missing(CALLS.concat([APPLY]), /fillParamsFor|\.\.\.\(params \|\| \{\}\)/);
+
+        expect(bad, 'fillParamsFor を渡していません:\n  ' + bad.join('\n  ')).to.eql([]);
+    });
 
     /* 見つけ方が壊れていたら、何も見ずに緑になる。数えて確かめる。 */
     it('actually finds the calls it is looking for', function () {

@@ -791,13 +791,29 @@
           },
           "text2frame.englishTag": {
             "type": "boolean",
-            "default": true,
             "description": "%config.text2frame.englishTag.description%"
           },
           "text2frame.omitDefaultTags": {
             "type": "boolean",
-            "default": true,
             "description": "%config.text2frame.omitDefaultTags.description%"
+          },
+          "text2frame.defaultBackground": {
+            "type": "string",
+            "default": "",
+            "scope": "resource",
+            "description": "%config.text2frame.defaultBackground.description%"
+          },
+          "text2frame.defaultWindowPosition": {
+            "type": "string",
+            "default": "",
+            "scope": "resource",
+            "description": "%config.text2frame.defaultWindowPosition.description%"
+          },
+          "text2frame.commentOutChar": {
+            "type": "string",
+            "default": "",
+            "scope": "resource",
+            "description": "%config.text2frame.commentOutChar.description%"
           },
           "text2frame.history.keep": {
             "type": "number",

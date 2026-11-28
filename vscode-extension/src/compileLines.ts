@@ -8,10 +8,11 @@ import { tr } from './db/lang';
  * コンパイラには本文だけを渡すので、フロントマターの行数だけずらす。
  * lineMap を知らない古いコンパイラでは lines が無い。コンパイルできなければ例外を投げる。
  */
-export function compileWithLines(mod: T2FModule, text: string, gameRoot?: string): { commands: RpgCommand[]; lines?: number[] } {
+export function compileWithLines(mod: T2FModule, text: string, gameRoot?: string, params?: { [k: string]: string }): { commands: RpgCommand[]; lines?: number[] } {
     if (typeof mod.compile !== 'function') throw new Error(tr('コンパイラ (Text2Frame.js) が見つかりません。', 'The compiler (Text2Frame.js) was not found.'));
-    // gameRoot を渡すと、タグを省いた所に補う値をそのゲームの設定から決める(反映と同じ見え方になる)。
-    const out = mod.compile(frontMatterBody(text), { lineMap: true, gameRoot });
+    /* gameRoot を渡すと、タグを省いた所に補う値をそのゲームの設定から決める(反映と同じ見え方になる)。
+     * params は設定で言い直した分。反映と同じ順番(明示 > ゲーム > 出荷時)にするために要る。 */
+    const out = mod.compile(frontMatterBody(text), { lineMap: true, gameRoot, ...(params || {}) });
     if (Array.isArray(out)) return { commands: out as RpgCommand[] };
     const r = out as { commands: RpgCommand[]; lineMap: number[] };
     const offset = bodyLineOffset(text);

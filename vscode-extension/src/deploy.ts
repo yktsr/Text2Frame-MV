@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { ancestorCopyMessage, baseSnapshotPath, dataChangedExternally, frontMatterBody, gameRootFor, hasBaseSnapshot, strategySetting, historyKeep, isAncestorCopy, isDeployable, loadModule, parseFrontMatter, recordDataState, resolveTarget, saveBaseSnapshot, snapshotKeyForTarget, workspaceRootFor } from './compiler';
+import { ancestorCopyMessage, baseSnapshotPath, dataChangedExternally, fillParamsFor, frontMatterBody, gameRootFor, hasBaseSnapshot, strategySetting, historyKeep, isAncestorCopy, isDeployable, loadModule, parseFrontMatter, recordDataState, resolveTarget, saveBaseSnapshot, snapshotKeyForTarget, workspaceRootFor } from './compiler';
 import { relLabel } from './db/files';
 import { noteWrite, withHistory } from './db/history';
 import { placeFromMeta, placeKey } from './placeLabel';
@@ -250,7 +250,9 @@ async function deployDocumentNow(
         // それが / なので保存できない。拡張の祖先(baseSnapshotPath)と同じ場所・同じ鍵になる。
         baseRoot: workspaceRoot,
         // タグを省いた所に何を補うかは、このゲームの設定が決める(祖先とは別の話)。
-        gameRoot: gameRootFor(workspaceRoot)
+        gameRoot: gameRootFor(workspaceRoot),
+        // 設定で言い直されていれば、そちらが勝つ(プラグインを入れていないゲーム用)。
+        ...fillParamsFor(workspaceRoot)
     };
     if (mergeLike && hasBaseSnapshot(workspaceRoot, snapKey)) {
         applyOpts.basePath = baseSnapshotPath(workspaceRoot, snapKey);
@@ -362,7 +364,8 @@ function prepareFile(context: vscode.ExtensionContext, workspaceRoot: string, fi
         ...resolved.opts,
         strategy,
         baseRoot: workspaceRoot, // 祖先の置き場所(上の deployDocument と同じ)
-        gameRoot: gameRootFor(workspaceRoot)
+        gameRoot: gameRootFor(workspaceRoot),
+        ...fillParamsFor(workspaceRoot)
     };
     if (mergeLike && hasBaseSnapshot(workspaceRoot, snapKey)) {
         applyOpts.basePath = baseSnapshotPath(workspaceRoot, snapKey);
@@ -501,7 +504,7 @@ export function showCompiledJson(context: vscode.ExtensionContext): void {
         return;
     }
     try {
-        const commands = mod.compile(frontMatterBody(editor.document.getText()), { gameRoot: gameRootFor(workspaceRoot) });
+        const commands = mod.compile(frontMatterBody(editor.document.getText()), { gameRoot: gameRootFor(workspaceRoot), ...fillParamsFor(workspaceRoot) });
         const json = JSON.stringify(commands, null, 2);
         vscode.workspace.openTextDocument({ language: 'json', content: json })
             .then((doc) => vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Beside }));
