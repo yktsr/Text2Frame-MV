@@ -293,6 +293,82 @@ describe('the game\'s own Text2Frame settings', function () {
     })
   })
 
+  /* 5つの設定 × 3つの出どころなので、どこから来たかが見えないと追えない。
+   * とくに「設定は書いてあるがプラグインが入っていない」は、**読まなくなる唯一の形**。 */
+  describe('saying where each value came from', function () {
+    const resolve = text2frame._internal.resolveProjectParameters
+    const say = text2frame._internal.describeProjectParameters
+    const pull = frame2text._internal.resolvePullParameters
+
+    it('names the game as the source when the game says it', function () {
+      const report = resolve(project(pluginsJs(changedParameters)))
+
+      expect(report.values.background).to.equal('透明')
+      expect(report.from.background).to.equal('ゲーム')
+      expect(report.settingsIgnored).to.equal(false)
+      expect(report.differs).to.eql([])
+    })
+
+    it('names the caller when the caller says it', function () {
+      const report = resolve(project(pluginsJs(changedParameters)), { background: 'ウインドウ' })
+
+      expect(report.from.background).to.equal('明示')
+      expect(report.from.windowPosition).to.equal('ゲーム')
+    })
+
+    it('names the shipped default when nothing says it', function () {
+      const report = resolve(project())
+
+      expect(report.from.background).to.equal('出荷時')
+    })
+
+    /* 2つ目の条件を足したことで読まなくなる唯一の形。黙って倒れさせない。 */
+    it('says the settings are there but the plugin is not', function () {
+      const report = resolve(project(pluginsJs(changedParameters), { install: [] }))
+
+      expect(report.settingsIgnored).to.equal(true)
+      expect(report.from.background).to.equal('出荷時')
+      expect(say(report).notes.join('\n')).to.contain('js/plugins/Text2Frame.js')
+    })
+
+    /* 片方の入口だけで指定すると、省くタグと補う値が食い違う。構造では防げないので言う。 */
+    it('says when what the caller said differs from the game', function () {
+      const report = resolve(project(pluginsJs(changedParameters)), { background: 'ウインドウ' })
+
+      expect(report.differs).to.eql(['background'])
+      expect(say(report).notes.join('\n')).to.contain('取り出しと反映')
+    })
+
+    it('says nothing extra when the caller repeats what the game says', function () {
+      const report = resolve(project(pluginsJs(changedParameters)), { background: '透明' })
+
+      expect(report.differs).to.eql([])
+      expect(say(report).notes).to.eql([])
+    })
+
+    it('answers the same way for the pull side', function () {
+      const root = project(pullPluginsJs({ EnglishTag: 'false' }), { install: ['Frame2Text'] })
+
+      const report = pull(root)
+
+      expect(report.plugin).to.equal('Frame2Text')
+      expect(report.values.englishTag).to.equal(false)
+      expect(report.from.englishTag).to.equal('ゲーム')
+      // 鍵が書かれていないものは出荷時のまま。
+      expect(report.from.omitDefaults).to.equal('出荷時')
+      expect(say(report).line).to.contain('Frame2Text:')
+    })
+
+    it('names the caller on the pull side too', function () {
+      const root = project(pullPluginsJs({ EnglishTag: 'false' }), { install: ['Frame2Text'] })
+
+      const report = pull(root, { englishTag: true })
+
+      expect(report.from.englishTag).to.equal('明示')
+      expect(report.differs).to.eql(['englishTag'])
+    })
+  })
+
   /* 以下は「今の挙動のまま」を固定する。どれかが動いたら、読み口が要らない所まで出ている。 */
 
   it('keeps the shipped defaults when no game folder is given', function () {

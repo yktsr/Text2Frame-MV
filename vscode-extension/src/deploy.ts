@@ -56,6 +56,20 @@ export interface T2FModule {
     applyCommandsToData?: (opts: { [key: string]: unknown }) => { ok: boolean; dataPath?: string; error?: string };
     /** opts.lineMap を渡すと { commands, lineMap } を返す(古いコンパイラは無視して配列を返す)。 */
     compile?: (text: string, opts?: { lineMap?: boolean; gameRoot?: string }) => unknown;
+    /* 列挙しない窓。何を補うかの出どころを聞くために使う(古い本体には無い)。 */
+    _internal?: {
+        resolveProjectParameters?: (gameRoot: string, opts?: unknown) => ParameterReport;
+        describeProjectParameters?: (report: ParameterReport) => { line: string; notes: string[] };
+    };
+}
+
+/** 何になったか・どこから来たか。本体の口がこの形で返す。 */
+export interface ParameterReport {
+    plugin: string;
+    settingsIgnored: boolean;
+    values: { [k: string]: unknown };
+    from: { [k: string]: string };
+    differs: string[];
 }
 
 let outputChannel: vscode.OutputChannel | undefined;

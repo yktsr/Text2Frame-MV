@@ -100,6 +100,28 @@ describe('mcp tools', function () {
       expect(textOf(call('t2f_project_info'))).to.contain('見送られる宛先')
     })
 
+    /* タグを省いて書かれたテキストに何を補うかは、黙って出荷時の既定に倒れるのがいちばん困る。
+     * 決まった値とその出どころを必ず返すこと。 */
+    it('says what it fills in and where that came from', function () {
+      const info = call('t2f_project_info').structuredContent
+
+      // このプロジェクトには plugins.js が無いので、3つとも出荷時の既定。
+      expect(info.parameters.Text2Frame.from.background).to.equal('出荷時')
+      expect(info.parameters.Frame2Text.from.englishTag).to.equal('出荷時')
+      expect(textOf(call('t2f_project_info'))).to.contain('Text2Frame: background=')
+    })
+
+    it('says when the settings are there but the plugin is not', function () {
+      fs.writeFileSync(path.join(tmp, 'js', 'plugins.js'), 'var $plugins =\n' + JSON.stringify([
+        { name: 'Text2Frame', status: true, description: '', parameters: { 'Default Background': '透明', 'Default Window Position': '上', 'Comment Out Char': '%' } }
+      ], null, 1) + ';\n')
+
+      const result = call('t2f_project_info')
+
+      expect(result.structuredContent.parameters.Text2Frame.from.background).to.equal('出荷時')
+      expect(textOf(result)).to.contain('js/plugins/Text2Frame.js')
+    })
+
     /* 目印が残っている間は統合が止まるので、書き込む前に気づけること。 */
     it('names the texts with unresolved conflict markers', function () {
       writeText('a.txt', frontMatter + '<comment>\n=== テキストの変更 / from text ===\n</comment>\nやあ\n')

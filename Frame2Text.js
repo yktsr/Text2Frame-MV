@@ -768,6 +768,48 @@
     return Object.keys(out).length ? out : null
   }
 
+  /* 報告のための口。取り出しの2つが何になったか・どこから来たかを返す。**変換には使わない。**
+   * 窓の3つは Text2Frame 側の同じ形の口が答える(鍵の一覧をこちらに写さない)。 */
+  function resolvePullParameters (gameRoot, opts) {
+    const api = resolveText2Frame()
+    const read = api && api._internal && api._internal.pluginReadOf
+      ? api._internal.pluginReadOf(gameRoot, 'Frame2Text')
+      : { entry: false, installed: false }
+    const params = gamePullParameters(gameRoot) || {}
+    const given = {
+      EnglishTag: opts && opts.englishTag !== undefined && opts.englishTag !== null && opts.englishTag !== ''
+        ? toFlag(opts.englishTag, true)
+        : undefined,
+      OmitDefaultTags: opts && opts.omitDefaults !== undefined ? toFlag(opts.omitDefaults, true) : undefined
+    }
+    const names = { EnglishTag: 'englishTag', OmitDefaultTags: 'omitDefaults' }
+    const shipped = { EnglishTag: toFlag(Laurus.Frame2Text.EnglishTag, true), OmitDefaultTags: toFlag(Laurus.Frame2Text.OmitDefaultTags, true) }
+    const out = {
+      plugin: 'Frame2Text',
+      settingsIgnored: !!(read.entry && !read.installed),
+      values: {},
+      from: {},
+      differs: []
+    }
+    Object.keys(PROJECT_FIELDS).forEach(function (field) {
+      const name = names[field]
+      if (given[field] !== undefined) {
+        out.values[name] = given[field]
+        out.from[name] = '明示'
+        if (params[field] !== undefined && params[field] !== given[field]) out.differs.push(name)
+        return
+      }
+      if (params[field] !== undefined) {
+        out.values[name] = params[field]
+        out.from[name] = 'ゲーム'
+        return
+      }
+      out.values[name] = shipped[field]
+      out.from[name] = '出荷時'
+    })
+    return out
+  }
+
   function useGameSettings (gameRoot, opts) {
     const noop = function () {}
     const api = resolveText2Frame()
@@ -3929,7 +3971,7 @@
       return { baseDir, results, baseSaveError }
     }
 
-    internalForCli = { runBatchPull, toFlag, setDebug, resolveText2Frame, buildCsvRows }
+    internalForCli = { runBatchPull, toFlag, setDebug, resolveText2Frame, buildCsvRows, resolvePullParameters }
     Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, indexTexts, outPathFor, defaultFileName, pullTargetToText, renderFrontMatter, buildPullText, writeBackToGame }
     // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
     // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
@@ -4437,6 +4479,25 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     windowPosition: cliParams.windowPosition,
     commentOutChar: cliParams.commentOutChar
   }
+
+  /* 言語・省略・補う値は3つの出どころから決まるので、-v のときは決まった値とその出どころを
+   * 言う。stdout は機械の通路(JSON)なので stderr へ。食い違いは -v が無くても言う。 */
+  const reportParams = function (root) {
+    const T2F = module.exports._internal.resolveText2Frame()
+    if (!T2F || !T2F._internal || !T2F._internal.describeProjectParameters) return
+    const say = T2F._internal.describeProjectParameters
+    const reports = [
+      say(T2F._internal.resolveProjectParameters(root, cliFillParams)),
+      say(module.exports._internal.resolvePullParameters(root, {
+        englishTag: options.english_tag,
+        omitDefaults: options.omitDefaultTags
+      }))
+    ]
+    reports.forEach(function (r) {
+      if (options.verbose) console.error('[params] ' + r.line)
+      r.notes.forEach(function (note) { console.error('[params] ' + note) })
+    })
+  }
   if (options.mode === 'map') {
     const Frame2Text = Object.assign({
       MapID: options.map_id,
@@ -4551,6 +4612,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       throw new Error('Data directory not found: ' + dataDir)
     }
     const textDir = path.resolve(cliRoot, options.textDir)
+    reportParams(cliRoot)
     /* 「指定なし」は undefined のまま下へ。そのゲームの Frame2Text の設定に従わせるため。 */
     const englishTag = options.english_tag === undefined ? undefined : toFlag(options.english_tag, true)
     const omitDefaults = options.omitDefaultTags === undefined ? undefined : toFlag(options.omitDefaultTags, true)

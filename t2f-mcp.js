@@ -208,6 +208,19 @@ const hasMarker = function (text) {
   return MARKERS.some(function (m) { return text.indexOf(m) !== -1 })
 }
 
+/* タグを省いて書かれたテキストに何を補うか・どう見せるか。決まった値とその出どころを、
+ * 本体の口から受ける(綴りも優先順位も本体1か所が決める)。古い本体では空の配列を返す。 */
+const resolvedParameters = function (ctx) {
+  const t2f = ctx.t2f && ctx.t2f._internal
+  const f2t = ctx.f2t && ctx.f2t._internal
+  if (!t2f || !t2f.describeProjectParameters) return []
+  const out = [t2f.resolveProjectParameters(ctx.root)]
+  if (f2t && f2t.resolvePullParameters) out.push(f2t.resolvePullParameters(ctx.root))
+  return out.map(function (report) {
+    return { report, said: t2f.describeProjectParameters(report) }
+  })
+}
+
 /* ---------- 拡張が持っている「純粋な層」 ---------- */
 
 /*
@@ -827,6 +840,17 @@ TOOLS.push({
     if (art && info.battleArt === 0) {
       notes.push('このゲームには敵の画像が1枚もありません(img/enemies も img/sv_enemies も空)。' +
         '<BattleProcessing> を書くとゲームが読み込みで落ちます。戦闘を使わない作りにしてください。')
+    }
+    /* タグを省いて書かれたテキストに何を補うか。黙って出荷時の既定に倒れるのがいちばん困るので、
+     * 決まった値とその出どころを必ず出す(5つの設定 × 3つの出どころがある)。 */
+    const params = resolvedParameters(ctx)
+    if (params.length) {
+      info.parameters = {}
+      params.forEach(function (one) {
+        info.parameters[one.report.plugin] = { values: one.report.values, from: one.report.from }
+        notes.push(one.said.line)
+        one.said.notes.forEach(function (note) { notes.push(note) })
+      })
     }
     notes.push('注意: RPGツクールのエディタを開いたまま、または t2f-sync の監視中は書き込まないでください。')
     return toolResult(notes.join('\n'), info)

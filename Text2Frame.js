@@ -4833,24 +4833,30 @@
    *
    * 鍵の取り出しは呼び側に任せる。組として扱うかどうかがプラグインごとに違う
    * (文章の窓の3つは互いに揃っていないと意味がないが、取り出しの2つは独立した入/切)。 */
-  const pluginParametersOf = function (gameRoot, pluginName) {
+  const NOT_READ = { entry: false, installed: false, params: null }
+
+  /* 項目とファイルの両方を見た結果。params が null でも entry は分かるので、
+   * 「設定は書いてあるがプラグインが入っていない」を報告で名指しできる。 */
+  const pluginReadOf = function (gameRoot, pluginName) {
     // ツクールの中では何もしない。あちらには生きた値があり、ディスクの plugins.js は
     // エディタで編集中の未保存のパラメータより古いことがある。
-    if (typeof PluginManager !== 'undefined') return null
+    if (typeof PluginManager !== 'undefined') return NOT_READ
     // ルートが分からなければ推測しない。当て推量で別のプロジェクトの設定を拾うのは、
     // ここで直している壊れ方と同じ。
-    if (!gameRoot || typeof require === 'undefined') return null
+    if (!gameRoot || typeof require === 'undefined') return NOT_READ
     const fs = require('fs')
     const path = require('path')
     const file = path.join(String(gameRoot), 'js', 'plugins.js')
     const script = path.join(String(gameRoot), 'js', 'plugins', pluginName + '.js')
     let mtime
-    let scriptMtime
-    try { mtime = fs.statSync(file).mtimeMs } catch (e) { return null }
-    try { scriptMtime = fs.statSync(script).mtimeMs } catch (e) { return null }
+    try { mtime = fs.statSync(file).mtimeMs } catch (e) { return NOT_READ }
+    let scriptMtime = 0
+    let installed = true
+    try { scriptMtime = fs.statSync(script).mtimeMs } catch (e) { installed = false }
     const key = file + '\n' + pluginName
     const hit = projectParamCache.get(key)
-    if (hit && hit.mtime === mtime && hit.scriptMtime === scriptMtime) return hit.params
+    if (hit && hit.mtime === mtime && hit.scriptMtime === scriptMtime) return hit.read
+    let entry = false
     let params = null
     try {
       // $plugins の切り方は拡張の autoWrapPlugin(src/db/messageFit.ts)と同じ形。
@@ -4859,10 +4865,16 @@
       const mine = list.filter(function (one) {
         return one && one.status && one.name === pluginName
       })[0]
-      if (mine && mine.parameters) params = mine.parameters
+      entry = !!mine
+      if (installed && mine && mine.parameters) params = mine.parameters
     } catch (e) { params = null }
-    projectParamCache.set(key, { mtime, scriptMtime, params })
-    return params
+    const read = { entry, installed, params }
+    projectParamCache.set(key, { mtime, scriptMtime, read })
+    return read
+  }
+
+  const pluginParametersOf = function (gameRoot, pluginName) {
+    return pluginReadOf(gameRoot, pluginName).params
   }
 
   const projectParametersOf = function (gameRoot) {
@@ -4909,6 +4921,62 @@
       if (given !== undefined && given !== null && given !== '') out[field] = String(given)
     })
     return Object.keys(out).length ? out : null
+  }
+
+  /* 報告のための口。何になったか・どこから来たかを返す。**変換には使わない。**
+   *
+   * 5つの設定 × 3つの出どころになったので、どこから来たかが見えないと追えない。とくに
+   * 「設定は書いてあるがプラグインが入っていない」は、**読まなくなる唯一の形**なので名指しする。
+   * 出どころが '出荷時' のときの値は、いま名前空間に入っている値をそのまま言う
+   * (モジュールを読んだときの値＝出荷時の既定)。 */
+  const resolveProjectParameters = function (gameRoot, opts) {
+    const read = pluginReadOf(gameRoot, 'Text2Frame')
+    const project = projectParametersOf(gameRoot)
+    const explicit = explicitParametersOf(opts)
+    const out = {
+      plugin: 'Text2Frame',
+      /* 設定だけ残っている状態。ゲームの中でも効いていないので、こちらも読まない。 */
+      settingsIgnored: !!(read.entry && !read.installed),
+      values: {},
+      from: {},
+      /* 明示がゲームの設定と違う所。片方の入口だけで指定すると往復がずれる。 */
+      differs: []
+    }
+    Object.keys(PROJECT_FIELDS).forEach(function (field) {
+      const name = EXPLICIT_FIELDS[field]
+      if (explicit && explicit[field] !== undefined) {
+        out.values[name] = explicit[field]
+        out.from[name] = '明示'
+        if (project && String(project[field]) !== String(explicit[field])) out.differs.push(name)
+        return
+      }
+      if (project) {
+        out.values[name] = project[field]
+        out.from[name] = 'ゲーム'
+        return
+      }
+      out.values[name] = Laurus.Text2Frame[field]
+      out.from[name] = '出荷時'
+    })
+    return out
+  }
+
+  /* 報告の文面。人が読む形はここ1か所で、CLI・MCP・拡張の検査が同じ言い方をする。
+   * Frame2Text 側の口も同じ形を返すので、そのまま通せる。 */
+  const describeProjectParameters = function (report) {
+    const body = Object.keys(report.values).map(function (name) {
+      return name + '=' + String(report.values[name]) + '(' + report.from[name] + ')'
+    }).join(' ')
+    const notes = []
+    if (report.settingsIgnored) {
+      notes.push('js/plugins.js に ' + report.plugin + ' の設定がありますが、js/plugins/' +
+        report.plugin + '.js が無いので読んでいません(出荷時の既定で動きます)。')
+    }
+    if (report.differs.length) {
+      notes.push('指定した値がゲームの設定と違います: ' + report.differs.join(', ') +
+        ' / 取り出しと反映の両方に同じ値を渡してください(片方だけだと、省くタグと補う値が食い違います)。')
+    }
+    return { line: report.plugin + ': ' + body, notes }
   }
 
   /* 明示された3つを別の options へ受け渡す。鍵の綴りを2か所に書かないため。
@@ -13309,7 +13377,7 @@
      * トップレベルに置くと、プラグインとして入れたときに他のプラグインと名前を取り合う
      * (同名の宣言があると読み込みごと失敗する)。内部用の窓口ごしに渡す。
      * 列挙しないので、公開 API の一覧(Object.keys)には出ない。 */
-    Object.defineProperty(module.exports, '_internal', { value: { collectTextFiles, useProjectParameters, pluginParametersOf, hasConflictMarkerInText, missingPageReason } })
+    Object.defineProperty(module.exports, '_internal', { value: { collectTextFiles, useProjectParameters, pluginParametersOf, pluginReadOf, resolveProjectParameters, describeProjectParameters, hasConflictMarkerInText, missingPageReason } })
   }
 })()
 
@@ -13498,6 +13566,13 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     cliParams[name] = options[name]
     cliNamespaceParams[EXPLICIT_CLI[name]] = options[name]
   })
+
+  /* 何を補うかは3つの出どころから決まるので、-v のときは決まった値とその出どころを言う。
+   * stdout は機械の通路(JSON)なので stderr へ。食い違いは -v が無くても言う。 */
+  const { resolveProjectParameters, describeProjectParameters } = module.exports._internal
+  const paramReport = describeProjectParameters(resolveProjectParameters(cliRoot, cliParams))
+  if (options.verbose) console.error('[params] ' + paramReport.line)
+  paramReport.notes.forEach(function (note) { console.error('[params] ' + note) })
 
   /* 根の外にあるテキストやデータは、祖先だけが根の側に取り残される。さらに根の外の
    * テキストは相対パスを作れず「フォルダ名/ファイル名」に丸まるので、別プロジェクトの

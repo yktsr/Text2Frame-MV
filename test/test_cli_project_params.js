@@ -157,6 +157,40 @@ describe('the command line and the game\'s own settings', function () {
     })
   })
 
+  /* 何を補うかは3つの出どころから決まるので、どこから来たかを言えること。
+   * stdout は機械の通路(JSON)なので、報告は stderr へ出す。 */
+  describe('saying where the values came from', function () {
+    it('says it with -v, on both commands', function () {
+      const pull = run('frame2text', ['--mode', 'batch', '--scope', 'all', '-v'])
+      writeTagless()
+      const push = run('text2frame', ['--mode', 'batch', '-v'])
+
+      expect(pull.stderr).to.contain('Text2Frame: background=透明(ゲーム)')
+      expect(pull.stderr).to.contain('Frame2Text: englishTag=false(ゲーム)')
+      expect(push.stderr).to.contain('background=透明(ゲーム)')
+      /* 報告を stdout に出すと機械が読めなくなる。-v はもともとデバッグのログを
+       * stdout に出すので、見るのは -v を付けないときの出力。 */
+      const plain = run('text2frame', ['--mode', 'batch'])
+      expect(function () { JSON.parse(plain.stdout) }).to.not.throw()
+      expect(plain.stdout).to.not.contain('[params]')
+    })
+
+    it('says when the settings are there but the plugin is not, even without -v', function () {
+      writeTagless()
+      fs.rmSync(path.join(root, 'js', 'plugins', 'Text2Frame.js'))
+
+      const r = run('text2frame', ['--mode', 'batch'])
+
+      expect(r.stderr).to.contain('js/plugins/Text2Frame.js')
+    })
+
+    it('says when a flag disagrees with the game, even without -v', function () {
+      const r = run('frame2text', ['--mode', 'batch', '--scope', 'all', '--background', 'ウインドウ'])
+
+      expect(r.stderr).to.contain('取り出しと反映')
+    })
+  })
+
   /* CSV の経路にも同じ旗が届くこと(メモの列はコメント文字で往復する)。 */
   describe('the csv route', function () {
     it('takes the comment character from the caller on the way out', function () {

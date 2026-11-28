@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DatabaseService, DbContext } from './dbService';
-import { commentCharFor, frontMatterBody, parseFrontMatter, workspaceRootFor } from './compiler';
+import { commentCharFor, fillParamsFor, frontMatterBody, gameRootFor, parseFrontMatter, workspaceRootFor } from './compiler';
 import { isSidecarText } from './db/files';
 import { loadCompiler, unappliedFilesSlowly } from './deploy';
 import { projectTextFiles } from './usagesView';
@@ -95,6 +95,7 @@ export function registerProjectCheck(context: vscode.ExtensionContext, service: 
         }
         collection.clear();
         const counts = { error: 0, warning: 0, info: 0, files: 0 };
+        const paramNotes: string[] = [];
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: tr('Text2Frame: プロジェクト全体を検査しています', 'Text2Frame: Checking the whole project'), cancellable: true }, async (progress, token) => {
             const files = (await projectTextFiles(ctx)).filter((u) => !isSidecarText(u.fsPath));
             const { mod } = loadCompiler(context, root);
@@ -104,6 +105,14 @@ export function registerProjectCheck(context: vscode.ExtensionContext, service: 
             const audio = audioNames(ctx);
             // このプロジェクトのコメント文字。コメント行を本文として指摘しないため。
             const commentChar = commentCharFor(ctx.root);
+            /* 何を補うかの出どころ。言わないと黙って倒れる2つだけ拾う ──
+             * 設定だけ残してプラグインを消した形と、取り出しと反映で食い違う形。 */
+            const inner = mod && mod._internal;
+            if (inner && inner.resolveProjectParameters && inner.describeProjectParameters) {
+                const said = inner.describeProjectParameters(
+                    inner.resolveProjectParameters(gameRootFor(root) as string, fillParamsFor(root)));
+                said.notes.forEach((note) => paramNotes.push(note));
+            }
             const results = new Map<string, vscode.Diagnostic[]>();
             for (let i = 0; i < files.length; i++) {
                 if (token.isCancellationRequested) return;
@@ -190,6 +199,9 @@ export function registerProjectCheck(context: vscode.ExtensionContext, service: 
             : tr('Text2Frame: 検査しました。問題は見つかりませんでした。', 'Text2Frame: Checked. No problems found.');
         const pick = await vscode.window.showInformationMessage(summary, ...(counts.files ? [tr('問題パネルを開く', 'Open the Problems panel')] : []));
         if (pick) vscode.commands.executeCommand('workbench.actions.view.problems');
+        /* ファイルに紐づく問題ではないので、別に言う(黙って出荷時の既定に倒れるのが
+         * いちばん困るため)。 */
+        for (const note of paramNotes) vscode.window.showWarningMessage('Text2Frame: ' + note);
     };
 
     const forget = (document: vscode.TextDocument): void => collection.delete(document.uri);
