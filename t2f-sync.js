@@ -287,7 +287,9 @@ if (require.main === module) {
       .option('-d, --data-dir <dir>', 'game data directory', 'data')
       .option('--root <dir>', 'project root for data/, text/ and .t2f-base (default: current directory)')
       .option('-s, --strategy <merge|overwrite>', 'sync strategy', /^(merge|overwrite)$/i, 'merge')
-      .option('-w, --english_tag <true/false>', 'english tag on pull', 'true')
+      /* 既定を置かない。置くと「指定なし」が言えなくなり、そのゲームの
+       * Frame2Text の設定に従う道が消える。 */
+      .option('-w, --english_tag <true/false>', 'english tag on pull (default: ask the game)')
       .option('--scope <all|nonempty|conversation|custom>', 'which events to pull (default: custom = only texts with front matter)', /^(all|nonempty|conversation|custom)$/i, 'custom')
       .option('-v, --verbose', 'debug mode', false)
   }
@@ -303,7 +305,7 @@ if (require.main === module) {
       textDir: options.textDir,
       strategy: String(options.strategy).toLowerCase(),
       scope: String(options.scope || 'custom').toLowerCase(),
-      englishTag: String(options.english_tag) !== 'false',
+      englishTag: options.english_tag === undefined ? undefined : String(options.english_tag) !== 'false',
       direction: String(options.direction).toLowerCase(),
       verbose: options.verbose,
       guard

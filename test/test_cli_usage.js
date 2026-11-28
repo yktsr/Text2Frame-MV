@@ -95,6 +95,31 @@ describe('command line usage', function () {
       expect(help('text2frame')).to.not.contain('-w,')
     })
 
+    /* 補う3つは、取り出しと反映で同じ値を使えないと往復が閉じないので、両方に同じ名前で置く。
+     * 短縮形は与えない(与えると4つのコマンドで字が足りなくなる)。 */
+    it('spells the three fill-in options the same way in both, with no short form', function () {
+      const both = [help('text2frame'), help('frame2text')]
+      both.forEach(function (text) {
+        expect(text).to.contain('--background <name>')
+        expect(text).to.contain('--window-position <name>')
+        expect(text).to.contain('--comment-out-char <char>')
+        expect(text).to.not.match(/-\w, --background/)
+        expect(text).to.not.match(/-\w, --window-position/)
+        expect(text).to.not.match(/-\w, --comment-out-char/)
+      })
+    })
+
+    /* 既定を宣言すると「指定なし」が言えなくなり、そのゲームの設定に従う道が消える。
+     * commander は既定を使い方に "(default: ...)" と出すので、そこを見れば分かる。 */
+    it('declares no default for the options that fall back to the game', function () {
+      const text = help('frame2text')
+      expect(text).to.match(/--english_tag <true\/false>[^\n]*\n?[^\n]*/)
+      expect(text).to.not.match(/--english_tag[\s\S]{0,120}?\(default: "true"\)/)
+      expect(text).to.not.match(/--omit-default-tags[\s\S]{0,140}?\(default: "true"\)/)
+      expect(cp.spawnSync('node', [SYNC_CLI, 'once', '--help'], { cwd: tmp, encoding: 'utf8' }).stdout)
+        .to.not.match(/--english_tag[\s\S]{0,120}?\(default: "true"\)/)
+    })
+
     it('text2frame reads a single text with -f', function () {
       fs.mkdirSync(path.join(tmp, 'data'))
       fs.writeFileSync(path.join(tmp, 'data', 'Map001.json'), JSON.stringify({

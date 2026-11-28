@@ -4911,6 +4911,21 @@
     return Object.keys(out).length ? out : null
   }
 
+  /* 明示された3つを別の options へ受け渡す。鍵の綴りを2か所に書かないため。
+   * spelling に 'namespace' を渡すと COMMAND_LINE の束の綴りで書く(あの口は名前空間の鍵で受ける)。
+   *
+   * これが要るのは、applyTextFile が中でもう一度 COMMAND_LINE を通るから ── 受け渡さないと、
+   * **内側の窓がゲームの設定で開き直して、外側で明示した値を踏む**。 */
+  const carryExplicitParameters = function (from, to, spelling) {
+    const explicit = explicitParametersOf(from)
+    if (explicit) {
+      Object.keys(explicit).forEach(function (field) {
+        to[spelling === 'namespace' ? field : EXPLICIT_FIELDS[field]] = explicit[field]
+      })
+    }
+    return to
+  }
+
   /* 優先順位をここ1か所で決める。
    *
    *   明示したオプション  >  ゲームの plugins.js  >  出荷時の既定
@@ -11337,7 +11352,7 @@
             throw new Error('mapPath or mapId is required for event entry')
           }
           target = { kind, mapId: mapId ? String(mapId) : undefined, eventId: String(eventId), pageId: String(pageId) }
-          interpreter.pluginCommandText2Frame('COMMAND_LINE', [{
+          interpreter.pluginCommandText2Frame('COMMAND_LINE', [carryExplicitParameters(opts, {
             IsDebug: !!opts.isDebug,
             TextPath: textPath,
             MapPath: dataPath,
@@ -11348,7 +11363,7 @@
             // add はイベント末尾への追記(上書きにはしない)。
             Strategy: strategy,
             ExecMode: 'IMPORT_MESSAGE_TO_EVENT'
-          }])
+          }, 'namespace')])
         } else if (kind === 'common') {
           const commonEventId = opts.commonEventId || meta.commonEventId
           if (!commonEventId) {
@@ -11358,7 +11373,7 @@
             resolveFromRoot(BASE_PATH, opts.commonEventPath) ||
             resolveFromRoot(BASE_PATH, pathLib.join('data', 'CommonEvents.json'))
           target = { kind, commonEventId: String(commonEventId) }
-          interpreter.pluginCommandText2Frame('COMMAND_LINE', [{
+          interpreter.pluginCommandText2Frame('COMMAND_LINE', [carryExplicitParameters(opts, {
             IsDebug: !!opts.isDebug,
             TextPath: textPath,
             CommonEventPath: dataPath,
@@ -11367,7 +11382,7 @@
             BaseRoot: opts.baseRoot,
             Strategy: strategy,
             ExecMode: 'IMPORT_MESSAGE_TO_CE'
-          }])
+          }, 'namespace')])
         } else {
           throw new Error('unknown kind: ' + kind)
         }
@@ -12438,7 +12453,7 @@
     const mergeRows = function (text, csvRows, opts) {
       const o = opts || {}
       const hints = Object.assign({}, CSV_HINTS, o.hints || {})
-      const base = foldToRows(text, o.key, { gameRoot: o.gameRoot })
+      const base = foldToRows(text, o.key, carryExplicitParameters(o, { gameRoot: o.gameRoot }))
       const whole = uniformNewLineCode(String(text))
       const stamp = base.length ? base[0].版 : csvStamp(whole)
       const problems = []
@@ -12692,7 +12707,7 @@
       return {
         ok: !fatal,
         // 断るものがあったら、いまのテキストをそのまま返す(途中まで当てた形を作らない)。
-        text: fatal ? whole : csvRowsToLines(out, { gameRoot: o.gameRoot }).join('\n'),
+        text: fatal ? whole : csvRowsToLines(out, carryExplicitParameters(o, { gameRoot: o.gameRoot })).join('\n'),
         stamp,
         problems,
         missing,
@@ -12901,14 +12916,14 @@
           return
         }
         const parsed = parseFrontMatter(whole)
-        const merged = mergeRows(parsed.body, group.rows, {
+        const merged = mergeRows(parsed.body, group.rows, carryExplicitParameters(o, {
           key: group.key,
           gameRoot: o.gameRoot,
           allowDelete,
           hints,
           exportedMode: csvModeOfMark(group.mark),
           headStamp: group.headStamp
-        })
+        }))
         // 行ごとの判定を、表の位置へ戻す。
         merged.verdicts.forEach(function (v, k) {
           const n = group.at[k]
@@ -12956,14 +12971,14 @@
         }
 
         _fs.writeFileSync(textPath, parsed.header + merged.text, 'utf8')
-        const applyOpts = {
+        const applyOpts = carryExplicitParameters(o, {
           textPath,
           strategy: o.strategy || 'merge',
           basePath: o.basePath,
           baseRoot: o.gameRoot,
           gameRoot: o.gameRoot,
           isDebug: !!o.isDebug
-        }
+        })
         if (target.kind === 'common') {
           applyOpts.commonEventPath = _path.join(o.dataDir, 'CommonEvents.json')
         } else {
@@ -13337,6 +13352,11 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('--allow-delete', 'csv mode: let rows missing from the sheet delete their lines', false)
     .option('--force', 'csv mode: apply even when most of a target changed', false)
     .option('--max-change <percent>', 'csv mode: refuse a target when more than this share of its rows changed', '50')
+    /* タグを省いて書かれたテキストに何を補うか。既定を置かないのが肝 ── 置くと
+     * 「指定なし」が言えなくなり、そのゲームの設定に従う道が消える。 */
+    .option('--background <name>', 'fill in this background when a message has no tag (default: ask the game)')
+    .option('--window-position <name>', 'fill in this window position when a message has no tag (default: ask the game)')
+    .option('--comment-out-char <char>', 'treat lines starting with this as comments (default: ask the game)')
     .parse()
 
   const help_text = `
@@ -13428,6 +13448,24 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
           例1: $ cat test/basic.txt | npx text2frame --mode compile
 
+        タグを省いて書かれたテキストに何を補うか（どのモードでも効きます）
+          タグの無い「文章の表示」には、背景とウィンドウ位置が補われます。また % で
+          始まる行はコメントとして落とされます。何を使うかは、この順で決まります。
+
+            1. --background / --window-position / --comment-out-char で指定したもの
+            2. そのゲームの js/plugins.js にある Text2Frame の設定
+               （プラグインが実際に入っているときだけ読みます）
+            3. 出荷時の既定（ウィンドウ / 下 / %）
+
+          ツクールで既定を「透明」にしているプロジェクトでは、2 が効かないと
+          **全部のメッセージウィンドウがウィンドウに倒れます**。プラグインを入れて
+          いないゲームでは、1 で言ってください。
+          例1: $ npx text2frame --mode batch --background 透明 --window-position 上
+          例2: $ npx text2frame --mode batch --comment-out-char '#'
+
+          指定した値は取り出す側（frame2text）にも同じ名前で渡してください。
+          片方だけに付けると、省くタグと補う値が食い違います。
+
 `
   program.addHelpText('after', help_text)
   const options = program.opts()
@@ -13444,6 +13482,22 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   // プラグイン側と同じフォルダ走査を使う(内部用の窓口ごし)。
   const { collectTextFiles } = module.exports._internal
   const cliBase = fromRoot(options.base)
+
+  /* 旗で言われた3つだけを下へ渡す。言われていないものは鍵を立てない ── 立てると
+   * 「指定なし」が消えて、そのゲームの設定に従えなくなる。
+   * COMMAND_LINE の口は名前空間の鍵で受けるので、綴りの対応はここ1か所で持つ。 */
+  const EXPLICIT_CLI = {
+    background: 'Background',
+    windowPosition: 'WindowPosition',
+    commentOutChar: 'CommentOutChar'
+  }
+  const cliParams = {}
+  const cliNamespaceParams = {}
+  Object.keys(EXPLICIT_CLI).forEach(function (name) {
+    if (options[name] === undefined) return
+    cliParams[name] = options[name]
+    cliNamespaceParams[EXPLICIT_CLI[name]] = options[name]
+  })
 
   /* 根の外にあるテキストやデータは、祖先だけが根の側に取り残される。さらに根の外の
    * テキストは相対パスを作れず「フォルダ名/ファイル名」に丸まるので、別プロジェクトの
@@ -13507,7 +13561,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     noteOutsideRoot('text', fromRoot(singleTextPath))
     noteOutsideRoot('data', mapPath)
     reportOutsideRoot()
-    const Text2Frame = {
+    const Text2Frame = Object.assign({
       IsDebug: options.verbose,
       TextPath: fromRoot(singleTextPath),
       Strategy: cliSingleStrategy,
@@ -13518,7 +13572,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       MapPath: mapPath,
       EventID: String(eventId),
       PageID: String(options.page_id || fm.pageId || '1')
-    }
+    }, cliNamespaceParams)
     Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [Text2Frame])
   } else if (options.mode === 'common') {
     const fm = frontMatterOf(singleTextPath)
@@ -13530,7 +13584,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     noteOutsideRoot('text', fromRoot(singleTextPath))
     noteOutsideRoot('data', commonEventPath)
     reportOutsideRoot()
-    const Text2Frame = {
+    const Text2Frame = Object.assign({
       IsDebug: options.verbose,
       TextPath: fromRoot(singleTextPath),
       Strategy: cliSingleStrategy,
@@ -13539,7 +13593,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       BaseRoot: cliRoot,
       CommonEventPath: commonEventPath,
       CommonEventID: String(commonEventId)
-    }
+    }, cliNamespaceParams)
     Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [Text2Frame])
   } else if (options.mode === 'compile') {
     process.stdin.setEncoding('utf8')
@@ -13581,6 +13635,9 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       index,
       gameRoot: cliRoot,
       dataDir,
+      background: cliParams.background,
+      windowPosition: cliParams.windowPosition,
+      commentOutChar: cliParams.commentOutChar,
       strategy: cliStrategy,
       basePath: cliBase,
       allowDelete: !!options.allowDelete,
@@ -13660,14 +13717,14 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       const parsed = readFrontMatter(fs.readFileSync(fileArg, { encoding: 'utf8' }))
       const meta = parsed.meta || {}
       const kind = String(meta.kind || 'event').toLowerCase()
-      const opts = {
+      const opts = Object.assign({
         textPath: fileArg,
         strategy,
         basePath: cliBase,
         // 祖先(.t2f-base)の置き場所。渡さないと process.cwd() に落ちる。
         baseRoot: cliRoot,
         isDebug: options.verbose
-      }
+      }, cliParams)
       // Resolve data paths against the project root (cwd), not the module dir, so batch
       // deploys target the invoking project's data/ (front matter carries the routing IDs).
       if (kind === 'common') {
