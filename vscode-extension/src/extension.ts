@@ -18,13 +18,15 @@ import { exportCurrentFile, exportConversationOnly } from './exportText';
 import { deployAll, exportAll, repullAllOverwrite } from './batch';
 import { registerTreeView } from './tree';
 import { registerCommandsView } from './commandsView';
-import { parseFrontMatter } from './compiler';
+import { commentCharFor, parseFrontMatter, workspaceRootFor } from './compiler';
 import { DatabaseService } from './dbService';
 import { registerDatabaseFeatures } from './dbFeatures';
 import { registerDatabaseView } from './dbView';
 import { registerPreview } from './preview';
 import { registerColorSwatches } from './colorSwatches';
+import { registerMcpProvider } from './mcpProvider';
 import { registerTestPlay } from './testPlay';
+import { registerSaveFiles } from './saveFiles';
 import { LiveService } from './live';
 import { registerLiveView } from './liveView';
 import { registerRunHighlight } from './runHighlight';
@@ -94,8 +96,11 @@ export function activate(context: vscode.ExtensionContext) {
     registerDebugger(context, database, live, running);
     // 色調・フラッシュの値の前に色見本。
     registerColorSwatches(context);
+    /* 同梱の MCP サーバを VS Code のチャットに知らせる(設定ファイルは要らない)。 */
+    registerMcpProvider(context);
     // テストプレイ(ゲームを VS Code の中のブラウザで)。
     registerTestPlay(context, database, live);
+    registerSaveFiles(context, live);
     registerLiveView(context, database, live, running);
 
     // Auto-assign the text2frame language to front-matter .txt files (open now + later).
@@ -108,6 +113,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Export / batch / preview commands.
     context.subscriptions.push(
         vscode.commands.registerCommand('text2frame.exportCurrentFile', () => exportCurrentFile(context)),
+        vscode.commands.registerCommand('text2frame.exportCurrentFileOverwrite', () => exportCurrentFile(context, 'overwrite')),
         vscode.commands.registerCommand('text2frame.exportConversationOnly', () => exportConversationOnly(context)),
         vscode.commands.registerCommand('text2frame.showCompiledJson', () => showCompiledJson(context)),
         vscode.commands.registerCommand('text2frame.deployAll', () => deployAll(context)),
@@ -175,7 +181,7 @@ function updateDiagnostics(document: vscode.TextDocument, collection: vscode.Dia
 
     const lines: string[] = [];
     for (let i = 0; i < document.lineCount; i++) lines.push(document.lineAt(i).text);
-    const diagnostics = basicProblems(lines).map((p) => {
+    const diagnostics = basicProblems(lines, commentCharFor(workspaceRootFor(document))).map((p) => {
         const d = new vscode.Diagnostic(
             new vscode.Range(p.line, p.start, p.line, p.end),
             p.message,

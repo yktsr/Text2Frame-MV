@@ -86,6 +86,43 @@ describe('loading the plugins the way a deployed game does', function () {
     })
   })
 
+  /* CSV の口はゲームの中からも使う(プラグインコマンド)ので、_internal の囲いに入れられない
+   * ── つまりゲームの起動時に走る側に居る。ここに置くものが Node のものに触ると、
+   * 公開(web)に配ったゲームが読み込みごと落ちる。関数の参照だけを置き、require は関数の
+   * 中で読む、という規律をここで固める。 */
+  describe('the CSV window, which the game itself uses', function () {
+    it('is there after loading the way a deployed game does', function () {
+      const api = load('Text2Frame.js').sandbox.$LaurusText2Frame
+      expect(api._csv.foldToRows).to.be.a('function')
+      expect(api._csv.mergeRows).to.be.a('function')
+      expect(api._csv.formatCsv).to.be.a('function')
+      expect(api._csv.parseCsv).to.be.a('function')
+    })
+
+    it('stays out of the list of public names', function () {
+      const api = load('Text2Frame.js').sandbox.$LaurusText2Frame
+      expect(Object.keys(api)).to.not.include('_csv')
+    })
+
+    it('folds a text without reaching for anything Node has', function () {
+      // require も fs も無い入れ物で、実際に畳んで戻す。
+      const api = load('Text2Frame.js').sandbox.$LaurusText2Frame
+      const rows = api._csv.foldToRows('こんにちは\n\nさようなら', 'k')
+      expect(rows.map(function (r) { return r.種別 })).to.eql(['セリフ', '空行', 'セリフ'])
+      // 版は crypto が無くても付く(食い違いを見分けるだけなので代わりの指紋で足りる)。
+      expect(rows[0].版).to.match(/^[0-9a-f]{8}$/)
+      expect(api._csv.mergeRows('こんにちは\n\nさようなら', rows, { key: 'k' }).text)
+        .to.equal('こんにちは\n\nさようなら')
+    })
+
+    it('writes a CSV without reaching for anything Node has', function () {
+      const api = load('Text2Frame.js').sandbox.$LaurusText2Frame
+      const out = api._csv.formatCsv(api._csv.foldToRows('こんにちは', 'k'))
+      expect(out.charCodeAt(0)).to.equal(0xfeff)
+      expect(api._csv.parseCsv(out).rows[0].本文).to.equal('こんにちは')
+    })
+  })
+
   /* ツクールはプラグインを全部「同じグローバル」に読み込む。トップレベルで const や
    * function を宣言すると、他のプラグインが同じ名前を使っていたら読み込みごと失敗する
    * (SyntaxError: Identifier ... has already been declared)。

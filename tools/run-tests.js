@@ -57,17 +57,30 @@ const results = []
 let next = 0
 let running = 0
 
+/* 1ファイルの上限。**長生きするものを1つ閉じ忘れると、これが無ければ実行全体が止まる**
+ * (mocha に --exit は付けない。付けると漏れが見えなくなる。ここで切れば、凍結ではなく
+ * 1つの失敗として出力ごと出る)。いちばん重い往復の検査でも十数秒なので、十分に広い。 */
+const SUITE_TIMEOUT_MS = Number(process.env.T2F_SUITE_TIMEOUT_MS || 180000)
+
 const runOne = function (file, done) {
-  const child = cp.spawn(process.execPath, [MOCHA, file], { cwd: ROOT, encoding: 'utf8' })
+  const child = cp.spawn(process.execPath, [MOCHA, file], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: SUITE_TIMEOUT_MS,
+    killSignal: 'SIGKILL'
+  })
   let out = ''
   child.stdout.on('data', function (d) { out += d })
   child.stderr.on('data', function (d) { out += d })
-  child.on('close', function (code) {
+  child.on('close', function (code, signal) {
+    if (signal === 'SIGKILL') {
+      out += '\n(' + (SUITE_TIMEOUT_MS / 1000) + ' 秒で切りました。閉じ忘れた常駐のものがある可能性があります)\n'
+    }
     const passing = countOf(out, 'passing')
     const failing = countOf(out, 'failing')
     const pending = countOf(out, 'pending')
     const name = path.relative(ROOT, file)
-    const ok = code === 0 && failing === 0
+    const ok = code === 0 && failing === 0 && signal !== 'SIGKILL'
     results.push({ name, ok, passing, failing, pending, out })
     console.log((ok ? '  ok  ' : '  NG  ') + name +
       '  (' + passing + (pending ? ' passing, ' + pending + ' pending' : ' passing') +

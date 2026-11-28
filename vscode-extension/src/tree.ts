@@ -10,6 +10,7 @@ import { reviewPull } from './reviewApply';
 import { DatabaseService, DbContext } from './dbService';
 import { RunTracker } from './runHighlight';
 import { placeFromKey, placeFromMeta, placeKey, Place } from './placeLabel';
+import { eventHasText, pagesWithText } from './treeFilter';
 import { LiveService } from './live';
 import {
     readMapInfos, mapTree, mapLabel, pageDescription, pageConditionTexts, commonDescription,
@@ -105,6 +106,19 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
     private readonly unapplied = new Map<string, [string, boolean]>();
     private checking = false;
     private soon: NodeJS.Timeout | undefined;
+    /** テキストがあるものだけ出す。既定は出す(まだ無い行が取り出しの入口なので)。 */
+    private textsOnly = false;
+
+    setTextsOnly(on: boolean): void {
+        this.textsOnly = on;
+        this.refresh();
+    }
+
+    /** そのページ・コモンにテキストがあるか。索引は getChildren のたびに新しくしている。 */
+    private hasText(place: Place): boolean {
+        const key = placeKey(place);
+        return !!key && this.texts.has(key);
+    }
 
     constructor(
         private readonly context: vscode.ExtensionContext,
@@ -325,7 +339,10 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
         const events = this.service.mapEvents(ctx, mapId);
         const out: T2FNode[] = [];
         (events || []).forEach((event, id) => {
-            if (event && id > 0) out.push(this.eventNode(ctx, mapId, id, event, here));
+            if (!event || id <= 0) return;
+            /* 絞るときは、下に1つも残らないイベントを出さない。出すと「開けるのに空」になる。 */
+            if (this.textsOnly && !eventHasText(event.pages || 0, (index) => this.hasPageText(mapId, id, index))) return;
+            out.push(this.eventNode(ctx, mapId, id, event, here));
         });
         return out;
     }
@@ -348,10 +365,17 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
 
     private pageNodes(ctx: DbContext, mapId: number, eventId: number, here = false): T2FNode[] {
         const event = this.service.mapEvents(ctx, mapId)?.[eventId];
-        const out: T2FNode[] = [];
-        for (let index = 0; index < (event ? event.pages || 0 : 0); index++) out.push(this.pageNode(ctx, mapId, eventId, event as MapEvent, index, here));
+        const pages = event ? event.pages || 0 : 0;
+        const indexes = this.textsOnly
+            ? pagesWithText(pages, (index) => this.hasPageText(mapId, eventId, index))
+            : pagesWithText(pages, () => true);
+        const out = indexes.map((index) => this.pageNode(ctx, mapId, eventId, event as MapEvent, index, here));
         this.checkUnapplied(ctx, out);
         return out;
+    }
+
+    private hasPageText(mapId: number, eventId: number, index: number): boolean {
+        return this.hasText({ kind: 'event', mapId, eventId, pageId: index + 1 });
     }
 
     private pageNode(ctx: DbContext, mapId: number, eventId: number, event: MapEvent, index: number, here = false): T2FNode {
@@ -393,7 +417,10 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
     }
 
     private commonNodes(ctx: DbContext): T2FNode[] {
-        const out = this.commons(ctx).map((entry) => this.commonNode(ctx, entry));
+        const entries = this.textsOnly
+            ? this.commons(ctx).filter((entry) => this.hasText({ kind: 'common', commonEventId: entry.id }))
+            : this.commons(ctx);
+        const out = entries.map((entry) => this.commonNode(ctx, entry));
         this.checkUnapplied(ctx, out);
         return out;
     }
@@ -473,6 +500,17 @@ export class T2FTreeProvider implements vscode.TreeDataProvider<T2FNode> {
 export function registerTreeView(context: vscode.ExtensionContext, service: DatabaseService, running: RunTracker, live: LiveService): void {
     const provider = new T2FTreeProvider(context, service, running, live);
     const view = vscode.window.createTreeView('text2frameExplorer', { treeDataProvider: provider });
+
+    /* テキストがあるものだけに絞るかは、フォルダごとに覚える。ボタンの出し分けは
+     * when 句で見るので、合わせて context key も立てる(review.ts と同じ作法)。 */
+    const FILTER_KEY = 'text2frame.treeTextsOnly';
+    const setFilter = (on: boolean): void => {
+        context.workspaceState.update(FILTER_KEY, on);
+        vscode.commands.executeCommand('setContext', FILTER_KEY, on);
+        provider.setTextsOnly(on);
+        view.description = on ? tr('テキストがあるものだけ', 'Only those with a text') : undefined;
+    };
+    setFilter(context.workspaceState.get<boolean>(FILTER_KEY, false));
     let signature = provider.markSignature();
     const marksChanged = (): void => {
         const next = provider.markSignature();
@@ -542,6 +580,8 @@ export function registerTreeView(context: vscode.ExtensionContext, service: Data
     context.subscriptions.push(
         view,
         vscode.commands.registerCommand('text2frame.tree.refresh', () => provider.refresh()),
+        vscode.commands.registerCommand('text2frame.tree.textsOnly', () => setFilter(true)),
+        vscode.commands.registerCommand('text2frame.tree.showAll', () => setFilter(false)),
         vscode.commands.registerCommand('text2frame.tree.open', (node: T2FNode) => openLeaf(node)),
         vscode.commands.registerCommand('text2frame.tree.export', async (node: T2FNode) => {
             const root = workspaceRootOrWarn();

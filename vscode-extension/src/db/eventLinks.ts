@@ -36,6 +36,9 @@ export interface Link {
     index?: number;
     /** 行き先が変数で決まるとき(to は変数)。 */
     byVariable?: boolean;
+    /** 場所移動の着地点。相手のマップのどこに降りるか(マップ直指定のときだけ)。 */
+    toX?: number;
+    toY?: number;
     /** 出現条件のときの、ページのしきい値など。表に出す短い言葉。 */
     note?: string;
 }
@@ -82,7 +85,7 @@ export function commandLinks(from: string, commands: RpgCommand[]): Link[] {
             case 201: case 202: {
                 const q = command.code === 201 ? p : p.slice(1);
                 const how: LinkHow = command.code === 201 ? 'transfer' : 'vehicle';
-                if (int(q[0]) === 0 && int(q[1]) > 0) add(nodeKey({ kind: 'map', id: int(q[1]) }), how);
+                if (int(q[0]) === 0 && int(q[1]) > 0) add(nodeKey({ kind: 'map', id: int(q[1]) }), how, { toX: int(q[2]), toY: int(q[3]) });
                 else if (int(q[0]) === 1 && int(q[1]) > 0) add(nodeKey({ kind: 'variable', id: int(q[1]) }), how, { byVariable: true });
                 break;
             }
@@ -206,6 +209,9 @@ export interface MapLink {
     how: 'transfer' | 'vehicle';
     /** 行き先が変数で決まるときの、その変数。 */
     variableId?: number;
+    /** 着地点(マップ直指定のときだけ)。相手のマップに**イベントが居るとは限らない**。 */
+    toX?: number;
+    toY?: number;
 }
 
 export function mapLinks(links: Link[]): MapLink[] {
@@ -220,7 +226,9 @@ export function mapLinks(links: Link[]): MapLink[] {
             at: link.from,
             index: link.index,
             how: link.how,
-            variableId: link.byVariable && target && target.kind === 'variable' ? target.id : undefined
+            variableId: link.byVariable && target && target.kind === 'variable' ? target.id : undefined,
+            toX: link.toX,
+            toY: link.toY
         });
     }
     return out;

@@ -80,15 +80,26 @@ describe('eventLinks', function () {
     expect(index.in('nothing')).to.eql([])
   })
 
-  it('turns the transfers into map to map links', function () {
+  /* 着地点(x, y)も畳んだ行に残す。「マップのつながり」の行がそれを出すので、相手の
+   * マップのどこに降りるかが読める。行き先を変数で決めているものには座標が無い。 */
+  it('turns the transfers into map to map links, keeping where they land', function () {
     const links = [
       ...commandLinks(page, [{ code: 201, parameters: [0, 7, 4, 5, 0, 0] }, { code: 201, parameters: [1, 20, 21, 22, 0, 0] }]),
       ...commandLinks('c:4', [{ code: 201, parameters: [0, 9, 1, 1, 0, 0] }])
     ]
     expect(mapLinks(links)).to.eql([
-      { fromMap: 3, toMap: 7, at: page, index: 0, how: 'transfer', variableId: undefined },
-      { fromMap: 3, toMap: undefined, at: page, index: 1, how: 'transfer', variableId: 20 },
-      { fromMap: undefined, toMap: 9, at: 'c:4', index: 0, how: 'transfer', variableId: undefined }
+      { fromMap: 3, toMap: 7, at: page, index: 0, how: 'transfer', variableId: undefined, toX: 4, toY: 5 },
+      { fromMap: 3, toMap: undefined, at: page, index: 1, how: 'transfer', variableId: 20, toX: undefined, toY: undefined },
+      { fromMap: undefined, toMap: 9, at: 'c:4', index: 0, how: 'transfer', variableId: undefined, toX: 1, toY: 1 }
+    ])
+  })
+
+  /* 乗り物の位置設定(202)は先頭に乗り物の番号が入るので、座標の位置が1つずれる。 */
+  it('keeps where a vehicle is placed', function () {
+    const links = commandLinks(page, [{ code: 202, parameters: [0, 0, 9, 11, 12] }])
+
+    expect(mapLinks(links)).to.eql([
+      { fromMap: 3, toMap: 9, at: page, index: 0, how: 'vehicle', variableId: undefined, toX: 11, toY: 12 }
     ])
   })
 })

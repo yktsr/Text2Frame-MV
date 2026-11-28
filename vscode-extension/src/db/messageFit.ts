@@ -1,3 +1,4 @@
+import { parsePlugins } from './projectParams';
 import { readStructure, StructureNode } from './structure';
 
 /**
@@ -122,15 +123,7 @@ export interface MessageProblem {
 
 /** 有効な自動改行のプラグイン(js/plugins.js)があれば、その名前。 */
 export function autoWrapPlugin(pluginsJs: string): string | undefined {
-    const m = pluginsJs.match(/\$plugins\s*=\s*(\[[\s\S]*\])\s*;?/);
-    if (!m) return undefined;
-    let list: Array<{ name?: string; status?: boolean }>;
-    try {
-        list = JSON.parse(m[1]);
-    } catch (e) {
-        return undefined;
-    }
-    const hit = list.find((p) => p && p.status && typeof p.name === 'string' && /word\s*wrap|auto\s*line\s*break|auto\s*wrap/i.test(p.name));
+    const hit = parsePlugins(pluginsJs).find((p) => p && p.status && typeof p.name === 'string' && /word\s*wrap|auto\s*line\s*break|auto\s*wrap/i.test(p.name));
     return hit ? hit.name : undefined;
 }
 

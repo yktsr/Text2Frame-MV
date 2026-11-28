@@ -54,9 +54,9 @@ fs.copyFileSync(sourceText2FramePath, distText2FramePath)
 fs.copyFileSync(sourceFrame2TextPath, distFrame2TextPath)
 
 // 刻印するのは単体で配るプラグイン2枚だけ。cjs/es/umd は npm 経由でしか渡らず、
-// 版と公開日時はレジストリと package.json が持っている。加えてこの3つはリポジトリに
-// コミットする成果物なので、刻印の時刻が入ると毎ビルド差分が出て「古いかどうか」の
-// 判定(pack-all.sh の git diff)が意味を失う。
+// 版と公開日時はレジストリと package.json が持っているので要らない。
+// (この3つは以前コミットしていて、刻印の時刻が入ると毎ビルド差分が出るのも避ける
+//  理由だった。いまは追跡していないので、残る理由は上の1点だけ)
 const targets = [
   'Frame2Text.js',
   'Text2Frame.js'

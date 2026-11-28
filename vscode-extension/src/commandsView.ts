@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
+import { deployOnSave, onDidChangeDeployOnSave } from './deploy';
 import { onDidChangePauseAtMarks, pauseAtMarks } from './debugSession';
+import { strategySetting } from './compiler';
 import { tr } from './db/lang';
+import { allSettingsQuery } from './settingsLinks';
 
 /**
  * Activity Bar "Commands" panel — a static, grouped, clickable list of the extension's
@@ -13,6 +16,8 @@ interface CommandSpec {
     label: string;
     icon: string;
     tooltip: string;
+    /** コマンドに渡すもの(設定を名指しで開くときの検索語など)。 */
+    args?: unknown[];
     /** 名前の横に出す今の状態(オン・オフなど)。 */
     describe?: () => string;
 }
@@ -24,6 +29,29 @@ interface CommandGroup {
     /** 最初から開いておくか。 */
     open?: boolean;
     items: CommandSpec[];
+}
+
+/** 今の反映のしかた。ボタンの横に出して、押す前に分かるようにする。 */
+const applyHow = (): string =>
+    (strategySetting() === 'overwrite' ? tr('上書き', 'Overwrite') : tr('統合', 'Merge'));
+
+/* 設定は VS Code の設定画面にあり、そこへ辿り着くのが分かりにくい。
+ * ここから一息で開ける。合い言葉の作り方は、vscode に依存しない
+ * src/settingsLinks.ts が持っている。 */
+function settingsGroup(): CommandGroup {
+    return {
+        id: 'settings',
+        label: tr('設定', 'Settings'),
+        items: [
+            {
+                command: 'workbench.action.openSettings',
+                args: [allSettingsQuery()],
+                icon: 'settings-gear',
+                label: tr('すべての設定', 'All settings'),
+                tooltip: tr('この拡張の設定をまとめて開きます。', 'Opens every setting of this extension.')
+            }
+        ]
+    };
 }
 
 /** 名前と吹き出しは、ツリーを作るときに今の言語で選ぶ。 */
@@ -42,12 +70,30 @@ function groups(): CommandGroup[] {
                 {
                     command: 'text2frame.deployCurrentFile', icon: 'rocket',
                     label: tr('ゲームに反映(このファイル)', 'Apply this file'),
-                    tooltip: tr('今開いているテキストをゲームに反映します。', 'Applies the open text to the game.')
+                    tooltip: tr('今開いているテキストをゲームに反映します。しかたは設定「反映のしかた」で決まり、横に出ています。', 'Applies the open text to the game. How it does that comes from the setting "How to apply", shown beside it.'),
+                    describe: () => applyHow()
                 },
                 {
                     command: 'text2frame.exportCurrentFile', icon: 'cloud-download',
                     label: tr('ゲームから取り出す(このファイル)', 'Pull this file'),
-                    tooltip: tr('今のファイルにゲームの内容を取り込みます(あなたの編集は残し、ゲーム側の変更を反映)。', 'Brings the game\'s contents into this file (your edits stay; changes made in the game come in).')
+                    tooltip: tr('今のファイルにゲームの内容を取り込みます(あなたの編集は残し、ゲーム側の変更を反映)。', 'Brings the game\'s contents into this file (your edits stay; changes made in the game come in).'),
+                    describe: () => tr('統合', 'Merge')
+                },
+                {
+                    command: 'text2frame.toggleDeployOnSave', icon: 'sync',
+                    label: tr('保存時に自動反映', 'Apply on save'),
+                    tooltip: tr('保存したら自動でゲームに反映するかを切り替えます。今どちらかは横に出ています(画面左下にも出ます)。', 'Switches whether saving applies to the game. Which it is now shows beside it, and at the bottom left of the window.'),
+                    describe: () => (deployOnSave() ? tr('オン', 'On') : tr('オフ', 'Off'))
+                },
+                {
+                    command: 'text2frame.deployCurrentFileOverwrite', icon: 'arrow-up',
+                    label: tr('テキストの内容でゲームを上書き', 'Overwrite the game with this text'),
+                    tooltip: tr('設定を変えずに、この1回だけ上書きで反映します。ツクール側でこのページに加えた変更は失われます(確認が出ます)。', 'Applies with overwrite just this once, without changing the setting. Changes made to that page in RPG Maker are lost; it asks first.')
+                },
+                {
+                    command: 'text2frame.exportCurrentFileOverwrite', icon: 'arrow-down',
+                    label: tr('ゲームの内容でテキストを上書き', 'Overwrite this text from the game'),
+                    tooltip: tr('このテキストをゲームの内容で作り直します。テキストの編集は失われます(確認が出ます)。', 'Rebuilds this text from the game\'s contents. Your edits to the text are lost; it asks first.')
                 }
             ]
         },
@@ -70,6 +116,21 @@ function groups(): CommandGroup[] {
                     command: 'text2frame.testPlay', icon: 'play',
                     label: tr('テストプレイ', 'Test play'),
                     tooltip: tr('ゲームを VS Code の中のブラウザでテストプレイします(テストモード)。反映した内容は、ブラウザの再読み込みで効きます。プレイ中のスイッチと変数の値は、データベースの一覧とホバーに出ます。', 'Test plays the game in a browser inside VS Code (test mode). Applied changes take effect when the browser reloads. Switch and variable values show in the database list and in hovers while playing.')
+                },
+                {
+                    command: 'text2frame.importSaves', icon: 'cloud-download',
+                    label: tr('ツクールのセーブを取り込む', 'Bring in the RPG Maker saves'),
+                    tooltip: tr('ツクールでテストプレイして作ったセーブ(ゲームのフォルダの save/)を、VS Code のテストプレイでも使えるようにします。置き場所が別なので、取り込まないと見えません。', 'Makes the saves you made while test playing in RPG Maker (save/ in the game folder) usable in the VS Code test play too. They are kept in a different place, so they are not visible until you bring them in.')
+                },
+                {
+                    command: 'text2frame.loadSave', icon: 'debug-restart',
+                    label: tr('セーブから再開する', 'Resume from a save'),
+                    tooltip: tr('テストプレイのセーブを選んで、そこから続けます。発生条件を整えたセーブを作っておくと、そのイベントをそのまま試せます。', 'Pick a save of the test play and continue from it. If you keep a save with the conditions already set up, you can try that event as it is.')
+                },
+                {
+                    command: 'text2frame.pickTestPlayPlugins', icon: 'checklist',
+                    label: tr('テストプレイで切るプラグインを選ぶ', 'Choose the plugins to turn off for test play'),
+                    tooltip: tr('ツクール本体の中でだけ動く作りのプラグインは、ブラウザで動かすテストプレイを止めてしまうことがあります。そのゲームのプラグインの一覧から、テストプレイのときだけ切るものに印を付けられます。ゲームのフォルダは書き換えません。', 'A plugin that only runs inside RPG Maker itself can stop a browser test play. Check the ones to turn off for test play only, from the game\'s own plugin list. The game folder is not changed.')
                 },
                 {
                     command: 'text2frame.openLiveValuesTab', icon: 'debug',
@@ -149,11 +210,6 @@ function groups(): CommandGroup[] {
                     label: tr('会話のみ書き出し', 'Pull conversation only'),
                     tooltip: tr('会話部分だけを *.conversation.txt に書き出します。', 'Writes only the conversation to *.conversation.txt.')
                 },
-                {
-                    command: 'text2frame.toggleDeployOnSave', icon: 'sync',
-                    label: tr('保存時に自動反映 切替', 'Toggle apply-on-save'),
-                    tooltip: tr('保存したら自動でゲームに反映する設定を ON / OFF します。', 'Turns applying to the game on every save on or off.')
-                }
             ]
         },
         {
@@ -177,7 +233,8 @@ function groups(): CommandGroup[] {
                     tooltip: tr('テキストのフォルダ(設定 text2frame.textBaseDir)をゲームの内容で全部上書きします(編集は失われます)。', 'Overwrites the whole text folder (setting text2frame.textBaseDir) with the game\'s contents (your edits are lost).')
                 }
             ]
-        }
+        },
+        settingsGroup()
     ];
 }
 
@@ -220,11 +277,12 @@ class CommandsTreeProvider implements vscode.TreeDataProvider<CmdNode> {
         if (element.kind === 'group') {
             return element.children.map((spec) => {
                 const node = new CmdNode('command', spec.label, vscode.TreeItemCollapsibleState.None);
-                node.id = 'command:' + spec.command;
+                // 同じコマンドを渡すものだけ変えて出せるので、名前には渡すものまで含める。
+                node.id = 'command:' + spec.command + (spec.args ? ':' + String(spec.args[0]) : '');
                 node.iconPath = new vscode.ThemeIcon(spec.icon);
                 node.tooltip = spec.tooltip;
                 if (spec.describe) node.description = spec.describe();
-                node.command = { command: spec.command, title: spec.label };
+                node.command = { command: spec.command, title: spec.label, arguments: spec.args };
                 return node;
             });
         }
@@ -237,6 +295,12 @@ export function registerCommandsView(context: vscode.ExtensionContext): void {
     const provider = new CommandsTreeProvider();
     context.subscriptions.push(
         vscode.window.createTreeView('text2frameCommands', { treeDataProvider: provider }),
-        onDidChangePauseAtMarks(() => provider.refresh())
+        onDidChangePauseAtMarks(() => provider.refresh()),
+        onDidChangeDeployOnSave(() => provider.refresh()),
+        /* ボタンの横に出している今の状態(反映のしかた)は、設定が変わったら描き直す。
+         * 聞いていないと、設定を直してもボタンが古いことを言い続ける。 */
+        vscode.workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration('text2frame.strategy')) provider.refresh();
+        })
     );
 }

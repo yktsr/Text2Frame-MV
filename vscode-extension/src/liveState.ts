@@ -4,6 +4,22 @@ import { tr } from './db/lang';
 
 export type LiveValue = number | string | boolean;
 
+export interface ShownMessage {
+    busy: boolean;
+    choice: boolean;
+    /** いま出ている文面。 */
+    lines?: string[];
+    /** 選べるもの。 */
+    choices?: string[];
+}
+
+export interface SaveSlot {
+    slot: number;
+    playtime?: string;
+    at?: number;
+    title?: string;
+}
+
 export interface RunFrame {
     key: string;
     index: number;
@@ -21,10 +37,21 @@ export interface LiveMessage {
     pages?: Map<number, number>;
     parallel?: Parallels;
     visit?: string;
+    /** セーブからの再開の返事。 */
+    load?: string;
+    /** 読めなかったときの、ゲームが言った理由。 */
+    loadError?: string;
+    /** 在るセーブ。 */
+    saves?: SaveSlot[];
+    /** 取り込みの結果。 */
+    imported?: { done: number; failed: number };
     paused?: { reason: string; frames: RunFrame[] };
     resumed?: boolean;
     run?: RunFrame[];
     lists?: Map<string, CommandMark[]>;
+    scene?: string;
+    message?: ShownMessage;
+    player?: { x: number; y: number; direction: number };
 }
 
 const MAX_ID = 100000;
@@ -57,6 +84,15 @@ export interface LiveCommand {
     reload?: boolean;
     breakpoints?: Record<string, number[]>;
     debug?: 'continue' | 'next' | 'stepIn' | 'stepOut' | 'pause';
+    /** いまのことを全部もう一度報せてほしい(途中から聞きはじめた相手のため)。 */
+    resend?: boolean;
+    /** 在るセーブを教えてほしい。 */
+    saves?: boolean;
+    /** そのセーブから再開する。 */
+    load?: number;
+    /** ファイルで持っているセーブを入れる。 */
+    importSaves?: Array<{ name: string; data: string }>;
+    input?: { keys?: string[]; key?: string; hold?: number; tap?: { x: number; y: number } };
 }
 
 export function selfSwitchKey(mapId: number, eventId: number, letter: string): string {
@@ -163,9 +199,70 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
         if (!v || typeof v !== 'object' || !['breakpoint', 'step', 'pause'].includes(String(v.reason))) throw new Error('bad');
         return { reason: String(v.reason), frames: readRun(v.frames) || [] };
     };
+    const readImported = (value: unknown): { done: number; failed: number } | undefined => {
+        if (value === undefined) return undefined;
+        const v = value as { done?: unknown; failed?: unknown };
+        if (!v || typeof v !== 'object' || !isCount(v.done, 100) || !isCount(v.failed, 100)) throw new Error('bad');
+        return { done: v.done as number, failed: v.failed as number };
+    };
+    const readSaves = (value: unknown): SaveSlot[] | undefined => {
+        if (value === undefined) return undefined;
+        if (!Array.isArray(value) || value.length > 40) throw new Error('bad');
+        return value.map((one) => {
+            const v = one as { slot?: unknown; playtime?: unknown; at?: unknown; title?: unknown };
+            if (!v || typeof v !== 'object' || !isCount(v.slot, 40) || !(v.slot as number)) throw new Error('bad');
+            const out: SaveSlot = { slot: v.slot as number };
+            if (v.playtime !== undefined) {
+                if (typeof v.playtime !== 'string' || v.playtime.length > 20) throw new Error('bad');
+                out.playtime = v.playtime;
+            }
+            if (v.at !== undefined) {
+                if (typeof v.at !== 'number' || !Number.isFinite(v.at)) throw new Error('bad');
+                out.at = v.at;
+            }
+            if (v.title !== undefined) {
+                if (typeof v.title !== 'string' || v.title.length > 80) throw new Error('bad');
+                out.title = v.title;
+            }
+            return out;
+        });
+    };
+    const readScene = (value: unknown): string | undefined => {
+        if (value === undefined) return undefined;
+        if (typeof value !== 'string' || value.length > 64 || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value)) throw new Error('bad');
+        return value;
+    };
+    const readLines = (value: unknown, most: number, longest: number): string[] | undefined => {
+        if (value === undefined) return undefined;
+        if (!Array.isArray(value) || value.length > most) throw new Error('bad');
+        return value.map((one) => {
+            if (typeof one !== 'string' || one.length > longest) throw new Error('bad');
+            return one;
+        });
+    };
+    const readBusy = (value: unknown): ShownMessage | undefined => {
+        if (value === undefined) return undefined;
+        const v = value as { busy?: unknown; choice?: unknown; lines?: unknown; choices?: unknown };
+        if (!v || typeof v !== 'object' || typeof v.busy !== 'boolean' || typeof v.choice !== 'boolean') throw new Error('bad');
+        const out: ShownMessage = { busy: v.busy, choice: v.choice };
+        const lines = readLines(v.lines, 8, 400);
+        const choices = readLines(v.choices, 20, 200);
+        if (lines) out.lines = lines;
+        if (choices) out.choices = choices;
+        return out;
+    };
+    const readPlayer = (value: unknown): { x: number; y: number; direction: number } | undefined => {
+        if (value === undefined) return undefined;
+        const v = value as { x?: unknown; y?: unknown; direction?: unknown };
+        if (!v || typeof v !== 'object' || !isCount(v.x, MAX_ID) || !isCount(v.y, MAX_ID) || !isCount(v.direction, 10)) throw new Error('bad');
+        return { x: v.x as number, y: v.y as number, direction: v.direction as number };
+    };
     if (o.map !== undefined && !isCount(o.map, MAX_ID)) return undefined;
     if (o.gold !== undefined && !isCount(o.gold, MAX_COUNT)) return undefined;
     if (o.visit !== undefined && !(typeof o.visit === 'string' && /^[A-Za-z]{1,20}$/.test(o.visit))) return undefined;
+    if (o.load !== undefined && !(typeof o.load === 'string' && /^[A-Za-z]{1,20}$/.test(o.load))) return undefined;
+    /* 理由はゲームの言葉そのままなので、形では縛れない。長さだけ切る。 */
+    if (o.loadError !== undefined && !(typeof o.loadError === 'string' && o.loadError.length <= 200)) return undefined;
     const ids = (v: unknown): v is number[] => Array.isArray(v) && v.length <= MAX_PARALLEL && v.every((a) => isCount(a, MAX_ID) && a > 0);
     const parallel = o.parallel as { events?: unknown; commons?: unknown } | undefined;
     if (parallel !== undefined && !(parallel && typeof parallel === 'object' && ids(parallel.events) && ids(parallel.commons))) return undefined;
@@ -183,10 +280,17 @@ export function parseLiveMessage(json: unknown): LiveMessage | undefined {
             pages: readPages(o.pages),
             parallel: parallel ? { events: parallel.events as number[], commons: parallel.commons as number[] } : undefined,
             visit: o.visit as string | undefined,
+            load: o.load as string | undefined,
+            loadError: o.loadError as string | undefined,
+            saves: readSaves(o.saves),
+            imported: readImported(o.imported),
             paused: readPaused(o.paused),
             resumed: o.resumed === true || undefined,
             run: readRun(o.run),
-            lists: readLists(o.lists)
+            lists: readLists(o.lists),
+            scene: readScene(o.scene),
+            message: readBusy(o.message),
+            player: readPlayer(o.player)
         };
     } catch (e) {
         return undefined;
@@ -230,14 +334,26 @@ export class LiveState {
     private frames: RunFrame[] = [];
     lastSeen = 0;
     mapId = 0;
+    scene?: string;
+    message?: ShownMessage;
+    player?: { x: number; y: number; direction: number };
     /** 「このイベントから試す」の、ゲームからの返事。 */
     lastVisit?: { result: string; at: number };
+    /** 「セーブから再開する」の、ゲームからの返事。 */
+    lastLoad?: { result: string; why?: string; at: number };
+    /** 在るセーブ。 */
+    saves?: SaveSlot[];
+    /** 取り込みの結果。 */
+    lastImport?: { done: number; failed: number; at: number };
     resets = 0;
     paused?: { reason: string; frames: RunFrame[]; at: number };
 
     apply(message: LiveMessage, now: number): { values: boolean; run: boolean; debug: boolean } {
         this.lastSeen = now;
         if (message.visit) this.lastVisit = { result: message.visit, at: now };
+        if (message.load) this.lastLoad = { result: message.load, why: message.loadError, at: now };
+        if (message.saves) this.saves = message.saves;
+        if (message.imported) this.lastImport = { done: message.imported.done, failed: message.imported.failed, at: now };
         let debug = false;
         if (message.reset) this.resets++;
         if ((message.reset || message.resumed) && this.paused) {
@@ -263,8 +379,14 @@ export class LiveState {
             this.lists.clear();
             run = this.frames.length > 0;
             this.frames = [];
+            this.scene = undefined;
+            this.message = undefined;
+            this.player = undefined;
             changed = true;
         }
+        if (message.scene !== undefined) this.scene = message.scene;
+        if (message.message !== undefined) this.message = message.message;
+        if (message.player !== undefined) this.player = message.player;
         message.lists?.forEach((marks, key) => {
             this.lists.set(key, marks);
             run = true;

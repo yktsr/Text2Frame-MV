@@ -86,4 +86,86 @@ describe('compile with lineMap', function () {
     expect(r.slice(0, 2)).to.eql([[111, 0], [121, 1]])
     r.slice(2).forEach(function (x) { expect(x[1]).to.equal(1) })
   })
+
+  /* blockSpans は、畳んだブロックが元のテキストで占めていた範囲。lineMap だけでは
+   * 足りないのは、ブロックの中身と閉じ行が開き行のコマンドに化けるから ── 行を数える側は
+   * これが無いと「どのコマンドにもならない行」と「中身の行」を取り違える。 */
+  describe('blockSpans', function () {
+    const spans = function (text) { return T2F.compile(text, { lineMap: true }).blockSpans }
+
+    it('says nothing when there is no block', function () {
+      expect(spans('こんにちは\n<Switch: 1, ON>')).to.eql([])
+    })
+
+    it('covers the opening and closing lines of a block', function () {
+      const text = [
+        '<Switch: 1, ON>', //    0
+        '<script>', //           1
+        'a()', //                2
+        'b()', //                3
+        '</script>', //          4
+        '<Switch: 5, ON>' //     5
+      ].join('\n')
+      expect(spans(text)).to.eql([{ from: 1, to: 4 }])
+    })
+
+    it('gives a one-line block the same line on both ends', function () {
+      expect(spans('<comment>note</comment>\nこんにちは')).to.eql([{ from: 0, to: 0 }])
+    })
+
+    it('counts the lines the comment-out character took out', function () {
+      const text = [
+        '<Switch: 1, ON>', //    0
+        '% x', //                1
+        '<comment>', //          2
+        '% y', //                3
+        'メモ', //                4
+        '</comment>', //         5
+        'こんにちは' //            6
+      ].join('\n')
+      // % の行は解釈の前に消えるが、範囲は元のテキストの行で答える。
+      expect(spans(text)).to.eql([{ from: 2, to: 5 }])
+    })
+
+    it('reports every block in line order, whatever kind it is', function () {
+      const text = [
+        '<comment>', //                     0
+        'メモ', //                           1
+        '</comment>', //                    2
+        '<ShowScrollingText: 2, OFF>', //   3
+        '流れる文', //                       4
+        '</ShowScrollingText>', //          5
+        '<script>', //                      6
+        'a()', //                           7
+        '</script>' //                      8
+      ].join('\n')
+      // 畳むのは種類ごとに3回だが、返す順はテキストの行の順。
+      expect(spans(text)).to.eql([{ from: 0, to: 2 }, { from: 3, to: 5 }, { from: 6, to: 8 }])
+    })
+
+    it('handles one block closing and the next opening on the same line', function () {
+      const text = [
+        '<script>', //              0
+        'a()', //                   1
+        '</script><script>', //     2
+        'b()', //                   3
+        '</script>', //             4
+        '<Switch: 9, ON>' //        5
+      ].join('\n')
+      expect(spans(text)).to.eql([{ from: 0, to: 2 }, { from: 2, to: 4 }])
+    })
+
+    it('counts CRLF lines the same as LF lines', function () {
+      expect(spans('<comment>\r\nメモ\r\n</comment>\r\nこんにちは')).to.eql([{ from: 0, to: 2 }])
+    })
+
+    it('says nothing for a block that was never closed', function () {
+      // 畳めないので範囲も無い。中身はそのまま本文として解釈される。
+      expect(spans('<comment>\nメモ\nこんにちは')).to.eql([])
+    })
+
+    it('stays out of the way when lineMap was not asked for', function () {
+      expect(Array.isArray(T2F.compile('<comment>\nメモ\n</comment>'))).to.equal(true)
+    })
+  })
 })

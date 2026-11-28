@@ -40,6 +40,10 @@ for (const a of rawArgs) {
 }
 const dataDir = path.resolve(repoRoot, dataDirArg || 'sample/data')
 const textBase = path.resolve(repoRoot, opts.text)
+/* ゲームのフォルダは data/ の親。渡さないと、本体はそのゲームの設定(js/plugins.js)を
+ * 見ずに出荷時の既定で補うので、既定を変えているプロジェクトでは往復が閉じない
+ * — この検査がいちばん強いオラクルなので、新しい道を必ず通す。 */
+const gameRoot = path.dirname(dataDir)
 const englishTag = String(opts.en) !== 'false'
 const maxDiffs = parseInt(opts.max, 10) || 20
 
@@ -175,7 +179,7 @@ for (const t of targets) {
   } else {
     list = JSON.parse(fs.readFileSync(t.dataPath, 'utf8')).events[Number(t.eventId)].pages[Number(t.pageId) - 1].list
   }
-  const body = f2t.decompile(list, englishTag, { pretty: true })
+  const body = f2t.decompile(list, englishTag, { pretty: true, gameRoot })
   fs.writeFileSync(path.join(outDir, t.key + '.txt'), renderFrontMatter(t) + '\n' + body + '\n', 'utf8')
   exported++
 }
@@ -187,7 +191,7 @@ for (const t of targets) {
   const textPath = path.join(outDir, t.key + '.txt')
   // 取り出したテキストをそのまま戻して同じ JSON になるかを見るので、反映は全上書き。
   // ('import' は廃止済みの名前で、resolveStrategy が受け付けず全件失敗していた)
-  const o = { textPath, kind: t.kind, strategy: 'overwrite' }
+  const o = { textPath, kind: t.kind, strategy: 'overwrite', gameRoot }
   if (t.kind === 'common') { o.commonEventId = t.commonEventId; o.commonEventPath = cePath } else { o.mapId = t.mapId; o.eventId = t.eventId; o.pageId = t.pageId; o.mapPath = t.dataPath }
   const res = t2f.applyTextFile(o)
   if (!res.ok) deployFails.push({ key: t.key, error: (res.error || '').split('\n')[0], line: res.errorLineText })

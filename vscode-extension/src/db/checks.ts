@@ -15,10 +15,10 @@ export interface LineProblem {
     code: string;
 }
 
-/** タグの閉じ忘れ・閉じ括弧の多すぎ・空のタグ。 */
-export function basicProblems(lines: string[]): LineProblem[] {
+/** タグの閉じ忘れ・閉じ括弧の多すぎ・空のタグ。コメント行は見ない。 */
+export function basicProblems(lines: string[], commentOutChar = '%'): LineProblem[] {
     const out: LineProblem[] = [];
-    for (const { line, problem } of bracketProblems(lines)) {
+    for (const { line, problem } of bracketProblems(lines, commentOutChar)) {
         out.push({
             line,
             start: 0,

@@ -29,18 +29,63 @@ describe('command line usage', function () {
     })
   })
 
-  /* 3つのコマンドで同じ短縮形が別のものを指していると、打ち間違いが事故になる。
+  /* --mode は2か所で検められている ── commander に渡した正規表現と、そのあとの配列。
+   * 配列だけ直すと正規表現が弾いて options.mode が未設定になり、「知らないモード」で
+   * 落ちる(自分の配線を疑って時間を使う形になる)。だから揃っていることを固定する。
+   * test だけは配列にしか無い ── 開発用で、使い方にも載せていない(上の検査がそれを守る)。 */
+  describe('the two lists of modes agree', function () {
+    const DEV_ONLY = ['test']
+    ;[['Text2Frame.js', 'text2frame'], ['Frame2Text.js', 'frame2text']].forEach(function (pair) {
+      it(pair[1] + ' declares the same modes in the regexp and in the array', function () {
+        const src = fs.readFileSync(path.resolve(__dirname, '..', pair[0]), 'utf8')
+        const declared = src.match(/--mode <([^>]+)>', 'output mode', \/\^\(([^)]+)\)\$\/i\)/)
+        expect(declared, 'the --mode option is not where this test looks').to.not.equal(null)
+        const inPlaceholder = declared[1].split('|')
+        const inRegexp = declared[2].split('|')
+        const arrayLine = src.match(/if \(!\[([^\]]+)\]\.includes\(options\.mode\)\)/)
+        expect(arrayLine, 'the array of modes is not where this test looks').to.not.equal(null)
+        const inArray = arrayLine[1].split(',').map(function (one) { return one.trim().replace(/'/g, '') })
+
+        // 正規表現と <...> の見出しが同じことも見る(片方だけ直すと使い方が嘘になる)。
+        expect(inPlaceholder).to.eql(inRegexp)
+        expect(inArray.filter(function (m) { return DEV_ONLY.indexOf(m) < 0 })).to.eql(inRegexp)
+        DEV_ONLY.forEach(function (m) { expect(inRegexp).to.not.include(m) })
+      })
+    })
+
+    /* CSV の口は両方が持つ。取り出しが frame2text、取り込みが text2frame。 */
+    ;[['Frame2Text.js', 'frame2text'], ['Text2Frame.js', 'text2frame']].forEach(function (pair) {
+      it(pair[1] + ' accepts csv as a mode', function () {
+        const src = fs.readFileSync(path.resolve(__dirname, '..', pair[0]), 'utf8')
+        expect(src.match(/--mode <([^>]+)>/)[1].split('|')).to.include('csv')
+      })
+    })
+  })
+
+  /* 4つのコマンドで同じ短縮形が別のものを指していると、打ち間違いが事故になる。
    * -t はテキストのフォルダ、-w は英語タグ、単発のテキストは -f にそろえる。 */
   describe('the same short flag means the same thing everywhere', function () {
     const help = function (name) {
       return cp.spawnSync('node', [bin(name), '--help'], { cwd: tmp, encoding: 'utf8' }).stdout
     }
+    const rootHelp = function (file, args) {
+      return cp.spawnSync('node', [path.resolve(__dirname, '..', file)].concat(args || ['--help']),
+        { cwd: tmp, encoding: 'utf8' }).stdout
+    }
 
-    it('-t is the text folder in all three', function () {
+    it('-t is the text folder in all four', function () {
       expect(help('text2frame')).to.contain('-t, --text-dir')
       expect(help('frame2text')).to.contain('-t, --text-dir')
-      expect(cp.spawnSync('node', [SYNC_CLI, 'once', '--help'], { cwd: tmp, encoding: 'utf8' }).stdout)
-        .to.contain('-t, --text-dir')
+      expect(rootHelp('t2f-sync.js', ['once', '--help'])).to.contain('-t, --text-dir')
+      expect(rootHelp('t2f-mcp.js')).to.contain('-t, --text-dir')
+    })
+
+    it('-d is the data folder and -s the strategy in all four', function () {
+      const helps = [help('text2frame'), help('frame2text'), rootHelp('t2f-sync.js', ['once', '--help']), rootHelp('t2f-mcp.js')]
+      helps.forEach(function (text) {
+        expect(text).to.contain('-d, --data-dir')
+        expect(text).to.contain('-s, --strategy')
+      })
     })
 
     it('-w is the english tag, and text2frame does not use it for something else', function () {
@@ -48,6 +93,31 @@ describe('command line usage', function () {
       expect(cp.spawnSync('node', [SYNC_CLI, 'once', '--help'], { cwd: tmp, encoding: 'utf8' }).stdout)
         .to.contain('-w, --english_tag')
       expect(help('text2frame')).to.not.contain('-w,')
+    })
+
+    /* 補う3つは、取り出しと反映で同じ値を使えないと往復が閉じないので、両方に同じ名前で置く。
+     * 短縮形は与えない(与えると4つのコマンドで字が足りなくなる)。 */
+    it('spells the three fill-in options the same way in both, with no short form', function () {
+      const both = [help('text2frame'), help('frame2text')]
+      both.forEach(function (text) {
+        expect(text).to.contain('--background <name>')
+        expect(text).to.contain('--window-position <name>')
+        expect(text).to.contain('--comment-out-char <char>')
+        expect(text).to.not.match(/-\w, --background/)
+        expect(text).to.not.match(/-\w, --window-position/)
+        expect(text).to.not.match(/-\w, --comment-out-char/)
+      })
+    })
+
+    /* 既定を宣言すると「指定なし」が言えなくなり、そのゲームの設定に従う道が消える。
+     * commander は既定を使い方に "(default: ...)" と出すので、そこを見れば分かる。 */
+    it('declares no default for the options that fall back to the game', function () {
+      const text = help('frame2text')
+      expect(text).to.match(/--english_tag <true\/false>[^\n]*\n?[^\n]*/)
+      expect(text).to.not.match(/--english_tag[\s\S]{0,120}?\(default: "true"\)/)
+      expect(text).to.not.match(/--omit-default-tags[\s\S]{0,140}?\(default: "true"\)/)
+      expect(cp.spawnSync('node', [SYNC_CLI, 'once', '--help'], { cwd: tmp, encoding: 'utf8' }).stdout)
+        .to.not.match(/--english_tag[\s\S]{0,120}?\(default: "true"\)/)
     })
 
     it('text2frame reads a single text with -f', function () {

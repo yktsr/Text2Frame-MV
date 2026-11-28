@@ -216,6 +216,32 @@
  * @value overwrite
  * @default add
  *
+ * @arg Format
+ * @text 形式
+ * @desc CSVを選ぶと、ゲームのフォルダのscenario.csvをテキストに当ててから反映します。スプレッドシートで書いてもらった表を戻すときに使います。
+ * @type select
+ * @option テキストだけ / text
+ * @value text
+ * @option CSVから / csv
+ * @value csv
+ * @default text
+ *
+ * @arg AllowDelete
+ * @text 消えた行を消す
+ * @desc 形式がCSVのときだけ使います。シートから消えた行を、テキストからも消します。既定では消さずに止まります。
+ * @type boolean
+ * @on 消す
+ * @off 消さない(止まる)
+ * @default false
+ *
+ * @arg Force
+ * @text 多すぎる書き換えも通す
+ * @desc 形式がCSVのときだけ使います。1つの宛先の半分を超える行が変わっていても通します。既定では止まります(列ずれの事故を拾うため)。
+ * @type boolean
+ * @on 通す
+ * @off 止まる
+ * @default false
+ *
  *
  * @command START_DATA_SYNC
  * @text テキストとゲームの同期を開始
@@ -4559,7 +4585,7 @@
       // 引数順は @arg の並びと合わせる。単体の取り込みと同じく取り込み元が先。
       // 取り込み元 -> 反映方法。
       this.pluginCommand('BATCH_IMPORT_MESSAGES_FROM_FOLDER',
-        [args.TextFolder, args.Strategy])
+        [args.TextFolder, args.Strategy, args.Format || 'text', args.AllowDelete, args.Force])
     })
     PluginManager.registerCommand('Text2Frame', 'START_DATA_SYNC', function (args) {
       // 引数順は @arg の並びと合わせる。
@@ -4625,6 +4651,14 @@
 
   // マップのデータファイル名。ID は3桁に揃える(ツクールの決まり)。
   const mapFileName = function (mapId) { return 'Map' + ('000' + String(mapId)).slice(-3) + '.json' }
+
+  /* 入/切の畳み方。「文字列の 'false' と真偽値の false は切、それ以外は入」。
+   * Frame2Text の toFlag と同じ規則 ── 同じ名前・同じ中身にしてある。
+   * 本体は Frame2Text に依存できない(向きが逆になる)ので、ここにも置く。 */
+  const toFlag = function (value, whenUnset) {
+    if (value === undefined || value === null || value === '') return !!whenUnset
+    return String(value) !== 'false'
+  }
 
   if (typeof PluginManager === 'undefined') {
     // for test, command line
@@ -4769,6 +4803,282 @@
       })
     }
     return out.sort()
+  }
+
+  /* ゲーム自身の設定を使う。
+   *
+   * タグを省いて書かれたテキストを反映するとき、何を補うかはプラグインパラメータが決める。
+   * ツクールの中ではそれが読めているが、外(CLI / VS Code 拡張 / t2f-sync / MCP)では
+   * 出荷時の既定で固定していた。既定を変えているプロジェクトは、ツクールの Frame2Text が
+   * 省いたタグを外から反映した時点で別の値に倒れる。
+   *
+   * 3つで1組にしてある。1つだけ効くと、反映と取り出しが別のプロジェクトに居ることになる。 */
+  const PROJECT_FIELDS = {
+    Background: 'Default Background',
+    WindowPosition: 'Default Window Position',
+    CommentOutChar: 'Comment Out Char'
+  }
+  /* 読んだ内容を mtime で覚える。一括反映は1つのルートで数千ファイルを回す。
+   * plugins.js とプラグイン自身の2つを覚えるのは、片方だけだと plugins.js を触らずに
+   * プラグインを消した人のところで古い答えを返し続けるため。 */
+  const projectParamCache = new Map()
+  const noRestore = function () {}
+
+  /* そのゲームに入っているプラグインのパラメータを、生のまま返す。入っていなければ null。
+   *
+   * 条件は2つで、どちらも要る。plugins.js に status が真でその名前の項目があること、かつ
+   * js/plugins/<名前>.js が実在すること。項目だけ残してプラグインを消したゲームでは、
+   * その設定はゲームの中で何も動かしていないので読まない。探すのはツクールが読む所
+   * (PluginManager._path + 名前 + '.js')だけ ── 置き場所を推測すると、別物を拾う道ができる。
+   *
+   * 鍵の取り出しは呼び側に任せる。組として扱うかどうかがプラグインごとに違う
+   * (文章の窓の3つは互いに揃っていないと意味がないが、取り出しの2つは独立した入/切)。 */
+  const NOT_READ = { entry: false, installed: false, params: null }
+
+  /* 項目とファイルの両方を見た結果。params が null でも entry は分かるので、
+   * 「設定は書いてあるがプラグインが入っていない」を報告で名指しできる。 */
+  const pluginReadOf = function (gameRoot, pluginName) {
+    // ツクールの中では何もしない。あちらには生きた値があり、ディスクの plugins.js は
+    // エディタで編集中の未保存のパラメータより古いことがある。
+    if (typeof PluginManager !== 'undefined') return NOT_READ
+    // ルートが分からなければ推測しない。当て推量で別のプロジェクトの設定を拾うのは、
+    // ここで直している壊れ方と同じ。
+    if (!gameRoot || typeof require === 'undefined') return NOT_READ
+    const fs = require('fs')
+    const path = require('path')
+    const file = path.join(String(gameRoot), 'js', 'plugins.js')
+    const script = path.join(String(gameRoot), 'js', 'plugins', pluginName + '.js')
+    let mtime
+    try { mtime = fs.statSync(file).mtimeMs } catch (e) { return NOT_READ }
+    let scriptMtime = 0
+    let installed = true
+    try { scriptMtime = fs.statSync(script).mtimeMs } catch (e) { installed = false }
+    const key = file + '\n' + pluginName
+    const hit = projectParamCache.get(key)
+    if (hit && hit.mtime === mtime && hit.scriptMtime === scriptMtime) return hit.read
+    let entry = false
+    let params = null
+    try {
+      // $plugins の切り方は拡張の autoWrapPlugin(src/db/messageFit.ts)と同じ形。
+      const found = fs.readFileSync(file, 'utf8').match(/\$plugins\s*=\s*(\[[\s\S]*\])\s*;?/)
+      const list = found ? JSON.parse(found[1]) : []
+      const mine = list.filter(function (one) {
+        return one && one.status && one.name === pluginName
+      })[0]
+      entry = !!mine
+      if (installed && mine && mine.parameters) params = mine.parameters
+    } catch (e) { params = null }
+    const read = { entry, installed, params }
+    projectParamCache.set(key, { mtime, scriptMtime, read })
+    return read
+  }
+
+  const pluginParametersOf = function (gameRoot, pluginName) {
+    return pluginReadOf(gameRoot, pluginName).params
+  }
+
+  const projectParametersOf = function (gameRoot) {
+    const params = pluginParametersOf(gameRoot, 'Text2Frame')
+    if (!params) return null
+    const read = {}
+    Object.keys(PROJECT_FIELDS).forEach(function (field) {
+      const value = params[PROJECT_FIELDS[field]]
+      if (typeof value === 'string' && value !== '') read[field] = value
+    })
+    // 1つでも欠けていれば組として使わない(古い版の plugins.js など)。
+    return Object.keys(read).length === Object.keys(PROJECT_FIELDS).length ? read : null
+  }
+
+  /* コメント文字は「文字」なので、正規表現の部品としてではなく字面として照らす。
+   * 直に繋ぐと、`.` にしている人のところでは全部の行が、`(` にしている人のところでは
+   * 組み立て自体が落ちる。拡張の色分け(db/tagRefs.ts)は既に字面として扱っているので、
+   * 揃えないと同じプロジェクトで画面と反映が食い違う。 */
+  const escapeForRegExp = function (char) {
+    return String(char).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  }
+
+  /* 入れた値が読める値かどうかを、表を写さずに確かめる。getBackground / getWindowPosition は
+   * pluginCommandText2Frame の中に居てここから呼べないので、名前空間を都度読む
+   * getMessageDefaults を叩いて試す。コメント文字はどんな字でも字面として通るので、
+   * ここで試すものが無い。 */
+  const projectParametersUsable = function () {
+    try {
+      const api = Laurus.Text2Frame.export
+      if (api && api.getMessageDefaults) api.getMessageDefaults()
+      return true
+    } catch (e) {
+      return false
+    }
+  }
+
+  /* 呼び出しごとに言い直せる3つ。options の名前と、名前空間の鍵の対応。
+   * CLI の COMMAND_LINE は名前空間の鍵のまま渡してくる(Object.assign で入る鍵と同じ)ので、
+   * 両方の綴りを見る。空文字は未指定と同じに扱う ── 拡張の設定は「未設定」を空文字で表す
+   * (vscode-extension/src/compiler.ts の settingFor が既にその規約)。 */
+  const EXPLICIT_FIELDS = {
+    Background: 'background',
+    WindowPosition: 'windowPosition',
+    CommentOutChar: 'commentOutChar'
+  }
+  const explicitParametersOf = function (opts) {
+    if (!opts) return null
+    const out = {}
+    Object.keys(EXPLICIT_FIELDS).forEach(function (field) {
+      const given = opts[EXPLICIT_FIELDS[field]] !== undefined ? opts[EXPLICIT_FIELDS[field]] : opts[field]
+      if (given !== undefined && given !== null && given !== '') out[field] = String(given)
+    })
+    return Object.keys(out).length ? out : null
+  }
+
+  /* 報告のための口。何になったか・どこから来たかを返す。**変換には使わない。**
+   *
+   * 5つの設定 × 3つの出どころになったので、どこから来たかが見えないと追えない。とくに
+   * 「設定は書いてあるがプラグインが入っていない」は、**読まなくなる唯一の形**なので名指しする。
+   * 出どころが '出荷時' のときの値は、いま名前空間に入っている値をそのまま言う
+   * (モジュールを読んだときの値＝出荷時の既定)。 */
+  const resolveProjectParameters = function (gameRoot, opts) {
+    const read = pluginReadOf(gameRoot, 'Text2Frame')
+    const project = projectParametersOf(gameRoot)
+    const explicit = explicitParametersOf(opts)
+    const out = {
+      plugin: 'Text2Frame',
+      /* 設定だけ残っている状態。ゲームの中でも効いていないので、こちらも読まない。 */
+      settingsIgnored: !!(read.entry && !read.installed),
+      values: {},
+      from: {},
+      /* 明示がゲームの設定と違う所。片方の入口だけで指定すると往復がずれる。 */
+      differs: []
+    }
+    Object.keys(PROJECT_FIELDS).forEach(function (field) {
+      const name = EXPLICIT_FIELDS[field]
+      if (explicit && explicit[field] !== undefined) {
+        out.values[name] = explicit[field]
+        out.from[name] = '明示'
+        if (project && String(project[field]) !== String(explicit[field])) out.differs.push(name)
+        return
+      }
+      if (project) {
+        out.values[name] = project[field]
+        out.from[name] = 'ゲーム'
+        return
+      }
+      out.values[name] = Laurus.Text2Frame[field]
+      out.from[name] = '出荷時'
+    })
+    return out
+  }
+
+  /* 報告の文面。人が読む形はここ1か所で、CLI・MCP・拡張の検査が同じ言い方をする。
+   * Frame2Text 側の口も同じ形を返すので、そのまま通せる。 */
+  const describeProjectParameters = function (report) {
+    const body = Object.keys(report.values).map(function (name) {
+      return name + '=' + String(report.values[name]) + '(' + report.from[name] + ')'
+    }).join(' ')
+    const notes = []
+    if (report.settingsIgnored) {
+      notes.push('js/plugins.js に ' + report.plugin + ' の設定がありますが、js/plugins/' +
+        report.plugin + '.js が無いので読んでいません(出荷時の既定で動きます)。')
+    }
+    if (report.differs.length) {
+      notes.push('指定した値がゲームの設定と違います: ' + report.differs.join(', ') +
+        ' / 取り出しと反映の両方に同じ値を渡してください(片方だけだと、省くタグと補う値が食い違います)。')
+    }
+    return { line: report.plugin + ': ' + body, notes }
+  }
+
+  /* 明示された3つを別の options へ受け渡す。鍵の綴りを2か所に書かないため。
+   * spelling に 'namespace' を渡すと COMMAND_LINE の束の綴りで書く(あの口は名前空間の鍵で受ける)。
+   *
+   * これが要るのは、applyTextFile が中でもう一度 COMMAND_LINE を通るから ── 受け渡さないと、
+   * **内側の窓がゲームの設定で開き直して、外側で明示した値を踏む**。 */
+  const carryExplicitParameters = function (from, to, spelling) {
+    const explicit = explicitParametersOf(from)
+    if (explicit) {
+      Object.keys(explicit).forEach(function (field) {
+        to[spelling === 'namespace' ? field : EXPLICIT_FIELDS[field]] = explicit[field]
+      })
+    }
+    return to
+  }
+
+  /* 優先順位をここ1か所で決める。
+   *
+   *   明示したオプション  >  ゲームの plugins.js  >  出荷時の既定
+   *
+   * そのゲームの設定に入れ替え、元に戻す関数を返す。何もしなかったときも関数を返すので、
+   * 呼び側は分岐しない。戻すのは、1つのプロセスが複数のゲームを扱うため
+   * (拡張は複数のフォルダを同時に開ける)。入れたままにすると、plugins.js を持たない
+   * ゲームが直前のゲームの設定を引き継ぐ。
+   *
+   * 読めない値の扱いは2つで違う。ゲームの設定は黙って出荷時の既定に戻す(設定のささいな
+   * 間違いが「このプロジェクトは反映できない」になるのを避ける)。**明示された値は投げる** ──
+   * 利用者が打ったものを黙って落とすと、効いているつもりで別の値が入る。 */
+  const useProjectParameters = function (gameRoot, opts) {
+    const params = projectParametersOf(gameRoot)
+    const explicit = explicitParametersOf(opts)
+    if (!params && !explicit) return noRestore
+    const fields = Object.keys(PROJECT_FIELDS)
+    const previous = {}
+    fields.forEach(function (field) { previous[field] = Laurus.Text2Frame[field] })
+    const restore = function () {
+      fields.forEach(function (field) { Laurus.Text2Frame[field] = previous[field] })
+    }
+    if (params) {
+      fields.forEach(function (field) { Laurus.Text2Frame[field] = params[field] })
+      // 組として読めなければ、その3つだけ出荷時の既定に戻す(明示はこのあと重ねる)。
+      if (!projectParametersUsable()) restore()
+    }
+    if (explicit) {
+      /* 1つずつ入れて確かめるのは、どの指定が読めなかったかを言えるようにするため。 */
+      const names = Object.keys(explicit)
+      for (let i = 0; i < names.length; i++) {
+        const field = names[i]
+        const before = Laurus.Text2Frame[field]
+        Laurus.Text2Frame[field] = explicit[field]
+        if (!projectParametersUsable()) {
+          Laurus.Text2Frame[field] = before
+          restore()
+          throw new Error('指定された値が読めません: ' + EXPLICIT_FIELDS[field] + ' = ' +
+            JSON.stringify(explicit[field]) +
+            ' / ツクールのプラグインパラメータと同じ書き方で指定してください。')
+        }
+      }
+    }
+    return restore
+  }
+
+  const CONFLICT_MARKERS = [
+    '=== テキストの変更 / from text ===',
+    '=== ゲームの変更 / from game ===',
+    '=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='
+  ]
+  /* テキスト側は compile せず素の文字列で見る(目印は注釈としてそのまま行に現れる)。
+   * 畳む前に見るのが肝 ── 目印は <注釈> ブロックになるので、畳んでしまうと
+   * 衝突しているテキストがちょうど一番ばらばらの9行になる。 */
+  const hasConflictMarkerInText = function (text) {
+    const s = String(text || '')
+    return CONFLICT_MARKERS.some(function (m) { return s.indexOf(m) !== -1 })
+  }
+
+  /* ページ・イベント・コモンイベントを新しく作らない理由を、人に言える形で返す。
+   * ページを作ると pages.push(getDefaultPage()) が**条件の無いページ**を足し、
+   * ツクールは最後のページから逆に探すので、**既存のページが到達しなくなる**。
+   * だから増やさないのが正しい。
+   *
+   * ただし「その宛先はありません」とだけ言うと、名前を間違えたと思って一覧を引き直し、
+   * 見つからずに迷う。理由を言えば、ツクールで先に作ればよいと分かる。
+   * MCP の findTarget と CLI の CSV 取り込みが同じ文面を使う(規則を2つに割らない)。 */
+  const missingPageReason = function (targets, wanted) {
+    if (!wanted || wanted.kind !== 'event' || !(Number(wanted.pageId) > 0)) return ''
+    const pages = (targets || []).filter(function (t) {
+      return t.kind !== 'common' && String(t.mapId) === String(wanted.mapId) && String(t.eventId) === String(wanted.eventId)
+    })
+    if (!pages.length) return ''
+    const most = pages.reduce(function (n, t) { return Math.max(n, Number(t.pageId) || 1) }, 0)
+    if (Number(wanted.pageId) <= most) return ''
+    return 'このイベントは ' + most + ' ページまでです。**テキストからページを増やすことはできません**' +
+      '（出現条件がテキストに書けないため、条件の無いページが既存のページを隠してしまいます）。' +
+      '先に RPGツクールでページを作ってから、もう一度どうぞ。'
   }
 
   Game_Interpreter.prototype.pluginCommandText2Frame = function (command, args) {
@@ -5240,6 +5550,11 @@
          * IMPORT_* が実行のたびに書き換えるので、読み込み時に控えたほうを見る。 */
         Laurus.Text2Frame.ImportFolder = args[0] || Laurus.Text2Frame.DefaultFileFolder || 'text'
         Laurus.Text2Frame.BatchStrategy = resolveImportStrategy(args[1])
+        /* 形式と、CSV のときだけ効く2つ。**末尾に足す**ので、今までの2つだけの
+         * 書き方も動き続ける。入/切の畳み方は他と同じ toFlag(既定は切)。 */
+        Laurus.Text2Frame.BatchFormat = String(args[2] || 'text').toLowerCase() === 'csv' ? 'csv' : 'text'
+        Laurus.Text2Frame.BatchAllowDelete = toFlag(args[3], false)
+        Laurus.Text2Frame.BatchForce = toFlag(args[4], false)
         Laurus.Text2Frame.ExecMode = 'BATCH_IMPORT_MESSAGES_FROM_FOLDER'
         break
       }
@@ -5272,6 +5587,12 @@
         /* 反映のしかたは Strategy 1つで決まる。上書きかどうかはここで導く。
          * 呼ぶ側が両方渡す形だと、食い違ったときにどちらが効くのか分からない。 */
         Laurus.Text2Frame.IsOverwrite = Laurus.Text2Frame.Strategy === 'overwrite'
+        /* そのゲームの設定で補う。ここは applyTextFile を通らない CLI の
+         * --mode map / --mode common のための口で、あちらは1プロセス1操作で終わるので
+         * 戻さない。applyTextFile 経由のときは、あちらの復元がこれを畳む。
+         * args[0] をそのまま渡すのは、**呼び手が明示した値をゲームの設定に勝たせる**ため。
+         * 上の Object.assign だけだと、ゲームの設定があとから同じ鍵を踏む。 */
+        useProjectParameters(Laurus.Text2Frame.GameRoot || Laurus.Text2Frame.BaseRoot, args[0])
         break
       case 'LIBRARY_EXPORT' :
         break
@@ -5373,7 +5694,7 @@
     /* コメントアウト行を削除する関数 */
     const eraseCommentOutLines = function (scenario_text, commentOutChar) {
       // 一度改行毎にsplitして、要素毎にチェックして最後にひとつのテキストに結合する。
-      const re = new RegExp('^ *' + commentOutChar)
+      const re = new RegExp('^ *' + escapeForRegExp(commentOutChar))
       return scenario_text
         .split('\n')
         .filter((x) => !x.match(re))
@@ -5382,7 +5703,7 @@
 
     /* eraseCommentOutLines が残す行の、元の行番号(compile の lineMap 用)。判定は上と同じ。 */
     const keptLineOrigins = function (scenario_text, commentOutChar) {
-      const re = new RegExp('^ *' + commentOutChar)
+      const re = new RegExp('^ *' + escapeForRegExp(commentOutChar))
       const origins = []
       scenario_text.split('\n').forEach((x, i) => { if (!x.match(re)) origins.push(i) })
       return origins
@@ -5394,13 +5715,16 @@
      *   開始タグより前の断片 / プレースホルダ / 終了タグより後ろの断片
      * になる。畳んだあとの各行が元の何行目かを、置き換えた範囲の改行数(replaced)から戻す。
      * 断片とプレースホルダは開始タグの行、後ろの断片は終了タグの行に対応させる。 */
-    const followBlockReplacements = function (lines, origins, replaced) {
+    const followBlockReplacements = function (lines, origins, replaced, spans) {
+      const at = function (i) { return origins[Math.min(i, origins.length - 1)] }
       const out = []
       let o = 0
       for (let n = 0; n < lines.length; n++) {
-        out.push(origins[Math.min(o, origins.length - 1)])
+        out.push(at(o))
         const newlines = replaced[lines[n]]
         if (newlines !== undefined) {
+          // 畳んだ範囲の開始タグの行と終了タグの行。どちらも元のテキストの行番号。
+          if (spans) spans.push({ from: at(o), to: at(o + newlines) })
           o += newlines // 次の行(後ろの断片)は終了タグの行
           continue
         }
@@ -5458,7 +5782,7 @@
       const regenerated = String(regeneratedBody === undefined || regeneratedBody === null ? '' : regeneratedBody)
       // compile が落とす行と揃えること。判定がずれると戻す行と落ちる行が食い違う。
       // 省略時はプラグインパラメータ(Frame2Text から呼ぶときは指定できないため)。
-      const re = new RegExp('^ *' + (commentOutChar || Laurus.Text2Frame.CommentOutChar))
+      const re = new RegExp('^ *' + escapeForRegExp(commentOutChar || Laurus.Text2Frame.CommentOutChar))
       const origLines = uniformNewLineCode(original).split('\n')
 
       /* 作り直した結果が元と同じなら戻すものは無い。実データでは 5301 中 4347 件がこれで、
@@ -5576,7 +5900,7 @@
     /* 検算に落ちたときの逃げ道。元の本文から「戻す対象の書き方」だけを均し、
      * コメント行は残す。こうすると restoreAuthoredLines が書き方を戻さなくなる。 */
     const eraseAuthoredStyle = function (originalBody, commentOutChar) {
-      const re = new RegExp('^ *' + (commentOutChar || Laurus.Text2Frame.CommentOutChar))
+      const re = new RegExp('^ *' + escapeForRegExp(commentOutChar || Laurus.Text2Frame.CommentOutChar))
       const out = []
       let prevBlank = false
       uniformNewLineCode(String(originalBody || '')).split('\n').forEach(function (line) {
@@ -10696,11 +11020,15 @@
       return out_events
     }
 
-    /* opts.lineMap を立てると { commands, lineMap } を返す。lineMap[k] は commands[k] が出てきた
-     * テキストの行番号(0始まり)。エディタ拡張のプレビューが、コマンドとテキストの行を結ぶのに使う。
+    /* opts.lineMap を立てると { commands, lineMap, blockSpans } を返す。lineMap[k] は commands[k] が
+     * 出てきたテキストの行番号(0始まり)。エディタ拡張のプレビューが、コマンドとテキストの行を結ぶのに使う。
+     * blockSpans は畳んだブロックが元のテキストで占めていた範囲 [{from, to}](行の順)。ブロックの
+     * 中身と閉じ行は開き行のコマンドに化けるので、行を数える側はこれが無いと中身を取り違える。
      * 立てなければ従来どおりコマンドの配列だけを返し、出力は変わらない。 */
-    const compile = function (text, opts) {
+    const compileCore = function (text, opts) {
       const wantLineMap = !!(opts && opts.lineMap)
+      // ブロック(注釈・スクリプト・文章のスクロール表示)が元のテキストで占めていた行の範囲。
+      const block_spans = wantLineMap ? [] : null
       let scenario_text = uniformNewLineCode(text)
       // % 行の除去とブロックの畳み込みで行がずれるので、元の行番号を追いかける。
       let origins = wantLineMap ? keptLineOrigins(scenario_text, Laurus.Text2Frame.CommentOutChar) : null
@@ -10713,7 +11041,7 @@
           ? function (match_block, placeholder) { replaced[placeholder] = match_block.split('\n').length - 1 }
           : undefined
         const t = getBlockStatement(scenario_text, block_name, onReplace)
-        if (wantLineMap) origins = followBlockReplacements(t.scenario_text.split('\n'), origins, replaced)
+        if (wantLineMap) origins = followBlockReplacements(t.scenario_text.split('\n'), origins, replaced, block_spans)
         scenario_text = t.scenario_text
         block_map = Object.assign(block_map, t.block_map)
       })
@@ -10761,7 +11089,21 @@
         while (line_map.length < event_command_list.length) line_map.push(last)
       }
       event_command_list = autoIndent(event_command_list)
-      return line_map ? { commands: event_command_list, lineMap: line_map } : event_command_list
+      if (!line_map) return event_command_list
+      // 3回に分けて畳むので、出てくる順はブロックの種類の順になる。行の順に揃える。
+      block_spans.sort(function (a, b) { return a.from - b.from || a.to - b.to })
+      return { commands: event_command_list, lineMap: line_map, blockSpans: block_spans }
+    }
+
+    /* opts.gameRoot をもらったら、そのゲームの設定(js/plugins.js)で補う。
+     * その呼び出しの間だけ入れ替えて戻す。渡されなければ今までどおり。 */
+    const compile = function (text, opts) {
+      const restore = useProjectParameters(opts && opts.gameRoot, opts)
+      try {
+        return compileCore(text, opts)
+      } finally {
+        restore()
+      }
     }
 
     /* 反映方法は add(末尾に追記) / merge(構造保持の賢い反映) / overwrite(上書き) の3つ。
@@ -10811,11 +11153,6 @@
     /* 衝突を両方残したときに挟む目印。検出側とズレないよう、出す側もこの定数を使う。
      * 未解決のまま再度マージすると目印ごと再マージされて二重・三重に増えるため、
      * 反映・取り出しの前にこれで検出して対象から外す。 */
-    const CONFLICT_MARKERS = [
-      '=== テキストの変更 / from text ===',
-      '=== ゲームの変更 / from game ===',
-      '=== どちらかを残し、この目印3行を消す / keep one, delete these 3 marker lines ==='
-    ]
     const hasConflictMarker = function (commands) {
       return (commands || []).some(function (c) {
         if (!c || (c.code !== 108 && c.code !== 408)) return false
@@ -11055,6 +11392,11 @@
       }
       const strategy = _resolvedStrategy.strategy
 
+      /* そのゲームの設定で補う。gameRoot を渡さなければ baseRoot を使う
+       * (既存の呼び手は4つとも baseRoot を渡している)。別の関心なので、
+       * 下の走り書きの退避とは別に控える。 */
+      const restoreProject = useProjectParameters(opts.gameRoot || opts.baseRoot, opts)
+
       const prevWarnings = Laurus.Text2Frame._warnings
       const prevQuiet = Laurus.Text2Frame._quiet
       const prevConflicts = Laurus.Text2Frame._conflicts
@@ -11085,7 +11427,7 @@
             throw new Error('mapPath or mapId is required for event entry')
           }
           target = { kind, mapId: mapId ? String(mapId) : undefined, eventId: String(eventId), pageId: String(pageId) }
-          interpreter.pluginCommandText2Frame('COMMAND_LINE', [{
+          interpreter.pluginCommandText2Frame('COMMAND_LINE', [carryExplicitParameters(opts, {
             IsDebug: !!opts.isDebug,
             TextPath: textPath,
             MapPath: dataPath,
@@ -11096,7 +11438,7 @@
             // add はイベント末尾への追記(上書きにはしない)。
             Strategy: strategy,
             ExecMode: 'IMPORT_MESSAGE_TO_EVENT'
-          }])
+          }, 'namespace')])
         } else if (kind === 'common') {
           const commonEventId = opts.commonEventId || meta.commonEventId
           if (!commonEventId) {
@@ -11106,7 +11448,7 @@
             resolveFromRoot(BASE_PATH, opts.commonEventPath) ||
             resolveFromRoot(BASE_PATH, pathLib.join('data', 'CommonEvents.json'))
           target = { kind, commonEventId: String(commonEventId) }
-          interpreter.pluginCommandText2Frame('COMMAND_LINE', [{
+          interpreter.pluginCommandText2Frame('COMMAND_LINE', [carryExplicitParameters(opts, {
             IsDebug: !!opts.isDebug,
             TextPath: textPath,
             CommonEventPath: dataPath,
@@ -11115,7 +11457,7 @@
             BaseRoot: opts.baseRoot,
             Strategy: strategy,
             ExecMode: 'IMPORT_MESSAGE_TO_CE'
-          }])
+          }, 'namespace')])
         } else {
           throw new Error('unknown kind: ' + kind)
         }
@@ -11150,6 +11492,7 @@
         Laurus.Text2Frame._quiet = prevQuiet
         Laurus.Text2Frame._conflicts = prevConflicts
         Laurus.Text2Frame._writeBack = prevWriteBack
+        restoreProject()
       }
     }
 
@@ -11264,7 +11607,9 @@
       const gameCommands = opts.gameCommands || []
       const theirs = opts.textBody ? compile(opts.textBody) : []
       const base = opts.baseBody ? compile(opts.baseBody) : []
-      const englishTag = opts.englishTag !== false
+      /* 「指定なし」をそのまま下へ渡す。true に畳むと、下の decompile に明示で入ってしまい、
+       * そのゲームの設定に従わせられない。 */
+      const englishTag = opts.englishTag === undefined ? undefined : opts.englishTag !== false
       let merged
       /* 取り出しの処理元はゲーム。衝突した所は目印つきの両方をゲームへ書き(mergedForGame)、
        * テキストにはテキスト側の版だけを残す(merged)。衝突しなければ両方同じ。 */
@@ -11405,7 +11750,8 @@
       const baseRoot = (typeof process !== 'undefined' && process.cwd) ? process.cwd() : BASE_PATH
       // 祖先はテキストの置き場所ごとに分ける。
       const baseDir = baseDirForTextDir(baseRoot, textRoot)
-      const englishTag = String(Laurus.Text2Frame.EnglishTag) !== 'false'
+      // 英語タグは Frame2Text 側の設定。こちらの名前空間には同じ名前のものが無い(5051 と同じ読み方)。
+      const englishTag = String(Laurus.Frame2Text && Laurus.Frame2Text.EnglishTag) !== 'false'
       const wantPush = opts.direction === 'push' || opts.direction === 'both'
       const wantPull = opts.direction === 'pull' || opts.direction === 'both'
 
@@ -11645,6 +11991,98 @@
       return true
     }
 
+    /* ツクールの画面からの CSV 取り込み。当てるのは CLI と同じ口(importCsv)で、
+     * ここがするのは、ファイルの場所を決めて、結果を $gameMessage とコンソールに出して、
+     * 報告の CSV を書くことだけ。宛先の一覧と索引は Frame2Text から借りる
+     * (あちらが持っている仕組みをもう一度書かない)。 */
+    const runCsvImport = function () {
+      if (typeof require === 'undefined') {
+        addWarning('[csv] Node.js environment not available')
+        return
+      }
+      const _fs = require('fs')
+      const _path = require('path')
+      // ゲームのフォルダ。runBatchImport と同じ出し方(推測で cwd に落とさない)。
+      const { BASE_PATH } = getDirParams()
+      const f2t = (function () {
+        try {
+          const glob = (typeof globalThis !== 'undefined')
+            ? globalThis
+            : (typeof window !== 'undefined') ? window : null
+          return (glob && glob.$LaurusFrame2Text) || null
+        } catch (e) { return null }
+      })()
+      if (!f2t || !f2t.indexTexts || !f2t.enumerateTargets) {
+        addWarning('[csv] CSV の取り込みには Frame2Text プラグインが必要です。同じプロジェクトに導入してください。')
+        console.error('[csv] CSV import requires the Frame2Text plugin')
+        return
+      }
+      const csvPath = _path.resolve(BASE_PATH, 'scenario.csv')
+      if (!_fs.existsSync(csvPath)) {
+        addWarning('[csv] CSV がありません: ' + csvPath)
+        addWarning('[csv] 先に「フォルダへ一括取り出し」を形式=CSV で実行してください。')
+        return
+      }
+      const dataDir = _path.resolve(BASE_PATH, 'data')
+      const textDir = _path.resolve(BASE_PATH, Laurus.Text2Frame.ImportFolder || 'text')
+      const index = f2t.indexTexts(textDir)
+      const outcome = importCsv({
+        csvText: _fs.readFileSync(csvPath, 'utf8'),
+        targets: f2t.enumerateTargets(dataDir, { scope: 'all', index }),
+        index,
+        gameRoot: BASE_PATH,
+        dataDir,
+        // CSV は「シートで直したものを戻す」操作なので、既定は統合(add は内容が二重になる)。
+        strategy: Laurus.Text2Frame.BatchStrategy === 'overwrite' ? 'overwrite' : 'merge',
+        allowDelete: toFlag(Laurus.Text2Frame.BatchAllowDelete, false),
+        force: toFlag(Laurus.Text2Frame.BatchForce, false),
+        isDebug: Laurus.Text2Frame.IsDebug
+      })
+      if (outcome.fatal) {
+        addWarning('[csv] ' + outcome.fatal)
+        console.error('[csv] ' + outcome.fatal)
+        return
+      }
+      addMessage('[csv] 取り込み完了: 成功 ' + outcome.applied + '件、失敗 ' + outcome.failed + '件' +
+        (outcome.untouched > 0 ? '、中身の行が無かった宛先 ' + outcome.untouched + '件' : '') +
+        (outcome.conflicts > 0 ? '、衝突 ' + outcome.conflicts + '件' : ''))
+      const resultPath = csvPath.replace(/(\.csv)?$/i, '') + '.result.csv'
+      try {
+        _fs.writeFileSync(resultPath, formatCsv(outcome.report, outcome.columns), 'utf8')
+        addMessage('[csv] 行ごとの結果: ' + resultPath)
+      } catch (e) {
+        addWarning('[csv] 結果の表を書けませんでした: ' + String((e && e.message) || e))
+      }
+      const LINES = 5
+      outcome.rowProblems.slice(0, LINES).forEach(function (one) { addWarning('[csv] ' + one) })
+      outcome.rowProblems.forEach(function (one) { console.warn('[csv] ' + one) })
+      const failures = outcome.results.filter(function (r) { return !r.ok })
+      failures.slice(0, LINES).forEach(function (r) {
+        addWarning('[csv] ' + r.key + ': ' + r.reason)
+        /* 理由が「断りました」だけだと、ツクールの画面には何も伝わらない ── 詳しい理由は
+         * 行ごとに付いていて、コンソールは遊んでいる人には見えない。先頭の1つは画面に出す。 */
+        const first = (r.problems || [])[0]
+        if (first) addWarning('       ' + first.detail)
+      })
+      failures.forEach(function (r) {
+        console.warn('[csv] ' + r.key + ': ' + r.reason)
+        ;(r.problems || []).forEach(function (pr) { console.warn('       ' + pr.detail) })
+      })
+      // 文面は importCsv が決める。ここは宛先を添えて並べるだけ。
+      outcome.results.forEach(function (r) {
+        (r.notes || []).forEach(function (one) { console.warn('[csv] ' + r.key + ': ' + one) })
+      })
+      if (outcome.conflicts > 0) {
+        addWarning('[csv] 衝突しました。ゲームに両方の版を目印付きで書いてあります。')
+        addWarning('[csv] ツクールで残す方を決めて目印3行を消したあと、もう一度取り出してください。')
+      }
+      if (outcome.applied > 0) {
+        addMessage('\n')
+        addMessage(RESTART_NOTICE)
+        console.log(RESTART_NOTICE)
+      }
+    }
+
     /* 一括反映の本体。BATCH_IMPORT_MESSAGES_FROM_FOLDER と、START_DATA_SYNC の初回同期の
      * 両方から呼ぶ。o: { importFolder, strategy }
      * 戻り値: { ok, fail, root } */
@@ -11757,7 +12195,959 @@
       return { ok, fail, root }
     }
 
+    /* ---------------- CSV(スプレッドシートで往復する) ----------------
+     * CSV は text/*.txt の射影であって、ゲームのデータの写しではない。書くのはテキストまでで、
+     * そこから先は今の反映がそのまま動く(3方向マージ・祖先・衝突の目印・履歴の巻き戻し)。
+     *
+     *   text/*.txt ──foldToRows──▶ 行 ──formatCsv──▶ scenario.csv
+     *   text/*.txt ◀──mergeRows─── 行 ◀──parseCsv───
+     *
+     * 戻すときに CSV からテキストを作らないのが肝。いまのテキストをもう一度畳んで、
+     * ID が合う行だけ差し替える。だから「シナリオだけ出す」で出していない行が、
+     * 戻すときに消えない。
+     *
+     * 畳み方を決めるのは compile 自身(lineMap と blockSpans)。どこからどこまでが1つの
+     * 文章の窓かを、ここで正規表現から決め直すことはしない。戻す側はコマンドのことを
+     * 何も知らない ── セルの中身を並べ直すだけで、窓かどうかは compile がもう一度決める。
+     */
+    const CSV_COLUMNS = ['判定', '種別', '宛先', 'ID', '見た目', '本文', '版', 'メモ', 'エラー']
+    const CSV_BODY_CODES = { 401: true, 405: true }
+    const CSV_CHOICE_CODES = { 402: true }
+    /* 選択肢の窓の枠(窓を開く・取り消しの枝・閉じる)。dialogue にも出す ── 出さないと
+     * 「はい」と「いいえ」が隣に並ぶだけで、**1つの質問の2択なのかが読めない**。
+     * `<End>` は条件分岐(412)と同じ字面なので、字面ではなく **compile の code** で分ける。 */
+    const CSV_FRAME_CODES = { 102: true, 403: true, 404: true }
+    // 文章のスクロール表示。ブロックまるごと1行に畳まれる(中身は読む人が直す文章)。
+    const CSV_SCROLL_CODE = 105
+    /* 見た目だけを決めるタグの行(顔・名前・背景・位置)。この行は自分のコマンドを持たず、
+     * 101 は本文の行に記録される ── compile から見ても窓の一部なので、次のセリフの行に
+     * 畳んで「見た目」の列にする。綴りは元の行のまま持つ(2つ以上タグが並ぶ行があるので、
+     * 値から組み立て直す規則を作らない)。 */
+    const CSV_SETTING_LINE =
+      /^\s*(?:<(?:face|fc|顔|name|nm|名前|windowposition|wp|位置|background|bg|背景)\s*:[^>]*>\s*)+$/i
+    // 「シナリオだけ」で出す種別。
+    const CSV_DIALOGUE_KINDS = { セリフ: true, 選択肢: true, 選択肢枠: true, スクロール: true }
+    /* 「どうすればいいか」の言い方だけが入口ごとに違う(CLI は引数、ツクールは選択肢)。
+     * **断る理由そのものは1か所が決める。** 呼ぶ側は押す場所の名前だけ差し替える。 */
+    const CSV_HINTS = {
+      allowDelete: '「消えた行を消す」を選んでください',
+      force: '「多すぎる書き換えも通す」を選んでください',
+      pull: '「フォルダへ一括取り出し」を実行してください',
+      rowsAll: '「フォルダへ一括取り出し」を 形式=CSV・CSVに出す行=全部 で出し直してください'
+    }
+    /* 選択肢の行を消せない理由。番人と、消えた行の案内の**両方**が読む。 */
+    const CSV_WHY_CHOICE = '選択肢の行を1つだけ消すと、分岐の中身は残るので分岐の外に出ます' +
+      '(選択肢ウィンドウを出した直後に走ります)。ウィンドウの取り消し先も居なくなります。' +
+      'この選択肢をなくすなら、窓ごと(<ShowChoices> の行・<When> の行・<End> の行)' +
+      'テキストで消してください。'
+    /* 選択肢の窓の枠を触れない理由。窓を開く行・閉じる行は、枝の居場所そのもの。 */
+    const CSV_WHY_FRAME = '選択肢の窓の枠(窓を開く行・取り消しの枝・閉じる行)は、' +
+      '枝がどこからどこまでかを決めている行です。消したり書き換えたりすると、' +
+      '枝が宛て先を失うか、あとの行まで枝の中に入ります。窓を作り直すならテキストで。'
+    /* 「この1行は選択肢の行か」「その文言はどこか」を決めるのは **compile**。
+     * 綴りの規則をここに書かない ── 日本語の別名(`<選択肢: …>`)も、大文字小文字も、
+     * 空白の入れ方も、あちらが知っている。窓の形をもう1か所で決めると、そこが腐る。
+     * ちょうど「窓・枝1つ・空・閉じ」の4つになったときだけ、その枝の文言を返す。 */
+    const csvChoiceLabelOf = function (line, gameRoot) {
+      if (String(line).indexOf('\n') >= 0) return null
+      let cmds
+      try {
+        cmds = compile('<ShowChoices>\n' + line + '\n<End>', { gameRoot })
+      } catch (e) {
+        return null
+      }
+      if (cmds.length !== 4) return null
+      if (cmds[0].code !== 102 || cmds[1].code !== 402) return null
+      if (cmds[2].code !== 0 || cmds[3].code !== 404) return null
+      return String(cmds[1].parameters[1])
+    }
+    /* 比べるときに落とすのは **ASCII の空白とタブだけ**。`trim()` は全角空白(U+3000)も
+     * 食べるので、飾りに使っている人のところで文言が変わってしまう。 */
+    const csvBare = function (v) {
+      return String(v === undefined || v === null ? '' : v).replace(/^[ \t]+|[ \t]+$/g, '')
+    }
+    /* 消えた行の並べ方。多いときは5件で切る(全部並べても読めない)。 */
+    const csvIdList = function (list) {
+      return list.slice(0, 5).map(function (m) { return m.ID }).join(', ') +
+        (list.length > 5 ? ' 他' : '')
+    }
+    /* どのモードがどの種別を見せるか。畳むときの絞り込みと、取り込みが
+     * 「出した行」を知る所が、**同じここを読む**。null は全部。 */
+    const csvMode = function (v) {
+      return String(v || 'all').toLowerCase() === 'dialogue' ? 'dialogue' : 'all'
+    }
+    const csvKindsOfMode = function (mode) {
+      return csvMode(mode) === 'dialogue' ? CSV_DIALOGUE_KINDS : null
+    }
+
+    /* 対象ごとの指紋。CSV を配ったあとにテキストが取り出し直されていたら、畳み直した
+     * 結果が変わって ID が宛先として使えなくなる。それを見分けるためだけに使う。 */
+    const csvStamp = function (text) {
+      try {
+        return require('crypto').createHash('sha1').update(String(text), 'utf8').digest('hex').slice(0, 8)
+      } catch (e) {
+        /* ブラウザには crypto が無い。食い違いを見分けるだけなので FNV-1a で足りる。 */
+        const s = String(text)
+        let n = 0x811c9dc5
+        for (let i = 0; i < s.length; i++) {
+          n = (n ^ s.charCodeAt(i)) >>> 0
+          n = (n + (n << 1) + (n << 4) + (n << 7) + (n << 8) + (n << 24)) >>> 0
+        }
+        return ('0000000' + n.toString(16)).slice(-8)
+      }
+    }
+
+    /* 行の札。数に見せない ── r001 にしないと、スプレッドシートが 001 を 1 に書き換える。 */
+    const csvRowId = function (n) {
+      const s = String(n + 1)
+      return 'r' + (s.length >= 3 ? s : ('00' + s).slice(-3))
+    }
+
+    const csvBlankRow = function () {
+      const row = {}
+      CSV_COLUMNS.forEach(function (c) { row[c] = '' })
+      return row
+    }
+
+    /* 宛先ごとの見出しの行。どのマップのどのイベントかを人に見せるために置く(取り込みでは
+     * 中身として扱わない。`ID` が無い)。
+     *
+     * **出した行の範囲と、その宛先の指紋をこの行が持つ。** 持たせないと、取り込みは
+     * 「シートに無い行は消されたのか、出していないだけなのか」を**残っている行から推測**
+     * するしかない ── その種別の行を全部消されると推測が外れ、黙って何もしないことになる。
+     * 置き場所が `見た目` なのは、見出しの行では**両方向で意味を持たない唯一の列**だから
+     * (`メモ` は中身の行でコメント行に往復するし人が書く、`判定`/`エラー` は報告の列、
+     * `本文` は人が読む見出し)。しかも**見える**ので「この行を消すな」が伝わる。
+     *
+     * 作る所を1つにしておく ── 取り出しと筆記録が別々に組むと、印の書き方が食い違う。 */
+    const csvHeadRow = function (opts) {
+      const o = opts || {}
+      const row = csvBlankRow()
+      row.種別 = '見出し'
+      row.宛先 = o.key || ''
+      row.本文 = o.label || o.key || ''
+      row.見た目 = 'rows=' + csvMode(o.rows)
+      row.版 = o.stamp || ''
+      return row
+    }
+    /* 見出しの行の印を読む。読めなければ空(呼ぶ側が「推測した」と言える)。 */
+    const csvModeOfMark = function (mark) {
+      const m = /^rows=(all|dialogue)$/.exec(csvBare(mark))
+      return m ? m[1] : ''
+    }
+
+    /* 畳む。opts.gameRoot をもらったら、そのゲームの設定で畳む(下の理由)。
+     * opts.rows に 'dialogue' を渡すと、セリフと選択肢の行だけ返す。札は畳んだ全体に
+     * 振ってから絞るので、絞った表の ID は飛び飛びになる(そのほうが戻せる)。 */
+    const foldToRows = function (text, key, opts) {
+      const o = opts || {}
+      /* CommentOutChar を見る所が2つある(どの行がコメントかの判定と、メモの行の書き方)。
+       * ゲームの設定で '#' にしている人のところで '%' のまま畳むと、'#' の行を中身と数え
+       * '%' の行を落とすので、行がずれて畳み方が丸ごと間違う。compile と同じ形で
+       * その呼び出しの間だけ入れ替える。 */
+      const restore = useProjectParameters(o.gameRoot, o)
+      try {
+        return foldToRowsCore(text, key, o)
+      } finally {
+        restore()
+      }
+    }
+
+    const foldToRowsCore = function (text, key, o) {
+      const whole = uniformNewLineCode(String(text))
+      const lines = whole.split('\n')
+      const body = {}
+      const choice = {}
+      const frame = {}
+      /* その行から出た最初のコマンドの code。**ブロックの中かどうかに関わらず**拾う ──
+       * ブロックの開き行の code(スクロール表示かどうか)は、これでしか分からない。 */
+      const firstCode = {}
+      const inBlock = {}
+      const opensAt = {}
+      let failure = ''
+      try {
+        /* 入れ替えの中に居るので compileCore を直に呼ぶ(compile だともう一度入れ替える)。 */
+        const r = compileCore(whole, { lineMap: true })
+        r.blockSpans.forEach(function (s) {
+          opensAt[s.from] = s.to
+          for (let i = s.from; i <= s.to; i++) inBlock[i] = true
+        })
+        r.commands.forEach(function (cmd, k) {
+          const at = r.lineMap[k]
+          if (firstCode[at] === undefined) firstCode[at] = cmd.code
+          // ブロックの中身と閉じ行は開き行のコマンドに化けるので、本文として数えない。
+          if (inBlock[at]) return
+          if (CSV_BODY_CODES[cmd.code]) body[at] = true
+          if (CSV_CHOICE_CODES[cmd.code]) choice[at] = true
+          if (CSV_FRAME_CODES[cmd.code]) frame[at] = true
+        })
+      } catch (e) {
+        /* 文法が通らないテキストを落とさない。1行1行そのまま出して、理由をエラーの列に書く。
+         * compile は行番号も付けてくれる(e.t2fLine)。 */
+        failure = String((e && e.message) || e).split('\n')[0] +
+          (e && e.t2fLine !== undefined ? '(' + (e.t2fLine + 1) + '行目)' : '')
+      }
+
+      /* コメントアウト行(既定は %)。compile が落とすのでゲームには入らないが、
+       * テキストには残る ── だから「ゲームに入らないメモ」の置き場所にちょうど合う。
+       * しまう先を別に作らない。
+       *
+       * セルには**コメントの文字を外した素の文**を入れる。実データのコメント行は
+       * アクアリウムも kindworld も**0件**だったので、綴りを守る相手が居ない。
+       * 「メモ」という列で % を見せないほうが、書く人にとって素直。
+       * (`  %字下げ` のような変わった書き方は、戻すと `% 字下げ` になる ──
+       *  コマンドは変わらないので、バイトの差として報告する。) */
+      const commentChar = Laurus.Text2Frame.CommentOutChar || '%'
+      const commentLine = new RegExp('^ *' + escapeForRegExp(commentChar))
+      const stripComment = function (line) {
+        return String(line).replace(commentLine, '').replace(/^ /, '')
+      }
+      const memoRun = function (i) {
+        let j = i
+        while (j < lines.length && !inBlock[j] && commentLine.test(lines[j])) j++
+        return j
+      }
+
+      const rows = []
+      let pendingMemo = []
+      const push = function (kind, cells, look, note) {
+        const row = csvBlankRow()
+        row.種別 = kind
+        row.宛先 = key || ''
+        row.見た目 = (look || []).join('\n')
+        row.本文 = cells.join('\n')
+        row.メモ = pendingMemo.join('\n')
+        row.エラー = note || ''
+        pendingMemo = []
+        rows.push(row)
+      }
+      // i から続く見た目タグの行を数える。そのあとが本文なら畳める。
+      const settingRun = function (i) {
+        let j = i
+        while (j < lines.length && !inBlock[j] && CSV_SETTING_LINE.test(lines[j])) j++
+        return j > i && j < lines.length && body[j] ? j : i
+      }
+
+      let i = 0
+      while (i < lines.length) {
+        if (failure) { push('自動', [lines[i]], null, i === 0 ? failure : ''); i++; continue }
+        /* メモは次の行へ**前向き**に寄せる。行を分けると、読む人には「中身の無い行」が
+         * 挟まって見えるし、書く人はどの台詞への注意なのか分からなくなる。 */
+        const afterMemo = memoRun(i)
+        if (afterMemo > i) {
+          lines.slice(i, afterMemo).forEach(function (one) { pendingMemo.push(stripComment(one)) })
+          i = afterMemo
+          continue
+        }
+        if (opensAt[i] !== undefined) {
+          const to = opensAt[i]
+          // 流れる文章は読む人が直すもの。注釈やスクリプトのブロックとは分ける。
+          push(firstCode[i] === CSV_SCROLL_CODE ? 'スクロール' : '自動', lines.slice(i, to + 1))
+          i = to + 1
+          continue
+        }
+        const afterSetting = settingRun(i)
+        if (afterSetting > i) {
+          let j = afterSetting
+          while (j < lines.length && body[j]) j++
+          push('セリフ', lines.slice(afterSetting, j), lines.slice(i, afterSetting))
+          i = j
+          continue
+        }
+        if (body[i]) {
+          let j = i
+          while (j < lines.length && body[j]) j++
+          push('セリフ', lines.slice(i, j))
+          i = j
+          continue
+        }
+        /* 「空行かどうか」も空白では決めない。trim() は全角空白(U+3000)も食べるので、
+         * 全角空白をならべてレイアウトした飾りの行を空行と取り違える(実物で1件落ちた)。
+         * 本文として数えられた行は上で先に出ているので、ここに来るのは本当にどのコマンドにも
+         * ならない行だけ。中身はそのまま持つ(幅を捨てない)。 */
+        if (lines[i].trim() === '') { push('空行', [lines[i]]); i++; continue }
+        push(choice[i] ? '選択肢' : frame[i] ? '選択肢枠' : '自動', [lines[i]])
+        i++
+      }
+      // 最後のメモは寄せる先が無いので、メモだけの行にする。
+      if (pendingMemo.length) push('メモ', [''])
+
+      const stamp = csvStamp(whole)
+      rows.forEach(function (r, n) {
+        r.ID = csvRowId(n)
+        r.版 = stamp
+      })
+      const shown = csvKindsOfMode(o.rows)
+      if (shown) return rows.filter(function (r) { return !!shown[r.種別] })
+      return rows
+    }
+
+    /* 行をテキストに戻す。権威は要らない ── セルの中身が行になるだけで、窓かどうかは
+     * できたテキストを compile がもう一度決める。だからコンパイラの間違いが取り込みを
+     * 壊す経路は、取り出しと同じ1本だけ。 */
+    const csvRowsToLines = function (rows, opts) {
+      const o = opts || {}
+      const restore = useProjectParameters(o.gameRoot, o)
+      try {
+        const commentChar = Laurus.Text2Frame.CommentOutChar || '%'
+        const already = new RegExp('^ *' + escapeForRegExp(commentChar))
+        const out = []
+        rows.forEach(function (r) {
+          /* メモ -> 見た目 -> 本文 の順。
+           * メモはコメントアウト行として書く。compile が落とすのでゲームには入らず、
+           * テキストには残るので、取り出し直しても消えない。
+           * 既にコメントの文字で始まっている行はそのまま(二重に付けない)。 */
+          const memo = r.メモ === undefined || r.メモ === null ? '' : String(r.メモ)
+          if (memo !== '') {
+            memo.split('\n').forEach(function (one) {
+              out.push(already.test(one) ? one : commentChar + ' ' + one)
+            })
+          }
+          // 見た目と本文は並べ直すだけ。綴りは作り直さない。
+          const look = r.見た目 === undefined || r.見た目 === null ? '' : String(r.見た目)
+          if (look !== '') look.split('\n').forEach(function (one) { out.push(one) })
+          const text = r.本文 === undefined || r.本文 === null ? '' : String(r.本文)
+          // メモだけの行は、メモを書いたらそれで終わり(空行を1つ増やさない)。
+          if (text !== '' || memo === '' || String(r.種別 || '') !== 'メモ') {
+            text.split('\n').forEach(function (one) { out.push(one) })
+          }
+        })
+        return out
+      } finally {
+        restore()
+      }
+    }
+
+    /* CSV の行を、いまのテキストに当てる。**CSV からテキストを作らない。**
+     *   1. いまのテキストを同じ畳み方でもう一度畳む(同じ行・同じ ID が出る)
+     *   2. ID が合う行だけセルの中身を差し替える
+     *   3. ID が空の行は、その直前の行の後ろに入れる
+     *   4. CSV に無い行はそのまま残す
+     * 返すのは { ok, text, stamp, problems, missing, inserted }。何を断るかは呼ぶ側が決める
+     * (入口ごとに「断る」「警告にする」が違うので、ここでは見つけたものを並べるだけ)。 */
+    const mergeRows = function (text, csvRows, opts) {
+      const o = opts || {}
+      const hints = Object.assign({}, CSV_HINTS, o.hints || {})
+      const base = foldToRows(text, o.key, carryExplicitParameters(o, { gameRoot: o.gameRoot }))
+      const whole = uniformNewLineCode(String(text))
+      const stamp = base.length ? base[0].版 : csvStamp(whole)
+      const problems = []
+      const say = function (kind, detail, id) { problems.push({ kind, detail, id: id || '' }) }
+
+      /* 見出しの行の指紋。中身の行が1つも無い宛先では行ごとの検めが走らないので、
+       * ここで見ないと「配ったあと取り出し直したテキスト」に当ててしまう。 */
+      if (o.headStamp && String(o.headStamp) !== stamp) {
+        say('版', 'この宛先の見出しの行の版が合いません(' + o.headStamp + ' ではなく ' + stamp +
+          ')。CSV を出したあとにテキストが取り出し直されています。もう一度出してください。')
+      }
+
+      const order = {}
+      base.forEach(function (r, n) { order[r.ID] = n })
+      /* 足りない行が「消された」のか「出していないだけ」なのかを分ける。
+       *
+       * **出した範囲は見出しの行が持っている**(`見た目` の `rows=…`)。それを教わるのが本筋で、
+       * 教わらないとき(古い CSV)だけ、シートに残っている種別から推測する ── 推測は
+       * **その種別の行を全部消されると外れる**(消したのに黙って何もしない)ので、
+       * 推測したことは報告に出す。シートの 種別 のセルは書き換えられるので、
+       * 教わったときはそちらを見ない。 */
+      const told = o.exportedMode === 'all' || o.exportedMode === 'dialogue' ? o.exportedMode : ''
+      const inferred = !told
+      const shownKinds = told ? csvKindsOfMode(told) : null
+      const exported = {}
+      if (inferred) csvRows.forEach(function (r) { if (r.種別) exported[String(r.種別)] = true })
+      const wasShown = function (kind) {
+        if (inferred) return !!exported[kind]
+        return shownKinds === null ? true : !!shownKinds[kind]
+      }
+
+      const edited = {}
+      const inserts = {}
+      const sequence = []
+      /* 行ごとの判定。**渡された行と同じ長さ・同じ順**で返す ── 取り込みの報告が
+       * 「判定」「エラー」の列をそのまま書き戻せるように。 */
+      const verdicts = csvRows.map(function () { return { 判定: '', エラー: '' } })
+      const verdict = function (n, mark, why) {
+        verdicts[n].判定 = mark
+        verdicts[n].エラー = why || ''
+      }
+      const where = {}
+      let last = ''
+      let previous = -1
+      csvRows.forEach(function (r, n) {
+        const at = n + 2 // CSV の行番号(1列目の見出しが1行目)
+        const id = r.ID === undefined || r.ID === null ? '' : String(r.ID).trim()
+        /* 中身にならない行を2つだけ外す。
+         *   - 見出しの行: 取り出した側が「どのマップのどのイベントか」を人に見せるために
+         *     置いたもので、テキストの行に対応しない。ID が無いので、外さないと
+         *     「足された行」として本文に混ざる
+         *   - 全部の列が空の行: シートの末尾に残りがち。外さないと空行が1つ増える
+         * ここが唯一 種別 を見る所。見ているのは「中身かどうか」だけで、**どんな中身かは
+         * 見ない** ── 自動 を セリフ に書き換えられてタグ行が本文に化ける道は作らない。 */
+        if (String(r.種別 || '') === '見出し') { verdict(n, '見出し'); return }
+        if (id === '' && CSV_COLUMNS.every(function (c) { return !r[c] })) return
+        if (r.版 && String(r.版) !== stamp) {
+          say('版', 'CSV の ' + at + '行目: 版が合いません(' + r.版 + ' ではなく ' + stamp +
+            ')。この宛先のテキストは CSV を出したあとに取り出し直されています。もう一度出してください。', id)
+          verdict(n, '×', '版が合いません(テキストが取り出し直されています)')
+          return
+        }
+        if (id === '') {
+          if (!last) {
+            say('置き場所なし', 'CSV の ' + at + '行目: 足された行ですが、その前に ID のある行がありません。' +
+              '見えている最初の行の後ろに置いてください。')
+            verdict(n, '×', '置き場所が決まりません(見えている最初の行の後ろに置いてください)')
+            return
+          }
+          if (!inserts[last]) inserts[last] = []
+          inserts[last].push(r)
+          verdict(n, '足した')
+          return
+        }
+        if (order[id] === undefined) {
+          say('知らない ID', 'CSV の ' + at + '行目: ID ' + id + ' はこの宛先にありません。', id)
+          verdict(n, '×', 'ID ' + id + ' はこの宛先にありません')
+          return
+        }
+        if (edited[id]) {
+          say('ID の重複', 'CSV の ' + at + '行目: ID ' + id + ' が2回出ています。', id)
+          verdict(n, '×', 'ID ' + id + ' が2回出ています')
+          return
+        }
+        if (order[id] <= previous) {
+          say('並べ替え', 'CSV の ' + at + '行目: ID ' + id + ' が元の順より前に出ています。' +
+            'シートを並べ替えたまま取り込むことはできません。', id)
+          verdict(n, '×', '元の順より前に出ています(並べ替えたまま取り込めません)')
+          return
+        }
+        edited[id] = r
+        where[id] = n
+        sequence.push(id)
+        previous = order[id]
+        last = id
+      })
+
+      /* CSV に無かった行。出した種別のものは「消された」、出していない種別のものは
+       * 「絞って出した」。混ぜると、絞った表を取り込むたびにタグ行が消える。 */
+      /* 消すかどうかの判断は**1か所**。番人と、実際に落とす所が食い違えないようにする。 */
+      const dropped = function (r) {
+        return !edited[r.ID] && !!o.allowDelete && wasShown(r.種別)
+      }
+      const missing = []
+      base.forEach(function (r) {
+        if (edited[r.ID]) return
+        missing.push({
+          ID: r.ID,
+          種別: r.種別,
+          消された: wasShown(r.種別),
+          // 種別が決める性質なので、頼まれたかどうかに依らない。
+          消せない: r.種別 === '選択肢'
+        })
+      })
+
+      /* 足された行が、見えている次の行との間に隠れた行をまたぐかどうか。
+       * 置き場所は「直前の行の後ろ」の一本に決めてあるので、またぐときは報告で言う。 */
+      const inserted = []
+      sequence.forEach(function (id, k) {
+        const rows = inserts[id]
+        if (!rows) return
+        const next = k + 1 < sequence.length ? order[sequence[k + 1]] : base.length
+        let hidden = 0
+        for (let n = order[id] + 1; n < next; n++) if (!edited[base[n].ID]) hidden++
+        inserted.push({ after: id, count: rows.length, hidden })
+      })
+
+      /* セルを並べ直すだけでは済まない行を、ここで1回だけ見る。
+       *
+       * 選択肢の行の中身は**タグ＝構造**で、しかも分岐の中身(隠れている 自動 の行)は
+       * 残る。だから <When> の行だけ消すと、中身が分岐の外に出る ── compile は通るので
+       * 検査も往復も気づかない。**消すのは断る**(--force も届かない。mergeRows は force を
+       * 受け取らないので、うっかり通す道が構造的に作れない)。
+       *
+       * 見るのは**畳み直した基の行の種別**で、シートの 種別 のセルではない。
+       * あちらは書き換えられる。 */
+      /* 書き換えた選択肢の行に、付け直したことを書き戻すための控え。 */
+      const notes = {}
+      const CHOICE_SHAPES = '通るのは2つの形だけです: 文言だけ書く' +
+        '(タグは元の綴りで付け直します)か、`<When: …>` の形のまま書く。'
+      base.forEach(function (r) {
+        if (r.種別 !== '選択肢' && r.種別 !== '選択肢枠' && r.種別 !== 'スクロール') return
+        if (r.種別 === '選択肢枠') {
+          /* 枠は**見せるが触らせない**。消せば枝が宛て先を失い、書き換えれば枝の範囲が
+           * 変わる。dialogue に出しているのは「ここが1つの質問」と読めるようにするため。 */
+          const here = edited[r.ID]
+          if (!dropped(r) && (!here || String(here.本文) === r.本文)) return
+          say('選択肢の枠', 'ID ' + r.ID + ' (' + r.本文 + ') は' +
+            (dropped(r) ? '消せません' : '書き換えられません') + '。' + CSV_WHY_FRAME, r.ID)
+          return
+        }
+        if (r.種別 === 'スクロール') {
+          /* 流れる文章は中身を直してよい。ただし最初と最後の行は枠なので、崩れたら断る
+           * (消すのは枠ごと1行なので、ふつうの行と同じに扱える)。 */
+          const here = edited[r.ID]
+          if (!here) return
+          const was = r.本文.split('\n')
+          const now = String(here.本文).split('\n')
+          if (now.length >= 2 && now[0] === was[0] && now[now.length - 1] === was[was.length - 1]) return
+          say('スクロールの枠', 'ID ' + r.ID + ' は流れる文章です。' +
+            '最初の行(' + was[0] + ')と最後の行(' + was[was.length - 1] + ')は枠なので、' +
+            'そのまま残してください。間の文章は自由に直せます。', r.ID)
+          return
+        }
+        if (dropped(r)) {
+          say('選択肢は消せません',
+            'ID ' + r.ID + ' (' + r.本文 + ') は選択肢の行なので消せません。' + CSV_WHY_CHOICE +
+            '表で消す行を選び直すなら、' + hints.rowsAll + '。', r.ID)
+          return
+        }
+        const got = edited[r.ID]
+        if (!got) return
+        /* (1) 見た目の列は使えない。並べ直すと選択肢の**手前の行**になるので、
+         *     前の枝にタグが紛れる。基の選択肢の行では必ず空。 */
+        if (csvBare(got.見た目)) {
+          say('選択肢の形', 'ID ' + r.ID + ' は選択肢の行なので、見た目の列は使えません(' +
+            got.見た目 + ')。そのセルを空にしてください。', r.ID)
+          return
+        }
+        const typed = got.本文 === undefined || got.本文 === null ? '' : String(got.本文)
+        // (2) 変わっていないなら何もしない。
+        if (typed === r.本文) return
+        // (3) タグの形のまま直した人。そのまま通す。**(5) より先に見る**
+        //     ── でないと <When: x> が <When: <When: x>> に組み立て直される。
+        if (csvChoiceLabelOf(typed, o.gameRoot) !== null) return
+        // (4) 空にしたのは「消したつもり」の事故。いちばん多い形なので、別に言う。
+        if (!csvBare(typed)) {
+          say('選択肢の形', 'ID ' + r.ID + ' (' + r.本文 + ') の本文が空です。' +
+            '選択肢の文言を書いてください。選択肢そのものをなくすことはできません。' +
+            CSV_WHY_CHOICE, r.ID)
+          return
+        }
+        if (typed.indexOf('\n') >= 0) {
+          say('選択肢の形', 'ID ' + r.ID + ' の本文に改行が入っています(選択肢は1行です)。' +
+            CHOICE_SHAPES, r.ID)
+          return
+        }
+        /* (5) 文言だけ書いた人。**基の行の文字から**組み立て直すので、字下げも綴りも
+         *     空白の癖もそのまま残る。できた行は compile に読ませて、同意したときだけ通す。 */
+        const label = csvChoiceLabelOf(r.本文, o.gameRoot)
+        const at = label === null ? -1 : r.本文.lastIndexOf(label)
+        /* 文言に `<` か `>` が混じっているのは「タグを書こうとして失敗した」形
+         * (`<When: やめる` のように閉じ忘れた、別のタグを貼った)。実データの選択肢432行は
+         * どれも `<>` を含まない。組み立て直すと `<When: <When: やめる>` が選択肢の文言として
+         * 通ってしまうので、(6) に落として断る。 */
+        if (at >= 0 && !/[<>]/.test(typed)) {
+          const rebuilt = r.本文.slice(0, at) + typed + r.本文.slice(at + label.length)
+          const check = csvChoiceLabelOf(rebuilt, o.gameRoot)
+          if (check === typed) {
+            edited[r.ID] = Object.assign({}, got, { 本文: rebuilt })
+            notes[r.ID] = '選択肢のタグを元の綴りで付け直しました: ' + rebuilt
+            return
+          }
+          /* 文言の前に空白を置くと、タグを読むときに落ちる(`<When:` の後ろの空白は
+           * 区切りなので、全角空白も区切りとして食べられる)。黙って落とさずに言う ──
+           * 飾りに空白を使う人は実際に居る(風呂屋の看板で1件落ちたことがある)。 */
+          if (check !== null) {
+            say('選択肢の形', 'ID ' + r.ID + ' の文言の前にある空白は、選択肢には残せません' +
+              '(タグを読むときに落ちます)。「' + check + '」でよければ、そう書いてください。', r.ID)
+            return
+          }
+        }
+        // (6) それ以外。半端なタグ・別のタグ・基の行から文言を見つけられないとき。
+        say('選択肢の形', 'ID ' + r.ID + ' の本文を選択肢として読めません(' + typed + ')。' +
+          '基の行は ' + r.本文 + ' です。' + CHOICE_SHAPES, r.ID)
+      })
+
+      const out = []
+      const cell = function (r, name) { return r[name] === undefined || r[name] === null ? '' : String(r[name]) }
+      let changed = 0
+      let removed = 0
+      base.forEach(function (r) {
+        const got = edited[r.ID]
+        // 消すのは、CSV に出した種別の行が無くなっていて、かつ頼まれたときだけ。
+        const drop = dropped(r)
+        if (got) {
+          const moved = cell(got, '本文') !== cell(r, '本文') || cell(got, '見た目') !== cell(r, '見た目')
+          if (moved) changed++
+          if (where[r.ID] !== undefined) verdict(where[r.ID], moved ? '直した' : 'そのまま', notes[r.ID])
+          out.push(got)
+        } else if (!drop) {
+          out.push(r)
+        } else {
+          removed++
+        }
+        const after = inserts[r.ID]
+        if (after) after.forEach(function (one) { out.push(one) })
+      })
+
+      const fatal = problems.length > 0
+      return {
+        ok: !fatal,
+        // 断るものがあったら、いまのテキストをそのまま返す(途中まで当てた形を作らない)。
+        text: fatal ? whole : csvRowsToLines(out, carryExplicitParameters(o, { gameRoot: o.gameRoot })).join('\n'),
+        stamp,
+        problems,
+        missing,
+        inserted,
+        verdicts,
+        // 書き換えた行・足した行・消した行の数と、元の行数。多すぎる書き換えを断るのに使う。
+        changed,
+        added: inserted.reduce(function (n, one) { return n + one.count }, 0),
+        removed,
+        total: base.length,
+        // 出した範囲を教わらなかった(古い CSV)。報告に出す。
+        inferredExport: inferred
+      }
+    }
+
+    /* CSV の読み書き(RFC 4180)。依存は増やさない。 */
+    const csvCell = function (v) {
+      const s = v === undefined || v === null ? '' : String(v)
+      return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+    }
+
+    const formatCsv = function (rows, columns) {
+      const cols = columns || CSV_COLUMNS
+      const out = [cols.join(',')]
+      rows.forEach(function (r) {
+        out.push(cols.map(function (c) { return csvCell(r[c]) }).join(','))
+      })
+      // BOM が無いと Excel が化ける。改行は CRLF(RFC 4180)。
+      return '\uFEFF' + out.join('\r\n') + '\r\n'
+    }
+
+    const parseCsv = function (text) {
+      const src = String(text).replace(/^\uFEFF/, '')
+      const table = []
+      let row = []
+      let field = ''
+      let quoted = false
+      let i = 0
+      while (i < src.length) {
+        const ch = src[i]
+        if (quoted) {
+          if (ch === '"') {
+            if (src[i + 1] === '"') { field += '"'; i += 2; continue }
+            quoted = false
+            i++
+            continue
+          }
+          field += ch
+          i++
+          continue
+        }
+        if (ch === '"') { quoted = true; i++; continue }
+        if (ch === ',') { row.push(field); field = ''; i++; continue }
+        if (ch === '\r' && src[i + 1] === '\n') { row.push(field); table.push(row); row = []; field = ''; i += 2; continue }
+        if (ch === '\n' || ch === '\r') { row.push(field); table.push(row); row = []; field = ''; i++; continue }
+        field += ch
+        i++
+      }
+      if (field !== '' || row.length) { row.push(field); table.push(row) }
+      if (!table.length) return { columns: [], rows: [] }
+      /* 列は名前で読む。番号では読まない ── シートで列を入れ替えられても動くように。 */
+      const head = table[0].map(function (h) { return String(h).trim() })
+      const rows = table.slice(1).map(function (cells) {
+        const r = {}
+        head.forEach(function (name, n) { r[name] = cells[n] === undefined ? '' : cells[n] })
+        return r
+      })
+      return { columns: head, rows }
+    }
+
+    /* CSV の行を、テキストに当ててゲームへ反映する。**CLI とツクールのプラグインコマンドが
+     * 同じここを使う**(規則を2つに割らない)。ファイルの場所を探すのは呼ぶ側の仕事なので、
+     * 宛先の一覧(targets)とテキストの索引(index)は渡してもらう。
+     *
+     * 返すのは、報告に要るものだけ:
+     *   { ok, columns, report, results, rowProblems, applied, failed, conflicts }
+     * report は読んだ表と同じ形・同じ順で、「判定」と「エラー」だけ埋めたもの。 */
+    const importCsv = function (opts) {
+      const o = opts || {}
+      const _fs = require('fs')
+      const _path = require('path')
+      const hints = Object.assign({}, CSV_HINTS, o.hints || {})
+      const table = parseCsv(o.csvText)
+      const needed = ['宛先', 'ID', '本文']
+      const absent = needed.filter(function (c) { return table.columns.indexOf(c) < 0 })
+      /* 見出しの行が無ければ断る。**列の数からは推測しない** ── 推測すると、1行目を
+       * 消したシートを「1件目のデータ」として読み、見出しの文字をシナリオに書き込む。 */
+      if (absent.length) {
+        return {
+          ok: false,
+          fatal: 'CSV の1行目が列の見出しになっていません(足りない列: ' + absent.join(', ') + ')。' +
+            '列の数からは推測しません。書き出した CSV の1行目をそのまま残してください。',
+          columns: table.columns,
+          report: [],
+          results: [],
+          rowProblems: [],
+          applied: 0,
+          failed: 0,
+          conflicts: 0
+        }
+      }
+
+      /* 行ごとの判定。取り込んだあと同じ形の表に書き戻す ── シートを書いた人が
+       * 自分の行がどうなったかを見られるように。 */
+      const verdicts = table.rows.map(function () { return { 判定: '', エラー: '' } })
+      const rowProblems = []
+      /* 宛先ごとにまとめる。出てきた順を保つ ── 足された行(ID が空)の置き場所は
+       * 「直前の行の後ろ」なので、順が宛先の一部になっている。 */
+      const groups = []
+      const byKey = {}
+      table.rows.forEach(function (r, n) {
+        const at = n + 2 // CSV の行番号(1行目は列の見出し)
+        const key = String(r.宛先 || '').trim()
+        if (String(r.種別 || '') === '見出し') {
+          /* 見出しの行は中身ではないが、**出した行の範囲と指紋を持っている**ので捨てない。
+           * 中身の行が1つも無い宛先でも群を作る ── でないと「シートから全部消された」が
+           * 群ごと消えて、何も言えなくなる。 */
+          verdicts[n].判定 = '見出し'
+          if (!key) return
+          if (!byKey[key]) { byKey[key] = { key, rows: [], at: [], firstLine: at }; groups.push(byKey[key]) }
+          byKey[key].mark = r.見た目
+          byKey[key].headStamp = r.版
+          byKey[key].headAt = n
+          return
+        }
+        if (CSV_COLUMNS.every(function (c) { return !r[c] })) return
+        if (!key) {
+          // 宛先が空で中身がある行。セルを結合すると、下の行の宛先がこうなる。
+          rowProblems.push('CSV の ' + at + '行目: 宛先の列が空です(セルを結合していませんか)。' +
+            '書き出した CSV は全部の行に宛先を書いています。')
+          verdicts[n].判定 = '×'
+          verdicts[n].エラー = '宛先の列が空です(セルを結合していませんか)'
+          return
+        }
+        if (!byKey[key]) { byKey[key] = { key, rows: [], at: [], firstLine: at }; groups.push(byKey[key]) }
+        byKey[key].rows.push(r)
+        // 表のどの行だったか。報告で「判定」「エラー」を書き戻すのに使う。
+        byKey[key].at.push(n)
+      })
+
+      const targets = o.targets || []
+      const index = o.index || { paths: {} }
+      const known = {}
+      targets.forEach(function (t) { known[t.key] = t })
+      const keyParts = function (key) {
+        const m = /^map(\d+)_event(\d+)_page(\d+)$/.exec(String(key || ''))
+        if (!m) return undefined
+        return { kind: 'event', mapId: String(Number(m[1])), eventId: String(Number(m[2])), pageId: String(Number(m[3])) }
+      }
+      const allowDelete = !!o.allowDelete
+      const force = !!o.force
+      const limit = Number(o.maxChange)
+      const share = isNaN(limit) ? 50 : limit
+      const results = []
+
+      /* 報告の文はここで作る。入口は並べるだけ ── 入口ごとに書くと、片方だけ直したときに
+       * 食い違う(実際に「隠れた行をまたいだ」の文が CLI とプラグインに写してあった)。 */
+      const noticesFor = function (merged) {
+        const notes = []
+        if (merged.inferredExport) {
+          notes.push('見出しの行に「出した行の範囲」がありません(古い CSV です)。範囲はシートから' +
+            '推測したので、**消えている行は消していません**。出し直すと、次からは推測しません。')
+        }
+        /* 足した行が、見えている2行の間に隠れた行をまたいだとき。置き場所は
+         * 「直前の行の後ろ」の一本に決めてあるので、またいだことは必ず言う。 */
+        merged.inserted.forEach(function (one) {
+          if (!one.hidden) return
+          notes.push('足した ' + one.count + '行を ' + one.after + ' の直後に入れました。' +
+            one.after + ' と次に見えている行の間には、CSV に出していない行が ' + one.hidden + '行あります。')
+        })
+        return notes
+      }
+
+      groups.forEach(function (group) {
+        /* 宛先ごと見送ったときは、その宛先の全部の行に同じ理由を書く ── 1行だけに書くと
+         * シートを見た人が「自分の行は通った」と読んでしまう。**先に付いた「そのまま」も
+         * 上書きする**(その行も入っていないので)。「×」の行は理由が具体的なので残す。 */
+        const skipAll = function (reason) {
+          group.at.forEach(function (n) {
+            if (verdicts[n].判定 === '×' || verdicts[n].判定 === '見出し') return
+            verdicts[n].判定 = '見送り'
+            verdicts[n].エラー = reason
+          })
+        }
+        const say = function (reason) {
+          results.push({ ok: false, key: group.key, csvLine: group.firstLine, reason })
+          skipAll(reason)
+        }
+        const target = known[group.key]
+        if (!target) {
+          // ページは増やせない。文面は MCP の findTarget と同じものを使う。
+          const why = missingPageReason(targets, keyParts(group.key))
+          say('その宛先はありません' + (why ? '。' + why : '（書き出した CSV の宛先をそのまま使ってください）'))
+          return
+        }
+        const textPath = index.paths[group.key]
+        if (!textPath) {
+          say('この宛先のテキストがまだありません。先に' + hints.pull)
+          return
+        }
+        const whole = _fs.readFileSync(textPath, { encoding: 'utf8' })
+        /* 目印は**畳む前**に見る。畳んでしまうと、衝突しているテキストがちょうど
+         * 一番ばらばらの9行(<注釈> ブロック)になる。 */
+        if (hasConflictMarkerInText(whole)) {
+          say('テキストに衝突の目印が残っています。どちらかを残して目印3行を消してから、もう一度どうぞ: ' + textPath)
+          return
+        }
+        const parsed = parseFrontMatter(whole)
+        const merged = mergeRows(parsed.body, group.rows, carryExplicitParameters(o, {
+          key: group.key,
+          gameRoot: o.gameRoot,
+          allowDelete,
+          hints,
+          exportedMode: csvModeOfMark(group.mark),
+          headStamp: group.headStamp
+        }))
+        // 行ごとの判定を、表の位置へ戻す。
+        merged.verdicts.forEach(function (v, k) {
+          const n = group.at[k]
+          if (n === undefined || !v.判定) return
+          verdicts[n].判定 = v.判定
+          verdicts[n].エラー = v.エラー
+        })
+        if (!merged.ok) {
+          results.push({ ok: false, key: group.key, csvLine: group.firstLine, reason: '断りました', problems: merged.problems })
+          skipAll('この宛先は入れていません(同じ表の × の行に理由があります)')
+          return
+        }
+        const gone = merged.missing.filter(function (m) { return m.消された })
+        if (gone.length && !allowDelete) {
+          /* 「消すなら旗を付けて」と案内した先で選択肢の行だけ断られると、案内が嘘になる。
+           * 混じっていることは**ここで**言う。理由は mergeRows の番人と同じ文面。 */
+          const stuck = gone.filter(function (m) { return m.消せない })
+          let also = ''
+          if (stuck.length) {
+            also = 'うち ' + stuck.length + ' 行は選択肢の行で、' + hints.allowDelete +
+              'も通りません(' + csvIdList(stuck) + ')。' + CSV_WHY_CHOICE
+          }
+          say('シートから ' + gone.length + ' 行が消えています(' + csvIdList(gone) + ')。' + also +
+            '消すつもりなら' + hints.allowDelete + '。' +
+            '消すつもりでなければ、その行を書き出した CSV から戻してください。')
+          return
+        }
+        /* 書き換えが多すぎるときは止める。シートの事故(全体を貼り替えた、1列ずれた)は
+         * たいていこの形で出る。頼まれていれば通す。 */
+        const touched = merged.changed + merged.added + merged.removed
+        const percent = merged.total ? Math.round(touched / merged.total * 100) : 0
+        if (!force && merged.total > 0 && percent > share) {
+          say('この宛先の ' + percent + '% の行が変わっています(' + touched + ' / ' + merged.total +
+            '、上限 ' + share + '%)。意図した書き換えなら' + hints.force + '。' +
+            '意図していなければ、シートが1列ずれていないか確かめてください。')
+          return
+        }
+
+        /* 中身の行が1つも無く、何も変わっていない宛先は**書かない**。絞って出すと
+         * 「セリフの無い宛先」は見出しの行だけになる(手元の筆記録では130のうち87)ので、
+         * 書くと取り込みが一括反映に化けて、誰も触っていないイベントまで書き直す。 */
+        if (!group.rows.length && merged.changed + merged.added + merged.removed === 0) {
+          results.push({ ok: true, key: group.key, csvLine: group.firstLine, untouched: true })
+          return
+        }
+
+        _fs.writeFileSync(textPath, parsed.header + merged.text, 'utf8')
+        const applyOpts = carryExplicitParameters(o, {
+          textPath,
+          strategy: o.strategy || 'merge',
+          basePath: o.basePath,
+          baseRoot: o.gameRoot,
+          gameRoot: o.gameRoot,
+          isDebug: !!o.isDebug
+        })
+        if (target.kind === 'common') {
+          applyOpts.commonEventPath = _path.join(o.dataDir, 'CommonEvents.json')
+        } else {
+          applyOpts.mapPath = _path.join(o.dataDir, mapFileName(target.mapId))
+        }
+        const res = applyTextFile(applyOpts)
+        results.push({
+          ok: !!res.ok,
+          key: group.key,
+          csvLine: group.firstLine,
+          textPath,
+          error: res.error,
+          warnings: res.warnings,
+          conflicts: res.conflicts,
+          changed: merged.changed,
+          added: merged.added,
+          removed: merged.removed,
+          rows: merged.total,
+          hiddenBetween: merged.inserted.filter(function (one) { return one.hidden > 0 }),
+          kept: merged.missing.filter(function (m) { return !m.消された }).length,
+          notes: noticesFor(merged)
+        })
+      })
+
+      /* 見出しの行にも結果を書く。**中身の行が1つも無い宛先では、シートに残っているのが
+       * この行だけ**なので、ここに書かないと書いた人に何も伝わらない。
+       * 「判定」は `見出し` のまま(既存の検査がそれを見ている)。 */
+      results.forEach(function (r) {
+        const group = byKey[r.key]
+        if (!group || group.headAt === undefined) return
+        if (!r.ok) {
+          const first = (r.problems || [])[0]
+          verdicts[group.headAt].エラー = first ? first.detail : r.reason
+          return
+        }
+        if (r.untouched) {
+          verdicts[group.headAt].エラー = 'シートに中身の行がありません(この宛先は触っていません)'
+          return
+        }
+        const parts = []
+        if (r.changed) parts.push('直した ' + r.changed + '行')
+        if (r.added) parts.push('足した ' + r.added + '行')
+        if (r.removed) parts.push('消した ' + r.removed + '行')
+        verdicts[group.headAt].エラー = parts.length ? parts.join(' / ') : 'そのまま'
+      })
+
+      /* 読んだ表と同じ形に「判定」と「エラー」だけ書き足す。列も順も変えない
+       * (シートの隣に並べて見比べるため)。 */
+      const columns = table.columns.slice()
+      ;['判定', 'エラー'].forEach(function (c) { if (columns.indexOf(c) < 0) columns.push(c) })
+      const report = table.rows.map(function (r, n) {
+        const copy = {}
+        table.columns.forEach(function (c) { copy[c] = r[c] })
+        copy.判定 = verdicts[n].判定
+        copy.エラー = verdicts[n].エラー
+        return copy
+      })
+      const failed = results.filter(function (r) { return !r.ok })
+      const untouched = results.filter(function (r) { return r.ok && r.untouched })
+      return {
+        ok: failed.length === 0 && rowProblems.length === 0,
+        columns,
+        report,
+        results,
+        rowProblems,
+        targets: groups.length,
+        applied: results.length - failed.length - untouched.length,
+        // シートに中身の行が無かった宛先(書いていない)。
+        untouched: untouched.length,
+        failed: failed.length,
+        conflicts: results.filter(function (r) { return r.ok && r.conflicts }).length
+      }
+    }
+
     Laurus.Text2Frame.export = { compile, applyThreeWayMerge, applyMergePull, applyTextFile, applyCommandsToData, commandsEqual, resolveStrategy, readBaseText, saveBaseText, deriveBaseId, baseIdForTarget, baseDirForTextDir, getMessageDefaults, restoreAuthoredLines: restoreAuthoredLinesChecked, parseFrontMatter }
+    /* CSV の口。ゲームの中にも要る(プラグインコマンドが使う)ので _internal の囲いには
+     * 入れない。ここに置くのは関数の参照だけで、require は関数の中で読む(ブラウザには
+     * 無い)。列挙しないので、公開 API の一覧(Object.keys)には出ない。
+     * test/test_browser_load.js が、ゲームと同じ入れ物で読み込めることを測っている。 */
+    Object.defineProperty(Laurus.Text2Frame.export, '_csv', {
+      value: {
+        foldToRows,
+        mergeRows,
+        importCsv,
+        rowsToLines: csvRowsToLines,
+        formatCsv,
+        parseCsv,
+        COLUMNS: CSV_COLUMNS,
+        headRow: csvHeadRow,
+        modeOfMark: csvModeOfMark,
+        kindsOfMode: csvKindsOfMode,
+        stampOf: csvStamp
+      }
+    })
     // ゲーム内(NW.js)では require('./Text2Frame.js') が解決できないため、Frame2Text から
     // 参照できるよう共有 API をグローバルにも公開する(CLI/Node では module.exports を使う)。
     // 古い NW.js(Chromium<71)には globalThis が無いので window / global にもフォールバックする。
@@ -11827,6 +13217,14 @@
     }
 
     if (Laurus.Text2Frame.ExecMode === 'BATCH_IMPORT_MESSAGES_FROM_FOLDER') {
+      /* 形式が CSV なら、まずゲームのフォルダの scenario.csv をテキストに当てて
+       * ゲームへ反映する。当てるのは CLI と同じ口(importCsv)。
+       * **そのあと一括反映は走らせない** ── CSV が触っていない宛先まで反映すると、
+       * 「CSV を戻した」つもりの操作が、テキスト全体の反映になってしまう。 */
+      if (String(Laurus.Text2Frame.BatchFormat || 'text').toLowerCase() === 'csv') {
+        runCsvImport()
+        return
+      }
       runBatchImport({
         importFolder: Laurus.Text2Frame.ImportFolder,
         strategy: Laurus.Text2Frame.BatchStrategy || 'add'
@@ -11986,7 +13384,7 @@
      * トップレベルに置くと、プラグインとして入れたときに他のプラグインと名前を取り合う
      * (同名の宣言があると読み込みごと失敗する)。内部用の窓口ごしに渡す。
      * 列挙しないので、公開 API の一覧(Object.keys)には出ない。 */
-    Object.defineProperty(module.exports, '_internal', { value: { collectTextFiles } })
+    Object.defineProperty(module.exports, '_internal', { value: { collectTextFiles, useProjectParameters, pluginParametersOf, pluginReadOf, resolveProjectParameters, describeProjectParameters, hasConflictMarkerInText, missingPageReason } })
   }
 })()
 
@@ -12009,7 +13407,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .name('text2frame')
     .version('2.3.0')
     .usage('[options]')
-    .option('-m, --mode <map|common|compile|batch>', 'output mode', /^(map|common|compile|batch)$/i)
+    .option('-m, --mode <map|common|compile|batch|csv>', 'output mode', /^(map|common|compile|batch|csv)$/i)
     .option('-f, --text-file <name>', 'single-file mode (map/common): input text file')
     .option('--text_path <name>', 'single-file mode: same as --text-file')
     .option('-t, --text-dir <dir>', 'batch mode: text base directory', 'text')
@@ -12026,6 +13424,14 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('--watch', 'watch text files and redeploy on change (batch mode)', false)
     .option('--debounce <ms>', 'debounce window for --watch', '250')
     .option('--poll', 'force polling for --watch (recommended on network/WSL paths)', false)
+    .option('--allow-delete', 'csv mode: let rows missing from the sheet delete their lines', false)
+    .option('--force', 'csv mode: apply even when most of a target changed', false)
+    .option('--max-change <percent>', 'csv mode: refuse a target when more than this share of its rows changed', '50')
+    /* タグを省いて書かれたテキストに何を補うか。既定を置かないのが肝 ── 置くと
+     * 「指定なし」が言えなくなり、そのゲームの設定に従う道が消える。 */
+    .option('--background <name>', 'fill in this background when a message has no tag (default: ask the game)')
+    .option('--window-position <name>', 'fill in this window position when a message has no tag (default: ask the game)')
+    .option('--comment-out-char <char>', 'treat lines starting with this as comments (default: ask the game)')
     .parse()
 
   const help_text = `
@@ -12036,6 +13442,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         npx text2frame --mode batch
         npx text2frame --verbose --mode map --text-file <text file path> --output_path <output file path> --event_id <event id> --page_id <page id> --strategy <merge|overwrite|add>
         npx text2frame --verbose --mode common --text-file <text file path> --common_event_id <common event id> --strategy <merge|overwrite|add>
+        npx text2frame --mode csv
         npx text2frame --mode compile
     DESCRIPTION
         npx text2frame --mode batch
@@ -12077,6 +13484,37 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           例1：$ npx text2frame --mode common --text-file test/basic.txt --output_path data/CommonEvents.json --common_event_id 1 --strategy overwrite
           例2：$ npx text2frame -m common -f test/basic.txt -o data/CommonEvents.json -c 1 -s overwrite
 
+        npx text2frame --mode csv
+          スプレッドシートで書いてもらった CSV をゲームへ戻すモードです。
+          ルートの scenario.csv を読み（-f で別の名前も指定できます）、text フォルダの
+          テキストに当ててから、ふつうの反映と同じ道でゲームへ書きます。
+          例1：$ npx text2frame --mode csv
+          例2：$ npx text2frame --mode csv -f 台本.csv --root /path/to/project
+
+          「メモ」の列はゲームに入りません。コメントアウト行（既定は %）としてテキストに
+          残るので、取り出し直してもメモの列に戻ってきます。
+
+          **CSV からテキストを作り直すのではありません。** いまのテキストをもう一度畳んで、
+          「ID」が合う行だけ差し替えます。だから --rows dialogue で出した短い表でも、
+          出していないタグの行や空行はそのまま残ります。「ID」が空の行は
+          「足された行」として、その直前の行のうしろに入ります。
+
+          止めるのはこんなときです。どの行かを必ず言います。
+            ・1行目の見出しが無い／宛先の列が空（セルを結合した）
+            ・シートを並べ替えた／ID が重複している／知らない ID がある
+            ・CSV を配ったあとにテキストを取り出し直した（「版」の列が合わない）
+            ・テキストに衝突の目印が残っている
+            ・シートから行が消えている → 消すつもりなら --allow-delete
+            ・1つの宛先の 50% を超える行が変わった → 意図した書き換えなら --force
+              （割合は --max-change <percent> で変えられます）
+
+          取り込んだあと、読んだ CSV の隣に scenario.result.csv を書きます。
+          同じ形の表に「判定」と「エラー」だけ書き足したものなので、シートを書いた人が
+          自分の行がどうなったか（直した／足した／そのまま／見送り／×）を見られます。
+
+          CSV を作るのは frame2text のほうです。
+          例3: $ npx frame2text --mode csv
+
         npx text2frame --mode compile
           コンパイルモードです。
           変換したいテキストファイルをパイプで与えると、対応したイベントに変換されたJSONを、標準出力に出力します。
@@ -12085,10 +13523,28 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
 
           例1: $ cat test/basic.txt | npx text2frame --mode compile
 
+        タグを省いて書かれたテキストに何を補うか（どのモードでも効きます）
+          タグの無い「文章の表示」には、背景とウィンドウ位置が補われます。また % で
+          始まる行はコメントとして落とされます。何を使うかは、この順で決まります。
+
+            1. --background / --window-position / --comment-out-char で指定したもの
+            2. そのゲームの js/plugins.js にある Text2Frame の設定
+               （プラグインが実際に入っているときだけ読みます）
+            3. 出荷時の既定（ウィンドウ / 下 / %）
+
+          ツクールで既定を「透明」にしているプロジェクトでは、2 が効かないと
+          **全部のメッセージウィンドウがウィンドウに倒れます**。プラグインを入れて
+          いないゲームでは、1 で言ってください。
+          例1: $ npx text2frame --mode batch --background 透明 --window-position 上
+          例2: $ npx text2frame --mode batch --comment-out-char '#'
+
+          指定した値は取り出す側（frame2text）にも同じ名前で渡してください。
+          片方だけに付けると、省くタグと補う値が食い違います。
+
 `
   program.addHelpText('after', help_text)
   const options = program.opts()
-  if (!['map', 'common', 'compile', 'test', 'batch'].includes(options.mode)) {
+  if (!['map', 'common', 'compile', 'test', 'batch', 'csv'].includes(options.mode)) {
     program.help()
     process.exit(0)
   }
@@ -12101,6 +13557,29 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
   // プラグイン側と同じフォルダ走査を使う(内部用の窓口ごし)。
   const { collectTextFiles } = module.exports._internal
   const cliBase = fromRoot(options.base)
+
+  /* 旗で言われた3つだけを下へ渡す。言われていないものは鍵を立てない ── 立てると
+   * 「指定なし」が消えて、そのゲームの設定に従えなくなる。
+   * COMMAND_LINE の口は名前空間の鍵で受けるので、綴りの対応はここ1か所で持つ。 */
+  const EXPLICIT_CLI = {
+    background: 'Background',
+    windowPosition: 'WindowPosition',
+    commentOutChar: 'CommentOutChar'
+  }
+  const cliParams = {}
+  const cliNamespaceParams = {}
+  Object.keys(EXPLICIT_CLI).forEach(function (name) {
+    if (options[name] === undefined) return
+    cliParams[name] = options[name]
+    cliNamespaceParams[EXPLICIT_CLI[name]] = options[name]
+  })
+
+  /* 何を補うかは3つの出どころから決まるので、-v のときは決まった値とその出どころを言う。
+   * stdout は機械の通路(JSON)なので stderr へ。食い違いは -v が無くても言う。 */
+  const { resolveProjectParameters, describeProjectParameters } = module.exports._internal
+  const paramReport = describeProjectParameters(resolveProjectParameters(cliRoot, cliParams))
+  if (options.verbose) console.error('[params] ' + paramReport.line)
+  paramReport.notes.forEach(function (note) { console.error('[params] ' + note) })
 
   /* 根の外にあるテキストやデータは、祖先だけが根の側に取り残される。さらに根の外の
    * テキストは相対パスを作れず「フォルダ名/ファイル名」に丸まるので、別プロジェクトの
@@ -12164,7 +13643,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     noteOutsideRoot('text', fromRoot(singleTextPath))
     noteOutsideRoot('data', mapPath)
     reportOutsideRoot()
-    const Text2Frame = {
+    const Text2Frame = Object.assign({
       IsDebug: options.verbose,
       TextPath: fromRoot(singleTextPath),
       Strategy: cliSingleStrategy,
@@ -12175,7 +13654,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       MapPath: mapPath,
       EventID: String(eventId),
       PageID: String(options.page_id || fm.pageId || '1')
-    }
+    }, cliNamespaceParams)
     Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [Text2Frame])
   } else if (options.mode === 'common') {
     const fm = frontMatterOf(singleTextPath)
@@ -12187,7 +13666,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     noteOutsideRoot('text', fromRoot(singleTextPath))
     noteOutsideRoot('data', commonEventPath)
     reportOutsideRoot()
-    const Text2Frame = {
+    const Text2Frame = Object.assign({
       IsDebug: options.verbose,
       TextPath: fromRoot(singleTextPath),
       Strategy: cliSingleStrategy,
@@ -12196,7 +13675,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       BaseRoot: cliRoot,
       CommonEventPath: commonEventPath,
       CommonEventID: String(commonEventId)
-    }
+    }, cliNamespaceParams)
     Game_Interpreter.prototype.pluginCommandText2Frame('COMMAND_LINE', [Text2Frame])
   } else if (options.mode === 'compile') {
     process.stdin.setEncoding('utf8')
@@ -12210,6 +13689,93 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     process.stdin.on('end', () => {
       console.log(JSON.stringify(module.exports.compile(readFrontMatter(data).body), null, 2))
     })
+  } else if (options.mode === 'csv') {
+    /* スプレッドシートで書いてもらった CSV を、ゲームへ戻す。
+     * 当てるのは本体の口(_csv.importCsv)で、ツクールのプラグインコマンドと同じもの。
+     * ここがするのは、ファイルの場所を決めて、結果を印字して、報告の CSV を書くことだけ。 */
+    const F2T = require('./Frame2Text.js')
+    const csv = module.exports._csv
+    const csvPath = fromRoot(singleTextPath) || path.join(cliRoot, 'scenario.csv')
+    const dataDir = path.resolve(cliRoot, options.dataDir)
+    const textDir = path.resolve(cliRoot, options.textDir || 'text')
+    noteOutsideRoot('csv', csvPath)
+    noteOutsideRoot('text', textDir)
+    noteOutsideRoot('data', dataDir)
+    reportOutsideRoot()
+    if (!fs.existsSync(csvPath)) {
+      throw new Error('CSV がありません: ' + csvPath +
+        ' / 先に書き出してください: npx frame2text --mode csv')
+    }
+    if (!fs.existsSync(dataDir)) {
+      throw new Error('Data directory not found: ' + dataDir)
+    }
+
+    const index = F2T.indexTexts(textDir)
+    const outcome = csv.importCsv({
+      csvText: fs.readFileSync(csvPath, 'utf8'),
+      targets: F2T.enumerateTargets(dataDir, { scope: 'all', index }),
+      index,
+      gameRoot: cliRoot,
+      dataDir,
+      background: cliParams.background,
+      windowPosition: cliParams.windowPosition,
+      commentOutChar: cliParams.commentOutChar,
+      strategy: cliStrategy,
+      basePath: cliBase,
+      allowDelete: !!options.allowDelete,
+      force: !!options.force,
+      maxChange: options.maxChange,
+      isDebug: options.verbose,
+      hints: {
+        allowDelete: '--allow-delete を付けてください',
+        force: '--force を付けてください',
+        pull: '取り出してください: npx frame2text --mode batch',
+        rowsAll: '全部の行で出し直してください: npx frame2text --mode csv --rows all'
+      }
+    })
+    if (outcome.fatal) {
+      throw new Error(outcome.fatal)
+    }
+
+    /* 同じ形の表に「判定」と「エラー」だけ書き足して返す。書けなくても取り込みは
+     * 失敗にしない(ゲームにはもう入っているため)。 */
+    const resultPath = csvPath.replace(/(\.csv)?$/i, '') + '.result.csv'
+    let reportError = ''
+    try {
+      fs.writeFileSync(resultPath, csv.formatCsv(outcome.report, outcome.columns), 'utf8')
+    } catch (e) {
+      reportError = String((e && e.message) || e)
+    }
+
+    console.log(JSON.stringify({
+      csvPath,
+      resultPath: reportError ? '' : resultPath,
+      reportError,
+      targets: outcome.targets,
+      applied: outcome.applied,
+      untouched: outcome.untouched,
+      failed: outcome.failed,
+      conflicts: outcome.conflicts,
+      rowProblems: outcome.rowProblems.length,
+      strategy: cliStrategy,
+      results: outcome.results
+    }, null, 2))
+    outcome.rowProblems.forEach(function (one) { console.warn('[csv] ' + one) })
+    outcome.results.filter(function (r) { return !r.ok }).forEach(function (r) {
+      console.warn('[csv] ' + r.key + ': ' + r.reason)
+      ;(r.problems || []).forEach(function (p) { console.warn('       ' + p.detail) })
+    })
+    // 文面は importCsv が決める。ここは宛先を添えて並べるだけ。
+    outcome.results.forEach(function (r) {
+      (r.notes || []).forEach(function (one) { console.warn('[csv] ' + r.key + ': ' + one) })
+    })
+    if (outcome.conflicts > 0) {
+      console.warn('[csv] ' + outcome.conflicts +
+        ' 件で衝突しました。ゲームに両方の版を目印付きで書いてあります。ツクールで決めて目印3行を消してから、もう一度取り出してください。')
+    }
+    if (!outcome.ok) {
+      process.exitCode = 1
+    }
   } else if (options.mode === 'batch') {
     // Front matter is the sole source of routing/metadata: scan the text directory for
     // front-matter .txt files and deploy each by its own header.
@@ -12233,14 +13799,14 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       const parsed = readFrontMatter(fs.readFileSync(fileArg, { encoding: 'utf8' }))
       const meta = parsed.meta || {}
       const kind = String(meta.kind || 'event').toLowerCase()
-      const opts = {
+      const opts = Object.assign({
         textPath: fileArg,
         strategy,
         basePath: cliBase,
         // 祖先(.t2f-base)の置き場所。渡さないと process.cwd() に落ちる。
         baseRoot: cliRoot,
         isDebug: options.verbose
-      }
+      }, cliParams)
       // Resolve data paths against the project root (cwd), not the module dir, so batch
       // deploys target the invoking project's data/ (front matter carries the routing IDs).
       if (kind === 'common') {

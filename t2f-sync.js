@@ -83,7 +83,9 @@ function pullTarget (target, opts) {
   const o = opts || {}
   const root = o.root || process.cwd()
   const dataDir = path.resolve(root, o.dataDir || 'data')
-  const englishTag = o.englishTag !== false
+  /* 畳み方は Frame2Text 側の1か所(toFlag)に任せる。ここで真偽値にすると、文字列の
+   * 'false' を渡されたとき truthy のまま通ってしまう(CLI は 303 で畳んでから渡す)。 */
+  const englishTag = o.englishTag
   const strategy = o.strategy || 'merge'
   /* 書き先は「同じ行き先のテキストが既にあればその場所」。利用者が付けた名前のまま書き続ける。
    * 索引は呼び出し側(pullDataFile / syncOnce)が1回だけ作って渡す。 */
@@ -113,6 +115,7 @@ function pullTarget (target, opts) {
   const id = T2F.baseIdForTarget(textPath, root, target)
   const entryStrategy = String(strategy).toLowerCase() === 'overwrite' ? 'overwrite' : 'merge'
   const built = F2T.buildPullText({
+    gameRoot: path.dirname(dataDir),
     list,
     englishTag,
     strategy: entryStrategy,
@@ -284,7 +287,9 @@ if (require.main === module) {
       .option('-d, --data-dir <dir>', 'game data directory', 'data')
       .option('--root <dir>', 'project root for data/, text/ and .t2f-base (default: current directory)')
       .option('-s, --strategy <merge|overwrite>', 'sync strategy', /^(merge|overwrite)$/i, 'merge')
-      .option('-w, --english_tag <true/false>', 'english tag on pull', 'true')
+      /* 既定を置かない。置くと「指定なし」が言えなくなり、そのゲームの
+       * Frame2Text の設定に従う道が消える。 */
+      .option('-w, --english_tag <true/false>', 'english tag on pull (default: ask the game)')
       .option('--scope <all|nonempty|conversation|custom>', 'which events to pull (default: custom = only texts with front matter)', /^(all|nonempty|conversation|custom)$/i, 'custom')
       .option('-v, --verbose', 'debug mode', false)
   }
@@ -300,7 +305,7 @@ if (require.main === module) {
       textDir: options.textDir,
       strategy: String(options.strategy).toLowerCase(),
       scope: String(options.scope || 'custom').toLowerCase(),
-      englishTag: String(options.english_tag) !== 'false',
+      englishTag: options.english_tag === undefined ? undefined : String(options.english_tag) !== 'false',
       direction: String(options.direction).toLowerCase(),
       verbose: options.verbose,
       guard

@@ -13,6 +13,12 @@
     },
     "overrides": [
         {
+            "files": ["t2f-mcp.js", "t2f-help.js"],
+            "rules": {
+                "no-console": ["error", { "allow": ["error", "warn"] }]
+            }
+        },
+        {
             "files": ["test/**/*.js"],
             "env": {
                 "mocha": true,

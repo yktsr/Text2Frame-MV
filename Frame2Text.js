@@ -140,6 +140,26 @@
  * @value all
  * @default conversation
  *
+ * @arg Format
+ * @text 形式
+ * @desc テキストのほかにCSVも書くかを選びます。CSVはスプレッドシートで書いてもらうための1枚の表です。
+ * @type select
+ * @option テキストだけ / text
+ * @value text
+ * @option テキストとCSV / csv
+ * @value csv
+ * @default text
+ *
+ * @arg Rows
+ * @text CSVに出す行
+ * @desc 形式がCSVのときだけ使います。シナリオだけにすると、タグの行と空行を出しません(戻すときは残ります)。
+ * @type select
+ * @option 全部 / all
+ * @value all
+ * @option シナリオだけ / dialogue
+ * @value dialogue
+ * @default all
+ *
  * @param Default Scenario Folder
  * @text 出力フォルダ名
  * @desc シナリオファイルを出力するフォルダ名を設定します。デフォルトはtextです。(MZでは無視されます)
@@ -717,6 +737,104 @@
     return null
   }
 
+  /* ゲーム自身の設定(js/plugins.js の Text2Frame のパラメータ)を、その呼び出しの間だけ使う。
+   * 省くかどうかの基準は「タグが無いとき compile が補う値」でなければならないので、
+   * 補う側と同じ設定を見る必要がある。
+   * 戻す関数を返す。ルートが分からないときも関数を返すので、呼び側は分岐しない。
+   * ゲームの中では内部窓そのものが無い(あちらは PluginManager から読めている)。 */
+  /* 取り出しの見せ方を決める2つ。ゲームの Frame2Text の設定を、指定が無いときだけ使う。
+   *
+   * 組にしないのは、互いに関係の無い入/切だから ── 片方の鍵しか無い plugins.js が実際にある
+   * (Project1 の項目には OmitDefaultTags が無い)。組にすると、そこで両方とも読めなくなる。
+   * 書かれていない鍵は「指定なし」として今の値を残す。そうしないと、項目はあるが鍵が無い
+   * ゲームで、ツクールの中と外で言語が食い違う。 */
+  const PROJECT_FIELDS = {
+    EnglishTag: 'EnglishTag',
+    OmitDefaultTags: 'OmitDefaultTags'
+  }
+
+  function gamePullParameters (gameRoot) {
+    if (!gameRoot) return null
+    const api = resolveText2Frame()
+    const read = api && api._internal && api._internal.pluginParametersOf
+    const params = read ? read(gameRoot, 'Frame2Text') : null
+    if (!params) return null
+    const out = {}
+    Object.keys(PROJECT_FIELDS).forEach(function (field) {
+      const value = params[PROJECT_FIELDS[field]]
+      // 鍵が書かれているときだけ渡すので、toFlag の寄せ先は効かない。
+      if (value !== undefined && value !== null && value !== '') out[field] = toFlag(value, false)
+    })
+    return Object.keys(out).length ? out : null
+  }
+
+  /* 報告のための口。取り出しの2つが何になったか・どこから来たかを返す。**変換には使わない。**
+   * 窓の3つは Text2Frame 側の同じ形の口が答える(鍵の一覧をこちらに写さない)。 */
+  function resolvePullParameters (gameRoot, opts) {
+    const api = resolveText2Frame()
+    const read = api && api._internal && api._internal.pluginReadOf
+      ? api._internal.pluginReadOf(gameRoot, 'Frame2Text')
+      : { entry: false, installed: false }
+    const params = gamePullParameters(gameRoot) || {}
+    const given = {
+      EnglishTag: opts && opts.englishTag !== undefined && opts.englishTag !== null && opts.englishTag !== ''
+        ? toFlag(opts.englishTag, true)
+        : undefined,
+      OmitDefaultTags: opts && opts.omitDefaults !== undefined ? toFlag(opts.omitDefaults, true) : undefined
+    }
+    const names = { EnglishTag: 'englishTag', OmitDefaultTags: 'omitDefaults' }
+    const shipped = { EnglishTag: toFlag(Laurus.Frame2Text.EnglishTag, true), OmitDefaultTags: toFlag(Laurus.Frame2Text.OmitDefaultTags, true) }
+    const out = {
+      plugin: 'Frame2Text',
+      settingsIgnored: !!(read.entry && !read.installed),
+      values: {},
+      from: {},
+      differs: []
+    }
+    Object.keys(PROJECT_FIELDS).forEach(function (field) {
+      const name = names[field]
+      if (given[field] !== undefined) {
+        out.values[name] = given[field]
+        out.from[name] = '明示'
+        if (params[field] !== undefined && params[field] !== given[field]) out.differs.push(name)
+        return
+      }
+      if (params[field] !== undefined) {
+        out.values[name] = params[field]
+        out.from[name] = 'ゲーム'
+        return
+      }
+      out.values[name] = shipped[field]
+      out.from[name] = '出荷時'
+    })
+    return out
+  }
+
+  function useGameSettings (gameRoot, opts) {
+    const noop = function () {}
+    const api = resolveText2Frame()
+    const use = api && api._internal && api._internal.useProjectParameters
+    if (!use) return noop
+    /* ルートが無くても、呼び手が明示した値はそのまま効かせる(優先順位の判断はあちら1か所)。 */
+    return use(gameRoot, opts)
+  }
+
+  /* 入/切の指定を1か所で畳む(英語タグ・既定タグの省略の両方で使う)。ツクールのパラメータ・
+   * プラグインコマンドの引数・CLI のオプションはどれも文字列で届き、'false' は truthy なので、
+   * ここを通さないと指定が黙って無視される。
+   * 未設定のときどちらに寄せるかだけ入口ごとに違うので、第2引数で渡す。 */
+  const toFlag = function (value, whenUnset) {
+    if (value === undefined || value === null || value === '') return !!whenUnset
+    return String(value) !== 'false'
+  }
+
+  /* CLI の -v から IsDebug を立てるための口。CLI は IIFE の外にあり Laurus を直接
+   * 触れないため、ここを通す。モード4つのうち map/common だけが COMMAND_LINE を
+   * 通るので、payload に混ぜると batch と decompile で効かなくなる。 */
+  const setDebug = function (value) {
+    Laurus.Frame2Text.IsDebug = toFlag(value, false)
+  }
+
   if (typeof PluginManager === 'undefined') {
     Laurus.Frame2Text.FileFolder = 'test'
     Laurus.Frame2Text.FileName = 'basic.txt'
@@ -724,7 +842,7 @@
     Laurus.Frame2Text.MapID = '1'
     Laurus.Frame2Text.EventID = '1'
     Laurus.Frame2Text.PageID = '1'
-    Laurus.Frame2Text.IsDebug = true
+    Laurus.Frame2Text.IsDebug = false
     Laurus.Frame2Text.DisplayMsg = true
     Laurus.Frame2Text.DisplayWarning = true
     Laurus.Frame2Text.EnglishTag = true
@@ -755,9 +873,10 @@
     Laurus.Frame2Text.DisplayMsg = String(Laurus.Frame2Text.Parameters.DisplayMsg) === 'true'
     // 未設定(この設定が無かった頃のまま)なら出す。既定を true にしているため。
     Laurus.Frame2Text.DisplayWarning = String(Laurus.Frame2Text.Parameters.DisplayWarning) !== 'false'
-    Laurus.Frame2Text.EnglishTag = String(Laurus.Frame2Text.Parameters.EnglishTag) === 'true'
+    // 未設定(この設定が無かった頃のまま)なら日本語。@default は true だが、ここだけ昔の扱いを残している。
+    Laurus.Frame2Text.EnglishTag = toFlag(Laurus.Frame2Text.Parameters.EnglishTag, false)
     // 未設定(古いプラグイン設定のまま)なら省略する。既定を true にしているため。
-    Laurus.Frame2Text.OmitDefaultTags = String(Laurus.Frame2Text.Parameters.OmitDefaultTags) !== 'false'
+    Laurus.Frame2Text.OmitDefaultTags = toFlag(Laurus.Frame2Text.Parameters.OmitDefaultTags, true)
     // 単発取り出しのしかた。コマンドの引数解決で毎回決め直す。
     Laurus.Frame2Text.Strategy = 'overwrite'
     let PATH_SEP = '/'
@@ -801,7 +920,8 @@
       // 引数順は @arg の並びと合わせる。単体の取り出し・一括反映と同じく
       // 出力先 -> 取り出し方法。TextBase は改名前に保存されたコマンドのため。
       this.pluginCommand('BATCH_EXPORT_MESSAGES_TO_FOLDER',
-        [args.TextFolder || args.TextBase, args.Strategy, args.Scope || 'conversation'])
+        [args.TextFolder || args.TextBase, args.Strategy, args.Scope || 'conversation',
+          args.Format || 'text', args.Rows || 'all'])
     })
   }
 
@@ -1040,6 +1160,9 @@
         // FileFolder は単発の取り出しが引数で書き換えるので、パラメータを直接読む。
         Laurus.Frame2Text.TextBase = args[0] || String((Laurus.Frame2Text.Parameters && Laurus.Frame2Text.Parameters['Default Scenario Folder']) || '') || 'text'
         Laurus.Frame2Text.BatchStrategy = batchStrategy
+        /* 形式と、CSV に出す行。**末尾に足す**ので、今までの3つだけの書き方も動き続ける。 */
+        Laurus.Frame2Text.BatchFormat = String(args[3] || 'text').toLowerCase() === 'csv' ? 'csv' : 'text'
+        Laurus.Frame2Text.BatchRows = String(args[4] || 'all').toLowerCase() === 'dialogue' ? 'dialogue' : 'all'
         Laurus.Frame2Text.ExecMode = 'BATCH_EXPORT_MESSAGES_TO_FOLDER'
         break
       }
@@ -1143,7 +1266,9 @@
     const newLine = '\n'
     // カンマ
     const comma = ', '
-    const EnglishTag = Laurus.Frame2Text.EnglishTag
+    /* タグと値(パラメータ)の言語。下のヘルパ群と decompile の本体が両方これを見る。
+     * decompile は、その呼び出しの間だけここを差し替える(下の decompile を参照)。 */
+    let EnglishTag = toFlag(Laurus.Frame2Text.EnglishTag, true)
     // 関数
     const getOnOffRadioButtonValue = (checkBoxValue) => {
       if (checkBoxValue === 0) return EnglishTag ? 'ON' : 'オン'
@@ -1556,7 +1681,6 @@
     }
 
     // 出力するテキスト変数
-    // Laurus.Frame2Text.EnglishTagの値を別変数に代入
     // 整形(pretty)時にインデントを付与しないコード。
     // 複数行の本文を持つもの(メッセージ本文/スクロール文/注釈/スクリプト)は
     // 行頭の空白がそのまま本文として取り込まれ往復変換が壊れるため列0のままにする。
@@ -1568,15 +1692,15 @@
     // 101/401: 文章の表示(顔・名前・位置・背景タグを含む), 102/402/403/404: 選択肢,
     // 105/405: 文章のスクロール表示。これ以外(スイッチ・変数・移動等)は出力しない。
     const CONVERSATION_CODES = [101, 401, 102, 402, 403, 404, 105, 405]
-    const decompile = function (map_events, EnglishTag, options) {
+    const decompileCore = function (map_events, options) {
       // イベントコード毎にループ
       const pretty = !!(options && options.pretty)
       const translationOnly = !!(options && options.translationOnly)
       /* 既定と同じ顔・背景・位置のタグを書かない。3つとも既定ならタグ行ごと消える。
        * 実プロジェクトでは「文章の表示」の 43.8% がこれに当たり、タグ行が雑音になっている。 */
       const omitDefaults = (options && options.omitDefaults !== undefined)
-        ? !!options.omitDefaults
-        : String(Laurus.Frame2Text.OmitDefaultTags) !== 'false'
+        ? toFlag(options.omitDefaults, true)
+        : toFlag(Laurus.Frame2Text.OmitDefaultTags, true)
       /* 省略してよいのは「タグが無いとき compile が補う値」と同じときだけ。出荷時の既定
        * (ウインドウ/下)を基準にすると、プラグインパラメータを変えているプロジェクトで壊れる。
        * Text2Frame が居ないと何を補われるか分からないので、そのときは背景・位置を省略しない。 */
@@ -3201,6 +3325,46 @@
       return text
     }
 
+    /* 言語は引数で決める。値を組み立てるヘルパ群は上の EnglishTag を見ているので、
+     * 引数で来た言語をこの呼び出しの間だけそこへ入れ、終わったら戻す。decompile は
+     * 同期で入れ子にならないので、この退避・復元で足りる。
+     * 引数を省いた呼び出しは今の値のまま(ゲームの設定 or プラグインパラメータ or CLI の -w)。
+     *
+     * 順番が肝。ゲームの設定を先に入れ、そのうえに引数を重ねる ── 逆にすると、
+     * 引数で言い直した言語をゲームの設定が踏む。 */
+    /* 言語と「既定と同じタグを省く」を、そのゲームの Frame2Text の設定にする。
+     * EnglishTag はこの囲いの中の変数なので、外(Text2Frame の読み口)からは触れない。
+     * 入れ替えるのは**指定が無いとき**だけ効かせるためで、優先順位そのものの判断は
+     * 呼び手の引数を先に見る所(decompileCore の omitDefaults、decompile の englishTag)にある。 */
+    const useGamePullSettings = function (gameRoot) {
+      const noop = function () {}
+      const params = gamePullParameters(gameRoot)
+      if (!params) return noop
+      const previousEnglishTag = EnglishTag
+      const previousOmit = Laurus.Frame2Text.OmitDefaultTags
+      if (params.EnglishTag !== undefined) EnglishTag = params.EnglishTag
+      if (params.OmitDefaultTags !== undefined) Laurus.Frame2Text.OmitDefaultTags = params.OmitDefaultTags
+      return function () {
+        EnglishTag = previousEnglishTag
+        Laurus.Frame2Text.OmitDefaultTags = previousOmit
+      }
+    }
+
+    const decompile = function (map_events, englishTag, options) {
+      // 控えるのは窓を開ける前。あとで戻すのは「この呼び出しの前の値」でなければならない。
+      const previousEnglishTag = EnglishTag
+      const restoreGame = useGameSettings(options && options.gameRoot, options)
+      const restorePull = useGamePullSettings(options && options.gameRoot)
+      if (englishTag !== undefined) EnglishTag = toFlag(englishTag, true)
+      try {
+        return decompileCore(map_events, options)
+      } finally {
+        restorePull()
+        restoreGame()
+        EnglishTag = previousEnglishTag
+      }
+    }
+
     // 書き出し主体のバージョン(リリース時に package.json と揃えて更新する)。
     // 書き出したテキストのフロントマターに generator: text2frame-mv@<VERSION> として埋める。
     const VERSION = '2.3.0'
@@ -3286,6 +3450,38 @@
       if (!meta.mapId || !meta.eventId) return ''
       return 'map' + pad3(meta.mapId) + '_event' + pad3(meta.eventId) + '_page' + (meta.pageId || '1')
     }
+    /* 取り出したテキストを1枚の CSV の行にする。**CLI の --mode csv とツクールの
+     * 「形式: CSV」が同じここを使う**(規則を2つに割らない)。ファイルは書かない。
+     * 畳むのは Text2Frame の口。宛先の順はゲームのデータの順(人が読むときに追いやすい)。 */
+    const buildCsvRows = function (opts) {
+      const api = resolveText2Frame()
+      if (!api || !api._csv) return null
+      const _fs = require('fs')
+      const csv = api._csv
+      const rows = []
+      const missing = []
+      const broken = []
+      const index = opts.index || { paths: {} }
+      ;(opts.targets || []).forEach(function (t) {
+        const textPath = index.paths[t.key]
+        if (!textPath) { missing.push(t.key); return }
+        const body = api.parseFrontMatter(_fs.readFileSync(textPath, 'utf8')).body
+        const folded = csv.foldToRows(body, t.key,
+          Object.assign({ gameRoot: opts.gameRoot, rows: opts.rows }, opts.params || {}))
+        /* 見出しの行。作るのは Text2Frame の口(出した行の範囲と指紋をあちらが書く)。
+         * 指紋は畳んだ行と同じものを使う ── 別に数えると、行と見出しで食い違う。 */
+        rows.push(csv.headRow({
+          key: t.key,
+          label: t.name ? t.key + '  ' + t.name : t.key,
+          rows: opts.rows,
+          stamp: folded.length ? folded[0].版 : csv.stampOf(body)
+        }))
+        folded.forEach(function (r) { rows.push(r) })
+        if (folded.length && folded[0].エラー) broken.push(t.key)
+      })
+      return { rows, missing, broken, text: csv.formatCsv(rows) }
+    }
+
     const indexTexts = function (textDir) {
       const _fs = require('fs')
       const _path = require('path')
@@ -3418,10 +3614,12 @@
     //  ・ゲームへ書くものが無いとき: 書き換えなかった側=ゲームを入れる。ここに merge 結果を入れると、
     //    ゲームが一度も到達していない状態が祖先になり、次の反映で 3-way が「ゲームが消した」と
     //    誤読して、取り出し前にテキストへ書いた分が黙って消える。
-    const buildPullText = function (opts) {
-      opts = opts || {}
+    const buildPullTextCore = function (opts) {
       const list = opts.list || []
-      const englishTag = opts.englishTag !== false
+      /* 「指定なし」をそのまま下へ渡す。true に畳むと、言語をゲームの設定に従わせられない。 */
+      const englishTag = (opts.englishTag === undefined || opts.englishTag === null || opts.englishTag === '')
+        ? undefined
+        : toFlag(opts.englishTag, true)
       const existingText = opts.existingText || ''
       const merge = String(opts.strategy || 'overwrite').toLowerCase() === 'merge'
       // 目印入りのゲームを統合すると、目印ごと再マージされて二重・三重に増える。統合だけ見送る。
@@ -3496,6 +3694,23 @@
         approximate: restored.approximate,
         // applyMergePull の警告はこれまで捨てられていた(祖先が無いときの上書き警告など)。
         warnings: r.warnings || []
+      }
+    }
+
+    /* opts.gameRoot をもらったら、そのゲームの設定で省く・補うを決める。
+     * ここで窓を開けるのは、中の decompile だけでなく applyMergePull も効くようにするため
+     * (あれは Text2Frame の compile を呼ぶので、補う側もこの設定で動く必要がある)。
+     * 取り出しの2つも同じ理由でここに要る ── applyMergePull が中で呼ぶ decompile には
+     * ゲームのフォルダが渡らないので、あちらの窓だけでは届かない。 */
+    const buildPullText = function (opts) {
+      opts = opts || {}
+      const restoreGame = useGameSettings(opts.gameRoot, opts)
+      const restorePull = useGamePullSettings(opts.gameRoot)
+      try {
+        return buildPullTextCore(opts)
+      } finally {
+        restorePull()
+        restoreGame()
       }
     }
 
@@ -3655,15 +3870,17 @@
         if (entryStrategy === 'merge') {
           try { baseText = _fs.readFileSync(_path.join(opts.baseDir, t.key + '.txt'), 'utf8') } catch (e) { baseText = '' }
         }
-        const built = buildPullText({
+        const built = buildPullText(Object.assign({
           list,
+          // ゲームのルートは data の親。そのゲームの設定で省く・補うを決める。
+          gameRoot: _path.dirname(opts.dataDir),
           englishTag: opts.englishTag,
           omitDefaults: opts.omitDefaults,
           strategy: entryStrategy,
           existingText,
           baseText,
           fallbackHeader: renderFrontMatter(t, t.kind)
-        })
+        }, opts.params || {}))
         // 未解決の目印が残っているものは書かずに見送る(このファイルだけ飛ばす)。
         if (built.skipped) return { ok: true, skipped: built.skipped }
         /* 先にゲームへ書く。書けなければテキストも祖先も触らない(片方だけ書いて、
@@ -3728,7 +3945,8 @@
           baseDir,
           englishTag: opts.englishTag,
           omitDefaults: opts.omitDefaults,
-          strategy: opts.strategy
+          strategy: opts.strategy,
+          params: opts.params
         })
         if (r.baseSaveError) baseSaveError = baseSaveError || r.baseSaveError
         /* 呼ぶ側へ渡す欄は数えて並べる。pullTargetToText の戻り値には本文(text)まで入って
@@ -3753,7 +3971,7 @@
       return { baseDir, results, baseSaveError }
     }
 
-    internalForCli = { runBatchPull }
+    internalForCli = { runBatchPull, toFlag, setDebug, resolveText2Frame, buildCsvRows, resolvePullParameters }
     Laurus.Frame2Text.export = { decompile, VERSION, baseDirForTextDir, enumerateTargets, indexTexts, outPathFor, defaultFileName, pullTargetToText, renderFrontMatter, buildPullText, writeBackToGame }
     // ゲーム内(NW.js)では require('./Frame2Text.js') が解決できないため、Text2Frame の pull-merge が
     // decompile を参照できるよう共有 API をグローバルにも公開する。古い NW.js には globalThis が無いので
@@ -3779,7 +3997,7 @@
       const _path = require('path')
       const dataDir = _path.resolve(BASE_PATH, 'data')
       const textBase = Laurus.Frame2Text.TextBase
-      const englishTag = String(Laurus.Frame2Text.EnglishTag) !== 'false'
+      const englishTag = toFlag(Laurus.Frame2Text.EnglishTag, true)
       const batchStrategy = Laurus.Frame2Text.BatchStrategy || 'overwrite'
       let okCount = 0
       let errCount = 0
@@ -3853,7 +4071,7 @@
         index: _index,
         strategy: batchStrategy,
         englishTag,
-        omitDefaults: Laurus.Frame2Text.OmitDefaultTags
+        omitDefaults: toFlag(Laurus.Frame2Text.OmitDefaultTags, true)
       }, function (r) {
         if (!r.ok) {
           errCount++
@@ -3884,6 +4102,37 @@
         (conflictSkipped.length > 0 ? '、衝突未解決で除外 ' + conflictSkipped.length + '件' : '') +
         (markerCarried.length > 0 ? '、目印ごと取り出し ' + markerCarried.length + '件' : ''))
       addMessage('[batch] 出力先: ' + outDir + '(取り出す範囲: ' + _scope + ')')
+      /* 形式が CSV なら、いま書いたテキストを1枚の表にもする。CLI の --mode csv と
+       * 同じ口を使うので、出てくる表は同じ。書き先はゲームのフォルダの scenario.csv
+       * (text/ の中には置かない ── 祖先の鍵がテキストの置き場所で決まるため)。 */
+      if (String(Laurus.Frame2Text.BatchFormat || 'text').toLowerCase() === 'csv') {
+        const csvPath = _path.resolve(BASE_PATH, 'scenario.csv')
+        // 書いたあとの名前で引き直す(新しく作ったテキストを拾うため)。
+        const built = buildCsvRows({
+          targets,
+          index: indexTexts(outDir),
+          gameRoot: BASE_PATH,
+          rows: Laurus.Frame2Text.BatchRows || 'all'
+        })
+        if (!built) {
+          addWarning('[batch] CSV を書くには Text2Frame プラグインが必要です。同じプロジェクトに導入してください。')
+          console.error('[batch] CSV export requires the Text2Frame plugin')
+        } else {
+          try {
+            require('fs').writeFileSync(csvPath, built.text, 'utf8')
+            addMessage('[batch] CSV: ' + csvPath + ' (' + built.rows.length + '行' +
+              (String(Laurus.Frame2Text.BatchRows) === 'dialogue' ? '、シナリオだけ' : '') + ')')
+          } catch (e) {
+            addWarning('[batch] CSV を書けませんでした: ' + String((e && e.message) || e))
+            console.error('[batch] cannot write ' + csvPath + ': ' + String((e && e.message) || e))
+          }
+          if (built.broken.length > 0) {
+            addWarning('[batch] 文法が通らないテキスト ' + built.broken.length +
+              '件は、1行1行そのまま CSV に出しました(エラーの列に理由があります)。')
+            console.warn('[batch] csv kept as raw lines: ' + built.broken.join(', '))
+          }
+        }
+      }
       if (_duplicated.length > 0) {
         addWarning('[batch] 同じ行き先のテキストが複数あるため ' + _duplicated.length + '件を見送りました。どれか1つにしてください。')
         _duplicated.forEach(function (key) {
@@ -4063,7 +4312,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .name('frame2text')
     .version('2.3.0')
     .usage('[options]')
-    .option('-m, --mode <map|common|decompile|batch>', 'output mode', /^(map|common|decompile|batch)$/i)
+    .option('-m, --mode <map|common|decompile|batch|csv>', 'output mode', /^(map|common|decompile|batch|csv)$/i)
     .option('-i, --input_path <name>', 'input map data path')
     .option('-o, --output_path <name>', 'output file path')
     .option('-e, --event_id <name>', 'event file id')
@@ -4073,11 +4322,18 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     .option('-t, --text-dir <dir>', 'text base directory (batch)', 'text')
     .option('--root <dir>', 'project root for data/, text/ and .t2f-base (default: current directory)')
     .option('-v, --verbose', 'debug mode', false)
-    .option('-w, --english_tag <true/false>', 'english tag', 'true')
-    .option('--omit-default-tags <true/false>', 'omit face/background/position tags that match the defaults', 'true')
+    /* 既定を置かないのが肝 ── 置くと「指定なし」が言えなくなり、
+     * そのゲームの Frame2Text の設定に従う道が消える。 */
+    .option('-w, --english_tag <true/false>', 'english tag (default: ask the game)')
+    .option('--omit-default-tags <true/false>', 'omit face/background/position tags that match the defaults (default: ask the game)')
     .option('-s, --strategy <merge|overwrite>', 'pull strategy (default merge: keep translations; overwrite: replace)', /^(merge|overwrite)$/i, 'merge')
     .option('--scope <all|nonempty|conversation|custom>', 'batch mode: which events to write (default: conversation)', /^(all|nonempty|conversation|custom)$/i, 'conversation')
+    .option('--rows <all|dialogue>', 'csv mode: which rows to write (default: all)', /^(all|dialogue)$/i, 'all')
     .option('-b, --base <path>', 'ancestor text path for merge (optional; auto .t2f-base when omitted)')
+    /* 反映側(text2frame)と同じ名前で置く。取り出しと反映で同じ値を使えないと往復が閉じない。 */
+    .option('--background <name>', 'assume this background is filled in when no tag is written (default: ask the game)')
+    .option('--window-position <name>', 'assume this window position is filled in when no tag is written (default: ask the game)')
+    .option('--comment-out-char <char>', 'treat lines starting with this as comments (default: ask the game)')
     .parse()
 
   const help_text = `
@@ -4088,6 +4344,7 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
         npx frame2text --mode batch
         npx frame2text --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
         npx frame2text --mode common --input_path <map json file path> --common_event_id <common event id> --output_path <output file path>
+        npx frame2text --mode csv
         npx frame2text --mode decompile
     DESCRIPTION
         npx frame2text --mode batch
@@ -4120,6 +4377,32 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
           例5: $ npx frame2text --mode batch --text-dir text-en
                $ npx text2frame --mode batch --text-dir text-en
 
+        npx frame2text --mode csv
+          テキストを1枚の CSV に畳む、スプレッドシート用の書き出しモードです。
+          text フォルダのテキストを読み、ルートに scenario.csv を書きます。
+          タグを知らない人にシナリオを書いてもらい、戻してもらうための形です。
+          例1：$ npx frame2text --mode csv
+          例2：$ npx frame2text --mode csv --root /path/to/project -o 台本.csv
+
+          1行が1つの読み手の単位になります(文章の窓まるごと1行、顔や背景のタグは
+          その窓の「見た目」の列へ)。行は「宛先」と「ID」で引くので、シートを
+          並べ替えたり列を入れ替えたりしても戻せます。
+          「メモ」の列はゲームに入りません(テキストのコメントアウト行になるので、
+          取り出し直してもメモの列に戻ってきます)。
+
+          --rows で出す行を選べます。（既定は all ）
+            all      … タグの行も空行も全部出します。
+            dialogue … セリフと選択肢の行だけ出します。読む人向けに短くなりますが、
+                       出していない行は取り込みのときにそのまま残ります
+                       (取り込みは CSV からテキストを作らず、今のテキストに当てます)。
+          例3: $ npx frame2text --mode csv --rows dialogue
+
+          **このモードはテキストを書き直しません。** ゲームの最新を映したいときは、
+          先に --mode batch で取り出してください。テキストの無い宛先は CSV に入れず、
+          何件あったかを報告します。
+          書いてもらった CSV をゲームへ戻すのは text2frame のほうです。
+          例4: $ npx text2frame --mode csv
+
         npx frame2text --mode map --input_path <map json file path> --output_path <output file path> --event_id <event id> --page_id <page id>
           マップイベントのテキスト出力モードです。
           読み込むマップファイル、出力テキストファイル、イベントID、ページIDを指定します。
@@ -4141,19 +4424,82 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
            変換したいイベントをパイプで与えると、対応したテキストファイルに変換し、標準出力に出力します。
            このモードでは、Map.json / CommonEvent.json 単位で変換され、イベントやページ番号は無視されます。
            例1: $ cat data/Map001.json | npx frame2text --mode decompile
+
+        タグの言語と、省くタグ（どのモードでも効きます）
+          タグを英語で書くか（--english_tag）、既定と同じ顔・背景・位置のタグを省くか
+          （--omit-default-tags）は、この順で決まります。
+
+            1. 旗で指定したもの
+            2. そのゲームの js/plugins.js にある Frame2Text の設定
+               （プラグインが実際に入っているときだけ読みます）
+            3. 出荷時の既定（英語 / 省く）
+
+          省けるのは「タグが無いとき反映で補われる値」と同じときだけなので、補う側の
+          3つも同じ名前で指定できます（--background / --window-position /
+          --comment-out-char）。指定するときは反映側（text2frame）にも同じ値を渡して
+          ください。片方だけに付けると、省くタグと補う値が食い違います。
+          例1: $ npx frame2text --mode batch --omit-default-tags false
+          例2: $ npx frame2text --mode batch --background 透明 --window-position 上
 `
 
   program.addHelpText('after', help_text)
   const options = program.opts()
+  // 入/切の畳み方はプラグイン側と同じものを使う(規則を2つに割らない)。
+  const { toFlag, setDebug } = module.exports._internal
+  // -v はここで1回だけ渡す。モードごとに配線すると batch と decompile で抜ける。
+  setDebug(options.verbose)
 
-  if (!['map', 'common', 'decompile', 'test', 'batch'].includes(options.mode)) {
+  if (!['map', 'common', 'decompile', 'test', 'batch', 'csv'].includes(options.mode)) {
     program.help()
     process.exit(0)
   }
 
   const _pullOverwrite = String(options.strategy).toLowerCase() === 'overwrite'
+
+  /* 旗で言われたものだけを下へ渡す。言われていないものは鍵を立てない ── 立てると
+   * 「指定なし」が消えて、そのゲームの設定に従えなくなる。
+   * COMMAND_LINE の口は名前空間の鍵で受けるので、綴りの対応はここ1か所で持つ。 */
+  const EXPLICIT_CLI = {
+    background: 'Background',
+    windowPosition: 'WindowPosition',
+    commentOutChar: 'CommentOutChar',
+    english_tag: 'EnglishTag',
+    omitDefaultTags: 'OmitDefaultTags'
+  }
+  const cliParams = {}
+  const cliNamespaceParams = {}
+  Object.keys(EXPLICIT_CLI).forEach(function (name) {
+    if (options[name] === undefined) return
+    cliParams[name] = options[name]
+    cliNamespaceParams[EXPLICIT_CLI[name]] = options[name]
+  })
+  /* 窓の3つだけ(取り出しの2つは入口ごとに畳んで渡すので、混ぜない)。 */
+  const cliFillParams = {
+    background: cliParams.background,
+    windowPosition: cliParams.windowPosition,
+    commentOutChar: cliParams.commentOutChar
+  }
+
+  /* 言語・省略・補う値は3つの出どころから決まるので、-v のときは決まった値とその出どころを
+   * 言う。stdout は機械の通路(JSON)なので stderr へ。食い違いは -v が無くても言う。 */
+  const reportParams = function (root) {
+    const T2F = module.exports._internal.resolveText2Frame()
+    if (!T2F || !T2F._internal || !T2F._internal.describeProjectParameters) return
+    const say = T2F._internal.describeProjectParameters
+    const reports = [
+      say(T2F._internal.resolveProjectParameters(root, cliFillParams)),
+      say(module.exports._internal.resolvePullParameters(root, {
+        englishTag: options.english_tag,
+        omitDefaults: options.omitDefaultTags
+      }))
+    ]
+    reports.forEach(function (r) {
+      if (options.verbose) console.error('[params] ' + r.line)
+      r.notes.forEach(function (note) { console.error('[params] ' + note) })
+    })
+  }
   if (options.mode === 'map') {
-    const Frame2Text = {
+    const Frame2Text = Object.assign({
       MapID: options.map_id,
       EventID: options.event_id,
       PageID: options.page_id,
@@ -4162,15 +4508,13 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       MapPath: options.input_path,
       CommonEventPath: options.input_path,
       CommonEventID: options.common_event_id,
-      EnglishTag: options.english_tag,
-      OmitDefaultTags: options.omitDefaultTags,
       BasePath: options.base,
       Strategy: _pullOverwrite ? 'overwrite' : 'merge',
       ExecMode: 'EXPORT_EVENT_TO_MESSAGE'
-    }
+    }, cliNamespaceParams)
     Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', [Frame2Text])
   } else if (options.mode === 'common') {
-    const Frame2Text = {
+    const Frame2Text = Object.assign({
       MapID: options.map_id,
       EventID: options.event_id,
       PageID: options.page_id,
@@ -4179,12 +4523,10 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       MapPath: options.input_path,
       CommonEventPath: options.input_path,
       CommonEventID: options.common_event_id,
-      EnglishTag: options.english_tag,
-      OmitDefaultTags: options.omitDefaultTags,
       BasePath: options.base,
       Strategy: _pullOverwrite ? 'overwrite' : 'merge',
       ExecMode: 'EXPORT_CE_TO_MESSAGE'
-    }
+    }, cliNamespaceParams)
     Game_Interpreter.prototype.pluginCommandFrame2Text('COMMAND_LINE', [Frame2Text])
   } else if (options.mode === 'decompile') {
     process.stdin.setEncoding('utf8')
@@ -4198,10 +4540,69 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
     process.stdin.on('end', () => {
       JSON.parse(data).events.filter(event => event !== null).forEach(function (event) {
         event.pages.forEach(function (p) {
-          console.log(module.exports.decompile(p.list))
+          console.log(module.exports.decompile(p.list, options.english_tag === undefined ? undefined : toFlag(options.english_tag, true)))
         })
       })
     })
+  } else if (options.mode === 'csv') {
+    /* text/*.txt を1枚の CSV に畳む。**ゲームのデータは読むだけ**(どの宛先がどの順で
+     * 並ぶかを決めるのに使う)。テキストを書き直すことはしないので、取り出しが要るなら
+     * 先に --mode batch を流す。無いテキストは作らず、無いと報告する。
+     * 前置きは --mode batch と同じ形(ルート・データ・テキスト・索引・範囲)。 */
+    const cliRoot = options.root ? path.resolve(options.root) : process.cwd()
+    const dataDir = path.resolve(cliRoot, options.dataDir)
+    if (!fs.existsSync(dataDir)) {
+      throw new Error('Data directory not found: ' + dataDir)
+    }
+    const textDir = path.resolve(cliRoot, options.textDir)
+    const index = module.exports.indexTexts(textDir)
+    const duplicated = Object.keys(index.duplicates)
+    const scope = String(options.scope || 'conversation').toLowerCase()
+    const which = String(options.rows || 'all').toLowerCase()
+    const targets = module.exports.enumerateTargets(dataDir, { scope, index })
+    /* 畳むのは本体の口。ツクールの「形式: CSV」と同じ所を使う(規則を2つに割らない)。 */
+    const built = module.exports._internal.buildCsvRows({
+      targets,
+      index,
+      gameRoot: cliRoot,
+      rows: which,
+      params: cliFillParams
+    })
+    if (!built) {
+      throw new Error('Text2Frame が見つかりません(CSV は Text2Frame.js の畳み方を使います)')
+    }
+    const rows = built.rows
+    const missing = built.missing
+    const broken = built.broken
+    /* 既定はルートの scenario.csv。text/ の中には置かない ── 祖先(.t2f-base)の鍵は
+     * テキストの置き場所の第1階層で決まるので、そこへ物を増やさない。 */
+    const csvPath = options.output_path
+      ? path.resolve(cliRoot, options.output_path)
+      : path.join(cliRoot, 'scenario.csv')
+    fs.writeFileSync(csvPath, built.text, 'utf8')
+    console.log(JSON.stringify({
+      csvPath,
+      rows: rows.length,
+      targets: targets.length,
+      written: targets.length - missing.length,
+      noText: missing.length,
+      brokenSyntax: broken.length,
+      scope,
+      mode: which
+    }, null, 2))
+    if (missing.length > 0) {
+      console.warn('[csv] ' + missing.length + ' 件の宛先にはまだテキストがありません(CSV には入れていません). ' +
+        '先に取り出してください: npx frame2text --mode batch — ' + missing.slice(0, 10).join(', ') +
+        (missing.length > 10 ? ' 他' + (missing.length - 10) + '件' : ''))
+    }
+    if (broken.length > 0) {
+      console.warn('[csv] ' + broken.length + ' 件のテキストは文法が通らないので、1行1行そのまま出しました' +
+        '(エラーの列に理由があります): ' + broken.slice(0, 10).join(', '))
+    }
+    if (duplicated.length > 0) {
+      console.warn('[csv] ' + duplicated.length + ' 件の宛先にテキストが2つ以上あります(最初のものを使いました): ' +
+        duplicated.slice(0, 10).join(', '))
+    }
   } else if (options.mode === 'batch') {
     /* データ・テキスト・祖先(.t2f-base)は、すべて --root を基準に決まる(text2frame と同じ)。
      * 既定は実行したフォルダなので、プロジェクトの中で流す使い方は今までと同じ。 */
@@ -4211,9 +4612,10 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       throw new Error('Data directory not found: ' + dataDir)
     }
     const textDir = path.resolve(cliRoot, options.textDir)
-    const englishTag = String(options.english_tag) === 'true'
-    // 既定と同じタグの省略。プラグインパラメータと同じ既定(省略する)。
-    const omitDefaults = String(options.omitDefaultTags) !== 'false'
+    reportParams(cliRoot)
+    /* 「指定なし」は undefined のまま下へ。そのゲームの Frame2Text の設定に従わせるため。 */
+    const englishTag = options.english_tag === undefined ? undefined : toFlag(options.english_tag, true)
+    const omitDefaults = options.omitDefaultTags === undefined ? undefined : toFlag(options.omitDefaultTags, true)
     // map/common モードと同じく -s を尊重する(既定 merge)。既存テキストが無ければ結果は全上書きと同じ。
     const batchStrategy = _pullOverwrite ? 'overwrite' : 'merge'
     /* 既にあるテキストは、その名前・その場所のまま書き続ける(索引は front matter で引く)。
@@ -4233,7 +4635,8 @@ if (typeof require !== 'undefined' && typeof require.main !== 'undefined' && req
       index,
       strategy: batchStrategy,
       englishTag,
-      omitDefaults
+      omitDefaults,
+      params: cliFillParams
     })
     const baseSaveError = batch.baseSaveError
     const results = batch.results.map(function (r) {
