@@ -259,3 +259,28 @@ describe('restoreAuthoredLines', function () {
     })
   })
 })
+
+/* コメント文字は「文字」なので、正規表現の部品として効いてはいけない。
+ * `.` にしている人のところで全部の行が落ちると、黙ってイベントが空になる。 */
+describe('a comment character that means something in a regular expression', function () {
+  const said = function (text, char) {
+    return T2F.compile(text, { commentOutChar: char })
+      .filter(function (c) { return c.code === 401 })
+      .map(function (c) { return c.parameters[0] })
+  }
+
+  it('drops only the lines that start with it, not every line', function () {
+    expect(said('.メモ\nこんにちは\n', '.')).to.eql(['こんにちは'])
+  })
+
+  it('takes a character that cannot be a regular expression on its own', function () {
+    expect(said('(メモ\nこんにちは\n', '(')).to.eql(['こんにちは'])
+  })
+
+  // 書き戻しの側も同じ字で判定する。食い違うと、戻す行と落ちる行が別になる。
+  it('puts such a comment back where it was', function () {
+    const r = T2F.restoreAuthoredLines('.一幕: 酒場\nこんにちは\n', 'こんにちは\n', '.')
+
+    expect(r.text).to.equal('.一幕: 酒場\nこんにちは\n')
+  })
+})

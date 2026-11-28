@@ -4889,15 +4889,22 @@
     return Object.keys(read).length === Object.keys(PROJECT_FIELDS).length ? read : null
   }
 
+  /* コメント文字は「文字」なので、正規表現の部品としてではなく字面として照らす。
+   * 直に繋ぐと、`.` にしている人のところでは全部の行が、`(` にしている人のところでは
+   * 組み立て自体が落ちる。拡張の色分け(db/tagRefs.ts)は既に字面として扱っているので、
+   * 揃えないと同じプロジェクトで画面と反映が食い違う。 */
+  const escapeForRegExp = function (char) {
+    return String(char).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  }
+
   /* 入れた値が読める値かどうかを、表を写さずに確かめる。getBackground / getWindowPosition は
    * pluginCommandText2Frame の中に居てここから呼べないので、名前空間を都度読む
-   * getMessageDefaults を叩いて試す。コメント文字はエスケープせず正規表現に入るので、
-   * それも組んでみる。 */
+   * getMessageDefaults を叩いて試す。コメント文字はどんな字でも字面として通るので、
+   * ここで試すものが無い。 */
   const projectParametersUsable = function () {
     try {
       const api = Laurus.Text2Frame.export
       if (api && api.getMessageDefaults) api.getMessageDefaults()
-      new RegExp('^ *' + Laurus.Text2Frame.CommentOutChar) // eslint-disable-line no-new
       return true
     } catch (e) {
       return false
@@ -5687,7 +5694,7 @@
     /* コメントアウト行を削除する関数 */
     const eraseCommentOutLines = function (scenario_text, commentOutChar) {
       // 一度改行毎にsplitして、要素毎にチェックして最後にひとつのテキストに結合する。
-      const re = new RegExp('^ *' + commentOutChar)
+      const re = new RegExp('^ *' + escapeForRegExp(commentOutChar))
       return scenario_text
         .split('\n')
         .filter((x) => !x.match(re))
@@ -5696,7 +5703,7 @@
 
     /* eraseCommentOutLines が残す行の、元の行番号(compile の lineMap 用)。判定は上と同じ。 */
     const keptLineOrigins = function (scenario_text, commentOutChar) {
-      const re = new RegExp('^ *' + commentOutChar)
+      const re = new RegExp('^ *' + escapeForRegExp(commentOutChar))
       const origins = []
       scenario_text.split('\n').forEach((x, i) => { if (!x.match(re)) origins.push(i) })
       return origins
@@ -5775,7 +5782,7 @@
       const regenerated = String(regeneratedBody === undefined || regeneratedBody === null ? '' : regeneratedBody)
       // compile が落とす行と揃えること。判定がずれると戻す行と落ちる行が食い違う。
       // 省略時はプラグインパラメータ(Frame2Text から呼ぶときは指定できないため)。
-      const re = new RegExp('^ *' + (commentOutChar || Laurus.Text2Frame.CommentOutChar))
+      const re = new RegExp('^ *' + escapeForRegExp(commentOutChar || Laurus.Text2Frame.CommentOutChar))
       const origLines = uniformNewLineCode(original).split('\n')
 
       /* 作り直した結果が元と同じなら戻すものは無い。実データでは 5301 中 4347 件がこれで、
@@ -5893,7 +5900,7 @@
     /* 検算に落ちたときの逃げ道。元の本文から「戻す対象の書き方」だけを均し、
      * コメント行は残す。こうすると restoreAuthoredLines が書き方を戻さなくなる。 */
     const eraseAuthoredStyle = function (originalBody, commentOutChar) {
-      const re = new RegExp('^ *' + (commentOutChar || Laurus.Text2Frame.CommentOutChar))
+      const re = new RegExp('^ *' + escapeForRegExp(commentOutChar || Laurus.Text2Frame.CommentOutChar))
       const out = []
       let prevBlank = false
       uniformNewLineCode(String(originalBody || '')).split('\n').forEach(function (line) {
@@ -12391,7 +12398,7 @@
        * (`  %字下げ` のような変わった書き方は、戻すと `% 字下げ` になる ──
        *  コマンドは変わらないので、バイトの差として報告する。) */
       const commentChar = Laurus.Text2Frame.CommentOutChar || '%'
-      const commentLine = new RegExp('^ *' + commentChar)
+      const commentLine = new RegExp('^ *' + escapeForRegExp(commentChar))
       const stripComment = function (line) {
         return String(line).replace(commentLine, '').replace(/^ /, '')
       }
@@ -12483,7 +12490,7 @@
       const restore = useProjectParameters(o.gameRoot, o)
       try {
         const commentChar = Laurus.Text2Frame.CommentOutChar || '%'
-        const already = new RegExp('^ *' + commentChar)
+        const already = new RegExp('^ *' + escapeForRegExp(commentChar))
         const out = []
         rows.forEach(function (r) {
           /* メモ -> 見た目 -> 本文 の順。
