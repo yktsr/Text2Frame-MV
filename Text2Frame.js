@@ -4818,11 +4818,22 @@
     WindowPosition: 'Default Window Position',
     CommentOutChar: 'Comment Out Char'
   }
-  /* 読んだ内容を mtime で覚える。一括反映は1つのルートで数千ファイルを回す。 */
+  /* 読んだ内容を mtime で覚える。一括反映は1つのルートで数千ファイルを回す。
+   * plugins.js とプラグイン自身の2つを覚えるのは、片方だけだと plugins.js を触らずに
+   * プラグインを消した人のところで古い答えを返し続けるため。 */
   const projectParamCache = new Map()
   const noRestore = function () {}
 
-  const projectParametersOf = function (gameRoot) {
+  /* そのゲームに入っているプラグインのパラメータを、生のまま返す。入っていなければ null。
+   *
+   * 条件は2つで、どちらも要る。plugins.js に status が真でその名前の項目があること、かつ
+   * js/plugins/<名前>.js が実在すること。項目だけ残してプラグインを消したゲームでは、
+   * その設定はゲームの中で何も動かしていないので読まない。探すのはツクールが読む所
+   * (PluginManager._path + 名前 + '.js')だけ ── 置き場所を推測すると、別物を拾う道ができる。
+   *
+   * 鍵の取り出しは呼び側に任せる。組として扱うかどうかがプラグインごとに違う
+   * (文章の窓の3つは互いに揃っていないと意味がないが、取り出しの2つは独立した入/切)。 */
+  const pluginParametersOf = function (gameRoot, pluginName) {
     // ツクールの中では何もしない。あちらには生きた値があり、ディスクの plugins.js は
     // エディタで編集中の未保存のパラメータより古いことがある。
     if (typeof PluginManager !== 'undefined') return null
@@ -4832,30 +4843,38 @@
     const fs = require('fs')
     const path = require('path')
     const file = path.join(String(gameRoot), 'js', 'plugins.js')
+    const script = path.join(String(gameRoot), 'js', 'plugins', pluginName + '.js')
     let mtime
+    let scriptMtime
     try { mtime = fs.statSync(file).mtimeMs } catch (e) { return null }
-    const hit = projectParamCache.get(file)
-    if (hit && hit.mtime === mtime) return hit.params
+    try { scriptMtime = fs.statSync(script).mtimeMs } catch (e) { return null }
+    const key = file + '\n' + pluginName
+    const hit = projectParamCache.get(key)
+    if (hit && hit.mtime === mtime && hit.scriptMtime === scriptMtime) return hit.params
     let params = null
     try {
       // $plugins の切り方は拡張の autoWrapPlugin(src/db/messageFit.ts)と同じ形。
       const found = fs.readFileSync(file, 'utf8').match(/\$plugins\s*=\s*(\[[\s\S]*\])\s*;?/)
       const list = found ? JSON.parse(found[1]) : []
       const mine = list.filter(function (one) {
-        return one && one.status && one.name === 'Text2Frame'
+        return one && one.status && one.name === pluginName
       })[0]
-      if (mine && mine.parameters) {
-        const read = {}
-        Object.keys(PROJECT_FIELDS).forEach(function (field) {
-          const value = mine.parameters[PROJECT_FIELDS[field]]
-          if (typeof value === 'string' && value !== '') read[field] = value
-        })
-        // 1つでも欠けていれば組として使わない(古い版の plugins.js など)。
-        if (Object.keys(read).length === Object.keys(PROJECT_FIELDS).length) params = read
-      }
+      if (mine && mine.parameters) params = mine.parameters
     } catch (e) { params = null }
-    projectParamCache.set(file, { mtime, params })
+    projectParamCache.set(key, { mtime, scriptMtime, params })
     return params
+  }
+
+  const projectParametersOf = function (gameRoot) {
+    const params = pluginParametersOf(gameRoot, 'Text2Frame')
+    if (!params) return null
+    const read = {}
+    Object.keys(PROJECT_FIELDS).forEach(function (field) {
+      const value = params[PROJECT_FIELDS[field]]
+      if (typeof value === 'string' && value !== '') read[field] = value
+    })
+    // 1つでも欠けていれば組として使わない(古い版の plugins.js など)。
+    return Object.keys(read).length === Object.keys(PROJECT_FIELDS).length ? read : null
   }
 
   /* 入れた値が読める値かどうかを、表を写さずに確かめる。getBackground / getWindowPosition は
@@ -13228,7 +13247,7 @@
      * トップレベルに置くと、プラグインとして入れたときに他のプラグインと名前を取り合う
      * (同名の宣言があると読み込みごと失敗する)。内部用の窓口ごしに渡す。
      * 列挙しないので、公開 API の一覧(Object.keys)には出ない。 */
-    Object.defineProperty(module.exports, '_internal', { value: { collectTextFiles, useProjectParameters, hasConflictMarkerInText, missingPageReason } })
+    Object.defineProperty(module.exports, '_internal', { value: { collectTextFiles, useProjectParameters, pluginParametersOf, hasConflictMarkerInText, missingPageReason } })
   }
 })()
 

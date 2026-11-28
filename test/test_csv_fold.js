@@ -33,6 +33,10 @@ describe('folding a text into CSV rows', function () {
           }
         }
       ], null, 1) + ';\n')
+    /* 項目だけでは効かない。ツクールが読む所にプラグインが実在することも要る
+     * (項目だけ残して消したゲームでは、その設定は何も動かしていない)。 */
+    fs.mkdirSync(path.join(root, 'js', 'plugins'))
+    fs.writeFileSync(path.join(root, 'js', 'plugins', 'Text2Frame.js'), '// Text2Frame\n')
     return root
   }
 

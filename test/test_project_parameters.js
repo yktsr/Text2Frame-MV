@@ -20,12 +20,24 @@ const frame2text = require('../Frame2Text.js')
 describe('the game\'s own Text2Frame settings', function () {
   let tmp
 
-  /** ツクールが書く js/plugins.js の形。plugins を渡さなければ js/ ごと作らない。 */
-  const project = function (plugins) {
+  /** プラグインの中身は見ないので、実在することだけが要る。 */
+  const installed = function (root, names) {
+    const dir = path.join(root, 'js', 'plugins')
+    fs.mkdirSync(dir, { recursive: true })
+    names.forEach(function (name) {
+      fs.writeFileSync(path.join(dir, name + '.js'), '// ' + name + '\n')
+    })
+  }
+
+  /* ツクールが書く js/plugins.js の形。plugins を渡さなければ js/ ごと作らない。
+   * 設定が効くには plugins.js の項目とプラグインの実在の両方が要るので、
+   * 既定で Text2Frame を入れた形にする(入れない形は opts.install で作る)。 */
+  const project = function (plugins, opts) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 't2f-params-'))
     if (plugins !== undefined) {
       fs.mkdirSync(path.join(root, 'js'))
       fs.writeFileSync(path.join(root, 'js', 'plugins.js'), plugins)
+      installed(root, (opts && opts.install) || ['Text2Frame'])
     }
     tmp.push(root)
     return root
@@ -131,6 +143,42 @@ describe('the game\'s own Text2Frame settings', function () {
 
     expect(head[2]).to.equal(SHIPPED.background)
     expect(head[3]).to.equal(SHIPPED.position)
+  })
+
+  /* 条件は2つで、どちらも要る。片方だけのときは出荷時の既定のまま。 */
+
+  /* 項目だけ残してプラグインを消した形。その設定はゲームの中で何も動かしていない。 */
+  it('keeps the shipped defaults when the plugin itself is not there', function () {
+    const root = project(pluginsJs(changedParameters), { install: [] })
+
+    const head = headOf(root)
+
+    expect(head[2], '背景').to.equal(SHIPPED.background)
+    expect(head[3], '位置').to.equal(SHIPPED.position)
+    expect(bodyOf(root), 'コメント文字').to.eql(['#シャープの行'])
+  })
+
+  /* プラグインを置いただけでツクールに登録していない形。パラメータはどこにも無い。 */
+  it('keeps the shipped defaults when the plugin is there but not registered', function () {
+    const other = '//=====\nvar $plugins =\n' + JSON.stringify([
+      { name: 'Community_Basic', status: true, description: '', parameters: {} }
+    ], null, 1) + ';\n'
+
+    const head = headOf(project(other, { install: ['Text2Frame'] }))
+
+    expect(head[2]).to.equal(SHIPPED.background)
+    expect(head[3]).to.equal(SHIPPED.position)
+  })
+
+  /* 覚えた答えは plugins.js とプラグインの両方で確かめる。plugins.js だけで覚えると、
+   * プラグインを消しただけの人のところで古い答えを返し続ける。 */
+  it('forgets what it read when the plugin is removed afterwards', function () {
+    const root = project(pluginsJs(changedParameters))
+    expect(headOf(root)[2], '消す前').to.equal(CHANGED.background)
+
+    fs.rmSync(path.join(root, 'js', 'plugins', 'Text2Frame.js'))
+
+    expect(headOf(root)[2], '消した後').to.equal(SHIPPED.background)
   })
 
   /* 切ってあるプラグインはツクールでも動かないので、補う値も出荷時のまま。 */
